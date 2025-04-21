@@ -61,7 +61,7 @@ object JournalConfTest:
     delay = 2.ms,
     persistLimit = 6,
     snapshotPeriod = 7.h,
-    snapshotSizeLimit = 8*1000*1000*1000L,
+    fileSizeLimit = 8*1000*1000*1000L,
     snapshotSizeEstimateEventThreshold = 1000L,
     ackWarnDurations = List(10.s, 15.s),
     persistWarnDurations = List(20.s, 30.s),

@@ -1,6 +1,7 @@
 package js7.base.utils
 
-import cats.effect.{Resource, SyncIO}
+import cats.effect.implicits.monadCancelOps_
+import cats.effect.{MonadCancel, Resource, SyncIO}
 import cats.{:<:, Applicative}
 import izumi.reflect.Tag
 import js7.base.catsutils.UnsafeMemoizable
@@ -24,6 +25,10 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
     Resource.make(
       acquire = F.pure(this))(
       release = _.release)
+
+  /** An Allocated can be used only once. */
+  def use[R](body: A => F[R])(using F: MonadCancel[F, ?]): F[R] =
+    body(allocatedThing).guarantee(release)
 
   def blockingUse[R](body: A => R)(using F :<: SyncIO): R =
     val ac: AutoCloseable = () => release.asInstanceOf[SyncIO[Unit]].unsafeRunSync()

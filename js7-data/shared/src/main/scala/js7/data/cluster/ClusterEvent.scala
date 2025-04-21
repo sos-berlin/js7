@@ -38,6 +38,7 @@ object ClusterEvent:
       Subtype(deriveCodec[ClusterFailedOver]),
       Subtype(deriveCodec[ClusterPassiveLost]))
 
+
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
   extends ClusterNodeLostEvent:
     def lostNodeId: Id = failedActiveId
@@ -63,6 +64,7 @@ object ClusterEvent:
   final case class ClusterWatchRegistered(clusterWatchId: ClusterWatchId)
   extends ClusterEvent
 
+  type ClusterResetStarted = ClusterResetStarted.type
   case object ClusterResetStarted extends ClusterEvent
 
   implicit val jsonCodec: TypedJsonCodec[ClusterEvent] = TypedJsonCodec(

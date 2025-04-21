@@ -34,8 +34,9 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
     protected val S: SnapshotableState.Companion[S])
 extends Journal[S], FileJournal.PossibleFailover:
 
-  val journalHeader = journaler.journalHeader
-  def journalId = journalHeader.journalId
+  def journalId = journaler.journalId
+  def totalRunningTime = journaler.totalRunningTime
+  def initiallyStartedAt = journaler.initiallyStartedAt
 
   def isHalted: Boolean =
     journaler.isHalted

@@ -67,7 +67,7 @@ final class JournalerTest extends OurAsyncTestSuite:
               |{"eventId":1001,"Key":"A","TYPE":"SimpleAdded","string":"(FIRST)"}
               |""".stripMargin)
 
-        _ <- journaler.takeSnapshot()
+        _ <- journaler.takeSnapshot
         assertion <- IO:
           val recovered = StateRecoverer.recover[TestState](journaler.journalLocation, config)
           assert(recovered.eventId == 1002L)
@@ -153,7 +153,6 @@ object JournalerTest:
     js7.journal.snapshot.period = 1h
     js7.journal.snapshot.when-bigger-than = 1G
     js7.journal.snapshot.estimate-event-threshold = 0
-    js7.journal.slow-check-state = true
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = false
   """

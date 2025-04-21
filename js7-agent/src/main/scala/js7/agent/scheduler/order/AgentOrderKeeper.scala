@@ -286,7 +286,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         persist(
           AgentReady(
             ZoneId.systemDefault.getId,
-            totalRunningTime = journal.journalHeader.totalRunningTime,
+            totalRunningTime = journal.totalRunningTime,
             Some(currentPlatformInfo()))
         ) { (_, _) =>
           workingClusterNode.afterJournalingStarted

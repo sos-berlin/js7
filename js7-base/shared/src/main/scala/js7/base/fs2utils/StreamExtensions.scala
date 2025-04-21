@@ -27,6 +27,9 @@ object StreamExtensions:
   type PureStream[A] = Stream[fs2.Pure, A]
 
   extension [A](chunk: Chunk[A])
+    def :+[B](b: B): Chunk[A | B] =
+      chunk ++ Chunk.singleton(b)
+
     def grouped(size: Int): Iterator[Chunk[A]] =
       if size <= 0 then
         throw new IllegalArgumentException(s"Chunk.grouped size must be positive: $size")

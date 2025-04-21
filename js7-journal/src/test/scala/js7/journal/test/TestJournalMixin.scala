@@ -63,7 +63,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
     val actorSystem = newActorSystem(getClass.simpleScalaName, config_,
       executionContext = ioRuntime.compute)
     try
-      DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
+      DeadLetterActor.subscribe(actorSystem, (logLevel, msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[Unit]()
       val actor = actorSystem.actorOf(Props { new TestActor(config_, journalLocation, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)

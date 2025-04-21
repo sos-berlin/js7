@@ -168,7 +168,7 @@ extends AutoCloseable,
           promise.success(Some(currentEventReader))
 
     onFileWritten(flushedLengthAndEventId.position)
-    //???????????? onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
+    //??? onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
     startedPromise.trySuccess(this)
     evictUnusedEventReaders()
 

@@ -1,12 +1,7 @@
 package js7.journal.test
 
-import cats.effect.unsafe.IORuntime
-import org.apache.pekko.Done
-import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import org.apache.pekko.pattern.{ask, pipe}
-import org.apache.pekko.util.Timeout
-import scala.concurrent.ExecutionContext
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
@@ -20,8 +15,12 @@ import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournal
 import js7.journal.test.TestActor.*
 import js7.journal.{EventIdGenerator, JournalActor}
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
+import org.apache.pekko.util.Timeout
 import scala.collection.mutable
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.concurrent.duration.DurationInt
 import scala.language.unsafeNulls
 
@@ -64,6 +63,7 @@ extends Actor, Stash:
       keyToAggregate += aggregate.key -> actor
 
   override def postStop() =
+    journalAllocated.allocatedThing.journaler.suppressSnapshotWhenStopping()
     journalAllocated.release.await(99.s)
     journalStopped.success(())
     super.postStop()

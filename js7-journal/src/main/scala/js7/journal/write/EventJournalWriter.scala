@@ -4,7 +4,9 @@ import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
@@ -58,7 +60,9 @@ extends
       flushedLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId),
       isActiveNode = true)
 
-  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false): Unit =
+  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false)
+  : PositionAnd[EventId] =
+   logger.traceCall("### writeEvents", s"transaction=$transaction ${stampedEvents.map(o => s"${o.eventId} ${o.value.event.getClass.simpleScalaName}").mkString("[", ", ", "]")}"):
     // TODO Rollback writes in case of error (with seek?)
     if !eventsStarted then throw new IllegalStateException
     val ta = transaction && stampedEvents.lengthIs > 1
@@ -66,6 +70,7 @@ extends
     super.writeEvents(stampedEvents)
     if ta then jsonWriter.write(CommitByteArray)
     statistics.countEventsToBeCommitted(stampedEvents.size)
+    fileLengthAndEventId
 
   // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit =
@@ -74,9 +79,10 @@ extends
     logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
 
   override def flush(sync: Boolean): Unit =
-    super.flush(sync)
-    // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
-    observer.onFileWritten(jsonWriter.fileLength)
+    if !isFlushed || sync && !isSynced then
+      super.flush(sync)
+      observer.onFileWritten(jsonWriter.fileLength)
+    end if
 
   /** @param n estimated number of events
     */

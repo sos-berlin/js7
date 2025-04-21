@@ -332,10 +332,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined thenVector
           (NoKey <-: ControllerEvent.ControllerInitialized(
             controllerConfiguration.controllerId,
-            journal.journalHeader.initiallyStartedAt))
+            journal.initiallyStartedAt))
         val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
           Timezone(ZoneId.systemDefault.getId),
-          totalRunningTime = journal.journalHeader.totalRunningTime)
+          totalRunningTime = journal.totalRunningTime)
 
         val events = maybeControllerInitialized :+
           controllerReady :++
