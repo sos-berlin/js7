@@ -210,6 +210,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     def workflowId: WorkflowId = workflowPosition.workflowId
 
+    override def hasShortString = true
+
+    override def toShortString = "OrderAttachedToAgent"
+
 
   final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent

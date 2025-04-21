@@ -318,11 +318,12 @@ trait RealEventWatch extends EventWatch:
   final def awaitAsync[E <: Event](
     eventRequest: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using ioRuntime: IORuntime,
+      enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
     lazy val label = s"awaitAsync[${
       eventRequest.eventClasses.view.map(_.shortClassName).toVector.sorted.mkString(" | ")
-      }] in ${summon[sourcecode.FileName].value}:${summon[sourcecode.Line].value}"
+      }] in ${file.value}:${line.value}"
     logger.debugIO(label):
       import eventRequest.{after, timeout}
       when[E](eventRequest, predicate).map:
@@ -332,7 +333,7 @@ trait RealEventWatch extends EventWatch:
 
         case _: EventSeq.Empty =>
           throw new TimeoutException(
-            s"RealEventWatch.await(after=$after, timeout=$timeout) timed out")
+            s"$label(after=$after,timeout=${timeout.fold("")(_.pretty)}) timed out")
 
         //? case TearableEventSeq.Torn(tornEventId) =>
         //?   throw new TornException(after, tornEventId)
