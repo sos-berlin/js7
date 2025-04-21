@@ -69,14 +69,14 @@ final class BecomeAgentClusterTest
           extraConfig = config"""
             js7.auth.subagents.${primarySubagentId.string} = "BACKUP DIRECTOR'S PASSWORD"
             js7.auth.users.${primarySubagentId.string} {
-            permissions: [ AgentDirector ]
-            password: "plain:ACTIVE DIRECTOR'S PASSWORD"
-          }""")
+              permissions: [ AgentDirector ]
+              password: "plain:ACTIVE DIRECTOR'S PASSWORD"
+            }""")
         .flatMap(_.directorResource)
         .toAllocated
         .await(99.s)
 
-    TestAgent(subagentAllocated).useSync(99.s) { backupDirector =>
+    TestAgent(subagentAllocated).useSync(99.s): backupDirector =>
       try
         assert(controller.runOrder(FreshOrder(OrderId("🟦"), workflow.path))
           .last.value == OrderFinished())
@@ -131,11 +131,9 @@ final class BecomeAgentClusterTest
         eventId = controller.eventWatch
           .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
           .head.eventId
-      catch
-        case NonFatal(t) =>
-          logger.error(t.toStringWithCauses, t)
-          throw t
-    }
+      catch case NonFatal(t) =>
+        logger.error(t.toStringWithCauses, t)
+        throw t
 
 
 object BecomeAgentClusterTest:
