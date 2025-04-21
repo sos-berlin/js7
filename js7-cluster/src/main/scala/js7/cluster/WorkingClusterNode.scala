@@ -8,9 +8,8 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
-import js7.base.utils.{Allocated, AsyncLock, SetOnce}
+import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode.*
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable}
@@ -40,13 +39,12 @@ final class WorkingClusterNode[
   S <: ClusterableState[S]: ClusterableState.Companion: Tag
 ] private(
   val failedNodeId: Option[NodeId],
-  val journalAllocated: Allocated[IO, FileJournal[S]],
+  val journal: FileJournal[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (using nodeNameToPassword: NodeNameToPassword[S]):
 //TODO extends Service
 
-  val journal: FileJournal[S] = journalAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode", ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeIO = IO { _activeClusterNode.checked }
@@ -193,14 +191,10 @@ object WorkingClusterNode:
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
         common.requireValidLicense.map(_.orThrow))
-      journalAllocated <- Resource.eval(FileJournal
-        .resource(recovered, clusterConf.journalConf, eventIdGenerator)
-        // Not compilable with Scala 3.3.1: .toAllocated
-        .toLabeledAllocated(label = s"FileJournal[${implicitly[Tag[S]].tag.shortName}]")
-        /* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
+      fileJournal <- FileJournal.resource(recovered, clusterConf.journalConf, eventIdGenerator)
       workingClusterNode <- Resource.make(
         acquire = IO.defer:
-          val w = new WorkingClusterNode(recovered.failedNodeId, journalAllocated, common, clusterConf)
+          val w = new WorkingClusterNode(recovered.failedNodeId, fileJournal, common, clusterConf)
           w.start(recovered.clusterState, recovered.eventId).as(w)
         )(
         release = _.stop)

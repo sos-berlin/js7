@@ -247,7 +247,7 @@ object RunningAgent:
     val actors = mutable.Buffer.empty[ActorRef]
 
     def startMainActor(workingClusterNode: WorkingClusterNode[AgentState]): MainActorStarted =
-      val journal = workingClusterNode.journalAllocated.allocatedThing
+      val journal = workingClusterNode.journal
       val failedOverSubagentId: Option[SubagentId] =
         for nodeId <- workingClusterNode.failedNodeId yield
           journal.unsafeCurrentState().meta
@@ -288,7 +288,7 @@ object RunningAgent:
           clusterNode.untilActivated
             .map(_.left.map(DirectorTermination.fromProgramTermination))
             .flatMapT: workingClusterNode =>
-              journalDeferred.complete(workingClusterNode.journalAllocated.allocatedThing)
+              journalDeferred.complete(workingClusterNode.journal)
                 .*>(IO:
                   startMainActor(workingClusterNode))
                 .map(Right(_))

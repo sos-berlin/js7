@@ -62,7 +62,7 @@ extends Actor, Stash, SimpleStateActor:
 
   import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}
-  val journal = workingClusterNode.journalAllocated.allocatedThing
+  val journal = workingClusterNode.journal
   import journal.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate

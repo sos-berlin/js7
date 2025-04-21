@@ -19,7 +19,7 @@ import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize, scheduleAtFixedRate}
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize}
 import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
@@ -98,11 +98,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.subagent as localSubagent
-  import ioRuntime.scheduler
 
   private given ExecutionContext = ioRuntime.compute
 
-  private val journal = workingClusterNode.journalAllocated.allocatedThing
+  private val journal = workingClusterNode.journal
   private val (ownAgentPath, localSubagentId, controllerId) =
     val meta = journal.unsafeCurrentState().meta
     val subagentId: SubagentId =
@@ -135,7 +134,6 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private object shutdown:
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
-    private var snapshotFinished = false
     private var stillTerminatingSchedule: Option[SyncCancelable] = None
     private var terminatingOrders = false
     private var terminatingJobs = false
@@ -150,16 +148,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
         since := now
         shutDownCommand = Some(cmd)
         fileWatchManager.stop.unsafeRunAndForget()
+        if cmd.isFailover then
+          (journal.journaler.kill *> IO(context.stop(self)))
+            .unsafeRunAndForget()
+        if cmd.suppressSnapshot then
+          journal.journaler.suppressSnapshotWhenStopping()
         if cmd.isFailOrSwitchover then
-          workingClusterNode.journalAllocated.release.unsafeRunAndForget()
+          //workingClusterNode.journalAllocated.release.unsafeRunAndForget()
           context.stop(self)
-        else if cmd.suppressSnapshot then
-          snapshotFinished = true
-        else
-          journalActor ! JournalActor.Input.TakeSnapshot // Take snapshot before OrderActors are stopped
-          stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            self ! Internal.StillTerminating
-          })
         continue()
 
     def close(): Unit =
@@ -167,42 +163,34 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
     def onStillTerminating(): Unit =
       logger.info(s"🟠 Still terminating, waiting for ${orderRegister.size} orders" +
-        s", ${jobRegister.size} jobs" +
-        (!snapshotFinished ?? ", and the snapshot"))
-
-    def onSnapshotTaken(): Unit =
-      if shuttingDown then
-        snapshotFinished = true
-        continue()
+        s", ${jobRegister.size} jobs")
 
     def continue(): Unit =
       for shutDown <- shutDownCommand do
         logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
-          jobRegister.size + " jobs" +
-          (snapshotFinished ?? ", snapshot taken"))
-        if snapshotFinished then
-          if !terminatingOrders then
-            terminatingOrders = true
-            for o <- orderRegister.values if !o.isDetaching do
-              o.actor ! OrderActor.Input.Terminate(shutDown.processSignal/*only local Subagent*/)
-          if orderRegister.isEmpty then
-            if !terminatingJobs then
-              terminatingJobs = true
-              subagentKeeper.stop
-                .handleError: t =>
-                  logger.error(s"subagentKeeper.stop =>${t.toStringWithCauses}", t)
-                .map(_ => self ! Internal.JobDriverStopped)
-                .unsafeRunAndForget()
-            if jobRegister.isEmpty && !terminatingJournal then
-              IO.whenA(!shutDown.isFailOrSwitchover):
-                workingClusterNode.shutDownThisNode.flatMap:
-                  case Right(Completed) => IO.unit
-                  case Left(problem) =>
-                    IO(logger.warn(s"workingClusterNode.shutDownThisNode => $problem"))
-              .map: _ =>
-                self ! Internal.AgentShutdown
+          jobRegister.size + " jobs")
+        if !terminatingOrders then
+          terminatingOrders = true
+          for o <- orderRegister.values if !o.isDetaching do
+            o.actor ! OrderActor.Input.Terminate(shutDown.processSignal/*only local Subagent*/)
+        if orderRegister.isEmpty then
+          if !terminatingJobs then
+            terminatingJobs = true
+            subagentKeeper.stop
+              .handleError: t =>
+                logger.error(s"subagentKeeper.stop =>${t.toStringWithCauses}", t)
+              .map(_ => self ! Internal.JobDriverStopped)
               .unsafeRunAndForget()
-            end if
+          if jobRegister.isEmpty && !terminatingJournal then
+            IO.whenA(!shutDown.isFailOrSwitchover):
+              workingClusterNode.shutDownThisNode.flatMap:
+                case Right(Completed) => IO.unit
+                case Left(problem) =>
+                  IO(logger.warn(s"workingClusterNode.shutDownThisNode => $problem"))
+            .map: _ =>
+              self ! Internal.AgentShutdown
+            .unsafeRunAndForget()
+          end if
 
     def finallyShutdown(): Unit =
       if agentShutDownEmitted then
@@ -211,7 +199,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
         persist(AgentShutDown): (_, _) =>
           agentShutDownEmitted = true
           terminatingJournal = true
-          workingClusterNode.journalAllocated.release.unsafeRunAndForget()
+          //workingClusterNode.journalAllocated.release.unsafeRunAndForget()
+          context.stop(self)
+
 
   import shutdown.shuttingDown
 
@@ -358,9 +348,6 @@ extends MainJournalingActor[AgentState, Event], Stash:
       else
         shutdown.start(cmd)
         sender() ! AgentCommand.Response.Accepted
-
-    case JournalActor.Output.SnapshotTaken =>
-      shutdown.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(orderId, correlId, previousOrderOrNull, events) =>
       correlId.bind[Unit]:

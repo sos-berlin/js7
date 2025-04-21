@@ -203,6 +203,16 @@ object ControllerCommand extends CommonCommand.Companion:
     /*for test only*/dontNotifyActiveNode: Boolean = false)
   extends ControllerCommand:
     type Response = Response.Accepted
+
+    def isFailOrSwitchover: Boolean =
+      isFailover || isSwitchover
+
+    def isFailover: Boolean =
+      clusterAction contains ShutDown.ClusterAction.Failover
+
+    private def isSwitchover: Boolean =
+      clusterAction contains ShutDown.ClusterAction.Switchover
+
   object ShutDown:
     sealed trait ClusterAction
     object ClusterAction:

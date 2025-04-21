@@ -29,10 +29,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.CatsBlocking.BlockingIOResource
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
-import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
@@ -260,7 +259,7 @@ object RunningController:
             clusterNode.untilActivated
               .map(_.flatMap { workingClusterNode =>
                 startControllerOrderKeeper(
-                  workingClusterNode.journalAllocated,
+                  workingClusterNode.journal,
                   clusterNode.workingClusterNode.orThrow,
                   alarmClock,
                   conf, testEventBus)
@@ -363,6 +362,10 @@ object RunningController:
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
+        // Stop Journal before before web server to allow receiving acknowledges
+        // TODO Start web server before Journal?
+        _ <- Resource.onFinalize(clusterNode.workingClusterNode.fold(_ => IO.unit,
+          _.journal.journaler.stop))
         runningController <- runningControllerResource(webServer, sessionRegister)
       yield
         runningController
@@ -387,7 +390,7 @@ object RunningController:
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    journalAllocated: Allocated[IO, FileJournal[ControllerState]],
+    journal: FileJournal[ControllerState],
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
@@ -398,7 +401,7 @@ object RunningController:
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new ControllerOrderKeeper(terminationPromise, journalAllocated, workingClusterNode,
+          new ControllerOrderKeeper(terminationPromise, journal, workingClusterNode,
             alarmClock, conf, testEventPublisher)
         },
         "ControllerOrderKeeper")

@@ -40,7 +40,6 @@ import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stampe
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.journal.state.FileJournal
-import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.*
 import scala.util.{Failure, Right, Success, Try}
 
@@ -52,7 +51,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   clusterConf: ClusterConf):
 
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
-  private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock(logMinor = true)
   private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = new FiberVar[Unit]
@@ -291,16 +289,16 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(IO.defer:
-          logger.info(s"The passive $passiveId is shutting down")
-          clusterStateLock.lock(command.toShortString):
-            journal.journaler.onPassiveLost *>
-              persist():
-                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                  Right(Some(ClusterPassiveLost(passiveId)))
+         logger.info(s"The passive $passiveId is shutting down")
+          // DEADLOCK when shutdownThisNode wait for ack: clusterStateLock.lock(command.toShortString):
+          journal.journaler.onPassiveLost *>
+            persist():
+              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                Right(Some(ClusterPassiveLost(passiveId)))
 
-                case _ =>
-                  Right(None)
-              .map(_.map(_ => ClusterCommand.Response.Accepted)))
+              case _ =>
+                Right(None)
+            .map(_.map(_ => ClusterCommand.Response.Accepted)))
 
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError

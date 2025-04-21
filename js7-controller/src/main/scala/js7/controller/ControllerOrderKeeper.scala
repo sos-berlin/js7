@@ -81,7 +81,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy, Terminated}
+import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
@@ -94,7 +94,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
-  journalAllocated: Allocated[IO, FileJournal[ControllerState]],
+  journal: FileJournal[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   clock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
@@ -109,7 +109,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private given ExecutionContext = ioRuntime.compute
 
   override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
-  private def journal = journalAllocated.allocatedThing
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = journal.journalActor
 
@@ -162,9 +161,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     private val shutDown = SetOnce[ControllerCommand.ShutDown]
     private val stillShuttingDownCancelable = SerialSyncCancelable()
     private var terminatingAgentDrivers = false
-    private var takingSnapshot = false
-    private var snapshotTaken = false
-    private var terminatingJournal = false
+    private var controllerShutdown = false
 
     def shuttingDown = since.isDefined
 
@@ -174,27 +171,27 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       if !shuttingDown then
         since := scheduler.now()
         this.shutDown := shutDown
+        if shutDown.suppressSnapshot || shutDown.isFailover then
+          journal.journaler.suppressSnapshotWhenStopping()
         stillShuttingDownCancelable := scheduler
           .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations/*?*/):
           self ! Internal.StillShuttingDown
-        continue()
+        //BESSER ???  if shutDown.isFailover then
+        if shutDown.isFailOrSwitchover then
+          (journal.journaler.kill *> IO(context.stop(self)))
+            .unsafeRunAndForget()
+        else
+          continue()
 
     def close(): Unit =
       stillShuttingDownCancelable.cancel()
 
     def onStillShuttingDown(): Unit =
-      logger.info(s"Still shutting down, waiting for $runningAgentDriverCount AgentDrivers" +
-        (!snapshotTaken ?? " and the snapshot"))
-
-    def onSnapshotTaken(): Unit =
-      if shuttingDown then
-        snapshotTaken = true
-        continue()
+      logger.info(s"Still shutting down, waiting for $runningAgentDriverCount AgentDrivers")
 
     def continue(): Unit =
       for shutDown <- shutDown do
-        logger.trace(s"shutdown.continue: $runningAgentDriverCount AgentDrivers${
-          !snapshotTaken ?? ", snapshot required"}")
+        logger.trace(s"shutdown.continue: $runningAgentDriverCount AgentDrivers")
         if !terminatingAgentDrivers then
           terminatingAgentDrivers = true
           agentRegister.values.map(_.agentDriver)
@@ -206,21 +203,17 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 .logWhenItTakesLonger(s"$agentDriver.terminate"))
             .unsafeRunAndForget() // TODO
         if runningAgentDriverCount == 0 then
-          if !takingSnapshot then
-            takingSnapshot = true
-            if shutDown.suppressSnapshot then
-              snapshotTaken = true
-            else
-              journalActor ! JournalActor.Input.TakeSnapshot
-          if snapshotTaken && !terminatingJournal then
+          if !controllerShutdown && !shutDown.isFailOrSwitchover then
             // The event forces the cluster to acknowledge this event and the snapshot taken
-            terminatingJournal = true
+            controllerShutdown = true
             persistKeyedEventIO(NoKey <-: ControllerShutDown)((_, _) => Completed)
-              .flatTap(_ => journalAllocated.release)
               .unsafeToFuture()
               .onComplete:
-                case Success(Right(Completed)) =>
+                case Success(Right(Completed)) => self ! Internal.ContinueShutdown
                 case other => logger.error(s"While shutting down: $other")
+          else
+            context.stop(self)
+
   import shutdown.shuttingDown
 
   /** Next orders to be processed. */
@@ -262,7 +255,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def start(): IO[Checked[Completed]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
-        .flatMapT(o => journalAllocated.release.as(Right(o)))
+        //? .flatMapT(o => journalAllocated.release.as(Right(o)))
 
     def close(): Unit = stillSwitchingOverSchedule.cancel()
 
@@ -585,9 +578,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         case (orderId, mark) =>
           orderRegister(orderId).agentOrderMark = Some(mark)
 
-    case JournalActor.Output.SnapshotTaken =>
-      shutdown.onSnapshotTaken()
-
     case Internal.OrderIsDue(orderId) =>
       proceedWithOrders(orderId :: Nil)
       orderQueue.enqueue(orderId :: Nil)
@@ -624,6 +614,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         .toFiniteDuration
       shutdown.start(shutDown)
 
+    case Internal.ContinueShutdown =>
+      shutdown.continue()
+
     case Internal.StillShuttingDown =>
       shutdown.onStillShuttingDown()
 
@@ -631,7 +624,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       var agentEntry = agentRegister(agentPath)
       agentEntry.actorTerminated = true
       agentEntry.release.unsafeRunAndForget()/*???*/ // Release in case there are surrounding Resources
-      if switchover.isDefined && journalTerminated && runningAgentDriverCount == 0 then
+      if switchover.isDefined && /*journalTerminated &&*/ runningAgentDriverCount == 0 then
         val delay = shutdown.delayUntil.timeLeft
         if delay.isPositive then
           logger.debug(s"Sleep ${delay.pretty} after ShutDown command")
@@ -718,7 +711,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           logger.error(s"Cluster module terminated unexpectedly: $msg")
         case Failure(t) =>
           logger.error(s"Cluster module terminated unexpectedly: ${t.toStringWithCauses}", t)
-      context.stop(self)
+      if shuttingDown then
+        shutdown.continue()
+      else
+        context.stop(self)
 
   private def executeControllerCommand(command: ControllerCommand, commandMeta: CommandMeta)
   : Future[Checked[ControllerCommand.Response]] =
@@ -976,8 +972,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       .awaitInfinite // TODO Blocking
 
     allocated.allocatedThing.untilStopped
-      .*>(IO(
-        self ! Internal.AgentDriverStopped(agent.path)))
+      .*>(IO:
+        logger.trace(s"'### self ! Internal.AgentDriverStopped(${agent.path})))")
+        self ! Internal.AgentDriverStopped(agent.path))
       .unsafeRunAndForget() // TODO
 
     val entry = AgentEntry(agent, allocated)
@@ -1453,7 +1450,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           switchover = Some(so)
           so.start()
             .materialize.flatTap {
-              case Success(Right(_)) => IO.unit  // this.switchover is left for postStop
+              case Success(Right(_)) =>
+                context.stop(self)
+                IO.unit  // this.switchover is left for postStop
               case _ => IO:
                 switchover = None  // Asynchronous!
             }.dematerialize
@@ -1495,6 +1494,7 @@ private[controller] object ControllerOrderKeeper:
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]])
       extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
+    case object ContinueShutdown extends DeadLetterSuppression
     case object StillShuttingDown extends DeadLetterSuppression
     final case class ShutDown(shutdown: ControllerCommand.ShutDown)
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
