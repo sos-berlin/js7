@@ -113,13 +113,16 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
 
   /** Calculated next JournalHeader. */
   def nextJournalHeader: Option[JournalHeader] =
-    fileJournalHeader.map(_.copy(
-      eventId = _progress.eventId,
-      totalEventCount = totalEventCount,
-      totalRunningTime = fileJournalHeader.fold(ZeroDuration): header =>
-        val lastJournalDuration = lastEventIdTimestamp - header.timestamp
-        (header.totalRunningTime + lastJournalDuration).roundUpToNext(1.ms),
-      timestamp = lastEventIdTimestamp))
+    fileJournalHeader.map: header =>
+      if _progress.eventId == header.eventId then sys.error:
+        s"Journal file contains no event — it must start with SnapshotTaken: $journalFileForInfo"
+      header.nextGeneration(
+        eventId = _progress.eventId,
+        totalEventCount = header.totalEventCount + _eventCount,
+        totalRunningTime =
+          val lastJournalDuration = lastEventIdTimestamp - header.timestamp
+          (header.totalRunningTime + lastJournalDuration).roundUpToNext(1.ms),
+        timestamp = lastEventIdTimestamp)
 
   def totalEventCount: Long =
     fileJournalHeader.fold(0L)(_.totalEventCount) + _eventCount

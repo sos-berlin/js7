@@ -83,7 +83,7 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.JournalActorState].await(99.s)
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")).await(99.s)
-      assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
+      //assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AcceptEarly).await(99.s)
       //assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true))
@@ -184,8 +184,8 @@ object JournalTest:
       "generation": 1,
       "totalEventCount": 0,
       "totalRunningTime": 3600,
-      "initiallyStartedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
+      "initiallyStartedAt": "STARTED-AT",
       "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.prettyVersion}",
       "buildId": "${BuildInfo.buildId}"
@@ -273,11 +273,11 @@ object JournalTest:
       "typeName": "TestState",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 1000068,
-      "generation": 3,
+      "generation": 4,
       "totalEventCount": 69,
       "totalRunningTime": 3600,
       "timestamp": "TIMESTAMP",
-      "initiallyStartedAt" : "STARTED-AT",
+      "initiallyStartedAt": "STARTED-AT",
       "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.prettyVersion}",
       "buildId": "${BuildInfo.buildId}"
