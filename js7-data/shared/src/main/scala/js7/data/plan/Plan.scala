@@ -109,10 +109,17 @@ final case class Plan(
         Right(View.empty)
       else
         newStatus match
-          case Open => Right(View.Single(id <-: PlanOpened))
-          case Closed => Right((id <-: PlanClosed) +: copy(status = Closed).maybePlanFinished(now, finishedPlanRetentionPeriod))
-          case _: Finished => Left(Problem("A Plan finishes itself, it cannot be finished by command"))
-          case Deleted => Right(uncheckedPlanDeleted)
+          case Open =>
+            Right(View.Single(id <-: PlanOpened))
+          case Closed =>
+            Right:
+              (id <-: PlanClosed) +:
+                copy(status = Closed)
+                  .maybePlanFinished(now, finishedPlanRetentionPeriod)
+          case _: Finished =>
+            Left(Problem("A Plan finishes itself, it cannot be finished by command"))
+          case Deleted =>
+            Right(uncheckedPlanDeleted)
 
   private[plan] def checkStatusChange(newStatus: PlanStatus): Checked[Unit] =
     (this.status, newStatus) match
