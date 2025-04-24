@@ -18,7 +18,7 @@ import js7.cluster.ClusterConf.ClusterProductName
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverProblem, ClusterWatchInactiveNodeProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
@@ -145,7 +145,7 @@ private[cluster] final class ClusterCommon private(
                       " and is waiting for ClusterWatch's agreement, " +
                       "the passive node failed over"
                     if clusterConf.testDontHaltWhenPassiveLostRejected then
-                      IO.left(ClusterPassiveLostWhileFailedOverProblem) // For test only
+                      IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
                     else
                       haltJava(msg, restart = true, warnOnly = true)
                   else

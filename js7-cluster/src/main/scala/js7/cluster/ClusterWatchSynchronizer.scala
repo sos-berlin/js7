@@ -23,7 +23,7 @@ import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.data.Problems.ClusterModuleShuttingDownProblem
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverTestingProblem
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import org.apache.pekko.pattern.AskTimeoutException
@@ -120,7 +120,7 @@ private final class ClusterWatchSynchronizer(
             getClusterState.flatMap:
               case clusterState: HasNodes
                 if clusterState.activeId == ownId
-                && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem)
+                && ioResult != Left(ClusterPassiveLostWhileFailedOverTestingProblem)
                 && ioResult != Left(ClusterModuleShuttingDownProblem) =>
                 continueHeartbeating(
                   clusterState,

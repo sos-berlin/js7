@@ -14,8 +14,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
-import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.Checked.*
 import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -32,7 +32,7 @@ import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInappli
 import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import js7.data.cluster.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterPassiveLostWhileFailedOverTestingProblem, ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState, ClusterTiming, ClusterWatchId}
 import js7.data.event.KeyedEvent.NoKey
@@ -478,6 +478,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                       .map(_.toCompleted)
                       .rightAs(true)
+                  .onProblemRecoverWith:
+                    case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
+                      journal.journaler.kill  // avoid taking a snapshot
+                        .as(Left(problem))
                 .map(_.flatMap: allowed =>
                   if !allowed then
                     Right(Completed)
