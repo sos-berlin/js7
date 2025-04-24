@@ -158,7 +158,8 @@ private[journal] final class JournalLogger(
     import frame.*
     import stamped.value.{event, key}
     sb.clear()
-    sb.append("Event ")
+    sb.append:
+      if frame.persist.isAcknowledged then "Event= " else "Event  "
     sb.append(transactionMarker(forTrace = false))
     if key != NoKey then
       sb.append(key)
@@ -184,6 +185,7 @@ object JournalLogger:
           "sync ",
       infoLogEvents = conf.infoLogEvents)
 
+
   private[journal] trait Loggable:
     //def correlId: CorrelId
     def eventNumber: Long
@@ -192,6 +194,7 @@ object JournalLogger:
     def since: Deadline
     def isAcknowledged: Boolean
     def isLastOfFlushedOrSynced: Boolean
+
 
   private final class SimpleLoggable(
     //val correlId: CorrelId,
@@ -202,6 +205,7 @@ object JournalLogger:
     val isAcknowledged: Boolean,
     val isLastOfFlushedOrSynced: Boolean)
   extends Loggable
+
 
   private final class SubclassCache(superclassNames: Set[String]):
     private val cache = mutable.Map.empty[Class[?], Boolean]
@@ -215,9 +219,13 @@ object JournalLogger:
 
     override def toString = s"SubclassCache($superclassNames)"
 
+
   private final case class PersistFrame(persist: Loggable,
-    persistEventCount: Int, persistIndex: Int, persistCount: Int,
-    committedAt: Deadline):
+    persistEventCount: Int,
+    persistIndex: Int,
+    persistCount: Int,
+    committedAt: Deadline
+  ):
     val beforeLastEventNr = persist.eventNumber + persistEventCount - 2
     val duration = committedAt - persist.since
     var nr = persist.eventNumber

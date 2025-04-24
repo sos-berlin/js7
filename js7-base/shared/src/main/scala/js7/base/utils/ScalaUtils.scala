@@ -246,6 +246,9 @@ object ScalaUtils:
           case _: java.util.concurrent.TimeoutException =>
             throwable.toString.stripPrefix("java.util.concurrent.")
 
+          case _: java.nio.file.NoSuchFileException =>
+            throwable.toString.stripPrefix("java.nio.file.")
+
           case _ =>
             if msg != null && msg != "" && (
               throwable.isInstanceOf[ProblemException] ||

@@ -94,6 +94,9 @@ private trait SubagentEventListener:
               stopObserving.flatMap:
                 _.getAndDiscreteUpdates.use: (o, stream) =>
                   observeEvents(stopRequested = o +: stream)
+            .onError(t => IO:
+              // We have a problem
+              logger.error(s"observeEvents failed: ${t.toStringWithCauses}"))
             .start
             .flatMap(fiber => IO:
               observing = fiber)

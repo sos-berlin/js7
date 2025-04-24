@@ -336,7 +336,7 @@ object Logger extends AdHocLogger:
       def debugStream[F[_], A](stream: Stream[F, A])
         (using F: Sync[F], A: Tag[A], src: sourcecode.Name)
       : Stream[F, A] =
-        debugStream(s"${src.value}: Stream[_,${A.tag.shortName}]")(stream)
+        debugStream(s"${src.value}: Stream[${A.tag.shortName}]")(stream)
 
       def debugStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
         (using F: Sync[F])
@@ -346,7 +346,7 @@ object Logger extends AdHocLogger:
       def traceStream[F[_], A](stream: Stream[F, A])
         (using F: Sync[F], src: sourcecode.Name, A: Tag[A])
       : Stream[F, A] =
-        traceStream(s"${src.value}: Stream[_,${A.tag.shortName}]")(stream)
+        traceStream(s"${src.value}: Stream[${A.tag.shortName}]")(stream)
 
       def traceStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
         (using F: Sync[F])
@@ -417,7 +417,7 @@ object Logger extends AdHocLogger:
       (resource: Resource[F, A])
       (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
     : Resource[F, A] =
-      logResource[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
+      logResource[F, A](logger, logLevel, s"${src.value} :Resource[${tag.tag}]"):
         resource
 
     private def logResource[F[_], A](

@@ -56,10 +56,12 @@ object StreamingSupport:
             Stream.empty
           .toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
 
-    def toPekkoSourceResource: ResourceIO[Source[A, NotUsed]] =
+    def toPekkoSourceResource(using A: Tag[A])
+    : ResourceIO[Source[A, NotUsed]] =
       stream
         .onFinalizeCase:
-          case ExitCase.Canceled => IO(logger.debug(s"◼️  toPekkoSourceResource stream canceled"))
+          case ExitCase.Canceled => IO(logger.trace:
+            s"◼️  toPekkoSourceResource[${A.tag}] stream canceled")
           case _ => IO.unit
         .toUnicastPublisher
         .map(Source.fromPublisher)
