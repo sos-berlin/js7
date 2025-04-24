@@ -1,8 +1,9 @@
 package js7.base.problem
 
+import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monoid.*
-import cats.{Functor, Monoid}
+import cats.{Functor, Monad, Monoid}
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -175,6 +176,14 @@ object Checked:
             case None => Left(problem)
             case Some(b) => Right(b)
         case Right(a) => Right(a)
+
+    def onProblemRecoverWith[B >: A](f: PartialFunction[Problem, F[Checked[B]]])(implicit F: Monad[F]): F[Checked[B]] =
+      underlying.flatMap:
+        case Left(problem) =>
+          f.lift(problem) match
+            case None => F.pure(Left(problem))
+            case Some(b) => b
+        case Right(a) => F.pure(Right(a))
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal:
     def traverseAndCombineProblems[B](f: A => Checked[B]): Checked[Seq[B]] =

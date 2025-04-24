@@ -1,6 +1,6 @@
 package js7.base.problem
 
-import cats.effect.SyncIO
+import cats.effect.{IO, SyncIO}
 import cats.instances.either.*
 import cats.instances.int.*
 import cats.instances.list.*
@@ -16,14 +16,14 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.problem.Checked.*
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurAsyncTestSuite, OurTestSuite}
 import js7.tester.CirceJsonTester.testJson
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class CheckedTest extends OurTestSuite:
+final class CheckedTest extends OurAsyncTestSuite:
 
   "JSON" - {
     import Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
@@ -84,6 +84,7 @@ final class CheckedTest extends OurTestSuite:
 
     intercept[IllegalArgumentException]:
       catchExpected[IllegalStateException](throw t)
+    succeed
 
   "catchProblem" in:
     assert(Checked.catchProblem(7) == Right(7))
@@ -221,6 +222,25 @@ final class CheckedTest extends OurTestSuite:
     assert(List(Right(1), Right(2)).combineProblems == Right(Seq(1, 2)))
     assert(List(Left(Problem("ONE")), Right(2), Left(Problem("TWO"))).combineProblems ==
       Left(Problem.combined(List("ONE", "TWO"))))
+
+  "onProblemRecoverWith" in:
+    val ok: IO[Checked[Int]] = IO.pure(Right(1))
+    val failed: IO[Checked[Int]] = IO.pure(Left(TestCodeProblem))
+    for
+      x <- ok.onProblemRecoverWith:
+        case TestCodeProblem => IO.pure(Right(999))
+      _ = assert(x == Right(1))
+      x <- failed.onProblemRecoverWith:
+        case TestCodeProblem if false => IO.pure(Right(2))
+      _ = assert(x == Left(TestCodeProblem))
+      x <- failed.onProblemRecoverWith:
+        case TestCodeProblem => IO.pure(Right(2))
+      _ = assert(x == Right(2))
+      x <- failed.onProblemRecoverWith:
+        case TestCodeProblem => IO.pure(Left(Problem("PROBLEM")))
+      _ = assert(x == Left(Problem("PROBLEM")))
+    yield
+      succeed
 
   "failFastMap" - {
     "Invalid" in:
