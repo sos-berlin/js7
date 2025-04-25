@@ -79,6 +79,7 @@ final class OrderTest extends OurTestSuite:
             attachedState = Some(Attached(AgentPath("AGENT"))),
             parent = Some(OrderId("PARENT")),
             scheduledFor = Some(Timestamp.parse("2121-04-26T12:33:44.789Z")),
+            priority = BigDecimal("1.23"),
             externalOrder = Some(ExternalOrderLink(
               OrderWatchPath("ORDER-WATCH"),
               ExternalOrderName("EXTERNAL"),
@@ -108,6 +109,7 @@ final class OrderTest extends OurTestSuite:
               "key2": "value2"
             },
             "scheduledFor": 4775114024789,
+            "priority": 1.23,
             "externalOrder": {
               "orderWatchPath": "ORDER-WATCH",
               "name": "EXTERNAL",
@@ -437,6 +439,20 @@ final class OrderTest extends OurTestSuite:
     }
   }
 
+  "priorityOrdering" in:
+    val a = Order(OrderId("A"), WorkflowPath("WORKFLOW") /: Position(0), Fresh(), priority = 3)
+    val b = Order(OrderId("B"), WorkflowPath("WORKFLOW") /: Position(0), Fresh(), priority = 2)
+    val c = Order(OrderId("C"), WorkflowPath("WORKFLOW") /: Position(0), Fresh(), priority = 1)
+    for permuation <- Seq(a, b, c).permutations do
+      assert(permuation.sorted(Order.priorityOrdering) == Seq(a, b, c))
+    assert(Order.priorityOrdering.compare(a, b) == -1)
+    assert(Order.priorityOrdering.compare(a, c) == -1)
+    assert(Order.priorityOrdering.compare(b, c) == -1)
+    assert(Order.priorityOrdering.compare(b, a) == +1)
+    assert(Order.priorityOrdering.compare(c, a) == +1)
+    assert(Order.priorityOrdering.compare(c, b) == +1)
+
+
   "Order transitions: event to state" - {
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
@@ -452,7 +468,7 @@ final class OrderTest extends OurTestSuite:
 
       OrderAttachable(agentPath),
       OrderAttachedToAgent(workflowId /: Position(0), Fresh(), PlanId.Global, Map.empty, None, None,
-        Vector.empty, agentPath, None, None, false, false),
+        Vector.empty, agentPath, None, None, None, false, false),
       OrderAttached(agentPath),
 
       OrderStarted,

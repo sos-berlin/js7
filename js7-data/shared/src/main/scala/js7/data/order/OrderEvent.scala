@@ -63,6 +63,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def arguments: NamedValues
     def planId: PlanId
     def scheduledFor: Option[Timestamp]
+    def priority: BigDecimal
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
     def forceJobAdmission: Boolean
@@ -88,6 +89,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     arguments: NamedValues = Map.empty,
     planId: PlanId = PlanId.Global,
     scheduledFor: Option[Timestamp] = None,
+    priority: BigDecimal = Order.DefaultPriority,
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
@@ -110,6 +112,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "externalOrderKey" -> o.externalOrderKey.asJson,
         "arguments" -> o.arguments.??.asJson,
         "planId" -> o.planId.asJson,
+        "priority" -> ((o.priority != Order.DefaultPriority) ? o.priority).asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
@@ -120,6 +123,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       c => for
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
+        priority <- c.getOrElse[BigDecimal]("priority")(Order.DefaultPriority)
         externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         planId <- c.getOrElse[PlanId]("planId")(PlanId.Global/*COMPATIBLE with v2.7.3*/)
@@ -129,7 +133,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       yield
-        OrderAdded(workflowId, arguments, planId, scheduledFor, externalOrderKey,
+        OrderAdded(workflowId, arguments, planId, scheduledFor, priority, externalOrderKey,
           deleteWhenTerminated, forceJobAdmission,
           innerBlock, startPosition, stopPositions)
 
@@ -140,6 +144,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
     planId: PlanId = PlanId.Global,
+    priority: BigDecimal = Order.DefaultPriority,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
@@ -163,6 +168,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "workflowId" -> o.workflowId.asJson,
         "arguments" -> o.arguments.??.asJson,
         "planId" -> (!o.planId.isGlobal ? o.planId).asJson,
+        "priority" -> ((o.priority != Order.DefaultPriority) ? o.priority).asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
@@ -175,13 +181,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         planId <- c.getOrElse[PlanId]("planId")(PlanId.Global)
+        priority <- c.getOrElse[BigDecimal]("priority")(Order.DefaultPriority)
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
       yield
-        OrderOrderAdded(orderId, workflowId, arguments, planId,
+        OrderOrderAdded(orderId, workflowId, arguments, planId, priority,
           deleteWhenTerminated, forceJobAdmission,
           innerBlock, startPosition, stopPositions)
 
@@ -197,6 +204,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
     agentPath: AgentPath,
     parent: Option[OrderId] = None,
+    priority: Option[BigDecimal] = None,
     mark: Option[OrderMark] = None,
     isSuspended: Boolean = false,
     isResumed: Boolean = false,

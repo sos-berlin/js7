@@ -40,6 +40,7 @@ final class OrderEventTest extends OurTestSuite:
         Map("VAR" -> StringValue("VALUE")),
         PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-20")),
         Some(ts"2021-01-01T00:00:00Z"),
+        priority = Order.DefaultPriority,
         Some(OrderWatchPath("ORDER-WATCH") / ExternalOrderName("ORDER-NAME")),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
@@ -146,6 +147,7 @@ final class OrderEventTest extends OurTestSuite:
         Vector(HistoricOutcome(Position(123), OrderOutcome.succeeded)),
         AgentPath("AGENT"),
         Some(OrderId("PARENT")),
+        priority = Some(BigDecimal("1.23")),
         Some(OrderMark.Suspending()),
         isSuspended = true,
         isResumed = true,
@@ -173,6 +175,7 @@ final class OrderEventTest extends OurTestSuite:
           "KEY": "VALUE"
         },
         "scheduledFor": 1510749224789,
+        "priority": 1.23,
         "externalOrder": {
           "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME",

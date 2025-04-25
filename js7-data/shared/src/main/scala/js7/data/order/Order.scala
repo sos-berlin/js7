@@ -49,6 +49,7 @@ final case class Order[+S <: Order.State](
   historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
+  priority: BigDecimal = DefaultPriority,
   mark: Option[OrderMark] = None,
   isSuspended: Boolean = false,
   isResumed: Boolean = false,
@@ -75,6 +76,7 @@ extends
         Ready(),
         arguments ++ child.arguments,
         planId,
+        priority = priority,
         scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,
@@ -912,7 +914,9 @@ extends
             arguments,
             scheduledFor,
             externalOrder,
-            historicOutcomes, agentPath, parent, mark,
+            historicOutcomes, agentPath, parent,
+            priority = (priority != DefaultPriority) ? priority,
+            mark,
             isSuspended = isSuspended,
             isResumed = isResumed,
             deleteWhenTerminated = deleteWhenTerminated,
@@ -1004,6 +1008,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       event.planId,
       event.scheduledFor,
       event.externalOrderKey.map(ExternalOrderLink.added),
+      priority = event.priority,
       deleteWhenTerminated = event.deleteWhenTerminated,
       forceJobAdmission = event.forceJobAdmission,
       innerBlock = event.innerBlock,
@@ -1017,7 +1022,9 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       event.externalOrder,
       historicOutcomes = event.historicOutcomes,
       Some(Attached(event.agentPath)),
-      event.parent, event.mark,
+      event.parent,
+      priority = event.priority getOrElse DefaultPriority,
+      event.mark,
       isSuspended = event.isSuspended,
       isResumed = event.isResumed,
       deleteWhenTerminated = event.deleteWhenTerminated,
@@ -1028,6 +1035,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
   given Ordering[Order[? <: Order.State]] = Ordering.by(_.id)
 
+  val priorityOrdering: Ordering[Order[? <: Order.State]] =
+    (a, b) => b.priority compare a.priority
 
   extension (order: Order[IsDelayingRetry])
     def awokeEventsIfRipe(ts: Timestamp): Checked[List[OrderAwoke | OrderMoved]] =
@@ -1394,6 +1403,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     Subtype[Fresh],
     Subtype[Ready])
 
+  val DefaultPriority = BigDecimal(0)
+
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(
       "id" -> order.id.asJson,
@@ -1405,6 +1416,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       "externalOrder" -> order.externalOrder.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
+      "priority" -> ((order.priority != DefaultPriority) ? order.priority).asJson,
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
@@ -1429,6 +1441,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
           case None => cursor.get[Option[ExternalOrderLink]]("externalOrderKey") // COMPATIBLE with v2.7.1
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
+      priority <- cursor.getOrElse[BigDecimal]("priority")(DefaultPriority)
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
@@ -1441,7 +1454,9 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     yield
       Order(id, workflowPosition, state, arguments, planId, scheduledFor,
         externalOrder, historicOutcomes,
-        attachedState, parent, mark,
+        attachedState, parent,
+        priority = priority,
+        mark,
         isSuspended = isSuspended,
         isResumed = isResumed,
         deleteWhenTerminated = deleteWhenTerminated,

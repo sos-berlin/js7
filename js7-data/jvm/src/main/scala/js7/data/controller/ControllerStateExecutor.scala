@@ -504,38 +504,56 @@ final case class ControllerStateExecutor private(
 
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =
     var controllerState = this.controllerState
-    val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | PlanFinishedEvent]]
+    var nextIndex = 0L
+
+    final case class Entry(orderId: OrderId, priority: BigDecimal, index: Long)
+    extends Ordered[Entry]:
+      def compare(o: Entry) =
+        priority compare o.priority match
+          case 0 => o.index compare index // Early index has higher priority
+          case n => n
+
+    def toEntry(orderId: OrderId): Option[Entry] =
+      controllerState.idToOrder.get(orderId).map: order =>
+        val i = nextIndex
+        nextIndex += 1
+        Entry(orderId, order.priority, i)
+
+    val queue = mutable.PriorityQueue.empty[Entry] ++ orderIds.flatMap(toEntry)
 
     @tailrec def loop(): Unit =
-      queue.removeHeadOption() match
-        case None =>
-        case Some(orderId) =>
-          if controllerState.idToOrder contains orderId then
-            val keyedEvents = OrderEventSource(controllerState).nextEvents(orderId)
-            if keyedEvents.nonEmpty then
-              for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
-                logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
+      if queue.nonEmpty then
+        val orderId = queue.dequeue().orderId
+        if controllerState.idToOrder contains orderId then {
+          val keyedEvents = OrderEventSource(controllerState).nextEvents(orderId)
+          if keyedEvents.nonEmpty then
+            for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
+              logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
             controllerState.applyKeyedEvents(keyedEvents) match
-                case Left(problem) =>
-                  logger.error(s"$orderId: $problem")  // Should not happen
-                case Right(state) =>
-                  controllerState = state
-                  _keyedEvents ++= keyedEvents
-                  queue ++= keyedEvents.view
-                    .collect:
-                      case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
-                    .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
-                    .toSeq.distinct
-                  //<editor-fold desc="if isTest ...">
-                  if isTest && _keyedEvents.size >= 1_000_000 then
-                    for (ke, i) <- _keyedEvents.result().view.take(1000).zipWithIndex do
-                      logger.error(s"$i: $ke")
-                    throw new AssertionError(
-                      s"🔥 ${_keyedEvents.size} events generated, probably a loop")
-                  end if
-                  //</editor-fold>
-          loop()
+              case Left(problem) =>
+                logger.error(s"$orderId: $problem")  // Should not happen
+              case Right(state) =>
+                controllerState = state
+                _keyedEvents ++= keyedEvents
+                queue ++= keyedEvents.view
+                  .collect:
+                    case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
+                  .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
+                  .toSet.view
+                  .flatMap(toEntry)
+
+                //<editor-fold desc="if isTest ...">
+                if isTest && _keyedEvents.size >= 1_000_000 then
+                  for (ke, i) <- _keyedEvents.result().view.take(1000).zipWithIndex do
+                    logger.error(s"$i: $ke")
+                  throw new AssertionError(
+                    s"🔥 ${_keyedEvents.size} events generated, probably a loop")
+                end if
+                //</editor-fold>
+        }
+        loop()
+      end if
 
     loop()
     ControllerStateExecutor(

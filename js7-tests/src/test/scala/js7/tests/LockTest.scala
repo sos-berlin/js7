@@ -78,11 +78,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         .await(99.s).orThrow
       assert(controller.eventWatch.awaitNextKey[OrderLocksAcquired](a).map(_.value).nonEmpty)
 
-      val queuedOrderIds = for i <- 1 to 10 yield OrderId(s"🔶-$i")
-      for orderId <- queuedOrderIds do
-        controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-          .await(99.s).orThrow
-        assert(controller.eventWatch.await[OrderLocksQueued](_.key == orderId).map(_.value).nonEmpty)
+      val freshOrders = Random.shuffle:
+        (1 to 10).map: i =>
+          FreshOrder(OrderId(s"🔶-$i"), workflow.path, priority = -i, deleteWhenTerminated = true)
+
+      for freshOrder <- freshOrders do
+        controller.api.addOrder(freshOrder).await(99.s).orThrow
+        assert(controller.eventWatch.awaitNextKey[OrderLocksQueued](freshOrder.id).map(_.value).nonEmpty)
 
       touchFile(file)
 
@@ -111,11 +113,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
-      for orderId <- queuedOrderIds do
+      for freshOrder <- freshOrders do
+        val orderId = freshOrder.id
         assert(controller.eventWatch.await[OrderTerminated](_.key == orderId).map(_.value) == Seq(orderId <-: OrderFinished()))
         controller.eventWatch.await[OrderDeleted](_.key == orderId)
         assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderAdded(workflow.id, priority = freshOrder.priority, deleteWhenTerminated = true),
           OrderStarted,
           OrderLocksQueued(List(LockDemand(lockPath))),
           OrderLocksAcquired(List(LockDemand(lockPath))),
@@ -126,6 +129,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
             OrderMoved(Position(0) / "lock" % 1),
             OrderDetachable,
             OrderDetached,
+
 
             OrderAttachable(bAgentPath),
             OrderAttached(bAgentPath),
@@ -138,7 +142,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
           OrderFinished(),
           OrderDeleted))
 
-      for pair <- queuedOrderIds.sliding(2).toSeq do
+      for pair <- freshOrders.sortBy(-_.priority).map(_.id).sliding(2).toSeq do
         assert(controller.eventWatch.await[OrderLocksAcquired](_.key == pair(0)).map(_.eventId).head <
                controller.eventWatch.await[OrderLocksAcquired](_.key == pair(1)).map(_.eventId).head)
       assert(controllerState.keyTo(LockState)(lockPath) ==

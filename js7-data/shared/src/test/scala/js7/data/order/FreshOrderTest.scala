@@ -32,6 +32,7 @@ final class FreshOrderTest extends OurTestSuite:
           "list" -> ListValue(Seq(BooleanValue.True, NumberValue(123), StringValue("string")))),
         PlanSchemaId("DailyPlan") / "2025-02-26",
         Some(Timestamp.parse("2017-03-07T12:00:00Z")),
+        priority = BigDecimal("1.23"),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
         innerBlock = Position(1) / BranchId.Then,
@@ -48,6 +49,7 @@ final class FreshOrderTest extends OurTestSuite:
           "list": [ true, 123, "string" ]
         },
         "scheduledFor": 1488888000000,
+        "priority": 1.23,
         "deleteWhenTerminated": true,
         "forceJobAdmission": true,
         "innerBlock": [ 1, "then" ],
