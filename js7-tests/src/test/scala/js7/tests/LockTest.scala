@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated, TransferOrders}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
@@ -76,7 +76,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       val a = OrderId("🔷")
       controller.api.addOrder(FreshOrder(a, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
-      assert(controller.eventWatch.await[OrderLocksAcquired](_.key == a).map(_.value).nonEmpty)
+      assert(controller.eventWatch.awaitNextKey[OrderLocksAcquired](a).map(_.value).nonEmpty)
 
       val queuedOrderIds = for i <- 1 to 10 yield OrderId(s"🔶-$i")
       for orderId <- queuedOrderIds do
@@ -86,8 +86,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
       touchFile(file)
 
-      assert(controller.eventWatch.await[OrderTerminated](_.key == a).map(_.value) == Seq(a <-: OrderFinished()))
-      controller.eventWatch.await[OrderDeleted](_.key == a)
+      assert(controller.eventWatch.awaitNextKey[OrderTerminated](a).map(_.value) == Seq(OrderFinished()))
+      controller.eventWatch.awaitNextKey[OrderDeleted](a)
       assert(controller.eventWatch.eventsByKey[OrderEvent](a) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
@@ -173,15 +173,15 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     val cOrderId = OrderId("🟥-C")
     controller.api.addOrder(FreshOrder(order2Id, workflow2.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
-    controller.eventWatch.awaitNext[OrderLocksAcquired](_.key == order2Id)
+    controller.eventWatch.awaitNextKey[OrderLocksAcquired](order2Id)
 
     for orderId <- Seq(aOrderId, bOrderId, cOrderId) do
       controller.api.addOrder(FreshOrder(orderId, workflow1.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
-      controller.eventWatch.awaitNext[OrderLocksQueued](_.key == orderId)
+      controller.eventWatch.awaitNextKey[OrderLocksQueued](orderId)
 
     execCmd(AnswerOrderPrompt(order2Id))
-    controller.eventWatch.awaitNext[OrderLocksReleased](_.key == order2Id)
+    controller.eventWatch.awaitNextKey[OrderLocksReleased](order2Id)
 
     controller.eventWatch.await[OrderLocksAcquired](_.key == aOrderId)
     controller.eventWatch.await[OrderLocksAcquired](_.key == bOrderId)
@@ -224,11 +224,10 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
               "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
             processLimit = 99)))
 
-    val orders = Random.shuffle(
+    val orders = Random.shuffle:
       for workflow <- Seq(workflow1, workflow2); i <- 1 to 100 yield
-        FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
+        FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path, deleteWhenTerminated = true)
     controller.api.addOrders(Stream.iterable(orders)).await(99.s).orThrow
-    execCmd(DeleteOrdersWhenTerminated(orders.map(_.id)))
     val terminated = for order <- orders yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     val terminatedX = controller.eventWatch.awaitKeys[OrderTerminated](orders.map(_.id))
     for keyedEvent <- terminated.map(_.last.value) do  assert(keyedEvent.event == OrderFinished(), s"- ${keyedEvent.key}")
@@ -362,7 +361,6 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-    execCmd(DeleteOrdersWhenTerminated(Seq(orderId)))
     execCmd(CancelOrders(Seq(orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
