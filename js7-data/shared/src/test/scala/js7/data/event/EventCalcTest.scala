@@ -14,15 +14,15 @@ final class EventCalcTest extends OurTestSuite:
       def value: String
 
     val a: EventCalc[TestState, TestEvent, Any] =
-      EventCalc.add(TestEvent.Added("»"))
+      EventCalc.pure(TestEvent.Added("»"))
 
     val b: EventCalc[TestState, TestEvent.Added, TimeCtx] =
-      EventCalc: coll =>
-        coll.add(TestEvent.Added(coll.context.now.toString))
+      EventCalc.single: _ =>
+        TestEvent.Added(EventCalc.now().toString)
 
     val c: EventCalc[TestState, TestEvent.Added, X] =
-      EventCalc: coll =>
-        coll.add(TestEvent.Added(coll.context.value))
+      EventCalc.single: _ =>
+        TestEvent.Added(EventCalc.context.value)
 
     val combined: EventCalc[TestState, TestEvent, TimeCtx & X] =
       EventCalc.combine(a.widen, b.widen, c.widen)
