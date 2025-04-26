@@ -66,7 +66,7 @@ extends Journal[S], FileJournal.PossibleFailover:
   : IO[Checked[Unit]] =
     journaler.persist:
       Persist(
-        EventCalc.add(keyedEvents),
+        EventCalc.pure(keyedEvents),
         options.copy(commitLater = true))
     .rightAs(())
 
@@ -85,8 +85,8 @@ extends Journal[S], FileJournal.PossibleFailover:
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistUnlocked[E](
-      EventCalc: coll =>
-        coll.addChecked(stateToEvent(coll.aggregate).map(_ :: Nil)),
+      EventCalc.checked: controllerState =>
+        stateToEvent(controllerState).map(_ :: Nil),
       options
     ).map(_ map : (stampedKeyedEvents, state) =>
       assertThat(stampedKeyedEvents.lengthIs == 1)
@@ -96,10 +96,7 @@ extends Journal[S], FileJournal.PossibleFailover:
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persistUnlocked(
-      EventCalc: coll =>
-        coll.addChecked(stateToEvents(coll.aggregate)),
-      options)
+    persistUnlocked(EventCalc.checked(aggregate => stateToEvents(aggregate)), options)
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
@@ -108,10 +105,9 @@ extends Journal[S], FileJournal.PossibleFailover:
     stateToEvents =>
       lock(key):
         persistUnlocked(
-          EventCalc: coll =>
-            coll.addChecked:
-              stateToEvents(coll.aggregate)
-                .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
+          EventCalc.checked: controllerState =>
+            stateToEvents(controllerState)
+              .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
           CommitOptions(transaction = true))
 
   private def persistUnlocked[E <: Event](

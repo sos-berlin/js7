@@ -36,7 +36,7 @@ final class JournalerTest extends OurAsyncTestSuite:
       for
         persisted <-
           journaler.persist:
-            Persist(EventCalc.add("A" <-: TestEvent.SimpleAdded("(FIRST)")))
+            Persist(EventCalc.pure("A" <-: TestEvent.SimpleAdded("(FIRST)")))
           .orThrow
 
         _ <- IO:

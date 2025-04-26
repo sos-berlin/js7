@@ -133,7 +133,7 @@ extends
         whenKilling.complete(()) *> stop
 
   def persist[E <: Event](keyedEvents: KeyedEvent[E]*): IO[Checked[Persisted[S, E]]] =
-    persist_(Persist(EventCalc.add(keyedEvents)))
+    persist_(Persist(EventCalc.pure(keyedEvents)))
 
   def persist[E <: Event](
     eventCalc: EventCalc[S, E, TimeCtx],

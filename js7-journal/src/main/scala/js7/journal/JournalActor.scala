@@ -56,7 +56,7 @@ extends Actor, Stash:
       else
         journaler.enqueue:
           Journaler.Persist(
-            EventCalc.add(timestamped.map(_.toMaybeTimestamped)),
+            EventCalc.pure(timestamped.map(_.toMaybeTimestamped)),
             options.copy(commitLater = commitLater),
             since)
         .flatMap: (whenApplied, whenCommitted) =>
