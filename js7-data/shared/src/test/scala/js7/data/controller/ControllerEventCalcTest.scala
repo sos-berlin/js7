@@ -24,13 +24,12 @@ final class ControllerEventCalcTest extends OurTestSuite:
 
     // First EventCalc //
     val controllerInitialized: EventCalc[ControllerState, ControllerInitialized, TimeCtx] =
-      EventCalc: coll =>
-        coll.add:
-          NoKey <-: ControllerInitialized(ControllerId("Controller"), coll.context.now)
+      EventCalc.single: _ =>
+        NoKey <-: ControllerInitialized(ControllerId("Controller"), EventCalc.now())
 
     // Second EventCalc //
     val itemAdded: EventCalc[ControllerState, InventoryItemEvent, Any] =
-      EventCalc.add(
+      EventCalc.pure(
         NoKey <-: UnsignedSimpleItemAdded(planSchema),
         NoKey <-: UnsignedSimpleItemAdded(board))
 

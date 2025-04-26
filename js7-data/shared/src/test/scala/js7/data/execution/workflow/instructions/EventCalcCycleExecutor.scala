@@ -10,8 +10,7 @@ import js7.data.execution.workflow.instructions.ScheduleCalculator.Do
 import js7.data.order.Order.{BetweenCycles, Fresh, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved, OrderStarted}
 import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
-import js7.data.state.EngineEventColl.extensions.useOrder
-import js7.data.state.{EngineEventColl, EventDrivenStateView}
+import js7.data.state.EventDrivenStateView
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 import js7.data.{event, state}
@@ -20,7 +19,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   def toEventCalc(orderId: OrderId)
   : EventCalc[S, OrderStarted | OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc: coll =>
+    EventCalc.coll: coll =>
       for
         coll <- startOrder(orderId).calculate(coll)
         order <- coll.aggregate.idToOrder.checked(orderId)
@@ -37,15 +36,14 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
         coll
 
   private def startOrder(orderId: OrderId): EventCalc[S, OrderStarted, TimeCtx] =
-    EventCalc: coll =>
-      coll.useOrder(orderId): order =>
-        coll.add:
-          order.ifState[Fresh].map: order =>
-            order.id <-: OrderStarted
+    EventCalc.checked: controllerState =>
+      controllerState.idToOrder.checked(orderId).map: order =>
+        order.ifState[Fresh].map: order =>
+          order.id <-: OrderStarted
 
   private def readyToEvents(instr: Cycle, order: Order[Ready])
   : EventCalc[S, OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc: coll =>
+    EventCalc.coll: coll =>
       for
         workflow <- coll.aggregate.keyToItem(Workflow).checked(order.workflowId)
         (calendar, calculator) <- toCalendarAndScheduleCalculator(workflow, instr, coll.aggregate)
@@ -70,7 +68,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   private def betweenCyclesToEvents(instr: Cycle, order: Order[BetweenCycles])
   : EventCalc[S, OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc: coll =>
+    EventCalc.coll: coll =>
       order.state.cycleState match
         case None =>
           coll.add(endCycling(order))
@@ -100,17 +98,16 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State])
   : EventCalc[S, OrderCycleFinished, TimeCtx] =
-    EventCalc: coll =>
+    EventCalc.checked: controllerState =>
       for
-        calculator <- toScheduleCalculator(order, instr, coll.aggregate)
+        calculator <- toScheduleCalculator(order, instr, controllerState)
         branchId <- order.position.branchPath.lastOption.map(_.branchId)
           .toChecked(Problem(s"${order.id} Cycle Position expected: ${order.position}"))
         cycleState <- branchId.toCycleState
-        coll <- coll.add:
-          order.id <-: OrderCycleFinished:
-            calculator.nextCycleState(cycleState, coll.context.now)
       yield
-        coll
+        Some:
+          order.id <-: OrderCycleFinished:
+            calculator.nextCycleState(cycleState, EventCalc.now())
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: S) =
     for

@@ -17,17 +17,16 @@ extends CommandEventConverter[AddOrder]:
   private val logger = Logger[this.type]
 
   def toEventCalc(cmd: AddOrder) =
-    EventCalc: coll =>
-      coll.addChecked:
-        coll.aggregate.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
-          val instrService = InstructionExecutorService(coll.context.clock)
-          ControllerStateExecutor(coll.aggregate)(using instrService)
-            .addOrder(cmd.order, suppressOrderIdCheckFor = suppressOrderIdCheckFor).map:
-              case Left(existing) =>
-                logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
-                Nil
-              case Right(orderAddedEvents) =>
-                orderAddedEvents.toKeyedEvents
+    EventCalc.checked: controllerState =>
+      controllerState.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
+        val instrService = InstructionExecutorService(EventCalc.clock)
+        ControllerStateExecutor(controllerState)(using instrService)
+          .addOrder(cmd.order, suppressOrderIdCheckFor = suppressOrderIdCheckFor).map:
+            case Left(existing) =>
+              logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
+              Nil
+            case Right(orderAddedEvents) =>
+              orderAddedEvents.toKeyedEvents
 
 
 private[command] final class AddOrdersExecutor(config: Config)
@@ -36,11 +35,10 @@ extends CommandEventConverter[AddOrders]:
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
 
   def toEventCalc(cmd: AddOrders) =
-    EventCalc: coll =>
-      coll.addChecked:
-        cmd.orders.traverse: order =>
-          coll.aggregate.checkPlanIsOpen(order.planId)
-        .flatMap: _ =>
-          val instrService = InstructionExecutorService(coll.context.clock)
-          ControllerStateExecutor(coll.aggregate)(using instrService)
-            .addOrders(cmd.orders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+    EventCalc.checked: controllerState =>
+      cmd.orders.traverse: order =>
+        controllerState.checkPlanIsOpen(order.planId)
+      .flatMap: _ =>
+        val instrService = InstructionExecutorService(EventCalc.clock)
+        ControllerStateExecutor(controllerState)(using instrService)
+          .addOrders(cmd.orders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
