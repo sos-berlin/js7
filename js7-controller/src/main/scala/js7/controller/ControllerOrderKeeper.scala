@@ -20,7 +20,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger.ops.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -66,7 +66,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedItem, UnsignedItemKey}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished, PlanStatusEvent}
@@ -121,7 +121,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private val agentRegister = mutable.Map[AgentPath, AgentEntry]()
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
-  private val deleteOrderDelay = config.getDuration("js7.order.delete-delay").toFiniteDuration
   private val testAddOrderDelay = config
     .optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(IO.unit)(IO.sleep)
   private var journalTerminated = false
@@ -1017,15 +1016,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     persistTransaction(keyedEvents ++ subsequentEvents(keyedEvents))(callback)
 
   private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[Event]] =
-    delayOrderDeletion(
-      _controllerState
-        .applyEventsAndReturnSubsequentEvents(keyedEvents)
-        .map(_.keyedEvents)
-        .orThrow)
+    _controllerState
+      .applyEventsAndReturnSubsequentEvents(keyedEvents)
+      .map(_.keyedEvents)
+      .orThrow
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
-    delayOrderDeletion(
-      _controllerState.nextOrderEvents(orderIds).keyedEvents)
+    _controllerState.nextOrderEvents(orderIds).keyedEvents
 
   private def handleEvents(
     stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
@@ -1305,25 +1302,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           detachOrderFromAgent(order.id)
 
         case _ =>
-
-  private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
-    if deleteOrderDelay.isZeroOrBelow then
-      keyedEvents
-    else
-      keyedEvents.filter:
-        case KeyedEvent(orderId: OrderId, OrderDeleted) =>
-          orderRegister.get(orderId).fold(false) { orderEntry =>
-            val delay = orderEntry.lastUpdatedAt + deleteOrderDelay - scheduler.now()
-            !delay.isPositive || {
-              orderRegister(orderId).timer := scheduler.scheduleOnce(delay):
-                self ! Internal.OrderIsDue(orderId)
-              false
-            }
-            // When recovering, proceedWithOrderOnController may emit the same event multiple times,
-            // for example OrderJoined for each parent and child order.
-            // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
-          }
-        case _ => true
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
     for (signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order) do
