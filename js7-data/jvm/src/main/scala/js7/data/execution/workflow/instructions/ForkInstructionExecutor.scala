@@ -107,7 +107,8 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   override final def onReturnFromSubworkflow(
     fork: Instr,
     childOrder: Order[Order.State],
-    state: StateView): Checked[List[KeyedEvent[OrderActorEvent]]] =
+    state: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     Right(
       tryJoinChildOrder(fork, childOrder, state)
         .toList)
@@ -120,14 +121,9 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
       childOrder.parent
         .flatMap(state.idToOrder.get)
         .flatMap(_.ifState[Order.Forked])
-        .flatMap(parentOrder =>
-          if !parentOrder.isDetached then
-            None
-          else
-            withCacheAccess(parentOrder, state) { cache =>
-              cache.onChildBecameJoinable(childOrder.id)
-              toJoined(parentOrder, fork, state)
-            })
+        .flatMap: parentOrder =>
+          parentOrder.isDetached thenMaybe:
+            toJoined(parentOrder, fork, state)
 
   private final def toJoined(
     order: Order[Order.Forked],
@@ -137,21 +133,21 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
     if order.isAttached then
       Some(order.id <-: OrderDetachable)
     else
-      withCacheAccess(order, state) { cache =>
-        (order.state.children.sizeIs == cache.numberOfJoinables) ? {
-          cache.onJoined()
-          val failedChildren = order.state.children.view
-            .map(child => state.idToOrder(child.orderId))
-            .filter(order => !order.lastOutcome.isSucceeded || order.isState[Cancelled])
-            .toVector
-          val now = clock.now()
-          order.id <-: OrderJoined(
-            if failedChildren.nonEmpty then
-              OrderOutcome.Failed(Some(toJoinFailedMessage(failedChildren)))
-            else
-              forkResult(fork, order, state, now))
-        }
-      }
+      order.state.children.forall(o => childOrderIsJoinable(state, order, o.orderId)) thenSome:
+        val failedChildren = order.state.children.view
+          .map(child => state.idToOrder(child.orderId))
+          .filter(order => !order.lastOutcome.isSucceeded || order.isState[Cancelled])
+          .toVector
+        val now = clock.now()
+        order.id <-: OrderJoined(
+          if failedChildren.nonEmpty then
+            OrderOutcome.Failed(Some(toJoinFailedMessage(failedChildren)))
+          else
+            forkResult(fork, order, state, now))
+
+  private def childOrderIsJoinable(state: StateView, parentOrder: Order[Order.Forked], childOrderId: OrderId): Boolean =
+    state.idToOrder.get(childOrderId).exists: childOrder =>
+     state.childOrderIsJoinable(childOrder, parentOrder)
 
   protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,
     state: StateView, now: Timestamp)
@@ -176,19 +172,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
         else
           Some(s"${order.id} ${order.lastOutcome.show}"))
       .mkString(";\n")
-
-  private def withCacheAccess[A](order: Order[Order.Forked], state: StateView)
-    (body: service.forkCache.Access => A)
-  : A =
-    service.forkCache.synchronized:
-      val entry = service.forkCache.ensureEntry(
-        order.id,
-        order.state.children
-          .view
-          .map(o => state.idToOrder(o.orderId))
-          .filter(state.childOrderEnded(_, parent = order))
-          .map(_.id))
-      body(entry)
 
   // Forking many children at Controller and then attached all to their first agent is inefficient.
   // Here we decide where to attach the forking order before generating child orders.

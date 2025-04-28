@@ -44,8 +44,6 @@ final class InstructionExecutorService(val clock: WallClock):
       BreakExecutor(this)
     ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 
-  private[instructions] val forkCache = new ForkInstructionExecutor.Cache
-
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     classToExecutor.checked(instr.getClass).orThrow
 

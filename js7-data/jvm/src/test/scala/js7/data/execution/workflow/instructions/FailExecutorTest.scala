@@ -27,7 +27,7 @@ final class FailExecutorTest extends OurTestSuite:
       Carrot.id -> Carrot,
       Lemon.id -> Lemon)
   ):
-    override def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]) =
+    override def childOrderIsJoinable(order: Order[Order.State], parent: Order[Order.Forked]) =
       Set(Carrot.id, Lemon.id)(order.id)
 
     override def instruction(position: WorkflowPosition) =

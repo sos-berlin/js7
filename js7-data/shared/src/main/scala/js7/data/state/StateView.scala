@@ -13,7 +13,7 @@ import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
-import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
+import js7.data.order.Order.{Cancelled, FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.LockDemand
 import js7.data.order.{MinimumOrder, Order, OrderId}
 import js7.data.value.expression.Scope
@@ -139,13 +139,15 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     yield
       labeled.maybeLabel
 
-  def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
-    lazy val endReached = order.isState[Order.Ready] &&
-      order.position.parent.contains(parent.position) &&
-      instruction(order.workflowPosition).isInstanceOf[End]
+  def childOrderIsJoinable(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
+    !order.isSuspendedOrStopped &&
     order.isDetachedOrAttached &&
       order.attachedState == parent.attachedState &&
-      (order.state.eq(FailedInFork) || endReached)
+      (order.state.eq(FailedInFork) ||
+        order.state.eq(Cancelled) ||
+        order.isState[Order.Ready] &&
+          order.position.parent.contains(parent.position) &&
+          instruction(order.workflowPosition).isInstanceOf[End])
 
   final def isSuspendedOrStopped(order: Order[Order.State]): Boolean =
     order.isSuspendedOrStopped || isWorkflowSuspended(order.workflowPath)
