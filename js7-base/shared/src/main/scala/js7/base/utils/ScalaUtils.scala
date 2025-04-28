@@ -403,7 +403,9 @@ object ScalaUtils:
 
 
       /** Usable for logging a chunk of lines with a long bracket. */
-      def foreachWithBracket(bracket: MultipleLinesBracket)(body: (A, Char) => Unit): Unit =
+      def foreachWithBracket(bracket: MultipleLinesBracket = MultipleLinesBracket.Square)
+        (body: (A, Char) => Unit)
+      : Unit =
         val iterator = iterableOnce.iterator
         if iterator.hasNext then
           var a = iterator.next()
