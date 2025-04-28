@@ -10,7 +10,8 @@ import js7.data.event.EventCalc
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 
-private[command] def deleteOrdersWhenTerminatedExecutor =
+private[command] def deleteOrdersWhenTerminatedExecutor
+: CommandEventConverter[DeleteOrdersWhenTerminated] =
   CommandEventConverter.checked[DeleteOrdersWhenTerminated]: (cmd, controllerState) =>
     val instrService = InstructionExecutorService(EventCalc.clock)
     val orderEventSource = new OrderEventSource(controllerState)(using instrService)

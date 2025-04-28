@@ -7,7 +7,7 @@ import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.TransferOrders
 import js7.data.workflow.Workflow
 
-private[command] def transferOrdersExecutor =
+private[command] def transferOrdersExecutor: CommandEventConverter[TransferOrders] =
   CommandEventConverter.checked[TransferOrders]: (cmd, controllerState) =>
     if controllerState.repo.isCurrentItem(cmd.workflowId) then
       Left(Problem.pure(s"${cmd.workflowId} is already the current version"))

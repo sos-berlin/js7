@@ -9,7 +9,7 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId}
 
-private[command] def controlWorkflowExecutor =
+private[command] def controlWorkflowExecutor: CommandEventConverter[ControlWorkflow] =
   CommandEventConverter.checked[ControlWorkflow]: (cmd, controllerState) =>
     val workflowControlId = WorkflowControlId(cmd.workflowId)
     controllerState.repo.idTo(Workflow)(cmd.workflowId).map: _ =>
