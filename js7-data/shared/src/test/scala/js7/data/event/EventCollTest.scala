@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.crypt.silly.SillySigner
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.controller.ControllerState
@@ -45,13 +45,8 @@ final class EventCollTest extends OurTestSuite:
     assert(checked == Left(EventNotApplicableProblem(InvalidEvent, TestState("A"))))
 
   "addEvents" in:
-    val coll =
-      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
-      locally:
-        for
-          coll <- coll.addEvents(Seq(Added("A"), Added(",B")))
-        yield
-          coll
+    val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+      .addEvents(Seq(Added("A"), Added(",B")))
       .orThrow
     assert(coll.aggregate == TestState("A,B"))
     assert(coll.keyedEvents == Vector(
@@ -82,7 +77,23 @@ final class EventCollTest extends OurTestSuite:
     assert(coll.aggregate.idToOrder.values.toSeq == Seq:
       Order(orderId, workflow.id /: Position(0), Order.Finished))
 
-  "combine" in:
+  "addEventCalc" in:
+    val coll =
+      locally:
+        for
+          _ <- Checked.unit
+          coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+          coll <- coll.addEvent(Added("A"))
+          coll <- coll.addEventCalc(EventCalc.pure(Added(",B")))
+        yield
+          coll
+      .orThrow
+    assert(coll.aggregate == TestState("A,B"))
+    assert(coll.keyedEvents == Vector(
+      NoKey <-: Added("A"),
+      NoKey <-: Added(",B")))
+
+  "addColl" in:
     val aColl =
       val coll = EventColl[TestState, TestEvent, Unit](TestState("START:"), ())
       locally:
@@ -99,7 +110,7 @@ final class EventCollTest extends OurTestSuite:
         yield
           coll
       .orThrow
-    val abColl = aColl.combine(bColl).orThrow
+    val abColl = aColl.addColl(bColl).orThrow
     assert(abColl.originalAggregate == TestState("START:"))
     assert(abColl.aggregate == TestState("START:A,B"))
     assert(abColl.keyedEvents == Vector(

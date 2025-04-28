@@ -3,12 +3,13 @@ package js7.data.event
 import cats.Monoid
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{Timestamp, WallClock}
+import org.jetbrains.annotations.TestOnly
 
 /** Calculator for EventColl.
   *
   * In essence, a function `EventColl => Checked[EventColl]`
   */
-final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx] private(
+final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
   private val function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]]):
 
   def combine[S1 >: S <: EventDrivenState[S1, E1], E1 >: E <: Event, Ctx1](
@@ -17,6 +18,7 @@ final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx] private(
     EventCalc[S1, E1, Ctx & Ctx1]: coll =>
       widen[S1, E1, Ctx & Ctx1].calculate(coll).flatMap(other.calculate)
 
+  @TestOnly // ???
   def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
     calculate(aggregate, context).map: coll =>
       coll.keyedEvents -> coll.aggregate
@@ -47,27 +49,27 @@ object EventCalc:
   def problem[S <: EventDrivenState[S, E], E <: Event, Ctx](problem: Problem): EventCalc[S, E, Ctx] =
     EventCalc(_ => Left(problem))
 
-  def coll[S <: EventDrivenState[S, E], E <: Event, Ctx](
-    function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
-  : EventCalc[S, E, Ctx] =
-    new EventCalc(function)
-
   def single[S <: EventDrivenState[S, E], E <: Event, Ctx](
     toKeyedEvent: S => OpaqueEventColl[S, E, Ctx] ?=> KeyedEvent[E])
   : EventCalc[S, E, Ctx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       coll.addEvent(toKeyedEvent(coll.aggregate)(using coll))
+
+  inline def maybe[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    toKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> Option[MaybeTimestampedKeyedEvent[E]])
+  : EventCalc[S, E, Ctx] =
+    multiple(toKeyedEvents)
 
   def multiple[S <: EventDrivenState[S, E], E <: Event, Ctx](
     toKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : EventCalc[S, E, Ctx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       coll.addEvents(toKeyedEvents(coll.aggregate)(using coll))
 
   def checked[S <: EventDrivenState[S, E], E <: Event, Ctx](
     toCheckedKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> Checked[IterableOnce[KeyedEvent[E]]])
   : EventCalc[S, E, Ctx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       coll.addChecked(toCheckedKeyedEvents(coll.aggregate)(using coll))
 
   def addChecked[S <: EventDrivenState[S, E], E <: Event, Ctx](
@@ -118,15 +120,16 @@ object EventCalc:
   def context[S <: EventDrivenState[S, E], E <: Event, Ctx](using coll: OpaqueEventColl[S, E, Ctx]): Ctx =
     coll.context
 
+  /** TODO Don't use this, use `now`. */
   inline def clock[S <: EventDrivenState[S, E], E <: Event](
     using coll: OpaqueEventColl[S, E, TimeCtx])
   : WallClock =
     context.clock
 
-  inline def now[S <: EventDrivenState[S, E], E <: Event]()(
+  def now[S <: EventDrivenState[S, E], E <: Event]()(
     using coll: OpaqueEventColl[S, E, TimeCtx])
   : Timestamp =
-    coll.context.clock.now()
+    coll.context.now
 
   // Monoid //
   given [S <: EventDrivenState[S, E], E <: Event, Ctx] => Monoid[EventCalc[S, E, Ctx]] =

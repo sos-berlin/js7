@@ -7,7 +7,7 @@ trait TimeCtx:
   /** Should be immutable. */
   def now: Timestamp
 
-  // TODO Don't use this, use `now`
+  /** TODO Don't use this, use `now`. */
   final def clock: WallClock =
     WallClock.fixed(now)
 
