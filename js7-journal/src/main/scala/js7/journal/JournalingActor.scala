@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.@@
 import fs2.Stream
-import js7.base.catsutils.CatsEffectUtils
 import js7.base.catsutils.CatsEffectUtils.promiseIO
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.fs2utils.StreamExtensions.repeatLast
@@ -20,7 +19,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.pekkoutils.ReceiveLoggingActor
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
@@ -81,13 +80,13 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     async: Boolean = false)(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    persistKeyedEvents(Timestamped(keyedEvent, timestampMillis) :: Nil, async = async) { (events, journaledState) =>
+    persistKeyedEvents(MaybeTimestampedKeyedEvent(keyedEvent, timestampMillis) :: Nil, async = async) { (events, journaledState) =>
       assertThat(events.sizeIs == 1)
       callback(events.head, journaledState)
     }
 
   protected final def persistKeyedEvents[EE <: E, A](
-    timestamped: Seq[Timestamped[EE]],
+    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
     callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
@@ -96,7 +95,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       .map(_.orThrow)(ioRuntime.compute)
 
   protected final def persistKeyedEventsReturnChecked[EE <: E, A](
-    timestamped: Seq[Timestamped[EE]],
+    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
     callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
@@ -105,7 +104,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       callback)
 
   private def persistKeyedEventsReturnChecked2[EE <: E, A](
-    timestamped: Seq[Timestamped[EE]],
+    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false,
     dontCrashActorOnFailure: Boolean = false)(
@@ -178,7 +177,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
 
     case PersistAcceptEarly(keyedEvents, timestampMillis, options, promise) =>
       start(async = true, "persistKeyedEventAcceptEarlyIO")
-      val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
+      val timestamped = keyedEvents.map(MaybeTimestampedKeyedEvent(_, timestampMillis))
       journalActor.forward(
         JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now, commitLater = true,
           Deferred(CorrelId.current, async = true,
@@ -273,14 +272,6 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       context.unbecome()
 
   private def stashingCountRemaining = (stashingCount > 0) ?? s", $stashingCount remaining"
-
-  protected def toTimestamped[EE <: E](keyEvents: Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
-    keyEvents.view.map(e => Timestamped(e)).toVector
-
-  protected type Timestamped[+EE <: E] = JournalingActor.Timestamped[EE]
-
-  protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestampMillis: Option[Long] = None) =
-    JournalingActor.Timestamped(keyedEvent, timestampMillis)
 
   private case class EventsCallback(
     correlId: CorrelId,

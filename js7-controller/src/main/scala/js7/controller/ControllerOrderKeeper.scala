@@ -59,7 +59,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx, TimestampedKeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
@@ -475,49 +475,49 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
               Future.successful(None)
             else
-              var timestampedEvents: Seq[Timestamped[Event]] =
+              var timestampedEvents: Seq[MaybeTimestampedKeyedEvent[Event]] =
                 stampedAgentEvents.view.flatMap {
                   case Stamped(_, timestampMillis, keyedEvent) =>
                     keyedEvent match
                       case KeyedEvent(orderId: OrderId, _: OrderCancellationMarked) =>
-                        Timestamped(orderId <-: OrderCancellationMarkedOnAgent, Some(timestampMillis)) :: Nil
+                        TimestampedKeyedEvent(orderId <-: OrderCancellationMarkedOnAgent, timestampMillis) :: Nil
 
                       case KeyedEvent(orderId: OrderId, _: OrderSuspensionMarked) =>
-                        Timestamped(orderId <-: OrderSuspensionMarkedOnAgent, Some(timestampMillis)) :: Nil
+                        TimestampedKeyedEvent(orderId <-: OrderSuspensionMarkedOnAgent, timestampMillis) :: Nil
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                         val ownEvent = event match
                           case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                           case _ => event
-                        Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
+                        TimestampedKeyedEvent(orderId <-: ownEvent, timestampMillis) :: Nil
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
-                        Timestamped(agentEntry.agentPath <-: AgentReady(timezone, platformInfo),
-                          Some(timestampMillis)) :: Nil
+                        TimestampedKeyedEvent(agentEntry.agentPath <-: AgentReady(timezone, platformInfo),
+                          timestampMillis) :: Nil
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentShutDown) =>
-                        Timestamped(
+                        TimestampedKeyedEvent(
                           agentEntry.agentPath <-: AgentShutDown,
-                          Some(timestampMillis)
+                          timestampMillis
                         ) :: Nil
 
                       case KeyedEvent(_: NoKey, ItemAttachedToMe(item)) =>
                         // COMPATIBLE with v2.1
-                        Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+                        (NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
 
                       case KeyedEvent(_: NoKey, SignedItemAttachedToMe(signed)) =>
                         // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                         val item = signed.value
-                        Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+                        (NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
 
                       case KeyedEvent(_: NoKey, _: ItemDetachingFromMe) =>
                         Nil
 
                       case KeyedEvent(_: NoKey, _: ItemDetached) =>
-                        Timestamped(keyedEvent) :: Nil
+                        keyedEvent :: Nil
 
                       case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
-                        Timestamped(keyedEvent) :: Nil
+                        keyedEvent :: Nil
 
                       case KeyedEvent(_, _: ItemAddedOrChanged) =>
                         Nil
@@ -525,10 +525,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                       case KeyedEvent(_: SubagentId, event: SubagentItemStateEvent) =>
                         event match
                           case _: SubagentEventsObserved => Nil // Not needed
-                          case _ => Timestamped(keyedEvent) :: Nil
+                          case _ => keyedEvent :: Nil
 
                       case ke @ KeyedEvent(_: NoKey, _: ClusterEvent) =>
-                        Timestamped(agentPath <-: AgentMirroredEvent(ke)) :: Nil
+                        (agentPath <-: AgentMirroredEvent(ke)) :: Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
@@ -542,12 +542,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 Future.successful(None)
               else
                 val agentEventId = stampedAgentEvents.last.eventId
-                timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
+                timestampedEvents :+= agentPath <-: AgentEventsObserved(agentEventId)
 
                 val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
                 orderQueue.enqueue(
                   subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId }) // For OrderSourceEvents
-                timestampedEvents ++= subseqEvents.map(Timestamped(_))
+                timestampedEvents ++= subseqEvents
 
                 journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>

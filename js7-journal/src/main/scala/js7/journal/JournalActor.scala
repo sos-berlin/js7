@@ -56,7 +56,7 @@ extends Actor, Stash:
       else
         journaler.enqueue:
           Journaler.Persist(
-            EventCalc.pure(timestamped.map(_.toMaybeTimestamped)),
+            EventCalc.pure(timestamped),
             options.copy(commitLater = commitLater),
             since)
         .flatMap: (whenApplied, whenCommitted) =>
@@ -151,7 +151,7 @@ object JournalActor:
 
     private[journal] final case class Store(
       correlId: CorrelId,
-      timestamped: Seq[Timestamped],
+      timestamped: Seq[MaybeTimestampedKeyedEvent[Event]],
       journalingActor: ActorRef,
       options: CommitOptions,
       since: Deadline,

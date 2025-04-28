@@ -38,7 +38,7 @@ extends JournalingActor[S, E]:
     (callback: (Seq[EE], S) => A)
   : Future[A] =
     super.persistKeyedEvents(
-      events.map(e => Timestamped(toKeyedEvent(e))),
+      events.map(toKeyedEvent),
       CommitOptions(transaction = true),
       async = async):
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
@@ -52,7 +52,7 @@ extends JournalingActor[S, E]:
     (callback: (Seq[EE], S) => A)
   : Future[Checked[A]] =
     super.persistKeyedEventsReturnChecked(
-      events.map(e => Timestamped(key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e)),
+      events.map(e => key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e),
       CommitOptions(transaction = true),
       async = async):
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
