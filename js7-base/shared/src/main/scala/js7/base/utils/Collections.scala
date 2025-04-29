@@ -28,7 +28,7 @@ object Collections:
 
     implicit final class RichIterableOnce[CC[x] <: IterableOnce[x], A](private val iterableOnce: CC[A])
     extends AnyVal:
-      def fold_(implicit A: Monoid[A]): A =
+      def foldMonoids(using A: Monoid[A]): A =
         A.combineAll(iterableOnce)
 
       def countEquals: Map[A, Int] =

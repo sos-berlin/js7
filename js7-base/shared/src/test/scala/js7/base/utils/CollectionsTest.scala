@@ -49,8 +49,8 @@ final class CollectionsTest extends OurTestSuite:
       Seq(List(1, 2, 3), List(2, 3, 4), List(3, 4, 5), List(4, 5), List(5)))
 
   "fold_" in:
-    assert(Seq[String]().fold_ == "")
-    assert(Seq("A", "BB", "CCC").fold_ == "ABBCCC")
+    assert(Seq[String]().foldMonoids == "")
+    assert(Seq("A", "BB", "CCC").foldMonoids == "ABBCCC")
 
   "foldFast" in:
     def op(a: String, b: String) = s"$a+$b"

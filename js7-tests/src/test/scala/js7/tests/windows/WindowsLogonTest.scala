@@ -46,8 +46,8 @@ final class WindowsLogonTest extends OurTestSuite, ControllerAgentForScalaTest:
     "Windows Logon" in:
       val events = controller.runOrder(FreshOrder(OrderId("WindowsLogonTest"), workflow.path))
         .map(_.value)
-      val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold_
-      val stderr = events.collect { case OrderStderrWritten(chunk) => chunk }.fold_
+      val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.foldMonoids
+      val stderr = events.collect { case OrderStderrWritten(chunk) => chunk }.foldMonoids
       logger.info(s"stdout:\n$stdout")
       logger.info(s"stderr:\n$stderr")
       assert(events.collect { case o: OrderProcessed => o } == Seq(OrderProcessed(OrderOutcome.succeededRC0)))
