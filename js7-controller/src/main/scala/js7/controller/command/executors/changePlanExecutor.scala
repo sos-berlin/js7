@@ -6,7 +6,7 @@ import js7.data.controller.ControllerCommand.ChangePlan
 import js7.data.event.EventCalc
 import js7.data.plan.PlanSchemaState
 
-private[command] def changePlanExecutor =
+private[command] def changePlanExecutor: CommandEventConverter[ChangePlan] =
   CommandEventConverter.checked[ChangePlan]: (cmd, controllerState) =>
     for
       planSchemaState <- controllerState.keyTo(PlanSchemaState).checked(cmd.planId.planSchemaId)

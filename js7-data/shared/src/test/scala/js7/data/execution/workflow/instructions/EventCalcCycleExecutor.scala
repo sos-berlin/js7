@@ -19,7 +19,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   def toEventCalc(orderId: OrderId)
   : EventCalc[S, OrderStarted | OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       for
         coll <- startOrder(orderId).calculate(coll)
         order <- coll.aggregate.idToOrder.checked(orderId)
@@ -43,7 +43,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   private def readyToEvents(instr: Cycle, order: Order[Ready])
   : EventCalc[S, OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       for
         workflow <- coll.aggregate.keyToItem(Workflow).checked(order.workflowId)
         (calendar, calculator) <- toCalendarAndScheduleCalculator(workflow, instr, coll.aggregate)
@@ -68,7 +68,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
 
   private def betweenCyclesToEvents(instr: Cycle, order: Order[BetweenCycles])
   : EventCalc[S, OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
-    EventCalc.coll: coll =>
+    EventCalc: coll =>
       order.state.cycleState match
         case None =>
           coll.add(endCycling(order))

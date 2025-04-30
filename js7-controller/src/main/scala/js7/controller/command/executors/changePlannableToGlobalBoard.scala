@@ -8,7 +8,8 @@ import js7.data.event.EventCalc
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.expression.scopes.NowScope
 
-private[command] def changePlannableToGlobalBoardExecutor =
+private[command] def changePlannableToGlobalBoardExecutor
+: CommandEventConverter[ChangePlannableToGlobalBoard] =
   CommandEventConverter.checked[ChangePlannableToGlobalBoard]: (cmd, controllerState) =>
     import cmd.{globalBoard, planSchemaId}
     globalBoard.evalEndOfLife(NowScope(EventCalc.now())).flatMap: endOfLife =>

@@ -7,7 +7,7 @@ import js7.data.controller.ControllerCommand.ChangePlanSchema
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
 import js7.data.plan.PlanSchemaState
 
-private[command] def changePlanSchemaExecutor =
+private[command] def changePlanSchemaExecutor: CommandEventConverter[ChangePlanSchema] =
   CommandEventConverter.checked[ChangePlanSchema]: (cmd, controllerState) =>
     import cmd.planSchemaId
     for

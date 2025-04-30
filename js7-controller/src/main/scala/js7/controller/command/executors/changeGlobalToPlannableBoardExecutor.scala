@@ -5,7 +5,8 @@ import js7.data.controller.ControllerCommand.ChangeGlobalToPlannableBoard
 import js7.data.controller.ControllerStatePlanFunctions
 import js7.data.plan.PlanSchemaId
 
-private[command] def changeGlobalToPlannableBoardExecutor =
+private[command] def changeGlobalToPlannableBoardExecutor
+: CommandEventConverter[ChangeGlobalToPlannableBoard] =
   CommandEventConverter.checked[ChangeGlobalToPlannableBoard]: (cmd, controllerState) =>
     import cmd.{planSchemaId, plannableBoard}
     ControllerStatePlanFunctions.changeBoardType(

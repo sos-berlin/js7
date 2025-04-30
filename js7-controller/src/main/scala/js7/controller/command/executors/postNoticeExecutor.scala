@@ -5,6 +5,6 @@ import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerCommand.PostNotice
 import js7.data.event.EventCalc
 
-private[command] def postNoticeExecutor =
+private[command] def postNoticeExecutor: CommandEventConverter[PostNotice] =
   CommandEventConverter.checked[PostNotice]: (cmd, controllerState) =>
     NoticeEventSource(EventCalc.clock).executePostNoticeCommand(cmd, controllerState)

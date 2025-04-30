@@ -5,7 +5,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.command.CommandToEventCalc.*
 import js7.data.event.EventCalc.OpaqueEventColl
-import js7.data.event.{Event, EventCalc, EventDrivenState, KeyedEvent}
+import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState, KeyedEvent}
 import scala.reflect.ClassTag
 
 trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx]:
@@ -44,14 +44,19 @@ object CommandToEventCalc:
         toCheckedKeyedEvents: (Cmd, S) => OpaqueEventColl[S, E, Ctx] ?=>
           Checked[IterableOnce[KeyedEvent[E]]])
       : CommandEventConverter[Cmd] =
-        CmdToEventCalc[Cmd]: cmd =>
+        eventCalc: cmd =>
           EventCalc.checked: aggregate =>
             toCheckedKeyedEvents(cmd, aggregate)
 
+      def coll[Cmd <: CommonCommand : ClassTag](
+        toEventColl: (Cmd, EventColl[S, E, Ctx]) => Checked[EventColl[S, E, Ctx]])
+      : CommandEventConverter[Cmd] =
+        eventCalc: cmd =>
+          EventCalc(toEventColl(cmd, _))
 
-    /** A `CommandEventConverter` returning an `EventCalc`. */
-    final class CmdToEventCalc[Cmd <: CommonCommand : ClassTag](
-      cmdToEventCalc: Cmd => EventCalc[S, E, Ctx])
-    extends CommandEventConverter[Cmd]:
-      def toEventCalc(cmd: Cmd): EventCalc[S, E, Ctx] =
-        cmdToEventCalc(cmd)
+      /** A `CommandEventConverter` returning an `EventCalc`. */
+      def eventCalc[Cmd <: CommonCommand : ClassTag](cmdToEventCalc: Cmd => EventCalc[S, E, Ctx])
+      : CommandEventConverter[Cmd] =
+        new CommandEventConverter[Cmd]:
+          def toEventCalc(cmd: Cmd): EventCalc[S, E, Ctx] =
+            cmdToEventCalc(cmd)
