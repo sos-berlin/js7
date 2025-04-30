@@ -41,5 +41,5 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
           parentPos <- order.position.parent
           exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
           next <- exec.subworkflowEndToPosition(parentPos)
-        yield 
+        yield
           OrderMoved(next)
