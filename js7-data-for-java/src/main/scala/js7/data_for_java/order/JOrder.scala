@@ -47,6 +47,10 @@ extends JJsonable[JOrder]:
     asScala.arguments.asJava
 
   @Nonnull
+  def priority: java.math.BigDecimal =
+    asScala.priority.bigDecimal
+
+  @Nonnull
   def scheduledFor: Optional[Instant] =
     asScala.scheduledFor.map(_.toInstant).toJava
 

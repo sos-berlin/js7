@@ -129,6 +129,20 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       startPosition = startPosition.toScala.map(_.asScala),
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 
+  /*** Contruct a FreshOrder.
+    *
+    * @param id
+    * @param workflowPath
+    * @param arguments
+    * @param scheduledFor
+    * @param priority use 0 as default. Higher value is higher priority.
+    * @param planId
+    * @param deleteWhenTerminated
+    * @param forceJobAdmission
+    * @param innerBlock
+    * @param startPosition
+    * @param stopPositions
+    */
   @Nonnull
   @throws[RuntimeException]("on invalid syntax")
   def of(
@@ -136,6 +150,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
     @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull priority: java.math.BigDecimal,
     @Nonnull planId: PlanId,
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
@@ -149,6 +164,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       arguments.asScala.toMap,
       planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      priority = priority,
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
       innerBlock = innerBlock.asScala,
