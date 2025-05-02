@@ -991,11 +991,27 @@ extends
       prepare :+ OrderTransferred(to.id /: position)
 
   override def toString =
-    s"Order($id · $state${isSuspended ?? " · suspended"
-    }${attachedState.fold("")(o => s" · $o")
-    }${mark.fold("")(o => s" · $o")
-    }${if stickySubagents.isEmpty then "" else s" · sticky=${stickySubagents.mkString}"
-    } · $workflowPosition · ${historicOutcomes.size} outcomes: $lastOutcome)"
+    Vector(
+      Some(id),
+      Some(state),
+      Some(workflowId),
+      attachedState,
+      !planId.isGlobal ? planId,
+      Some(lastOutcome),
+      (historicOutcomes.sizeIs > 1) ? s"${historicOutcomes.size} outcomes",
+      externalOrder,
+      parent.map(o => s"parent=$o"),
+      scheduledFor,
+      (priority != Order.DefaultPriority) ? priority,
+      forceJobAdmission ? "forceJobAdmission",
+      mark,
+      isSuspended ? "isSuspended",
+      isResumed ? "isResumed",
+      stickySubagents.nonEmpty ? s"stickySubagents={${stickySubagents.mkString(", ")}}",
+      innerBlock.nonEmpty ? innerBlock,
+      deleteWhenTerminated ? "delete",
+      arguments.nonEmpty ? s"${arguments.size} arguments"
+    ).flatten.mkString("Order(", ", ", ")")
 
 
 object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
@@ -1496,7 +1512,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
     override def toString =
       if vanished then
-        s"ExternalOrderLink($externalOrderKey vanished)"
+        s"$externalOrderKey(vanished)"
       else
         externalOrderKey.toString
 

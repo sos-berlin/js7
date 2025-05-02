@@ -1,5 +1,7 @@
 package js7.tests
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -23,8 +25,6 @@ import js7.tests.ForkTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -113,8 +113,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     val expectedOutcomeAdded = OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
       "Forked OrderIds duplicate existing " +
-        "Order(Order:DUPLICATE|🥕 · Processing(Subagent:AGENT-A-0) · Attached to Agent:AGENT-A" +
-        " · DUPLICATE~INITIAL:0 · 0 outcomes: Succeeded)")))
+        "Order(Order:DUPLICATE|🥕, Processing(Subagent:AGENT-A-0), Workflow:DUPLICATE~INITIAL, Attached to Agent:AGENT-A, Succeeded)")))
     assert(eventWatch.await[OrderOutcomeAdded](_.key == order.id).head.value.event == expectedOutcomeAdded)
 
     val expectedFailed = OrderFailed(Position(0))

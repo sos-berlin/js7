@@ -104,6 +104,22 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     override def toShortString =
       s"OrderAdded(${workflowId.path})"
 
+    override def toString =
+      Vector(
+        Some(workflowId),
+        !planId.isGlobal ? planId,
+        externalOrderKey,
+        scheduledFor,
+        (priority != Order.DefaultPriority) ? priority,
+        forceJobAdmission ? "forceJobAdmission",
+        innerBlock.nonEmpty ? innerBlock,
+        startPosition,
+        stopPositions.nonEmpty ? startPosition.mkString("{", ", ", "}"),
+        deleteWhenTerminated ? "delete",
+        arguments.nonEmpty ? s"${arguments.size} arguments",
+      ).flatten.mkString("OrderAdded(", ", ", ")")
+
+
   object OrderAdded:
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =
       o => JsonObject(
