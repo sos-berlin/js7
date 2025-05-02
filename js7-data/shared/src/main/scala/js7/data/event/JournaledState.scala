@@ -1,6 +1,5 @@
 package js7.data.event
 
-import cats.syntax.semigroup.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.OrderCannotAttachedToPlanProblem

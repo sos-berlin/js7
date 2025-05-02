@@ -1,7 +1,6 @@
 package js7.data.workflow
 
 import cats.instances.vector.*
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
