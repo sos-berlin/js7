@@ -12,8 +12,8 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.eventbus.EventPublisher
-import js7.base.log.{Log4j, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{Log4j, Logger}
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -58,8 +58,7 @@ final class ClusterNode[S <: ClusterableState[S]: Tag] private(
   implicit val actorSystem: ActorSystem)
   (implicit S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S],
-    ioRuntime: IORuntime,
-    timeout: pekko.util.Timeout)
+    ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
   clusterNode =>
 
@@ -356,8 +355,7 @@ object ClusterNode:
       S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       ioRuntime: IORuntime,
-      actorSystem: ActorSystem,
-      timeout: pekko.util.Timeout)
+      actorSystem: ActorSystem)
   : ResourceIO[ClusterNode[S]] =
     import clusterConf.{config, ownId}
 

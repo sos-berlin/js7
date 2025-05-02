@@ -7,7 +7,6 @@ import cats.instances.list.*
 import cats.syntax.apply.*
 import cats.syntax.either.*
 import cats.syntax.foldable.*
-import cats.syntax.monoid.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import cats.{Applicative, Apply}
@@ -16,7 +15,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.problem.Checked.*
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite}
+import js7.base.test.OurAsyncTestSuite
 import js7.tester.CirceJsonTester.testJson
 import scala.util.{Failure, Success}
 
