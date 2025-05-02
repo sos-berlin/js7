@@ -7,7 +7,7 @@ import js7.base.annotation.slow
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
-import js7.base.fs2utils.StreamExtensions.{:+, :++}
+import js7.base.fs2utils.StreamExtensions.appendOne
 import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -81,19 +81,42 @@ extends
 
   override def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit[fs2.Pure, String]("ControllerState:\n")
-      :+ "eventId=" :+ EventId.toString(eventId) :+ "\n"
-      :+ standards.toString :+ "\n"
-      :+ controllerMetaState.toString :+ "\n"
-      :+ "keyToUnsignedItemState_=\n"
-      :++ Stream.iterable(keyToUnsignedItemState_.values.toVector.sorted).flatMap:
-        _.toStringStream.map("  " + _ + "\n")
-      :++ Stream.emit("repo=\n") :++ Stream.iterable(repo.toEvents).map(o => s"  $o\n")
-      :++ streamInBrackets("pathToSignedSimpleItem", Space):
-        pathToSignedSimpleItem.values.toVector.sortBy(_.value.key)
-      :+ agentAttachments.toString :+ "\n"
-      :++ streamInBrackets("deletionMarkedItems", Space)(deletionMarkedItems.toVector.sorted)
-      :++ streamInBrackets("orders", Space)(idToOrder.values.toVector.sorted)
-      :++ workflowToOrders.toStringStream
+      .appendOne:
+        "eventId=" + EventId.toString(eventId) + "\n"
+      .pipeIf(standards.nonEmpty):
+        _.appendOne:
+          standards.toString + "\n"
+      .pipeIf(controllerMetaState.nonEmpty):
+        _.appendOne:
+          controllerMetaState.toString + "\n"
+      .pipeIf(keyToUnsignedItemState_.nonEmpty):
+        _.appendOne:
+          "keyToUnsignedItemState_=\n"
+        .append:
+          Stream.iterable(keyToUnsignedItemState_.values.toVector.sorted).flatMap:
+            _.toStringStream.map("  " + _ + "\n")
+      .pipeIf(repo.nonEmpty):
+        _.appendOne:
+          "repo=\n"
+        .append:
+          Stream.iterable(repo.toEvents).map(o => s"  $o\n")
+      .pipeIf(pathToSignedSimpleItem.nonEmpty):
+        _.append:
+          streamInBrackets("pathToSignedSimpleItem", Space):
+            pathToSignedSimpleItem.values.toVector.sortBy(_.value.key)
+      .pipeIf(agentAttachments.nonEmpty): stream =>
+        stream.appendOne:
+          agentAttachments.toString + "\n"
+        : Stream[fs2.Pure, String]
+      .pipeIf(deletionMarkedItems.nonEmpty):
+        _.append:
+          streamInBrackets("deletionMarkedItems", Space)(deletionMarkedItems.toVector.sorted)
+      .pipeIf(idToOrder.nonEmpty):
+        _.append:
+          streamInBrackets("orders", Space)(idToOrder.values.toVector.sorted)
+      .pipeIf(workflowToOrders.nonEmpty):
+        _.append:
+          workflowToOrders.toStringStream
 
   def isAgent = false
 
@@ -1093,6 +1116,12 @@ extends
 
     def isLastOrder(order: Order[Order.State]): Boolean =
       workflowIdToOrders.get(order.workflowId).contains(Set(order.id))
+
+    def isEmpty: Boolean =
+      workflowIdToOrders.isEmpty
+
+    inline def nonEmpty: Boolean =
+      !isEmpty
 
     def toStringStream: fs2.Stream[fs2.Pure, String] =
       Stream.emit(s"WorkflowToOrders:\n") ++

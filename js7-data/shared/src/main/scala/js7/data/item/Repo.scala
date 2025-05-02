@@ -46,6 +46,12 @@ extends
 
   lazy val currentVersionId: VersionId = versionIds.headOption getOrElse VersionId.Anonymous
 
+  def isEmpty: Boolean =
+    versionIds.isEmpty && pathToVersionToSignedItems.isEmpty
+    
+  inline def nonEmpty: Boolean =
+    !isEmpty  
+
   def currentVersionSize: Int =
     currentSignedItems.size
 

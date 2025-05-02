@@ -14,7 +14,6 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.MultipleLinesBracket.{Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowableEither}
 import js7.base.utils.Tests.isTest
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -75,18 +74,6 @@ extends JournaledState[S]:
       toSnapshotStream.map(_.asJson.as[Any].orThrow)
     .withEventId(eventId)
 
-  final def emitLineStream(emit: String => Unit): Unit =
-    toLineStream.map(emit).compile.drain
-
-  final def toLineStream: Stream[fs2.Pure, String] =
-    toStringStream.through(fs2.text.lines)
-      .zipWithBracket(Square)
-      .map: (line, br) =>
-        br +: line
-
-  def toStringStream: Stream[fs2.Pure, String] =
-    Stream.emit(toString)
-
 
 object SnapshotableState:
   private val logger = Logger[this.type]
@@ -116,6 +103,7 @@ object SnapshotableState:
       logLine(s"$bName = ⏎")
       b.emitLineStream(logLine)
 
+
   final case class Standards(journalState: JournalState, clusterState: ClusterState):
     def snapshotSize: Int =
       journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
@@ -123,6 +111,13 @@ object SnapshotableState:
     def toSnapshotStream: Stream[fs2.Pure, Any] =
       journalState.toSnapshotStream ++
         clusterState.toSnapshotStream
+
+    def isEmpty: Boolean =
+      this == Standards.empty
+
+    inline def nonEmpty: Boolean =
+      !isEmpty
+
 
   object Standards:
     val empty: Standards = Standards(JournalState.empty, ClusterState.Empty)

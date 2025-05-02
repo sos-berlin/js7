@@ -34,6 +34,12 @@ extends
         agentToAttached.map: (agentPath, attachedState) =>
           ItemAttachedStateEvent(key, agentPath, attachedState))
 
+  def isEmpty: Boolean =
+    itemToDelegateToAttachedState.isEmpty
+
+  inline def nonEmpty: Boolean =
+    !isEmpty
+
   def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] =
     val delegateId = cast[D](event.delegateId)
     import event.{attachedState, key as itemKey}

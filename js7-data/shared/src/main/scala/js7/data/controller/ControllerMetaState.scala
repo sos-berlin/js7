@@ -15,6 +15,12 @@ final case class ControllerMetaState(
   def isDefined: Boolean =
     this != ControllerMetaState.Undefined
 
+  def isEmpty: Boolean =
+    this == ControllerMetaState.Undefined
+
+  inline def nonEmpty: Boolean =
+    !isEmpty
+
 
 object ControllerMetaState:
   val Undefined: ControllerMetaState = ControllerMetaState(
