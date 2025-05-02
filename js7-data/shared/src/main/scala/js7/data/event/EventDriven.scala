@@ -1,5 +1,6 @@
 package js7.data.event
 
+import cats.syntax.semigroup.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.EventDriven.*
@@ -20,7 +21,7 @@ trait EventDriven[+Self <: EventDriven[Self, E], E <: Event]:
       obj.applyEvent(event) match
         case Left(problem) =>
           return Left:
-            problem.withPrefix(s"Event '$event' cannot be applied to ${companion.name}:")
+            problem |+| Problem(s"Event '$event' could not be applied to ${companion.name}")
         case Right(o) =>
           obj = o
     Right(obj)

@@ -1,5 +1,6 @@
 package js7.data.event
 
+import cats.syntax.semigroup.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.OrderCannotAttachedToPlanProblem
@@ -35,7 +36,7 @@ extends EventDrivenState[S, Event]:
                   if stamped.value.key == orderId =>
                   prblm
                 case _ =>
-                  prblm.withPrefix(s"Event '$stamped' cannot be applied to ${companion.name}:")
+                  prblm |+| Problem(s"Event '$stamped' could not be applied to ${companion.name}")
               boundary.break()
             case Right(s) =>
               state = s

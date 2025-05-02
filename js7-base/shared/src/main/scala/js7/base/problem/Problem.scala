@@ -45,10 +45,14 @@ sealed trait Problem:
   def flatten: View[Problem] =
     View(this) ++ cause
 
-  final def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
+  final def withKey(key: Any): Problem =
+    withPrefix(s"Problem with '$key':")
 
   final def withPrefix(prefix: String): Problem =
     Problem.pure(prefix) |+| this
+
+  final def |+|(other: Problem): Problem =
+    Problem.combine(this, other)
 
   final infix def is(companion: Problem.Coded.Companion): Boolean =
     maybeCode contains companion.code
