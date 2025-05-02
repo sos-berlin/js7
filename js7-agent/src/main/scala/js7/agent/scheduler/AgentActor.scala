@@ -191,7 +191,7 @@ extends Actor, Stash, SimpleStateActor:
             _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
           yield
-            CoupleController.Response(journal.unsafeCurrentState().idToOrder.keySet))
+            CoupleController.Response(journal.unsafeAggregate().idToOrder.keySet))
 
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot |
@@ -249,7 +249,7 @@ extends Actor, Stash, SimpleStateActor:
             .rightAs(agentRunId -> eventAndState._2.eventId))
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] =
-    val agentState = journal.unsafeCurrentState()
+    val agentState = journal.unsafeAggregate()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
     else if requestedAgentPath != agentState.agentPath then
@@ -258,7 +258,7 @@ extends Actor, Stash, SimpleStateActor:
       RightUnit
 
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] =
-    val agentState = journal.unsafeCurrentState()
+    val agentState = journal.unsafeAggregate()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
     else if requestedAgentRunId != agentState.meta.agentRunId then
@@ -270,7 +270,7 @@ extends Actor, Stash, SimpleStateActor:
       Checked.unit
 
   private def checkControllerRunId(requestedControllerRunId: ControllerRunId): Checked[Unit] =
-    val agentState = journal.unsafeCurrentState()
+    val agentState = journal.unsafeAggregate()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
     else if agentState.meta.controllerRunId.exists(_ != requestedControllerRunId) then

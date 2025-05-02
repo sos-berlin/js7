@@ -249,7 +249,7 @@ object RunningAgent:
       val journal = workingClusterNode.journal
       val failedOverSubagentId: Option[SubagentId] =
         for nodeId <- workingClusterNode.failedNodeId yield
-          journal.unsafeCurrentState().meta
+          journal.unsafeAggregate().meta
             .clusterNodeIdToSubagentId(nodeId)
             .orThrow
 
@@ -272,7 +272,7 @@ object RunningAgent:
         "main").taggedWith[MainActor]
 
       actors += actor
-      actor ! MainActor.Input.Start(journal.unsafeCurrentState())
+      actor ! MainActor.Input.Start(journal.unsafeAggregate())
 
       MainActorStarted(
         actor,

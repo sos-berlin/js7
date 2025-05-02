@@ -39,7 +39,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     import journal.eventWatch
 
     journal.persistKeyedEvent("A" <-: TestEvent.Added("a")).await(99.s).orThrow
-    assert(journal.unsafeCurrentState() == TestState(1000, keyToAggregate = Map(
+    assert(journal.unsafeAggregate() == TestState(1000, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1000)
@@ -50,7 +50,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
         Stamped(1000, "A" <-: TestEvent.Added("a")))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
-    assert(journal.unsafeCurrentState() == TestState(1001, keyToAggregate = Map(
+    assert(journal.unsafeAggregate() == TestState(1001, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a1"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1001)

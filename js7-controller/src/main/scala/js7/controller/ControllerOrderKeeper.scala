@@ -268,7 +268,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   def receive: Receive =
     case Input.Start =>
-      val controllerState = journal.unsafeCurrentState()
+      val controllerState = journal.unsafeAggregate()
       if controllerState.controllerMetaState.isDefined then
         recover(controllerState)
 
@@ -455,7 +455,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     case Internal.EventsFromAgent(agentPath, agentRunId, stampedAgentEvents, committedPromise) =>
       for agentEntry <- agentRegister.get(agentPath) do
-        for agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath) do
+        for agentRefState <- journal.unsafeAggregate().keyTo(AgentRefState).get(agentPath) do
           val isAgentReset = agentRefState.couplingState match
             case _: DelegateCouplingState.Resetting => true
             case DelegateCouplingState.Reset.byCommand => true
@@ -545,7 +545,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 orderQueue.enqueue:
                   coll.keyedEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId } // For OrderSourceEvents
 
-                journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match
+                journal.unsafeAggregate().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with journal.lock!
@@ -631,7 +631,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         shutdown.continue()
       else
         agentRegister -= agentPath
-        for agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath) do
+        for agentRefState <- journal.unsafeAggregate().keyTo(AgentRefState).checked(agentPath) do
           agentRefState.couplingState match
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef, eventId = EventId.BeforeFirst)
@@ -816,7 +816,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         agentRegister.checked(agentPath) match
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentEntry) =>
-            journal.unsafeCurrentState().keyTo(AgentRefState).checked(agentEntry.agentPath) match
+            journal.unsafeAggregate().keyTo(AgentRefState).checked(agentEntry.agentPath) match
               case Left(problem) => Future.successful(Left(problem))
               case Right(agentRefState) =>
                 // TODO journal.lock(agentPath), to avoid race with AgentCoupled, too
@@ -828,7 +828,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
                   case _ =>
                     ControllerStateExecutor.resetAgent(agentPath, force = force)
-                      .calculate(journal.unsafeCurrentState(), TimeCtx(Timestamp.now))
+                      .calculate(journal.unsafeAggregate(), TimeCtx(Timestamp.now))
                     match
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(coll) =>
@@ -853,7 +853,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         }.flatten
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
-        val controllerState = journal.unsafeCurrentState()
+        val controllerState = journal.unsafeAggregate()
         controllerState.keyTo(SubagentItemState).checked(subagentId)
           .flatTap(subagentItemState =>
             controllerState.keyToItem(AgentRef).checked(subagentItemState.subagentItem.agentPath)
@@ -1096,7 +1096,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           //.awaitInfinite until v2.7
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
-        for agentRef <- journal.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath) do
+        for agentRef <- journal.unsafeAggregate().keyToItem(AgentRef).get(subagentItem.agentPath) do
           val agentDriver = agentRegister(agentRef.path).agentDriver
           agentDriver
             .changeAgentRef(agentRef)

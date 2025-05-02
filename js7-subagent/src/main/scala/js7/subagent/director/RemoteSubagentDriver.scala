@@ -178,7 +178,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(subagentRunId -> _)
 
   private def dedicate: IO[DedicateSubagent.Response] =
-    val agentRunId = journal.unsafeCurrentState().agentRunId
+    val agentRunId = journal.unsafeAggregate().agentRunId
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
     logger.debugIO:
       postCommandUntilSucceeded(cmd)

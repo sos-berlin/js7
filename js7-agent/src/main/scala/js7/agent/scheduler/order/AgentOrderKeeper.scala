@@ -103,7 +103,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private val journal = workingClusterNode.journal
   private val (ownAgentPath, localSubagentId, controllerId) =
-    val meta = journal.unsafeCurrentState().meta
+    val meta = journal.unsafeAggregate().meta
     val subagentId: SubagentId =
       if meta.directors.isEmpty then throw new IllegalStateException(
         "Missing definition of Subagents in AgentMetaState")
@@ -363,7 +363,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
               case event: OrderProcessed =>
                 (for
-                  jobKey <- journal.unsafeCurrentState().jobKey(previousOrderOrNull.workflowPosition)
+                  jobKey <- journal.unsafeAggregate().jobKey(previousOrderOrNull.workflowPosition)
                   jobEntry <- jobRegister.checked(jobKey)
                 yield jobEntry)
                 match
@@ -401,7 +401,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
     case Input.ResetAllSubagents =>
       subagentKeeper
-        .resetAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
+        .resetAllSubagents(except = journal.unsafeAggregate().meta.directors.toSet)
         .void.unsafeToFuture().pipeTo(sender())
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match
@@ -414,7 +414,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       attachSignedItem(signed)
 
     case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
-      if !journal.unsafeCurrentState().keyToItem.contains(itemKey) then
+      if !journal.unsafeAggregate().keyToItem.contains(itemKey) then
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       else
@@ -443,7 +443,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
               .unsafeToFuture()
 
           case WorkflowId.as(workflowId) =>
-            val maybeWorkflow = journal.unsafeCurrentState().idToWorkflow.get(workflowId)
+            val maybeWorkflow = journal.unsafeAggregate().idToWorkflow.get(workflowId)
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
               for workflow <- maybeWorkflow do
                 subagentKeeper
@@ -499,7 +499,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        //val previousItem = journal.unsafeCurrentState().keyToItem.get(item.key)
+        //val previousItem = journal.unsafeAggregate().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(/*previousItem,*/ item).unsafeToFuture()
         }.flatten
@@ -615,7 +615,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then
           // Slow !!!
-          for order <- journal.unsafeCurrentState().orders
+          for order <- journal.unsafeAggregate().orders
                if order.workflowPath == workflowPathControl.workflowPath do
             proceedWithOrder(order)
         IO.right(())
@@ -655,7 +655,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            journal.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match
+            journal.unsafeAggregate().idToOrder.checked(orderId).flatMap(_.detaching) match
               case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
@@ -758,7 +758,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     // updatedOrderId may be outdated, changed by more events in the same batch
     // Nevertheless, updateOrderId is the result of the event.
     val orderId = previousOrder.id
-    val agentState = journal.unsafeCurrentState()
+    val agentState = journal.unsafeAggregate()
     val orderEventHandler = new OrderEventHandler(agentState.idToWorkflow.checked)
 
     orderEventHandler.handleEvent(previousOrder, event)
@@ -785,7 +785,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       })
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    journal.unsafeCurrentState().idToOrder.checked(orderId) match
+    journal.unsafeAggregate().idToOrder.checked(orderId) match
       case Left(problem) => logger.error(s"Internal: proceedWithOrder($orderId) => $problem")
       case Right(order) => proceedWithOrder(order)
 
@@ -804,7 +804,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
             false
 
       if !delayed then
-        val agentState = journal.unsafeCurrentState()
+        val agentState = journal.unsafeAggregate()
         val oes = new OrderEventSource(agentState)
         if order != agentState.idToOrder(order.id) then
           // FIXME order should be equal !
@@ -845,7 +845,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           s"${keyedEvents.map(_.toShortString)} => ${t.toStringWithCauses}")
 
         if keyedEvents.isEmpty
-          && journal.unsafeCurrentState().isOrderProcessable(order)
+          && journal.unsafeAggregate().isOrderProcessable(order)
           && order.isAttached
           && !shuttingDown
         then
@@ -856,7 +856,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
             ()
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    journal.unsafeCurrentState()
+    journal.unsafeAggregate()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
       .match
@@ -891,7 +891,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     lazy val isEnterable = jobEntry.checkAdmissionTimeInterval:
       self ! Internal.JobDue(jobEntry.jobKey)
 
-    val idToOrder = journal.unsafeCurrentState().idToOrder
+    val idToOrder = journal.unsafeAggregate().idToOrder
 
     @tailrec def loop(): Boolean =
       (jobEntry.isBelowProcessLimit && isBelowAgentProcessLimit()) && (
@@ -968,13 +968,13 @@ extends MainJournalingActor[AgentState, Event], Stash:
         super.unhandled(message)
 
   private def orderEventSource =
-    new OrderEventSource(journal.unsafeCurrentState())
+    new OrderEventSource(journal.unsafeAggregate())
 
   private def isBelowAgentProcessLimit() =
     agentProcessLimit().forall(agentProcessCount < _)
 
   private def agentProcessLimit(): Option[Int] =
-    journal.unsafeCurrentState().keyToItem(AgentRef).get(ownAgentPath) match
+    journal.unsafeAggregate().keyToItem(AgentRef).get(ownAgentPath) match
       case None =>
         logger.warn("Missing own AgentRef — assuming processLimit = 0")
         Some(0)

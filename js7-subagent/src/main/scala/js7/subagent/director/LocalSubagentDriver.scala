@@ -63,7 +63,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         if wasRemote then
           IO.right(())
         else
-          val agentRunId = journal.unsafeCurrentState().agentRunId
+          val agentRunId = journal.unsafeAggregate().agentRunId
           subagent
             .executeDedicateSubagent:
               DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)

@@ -105,7 +105,7 @@ private trait SubagentEventListener:
       Stream.suspend:
         val recouplingStreamReader = newEventListener()
         val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-        val after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId
+        val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
         recouplingStreamReader.stream(api, after = after)
           .interruptWhen(stopRequested)
           .pipe: stream =>
@@ -280,7 +280,7 @@ private trait SubagentEventListener:
           .map(_.orThrow)
 
   private def isCouplingStateCoupled: Boolean =
-    journal.unsafeCurrentState().idToSubagentItemState(subagentId).couplingState ==
+    journal.unsafeAggregate().idToSubagentItemState(subagentId).couplingState ==
       DelegateCouplingState.Coupled
 
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()

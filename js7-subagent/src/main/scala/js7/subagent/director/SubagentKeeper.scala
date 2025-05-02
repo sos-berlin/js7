@@ -278,7 +278,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
               case _ => None
 
   private def bundleSubagentProcessCount(bundleId: SubagentBundleId): Int =
-    val state = journal.unsafeCurrentState()
+    val state = journal.unsafeAggregate()
     orderToSubagent.toMap.keys.view
       .flatMap:
         state.idToOrder.get

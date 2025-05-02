@@ -348,7 +348,7 @@ extends Service.StoppableByRequest:
                 jobLauncherConf.systemEncoding)
               JobDriver.start(JobDriver.Params(
                 jobConf,
-                id => journal.unsafeCurrentState() /*live!*/.pathToJobResource.checked(id),
+                id => journal.unsafeAggregate() /*live!*/.pathToJobResource.checked(id),
                 JobLauncher.checked(jobConf, jobLauncherConf),
                 fileValueState)))
           .map(workflowJob -> _)

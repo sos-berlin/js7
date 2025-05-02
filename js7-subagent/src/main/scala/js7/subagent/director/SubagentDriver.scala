@@ -81,7 +81,7 @@ trait SubagentDriver:
     !isStopping &&
       !isShuttingDown &&
       isHeartbeating &&
-      journal.unsafeCurrentState()
+      journal.unsafeAggregate()
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
           /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)

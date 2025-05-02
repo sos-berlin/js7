@@ -9,12 +9,6 @@ import js7.journal.Journal.{Persist, Persisted}
 trait LegacyAdapter[S <: JournaledState[S]]:
   journal: Journal[S] =>
 
-  def unsafeCurrentState(): S =
-    unsafeAggregate()
-
-  def unsafeUncommittedCurrentState(): S =
-    unsafeUncommittedAggregate()
-
   final def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
     (using enclosing: sourcecode.Enclosing)
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
