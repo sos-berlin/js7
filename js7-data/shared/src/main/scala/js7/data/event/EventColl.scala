@@ -1,6 +1,7 @@
 package js7.data.event
 
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
@@ -26,15 +27,12 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   //def computeEvents(toEvents: S => Checked[IterableOnce[KeyedEvent[E]]]): Checked[EventColl[S, E, Ctx]] =
   //  toEvents(aggregate).flatMap(addEvents)
 
-  @deprecated("Using originalAggregate probably means duplicate event application")
-  def originalAggregate: S =
+  /** Using originalAggregate probably means duplicate event application. */
+  inline def originalAggregate: S =
     originalAggregate_
 
-  def isEmpty: Boolean =
-    timestampedKeyedEvents.isEmpty
-
-  inline def nonEmpty: Boolean =
-    !isEmpty
+  inline def hasEvents: Boolean =
+    timestampedKeyedEvents.nonEmpty
 
   inline def add[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[EventColl[S, E, Ctx]] =
     addEvent(keyedEvent)
@@ -95,26 +93,30 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
 
   def addEventCalc[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalc[S, E1, Ctx1])
   : Checked[EventColl[S, E, Ctx]] =
-    foreachLog(o => logger.trace(s"addEventCalc: coll=$o"))
-    eventCalc.widen[S, E, Ctx].calculate(this)
-      .map: r =>
-        r.foreachLog(o => logger.trace(s"addEventCalc => $o"))
-        r
+    // Call function with forwarded (events omitted) EventColl,
+    // then add the resulting EventColl to this.
+    eventCalc.widen[S, E, Ctx]
+      .calculate(forward)
+      .flatMap(addColl)
 
-  def addColl(b: EventColl[S, E, Ctx]): Checked[EventColl[S, E, Ctx]] =
-    if aggregate != b.originalAggregate_ then
+  def addColl(other: EventColl[S, E, Ctx]): Checked[EventColl[S, E, Ctx]] =
+    if other.originalAggregate_ ne aggregate then
+      // This should not happen, despite it is returned as a Problem
       val problem = Problem.pure("EventColl.addColl: coll.originalAggregate doesn't match aggregate")
       logger.warn(s"EventColl.addColl: coll.originalAggregate doesn't match aggregate",
         new Exception(problem.toString))
+      aggregate.emitLineStream(o => logger.warn(s"aggregate=$o"))
+      other.originalAggregate_.emitLineStream(o => logger.warn(s"other.originalAggregate=$o"))
+      other.aggregate.emitLineStream(o => logger.warn(s"other.aggregate=$o"))
       Left(problem)
     else
       Right:
-        if b.isEmpty then
+        if !other.hasEvents then
           this
-        else if isEmpty then
-          b
+        else if !hasEvents then
+          other
         else
-          update(b.timestampedKeyedEvents, b.aggregate)
+          update(other.timestampedKeyedEvents, other.aggregate)
 
   /** Collect events calculated from `iterable` and fail-fast with first problem. */
   def iterate[A](iterable: IterableOnce[A])
@@ -159,7 +161,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
     this.asInstanceOf[EventColl[S1,E1, Ctx]]
 
   override def toString =
-    s"EventColl[${aggregate.companion.name}](${keyedEvents.map(_.toShortString).mkString(", ")})"
+    s"EventColl[${aggregate.companion.name}](${timestampedKeyedEvents.size} events)"
 
 
 object EventColl:
