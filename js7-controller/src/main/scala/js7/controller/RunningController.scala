@@ -217,19 +217,30 @@ object RunningController:
       val eventIdGenerator: EventIdGenerator =
         testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
-      resource2(conf, alarmClock, eventIdGenerator)
+      val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
+      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+      for
+        _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
+          testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
+          ignoreDuplicate = true)
+        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
+        r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
+      yield r
     .evalOn(ioRuntime.compute)
 
   private def resource2(
     conf: ControllerConfiguration,
+    eventIdGenerator: EventIdGenerator,
     alarmClock: AlarmClock,
-    eventIdGenerator: EventIdGenerator)
+    testEventBus: StandardEventBus[Any])
     (implicit ioRuntime: IORuntime)
   : ResourceIO[RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
 
     given ExecutionContext = ioRuntime.compute
-    given testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
+    given StandardEventBus[Any] = testEventBus
 
     implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] =
       val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
@@ -351,14 +362,7 @@ object RunningController:
             sessionRegister, conf, testEventBus,
             actorSystem)))
 
-      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       for
-        _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
-          testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
-          ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)

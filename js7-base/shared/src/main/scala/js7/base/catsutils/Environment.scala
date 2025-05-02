@@ -95,7 +95,10 @@ final class Environment:
     IO.defer:
       val entry = tagToEntry.get(tag)
       entry match
-        case null => IO.none
+        case null =>
+          IO:
+            logger.debug(s"maybe[${tag.tag}] => None")
+            None
         case entry: Entry[A @unchecked] =>
           get2[A](entry, orRegister = None)
             .map(Some(_))
@@ -111,7 +114,7 @@ final class Environment:
         IO.pure(alloc.a)
 
       case entry: Entry.FResource[_, A @unchecked] =>
-        logger.debugIO(s"get[${tag.tag}] allocate"):
+        logger.debugIOWithResult(s"get[${tag.tag}] allocate"):
           import entry.F // F is Sync[IO] or Sync[SyncIO]
           toIO:
             entry.resource.allocated.flatMap: allocated =>
