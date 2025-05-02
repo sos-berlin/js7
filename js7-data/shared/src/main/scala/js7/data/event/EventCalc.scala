@@ -77,11 +77,11 @@ object EventCalc:
   : EventCalc[S, E, Ctx] =
     EventCalc(_.addChecked(keyedEvents))
 
-  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: KeyedEvent[E])
+  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: MaybeTimestampedKeyedEvent[E])
   : EventCalc[S, E, Ctx] =
     pureEvent(keyedEvent)
 
-  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvents: KeyedEvent[E]*)
+  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvents: MaybeTimestampedKeyedEvent[E]*)
   : EventCalc[S, E, Ctx] =
     pureEvents(keyedEvents)
 
@@ -100,7 +100,7 @@ object EventCalc:
   : EventCalc[S, E, Ctx] =
     EventCalc(_.addNoKey(events))
 
-  private def pureEvent[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: KeyedEvent[E])
+  def pureEvent[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: MaybeTimestampedKeyedEvent[E])
   : EventCalc[S, E, Ctx] =
     EventCalc(_.addEvent(keyedEvent))
 

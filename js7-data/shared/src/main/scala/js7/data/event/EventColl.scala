@@ -57,8 +57,8 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   inline def add(other: EventColl[S, E, Ctx]): Checked[EventColl[S, E, Ctx]] =
     addColl(other)
 
-  def addEvent[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[EventColl[S, E, Ctx]] =
-    aggregate.applyKeyedEvent(keyedEvent).map: updated =>
+  def addEvent[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventColl[S, E, Ctx]] =
+    aggregate.applyKeyedEvent(keyedEvent.keyedEvent).map: updated =>
       update(keyedEvent :: Nil, updated)
 
   def addChecked(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]]): Checked[EventColl[S, E, Ctx]] =
