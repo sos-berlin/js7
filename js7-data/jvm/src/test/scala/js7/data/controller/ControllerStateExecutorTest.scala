@@ -4,17 +4,17 @@ import cats.effect.unsafe.IORuntime
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.ControllerStateExecutorTest.*
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -27,8 +27,7 @@ import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, Order
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.plan.PlanSchema
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.{MissingOrderArgumentProblem, WrongValueTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -41,7 +40,6 @@ import scala.collection.View
 
 final class ControllerStateExecutorTest extends OurTestSuite:
 
-  import ControllerStateExecutorTest.instructionExecutorService
   import ControllerStateExecutorTest.itemSigner.sign
 
   private given IORuntime = ioRuntime
@@ -78,13 +76,13 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       PlanSchema.Global)
 
   "stdVerifiedUpdateItems" in:
-    val executor = new Executor(ControllerState.empty)
+    val executor = Executor()
     executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems).orThrow
     assert(executor.controllerState.keyToItem.values.toSet == stdItems)
 
   "executeVerifiedUpdateItems" - {
     "Add workflow but referenced items are missing" in:
-      val executor = new Executor(ControllerState.empty)
+      val executor = Executor()
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(Nil, Nil, Nil),
@@ -102,66 +100,70 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           MissingReferencedItemProblem(bWorkflow.id, bJobResource.path)))))
 
     "Delete AgentRef but it is in use by a workflow" in:
-      val executor = new Executor(ControllerState.empty)
+      val executor = Executor()
 
-      executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
+      val firstEvents = executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
-      assert(
+      assert:
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
-        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id)))
+        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id))
 
-      assert(
+      assert:
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path)),
           Some(VerifiedUpdateItems.Versioned(v2, remove = Seq(aWorkflow.path)))
-        )) == Right(Seq(
-          NoKey <-: ItemDeleted(aSubagentId),
-          NoKey <-: ItemDeleted(aAgentRef.path),
-          NoKey <-: VersionAdded(v2),
-          NoKey <-: VersionedItemRemoved(aWorkflow.path),
-          NoKey <-: ItemDeleted(aWorkflow.id))))
+        )) == Right(
+          Seq[AnyKeyedEvent](
+            ItemDeleted(aSubagentId),
+            ItemDeleted(aAgentRef.path),
+            VersionAdded(v2),
+            VersionedItemRemoved(aWorkflow.path),
+            ItemDeleted(aWorkflow.id)))
 
-    "Delete AgentRef but it is in use by a deleted workflow still containing orders" in:
-      val executor = new Executor(ControllerState.empty)
+    "Delete AgentRef, but it is in use by a deleted workflow still containing orders" in:
+      val executor = Executor()
 
       executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
       val orderId = OrderId("ORDER")
-      executor.controllerState = executor.controllerState
-        .applyKeyedEvent(orderId <-: OrderAdded(aWorkflow.id))
-        .orThrow
+      executor.applyEvents:
+        orderId <-: OrderAdded(aWorkflow.id)
 
       executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(),
         Some(VerifiedUpdateItems.Versioned(VersionId("2"), remove = Seq(aWorkflow.path)))
       )).orThrow
 
-      assert(
+      assert:
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
-        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id, " with Order:ORDER")))
+        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id, " with Order:ORDER"))
 
       executor
-        .applyEventsAndReturnSubsequentEvents(Seq(
+        .applyWithSubsequentEvents(Seq(
+          //??? orderId <-: OrderDetached, // was attachable, we force it to be detached
           orderId <-: OrderCancelled,
           orderId <-: OrderDeleted))
         .orThrow
 
-      assert(
+      val firstEvents = executor.coll.keyedEvents
+      assert:
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
-        )) == Right(Seq(
-          NoKey <-: ItemDeleted(aSubagentId),
-          NoKey <-: ItemDeleted(aAgentRef.path))))
+        )) == Right(firstEvents ++
+          // subsequent events
+          Seq(
+            NoKey <-: ItemDeleted(aSubagentId),
+            NoKey <-: ItemDeleted(aAgentRef.path)))
 
     // TODO Don't use ControllerStateTest here
     import ControllerStateTest.{controllerState, fileWatch, workflow}
 
     "Empty" in:
-      val executor = new Executor(controllerState)
+      val executor = Executor(controllerState)
       executor
         .executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(),
@@ -169,7 +171,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
         .orThrow
 
     "Delete and add fileWatch" in:
-      val executor = new Executor(controllerState)
+      val executor = Executor(controllerState)
 
       // Delete the fileWatch
       assert(executor.controllerState.keyToItem.contains(fileWatch.path))
@@ -181,7 +183,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
       locally:
         // Delete the workflow
-        val deletedWorkflow = new Executor(executor.controllerState)
+        val deletedWorkflow = Executor(executor.controllerState)
         deletedWorkflow
           .executeVerifiedUpdateItems(VerifiedUpdateItems(
             VerifiedUpdateItems.Simple(),
@@ -208,31 +210,36 @@ final class ControllerStateExecutorTest extends OurTestSuite:
   "addOrders" - {
     lazy val aOrderId = OrderId("A")
     lazy val bOrderId = OrderId("B")
-    lazy val executor = new Executor(ControllerState.empty)
+    lazy val executor = Executor()
 
     "addOrder for unknown workflow is rejected" in:
-      assert(executor.controllerState.addOrders(Seq(FreshOrder(aOrderId, aWorkflow.path))) ==
-        Left(UnknownItemPathProblem(aWorkflow.path)))
+      assert:
+        ControllerStateExecutor
+          .addOrders:
+            Seq(FreshOrder(aOrderId, aWorkflow.path))
+          .calculate(executor.coll) == Left(UnknownItemPathProblem(aWorkflow.path))
 
-    "addOrder with required argument is rejected" in:
+    "addOrder without a required argument is rejected" in:
       executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems).orThrow
-      assert(
-        executor.execute(_.addOrders(Seq(
+      assert:
+        executor.execute(ControllerStateExecutor.addOrders(Seq(
           FreshOrder(aOrderId, aWorkflow.path),
           FreshOrder(bOrderId, bWorkflow.path)
         ))) ==
-          Left(MissingOrderArgumentProblem(requiredParameter)))
+          Left(MissingOrderArgumentProblem(requiredParameter))
 
-    "addOrder with wrong argument type is rejected" in:
-      assert(
-        executor.execute(_.addOrders(Seq(
+    "addOrder with a wrong argument type is rejected" in:
+      assert:
+        executor.execute(ControllerStateExecutor.addOrders(Seq(
           FreshOrder(bOrderId, bWorkflow.path, Map("required" -> StringValue("STRING")))
-        ))) == Left(WrongValueTypeProblem("required", StringValue, requiredParameter.valueType)))
+        ))) == Left(WrongValueTypeProblem("required", StringValue, requiredParameter.valueType))
 
     "addOrder resolved default argument and provides variables" in:
-      executor.execute(_.addOrders(Seq(
-        FreshOrder(aOrderId, aWorkflow.path),
-        FreshOrder(bOrderId, bWorkflow.path, Map("required" -> NumberValue(7))))))
+      executor.execute:
+        ControllerStateExecutor.addOrders(Seq(
+          FreshOrder(aOrderId, aWorkflow.path),
+          FreshOrder(bOrderId, bWorkflow.path, Map("required" -> NumberValue(7)))))
+      .orThrow
 
       assert(executor.controllerState.idToOrder.values.toSet == Set(
         Order(aOrderId, aWorkflow.id /: Position(0), Order.Fresh(),
@@ -244,13 +251,15 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           attachedState = Some(Order.Attaching(bAgentRef.path)))))
   }
 
-  "applyEventsAndReturnSubsequentEvents" - {
+  "addSubsequentEvents" - {
     var _controllerState = ControllerState.empty
     var updated = ControllerState.empty
 
     def applyEvents(keyedEvents: KeyedEvent[Event]*) =
-      val executor = new Executor(_controllerState)
-      val result = executor.applyEventsAndReturnSubsequentEvents(keyedEvents)
+      val executor = Executor(_controllerState)
+      val result = executor.applyWithSubsequentEvents:
+        EventColl(_controllerState, TimeCtx(ts"2025-04-26T12:00:00Z"))
+          .add(keyedEvents).orThrow.keyedEvents
       updated = executor.controllerState
       result
 
@@ -277,13 +286,16 @@ final class ControllerStateExecutorTest extends OurTestSuite:
     "After VersionedItemRemoved or VersionItemChanged, the unused workflows are deleted" - {
       val a2Workflow = aWorkflow.withVersion(v2)
       val a4Workflow = aWorkflow.withVersion(v4)
-      lazy val executor = new Executor(ControllerState.empty)
+      lazy val executor = Executor()
 
       "v1 VersionItemAdded" in:
-        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
-          VersionAdded(v1),
-          VersionedItemAdded(sign(aWorkflow))))
-        assert(keyedEvents == Right(Nil))
+        val keyedEvents = executor
+          .applyWithSubsequentEvents(
+            Seq(
+              NoKey <-: VersionAdded(v1),
+              NoKey <-: VersionedItemAdded(sign(aWorkflow))))
+          .orThrow
+        assert(keyedEvents.isEmpty)
 
         assert(executor.toSnapshot == Seq(
           SnapshotEventId(0),
@@ -291,7 +303,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           VersionedItemAdded(sign(aWorkflow))))
 
       "v2 VersionItemChanged" in:
-        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+        val keyedEvents = executor.applyWithSubsequentEvents(Seq(
           VersionAdded(v2),
           VersionedItemChanged(sign(a2Workflow))))
         assert(keyedEvents == Right(Seq(
@@ -303,7 +315,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           VersionedItemAdded(sign(a2Workflow))))
 
       "v3 VersionItemRemoved" in:
-        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+        val keyedEvents = executor.applyWithSubsequentEvents(Seq(
           VersionAdded(v3),
           VersionedItemRemoved(aWorkflow.path)))
         assert(keyedEvents == Right(Seq(
@@ -313,9 +325,12 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           SnapshotEventId(0)))
 
       "v4 VersionItemAdded" in:
-        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
-          VersionAdded(v4),
-          VersionedItemAdded(sign(a4Workflow))))
+        val keyedEvents =
+          executor.applyWithSubsequentEvents:
+            Seq(
+              VersionAdded(v4),
+              VersionedItemAdded(sign(a4Workflow)))
+
         assert(keyedEvents == Right(Nil))
 
         assert(executor.toSnapshot == Seq(
@@ -324,7 +339,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           VersionedItemAdded(sign(a4Workflow))))
 
       "v5 VersionItemRemoved" in:
-        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+        val keyedEvents = executor.applyWithSubsequentEvents(Seq(
           VersionAdded(v5),
           VersionedItemRemoved(aWorkflow.path)))
         assert(keyedEvents == Right(Seq(
@@ -335,13 +350,13 @@ final class ControllerStateExecutorTest extends OurTestSuite:
     }
 
     "Workflow is deleted after last OrderDeleted" in:
-      val executor = new Executor(ControllerState.empty)
+      val executor = Executor()
 
       executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           aOrderId <-: OrderAdded(aWorkflow.id),
           bOrderId <-: OrderAdded(bWorkflow.id)
         )) == Right(Seq(
@@ -351,13 +366,13 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           bOrderId <-: OrderAttachable(bAgentRef.path))))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           VersionAdded(v2),
           VersionedItemRemoved(aWorkflow.path)
         )) == Right(Nil))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           NoKey <-: ItemAttached(aJobResource.path, Some(ItemRevision(0)), bAgentRef.path),
           NoKey <-: ItemAttached(aWorkflow.id, None, aAgentRef.path),
           NoKey <-: ItemAttached(bWorkflow.id, None, bAgentRef.path),
@@ -368,13 +383,13 @@ final class ControllerStateExecutorTest extends OurTestSuite:
         )) == Right(Nil))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           aOrderId <-: OrderDetachable,
           bOrderId <-: OrderDetachable
         )) == Right(Nil))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           aOrderId <-: OrderDetached,
           bOrderId <-: OrderDetached
         )) == Right(Seq(
@@ -383,14 +398,14 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           aOrderId <-: OrderFinished())))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           aOrderId <-: OrderDeleted,
           bOrderId <-: OrderDeleted
         )) == Right(Seq(
           NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           NoKey <-: ItemDetached(aWorkflow.id, aAgentRef.path)
         )) == Right(Seq(
           NoKey <-: ItemDeleted(aWorkflow.id))))
@@ -408,7 +423,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           NoKey <-: ItemDetachable(bWorkflow.id, bAgentRef.path))))
 
       assert(
-        executor.applyEventsAndReturnSubsequentEvents(Seq(
+        executor.applyWithSubsequentEvents(Seq(
           NoKey <-: ItemDetached(bWorkflow.id, bAgentRef.path)
         )) == Right(Seq(
           NoKey <-: ItemDeleted(bWorkflow.id))))
@@ -491,6 +506,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
 object ControllerStateExecutorTest:
 
+  private val timeCtx = TimeCtx(ts"2025-04-29T12:00:00Z")
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(WallClock)
 
@@ -540,9 +556,9 @@ object ControllerStateExecutorTest:
       requiredParameter,
       OrderParameter("hasDefault", StringConstant("DEFAULT")),
       // Constants are not stored in Order but re-evaluated with each access
-      OrderParameter.Final("final", expr("'CONSTANT'")),
+      OrderParameter.Final("final", expr"'CONSTANT'"),
       // Other expressions are evaluated once and the results are stored as order arguments
-      OrderParameter.Final("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
+      OrderParameter.Final("variable", expr"JobResource:B-JOB-RESOURCE:VARIABLE")))),
     jobResourcePaths = Seq(aJobResource.path))
 
   private val aOrderId = OrderId("A-ORDER")
@@ -554,30 +570,56 @@ object ControllerStateExecutorTest:
         agentPath, InternalExecutable("UNKNOWN")))
 
 
-  private class Executor(var controllerState: ControllerState)(using IORuntime):
+  private class Executor(var coll: EventColl[ControllerState, Event, TimeCtx])
+    (using IORuntime):
+    def controllerState = coll.aggregate
+
+    def this(controllerState: ControllerState = ControllerState.empty)(using IORuntime) =
+      this(EventColl(controllerState, timeCtx))
 
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[Seq[AnyKeyedEvent]] =
-      VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, controllerState)
-        .flatMap(keyedEvents =>
-          applyEventsAndReturnSubsequentEvents(keyedEvents)
-            .map(keyedEvents ++ _))
+      for
+        coll <- coll.addChecked:
+          VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, controllerState)
+        coll <- ControllerStateExecutor.addSubsequentEvents(coll)
+      yield
+        update(coll)
+        coll.keyedEvents
 
-    def execute(body: ControllerState => Checked[Seq[KeyedEvent[Event]]])
+    def execute[E <: Event, Ctx >: TimeCtx](eventCalc: EventCalc[ControllerState, E, Ctx])
     : Checked[Seq[KeyedEvent[Event]]] =
       for
-        events <- body(controllerState)
-        events <- applyEventsAndReturnSubsequentEvents(events)
-      yield events
+        coll <- coll.add(eventCalc)
+        subsequentColl <- ControllerStateExecutor.directSubsequentEvents(coll)
+        coll <- coll.add(subsequentColl)
+      yield
+        update(coll)
+        subsequentColl.keyedEvents
 
-    def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
-    : Checked[Seq[KeyedEvent[Event]]] =
-      val result =
-        for eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents) yield
-          controllerState = eventsAndState.controllerState
-          eventsAndState.keyedEvents.toVector
-      assert(controllerState.toRecovered == controllerState)
-      result
+    def applyEvents(keyedEvents: KeyedEvent[Event]*): Unit =
+      coll.add(keyedEvents)
+        .map: coll =>
+          update(coll)
+          coll
+        .orThrow
+
+    /** @return subsequent events. */
+    def applyWithSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
+    : Checked[Seq[AnyKeyedEvent]] =
+      for
+        coll <- coll.add(keyedEvents)
+        subsequentEvents <- ControllerStateExecutor.directSubsequentEvents(coll)
+        coll <- coll.add(subsequentEvents)
+      yield
+        update(coll)
+        subsequentEvents.keyedEvents
+
+    private def update(coll: EventColl[ControllerState, Event, TimeCtx]): Unit =
+      assert(coll.originalAggregate == this.coll.aggregate) // fails better then eq
+      assert(coll.originalAggregate eq this.coll.aggregate)
+      assert(coll.aggregate.toRecovered == coll.aggregate)
+      this.coll = coll.forward
 
     def toSnapshot: Seq[Any] =
       controllerState.toSnapshotStream.compile.toVector

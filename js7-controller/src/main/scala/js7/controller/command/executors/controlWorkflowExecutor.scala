@@ -25,6 +25,5 @@ private[command] def controlWorkflowExecutor: CommandEventConverter[ControlWorkf
       Vector(event)
         .concat:
           val instrService = InstructionExecutorService(EventCalc.clock)
-          ControllerStateExecutor(controllerState)(using instrService)
-            .updatedWorkflowControlAttachedEvents(item)
+          ControllerStateExecutor.updatedWorkflowControlAttachedEvents(controllerState, item)
         .map(NoKey <-: _)

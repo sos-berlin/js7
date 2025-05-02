@@ -53,15 +53,12 @@ import js7.data.board.{BoardPath, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerEvent.ControllerShutDown
-import js7.data.controller.ControllerStateExecutor.convertImplicitly
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx, TimestampedKeyedEvent}
-import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx, TimestampedKeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -112,8 +109,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = journal.journalActor
 
-  private implicit val instructionExecutorService: InstructionExecutorService =
-    new InstructionExecutorService(clock)
   private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)
   private val agentDriverConfiguration = AgentDriverConfiguration
     .fromConfig(config, controllerConfiguration.journalConf).orThrow
@@ -331,7 +326,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
         val events = maybeControllerInitialized :+
           controllerReady :++
-          _controllerState.nextOrderWatchOrderEvents
+          ControllerStateExecutor.nextOrderWatchOrderEvents(_controllerState)
 
         persistMultiple(events) { (_, updatedState) =>
           _controllerState = updatedState
@@ -543,11 +538,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               else
                 val agentEventId = stampedAgentEvents.last.eventId
                 timestampedEvents :+= agentPath <-: AgentEventsObserved(agentEventId)
-
-                val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
-                orderQueue.enqueue(
-                  subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId }) // For OrderSourceEvents
-                timestampedEvents ++= subseqEvents
+                val coll = EventColl(_controllerState, TimeCtx(clock.now()))
+                  .add(timestampedEvents)
+                  .flatMap(addSubsequentEvents.calculate)
+                  .orThrow // TODO On error, invalidate Agent only
+                orderQueue.enqueue:
+                  coll.keyedEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId } // For OrderSourceEvents
 
                 journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
@@ -556,8 +552,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                     // (switch from actors to IO required!)
                     Future.successful(None)
                   case _ =>
-                    persistTransactionTimestamped(timestampedEvents,
-                      CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay)):
+                    persistTransactionTimestamped(
+                      coll.timestampedKeyedEvents,
+                      CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
+                    ):
                       (stampedEvents, updatedState) =>
                         handleEvents(stampedEvents, updatedState)
                         Some(agentEventId)
@@ -649,17 +647,18 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         case calendar: Calendar =>
           CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
       })
+      coll <- EventColl(_controllerState, TimeCtx(clock.now())).add(keyedEvents)
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
-    yield keyedEvents)
+    yield coll)
     match
       case Left(problem) =>
         sender() ! Left(problem)
 
-      case Right(keyedEvents) =>
+      case Right(coll) =>
         val sender = this.sender()
-        persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
+        persistTransactionAndSubsequentEvents(coll)(handleEvents)
           .map(_ => Right(Completed))
           .map(_.map { o =>
             if t.elapsed > 1.s then logger.debug("VerifiedUpdateItemsCmd - " +
@@ -828,33 +827,30 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                   case reset: Reset if !force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
                   case _ =>
-                    journal.unsafeCurrentState().resetAgent(agentPath, force = force) match
+                    ControllerStateExecutor.resetAgent(agentPath, force = force)
+                      .calculate(journal.unsafeCurrentState(), TimeCtx(Timestamp.now))
+                    match
                       case Left(problem) => Future.successful(Left(problem))
-                      case Right(events) =>
-                        journal.unsafeCurrentState().applyKeyedEvents(events) match
-                          case Left(problem) => Future.successful(Left(problem))
-                          case Right(_) =>
-                            persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
-                              // ResetAgent command may return with error despite it has reset the orders
-                              agentEntry.isResetting = true
-                              handleEvents(stampedEvents, updatedState)
-                              agentEntry
-                                .agentDriver.reset(force = force)
-                                .onError:
-                                  case t => IO:
-                                    logger.error("ResetAgent: " + t.toStringWithCauses, t)
-                                .materializeIntoChecked
-                                .flatMapT(_ =>
-                                  journal.persist(_
-                                    .keyTo(AgentRefState).checked(agentPath)
-                                    .map(_.couplingState)
-                                    .map {
-                                      case Resetting(_) => (agentPath <-: AgentReset) :: Nil
-                                      case _ => Nil
-                                    }))
-                                .rightAs(ControllerCommand.Response.Accepted)
-                                .unsafeToFuture()
-                            }.flatten
+                      case Right(coll) =>
+                        persistTransactionAndSubsequentEvents(coll) { (stampedEvents, updatedState) =>
+                          // ResetAgent command may return with error despite it has reset the orders
+                          agentEntry.isResetting = true
+                          handleEvents(stampedEvents, updatedState)
+                          agentEntry
+                            .agentDriver.reset(force = force)
+                            .onError: t =>
+                              IO(logger.error("ResetAgent: " + t.toStringWithCauses, t))
+                            .materializeIntoChecked
+                            .flatMapT: _ =>
+                              journal.persist(_
+                                .keyTo(AgentRefState).checked(agentPath)
+                                .map(_.couplingState)
+                                .map:
+                                  case Resetting(_) => (agentPath <-: AgentReset) :: Nil
+                                  case _ => Nil)
+                            .rightAs(ControllerCommand.Response.Accepted)
+                            .unsafeToFuture()
+                        }.flatten
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
         val controllerState = journal.unsafeCurrentState()
@@ -938,19 +934,18 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     cmd: ControllerCommand)
     (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
   : Future[Checked[R]] =
-    executeCommandAndPersistAndHandle2[Event, R](coll =>
-      controllerCommandToEventCalc.commandToEventCalc(cmd).calculate(coll)
+    executeCommandAndPersistAndHandle2[R](
+      controllerCommandToEventCalc.commandToEventCalc(cmd)
     )(handle)
 
-  private def executeCommandAndPersistAndHandle2[E <: Event, R <: ControllerCommand.Response](
-    computeEvents: EventColl[ControllerState, E, TimeCtx] =>
-      Checked[EventColl[ControllerState, E, TimeCtx]])
+  private def executeCommandAndPersistAndHandle2[R <: ControllerCommand.Response](
+    eventCalc: EventCalc[ControllerState, Event, TimeCtx])
     (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
   : Future[Checked[R]] =
-    EventColl.keyedEvents(_controllerState, TimeCtx(clock.now()))(computeEvents) match
+    eventCalc.calculate(_controllerState, TimeCtx(clock.now())) match
       case Left(problem) => Future.successful(Left(problem))
-      case Right(keyedEvents) =>
-        persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
+      case Right(coll) =>
+        persistTransactionAndSubsequentEvents(coll): (stamped, updated) =>
           handle(stamped, updated)
 
   private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry =
@@ -1010,19 +1005,20 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   //      .foreach(tryAttachOrderToAgent)
   //  }
 
-  private def persistTransactionAndSubsequentEvents[A](keyedEvents: Seq[KeyedEvent[Event]])
+  private def persistTransactionAndSubsequentEvents[A](coll: EventColl[ControllerState, Event, TimeCtx])
     (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)
   : Future[A] =
-    persistTransaction(keyedEvents ++ subsequentEvents(keyedEvents))(callback)
+    persistTransaction(addSubsequentEvents.calculate(coll).orThrow.keyedEvents)(callback)
 
-  private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[Event]] =
-    _controllerState
-      .applyEventsAndReturnSubsequentEvents(keyedEvents)
-      .map(_.keyedEvents)
-      .orThrow
+  private def addSubsequentEvents: EventCalc[ControllerState, Event, TimeCtx] =
+    EventCalc: coll =>
+      ControllerStateExecutor.addSubsequentEvents(coll)
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
-    _controllerState.nextOrderEvents(orderIds).keyedEvents
+    ControllerStateExecutor.nextOrderEvents(orderIds)
+      .calculate(_controllerState, TimeCtx(clock.now()))
+      .orThrow
+      .keyedEvents
 
   private def handleEvents(
     stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
@@ -1441,8 +1437,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           })
         .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
         .unsafeToFuture()
-
-  private def orderEventSource = new OrderEventSource(_controllerState)
 
   private def runningAgentDriverCount =
     agentRegister.values.count(o => !o.actorTerminated)
