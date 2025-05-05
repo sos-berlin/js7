@@ -16,8 +16,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, MaybeTimestampedKeyedEvent, SnapshotableState, Stamped}
+import js7.journal.Journal.Persisted
 import js7.journal.JournalActor.*
-import js7.journal.Journaler.Persisted
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
 import org.apache.pekko.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, SupervisorStrategy}
@@ -27,14 +27,14 @@ import scala.language.unsafeNulls
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]: Tag] private(journaler: Journaler[S])
+final class JournalActor[S <: SnapshotableState[S]: Tag] private(journal: FileJournal[S])
   (using ioRuntime: IORuntime)
 extends Actor, Stash:
 
   import context.stop
 
   override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
-  protected val conf: JournalConf = journaler.conf
+  protected val conf: JournalConf = journal.conf
 
   for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
@@ -42,7 +42,7 @@ extends Actor, Stash:
   def receive: Receive = receiveGet orElse:
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
       val sender = this.sender()
-      if journaler.isStopping then
+      if journal.isStopping then
         for o <- timestamped do logger.debug:
           s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
         // We ignore the event and do not notify the caller,
@@ -51,11 +51,11 @@ extends Actor, Stash:
         reply(sender, replyTo,
           Output.Stored(
             Left(ClusterNodeHasBeenSwitchedOverProblem/*???*/),
-            journaler.unsafeUncommittedAggregate(),
+            journal.unsafeUncommittedAggregate(),
             callersItem))
       else
-        journaler.enqueue:
-          Journaler.Persist(
+        journal.enqueue:
+          Journal.Persist(
             EventCalc.pure(timestamped),
             options.copy(commitLater = commitLater),
             since)
@@ -64,7 +64,7 @@ extends Actor, Stash:
         .awaitInfinite match
           case Left(problem) =>
             reply(sender, replyTo,
-              Output.Stored(Left(problem), journaler.unsafeUncommittedAggregate(), callersItem))
+              Output.Stored(Left(problem), journal.unsafeUncommittedAggregate(), callersItem))
           case Right((written, whenCommitted)) =>
             if commitLater then
               reply(sender, replyTo, Output.Accepted(callersItem))
@@ -86,7 +86,7 @@ extends Actor, Stash:
     case Input.TakeSnapshot =>
       val sender = this.sender()
       runAsync:
-        journaler.takeSnapshot *> IO:
+        journal.takeSnapshot *> IO:
           sender ! Output.SnapshotTaken
 
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
@@ -95,18 +95,18 @@ extends Actor, Stash:
   private def receiveGet: Receive =
     case Input.GetJournalActorState =>
       sender() ! Output.JournalActorState(
-        isRequiringClusterAcknowledgement = journaler.isRequiringClusterAcknowledgement.unsafeRunSyncX())
+        isRequiringClusterAcknowledgement = journal.isRequiringClusterAcknowledgement.unsafeRunSyncX())
 
     case Input.GetJournaledState =>
       // Allow the caller outside of this JournalActor to read committedState
       // asynchronously at any time.
       // Returned function accesses committedState directly and asynchronously !!!
-      sender() ! (() => journaler.unsafeAggregate())
+      sender() ! (() => journal.unsafeAggregate())
 
     case Input.GetIsHaltedFunction =>
       // Allow the caller outside of this JournalActor to read isHalted
       // asynchronously at any time.
-      sender() ! (() => journaler.isHalted)
+      sender() ! (() => journal.isHalted)
 
   private def runAsync(body: IO[Unit])(using file: sourcecode.FileName, line: sourcecode.Line): Unit =
     body.onError: throwable =>
@@ -127,7 +127,7 @@ extends Actor, Stash:
 object JournalActor:
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]: Tag](journaler: Journaler[S])
+  def resource[S <: SnapshotableState[S]: Tag](journal: FileJournal[S])
     (using
       ioRuntime: IORuntime,
       actorRefFactory: ActorRefFactory)
@@ -136,7 +136,7 @@ object JournalActor:
       acquire = IO:
         actorRefFactory
           .actorOf(
-            Props(new JournalActor[S](journaler)),
+            Props(new JournalActor[S](journal)),
             "Journal")
           .taggedWith[JournalActor.type])(
       release = journalActor =>

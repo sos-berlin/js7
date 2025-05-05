@@ -13,34 +13,39 @@ import js7.base.catsutils.Environment
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
-import js7.base.monixutils.AsyncVariable
+import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{MultipleLinesBracket, Tests}
 import js7.data.cluster.ClusterState
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
-import js7.journal.Journaler.*
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState, TimeCtx}
+import js7.journal.FileJournal.*
+import js7.journal.Journal.{Persist, Persisted}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.recover.Recovered
-import js7.journal.watch.JournalingObserver
+import js7.journal.watch.{JournalEventWatch, JournalingObserver}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.language.unsafeNulls
 import scala.util.control.NonFatal
 
-/** Writes events to journal file and awaits acknowledgment from passive cluster node.
-  *
+/** Writes events in an anytime recoverable way to a journal.
+  * <ul>
+  *   <li>
+  *     Awaits acknowledgment from a passive cluster node
+  * </ul>
   */
-final class Journaler[S <: SnapshotableState[S]: Tag] private(
+final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   recovered: Recovered[S],
   val conf: JournalConf,
-  protected val journalerQueue: Queue[IO, Option[QueueEntry[S]]],
+  protected val journalQueue: Queue[IO, Option[QueueEntry[S]]],
   protected val requireClusterAck: SignallingRef[IO, Boolean],
   protected val ackSignal: SignallingRef[IO, EventId],
   protected val clock: WallClock,
@@ -51,12 +56,16 @@ final class Journaler[S <: SnapshotableState[S]: Tag] private(
 extends
   Service.StoppableByRequest,
   Committer[S],
-  Snapshotter[S]:
+  Snapshotter[S],
+  Journal[S],
+  FileJournal.PossibleFailover:
 
   assert(recovered.journalLocation.S eq S)
 
   private val totalRunningSince = recovered.totalRunningSince
   val journalLocation: JournalLocation = recovered.journalLocation
+  val eventWatch: JournalEventWatch = recovered.eventWatch
+
   protected val journalingObserver: JournalingObserver = recovered.eventWatch
 
   protected var lastJournalHeader: JournalHeader =
@@ -132,20 +141,7 @@ extends
         _suppressSnapshotWhenStopping = true
         whenKilling.complete(()) *> stop
 
-  def persist[E <: Event](keyedEvents: KeyedEvent[E]*): IO[Checked[Persisted[S, E]]] =
-    persist_(Persist(EventCalc.pure(keyedEvents)))
-
-  def persist[E <: Event](
-    eventCalc: EventCalc[S, E, TimeCtx],
-    commitOptions: CommitOptions = CommitOptions.default,
-    since: Deadline = Deadline.now)
-  : IO[Checked[Persisted[S, E]]] =
-    persist(Persist(eventCalc, commitOptions, since))
-
-  inline def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
-    persist_(persist)
-
-  private def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
+  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     enqueue(persist)
       .flatMap: (_, whenPersisted) =>
         whenPersisted.get
@@ -166,7 +162,7 @@ extends
         persist.options, persist.since,
         whenApplied, whenPersisted)
       requireNotStopping *>
-        journalerQueue.offer(Some(queueEntry))
+        journalQueue.offer(Some(queueEntry))
           .as:
             (whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
               whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
@@ -241,11 +237,20 @@ extends
       case o =>
         o.releaseEvents(untilEventId)
 
-  def unsafeUncommittedAggregate(): S =
-    state.get.uncommitted
+  def aggregate: IO[S] =
+    state.value.map(_.committed)
+
+  def journalState: IO[JournalState] =
+    aggregate.map(_.journalState)
+
+  def clusterState: IO[ClusterState] =
+    aggregate.map(_.clusterState)
 
   def unsafeAggregate(): S =
     state.get.committed
+
+  def unsafeUncommittedAggregate(): S =
+    state.get.uncommitted
 
   private[journal] def isRequiringClusterAcknowledgement: IO[Boolean] =
     requireClusterAck.get
@@ -288,20 +293,20 @@ extends
         throw t
       throw new AssertionError(msg)
 
-  override def toString = s"Journaler[${journalLocation.S}]" //(${journalLocation.fileBase})"
+  override def toString = s"FileJournal[${journalLocation.S}]" //(${journalLocation.fileBase})"
 
 
-object Journaler:
+object FileJournal:
 
   private val logger = Logger[this.type]
-  private val meterPersist = CallMeter("Journaler")
+  private val meterPersist = CallMeter("FileJournal")
 
   def resource[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
     recovered: Recovered[S],
     conf: JournalConf,
     eventIdGenerator: Option[EventIdGenerator] = None)
     (using IORuntime)
-  : ResourceIO[Journaler[S]] =
+  : ResourceIO[FileJournal[S]] =
     Service.resource:
       for
         queue <- Queue.unbounded[IO, Option[QueueEntry[S]]]
@@ -313,7 +318,7 @@ object Journaler:
           case None => Environment.environmentOr[EventIdGenerator](EventIdGenerator(clock))
           case Some(o) => IO.pure(o)
       yield
-        new Journaler(recovered, conf,
+        new FileJournal(recovered, conf,
           queue, requireClusterAck, ackSignal, clock, eventIdGenerator)
 
 
@@ -327,23 +332,24 @@ object Journaler:
       State(aggregate, aggregate, totalEventCount)
 
 
-  final case class Persist[S <: EventDrivenState[S, E], E <: Event](
-    eventCalc: EventCalc[S, E, TimeCtx],
-    options: CommitOptions = CommitOptions.default,
-    since: Deadline = Deadline.now)
-
-
-  final case class Persisted[S <: EventDrivenState[S, E], E <: Event](
-    stampedKeyedEvents: IndexedSeq[Stamped[KeyedEvent[E]]],
-    aggregate: S)
-
-
   private[journal] final case class QueueEntry[S <: EventDrivenState[S, Event]](
     eventCalc: EventCalc[S, Event, TimeCtx],
     commitOptions: CommitOptions = CommitOptions.default,
     since: Deadline,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
+
+
+  sealed transparent trait PossibleFailover:
+    private val tryingPassiveLostSwitch = Switch(false)
+
+    // Not nestable !!! (or use a readers-writer lock)
+    final def forPossibleFailoverByOtherNode[A](io: IO[A]): IO[A] =
+      tryingPassiveLostSwitch.switchOnAround(io)
+
+    final val whenNoFailoverByOtherNode: IO[Unit] =
+      tryingPassiveLostSwitch.whenOff
+        .logWhenItTakesLonger
 
 
   private[journal] class Statistics:

@@ -121,7 +121,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
     SupervisorStrategies.escalate
 
   protected val journalActor: ActorRef @@ JournalActor.type =
-    journal.journalActor.taggedWith[JournalActor.type]
+    workingClusterNode.journalActor.taggedWith[JournalActor.type]
+
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
@@ -149,10 +150,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
         shutDownCommand = Some(cmd)
         fileWatchManager.stop.unsafeRunAndForget()
         if cmd.isFailover then
-          (journal.journaler.kill *> IO(context.stop(self)))
+          (journal.kill *> IO(context.stop(self)))
             .unsafeRunAndForget()
         if cmd.suppressSnapshot then
-          journal.journaler.suppressSnapshotWhenStopping()
+          journal.suppressSnapshotWhenStopping()
         if cmd.isFailOrSwitchover then
           //workingClusterNode.journalAllocated.release.unsafeRunAndForget()
           context.stop(self)
@@ -210,7 +211,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
       journal, conf.directorConf, context.system)
 
-  journal.journaler.untilStopped.productR(IO(self ! Internal.JournalerStopped)).unsafeRunAndForget()
+  journal.untilStopped.productR(IO(self ! Internal.JournalStopped)).unsafeRunAndForget()
   self ! Internal.Recover(recoveredAgentState)
   // Do not use recovered_ after here to allow release of the big object
 
@@ -237,9 +238,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
       become("Recovering")(recovering(recoveredAgentState))
       unstashAll()
 
-      journal.state
-        .flatMap(state =>
-          subagentKeeper.recoverSubagents(state.idToSubagentItemState.values.toVector))
+      journal.aggregate
+        .flatMap: agentState =>
+          subagentKeeper.recoverSubagents(agentState.idToSubagentItemState.values.toVector)
         .flatMapT(_ =>
           subagentKeeper.recoverSubagentBundles(
             recoveredAgentState.pathToUnsignedSimple(SubagentBundle).values.toVector))
@@ -467,9 +468,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
       switchOver(cmd)
 
     case AgentCommand.TakeSnapshot =>
-      (journalActor ? JournalActor.Input.TakeSnapshot)
-        .mapTo[JournalActor.Output.SnapshotTaken.type]
-        .map(_ => Right(AgentCommand.Response.Accepted))
+      journal.takeSnapshot
+        .as(Right(AgentCommand.Response.Accepted))
+        .unsafeToFuture()
 
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
 
@@ -602,7 +603,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         IO.right(())
 
       case subagentItem: SubagentItem =>
-        journal.state.flatMap(_
+        journal.aggregate.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
           .fold(IO.pure(Checked.unit))(subagentItemState => subagentKeeper
             .proceedWithSubagent(subagentItemState)
@@ -947,7 +948,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         orderRegister.onActorTerminated(actorRef)  // Delete the OrderEntry
         shutdown.continue()
 
-      case Internal.JournalerStopped if shuttingDown =>
+      case Internal.JournalStopped if shuttingDown =>
         context.stop(self)
 
       case Internal.ContinueSwitchover =>
@@ -1005,7 +1006,7 @@ object AgentOrderKeeper:
     case object StillTerminating extends DeadLetterSuppression
     case object ContinueSwitchover
     case object AgentShutdown
-    case object JournalerStopped
+    case object JournalStopped
 
   private final class JobEntry(
     val jobKey: JobKey,

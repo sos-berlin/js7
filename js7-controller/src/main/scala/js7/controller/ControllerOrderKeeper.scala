@@ -9,6 +9,7 @@ import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
+import com.softwaremill.tagging.@@
 import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
@@ -76,10 +77,9 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.state.FileJournal
-import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
+import js7.journal.{CommitOptions, MainJournalingActor}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy}
-import org.apache.pekko.pattern.{ask, pipe}
+import org.apache.pekko.pattern.pipe
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -91,7 +91,6 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
-  journal: FileJournal[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   clock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
@@ -107,7 +106,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
   protected def journalConf = controllerConfiguration.journalConf
-  protected def journalActor = journal.journalActor
+  protected val journalActor = clusterNode.journalActor
+  private val journal = clusterNode.journal
 
   private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)
   private val agentDriverConfiguration = AgentDriverConfiguration
@@ -166,13 +166,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         since := scheduler.now()
         this.shutDown := shutDown
         if shutDown.suppressSnapshot || shutDown.isFailover then
-          journal.journaler.suppressSnapshotWhenStopping()
+          journal.suppressSnapshotWhenStopping()
         stillShuttingDownCancelable := scheduler
           .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations/*?*/):
           self ! Internal.StillShuttingDown
         //BESSER ???  if shutDown.isFailover then
         if shutDown.isFailOrSwitchover then
-          (journal.journaler.kill *> IO(context.stop(self)))
+          (journal.kill *> IO(context.stop(self)))
             .unsafeRunAndForget()
         else
           continue()
@@ -253,7 +253,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def close(): Unit = stillSwitchingOverSchedule.cancel()
 
-  journal.journaler.untilStopped.productR(IO(self ! Internal.JournalerStopped)).unsafeRunAndForget()
+  journal.untilStopped.productR(IO(self ! Internal.JournalStopped)).unsafeRunAndForget()
 
   override def postStop(): Unit =
     try
@@ -684,7 +684,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     handleExceptionalMessage orElse super.journaling
 
   private def handleExceptionalMessage: Receive =
-    case Internal.JournalerStopped =>
+    case Internal.JournalStopped =>
       journalTerminated = true
       if !shuttingDown && switchover.isEmpty then logger.error("JournalActor terminated")
       if switchover.isDefined && runningAgentDriverCount > 0 then
@@ -787,9 +787,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case ControllerCommand.TakeSnapshot =>
         import controllerConfiguration.implicitPekkoAskTimeout  // We need several seconds or even minutes
         intelliJuseImport(implicitPekkoAskTimeout)
-        (journalActor ? JournalActor.Input.TakeSnapshot)
-          .mapTo[JournalActor.Output.SnapshotTaken.type]
-          .map(_ => Right(ControllerCommand.Response.Accepted))
+        journal.takeSnapshot
+          .as(Right(ControllerCommand.Response.Accepted))
+          .unsafeToFuture()
 
       case ControllerCommand.ClusterSwitchOver(None) =>
         clusterSwitchOver(restart = true)
@@ -1470,7 +1470,7 @@ private[controller] object ControllerOrderKeeper:
     case object StillShuttingDown extends DeadLetterSuppression
     final case class ShutDown(shutdown: ControllerCommand.ShutDown)
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
-    case object JournalerStopped
+    case object JournalStopped
 
     final case class EventsFromAgent(
       agentPath: AgentPath,

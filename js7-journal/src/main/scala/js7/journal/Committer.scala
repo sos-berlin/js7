@@ -23,7 +23,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLonger}
 import js7.base.utils.MultipleLinesBracket.{Round, Square}
-import js7.base.utils.ScalaUtils.syntax.{RichThrowable, *}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -33,7 +33,8 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Committer.*
-import js7.journal.Journaler.*
+import js7.journal.FileJournal.*
+import js7.journal.Journal.Persisted
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.write.EventJournalWriter
@@ -41,7 +42,7 @@ import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
 transparent trait Committer[S <: SnapshotableState[S]]:
-  journaler: Journaler[S] =>
+  journal: FileJournal[S] =>
 
   private val snapshotLock = AsyncLock()
   private val currentService = AsyncVariable(none[CommitterService])
@@ -231,14 +232,14 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def start =
       startService:
         IO.uncancelable: _ =>
-          (untilStopRequested *> journalerQueue.offer(None)).background.surround:
+          (untilStopRequested *> journalQueue.offer(None)).background.surround:
             runStream
 
     override def stop =
       super.stop
 
     private def runStream: IO[Unit] =
-      fs2.Stream.fromQueueNoneTerminated(journalerQueue, conf.persistLimit)
+      fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
         .through(pipe)
         .interruptWhenF(whenKilling.get)
         .compile.drain
@@ -251,7 +252,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           state.updateCheckedWithResult: state =>
             IO:
               (!_isSwitchedOver !! (ClusterNodeHasBeenSwitchedOverProblem: Problem)) >>
-                //?journaler.checkNotStopping >>
+                //?journal.checkNotStopping >>
                 applyEvents(state, queueEntry).map: (aggregate, applied) =>
                   state.copy(
                     uncommitted = aggregate,
@@ -353,12 +354,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       IO.blocking:
         // TODO parallelize JSON serialization properly!
         chunk.map: applied =>
-          import applied.{aggregate, commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
+          import applied.{commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
           val positionAndEventId =
             eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
           val lastStamped = stampedKeyedEvents.lastOption
           Written(
-            eventId = lastStamped.fold(aggregate.eventId)(_.eventId),
+            eventId = lastStamped.fold(applied.aggregate.eventId)(_.eventId),
             eventCount = stampedKeyedEvents.size,
             lastStamped,
             if applied.commitOptions.commitLater then
@@ -366,7 +367,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               Vector.empty
             else
               stampedKeyedEvents,
-            aggregate, since, eventNumber, commitOptions, whenPersisted,
+            applied.aggregate, since, eventNumber, commitOptions, whenPersisted,
             positionAndEventId)
       .flatMap: chunk =>
         IO.blocking:
@@ -511,4 +512,4 @@ end Committer
 
 object Committer:
   private val logger = Logger[this.type]
-  private val meterEstimatedSnapshotSize = CallMeter("Journaler.estimatedSnapshotSize")
+  private val meterEstimatedSnapshotSize = CallMeter("FileJournal.estimatedSnapshotSize")

@@ -38,7 +38,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetS
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
-import js7.journal.state.Journal
+import js7.journal.Journal
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
@@ -225,7 +225,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def orderToSubagentBundleId(order: Order[Order.IsFreshOrReady])
   : IO[Checked[DeterminedSubagentBundle]] =
-    for agentState <- journal.state yield
+    for agentState <- journal.aggregate yield
       for
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toOrderScope(order)
@@ -366,7 +366,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .map(_.combineAll)
 
   private def continueDetaching: IO[Unit] =
-    journal.state.flatMap(_
+    journal.aggregate.flatMap(_
       .idToSubagentItemState.values
       .view
       .collect:

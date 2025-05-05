@@ -36,7 +36,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, Order
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.value.{NamedValues, StringValue}
-import js7.journal.state.Journal
+import js7.journal.Journal
 import scala.collection.View
 
 /** Persists, recovers and runs FileWatches. */
@@ -55,7 +55,7 @@ final class FileWatchManager(
       .map(_.unorderedFold)
 
   def start: IO[Checked[Unit]] =
-    journal.state
+    journal.aggregate
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_
         .toVector
@@ -182,7 +182,7 @@ final class FileWatchManager(
     directory: Path,
     dirEventSeqs: Chunk[DirectoryEvent])
   : IO[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
-    journal.state.flatMap: agentState =>
+    journal.aggregate.flatMap: agentState =>
       if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
         IO.right(Nil -> agentState)
       else

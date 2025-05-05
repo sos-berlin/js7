@@ -21,7 +21,7 @@ import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.state.Journal
+import js7.journal.Journal
 
 trait SubagentDriver:
 
@@ -88,7 +88,7 @@ trait SubagentDriver:
 
   protected final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
   : IO[Checked[Map[String, Expression]]] =
-    journal.state.map(_
+    journal.aggregate.map(_
       .idToWorkflow
       .checked(order.workflowId)
       .map(_.instruction(order.position))
@@ -107,7 +107,7 @@ trait SubagentDriver:
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : IO[Checked[Seq[Signed[SignableItem]]]] =
-    for s <- journal.state yield
+    for s <- journal.aggregate yield
       for
         signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)
         workflow = signedWorkflow.value

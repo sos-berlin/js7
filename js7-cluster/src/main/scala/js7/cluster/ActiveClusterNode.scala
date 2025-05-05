@@ -14,8 +14,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
-import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.problem.Checked.*
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -39,7 +39,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
-import js7.journal.state.FileJournal
+import js7.journal.FileJournal
 import scala.concurrent.duration.*
 import scala.util.{Failure, Right, Success, Try}
 
@@ -76,7 +76,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
       currentClusterState
         .<*(clusterStateLock.lock:
-          journal.journaler.onPassiveLost *>
+          journal.onPassiveLost *>
             journal.persist: state =>
               state.clusterState match
                 case clusterState: Coupled =>
@@ -159,9 +159,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       common.requireValidLicense.flatMapT: _ =>
         clusterStateLock.lock:
           suspendHeartbeat(forEvent = true):
-            journal.state.map(_.clusterState).flatMap:
+            journal.aggregate.map(_.clusterState).flatMap:
               case clusterState: Coupled if passiveUri != clusterState.setting.passiveUri =>
-                journal.journaler.onPassiveLost *>
+                journal.onPassiveLost *>
                   persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true /*Since v2.7*/):
                     case clusterState: Coupled =>
                       Right:
@@ -276,7 +276,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId):
           clusterStateLock.lock(command.toShortString):
-            journal.journaler.onPassiveLost *>
+            journal.onPassiveLost *>
               persist():
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // ClusterPassiveLost leads to recoupling
@@ -291,7 +291,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         requireOwnNodeId(command, activeId)(IO.defer:
          logger.info(s"The passive $passiveId is shutting down")
           // DEADLOCK when shutdownThisNode wait for ack: clusterStateLock.lock(command.toShortString):
-          journal.journaler.onPassiveLost *>
+          journal.onPassiveLost *>
             persist():
               case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                 Right(Some(ClusterPassiveLost(passiveId)))
@@ -317,7 +317,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   private def checkCouplingToken(command: ClusterCommand.ClusterCouplingCommand)
   : IO[Checked[Unit]] =
     logger.debugIO:
-      journal.state.map(_.clusterState)
+      journal.aggregate.map(_.clusterState)
         .map:
           case o @ ClusterState.Empty => Left(ClusterCommandInapplicableProblem(command, o): Problem)
           case HasNodes(setting) => Right(setting.passiveUri)
@@ -395,7 +395,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): IO[Unit] =
     journal.eventWatch.started
-      .*>(journal.state)
+      .*>(journal.aggregate)
       .flatMap(state => common
         .tryEndlesslyToSendCommand(
           Admission(clusterState.passiveUri, passiveNodeUserAndPassword),
@@ -472,7 +472,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true):
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
-                    journal.journaler.onPassiveLost *>
+                    journal.onPassiveLost *>
                       persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
@@ -480,7 +480,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                       .rightAs(true)
                   .onProblemRecoverWith:
                     case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
-                      journal.journaler.kill  // avoid taking a snapshot
+                      journal.kill  // avoid taking a snapshot
                         .as(Left(problem))
                 .map(_.flatMap: allowed =>
                   if !allowed then
@@ -563,7 +563,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
               case Right(eventId) =>
                 Stream.exec:
-                  journal.journaler.onPassiveNodeHasAcknowledged(eventId = eventId)
+                  journal.onPassiveNodeHasAcknowledged(eventId = eventId)
         .head.compile.last // The first problem, if any
         .map(_.toLeft(Completed))
       .map(_.flatten)

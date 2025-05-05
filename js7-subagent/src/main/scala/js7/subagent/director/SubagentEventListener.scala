@@ -34,8 +34,7 @@ import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
-import js7.journal.CommitOptions
-import js7.journal.state.Journal
+import js7.journal.{CommitOptions, Journal}
 import scala.concurrent.duration.Deadline
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
@@ -199,7 +198,7 @@ private trait SubagentEventListener:
 
       protected def getStream(api: HttpSubagentApi, after: EventId) =
         logger.debugIO("getStream", s"after=$after"):
-          journal.state
+          journal.aggregate
             .map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
             .flatMapT:
               case None => IO.left(Problem.pure("Subagent not yet dedicated"))

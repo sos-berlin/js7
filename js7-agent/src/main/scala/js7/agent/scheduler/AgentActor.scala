@@ -62,7 +62,7 @@ extends Actor, Stash, SimpleStateActor:
 
   import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}
-  val journal = workingClusterNode.journal
+  private val journal = workingClusterNode.journal
   import journal.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -75,7 +75,7 @@ extends Actor, Stash, SimpleStateActor:
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart(): Unit =
-    journal.journaler.untilStopped.productR(IO(self ! JournalerStopped)).unsafeRunAndForget()
+    journal.untilStopped.productR(IO(self ! JournalStopped)).unsafeRunAndForget()
     super.preStart()
 
   override def postStop(): Unit =
@@ -110,7 +110,7 @@ extends Actor, Stash, SimpleStateActor:
       logger.debug("AgentOrderKeeper terminated")
       context.stop(self)
 
-    case JournalerStopped /*&& terminating*/ =>
+    case JournalStopped /*&& terminating*/ =>
       if !terminating then
         // SwitchOver lets AgentOrderKeeper kill the JournalActor
         logger.error("JournalActor terminated unexpectedly")
@@ -347,7 +347,7 @@ extends Actor, Stash, SimpleStateActor:
 
   /** Emits the event, and ClusterSettingUpdated if needed, in separate transaction. */
   private def changeSubagentAndClusterNode(event: ItemAttachedToMe): IO[Checked[Unit]] =
-    logger.debugIO(journal.state
+    logger.debugIO(journal.aggregate
       .flatMap(agentState =>
         if !agentState.isDedicated then
           journal.persistKeyedEvent(event).rightAs(())
@@ -408,4 +408,4 @@ object AgentActor:
 
   private case object AgentDirectorIsShuttingDownProblem extends Problem.ArgumentlessCoded
 
-  private case object JournalerStopped
+  private case object JournalStopped

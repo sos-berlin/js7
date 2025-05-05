@@ -134,7 +134,7 @@ extends Service.StoppableByRequest:
           .attempt)
       .dematerialize
       .flatMap(workingNode =>
-        currentStateRef.set(workingNode.journal.state.map(Right(_)))))
+        currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))))
 
   private def untilRecovered: IO[Recovered[S]] =
     logger.debugIO(prepared

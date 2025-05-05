@@ -1,11 +1,15 @@
 package js7.subagent
 
+import cats.effect.IO
 import cats.syntax.traverse.*
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import js7.core.command.CommandMeta
 import js7.data.event.KeyedEvent.NoKey
@@ -13,10 +17,6 @@ import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.subagent.SubagentCommandExecutor.*
-import cats.effect.IO
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.duration.Deadline.now
 
 private[subagent] final class SubagentCommandExecutor(
@@ -49,7 +49,7 @@ private[subagent] final class SubagentCommandExecutor(
 
           case AttachSignedItem(signed) =>
             // Duplicate with Agent
-            journal.state.flatMap: state =>
+            journal.aggregate.flatMap: state =>
               if state.keyToItem.get(signed.value.key).contains(signed.value) then
                 IO.right(SubagentCommand.Accepted)
               else

@@ -28,11 +28,10 @@ import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTyped
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileJournalTest.*
+import js7.journal.state.FileJournalLegacyTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdGenerator, JournalActor}
-import org.apache.pekko.pattern.ask
+import js7.journal.{EventIdGenerator, FileJournal}
 import org.apache.pekko.util.Timeout
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,12 +39,12 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
+final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
 
-  protected lazy val directory = createTempDirectory("FileJournalTest-")
+  protected lazy val directory = createTempDirectory("FileJournalLegacyTest-")
   private lazy val journalLocation = testJournalMeta(fileBase = directory)
 
   override def afterAll() =
@@ -76,10 +75,10 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
-          "FileJournalTest.TestState: Duplicate NumberThing: ONE")))
+          "FileJournalLegacyTest.TestState: Duplicate NumberThing: ONE")))
       assert:
         journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() ==
-          Left(Problem("scala.MatchError: NumberUnhandled (of class js7.journal.state.FileJournalTest$NumberUnhandled$)"))
+          Left(Problem("scala.MatchError: NumberUnhandled (of class js7.journal.state.FileJournalLegacyTest$NumberUnhandled$)"))
 
     "persistEvent" in:
       assert(journal
@@ -102,7 +101,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
 
     "currentState" in:
-      assert(journal.unsafeCurrentState() ==
+      assert(journal.unsafeAggregate() ==
         TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
 
     "Stop" in:
@@ -117,7 +116,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       journal
 
     "currentState" in:
-      assert(journal.unsafeCurrentState() ==
+      assert(journal.unsafeAggregate() ==
         TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
 
     "Stop" in:
@@ -140,20 +139,19 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       implicit val timeout: Timeout = Timeout(99.s)
       journalAllocated = FileJournal
         .resource(recovered, JournalConf.fromConfig(TestConfig),
-          EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/))
+          Some(EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/)))
         .toAllocated
         .await(99.s)
       journal
 
     def stop() =
-      (journal.journalActor ? JournalActor.Input.TakeSnapshot)(99.s).await(99.s)
       if journal != null then
         journalAllocated.release.await(99.s)
       journalAllocated.release.await(99.s)
       close()
 
 
-private object FileJournalTest:
+private object FileJournalLegacyTest:
 
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""

@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.Journaler.*
+import js7.journal.FileJournal.*
 import js7.journal.Snapshotter.*
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
@@ -16,7 +16,7 @@ import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
 transparent trait Snapshotter[S <: SnapshotableState[S]]:
-  this: Journaler[S] =>
+  this: FileJournal[S] =>
 
   private var _lastSnapshotTakenEventId = EventId.BeforeFirst
 

@@ -25,8 +25,7 @@ import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDo
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
-import js7.journal.CommitOptions
-import js7.journal.state.Journal
+import js7.journal.{CommitOptions, Journal}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.priority.ServerMeteringLiveScope
 import js7.subagent.{LocalSubagentApi, Subagent}
@@ -88,7 +87,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   // TODO Similar to SubagentEventListener
   private def observe: IO[Unit] =
     logger.debugIO:
-      journal.state
+      journal.aggregate
         .map(_.idToSubagentItemState(subagentId).eventId)
         .flatMap(observeAfter)
 
@@ -272,21 +271,19 @@ extends SubagentDriver, Service.StoppableByRequest:
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
     logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
-      journal.lock(subagentId):
-        journal.persist(_
-          .idToSubagentItemState.checked(subagentId)
-          .map: subagentItemState =>
-            val problem = maybeProblem
-              .orElse(subagentItemState.problem)
-              .getOrElse(Problem.pure("decoupled"))
-            (!subagentItemState.problem.contains(problem)).thenList:
-              subagentId <-: SubagentCouplingFailed(problem))
+      journal.persist(_
+        .idToSubagentItemState.checked(subagentId)
+        .map: subagentItemState =>
+          val problem = maybeProblem
+            .orElse(subagentItemState.problem)
+            .getOrElse(Problem.pure("decoupled"))
+          (!subagentItemState.problem.contains(problem)).thenList:
+            subagentId <-: SubagentCouplingFailed(problem))
       .map(_.orThrow)
       .void
-      .onError:
-        case t => IO:
-          // Error isn't logged until stopEventListener is called
-          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
+      .onError: t =>
+        // Error isn't logged until stopEventListener is called
+        IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
     enqueueCommandAndForget:

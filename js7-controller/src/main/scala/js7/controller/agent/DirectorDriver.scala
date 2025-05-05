@@ -1,8 +1,8 @@
 package js7.controller.agent
 
 import cats.effect.{Deferred, IO, ResourceIO}
-import cats.syntax.option.*
 import cats.syntax.applicativeError.*
+import cats.syntax.option.*
 import fs2.Stream
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
@@ -37,7 +37,7 @@ import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
-import js7.journal.state.Journal
+import js7.journal.Journal
 import scala.util.chaining.scalaUtilChainingOps
 
 private[agent] final class DirectorDriver private(
@@ -85,7 +85,7 @@ extends Service.StoppableByRequest:
     private var attachedOrderIds: Set[OrderId] | Null = null
 
     override protected def couple(eventId: EventId) =
-      journal.state
+      journal.aggregate
         .map(_.keyTo(AgentRefState).checked(agentPath))
         .flatMapT: agentRefState =>
           (agentRefState.couplingState, agentRefState.agentRunId) match
@@ -112,17 +112,16 @@ extends Service.StoppableByRequest:
               logger.trace:
                 s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}"
               attachedOrderIds = orderIds
-              journal.lock(agentPath):
-                journal.persist: controllerState =>
-                  controllerState.keyTo(AgentRefState).checked(agentPath).map: a =>
-                    Seq(
-                      (a.couplingState != Coupled || a.problem.nonEmpty) ?
-                        (agentPath <-: AgentCoupled),
-                      // The coupled Agent may not yet have an AgentRef (containing the
-                      // processLimit). So we need to check this:
-                      !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
-                        (NoKey <-: ItemAttachable(agentPath, agentPath))
-                    ).flatten
+              journal.persist: controllerState =>
+                controllerState.keyTo(AgentRefState).checked(agentPath).map: a =>
+                  Seq(
+                    (a.couplingState != Coupled || a.problem.nonEmpty) ?
+                      (agentPath <-: AgentCoupled),
+                    // The coupled Agent may not yet have an AgentRef (containing the
+                    // processLimit). So we need to check this:
+                    !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
+                      (NoKey <-: ItemAttachable(agentPath, agentPath))
+                  ).flatten
               .flatTapT: (stamped, state) =>
                 IO
                   .whenA(stamped.exists(_.value.event.isInstanceOf[ItemAttachable])):

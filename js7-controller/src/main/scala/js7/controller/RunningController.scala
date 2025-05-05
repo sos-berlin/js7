@@ -58,7 +58,6 @@ import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.node.NodeNameToPassword
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
-import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
@@ -270,7 +269,6 @@ object RunningController:
             clusterNode.untilActivated
               .map(_.flatMap { workingClusterNode =>
                 startControllerOrderKeeper(
-                  workingClusterNode.journal,
                   clusterNode.workingClusterNode.orThrow,
                   alarmClock,
                   conf, testEventBus)
@@ -369,7 +367,7 @@ object RunningController:
         // Stop Journal before before web server to allow receiving acknowledges
         // TODO Start web server before Journal?
         _ <- Resource.onFinalize(clusterNode.workingClusterNode.fold(_ => IO.unit,
-          _.journal.journaler.stop))
+          _.journal.stop))
         runningController <- runningControllerResource(webServer, sessionRegister)
       yield
         runningController
@@ -394,7 +392,6 @@ object RunningController:
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    journal: FileJournal[ControllerState],
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
@@ -405,7 +402,7 @@ object RunningController:
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new ControllerOrderKeeper(terminationPromise, journal, workingClusterNode,
+          new ControllerOrderKeeper(terminationPromise, workingClusterNode,
             alarmClock, conf, testEventPublisher)
         },
         "ControllerOrderKeeper")

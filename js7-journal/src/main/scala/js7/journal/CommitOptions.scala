@@ -5,10 +5,15 @@ import scala.concurrent.duration.*
 final case class CommitOptions(
   transaction: Boolean = false,
   // commitLater: Option[FiniteDuration] = None, TODO combine commitLater with delay
-  commitLater: Boolean = false /*For new Journaler only*/,
+  commitLater: Boolean = false,
   delay: FiniteDuration = Duration.Zero,
   alreadyDelayed: FiniteDuration = Duration.Zero)
 
 
 object CommitOptions:
-  val default = new CommitOptions()
+
+  val default: CommitOptions =
+    CommitOptions()
+
+  val transaction: CommitOptions =
+    CommitOptions(transaction = true)

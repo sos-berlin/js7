@@ -4,8 +4,10 @@ import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.BinarySearch.binarySearch
@@ -13,10 +15,10 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
-import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
+import js7.journal.Journal.{Persist, Persisted}
 import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
-import js7.journal.state.Journal
 import js7.journal.watch.RealEventWatch
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
@@ -27,6 +29,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   waitingFor: String = "releaseEvents",
   infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+  clock: WallClock,
   semaphore: Semaphore[IO])
   (implicit protected val S: JournaledState.Companion[S])
 extends Journal[S]:
@@ -66,55 +69,39 @@ extends Journal[S]:
 
     override def toString = "MemoryJournal.EventWatch"
 
-  def unsafeCurrentState(): S =
+  def aggregate: IO[S] =
+    IO(_state)
+
+  def unsafeAggregate(): S =
     _state
 
-  def persistKeyedEvent[E <: Event](
-    keyedEvent: KeyedEvent[E],
-    options: CommitOptions = CommitOptions.default)
-    (using enclosing: sourcecode.Enclosing)
-  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistKeyedEvents(keyedEvent :: Nil)
-      .map(_.map { case (events, s) => events.head -> s })
+  def unsafeUncommittedAggregate(): S =
+    _state
 
-  def persistKeyedEvents[E <: Event](
-    keyedEvents: Seq[KeyedEvent[E]],
-    options: CommitOptions = CommitOptions.default)
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persist(_ => Right(keyedEvents))
-
-  def persistKeyedEventsLater[E <: Event](
-    keyedEvents: Seq[KeyedEvent[E]],
-    options: CommitOptions = CommitOptions.default)
-  : IO[Checked[Unit]] =
-    persistKeyedEvents(keyedEvents, options)
-      .rightAs(())
-
-  def persistWithOptions[E <: Event](
-    options: CommitOptions = CommitOptions.default)(
-    stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     stateLock.lock:
       IO.defer:
         val state = _state
-        (for
-          keyedEvents <- stateToEvents(state)
-          updated <- state.applyKeyedEvents(keyedEvents)
-          stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
-        yield
-          // Limit acq to size to allow more stampedEvents than size.
-          // FIXME But then, the late releaseN releases to much, shifting the semaphore limit upwards.
-          // In our reality, this should not happen because size >> stampedEvents.length.
-          // size is >= 1000, and stampedEvents contains some OrderStdWritten or OrderProcessed.
-          // It may happen with big stdout output.
-          // We need a semaphore which allows bigger a acquisition, acquisition of the whole queue.
-          val acq = stampedEvents.length min size
-          semaphore.acquireN(acq)
-            .logWhenItTakesLonger(waitingFor)
-            .*>(
-              enqueue(stampedEvents, updated))
-            .as(stampedEvents -> updated)
-        ).sequence
+        locally:
+          for
+            coll <- persist.eventCalc.calculate(state, TimeCtx(clock.now()))
+            updated <- state.applyKeyedEvents(coll.keyedEvents)
+            stampedEvents = coll.timestampedKeyedEvents.map: o =>
+              eventIdGenerator.stamp(o.keyedEvent, o.maybeMillisSinceEpoch)
+          yield
+            // Limit acq to size to allow more stampedEvents than size.
+            // FIXME But then, the late releaseN releases to much, shifting the semaphore limit upwards.
+            // In our reality, this should not happen because size >> stampedEvents.length.
+            // size is >= 1000, and stampedEvents contains some OrderStdWritten or OrderProcessed.
+            // It may happen with big stdout output.
+            // We need a semaphore which allows bigger a acquisition, acquisition of the whole queue.
+            val acq = stampedEvents.length min size
+            semaphore.acquireN(acq)
+              .logWhenItTakesLonger(waitingFor)
+              .*>(
+                enqueue(stampedEvents, updated))
+              .as(Persisted(stampedEvents, updated))
+        .sequence
 
   private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], state: S): IO[Unit] =
     IO.whenA(stampedEvents.nonEmpty):
@@ -216,17 +203,23 @@ object MemoryJournal:
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
     (implicit S: JournaledState.Companion[S])
   : ResourceIO[MemoryJournal[S]] =
-    Resource.eval:
-      start(initial, size, waitingFor, infoLogEvents, eventIdGenerator)
+    for
+      clock <- Resource.eval(environmentOr[WallClock](WallClock))
+      r <- Resource.eval:
+        start(initial, size, waitingFor, infoLogEvents, eventIdGenerator, clock)
+    yield
+      r
 
   def start[S <: JournaledState[S]](
     initial: S,
     size: Int,
     waitingFor: String = "releaseEvents",
     infoLogEvents: Set[String] = Set.empty,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    clock: WallClock)
     (implicit S: JournaledState.Companion[S])
   : IO[MemoryJournal[S]] =
     Semaphore[IO](size).flatMap: semaphore =>
       IO:
-        new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator, semaphore)
+        new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator, clock,
+          semaphore)

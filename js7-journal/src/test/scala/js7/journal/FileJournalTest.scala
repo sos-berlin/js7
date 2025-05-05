@@ -17,8 +17,8 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Stopwatch, TestWallClock, WallClock}
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, SnapshotableState, Stamped}
-import js7.journal.Journaler.Persist
-import js7.journal.JournalerTest.*
+import js7.journal.FileJournalTest.*
+import js7.journal.Journal.Persist
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file
@@ -27,15 +27,15 @@ import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import org.scalatest.Assertion
 import scala.concurrent.duration.Deadline
 
-final class JournalerTest extends OurAsyncTestSuite:
+final class FileJournalTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
   "Persist" in:
-    testJournaler(): journaler =>
+    testJournal(): journal =>
       for
         persisted <-
-          journaler.persist:
+          journal.persist:
             Persist(EventCalc.pure("A" <-: TestEvent.SimpleAdded("(FIRST)")))
           .orThrow
 
@@ -48,18 +48,18 @@ final class JournalerTest extends OurAsyncTestSuite:
             SnapshotableState.Standards.empty,
             Map("A" -> TestAggregate("A", "(FIRST)"))))
 
-          val recovered = StateRecoverer.recover[TestState](journaler.journalLocation, config)
+          val recovered = StateRecoverer.recover[TestState](journal.journalLocation, config)
           assert(recovered.eventId == 1001L)
           assert(recovered.state == TestState(
             eventId = 1001L,
             SnapshotableState.Standards.empty,
             Map("A" -> TestAggregate("A", "(FIRST)"))))
 
-          val normalizedJournalFileContent = journaler.journalLocation.file(EventId.BeforeFirst)
+          val normalizedJournalFileContent = journal.journalLocation.file(EventId.BeforeFirst)
             .contentString
             .replaceAll(""""totalRunningTime":[0-9.]+,""", """"totalRunningTime":0,""")
           assert(normalizedJournalFileContent ==
-           s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journaler.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
+           s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
               |"-------SNAPSHOT-------"
               |"-------END OF SNAPSHOT-------"
               |"-------EVENTS-------"
@@ -67,20 +67,20 @@ final class JournalerTest extends OurAsyncTestSuite:
               |{"eventId":1001,"Key":"A","TYPE":"SimpleAdded","string":"(FIRST)"}
               |""".stripMargin)
 
-        _ <- journaler.takeSnapshot
+        _ <- journal.takeSnapshot
         assertion <- IO:
-          val recovered = StateRecoverer.recover[TestState](journaler.journalLocation, config)
+          val recovered = StateRecoverer.recover[TestState](journal.journalLocation, config)
           assert(recovered.eventId == 1002L)
           assert(recovered.state == TestState(
             eventId = 1002L,
             SnapshotableState.Standards.empty,
             Map("A" -> TestAggregate("A", "(FIRST)"))))
 
-          val normalizedJournalFileContent = journaler.journalLocation.file(EventId(1001L))
+          val normalizedJournalFileContent = journal.journalLocation.file(EventId(1001L))
             .contentString
             .replaceAll(""""totalRunningTime":[0-9.]+,""", """"totalRunningTime":0,""")
           assert(normalizedJournalFileContent ==
-            s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journaler.journalId}","eventId":1001,"generation":2,"totalEventCount":2,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
+            s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":1001,"generation":2,"totalEventCount":2,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
                |"-------SNAPSHOT-------"
                |{"TYPE":"TestAggregate","key":"A","string":"(FIRST)","a":"X","b":"X","c":"X","d":"X","e":"X","f":"X","g":"X","h":"X","i":"X","j":"X","k":"X","l":"X","m":"X","n":"X","o":"X","p":"X","q":"X","r":"X"}
                |"-------END OF SNAPSHOT-------"
@@ -95,12 +95,12 @@ final class JournalerTest extends OurAsyncTestSuite:
       run(n = if isIntelliJIdea then 1_000_000 else 100_000, persistLimit = 500)
 
     def run(n: Int, persistLimit: Int): IO[Assertion] =
-      testJournaler(config"""
+      testJournal(config"""
         js7.journal.persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
-      ): journaler =>
+      ): journal =>
         (1 to n).toVector.parTraverse: i =>
-          journaler.persist:
+          journal.persist:
             i.toString <-: TestEvent.SimpleAdded("A")
         .timed.flatMap: (duration, _) =>
           IO:
@@ -109,33 +109,33 @@ final class JournalerTest extends OurAsyncTestSuite:
             succeed
   }
 
-  private def testJournaler(config: Config = ConfigFactory.empty)
-    (tester: Journaler[TestState] => IO[Assertion])
+  private def testJournal(config: Config = ConfigFactory.empty)
+    (tester: FileJournal[TestState] => IO[Assertion])
   : IO[Assertion] =
-    val myConfig = config.withFallback(JournalerTest.config)
+    val myConfig = config.withFallback(FileJournalTest.config)
     val clock = TestWallClock(ts"1970-01-01T00:00:00.001Z")
     locally:
       for
         _ <- Environment.registerPure[WallClock](clock)
-        dir <- temporaryDirectoryResource[IO]("JournalerTest-")
+        dir <- temporaryDirectoryResource[IO]("FileJournalTest-")
         journalLocation = JournalLocation(TestState, dir / "test")
-        journaler <- Journaler.resource(
+        journal <- FileJournal.resource(
           Recovered.noJournalFile[TestState](
             journalLocation,
             Deadline.now,
             myConfig),
           JournalConf.fromConfig(myConfig))
       yield
-        journaler
-    .use: journaler =>
-      journaler.failWhenStopped:
-        tester(journaler)
+        journal
+    .use: journal =>
+      journal.failWhenStopped:
+        tester(journal)
 
   private def info_(line: String) =
     logger.debug(s"🔵🔵🔵 $line")
     info(line)
 
-object JournalerTest:
+object FileJournalTest:
   private val logger = Logger[this.type]
 
   private val config = config"""

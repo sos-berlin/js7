@@ -54,7 +54,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.journal.state.Journal
+import js7.journal.Journal
 import org.apache.pekko.actor.ActorSystem
 
 final class AgentDriver private(
@@ -135,7 +135,7 @@ extends Service.StoppableByRequest:
 
   // TODO For v2.6 inserted, but maybe duplicate
   private def attachAttachables: IO[Unit] =
-    journal.state.flatMap(controllerState => controllerState
+    journal.aggregate.flatMap(controllerState => controllerState
       .itemToAgentToAttachedState
       .view
       .flatMap: (itemKey, agentPathToAttachedState) =>
@@ -359,7 +359,7 @@ extends Service.StoppableByRequest:
                 })
 
   private def reattachSomeItems(): IO[Unit] =
-    journal.state.flatMap(controllerState =>
+    journal.aggregate.flatMap(controllerState =>
       controllerState
         .itemToAgentToAttachedState
         .toVector
@@ -480,7 +480,7 @@ extends Service.StoppableByRequest:
       .flatMap(_.traverse(clientResource))
 
   private def agentToUris(agentPath: AgentPath): IO[Checked[Nel[Uri]]] =
-    for state <- journal.state yield
+    for state <- journal.aggregate yield
       state.keyToItem(AgentRef).checked(agentPath)
         .flatMap(_.directors
           .traverse(subagentId => state.keyToItem(SubagentItem).checked(subagentId))
@@ -502,13 +502,13 @@ extends Service.StoppableByRequest:
     maybeAgentRefState.map(_.flatMap(_.agentRunId))
 
   private def agentRefState: IO[AgentRefState] =
-    journal.state.map(_.keyTo(AgentRefState)(agentPath))
+    journal.aggregate.map(_.keyTo(AgentRefState)(agentPath))
 
   private def checkedAgentRefState: IO[Checked[AgentRefState]] =
-    journal.state.map(_.keyTo(AgentRefState).checked(agentPath))
+    journal.aggregate.map(_.keyTo(AgentRefState).checked(agentPath))
 
   private def maybeAgentRefState: IO[Option[AgentRefState]] =
-    journal.state.map(_.keyTo(AgentRefState).get(agentPath))
+    journal.aggregate.map(_.keyTo(AgentRefState).get(agentPath))
 
   override def toString = s"AgentDriver($agentPath)"
 

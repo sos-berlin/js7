@@ -35,7 +35,7 @@ import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueT
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
-import js7.journal.state.Journal
+import js7.journal.Journal
 import js7.subagent.director.RemoteSubagentDriver.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -390,22 +390,19 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
     logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
-      journal
-        .lock(subagentId):
-          journal.persist(_
-            .idToSubagentItemState.checked(subagentId)
-            .map: subagentItemState =>
-              val problem = maybeProblem
-                .orElse(subagentItemState.problem)
-                .getOrElse(Problem.pure("decoupled"))
-              (!subagentItemState.problem.contains(problem))
-                .thenList(subagentId <-: SubagentCouplingFailed(problem)))
-        .map(_.orThrow)
-        .void
-        .onError:
-          case t => IO:
-            // Error isn't logged until stopEventListener has been called
-            logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
+      journal.persist:
+        _.idToSubagentItemState.checked(subagentId)
+          .map: subagentItemState =>
+            val problem = maybeProblem
+              .orElse(subagentItemState.problem)
+              .getOrElse(Problem.pure("decoupled"))
+            (!subagentItemState.problem.contains(problem))
+              .thenList(subagentId <-: SubagentCouplingFailed(problem))
+      .map(_.orThrow)
+      .void
+      .onError: t =>
+        // Error isn't logged until stopEventListener has been called
+        IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
     enqueueCommandAndForget:
@@ -566,7 +563,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         IO.right(Nil)
 
   private def currentSubagentItemState: IO[Checked[SubagentItemState]] =
-    journal.state.map(_.idToSubagentItemState.checked(subagentId))
+    journal.aggregate.map(_.idToSubagentItemState.checked(subagentId))
 
   override def toString =
     s"RemoteSubagentDriver(${subagentItem.pathRev})"

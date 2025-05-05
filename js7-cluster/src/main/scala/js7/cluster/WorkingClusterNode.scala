@@ -2,6 +2,7 @@ package js7.cluster
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
+import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
@@ -21,11 +22,10 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
-import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
-import js7.journal.state.FileJournal
+import js7.journal.{EventIdGenerator, FileJournal, JournalActor}
 import org.apache.pekko
-import org.apache.pekko.actor.ActorRefFactory
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *
@@ -40,6 +40,7 @@ final class WorkingClusterNode[
 ] private(
   val failedNodeId: Option[NodeId],
   val journal: FileJournal[S],
+  val journalActor: ActorRef @@ JournalActor.type,
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (using nodeNameToPassword: NodeNameToPassword[S]):
@@ -134,7 +135,7 @@ final class WorkingClusterNode[
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): IO[Checked[Unit]] =
     logger.traceIO:
       val passiveNodeId = clusterState.setting.other(clusterState.activeId)
-      journal.state
+      journal.aggregate
         .map(_.clusterNodeToUserAndPassword(
           ourNodeId = clusterState.activeId,
           otherNodeId = passiveNodeId))
@@ -191,10 +192,12 @@ object WorkingClusterNode:
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
         common.requireValidLicense.map(_.orThrow))
-      fileJournal <- FileJournal.resource(recovered, clusterConf.journalConf, eventIdGenerator)
+      journal <-
+        FileJournal.resource(recovered, clusterConf.journalConf, Some(eventIdGenerator))
+      journalActor <- JournalActor.resource(journal)
       workingClusterNode <- Resource.make(
         acquire = IO.defer:
-          val w = new WorkingClusterNode(recovered.failedNodeId, fileJournal, common, clusterConf)
+          val w = new WorkingClusterNode(recovered.failedNodeId, journal, journalActor, common, clusterConf)
           w.start(recovered.clusterState, recovered.eventId).as(w)
         )(
         release = _.stop)

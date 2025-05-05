@@ -32,8 +32,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.CommitOptions
-import js7.journal.state.Journal
+import js7.journal.{CommitOptions, Journal}
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
@@ -333,7 +332,7 @@ extends Service.StoppableByRequest:
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
   : IO[Checked[(WorkflowJob, JobDriver)]] =
-    journal.state.map: state =>
+    journal.aggregate.map: state =>
       for
         workflow <- state.idToWorkflow.checked(workflowPosition.workflowId)
         jobKey <- workflow.positionToJobKey(workflowPosition.position)
