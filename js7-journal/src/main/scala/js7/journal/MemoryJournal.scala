@@ -15,6 +15,7 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
+import js7.data.cluster.ClusterState
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
@@ -127,6 +128,7 @@ extends Journal[S]:
       eventNumber = eventNumber,
       since = since,
       isTransaction = false,
+      clusterState = ClusterState.Empty.getClass.simpleScalaName,
       isAcknowledged = false)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =

@@ -36,6 +36,7 @@ private[journal] final class JournalLogger(
     eventNumber: Long,
     since: Deadline,
     isTransaction: Boolean = false,
+    clusterState: String,
     isAcknowledged: Boolean = false)
   : Unit =
     logCommitted:
@@ -45,6 +46,7 @@ private[journal] final class JournalLogger(
           eventNumber = eventNumber,
           since,
           isTransaction = isTransaction,
+          clusterState = clusterState,
           isAcknowledged = isAcknowledged,
           isLastOfFlushedOrSynced = true)
       .view
@@ -159,7 +161,12 @@ private[journal] final class JournalLogger(
     import stamped.value.{event, key}
     sb.clear()
     sb.append:
-      if frame.persist.isAcknowledged then "Event= " else "Event  "
+      if frame.persist.isAcknowledged then
+        "Event ✔︎ "
+      else
+        frame.persist.clusterState match
+          case "Empty" => "Event "
+          case o => s"Event (⚠️ $o) "
     sb.append(transactionMarker(forTrace = false))
     if key != NoKey then
       sb.append(key)
@@ -192,6 +199,7 @@ object JournalLogger:
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
     def since: Deadline
+    def clusterState: String
     def isAcknowledged: Boolean
     def isLastOfFlushedOrSynced: Boolean
 
@@ -202,6 +210,7 @@ object JournalLogger:
     val eventNumber: Long,
     val since: Deadline,
     val isTransaction: Boolean,
+    val clusterState: String,
     val isAcknowledged: Boolean,
     val isLastOfFlushedOrSynced: Boolean)
   extends Loggable

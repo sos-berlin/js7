@@ -670,7 +670,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         file.getFileName}' file at position $lastProperEventPosition")
       out.truncate(lastProperEventPosition)
     JournalLogger(journalConf)
-      .logCommitted(failedOverStamped :: Nil, eventNumber = eventNumber, since = since)
+      .logCommitted(failedOverStamped :: Nil, eventNumber = eventNumber, since = since,
+        clusterState = "FailedOver")
     val event = failedOverStamped: Stamped[KeyedEvent[ClusterEvent]]
     out.write(ByteBuffer.wrap(
       (event.asJson.compactPrint + '\n').getBytes(UTF_8)))

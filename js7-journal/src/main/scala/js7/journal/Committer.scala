@@ -23,7 +23,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLonger}
 import js7.base.utils.MultipleLinesBracket.{Round, Square}
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
 import js7.base.utils.{AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -151,7 +151,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       IO:
         statistics.onPersisted(eventCount = 1, since)
         journalLogger.logCommitted(snapshotTaken :: Nil,
-          eventNumber = eventNumber, since, isAcknowledged = isAcknowledged)
+          eventNumber = eventNumber, since,
+          clusterState = unsafeAggregate().clusterState.getClass.simpleScalaName,
+          isAcknowledged = isAcknowledged)
         eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
 
   /** Release a concurrent persist operation, which waits for the missing acknowledgement and
@@ -510,6 +512,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def isTransaction = commitOptions.transaction
     def stampedSeq = stampedKeyedEvents
     def nonEmpty = eventCount > 0
+    def clusterState: String = aggregate.clusterState.getClass.simpleScalaName
 
 end Committer
 
