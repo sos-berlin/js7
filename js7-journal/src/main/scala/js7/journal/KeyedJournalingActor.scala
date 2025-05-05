@@ -6,6 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isStrict
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 
 /**
@@ -17,23 +18,26 @@ extends JournalingActor[S, E]:
 
   protected def key: E.Key
 
-  //protected final def persistIO[A](event: E, async: Boolean = false)
-  //  (callback: (Stamped[KeyedEvent[E]], S) => A)
-  //: IO[Checked[A]] =
-  //  persistKeyedEventIO(toKeyedEvent(event), async = async)(callback)
-
   protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
     super.persistKeyedEvent(toKeyedEvent(event), async = async) { (stampedEvent, journaledState) =>
       callback(stampedEvent.value.event.asInstanceOf[EE], journaledState)
     }
 
+  protected final def persist[EE <: E, A](
+    keyedEvent: KeyedEvent[EE])
+    (callback: (Stamped[KeyedEvent[EE]], S) => A)
+  : Future[A] =
+    persistKeyedEvent(keyedEvent)(callback)
+
   /** Fast lane for events not affecting the journaled state. */
+  @TestOnly
   protected final def persistAcceptEarlyIO[EE <: E, A](
     event: EE,
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Accepted]] =
     super.persistKeyedEventAcceptEarlyIO((toKeyedEvent(event)) :: Nil, options = options)
 
+  @TestOnly
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
     (callback: (Seq[EE], S) => A)
   : Future[A] =

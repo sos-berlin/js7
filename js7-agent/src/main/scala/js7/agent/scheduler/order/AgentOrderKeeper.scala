@@ -63,7 +63,7 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, Subagent
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
-import js7.journal.{JournalActor, MainJournalingActor}
+import js7.journal.{JournalActor, JournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
@@ -93,7 +93,7 @@ final class AgentOrderKeeper(
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val ioRuntime: IORuntime)
-extends MainJournalingActor[AgentState, Event], Stash:
+extends JournalingActor[AgentState, Event], Stash:
 
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
@@ -852,7 +852,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           onOrderIsProcessable(order)
 
         if noticeDeletedEvents.nonEmpty then
-          persistMultiple(orderKeyedEvents): (_, agentState) =>
+          persistKeyedEvents(orderKeyedEvents): (_, agentState) =>
             ()
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =

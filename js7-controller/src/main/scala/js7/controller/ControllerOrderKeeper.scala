@@ -77,7 +77,8 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.{CommitOptions, MainJournalingActor}
+import js7.journal.CommitOptions.Transaction
+import js7.journal.{CommitOptions, JournalingActor}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy}
 import org.apache.pekko.pattern.pipe
 import scala.collection.immutable.VectorBuilder
@@ -96,7 +97,7 @@ final class ControllerOrderKeeper(
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
   (implicit protected val ioRuntime: IORuntime)
-extends Stash, MainJournalingActor[ControllerState, Event]:
+extends Stash, JournalingActor[ControllerState, Event]:
 
   import controllerConfiguration.config
   import js7.controller.ControllerOrderKeeper.RichIdToOrder
@@ -112,6 +113,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)
   private val agentDriverConfiguration = AgentDriverConfiguration
     .fromConfig(config, controllerConfiguration.journalConf).orThrow
+  @deprecated
   private var _controllerState: ControllerState = ControllerState.Undefined
 
   private val agentRegister = mutable.Map[AgentPath, AgentEntry]()
@@ -316,7 +318,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       become("becomingReady")(becomingReady)
 
       locally:
-        val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined thenVector
+        val maybeControllerInitialized = !journal.unsafeAggregate().controllerMetaState.isDefined thenVector
           (NoKey <-: ControllerEvent.ControllerInitialized(
             controllerConfiguration.controllerId,
             journal.initiallyStartedAt))
@@ -326,9 +328,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
         val events = maybeControllerInitialized :+
           controllerReady :++
-          ControllerStateExecutor.nextOrderWatchOrderEvents(_controllerState)
+          ControllerStateExecutor.nextOrderWatchOrderEvents(journal.unsafeAggregate())
 
-        persistMultiple(events) { (_, updatedState) =>
+        persistKeyedEvents(events) { (_, updatedState) =>
           _controllerState = updatedState
           clusterNode.afterJournalingStarted
             .materializeIntoChecked
@@ -406,7 +408,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info(ServiceMain.readyMessageWithLine(s"${_controllerState.controllerId} is ready"))
+      logger.info(ServiceMain.readyMessageWithLine(s"${journal.unsafeAggregate().controllerId} is ready"))
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode
         .onTerminatedUnexpectedly // Happens while isTest suppresses Halt after AckFromActiveClusterNode
@@ -428,7 +430,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       val orderIds = orderQueue.readAll()
       val keyedEvents = nextOrderEvents(orderIds)
       if keyedEvents.nonEmpty then
-        persistTransaction(keyedEvents)(handleEvents)
+        persistKeyedEvents(keyedEvents, Transaction)(handleEvents)
 
     case Command.Execute(command, meta, correlId) =>
       val sender = this.sender()
@@ -552,9 +554,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                     // (switch from actors to IO required!)
                     Future.successful(None)
                   case _ =>
-                    persistTransactionTimestamped(
+                    persistKeyedEvents(
                       coll.timestampedKeyedEvents,
-                      CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
+                      CommitOptions(
+                        transaction = true,
+                        alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
                     ):
                       (stampedEvents, updatedState) =>
                         handleEvents(stampedEvents, updatedState)
@@ -591,7 +595,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           notices.maybeSchedule(noticeId, notice.endOfLife)
         else
           logger.debug(s"Notice lifetime expired: $noticeId")
-          persistMultiple(keyedEvent :: Nil)(handleEvents)
+          persistKeyedEvents(keyedEvent :: Nil)(handleEvents)
 
     case Internal.PlanIsDue(planId) =>
       plans.deleteSchedule(planId)
@@ -604,7 +608,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       do
         if keyedEvents.nonEmpty then
           logger.debug(s"Finished $planId expired: $planId")
-          persistMultiple(keyedEvents)(handleEvents)
+          persistKeyedEvents(keyedEvents)(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = scheduler.now() + config.getDuration("js7.web.server.delay-shutdown")
@@ -768,7 +772,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           if untilEventId < current then
             Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
-            persist(JournalEventsReleased(userId, untilEventId)) { (_, updatedState) =>
+            persistKeyedEvent(JournalEventsReleased(userId, untilEventId)) { (_, updatedState) =>
               _controllerState = updatedState
               Right(ControllerCommand.Response.Accepted)
             }
@@ -869,7 +873,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           .match
             case Left(problem) => Future.successful(Left(problem))
             case Right(events) =>
-              persistMultiple(events) { (_, updated) =>
+              persistKeyedEvents(events) { (_, updated) =>
                 _controllerState = updated
                 proceedWithItem(subagentId)
               }.map(_ => Right(ControllerCommand.Response.Accepted))
@@ -1008,7 +1012,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private def persistTransactionAndSubsequentEvents[A](coll: EventColl[ControllerState, Event, TimeCtx])
     (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)
   : Future[A] =
-    persistTransaction(addSubsequentEvents.calculate(coll).orThrow.keyedEvents)(callback)
+    persistKeyedEvents(
+      addSubsequentEvents.calculate(coll).orThrow.keyedEvents,
+      Transaction
+    )(callback)
 
   private def addSubsequentEvents: EventCalc[ControllerState, Event, TimeCtx] =
     EventCalc: coll =>

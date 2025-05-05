@@ -66,6 +66,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       self ! Persist(keyedEvent, async = async, callback, promise)
 
   /** Fast lane for events not affecting the journaled state. */
+  @TestOnly
   protected final def persistKeyedEventAcceptEarlyIO[EE <: E](
     keyedEvents: Seq[KeyedEvent[EE]],
     timestampMillis: Option[Long] = None,
@@ -74,13 +75,18 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     promiseIO[Checked[Accepted]]: promise =>
       self ! PersistAcceptEarly(keyedEvents, timestampMillis, options, promise)
 
+  protected final def persist[EE <: E, A](
+    keyedEvent: MaybeTimestampedKeyedEvent[EE])(
+    callback: (Stamped[KeyedEvent[EE]], S) => A)
+  : Future[A] =
+    persistKeyedEvent(keyedEvent)(callback)
+
   protected final def persistKeyedEvent[EE <: E, A](
-    keyedEvent: KeyedEvent[EE],
-    timestampMillis: Option[Long] = None,
+    keyedEvent: MaybeTimestampedKeyedEvent[EE],
     async: Boolean = false)(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    persistKeyedEvents(MaybeTimestampedKeyedEvent(keyedEvent, timestampMillis) :: Nil, async = async) { (events, journaledState) =>
+    persistKeyedEvents(keyedEvent :: Nil, async = async) { (events, journaledState) =>
       assertThat(events.sizeIs == 1)
       callback(events.head, journaledState)
     }
@@ -141,6 +147,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
             })))
     }
 
+  @TestOnly
   protected final def defer(callback: => Unit): Unit =
     defer_(async = false, callback)
 
@@ -148,6 +155,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   protected final def deferAsync(callback: => Unit): Unit =
     defer_(async = true, callback)
 
+  @TestOnly
   private def defer_(async: Boolean, callback: => Unit): Unit =
     start(async = async, "defer")
     journalActor.forward(
