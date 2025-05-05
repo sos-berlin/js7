@@ -15,6 +15,9 @@ final case class Persisted[S <: EventDrivenState[S, E], E <: Event](
   def keyedEvents: SeqView[KeyedEvent[E]] =
     stampedKeyedEvents.view.map(_.value)
 
+  def isEmpty: Boolean =
+    stampedKeyedEvents.isEmpty
+
   def checkedSingle: Checked[(Stamped[KeyedEvent[E]], S)] =
     if stampedKeyedEvents.sizeIs != 1 then
       Problem(s"Persisted.checkedSingle: Expected one event, got ${stampedKeyedEvents.size}")

@@ -46,7 +46,7 @@ import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventCalc, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
@@ -583,7 +583,7 @@ extends JournalingActor[AgentState, Event], Stash:
                     Right(AgentCommand.Response.Accepted)
 
           case _: JobResource =>
-            persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
+            persistKeyedEvent(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
               Right(AgentCommand.Response.Accepted)
             }
 
@@ -852,8 +852,7 @@ extends JournalingActor[AgentState, Event], Stash:
           onOrderIsProcessable(order)
 
         if noticeDeletedEvents.nonEmpty then
-          persistKeyedEvents(orderKeyedEvents): (_, agentState) =>
-            ()
+          persist(EventCalc.pure(orderKeyedEvents)) { _ => }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
     journal.unsafeAggregate()

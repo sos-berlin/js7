@@ -30,12 +30,14 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.{AlarmClock, Timestamp, Timezone}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.utils.Tests.isStrict
+import js7.base.utils.{Allocated, Assertions, ProgramTermination, SetOnce, Tests}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.startup.ServiceMain
@@ -77,8 +79,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.CommitOptions.Transaction
-import js7.journal.{CommitOptions, JournalingActor}
+import js7.journal.{CommitOptions, JournalingActor, Persisted}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy}
 import org.apache.pekko.pattern.pipe
 import scala.collection.immutable.VectorBuilder
@@ -113,8 +114,6 @@ extends Stash, JournalingActor[ControllerState, Event]:
   private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)
   private val agentDriverConfiguration = AgentDriverConfiguration
     .fromConfig(config, controllerConfiguration.journalConf).orThrow
-  @deprecated
-  private var _controllerState: ControllerState = ControllerState.Undefined
 
   private val agentRegister = mutable.Map[AgentPath, AgentEntry]()
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
@@ -202,7 +201,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           if !controllerShutdown && !shutDown.isFailOrSwitchover then
             // The event forces the cluster to acknowledge this event and the snapshot taken
             controllerShutdown = true
-            persistKeyedEventIO(NoKey <-: ControllerShutDown)((_, _) => Completed)
+            persistKeyedEventIO(EventCalc.pure(NoKey <-: ControllerShutDown))(_ => Completed)
               .unsafeToFuture()
               .onComplete:
                 case Success(Right(Completed)) => self ! Internal.ContinueShutdown
@@ -290,7 +289,6 @@ extends Stash, JournalingActor[ControllerState, Event]:
       throw Problem(s"Recovered '${controllerState.controllerId}' " +
         s"differs from configured '${controllerConfiguration.controllerId}'"
       ).throwable
-    this._controllerState = controllerState
     //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
 
     for
@@ -317,57 +315,62 @@ extends Stash, JournalingActor[ControllerState, Event]:
       // `become` must be called early, before any persist!
       become("becomingReady")(becomingReady)
 
-      locally:
-        val maybeControllerInitialized = !journal.unsafeAggregate().controllerMetaState.isDefined thenVector
-          (NoKey <-: ControllerEvent.ControllerInitialized(
-            controllerConfiguration.controllerId,
-            journal.initiallyStartedAt))
-        val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
-          Timezone(ZoneId.systemDefault.getId),
-          totalRunningTime = journal.totalRunningTime)
+      persist(
+        EventCalc[ControllerState, Event, TimeCtx]: coll =>
+          for
+            coll <- coll.add:
+              !coll.aggregate.controllerMetaState.isDefined thenSome:
+                NoKey <-: ControllerEvent.ControllerInitialized(
+                  controllerConfiguration.controllerId,
+                  journal.initiallyStartedAt)
+            timezone <- Timezone.checked(ZoneId.systemDefault.getId)
+            coll <- coll.add:
+              NoKey <-: ControllerEvent.ControllerReady(
+                timezone,
+                totalRunningTime = journal.totalRunningTime)
+            coll <- coll.add:
+              ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate)
+          yield
+            coll
+      ) { persisted =>
+        clusterNode.afterJournalingStarted
+          .materializeIntoChecked
+          .map(Internal.Ready.apply)
+          .unsafeToFuture()
+          .pipeTo(self)
 
-        val events = maybeControllerInitialized :+
-          controllerReady :++
-          ControllerStateExecutor.nextOrderWatchOrderEvents(journal.unsafeAggregate())
+        for path <- persisted.aggregate.keyToItem(AgentRef).keys do
+          proceedWithItem(path)
+        for path <- persisted.aggregate.keyTo(WorkflowPathControl).keys do
+          proceedWithItem(path)
+        for itemKey <- persisted.aggregate.keyTo(WorkflowControl).keys do
+          proceedWithItem(itemKey)
+      }
 
-        persistKeyedEvents(events) { (_, updatedState) =>
-          _controllerState = updatedState
-          clusterNode.afterJournalingStarted
-            .materializeIntoChecked
-            .map(Internal.Ready.apply)
-            .unsafeToFuture()
-            .pipeTo(self)
+      val controllerState = this.controllerState()
 
-          for path <- _controllerState.keyToItem(AgentRef).keys do
-            proceedWithItem(path)
-          for path <- _controllerState.keyTo(WorkflowPathControl).keys do
-            proceedWithItem(path)
-          for itemKey <- _controllerState.keyTo(WorkflowControl).keys do
-            proceedWithItem(itemKey)
-        }
-
-      _controllerState.keyTo(OrderWatchState).keys foreach proceedWithItem
+      controllerState.keyTo(OrderWatchState).keys foreach proceedWithItem
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
-      orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now()))
+      orderRegister ++= controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now()))
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
       // So send AttachOrder before DetachOrder.
       // The Agent will ignore the duplicate AttachOrder if it arrives before DetachOrder.
-      for agentRef <- _controllerState.pathToUnsignedSimple(AgentRef).values do
-        val agentRefState = _controllerState.keyTo(AgentRefState)
+      for agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values do
+        val agentRefState = controllerState.keyTo(AgentRefState)
           .getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, eventId = agentRefState.eventId)
 
       // Any ordering when continuing orders???
-      proceedWithOrders(_controllerState.idToOrder.keys)
-      orderQueue.enqueue(_controllerState.idToOrder.keys)
+      proceedWithOrders(controllerState.idToOrder.keys)
+      orderQueue.enqueue(controllerState.idToOrder.keys)
 
       if persistedEventId > EventId.BeforeFirst then // Recovered?
-        logger.info(s"${_controllerState.idToOrder.size} Orders, " +
-          s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
-          s"${_controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
+        logger.info(s"${controllerState.idToOrder.size} Orders, " +
+          s"${controllerState.repo.typedCount[Workflow]} Workflows and " +
+          s"${controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
 
     case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
       stash()
@@ -408,7 +411,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info(ServiceMain.readyMessageWithLine(s"${journal.unsafeAggregate().controllerId} is ready"))
+      logger.info(ServiceMain.readyMessageWithLine(s"${controllerState().controllerId} is ready"))
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode
         .onTerminatedUnexpectedly // Happens while isTest suppresses Halt after AckFromActiveClusterNode
@@ -428,9 +431,10 @@ extends Stash, JournalingActor[ControllerState, Event]:
   private def ready: Receive =
     case Internal.ContinueWithNextOrderEvents =>
       val orderIds = orderQueue.readAll()
-      val keyedEvents = nextOrderEvents(orderIds)
-      if keyedEvents.nonEmpty then
-        persistKeyedEvents(keyedEvents, Transaction)(handleEvents)
+      persist(
+        ControllerStateExecutor.nextOrderEvents(orderIds),
+        CommitOptions(transaction = true)
+      )(handleEvents)
 
     case Command.Execute(command, meta, correlId) =>
       val sender = this.sender()
@@ -540,7 +544,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
               else
                 val agentEventId = stampedAgentEvents.last.eventId
                 timestampedEvents :+= agentPath <-: AgentEventsObserved(agentEventId)
-                val coll = EventColl(_controllerState, TimeCtx(clock.now()))
+                val coll = EventColl(controllerState(), TimeCtx(clock.now()))
                   .add(timestampedEvents)
                   .flatMap(addSubsequentEvents.calculate)
                   .orThrow // TODO On error, invalidate Agent only
@@ -554,21 +558,21 @@ extends Stash, JournalingActor[ControllerState, Event]:
                     // (switch from actors to IO required!)
                     Future.successful(None)
                   case _ =>
-                    persistKeyedEvents(
-                      coll.timestampedKeyedEvents,
+                    persist(
+                      EventCalc.pure(coll.timestampedKeyedEvents),
                       CommitOptions(
                         transaction = true,
                         alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
                     ):
-                      (stampedEvents, updatedState) =>
-                        handleEvents(stampedEvents, updatedState)
+                      persisted =>
+                        handleEvents(persisted)
                         Some(agentEventId)
 
     case Internal.OrdersMarked(orderToMark) =>
       // TODO Maybe execute this code when the corresponding event arrives:
       // Like already OrderGoMarked: OrderSuspensionMarked, OrderResumptionMarked, ...
       // Then we must not handle a late AgentCommand.MarkOrder response.
-      val unknown = orderToMark -- _controllerState.idToOrder.keySet
+      val unknown = orderToMark -- controllerState().idToOrder.keySet
       if unknown.nonEmpty then
         logger.error("Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
           unknown.mkString(", "))
@@ -586,7 +590,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     case Internal.NoticeIsDue(noticeId) =>
       notices.deleteSchedule(noticeId)
       for
-        plan <- _controllerState.toPlan.get(noticeId.planId);
+        plan <- controllerState().toPlan.get(noticeId.planId);
         plannedBoard <- plan.toPlannedBoard.get(noticeId.boardPath)
         notice <- plannedBoard.maybeNotice(noticeId.noticeKey)
         keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey).toOption
@@ -595,20 +599,24 @@ extends Stash, JournalingActor[ControllerState, Event]:
           notices.maybeSchedule(noticeId, notice.endOfLife)
         else
           logger.debug(s"Notice lifetime expired: $noticeId")
-          persistKeyedEvents(keyedEvent :: Nil)(handleEvents)
+          persist(EventCalc.pure(keyedEvent))(handleEvents)
 
     case Internal.PlanIsDue(planId) =>
       plans.deleteSchedule(planId)
-      for
-        planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId)
-        plan <- planSchemaState.plan(planId.planKey)
-        keyedEvents = plan.status match
-          case PlanStatus.Finished(at) => (at + planSchemaState.finishedPlanRetentionPeriod <= clock.now()).thenList(planId <-: PlanDeleted)  // FIXME Event hier?
-          case _ => Nil
-      do
-        if keyedEvents.nonEmpty then
-          logger.debug(s"Finished $planId expired: $planId")
-          persistKeyedEvents(keyedEvents)(handleEvents)
+      persist(
+        EventCalc.multiple[ControllerState, Event, TimeCtx]: controllerState =>
+          for
+            planSchemaState <- controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId).toList
+            plan <- planSchemaState.plan(planId.planKey).toOption.toList
+            keyedEvents <-
+              plan.status match
+                case PlanStatus.Finished(at) =>
+                  (at + planSchemaState.finishedPlanRetentionPeriod <= clock.now()).thenList:
+                    planId <-: PlanDeleted  // FIXME Event hier?
+                case _ => Nil
+          yield
+            keyedEvents
+      )(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = scheduler.now() + config.getDuration("js7.web.server.delay-shutdown")
@@ -647,11 +655,11 @@ extends Stash, JournalingActor[ControllerState, Event]:
   private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit =
     val t = scheduler.now()
     (for
-      keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState, {
+      keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, controllerState(), {
         case calendar: Calendar =>
           CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
       })
-      coll <- EventColl(_controllerState, TimeCtx(clock.now())).add(keyedEvents)
+      coll <- EventColl(controllerState(), TimeCtx(clock.now())).add(keyedEvents)
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
@@ -740,22 +748,22 @@ extends Stash, JournalingActor[ControllerState, Event]:
         executeCommandAndPersist(cmd)
 
       case cmd: ControllerCommand.AddOrder =>
-        executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
-          if stamped.isEmpty then
+        executeCommandAndPersistAndHandle(cmd): persisted =>
+          if persisted.isEmpty then
             logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
             Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = true))
           else
-            handleEvents(stamped, updated)
+            handleEvents(persisted)
             Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = false))
         .flatMap: o =>
           testAddOrderDelay.unsafeToFuture().map(_ => o) // test only
 
       case cmd: ControllerCommand.AddOrders =>
-        executeCommandAndPersistAndHandle(cmd): (stamped, updatedState) =>
-          handleEvents(stamped, updatedState)
+        executeCommandAndPersistAndHandle(cmd): persisted =>
+          handleEvents(persisted)
           // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
           orderQueue.enqueue(cmd.orders.view.map(_.id))
-          Right(ControllerCommand.AddOrders.Response(updatedState.eventId))
+          Right(ControllerCommand.AddOrders.Response(persisted.aggregate.eventId))
 
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
@@ -768,12 +776,11 @@ extends Stash, JournalingActor[ControllerState, Event]:
         if !controllerConfiguration.journalConf.releaseEventsUserIds.contains(userId) then
           Future(Left(UserIsNotEnabledToReleaseEventsProblem))
         else
-          val current = _controllerState.journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
+          val current = controllerState().journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
           if untilEventId < current then
             Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
             persistKeyedEvent(JournalEventsReleased(userId, untilEventId)) { (_, updatedState) =>
-              _controllerState = updatedState
               Right(ControllerCommand.Response.Accepted)
             }
 
@@ -836,10 +843,10 @@ extends Stash, JournalingActor[ControllerState, Event]:
                     match
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(coll) =>
-                        persistTransactionAndSubsequentEvents(coll) { (stampedEvents, updatedState) =>
+                        persistTransactionAndSubsequentEvents(coll) { persisted =>
                           // ResetAgent command may return with error despite it has reset the orders
                           agentEntry.isResetting = true
-                          handleEvents(stampedEvents, updatedState)
+                          handleEvents(persisted)
                           agentEntry
                             .agentDriver.reset(force = force)
                             .onError: t =>
@@ -873,8 +880,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           .match
             case Left(problem) => Future.successful(Left(problem))
             case Right(events) =>
-              persistKeyedEvents(events) { (_, updated) =>
-                _controllerState = updated
+              persist(EventCalc.pure(events)) { _ =>
                 proceedWithItem(subagentId)
               }.map(_ => Right(ControllerCommand.Response.Accepted))
 
@@ -909,34 +915,34 @@ extends Stash, JournalingActor[ControllerState, Event]:
   private def controlWorkflowPath(cmd: ControllerCommand.ControlWorkflowPath)
   : Future[Checked[ControllerCommand.Response]] =
     val path = WorkflowPathControlPath(cmd.workflowPath)
-    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
+    executeCommandAndPersistAndHandle(cmd): persisted =>
       // Continue even if WorkflowPathControl is not changed.
       // This allows the caller to force the redistribution of the WorkflowPathControl.
-      handleEvents(stamped, updated)
+      handleEvents(persisted)
       proceedWithItem(path)
-      val workflowPathControl = updated.keyTo(WorkflowPathControl)(path)
+      val workflowPathControl = persisted.aggregate.keyTo(WorkflowPathControl)(path)
       if !workflowPathControl.item.suspended then
         orderQueue.enqueue(
-          updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
+          persisted.aggregate.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
       Right(ControllerCommand.Response.Accepted)
 
   private def controlWorkflow(cmd: ControllerCommand.ControlWorkflow)
   : Future[Checked[ControllerCommand.Response]] =
     val workflowControlId = WorkflowControlId(cmd.workflowId)
-    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
-      handleEvents(stamped, updated)
+    executeCommandAndPersistAndHandle(cmd): persisted =>
+      handleEvents(persisted)
       proceedWithItem(workflowControlId)
       Right(ControllerCommand.Response.Accepted)
 
   private def executeCommandAndPersist(cmd: ControllerCommand)
   : Future[Checked[ControllerCommand.Response.Accepted]] =
-    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
-      handleEvents(stamped, updated)
+    executeCommandAndPersistAndHandle(cmd): persisted =>
+      handleEvents(persisted)
       Right(ControllerCommand.Response.Accepted)
 
   private def executeCommandAndPersistAndHandle[R <: ControllerCommand.Response](
     cmd: ControllerCommand)
-    (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
+    (handle: Persisted[ControllerState, Event] => Checked[R])
   : Future[Checked[R]] =
     executeCommandAndPersistAndHandle2[R](
       controllerCommandToEventCalc.commandToEventCalc(cmd)
@@ -944,13 +950,13 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   private def executeCommandAndPersistAndHandle2[R <: ControllerCommand.Response](
     eventCalc: EventCalc[ControllerState, Event, TimeCtx])
-    (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
+    (handle: Persisted[ControllerState, Event] => Checked[R])
   : Future[Checked[R]] =
-    eventCalc.calculate(_controllerState, TimeCtx(clock.now())) match
+    eventCalc.calculate(controllerState(), TimeCtx(clock.now())) match
       case Left(problem) => Future.successful(Left(problem))
       case Right(coll) =>
-        persistTransactionAndSubsequentEvents(coll): (stamped, updated) =>
-          handle(stamped, updated)
+        persistTransactionAndSubsequentEvents(coll): persisted =>
+          handle(persisted)
 
   private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry =
     val allocated = AgentDriver
@@ -979,70 +985,33 @@ extends Stash, JournalingActor[ControllerState, Event]:
     agentRegister.insert(agent.path, entry)
     entry
 
-  //private def reattachToAgent(agentPath: AgentPath): Unit =
-  //  for (actor <- agentRegister.get(agentPath).map(_.actor)) {
-  //    for ((itemKey, agentToAttachedState) <- _controllerState.itemToAgentToAttachedState) {
-  //      agentToAttachedState.get(agentPath) foreach {
-  //        case Attachable =>
-  //          itemKey match {
-  //            case itemKey: SignableItemKey =>
-  //              for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-  //                actor ! AgentDriver.Queueable.AttachSignedItem(signedItem)
-  //              }
-  //
-  //            case path: UnsignedSimpleItemPath =>
-  //              for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
-  //                actor ! AgentDriver.Queueable.AttachUnsignedItem(item)
-  //              }
-  //          }
-  //
-  //        case Detachable =>
-  //          actor ! AgentDriver.Queueable.DetachItem(itemKey)
-  //
-  //        case _ =>
-  //      }
-  //    }
-  //
-  //    _controllerState.idToOrder.valuesIterator
-  //      .filter(_.attachedState.contains(Order.Attaching(agentPath)))
-  //      .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
-  //      .foreach(tryAttachOrderToAgent)
-  //  }
-
   private def persistTransactionAndSubsequentEvents[A](coll: EventColl[ControllerState, Event, TimeCtx])
-    (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)
+    (callback: Persisted[ControllerState, Event] => A)
   : Future[A] =
-    persistKeyedEvents(
-      addSubsequentEvents.calculate(coll).orThrow.keyedEvents,
-      Transaction
+    persist(
+      EventCalc.pure:
+        addSubsequentEvents.calculate(coll).orThrow.keyedEvents,
+      CommitOptions(transaction = true)
     )(callback)
 
   private def addSubsequentEvents: EventCalc[ControllerState, Event, TimeCtx] =
     EventCalc: coll =>
       ControllerStateExecutor.addSubsequentEvents(coll)
 
-  private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
-    ControllerStateExecutor.nextOrderEvents(orderIds)
-      .calculate(_controllerState, TimeCtx(clock.now()))
-      .orThrow
-      .keyedEvents
-
-  private def handleEvents(
-    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
-    updatedState: ControllerState)
-  : Unit =
+  private def handleEvents(persisted: Persisted[ControllerState, Event]): Unit =
     val itemKeys = mutable.Set.empty[InventoryItemKey]
     val orderIds = mutable.Set.empty[OrderId]
-    for stamped <- stampedEvents do
+    var controllerState = persisted.originalAggregate
+    for stamped <- persisted.stampedKeyedEvents do
       val keyedEvent = stamped.value
       keyedEvent match
         case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
           orderIds += orderId
-          orderIds ++= handleOrderEvent(keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          orderIds ++= handleOrderEvent(controllerState, keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
 
         case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
           itemKeys += event.key
           handleItemEvent(event)
 
@@ -1050,27 +1019,27 @@ extends Stash, JournalingActor[ControllerState, Event]:
           val noticeId = boardPath / noticePosted.plannedNoticeKey
           notices.deleteSchedule(noticeId)
           notices.maybeSchedule(noticeId, noticePosted.endOfLife)
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
           notices.deleteSchedule(boardPath / plannedNoticeKey)
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
 
         case KeyedEvent(planId: PlanId, event: PlanStatusEvent) =>
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
           event match
             case PlanFinished(at) =>
               for
-                planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId)
+                planSchemaState <- controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId)
               do
                 plans.schedule(planId, at + planSchemaState.finishedPlanRetentionPeriod)
             case _ =>
               plans.deleteSchedule(planId)
 
         case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(Some(finishedPlanRetentionPeriod), _)) =>
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
           for
-            planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planSchemaId).toSeq
+            planSchemaState <- controllerState.keyTo(PlanSchemaState).get(planSchemaId).toSeq
             plan <- planSchemaState.plans
           do
             plan.status match
@@ -1078,8 +1047,8 @@ extends Stash, JournalingActor[ControllerState, Event]:
               case _ => plans.deleteSchedule(plan.id)
 
         case _ =>
-          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
-    _controllerState = updatedState  // Reduce memory usage (they are equal)
+          controllerState = controllerState.applyKeyedEvent(keyedEvent).orThrow
+    if isStrict then assertThat(controllerState.withEventId(persisted.aggregate.eventId) == persisted.aggregate)
     itemKeys foreach proceedWithItem
     proceedWithOrders(orderIds)
 
@@ -1132,7 +1101,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   private def proceedWithItem(itemKey: InventoryItemKey): Unit =
     // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
-    for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do
+    for agentToAttachedState <- controllerState().itemToAgentToAttachedState.get(itemKey) do
       for (agentPath, attachedState) <- agentToAttachedState do
         // TODO Does nothing if Agent is added later! (should be impossible, anyway)
         for agentEntry <- agentRegister.get(agentPath) do
@@ -1142,7 +1111,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
               case Attachable =>
                 itemKey match
                   case itemKey: SignableItemKey =>
-                    for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do
+                    for signedItem <- controllerState().keyToSignedItem.get(itemKey) do
                       agentDriver
                         .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
                         .recoverWith(t => IO(logger.error(
@@ -1151,7 +1120,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                         .awaitInfinite // TODO
 
                   case itemKey: UnsignedItemKey =>
-                    for item <- _controllerState.keyToItem.get(itemKey) do
+                    for item <- controllerState().keyToItem.get(itemKey) do
                       val unsignedItem = item.asInstanceOf[UnsignedItem]
                       agentDriver
                         .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
@@ -1175,7 +1144,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     // ResetSubagent
     itemKey match
       case subagentId: SubagentId =>
-        for subagentItemState <- _controllerState.keyTo(SubagentItemState).get(subagentId) do
+        for subagentItemState <- controllerState().keyTo(SubagentItemState).get(subagentId) do
           subagentItemState.isResettingForcibly match
             case Some(force) =>
               for agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver) do
@@ -1189,7 +1158,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       case _ =>
   end proceedWithItem
 
-  private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Set[OrderId] =
+  private def handleOrderEvent(controllerState: ControllerState, keyedEvent: KeyedEvent[OrderEvent]): Set[OrderId] =
     val KeyedEvent(orderId, event) = keyedEvent
 
     updateOrderEntry(orderId, event)
@@ -1199,13 +1168,13 @@ extends Stash, JournalingActor[ControllerState, Event]:
         Set.empty
 
       case _ =>
-        _controllerState.idToOrder.get(orderId) match
+        controllerState.idToOrder.get(orderId) match
           case None =>
             logger.error(s"Unknown OrderId in event $keyedEvent")
             Set.empty
 
           case Some(order) =>
-            val orderEventHandler = new OrderEventHandler(_controllerState.repo.idTo(Workflow))
+            val orderEventHandler = new OrderEventHandler(controllerState.repo.idTo(Workflow))
             val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
             for followUps <- checkedFollowUps.onProblem(p => logger.error(p)) do  // TODO OrderBroken on error?
@@ -1221,7 +1190,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
             event match
               case OrderNoticePostedV2_3(notice) =>
-                for boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition) do
+                for boardPath <- controllerState.workflowPositionToBoardPath(order.workflowPosition) do
                   val noticeId = PlanId.Global / boardPath / notice.noticeKey
                   notices.deleteSchedule(noticeId)
                   notices.schedule(noticeId, notice.endOfLife)
@@ -1233,7 +1202,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
               case _ =>
 
             (dependentOrderIds.view ++
-              (_controllerState.idToOrder.contains(orderId) ? order.id)
+              (controllerState.idToOrder.contains(orderId) ? order.id)
             ).toSet
 
   private def updateOrderEntry(orderId: OrderId, event: OrderEvent): Unit =
@@ -1259,7 +1228,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       orderIds foreach proceedWithOrder
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    for order <- _controllerState.idToOrder.get(orderId) do
+    for order <- controllerState().idToOrder.get(orderId) do
       if order.isDetached then
         for until <- order.maybeDelayedUntil do
           clock.lock:
@@ -1317,7 +1286,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           // Maybe attach Workflow
           val attachSignedItems: Seq[IO[Unit]] =
             workflow.referencedAttachableToAgentSignablePaths
-              .flatMap(_controllerState.pathToSignedSimpleItem.get)
+              .flatMap(controllerState().pathToSignedSimpleItem.get)
               .appended(signedWorkflow)
               .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
               .map(signedItem =>
@@ -1358,24 +1327,24 @@ extends Stash, JournalingActor[ControllerState, Event]:
       .reduceForAgent(agentPath)
       .referencedAttachableUnsignedPaths
       .view
-      .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
+      .flatMap(controllerState().pathToUnsignedSimpleItem.get)
       .map(o => o.key -> o)
 
     // Workflow does not return those SubagentBundles which are referenced via
     // a variable expression.
     // So we attach all SubagentBundles which contain a SubagentId of the Agent
-    result ++= _controllerState.keyToItem(SubagentBundle)
+    result ++= controllerState().keyToItem(SubagentBundle)
       .filter(_
         ._2.subagentIds
-        .flatMap(_controllerState.keyToItem(SubagentItem).get)
+        .flatMap(controllerState().keyToItem(SubagentItem).get)
         .exists(_.agentPath == agentPath))
 
-    if _controllerState.workflowToOrders.workflowIdToOrders contains workflow.id then
-      result ++= _controllerState.keyToItem(WorkflowPathControl)
+    if controllerState().workflowToOrders.workflowIdToOrders contains workflow.id then
+      result ++= controllerState().keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
         .map(o => o.key -> o)
 
-    result ++= _controllerState.keyTo(WorkflowControl).get(WorkflowControlId(workflow.id))
+    result ++= controllerState().keyTo(WorkflowControl).get(WorkflowControlId(workflow.id))
       .map(o => o.key -> o)
 
     result.result().values.view
@@ -1386,7 +1355,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     order.attachedState match
       case Some(Order.AttachedState.HasAgentPath(agentPath)) =>
         ( for
-            signedWorkflow <- _controllerState.repo.idToSigned(Workflow)(order.workflowId)
+            signedWorkflow <- controllerState().repo.idToSigned(Workflow)(order.workflowId)
             agentEntry <- agentRegister.checked(agentPath)
           yield (signedWorkflow, agentEntry)
         ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
@@ -1394,13 +1363,13 @@ extends Stash, JournalingActor[ControllerState, Event]:
       case _ => None
 
   private def isDetachedOrAttachable(item: InventoryItem, agentPath: AgentPath) =
-    val attachedState = _controllerState.itemToAttachedState(item.key, item.itemRevision, agentPath)
+    val attachedState = controllerState().itemToAttachedState(item.key, item.itemRevision, agentPath)
     attachedState == Detached || attachedState == Attachable
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for orderEntry <- orderRegister.get(orderId) do
       if !orderEntry.isDetaching then
-        _controllerState.idToOrder.checked(orderId)
+        controllerState().idToOrder.checked(orderId)
           .flatMap(_.detaching)
           .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
           .foreach { agentPath =>
@@ -1417,7 +1386,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    _controllerState.repo.idTo(Workflow)(workflowPosition.workflowId).orThrow
+    controllerState().repo.idTo(Workflow)(workflowPosition.workflowId).orThrow
       .instruction(workflowPosition.position)
 
   private def clusterSwitchOver(restart: Boolean)
@@ -1447,6 +1416,9 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   private def runningAgentDriverCount =
     agentRegister.values.count(o => !o.actorTerminated)
+
+  private def controllerState() =
+    journal.unsafeAggregate()
 
   override def toString = "ControllerOrderKeeper"
 

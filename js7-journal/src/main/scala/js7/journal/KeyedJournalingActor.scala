@@ -5,7 +5,7 @@ import js7.base.generic.Accepted
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isStrict
-import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventCalc, JournaledState, KeyedEvent, Stamped}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 
@@ -18,7 +18,8 @@ extends JournalingActor[S, E]:
 
   protected def key: E.Key
 
-  protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
+  @TestOnly
+  protected final def persistEvent[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
     super.persistKeyedEvent(toKeyedEvent(event), async = async) { (stampedEvent, journaledState) =>
       callback(stampedEvent.value.event.asInstanceOf[EE], journaledState)
     }
@@ -35,30 +36,36 @@ extends JournalingActor[S, E]:
     event: EE,
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Accepted]] =
-    super.persistKeyedEventAcceptEarlyIO((toKeyedEvent(event)) :: Nil, options = options)
+    super.persistKeyedEventAcceptEarlyIO(EventCalc.pure(toKeyedEvent(event)), options = options)
 
   @TestOnly
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
     (callback: (Seq[EE], S) => A)
   : Future[A] =
-    super.persistKeyedEvents(
-      events.map(toKeyedEvent),
+    super.persist(
+      EventCalc.pure(events.map(toKeyedEvent)),
       CommitOptions(transaction = true),
       async = async):
-      (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
+      persisted => callback(
+        persisted.stampedKeyedEvents.map(_.value.event.asInstanceOf[EE]),
+        persisted.aggregate)
 
   private def toKeyedEvent(event: E): KeyedEvent[E] =
     if isStrict then assert(event.keyCompanion eq E)
     key.asInstanceOf[event.keyCompanion.Key] <-: event
 
   protected final def persistTransactionReturnChecked[EE <: E, A](
-    events: Seq[EE], async: Boolean = false)
+    events: Seq[EE],
+    async: Boolean = false)
     (callback: (Seq[EE], S) => A)
   : Future[Checked[A]] =
     super.persistKeyedEventsReturnChecked(
-      events.map(e => key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e),
+      EventCalc.pure:
+        events.map(e => key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e),
       CommitOptions(transaction = true),
       async = async):
-      (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
+      persisted => callback(
+        persisted.stampedKeyedEvents.map(_.value.event.asInstanceOf[EE]),
+        persisted.aggregate)
 
   override def toString = s"${ getClass.simpleScalaName }($key)"

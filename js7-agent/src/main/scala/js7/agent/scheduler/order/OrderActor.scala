@@ -16,6 +16,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.event.EventCalc
 import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.journal.configuration.JournalConf
@@ -87,10 +88,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
                 sender() ! Status.Failure(problem.throwable)
 
               case Right(orderAttachedToAgent) =>
-                persist(orderAttachedToAgent) {
-                  (event, updatedState) =>
+                persist(EventCalc.pure(orderId <-: orderAttachedToAgent)) { _ =>
                     becomeAsStateOf(attachedOrder, force = true)
-                    update(event :: Nil)
+                    update(orderAttachedToAgent :: Nil)
                     Completed
                 } pipeTo sender()
 

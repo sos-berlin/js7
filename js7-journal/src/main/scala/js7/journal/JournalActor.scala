@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, MaybeTimestampedKeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, MaybeTimestampedKeyedEvent, SnapshotableState, TimeCtx}
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
@@ -39,29 +39,27 @@ extends Actor, Stash:
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   def receive: Receive = receiveGet orElse:
-    case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
+    case Input.Store(correlId, eventCalc: EventCalc[S, Event, TimeCtx] @unchecked, replyTo, options, since, commitLater, callersItem) =>
       val sender = this.sender()
       if journal.isStopping then
-        for o <- timestamped do logger.debug:
-          s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
+        //for o <- timestamped do logger.debug:
+        //  s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
         // We ignore the event and do not notify the caller,
         // because it would crash and disturb the process of switching-over.
         // (so AgentDriver with AgentReady event)
         reply(sender, replyTo,
           Output.Stored(
             Left(ClusterNodeHasBeenSwitchedOverProblem/*???*/),
-            journal.unsafeUncommittedAggregate(),
             callersItem))
       else
         journal.enqueue:
-          Persist(options.copy(commitLater = commitLater), since):
-            EventCalc.pure(timestamped)
+          Persist(options.copy(commitLater = commitLater), since)(eventCalc)
         .flatMap: (whenApplied, whenCommitted) =>
           whenApplied.get.map(_.map(_ -> whenCommitted))
         .awaitInfinite match
           case Left(problem) =>
             reply(sender, replyTo,
-              Output.Stored(Left(problem), journal.unsafeUncommittedAggregate(), callersItem))
+              Output.Stored(Left(problem), callersItem))
           case Right((written, whenCommitted)) =>
             if commitLater then
               reply(sender, replyTo, Output.Accepted(callersItem))
@@ -70,12 +68,9 @@ extends Actor, Stash:
 
     case Internal.Written(whenCommitted, sender, replyTo, callersItem) =>
      try
-       val committed = whenCommitted.get.awaitInfinite.orThrow
+       val persisted = whenCommitted.get.awaitInfinite.orThrow
        reply(sender, replyTo,
-         Output.Stored(
-           Right(committed.stampedKeyedEvents),
-           committed.aggregate,
-           callersItem))
+         Output.Stored(Right(persisted), callersItem))
      catch case t: Throwable =>
       logger.error(t.toStringWithCauses)
       throw t
@@ -146,9 +141,9 @@ object JournalActor:
   object Input:
     private[journal] final case class Start[S <: SnapshotableState[S]](recovered: Recovered[S])
 
-    private[journal] final case class Store(
+    private[journal] final case class Store[S <: EventDrivenState[S, E], E <: Event](
       correlId: CorrelId,
-      timestamped: Seq[MaybeTimestampedKeyedEvent[Event]],
+      eventCalc: EventCalc[S, E, TimeCtx],
       journalingActor: ActorRef,
       options: CommitOptions,
       since: Deadline,
@@ -170,8 +165,7 @@ object JournalActor:
   sealed trait Output
   object Output:
     private[journal] final case class Stored[S <: SnapshotableState[S]](
-      stamped: Checked[Seq[Stamped[AnyKeyedEvent]]],
-      journaledState: S,
+      persisted: Checked[Persisted[S, Event]],
       callersItem: CallersItem)
     extends Output
 

@@ -5,6 +5,7 @@ import com.softwaremill.tagging.@@
 import js7.base.generic.Accepted
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.event.EventCalc
 import js7.journal.configuration.JournalConf
 import js7.journal.test.TestAggregateActor.*
 import js7.journal.{JournalActor, KeyedJournalingActor}
@@ -44,7 +45,7 @@ extends KeyedJournalingActor[TestState, TestEvent]:
 
         case Command.Add(string) =>
           val before = persistedEventId
-          persist(TestEvent.Added(string)) { (e, s) =>
+          persistEvent(TestEvent.Added(string)) { (e, s) =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Done
@@ -52,7 +53,7 @@ extends KeyedJournalingActor[TestState, TestEvent]:
 
         case Command.Remove =>
           val before = persistedEventId
-          persist(TestEvent.Removed) { (e, s) =>
+          persistEvent(TestEvent.Removed) { (e, s) =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Response.Completed(disturbance)
@@ -66,8 +67,8 @@ extends KeyedJournalingActor[TestState, TestEvent]:
             sender() ! Response.Completed(disturbance)
 
         case Command.AppendEmpty =>
-          persistKeyedEvents(Nil) { (seq, journaledState) =>
-            assert(seq.isEmpty)
+          persist(EventCalc.empty) { persisted =>
+            assert(persisted.stampedKeyedEvents.isEmpty)
             sender() ! Response.Completed(disturbance)
           }
 
@@ -88,7 +89,7 @@ extends KeyedJournalingActor[TestState, TestEvent]:
           val iterator = string.iterator
           for c <- string do
             val before = persistedEventId
-            persist(TestEvent.Appended(c), async = true) { (e, s) =>
+            persistEvent(TestEvent.Appended(c), async = true) { (e, s) =>
               assert(before < persistedEventId)
               assert(c == iterator.next())
               update(e)
@@ -99,7 +100,7 @@ extends KeyedJournalingActor[TestState, TestEvent]:
         case Command.AppendNested(string) =>
           def append(string: List[Char]): Unit = string match
             case char :: tail =>
-              persist(TestEvent.Appended(char)) { (e, s) =>
+              persistEvent(TestEvent.Appended(char)) { (e, s) =>
                 update(e)
                 append(tail)
               }
@@ -110,7 +111,7 @@ extends KeyedJournalingActor[TestState, TestEvent]:
         case Command.AppendNestedAsync(string) =>
           def append(string: List[Char]): Unit = string match
             case char :: tail =>
-              persist(TestEvent.Appended(char), async = true) { (e, s) =>
+              persistEvent(TestEvent.Appended(char), async = true) { (e, s) =>
                 update(e)
                 append(tail)
               }

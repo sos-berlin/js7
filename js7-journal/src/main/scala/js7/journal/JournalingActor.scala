@@ -14,12 +14,11 @@ import js7.base.problem.{Checked, ProblemException}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.pekkoutils.ReceiveLoggingActor
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
@@ -59,21 +58,21 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     journalingTimer.get().cancelAndForget()
     super.postStop()
 
-  protected final def persistKeyedEventIO[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
-    (callback: (Stamped[KeyedEvent[E]], S) => A)
+  protected final def persistKeyedEventIO[A](
+    eventCalc: EventCalc[S, E, TimeCtx], async: Boolean = false)
+    (callback: Persisted[S, E] => A)
   : IO[Checked[A]] =
     promiseIO[Checked[A]]: promise =>
-      self ! Persist(keyedEvent, async = async, callback, promise)
+      self ! Persist(eventCalc, async = async, callback, promise)
 
   /** Fast lane for events not affecting the journaled state. */
   @TestOnly
   protected final def persistKeyedEventAcceptEarlyIO[EE <: E](
-    keyedEvents: Seq[KeyedEvent[EE]],
-    timestampMillis: Option[Long] = None,
+    eventCalc: EventCalc[S, EE, TimeCtx],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Accepted]] =
     promiseIO[Checked[Accepted]]: promise =>
-      self ! PersistAcceptEarly(keyedEvents, timestampMillis, options, promise)
+      self ! PersistAcceptEarly(eventCalc.widen, options, promise)
 
   protected final def persist[EE <: E, A](
     keyedEvent: MaybeTimestampedKeyedEvent[EE])(
@@ -86,42 +85,39 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     async: Boolean = false)(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    persistKeyedEvents(keyedEvent :: Nil, async = async) { (events, journaledState) =>
-      assertThat(events.sizeIs == 1)
-      callback(events.head, journaledState)
-    }
+    persist(EventCalc.pure(keyedEvent), async = async): persisted =>
+      persisted.checkedSingle.orThrow
+      callback(persisted.stampedKeyedEvents.head, persisted.aggregate)
 
-  protected final def persistKeyedEvents[EE <: E, A](
-    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
+  protected final def persist[EE <: E, A](
+    eventCalc: EventCalc[S, EE, TimeCtx],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
-    callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
+    callback: Persisted[S, EE] => A)
   : Future[A] =
-    persistKeyedEventsReturnChecked2(timestamped, options, async)(callback)
+    persistEventCalcReturnChecked2(eventCalc, options, async)(callback)
       .map(_.orThrow)(ioRuntime.compute)
 
   protected final def persistKeyedEventsReturnChecked[EE <: E, A](
-    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
+    eventCalc: EventCalc[S, EE, TimeCtx],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
-    callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
+    callback: Persisted[S, EE] => A)
   : Future[Checked[A]] =
-    persistKeyedEventsReturnChecked2(timestamped, options, async, dontCrashActorOnFailure = true)(
+    persistEventCalcReturnChecked2(eventCalc, options, async, dontCrashActorOnFailure = true)(
       callback)
 
-  private def persistKeyedEventsReturnChecked2[EE <: E, A](
-    timestamped: Seq[MaybeTimestampedKeyedEvent[EE]],
+  private def persistEventCalcReturnChecked2[EE <: E, A](
+    eventCalc: EventCalc[S, EE, TimeCtx],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false,
     dontCrashActorOnFailure: Boolean = false)(
-    callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
+    callback: Persisted[S, EE] => A)
   : Future[Checked[A]] =
     promiseFuture[Checked[A]] { promise =>
-      start(async = async, timestamped.headOption.fold("empty")(_.keyedEvent.event.getClass.simpleScalaName))
-      if TraceLog && logger.underlying.isTraceEnabled then
-        for t <- timestamped do logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
+      start(async = async, "persistEventCalcReturnChecked2")
       journalActor.forward(
-        JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now,
+        JournalActor.Input.Store(CorrelId.current, eventCalc, self, options, since = now,
           callersItem = EventsCallback(
             CorrelId.current,
             async = async,
@@ -129,18 +125,17 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
               case Left(problem) =>
                 if !dontCrashActorOnFailure then
                   logger.error(s"»$toString« Event could not be stored: $problem")
-                  for stamped <- timestamped.map(_.keyedEvent) do logger.error(stamped.toString)
                   throw problem.throwable.appendCurrentStackTrace
                 logger.debug(s"»$toString« 💥 $problem$stashingCountRemaining")
                 promise.complete(Success(Left(problem)))
 
-              case Right((stampedSeq, journaledState)) =>
+              case Right(persisted) =>
                 promise.complete(
                   try Success(Right(
-                    callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState)))
+                    callback(persisted.asInstanceOf[Persisted[S, EE]])))
                   catch { case NonFatal(t) =>
                     // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
-                    logger.error(s"»$toString« ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
+                    logger.error(s"»$toString« ${t.toStringWithCauses}\n", t)
                     throw t
                     //Failure(t)
                   })
@@ -159,7 +154,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   private def defer_(async: Boolean, callback: => Unit): Unit =
     start(async = async, "defer")
     journalActor.forward(
-      JournalActor.Input.Store(CorrelId.current, Nil, self, CommitOptions.default, since = now,
+      JournalActor.Input.Store(CorrelId.current, EventCalc.empty, self, CommitOptions.default, since = now,
         callersItem = Deferred(CorrelId.current, async = async,
           callback = {
             case Left(problem) => throw problem.throwable.appendCurrentStackTrace
@@ -174,30 +169,28 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       beginStashing(firstName)
 
   protected[journal] def journaling: Receive =
-    case Persist(keyedEvent, async, callback, promise) =>
-      promise.completeWith(
-        persistKeyedEvent(keyedEvent, async = async)((stampedEvents, state) =>
-          try Right(callback(stampedEvents, state))
-          catch {
+    case Persist(eventCalc: EventCalc[S, E, TimeCtx] @unchecked, async, callback, promise) =>
+      promise.completeWith:
+        persist(eventCalc, async = async): persisted =>
+          try Right(callback(persisted))
+          catch
             case ProblemException(problem) => Left(problem)
             case t: Throwable => throw t.appendCurrentStackTrace
-          }))
 
-    case PersistAcceptEarly(keyedEvents, timestampMillis, options, promise) =>
+    case PersistAcceptEarly(eventCalc, options, promise) =>
       start(async = true, "persistKeyedEventAcceptEarlyIO")
-      val timestamped = keyedEvents.map(MaybeTimestampedKeyedEvent(_, timestampMillis))
       journalActor.forward(
-        JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now, commitLater = true,
+        JournalActor.Input.Store(CorrelId.current, eventCalc, self, options, since = now, commitLater = true,
           Deferred(CorrelId.current, async = true,
             callback = checked => promise.success(checked))))
 
-    case JournalActor.Output.Stored(stampedSeqChecked, journaledState, item: Item) =>
+    case JournalActor.Output.Stored(persisted, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
       item.correlId.bind[Unit]:
         if !item.async then
-          endStashing(stampedSeqChecked getOrElse Nil)
+          endStashing(persisted.map(_.stampedKeyedEvents) getOrElse Nil)
 
-        stampedSeqChecked match
+        persisted match
           case Left(problem) =>
             item match
               case eventsCallback: EventsCallback =>
@@ -209,24 +202,23 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
               case _ => sys.error(
                 s"JournalActor.Output.Stored($problem) · Message does not match item '$item'")
 
-          case Right(stampedSeq) =>
-            persistStatistics.onStored(stampedSeq.size)
-            stampedSeq.lastOption foreach { last =>
+          case Right(persisted) =>
+            persistStatistics.onStored(persisted.stampedKeyedEvents.size)
+            persisted.stampedKeyedEvents.lastOption foreach { last =>
               _persistedEventId = last.eventId
             }
-            (stampedSeq, item) match
+            (persisted, item) match
               case (_, eventsCallback: EventsCallback) =>
-                if TraceLog && logger.underlying.isTraceEnabled then for st <- stampedSeq do
+                if TraceLog && logger.underlying.isTraceEnabled then for st <- persisted.stampedKeyedEvents do
                   logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
-                eventsCallback.callback(Right((
-                  stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])))
+                eventsCallback.callback(Right(persisted.asInstanceOf[Persisted[S, E]]))
 
-              case (Nil, deferred: Deferred) =>
+              case (Persisted(_, Nil, _), deferred: Deferred) =>
                 if TraceLog then logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
                 deferred.callback(Right(Accepted))
 
               case _ => sys.error(
-                s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
+                s"JournalActor.Output.Stored(${persisted.stampedKeyedEvents.length}×) message does not match item '$item'")
 
     case JournalActor.Output.Accepted(item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
@@ -284,7 +276,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   private case class EventsCallback(
     correlId: CorrelId,
     async: Boolean,
-    callback: Checked[(Seq[Stamped[KeyedEvent[E]]], S)] => Unit)
+    callback: Checked[Persisted[S, E]] => Unit)
   extends Item:
     override def toString = s"EventsCallback(${async ?? "async"})"
 
@@ -296,14 +288,13 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     override def toString = s"Deferred(${async ?? "async"})"
 
   private case class Persist[A](
-    keyedEvent: KeyedEvent[E],
+    eventCalc: EventCalc[S, E, TimeCtx],
     async: Boolean = false,
-    callback: (Stamped[KeyedEvent[E]], S) => A,
+    callback: Persisted[S, E] => A,
     promise: Promise[Checked[A]])
 
   private case class PersistAcceptEarly(
-    keyedEvents: Seq[KeyedEvent[E]],
-    timestampMillis: Option[Long],
+    eventCalc: EventCalc[S, E, TimeCtx],
     options: CommitOptions,
     promise: Promise[Checked[Accepted]])
 
