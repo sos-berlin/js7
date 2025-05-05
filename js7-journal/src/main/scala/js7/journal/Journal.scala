@@ -3,6 +3,7 @@ package js7.journal
 import cats.effect.IO
 import js7.base.problem.Checked
 import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, Stamped, TimeCtx}
+import js7.journal.CommitOptions.Transaction
 import js7.journal.watch.EventWatch
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
@@ -72,7 +73,7 @@ trait Journal[S <: JournaledState[S]]:
 
   final def persistTransaction[E <: Event](aggregateToEvents: S => Checked[IterableOnce[KeyedEvent[E]]])
   : IO[Checked[Persisted[S, E]]] =
-    persistChecked[E](CommitOptions.transaction)(aggregateToEvents)
+    persistChecked[E](Transaction)(aggregateToEvents)
 
   final def persistChecked[E <: Event](
     options: CommitOptions = CommitOptions.default)

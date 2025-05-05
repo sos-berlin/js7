@@ -22,6 +22,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
+import js7.journal.CommitOptions.Transaction
 import js7.journal.recover.Recovered
 import js7.journal.{CommitOptions, EventIdGenerator, FileJournal, JournalActor}
 import org.apache.pekko
@@ -111,7 +112,7 @@ final class WorkingClusterNode[
       appointNodesLock.lock:
         currentClusterState.flatMap:
           case ClusterState.Empty =>
-            journal.persistKeyedEvents(CommitOptions.transaction):
+            journal.persistKeyedEvents(Transaction):
               (extraEvent.toList :+ ClusterNodesAppointed(setting))
                 .map(NoKey <-: _)
             .flatMapT: persisted =>

@@ -15,8 +15,8 @@ object CommitOptions:
   val default: CommitOptions =
     CommitOptions()
 
-  val transaction: CommitOptions =
+  val Transaction: CommitOptions =
     CommitOptions(transaction = true)
 
-  val commitLater: CommitOptions =
+  val CommitLater: CommitOptions =
     CommitOptions(commitLater = true)

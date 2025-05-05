@@ -186,7 +186,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
 
     if true then
       // Until v2.6: temporary overflow of MemoryJournal's queue counts the semaphore wrongly
-      journal.persist(CommitOptions.commitLater):
+      journal.persist(CommitOptions.CommitLater):
         EventCalc.pure(events)
       .await(99.s)
       assert(journal.queueLength == 3 * size)
