@@ -99,11 +99,12 @@ trait SubagentDriver:
   // TODO Emit one batch for all recovered orders!
   final def emitOrderProcessLostAfterRestart(order: Order[Order.Processing])
   : IO[Checked[OrderProcessed]] =
-    journal
-      .persist1: state =>
-        Right:
-          order.id <-: state.orderProcessLostIfRestartable(order, ProcessLostDueToRestartProblem)
-      .map(_.map(_._1.value.event))
+    journal.persist: aggregate =>
+      Right:
+        Seq:
+          order.id <-: aggregate.orderProcessLostIfRestartable(order, ProcessLostDueToRestartProblem)
+    .map(_.flatMap(_
+      .checkedSingle.map(_._1.value.event)))
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : IO[Checked[Seq[Signed[SignableItem]]]] =

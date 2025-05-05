@@ -20,6 +20,7 @@ import js7.base.utils.{AsyncLock, Atomic}
 import js7.core.command.CommandMeta
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
+import js7.data.event.EventCalc
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
@@ -110,7 +111,7 @@ extends Service.StoppableByRequest:
                     .logWhenItTakesLonger("Director-acknowledged Order processes"))
             .*>(journal
               // Maybe the director does not read this event due to immediate shutdown !!!
-              .persistKeyedEvent(NoKey <-: SubagentShutdown)
+              .persist(NoKey <-: SubagentShutdown)
               .rightAs(())
               .map(_.onProblemHandle: problem =>
                 logger.warn(s"SubagentShutdown: $problem"))))
@@ -241,7 +242,7 @@ extends Service.StoppableByRequest:
             IO.pure(orderProcessed)
           else
             journal
-              .persistKeyedEvent(order.id <-: orderProcessed)
+              .persist(order.id <-: orderProcessed)
               .map(_.orThrow._1.value.event)
         .start)
 
@@ -308,7 +309,9 @@ extends Service.StoppableByRequest:
         _.acknowledged.complete(()))
       .as(Checked.unit)
 
-  private val stdoutCommitDelayOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)
+  private val stdoutCommitDelayOptions = CommitOptions(
+    commitLater = true,
+    delay = subagentConf.stdoutCommitDelay)
 
   private def outErrToJournalSink(
     orderId: OrderId,
@@ -323,7 +326,7 @@ extends Service.StoppableByRequest:
         val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
         outErrStatistics(outErr)
           .count(n = events.size, totalLength = totalLength):
-            journal.persistKeyedEventsLater(events, stdoutCommitDelayOptions)
+            journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
           .map:
             case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
             case Right(_) =>

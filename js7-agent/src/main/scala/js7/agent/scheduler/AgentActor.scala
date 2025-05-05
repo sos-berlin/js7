@@ -351,12 +351,12 @@ extends Actor, Stash, SimpleStateActor:
     logger.debugIO(journal.aggregate
       .flatMap(agentState =>
         if !agentState.isDedicated then
-          journal.persistKeyedEvent(event).rightAs(())
+          journal.persist(event).rightAs(())
         else
           IO.pure(agentState.applyKeyedEvent(event)).flatMapT(nextAgentState =>
             demandedClusterNodeUris(nextAgentState) match
               case None =>
-                journal.persistKeyedEvent(event).rightAs(())
+                journal.persist(event).rightAs(())
 
               case Some(idToUri) =>
                 agentState.clusterState
@@ -366,7 +366,7 @@ extends Actor, Stash, SimpleStateActor:
                     case clusterState: HasNodes =>
                       (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
                   }
-                  .fold(journal.persistKeyedEvent(event).rightAs(())): activeNodeId =>
+                  .fold(journal.persist(event).rightAs(())): activeNodeId =>
                     workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
             )))
 

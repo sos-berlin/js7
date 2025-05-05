@@ -426,7 +426,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
           case subagentId: SubagentId =>
             journal
-              .persistKeyedEvent(NoKey <-: ItemDetachingFromMe(subagentId))
+              .persist(NoKey <-: ItemDetachingFromMe(subagentId))
               .flatMapT(_ => subagentKeeper
                 .startRemoveSubagent(subagentId)
                 // SubagentKeeper will emit ItemDetached event
@@ -436,7 +436,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
           case bundleId: SubagentBundleId =>
             journal
-              .persistKeyedEvent(NoKey <-: ItemDetached(bundleId, ownAgentPath))
+              .persist(NoKey <-: ItemDetached(bundleId, ownAgentPath))
               .flatMapT(_ => subagentKeeper
                 .removeSubagentBundle(bundleId)
                 .as(Right(AgentCommand.Response.Accepted)))

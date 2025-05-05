@@ -37,8 +37,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetS
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
-import js7.journal.Journal
-import js7.journal.Persisted
+import js7.journal.{Journal, Persisted}
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
@@ -182,7 +181,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     onEvents: Seq[OrderCoreEvent] => Unit)
   : IO[Checked[Persisted[S, OrderCoreEvent]]] =
     journal
-      .persistKeyedEvents(events.map(orderId <-: _))
+      .persist(events.map(orderId <-: _))
       .map(_.map: o =>
         onEvents(events)
         o)
@@ -318,7 +317,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     stateVar.value.map(_.idToDriver.checked(subagentId))
       .flatMapT:
         case driver: RemoteSubagentDriver =>
-          journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
+          journal.persist(subagentId <-: SubagentResetStarted(force))
             .flatMapT: _ =>
               driver.reset(force)
                 .handleError: t =>
@@ -346,7 +345,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                 state.removeSubagent(subagentId)))
               .*>(subagentDriver.terminate))
         .*>(journal
-          .persistKeyedEvent(ItemDetached(subagentId, agentPath))
+          .persist(ItemDetached(subagentId, agentPath))
           .orThrow
           .void)
 

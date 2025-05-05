@@ -98,7 +98,7 @@ extends Service.StoppableByRequest:
                   case Left(AgentNotDedicatedProblem) => Checked.unit // Already reset
                   case o => o
                 .flatMapT: _ =>
-                  journal.persistKeyedEvent(agentPath <-: AgentReset)
+                  journal.persist(agentPath <-: AgentReset)
 
             case _ =>
               IO.pure(Checked.unit)

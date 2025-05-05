@@ -54,10 +54,8 @@ extends Actor, Stash:
             callersItem))
       else
         journal.enqueue:
-          Persist(
-            EventCalc.pure(timestamped),
-            options.copy(commitLater = commitLater),
-            since)
+          Persist(options.copy(commitLater = commitLater), since):
+            EventCalc.pure(timestamped)
         .flatMap: (whenApplied, whenCommitted) =>
           whenApplied.get.map(_.map(_ -> whenCommitted))
         .awaitInfinite match

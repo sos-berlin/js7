@@ -629,9 +629,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             if _ then // Shortcut
               IO.right(Nil -> clusterState)
             else
-              journal.persistTransaction[ClusterEvent](NoKey): s =>
-                isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
-                  .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId))
+              journal.persistTransaction: aggregate =>
+                isClusterWatchRegistered(aggregate.clusterState, confirmation.clusterWatchId)
+                  .map(!_ thenList NoKey <-: ClusterWatchRegistered(confirmation.clusterWatchId))
               .map(_.map: persisted =>
                 persisted.stampedKeyedEvents -> persisted.aggregate.clusterState)
       .flatTapT: _ =>
@@ -676,50 +676,50 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     IO.defer:
       assertThat(!clusterWatchSynchronizer.isHeartbeating)
-      journal
-        .persistTransaction[NoKeyEvent](NoKey): state =>
-          toEvents(state.clusterState).flatMap:
-            case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
-              Left(Problem(s"ClusterEvent is only allowed on active cluster node: $event"))
-            case maybeEvent =>
-              Right(extraEvent.toList ::: maybeEvent.toList)
-        .flatMapT: persisted =>
-          IO
-            .defer:
-              assertThat(!clusterWatchSynchronizer.isHeartbeating)
-              persisted.aggregate.clusterState match
-                case Empty | _: NodesAppointed => IO.unit
-                case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
-            .flatMap: _ =>
-              val clusterStampedEvents = persisted.stampedKeyedEvents.collect:
-                case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
-                  o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
-              val events = clusterStampedEvents.map(_.value.event)
-              (events, persisted.aggregate.clusterState) match
-                case (Seq(event), clusterState: HasNodes) =>
-                  clusterWatchSynchronizer
-                    .applyEvent(
-                      event, clusterState,
-                      clusterWatchIdChangeAllowed = true/*
-                        events == Seq(ClusterCouplingPrepared(ownId) ||
-                        events == Seq(ClusterPassiveLost(clusterState.passiveId))*/,
-                      forceWhenUntaught = dontAskClusterWatchWhenUntaught)
-                    .flatMapT:
-                      case Some(confirmation)
-                        // After SwitchOver this ClusterNode is no longer active
-                        if clusterState.isNonEmptyActive(ownId) =>
-                        // JS-2092 We depend on the ClusterWatch,
-                        // that it confirms the event only if it is taught about the ClusterState.
-                        // Then, a ClusterWatch change is allowed.
-                        registerClusterWatchId(confirmation, alreadyLocked = true)
-                      case _ => IO.right(())
-                    .rightAs(clusterStampedEvents -> clusterState)
+      journal.persistTransaction: aggregate =>
+        toEvents(aggregate.clusterState).flatMap:
+          case Some(event) if !aggregate.clusterState.isEmptyOrActive(ownId) =>
+            Left(Problem(s"ClusterEvent is only allowed at the active cluster node: $event"))
+          case maybeEvent =>
+            Right:
+              (extraEvent.toList ++ maybeEvent).map(NoKey <-: _)
+      .flatMapT: persisted =>
+        IO
+          .defer:
+            assertThat(!clusterWatchSynchronizer.isHeartbeating)
+            persisted.aggregate.clusterState match
+              case Empty | _: NodesAppointed => IO.unit
+              case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
+          .flatMap: _ =>
+            val clusterStampedEvents = persisted.stampedKeyedEvents.collect:
+              case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
+                o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
+            val events = clusterStampedEvents.map(_.value.event)
+            (events, persisted.aggregate.clusterState) match
+              case (Seq(event), clusterState: HasNodes) =>
+                clusterWatchSynchronizer
+                  .applyEvent(
+                    event, clusterState,
+                    clusterWatchIdChangeAllowed = true/*
+                      events == Seq(ClusterCouplingPrepared(ownId) ||
+                      events == Seq(ClusterPassiveLost(clusterState.passiveId))*/,
+                    forceWhenUntaught = dontAskClusterWatchWhenUntaught)
+                  .flatMapT:
+                    case Some(confirmation)
+                      // After SwitchOver this ClusterNode is no longer active
+                      if clusterState.isNonEmptyActive(ownId) =>
+                      // JS-2092 We depend on the ClusterWatch,
+                      // that it confirms the event only if it is taught about the ClusterState.
+                      // Then, a ClusterWatch change is allowed.
+                      registerClusterWatchId(confirmation, alreadyLocked = true)
+                    case _ => IO.right(())
+                  .rightAs(clusterStampedEvents -> clusterState)
 
-                case (Seq(), clusterState) =>
-                  IO.right(clusterStampedEvents -> clusterState)
+              case (Seq(), clusterState) =>
+                IO.right(clusterStampedEvents -> clusterState)
 
-                case _ =>
-                  IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
+              case _ =>
+                IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
 
   private def suspendHeartbeat[A](forEvent: Boolean = false)(io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)

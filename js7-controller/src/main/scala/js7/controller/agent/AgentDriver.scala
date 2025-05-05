@@ -114,7 +114,7 @@ extends Service.StoppableByRequest:
           for t <- problem.throwableOption if PekkoHttpClient.hasRelevantStackTrace(t) do
             logger.debug(s"Coupling failed: $problem", t)
           IO.unlessA(noJournal)(
-            journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)
+            journal.persist(agentPath <-: agentCouplingFailed)
               .map(_.orThrow))
     } *>
       IO(!isTerminating)
@@ -349,7 +349,7 @@ extends Service.StoppableByRequest:
                     IO.right(())
                   else
                     journal
-                      .persistKeyedEvent(
+                      .persist(
                         agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
                       .flatMapT { _ =>
                         lastAgentRunId = Some(agentRunId)

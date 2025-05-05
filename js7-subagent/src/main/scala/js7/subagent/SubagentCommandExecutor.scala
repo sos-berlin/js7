@@ -61,7 +61,7 @@ private[subagent] final class SubagentCommandExecutor(
                     logger.info(Logger.SignatureVerified,
                       s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
                     journal
-                      .persistKeyedEvent(NoKey <-: SubagentItemAttached(signed.value))
+                      .persist(NoKey <-: SubagentItemAttached(signed.value))
                       .rightAs(SubagentCommand.Accepted)
 
           case KillProcess(orderId, signal) =>

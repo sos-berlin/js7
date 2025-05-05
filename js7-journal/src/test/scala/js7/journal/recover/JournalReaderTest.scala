@@ -118,8 +118,8 @@ final class JournalReaderTest extends OurAsyncTestSuite:
 
   "Journal file with snapshot and events" in:
     journalResource.use: journal =>
-      journal.persistKeyedEvent("A" <-: TestEvent.SimpleAdded("(A)")) *>
-      journal.persistKeyedEvent("B" <-: TestEvent.SimpleAdded("(B)"))
+      journal.persist("A" <-: TestEvent.SimpleAdded("(A)")) *>
+      journal.persist("B" <-: TestEvent.SimpleAdded("(B)"))
     .await(99.s)
     autoClosing(
       JournalReader(journalLocation.S, currentFile, readJournalHeader(currentFile).journalId)

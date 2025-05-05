@@ -23,7 +23,7 @@ import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.recover.Recovered
-import js7.journal.{EventIdGenerator, FileJournal, JournalActor}
+import js7.journal.{CommitOptions, EventIdGenerator, FileJournal, JournalActor}
 import org.apache.pekko
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 
@@ -111,15 +111,15 @@ final class WorkingClusterNode[
       appointNodesLock.lock:
         currentClusterState.flatMap:
           case ClusterState.Empty =>
-            journal
-              .persistTransaction[NoKeyEvent](NoKey): _ =>
-                Right(extraEvent.toList ::: List(ClusterNodesAppointed(setting)))
-              .flatMapT: persisted =>
-                persisted.aggregate.clusterState match
-                  case clusterState: HasNodes =>
-                    startActiveClusterNode(clusterState, persisted.aggregate.eventId)
-                  case clusterState => IO.left(Problem.pure:
-                    s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")
+            journal.persistKeyedEvents(CommitOptions.transaction):
+              (extraEvent.toList :+ ClusterNodesAppointed(setting))
+                .map(NoKey <-: _)
+            .flatMapT: persisted =>
+              persisted.aggregate.clusterState match
+                case clusterState: HasNodes =>
+                  startActiveClusterNode(clusterState, persisted.aggregate.eventId)
+                case clusterState => IO.left(Problem.pure:
+                  s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")
 
           case clusterState @ HasNodes(current) =>
             if setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri)
@@ -127,7 +127,7 @@ final class WorkingClusterNode[
               IO.left(ClusterSettingNotUpdatable(clusterState))
             else if setting.passiveUri == current.passiveUri then
               extraEvent.fold(IO.pure(Checked.unit)): extraEvent =>
-                journal.persistKeyedEvent(extraEvent).rightAs(())
+                journal.persist(extraEvent).rightAs(())
             else
               activeClusterNodeIO.flatMapT:
                 _.changePassiveUri(setting.passiveUri, extraEvent)

@@ -16,10 +16,10 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, WallClock}
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventCalc, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
-import js7.journal.{EventIdGenerator, MemoryJournal}
+import js7.journal.{CommitOptions, EventIdGenerator, MemoryJournal}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import scala.collection.mutable
@@ -38,7 +38,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     val journal = newJournal()
     import journal.eventWatch
 
-    journal.persistKeyedEvent("A" <-: TestEvent.Added("a")).await(99.s).orThrow
+    journal.persist("A" <-: TestEvent.Added("a")).await(99.s).orThrow
     assert(journal.unsafeAggregate() == TestState(1000, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
@@ -49,7 +49,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
       .compile.toList.await(99.s) == List(
         Stamped(1000, "A" <-: TestEvent.Added("a")))
 
-    journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
+    journal.persist("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
     assert(journal.unsafeAggregate() == TestState(1001, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a1"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
@@ -162,7 +162,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     val n = 10
     val persisting = (0 until n).map(_.toString).toVector
       .traverse_(x => journal
-        .persistKeyedEvent(x <-: TestEvent.Added(x))
+        .persist(x <-: TestEvent.Added(x))
         .map(_.orThrow))
         .unsafeToFuture()
 
@@ -186,9 +186,9 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
 
     if true then
       // Until v2.6: temporary overflow of MemoryJournal's queue counts the semaphore wrongly
-      journal
-        .persistKeyedEvents(events)
-        .await(99.s)
+      journal.persist(CommitOptions.commitLater):
+        EventCalc.pure(events)
+      .await(99.s)
       assert(journal.queueLength == 3 * size)
       journal.eventWatch
         .stream(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst,
@@ -199,7 +199,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
           assert(list == events)
     else
       val feed: IO[Unit] =
-        journal.persistKeyedEvents(events).map(_.orThrow).void
+        journal.persist(events).map(_.orThrow).void
 
       val eat: IO[List[KeyedEvent[TestEvent]]] =
         journal.eventWatch
@@ -238,7 +238,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     val feed: IO[Unit] =
       events.parTraverse: myEvents =>
         journal
-          .persistKeyedEvents(myEvents)
+          .persist(myEvents)
           .map(_.orThrow)
           .void
       .map(_.combineAll)

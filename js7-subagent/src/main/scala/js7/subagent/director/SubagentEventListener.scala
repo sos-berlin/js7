@@ -125,7 +125,7 @@ private trait SubagentEventListener:
                 .toVector
               // TODO Save Stamped timestamp
               journal
-                .persistKeyedEvents(events, CommitOptions(transaction = true))
+                .persistKeyedEvents(CommitOptions(transaction = true))(events)
                 .map(_.orThrow /*???*/)
                 // After an OrderProcessed event an DetachProcessedOrder must be sent,
                 // to terminate StartOrderProcess command idempotency detection and
@@ -276,7 +276,7 @@ private trait SubagentEventListener:
       IO.whenA(!wasHeartbeating && isCoupled):
         // Different to AgentDriver,
         // for Subagents, the Coupling state is tied to the continuous flow of events.
-        journal.persistKeyedEvent(subagentId <-: SubagentCoupled)
+        journal.persist(subagentId <-: SubagentCoupled)
           .map(_.orThrow)
 
   private def isCouplingStateCoupled: Boolean =

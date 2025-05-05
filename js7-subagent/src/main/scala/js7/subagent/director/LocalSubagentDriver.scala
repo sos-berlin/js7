@@ -119,16 +119,14 @@ extends SubagentDriver, Service.StoppableByRequest:
               .flatMap: _ =>
                 val lastEventId = keyedEvents.last.eventId
                 // TODO Save Stamped timestamp
-                val events = keyedEvents.map(_.value)
-                  :+ (subagentId <-: SubagentEventsObserved(lastEventId))
-                journal
-                  .persistKeyedEvents(
-                    events,
-                    CommitOptions(
-                      transaction = true,
-                      alreadyDelayed = subagentConf.eventBufferDelay))
-                  .map(_.orThrow /*???*/)
-                  .*>(releaseEvents(lastEventId))
+                val options = CommitOptions(
+                  transaction = true,
+                  alreadyDelayed = subagentConf.eventBufferDelay)
+                journal.persistKeyedEvents(options):
+                  keyedEvents.map(_.value)
+                    :+ (subagentId <-: SubagentEventsObserved(lastEventId))
+                .map(_.orThrow /*???*/)
+                .*>(releaseEvents(lastEventId))
           .*>(followUpAll)
       .takeUntilEval(untilStopRequested)
       .completedL
@@ -253,7 +251,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                         ).start
                       else
                         journal
-                          .persistKeyedEvent(order.id <-: orderProcessed)
+                          .persist(order.id <-: orderProcessed)
                           .orThrow.start
 
               case Right(_: FiberIO[OrderProcessed]) =>

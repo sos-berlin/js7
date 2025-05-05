@@ -71,24 +71,26 @@ final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
     "Start" in:
        journal
 
-    "persistKeyedEvent with simple KeyedEvent" in:
-      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
-      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
-        Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
-          "FileJournalLegacyTest.TestState: Duplicate NumberThing: ONE")))
+    "persist with simple KeyedEvent" in:
+      assert(journal.persist(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
+      assert(journal.persist(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
+        // TODO Would be better: Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
+        //                        "FileJournalLegacyTest.TestState: Duplicate NumberThing: ONE")))
+        Left(Problem("Duplicate NumberThing: ONE")))
       assert:
-        journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() ==
+        journal.persist(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() ==
           Left(Problem("scala.MatchError: NumberUnhandled (of class js7.journal.state.FileJournalLegacyTest$NumberUnhandled$)"))
 
-    "persistEvent" in:
-      assert(journal
-        .persistEvent[NumberEvent](NumberKey("TWO"))(
-          _ => Right(NumberAdded)).unsafeRunSync().isRight)
+    "persist" in:
+      assert:
+        journal.persist[NumberEvent]:
+          NumberKey("TWO") <-: NumberAdded
+        .unsafeRunSync().isRight
 
     "Concurrent update" in:
       val updated = keys
         .map(key =>
-          journal.persistKeyedEvent(key <-: NumberAdded)
+          journal.persist(key <-: NumberAdded)
             .unsafeToFuture(): Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
@@ -96,7 +98,7 @@ final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
       val keyFutures = for key <- keys yield
         Future:
           for i <- 0 until n yield
-            journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
+            journal.persist(key <-: NumberSlowlyIncremented(i * 1000))
               .await(99.s)
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
 

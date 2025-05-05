@@ -183,7 +183,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     logger.debugIO:
       postCommandUntilSucceeded(cmd)
         .flatMap(response => journal
-          .persistKeyedEvent:
+          .persist:
             subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo()))
           .flatTap(checked => IO.whenA(checked.isRight)(IO:
             lastSubagentRunId = Some(response.subagentRunId)
@@ -331,7 +331,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                             OrderProcessed(OrderOutcome.Disrupted(problem))
 
                       journal
-                        .persistKeyedEvent(order.id <-: orderProcessed)
+                        .persist(order.id <-: orderProcessed)
                         .orThrow
                         .*>(deferred.complete(orderProcessed))
                         .as(orderProcessed)

@@ -35,7 +35,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
       for
         persisted <-
           journal.persist:
-            Persist(EventCalc.pure("A" <-: TestEvent.SimpleAdded("(FIRST)")))
+            EventCalc.pure("A" <-: TestEvent.SimpleAdded("(FIRST)"))
           .orThrow
 
         _ <- IO:
