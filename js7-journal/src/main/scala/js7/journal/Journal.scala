@@ -46,5 +46,6 @@ object Journal:
 
 
   final case class Persisted[S <: EventDrivenState[S, E], E <: Event](
+    originalAggregate: S,
     stampedKeyedEvents: IndexedSeq[Stamped[KeyedEvent[E]]],
     aggregate: S)

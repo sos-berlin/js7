@@ -36,10 +36,10 @@ extends Journal[S]:
 
   val journalId: JournalId = JournalId.random()
 
-  private val stateLock = AsyncLock.dontLog() //Slow with many (>100000) acquirers: ("MemoryJournal.state")
+  private val aggregateLock = AsyncLock.dontLog() // Slow with many (>100000) acquirers: ("MemoryJournal.aggregate")
   private val queueLock = AsyncLock.dontLog()
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
-  @volatile private var _state = initial
+  @volatile private var _aggregate = initial
   @volatile private var eventWatchStopped = false
   private val _eventCount = Atomic(0L)
 
@@ -70,22 +70,22 @@ extends Journal[S]:
     override def toString = "MemoryJournal.EventWatch"
 
   def aggregate: IO[S] =
-    IO(_state)
+    IO(_aggregate)
 
   def unsafeAggregate(): S =
-    _state
+    _aggregate
 
   def unsafeUncommittedAggregate(): S =
-    _state
+    _aggregate
 
   protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
-    stateLock.lock:
+    aggregateLock.lock:
       IO.defer:
-        val state = _state
+        val aggregate = _aggregate
         locally:
           for
-            coll <- persist.eventCalc.calculate(state, TimeCtx(clock.now()))
-            updated <- state.applyKeyedEvents(coll.keyedEvents)
+            coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now()))
+            updated <- aggregate.applyKeyedEvents(coll.keyedEvents)
             stampedEvents = coll.timestampedKeyedEvents.map: o =>
               eventIdGenerator.stamp(o.keyedEvent, o.maybeMillisSinceEpoch)
           yield
@@ -100,10 +100,10 @@ extends Journal[S]:
               .logWhenItTakesLonger(waitingFor)
               .*>(
                 enqueue(stampedEvents, updated))
-              .as(Persisted(stampedEvents, updated))
+              .as(Persisted(aggregate, stampedEvents, updated))
         .sequence
 
-  private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], state: S): IO[Unit] =
+  private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S): IO[Unit] =
     IO.whenA(stampedEvents.nonEmpty):
       val since = Deadline.now
       queueLock.lock:
@@ -113,7 +113,7 @@ extends Journal[S]:
           q = q.copy(
             events = q.events ++ stampedEvents,
             lastEventId = eventId)
-          _state = state.withEventId(eventId)
+          _aggregate = aggregate.withEventId(eventId)
           val n = _eventCount += stampedEvents.length
           log(n, stampedEvents, since)
           eventWatch.onEventsCommitted(eventId)

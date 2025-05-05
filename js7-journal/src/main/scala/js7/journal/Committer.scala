@@ -346,7 +346,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         val eventId = stamped.lastOption.fold(coll.aggregate.eventId)(_.eventId)
         val aggregate = coll.aggregate.withEventId(eventId)
         val applied = Applied(
-          stamped, aggregate, eventNumber = state.totalEventCount + 1,
+          coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1,
           queueEntry.commitOptions, queueEntry.since, queueEntry.whenApplied, queueEntry.whenPersisted)
         (aggregate, applied)
 
@@ -362,6 +362,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             eventId = lastStamped.fold(applied.aggregate.eventId)(_.eventId),
             eventCount = stampedKeyedEvents.size,
             lastStamped,
+            applied.originalAggregate,
             if applied.commitOptions.commitLater then
               // Reduce heap usage. The (OrderStdWritten) events will neither be logged nor returned.
               Vector.empty
@@ -454,15 +455,18 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
 
   private sealed trait AppliedOrFlushed:
+    val originalAggregate: S
     val stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]]
     val aggregate: S
     val commitOptions: CommitOptions
     val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
 
     final def completePersisted: IO[Unit] =
-      whenPersisted.complete:
-        Right(Persisted(stampedKeyedEvents, aggregate))
-      .void
+      whenPersisted.complete(Right(persisted))
+        .void
+
+    protected final def persisted: Persisted[S, Event] =
+      Persisted(originalAggregate, stampedKeyedEvents, aggregate)
 
     def traceLog(): Unit =
       val prefix = if this.isInstanceOf[Written] then "✔" else "+"
@@ -474,6 +478,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
   /** Events have been applied to State#uncommitted. */
   private final case class Applied(
+    originalAggregate: S,
     stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
     aggregate: S,
     eventNumber: Long,
@@ -483,9 +488,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
   ) extends AppliedOrFlushed:
     def completeApplied: IO[Unit] =
-      whenApplied.complete:
-        Right(Persisted(stampedKeyedEvents, aggregate))
-      .void
+      whenApplied.complete(Right(persisted))
+        .void
 
 
   /** Events have been written and flushed to the journal file. */
@@ -493,6 +497,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     eventId: EventId,
     eventCount: Int,
     lastStamped: Option[Stamped[AnyKeyedEvent]],
+    originalAggregate: S,
     stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
     aggregate: S,
     since: Deadline,
