@@ -255,8 +255,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               .concat(subagentDiedEvent.map(subagentId <-: _))
               .toVector)))
           .map(_.orThrow)
-          .flatMap: (stampedEvents, _) =>
-            stampedEvents.map(_.value).traverseCombine:
+          .flatMap: persisted =>
+            persisted.keyedEvents.toVector.traverseCombine:
               case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
                 oToD(orderId).complete(orderProcessed).void
               case _ => IO.unit)

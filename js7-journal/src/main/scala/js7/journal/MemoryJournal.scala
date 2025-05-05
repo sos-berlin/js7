@@ -16,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
-import js7.journal.Journal.{Persist, Persisted}
 import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
 import js7.journal.watch.RealEventWatch

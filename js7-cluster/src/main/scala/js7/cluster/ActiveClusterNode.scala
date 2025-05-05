@@ -632,8 +632,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
               journal.persistTransaction[ClusterEvent](NoKey): s =>
                 isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
                   .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId))
-              .map(_.map: (stampedEvents, journaledState) =>
-                stampedEvents -> journaledState.clusterState)
+              .map(_.map: persisted =>
+                persisted.stampedKeyedEvents -> persisted.aggregate.clusterState)
       .flatTapT: _ =>
         common.clusterWatchCounterpart.onClusterWatchRegistered(confirmation.clusterWatchId)
         .as(Checked.unit)
@@ -683,19 +683,19 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
               Left(Problem(s"ClusterEvent is only allowed on active cluster node: $event"))
             case maybeEvent =>
               Right(extraEvent.toList ::: maybeEvent.toList)
-        .flatMapT: (stampedEvents, state) =>
+        .flatMapT: persisted =>
           IO
             .defer:
               assertThat(!clusterWatchSynchronizer.isHeartbeating)
-              state.clusterState match
+              persisted.aggregate.clusterState match
                 case Empty | _: NodesAppointed => IO.unit
                 case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
             .flatMap: _ =>
-              val clusterStampedEvents = stampedEvents.collect:
+              val clusterStampedEvents = persisted.stampedKeyedEvents.collect:
                 case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
                   o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
               val events = clusterStampedEvents.map(_.value.event)
-              (events, state.clusterState) match
+              (events, persisted.aggregate.clusterState) match
                 case (Seq(event), clusterState: HasNodes) =>
                   clusterWatchSynchronizer
                     .applyEvent(

@@ -27,8 +27,8 @@ import js7.base.utils.Delayer.extensions.onFailureRestartWithDelayer
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
+import js7.data.event.KeyedEvent
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
@@ -37,6 +37,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.Journal
+import js7.journal.Persisted
 import scala.collection.View
 
 /** Persists, recovers and runs FileWatches. */
@@ -88,8 +89,8 @@ final class FileWatchManager(
 
             case None =>
               (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
-    .flatMapT: (_, agentState) =>
-      startWatching(agentState.keyTo(FileWatchState)(fileWatch.path))
+    .flatMapT: persisted =>
+      startWatching(persisted.aggregate.keyTo(FileWatchState)(fileWatch.path))
 
   def remove(fileWatchPath: OrderWatchPath): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath):
@@ -105,7 +106,7 @@ final class FileWatchManager(
                 // because the other Agent will start with an empty FileWatchState.
                 fileWatchState.allFilesVanished.toVector :+
                   (NoKey <-: ItemDetached(fileWatchPath, ownAgentPath))
-        .flatMapT: (_, agentState) =>
+        .flatMapT: persisted =>
           stopWatching(fileWatchPath)
             .as(Checked.unit)
 
@@ -167,8 +168,9 @@ final class FileWatchManager(
               emitOrderWatchEvents(fileWatch, directory, chunk)
           .foreach:
             case Left(problem) => IO(logger.error(problem.toString))
-            case Right((_, agentState)) => IO:
-              directoryState = agentState.keyTo(FileWatchState)(fileWatch.path).directoryState
+            case Right(persisted) => IO:
+              directoryState =
+                persisted.aggregate.keyTo(FileWatchState)(fileWatch.path).directoryState
           .compile.drain
           .onFailureRestartWithDelayer(settings.delayConf): (delayer, throwable) =>
             delayer.peekNextDelay.map: delay =>
@@ -181,14 +183,14 @@ final class FileWatchManager(
     fileWatch: FileWatch,
     directory: Path,
     dirEventSeqs: Chunk[DirectoryEvent])
-  : IO[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
+  : IO[Checked[Persisted[AgentState, OrderWatchEvent]]] =
     journal.aggregate.flatMap: agentState =>
       if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
-        IO.right(Nil -> agentState)
+        IO.right(Persisted.empty(agentState))
       else
         journal.persist: agentState =>
           Right:
-              agentState.keyTo(FileWatchState)
+            agentState.keyTo(FileWatchState)
               .get(fileWatch.path)
               // Ignore late events after FileWatch has been removed
               .toVector

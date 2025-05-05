@@ -34,7 +34,6 @@ import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Committer.*
 import js7.journal.FileJournal.*
-import js7.journal.Journal.Persisted
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.write.EventJournalWriter

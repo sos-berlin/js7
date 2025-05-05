@@ -241,12 +241,13 @@ extends Actor, Stash, SimpleStateActor:
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
-        .flatMapT(eventAndState => IO:
-          logger.info(s"Dedicating $agentPath to '$controllerId'")
-          Log4j.set("js7.serverId", agentPath.toString)
+        .flatMapT: persisted =>
+          IO:
+            logger.info(s"Dedicating $agentPath to '$controllerId'")
+            Log4j.set("js7.serverId", agentPath.toString)
 
-          addOrderKeeper(agentPath, controllerId)
-            .rightAs(agentRunId -> eventAndState._2.eventId))
+            addOrderKeeper(agentPath, controllerId)
+              .rightAs(agentRunId -> persisted.aggregate.eventId)
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] =
     val agentState = journal.unsafeAggregate()

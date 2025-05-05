@@ -18,7 +18,6 @@ import js7.base.time.{Stopwatch, TestWallClock, WallClock}
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, SnapshotableState, Stamped}
 import js7.journal.FileJournalTest.*
-import js7.journal.Journal.Persist
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file

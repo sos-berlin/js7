@@ -2,9 +2,10 @@ package js7.journal
 
 import cats.effect.IO
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{Event, EventCalc, JournaledState, KeyedEvent, Stamped, TimeCtx}
-import js7.journal.Journal.{Persist, Persisted}
 
 trait LegacyAdapter[S <: JournaledState[S]]:
   journal: Journal[S] =>
@@ -20,7 +21,7 @@ trait LegacyAdapter[S <: JournaledState[S]]:
   final def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : IO[Checked[Persisted[S, E]]] =
     persistWithOptions(options)(_ => Right(keyedEvents))
 
   final def persistKeyedEventsLater[E <: Event](
@@ -46,50 +47,44 @@ trait LegacyAdapter[S <: JournaledState[S]]:
     aggregateToEvent: S => Checked[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistEventCalc[E](
+    persist_[E](Persist(
       EventCalc.checked: controllerState =>
         aggregateToEvent(controllerState).map(_ :: Nil),
       options
-    ).map(_ map:
-      case (Seq(stampedKeyedEvent), updated) => stampedKeyedEvent -> updated)
+    )).map(_ map: persisted =>
+      assertThat(persisted.stampedKeyedEvents.sizeIs == 1)
+      persisted.stampedKeyedEvents.head -> persisted.aggregate)
 
   final def persist1[E <: Event](aggregateToEvents: S => Checked[KeyedEvent[E]])
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persist: aggregate =>
       aggregateToEvents(aggregate).map(_ :: Nil)
-    .map(_.map:
-      case (Seq(stampedEvent), updated) => stampedEvent -> updated)
+    .map(_.map: persisted =>
+      assertThat(persisted.stampedKeyedEvents.sizeIs == 1)
+      persisted.stampedKeyedEvents.head -> persisted.aggregate)
 
   final def persist[E <: Event](keyedEvents: KeyedEvent[E]*): IO[Checked[Persisted[S, E]]] =
     persist_(Persist(EventCalc.pure(keyedEvents)))
 
   final def persist[E <: Event](aggregateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : IO[Checked[Persisted[S, E]]] =
     persistWithOptions(CommitOptions.default)(aggregateToEvents)
 
   private def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)
     (aggregateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persistEventCalc(
+  : IO[Checked[Persisted[S, E]]] =
+    persist_(Persist(
       EventCalc.checked(aggregate => aggregateToEvents(aggregate)),
-      options)
+      options))
 
   /** Persist multiple events in a transaction. */
   final def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
     (using enclosing: sourcecode.Enclosing)
-  : (S => Checked[Seq[E]]) => IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : (S => Checked[Seq[E]]) => IO[Checked[Persisted[S, E]]] =
     aggregateToEvents =>
-      persistEventCalc(
+      persist_(Persist(
         EventCalc.checked: aggregate =>
           aggregateToEvents(aggregate)
             .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
-        CommitOptions.transaction)
-
-  private def persistEventCalc[E <: Event](
-    eventCalc: EventCalc[S, E, TimeCtx],
-    options: CommitOptions)
-  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    journal.persist(Persist(eventCalc, options))
-      .map(_.map: result =>
-        result.stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> result.aggregate)
+        CommitOptions.transaction))

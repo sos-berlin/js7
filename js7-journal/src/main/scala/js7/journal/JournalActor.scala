@@ -16,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, MaybeTimestampedKeyedEvent, SnapshotableState, Stamped}
-import js7.journal.Journal.Persisted
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
@@ -55,7 +54,7 @@ extends Actor, Stash:
             callersItem))
       else
         journal.enqueue:
-          Journal.Persist(
+          Persist(
             EventCalc.pure(timestamped),
             options.copy(commitLater = commitLater),
             since)

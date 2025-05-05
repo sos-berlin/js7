@@ -26,7 +26,6 @@ import js7.base.utils.{MultipleLinesBracket, Tests}
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState, TimeCtx}
 import js7.journal.FileJournal.*
-import js7.journal.Journal.{Persist, Persisted}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*

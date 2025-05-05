@@ -28,7 +28,6 @@ import js7.base.utils.{Allocated, LockKeeper, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
-import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -39,6 +38,7 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorStat
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
 import js7.journal.Journal
+import js7.journal.Persisted
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
@@ -132,8 +132,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         stick = stick) ::
       Nil
     persist(order.id, events, onEvents)
-      .map(_.map: (_, s) =>
-        s.idToOrder
+      .map(_.map: persisted =>
+        persisted.aggregate.idToOrder
           .checked(order.id)
           .flatMap(_.checkedState[Order.Processing])
           .orThrow)
@@ -180,7 +180,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     orderId: OrderId,
     events: Seq[OrderCoreEvent],
     onEvents: Seq[OrderCoreEvent] => Unit)
-  : IO[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], S)]] =
+  : IO[Checked[Persisted[S, OrderCoreEvent]]] =
     journal
       .persistKeyedEvents(events.map(orderId <-: _))
       .map(_.map: o =>

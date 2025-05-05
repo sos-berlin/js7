@@ -114,10 +114,10 @@ final class WorkingClusterNode[
             journal
               .persistTransaction[NoKeyEvent](NoKey): _ =>
                 Right(extraEvent.toList ::: List(ClusterNodesAppointed(setting)))
-              .flatMapT: (_, state) =>
-                state.clusterState match
+              .flatMapT: persisted =>
+                persisted.aggregate.clusterState match
                   case clusterState: HasNodes =>
-                    startActiveClusterNode(clusterState, state.eventId)
+                    startActiveClusterNode(clusterState, persisted.aggregate.eventId)
                   case clusterState => IO.left(Problem.pure:
                     s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")
 

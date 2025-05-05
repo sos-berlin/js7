@@ -122,12 +122,11 @@ extends Service.StoppableByRequest:
                     !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
                       (NoKey <-: ItemAttachable(agentPath, agentPath))
                   ).flatten
-              .flatTapT: (stamped, state) =>
-                IO
-                  .whenA(stamped.exists(_.value.event.isInstanceOf[ItemAttachable])):
-                    state.keyToItem(AgentRef).get(agentPath).fold(IO.unit): agentRef =>
-                      agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))
-                  .as(Checked.unit)
+              .flatTapT: persisted =>
+                IO.whenA(persisted.keyedEvents.exists(_.event.isInstanceOf[ItemAttachable])):
+                  persisted.aggregate.keyToItem(AgentRef).get(agentPath).fold(IO.unit): agentRef =>
+                    agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))
+                .as(Checked.unit)
               .rightAs(agentEventId)
 
     protected def getStream(api: AgentClient, after: EventId) =
