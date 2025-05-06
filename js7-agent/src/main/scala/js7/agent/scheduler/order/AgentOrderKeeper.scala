@@ -126,7 +126,6 @@ extends JournalingActor[AgentState, Event], Stash:
   private var journalState = JournalState.empty
   private var agentProcessCount = 0
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
-  private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, journal, conf.config)
   private val orderRegister = new OrderRegister
   private var switchingOver = false
@@ -287,7 +286,6 @@ extends JournalingActor[AgentState, Event], Stash:
 
         for workflow <- state.idToWorkflow.values do
           wrapException(s"Error while recovering ${workflow.path}"):
-            workflowRegister.recover(workflow)
             val timeZone = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
             createJobEntries(workflow, timeZone)
 
@@ -553,14 +551,13 @@ extends JournalingActor[AgentState, Event], Stash:
 
         signed.value match
           case workflow: Workflow =>
-            workflowRegister.get(workflow.id) match
+            agentState().idToWorkflow.get(workflow.id) match
               case None =>
                 workflow.timeZone.toZoneId match
                   case Left(problem) => Future.successful(Left(problem))
                   case Right(zoneId) =>
                     persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
                       val reducedWorkflow = journaledState.idToWorkflow(workflow.id)
-                      workflowRegister.handleEvent(stampedEvent.value, reducedWorkflow)
                       createJobEntries(reducedWorkflow, zoneId)
                       Right(AgentCommand.Response.Accepted)
                     }
@@ -626,7 +623,7 @@ extends JournalingActor[AgentState, Event], Stash:
             if agentPath != ownAgentPath then
               Future.successful(Left(Problem(s"Wrong $agentPath")))
             else
-              workflowRegister.get(order.workflowId) match
+              agentState().idToWorkflow.get(order.workflowId) match
                 case None =>
                   Future.successful(Left(Problem.pure(s"Unknown ${order.workflowId}")))
                 case Some(workflow) =>
