@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
-import com.softwaremill.tagging.{@@, Tagger}
+import com.softwaremill.tagging.@@
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
@@ -20,7 +20,6 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize}
-import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem, WrappedException}
@@ -63,11 +62,11 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, Subagent
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
-import js7.journal.{JournalActor, JournalingActor}
+import js7.journal.JournalingActor
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, SupervisorStrategy, Terminated}
+import org.apache.pekko.actor.{ActorRef, Stash, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -103,7 +102,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
   private val journal = workingClusterNode.journal
   private val (ownAgentPath, localSubagentId, controllerId) =
-    val meta = journal.unsafeAggregate().meta
+    val meta = agentState().meta
     val subagentId: SubagentId =
       if meta.directors.isEmpty then throw new IllegalStateException(
         "Missing definition of Subagents in AgentMetaState")
@@ -120,8 +119,7 @@ extends JournalingActor[AgentState, Event], Stash:
   override val supervisorStrategy: SupervisorStrategy =
     SupervisorStrategies.escalate
 
-  protected val journalActor: ActorRef @@ JournalActor.type =
-    workingClusterNode.journalActor.taggedWith[JournalActor.type]
+  protected val journalActor = workingClusterNode.journalActor
 
   protected def journalConf = conf.journalConf
 
@@ -135,7 +133,6 @@ extends JournalingActor[AgentState, Event], Stash:
 
   private object shutdown:
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
-    private var stillTerminatingSchedule: Option[SyncCancelable] = None
     private var terminatingOrders = false
     private var terminatingJobs = false
     private var terminatingJournal = false
@@ -158,9 +155,6 @@ extends JournalingActor[AgentState, Event], Stash:
           //workingClusterNode.journalAllocated.release.unsafeRunAndForget()
           context.stop(self)
         continue()
-
-    def close(): Unit =
-      stillTerminatingSchedule foreach (_.cancel())
 
     def onStillTerminating(): Unit =
       logger.info(s"🟠 Still terminating, waiting for ${orderRegister.size} orders" +
@@ -227,7 +221,6 @@ extends JournalingActor[AgentState, Event], Stash:
     catch case NonFatal(t) => logger.error(s"subagentKeeper.stop => ${t.toStringWithCauses}")
 
     fileWatchManager.stop.unsafeRunAndForget()
-    shutdown.close()
     super.postStop()
     logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
 
@@ -363,7 +356,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
               case event: OrderProcessed =>
                 (for
-                  jobKey <- journal.unsafeAggregate().jobKey(previousOrderOrNull.workflowPosition)
+                  jobKey <- agentState().jobKey(previousOrderOrNull.workflowPosition)
                   jobEntry <- jobRegister.checked(jobKey)
                 yield jobEntry)
                 match
@@ -401,7 +394,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
     case Input.ResetAllSubagents =>
       subagentKeeper
-        .resetAllSubagents(except = journal.unsafeAggregate().meta.directors.toSet)
+        .resetAllSubagents(except = agentState().meta.directors.toSet)
         .void.unsafeToFuture().pipeTo(sender())
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match
@@ -414,7 +407,7 @@ extends JournalingActor[AgentState, Event], Stash:
       attachSignedItem(signed)
 
     case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
-      if !journal.unsafeAggregate().keyToItem.contains(itemKey) then
+      if !agentState().keyToItem.contains(itemKey) then
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       else
@@ -443,7 +436,7 @@ extends JournalingActor[AgentState, Event], Stash:
               .unsafeToFuture()
 
           case WorkflowId.as(workflowId) =>
-            val maybeWorkflow = journal.unsafeAggregate().idToWorkflow.get(workflowId)
+            val maybeWorkflow = agentState().idToWorkflow.get(workflowId)
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
               for workflow <- maybeWorkflow do
                 subagentKeeper
@@ -499,7 +492,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        //val previousItem = journal.unsafeAggregate().keyToItem.get(item.key)
+        //val previousItem = agentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(/*previousItem,*/ item).unsafeToFuture()
         }.flatten
@@ -615,7 +608,7 @@ extends JournalingActor[AgentState, Event], Stash:
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then
           // Slow !!!
-          for order <- journal.unsafeAggregate().orders
+          for order <- agentState().orders
                if order.workflowPath == workflowPathControl.workflowPath do
             proceedWithOrder(order)
         IO.right(())
@@ -655,7 +648,7 @@ extends JournalingActor[AgentState, Event], Stash:
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            journal.unsafeAggregate().idToOrder.checked(orderId).flatMap(_.detaching) match
+            agentState().idToOrder.checked(orderId).flatMap(_.detaching) match
               case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
@@ -758,7 +751,7 @@ extends JournalingActor[AgentState, Event], Stash:
     // updatedOrderId may be outdated, changed by more events in the same batch
     // Nevertheless, updateOrderId is the result of the event.
     val orderId = previousOrder.id
-    val agentState = journal.unsafeAggregate()
+    val agentState = this.agentState()
     val orderEventHandler = new OrderEventHandler(agentState.idToWorkflow.checked)
 
     orderEventHandler.handleEvent(previousOrder, event)
@@ -785,7 +778,7 @@ extends JournalingActor[AgentState, Event], Stash:
       })
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    journal.unsafeAggregate().idToOrder.checked(orderId) match
+    agentState().idToOrder.checked(orderId) match
       case Left(problem) => logger.error(s"Internal: proceedWithOrder($orderId) => $problem")
       case Right(order) => proceedWithOrder(order)
 
@@ -804,7 +797,7 @@ extends JournalingActor[AgentState, Event], Stash:
             false
 
       if !delayed then
-        val agentState = journal.unsafeAggregate()
+        val agentState = this.agentState()
         val oes = new OrderEventSource(agentState)
         if order != agentState.idToOrder(order.id) then
           // FIXME order should be equal !
@@ -845,7 +838,7 @@ extends JournalingActor[AgentState, Event], Stash:
           s"${keyedEvents.map(_.toShortString)} => ${t.toStringWithCauses}")
 
         if keyedEvents.isEmpty
-          && journal.unsafeAggregate().isOrderProcessable(order)
+          && agentState.isOrderProcessable(order)
           && order.isAttached
           && !shuttingDown
         then
@@ -855,7 +848,7 @@ extends JournalingActor[AgentState, Event], Stash:
           persist(EventCalc.pure(orderKeyedEvents)) { _ => }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    journal.unsafeAggregate()
+    agentState()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
       .match
@@ -890,7 +883,7 @@ extends JournalingActor[AgentState, Event], Stash:
     lazy val isEnterable = jobEntry.checkAdmissionTimeInterval:
       self ! Internal.JobDue(jobEntry.jobKey)
 
-    val idToOrder = journal.unsafeAggregate().idToOrder
+    val idToOrder = agentState().idToOrder
 
     @tailrec def loop(): Boolean =
       (jobEntry.isBelowProcessLimit && isBelowAgentProcessLimit()) && (
@@ -957,9 +950,6 @@ extends JournalingActor[AgentState, Event], Stash:
         shutDownOnce.trySet(shutdownCmd)
         shutdown.start(shutdownCmd)
 
-      case Internal.StillTerminating =>
-        shutdown.onStillTerminating()
-
       case Internal.AgentShutdown =>
         shutdown.finallyShutdown()
 
@@ -967,18 +957,21 @@ extends JournalingActor[AgentState, Event], Stash:
         super.unhandled(message)
 
   private def orderEventSource =
-    new OrderEventSource(journal.unsafeAggregate())
+    new OrderEventSource(agentState())
 
   private def isBelowAgentProcessLimit() =
     agentProcessLimit().forall(agentProcessCount < _)
 
   private def agentProcessLimit(): Option[Int] =
-    journal.unsafeAggregate().keyToItem(AgentRef).get(ownAgentPath) match
+    agentState().keyToItem(AgentRef).get(ownAgentPath) match
       case None =>
         logger.warn("Missing own AgentRef — assuming processLimit = 0")
         Some(0)
       case Some(agentRef) =>
         agentRef.processLimit
+
+  private def agentState(): AgentState =
+    journal.unsafeAggregate()
 
   override def toString = "AgentOrderKeeper"
 
@@ -1002,7 +995,6 @@ object AgentOrderKeeper:
     final case class JobDue(jobKey: JobKey)
     case object TryStartProcessing
     case object JobDriverStopped
-    case object StillTerminating extends DeadLetterSuppression
     case object ContinueSwitchover
     case object AgentShutdown
     case object JournalStopped
