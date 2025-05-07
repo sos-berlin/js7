@@ -129,7 +129,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
         stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
           .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
       else
-        underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout, dontLog = true)
+        underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout)
     .map(stamped => stamped.copy(value = stamped.value.event))
 
   @TestOnly
