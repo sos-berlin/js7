@@ -42,13 +42,14 @@ final case class Worry(
     else
       "🟠"
 
+  def logWhenMethodTakesLonger[A](io: IO[A])(using enclosing: sourcecode.Enclosing): IO[A] =
+    logWhenItTakesLonger(enclosing.value)(io)
+
   def logWhenItTakesLonger[A](what: => String)(io: IO[A]): IO[A] =
-    logWhenItTakesLonger("for", "completed", what):
-      io
+    logWhenItTakesLonger("for", "completed", what)(io)
 
   def logWhenItTakesLonger[A](io: IO[A])(using enclosing: sourcecode.Enclosing): IO[A] =
-    logWhenItTakesLonger("in", "continues", enclosing.value):
-      io
+    logWhenItTakesLonger("in", "continues", enclosing.value)(io)
 
   def logWhenItTakesLonger[A](preposition: String, completed: String, what: => String)(io: IO[A])
   : IO[A] =

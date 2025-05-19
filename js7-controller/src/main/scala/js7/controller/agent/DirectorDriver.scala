@@ -18,7 +18,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, logWhenMethodTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
@@ -231,7 +231,7 @@ extends Service.StoppableByRequest:
   private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     logger.debugIO:
       executeCommand(client, AgentCommand.Reset(agentRunId))
-        .logWhenItTakesLonger
+        .logWhenMethodTakesLonger
         .rightAs(())
 
   def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)

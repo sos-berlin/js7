@@ -28,7 +28,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.{Js7Versions, Version}
 import js7.common.auth.SecretStringGenerator
@@ -56,7 +56,7 @@ extends Service.StoppableByRequest:
   val systemSession: IO[Checked[S]] =
     memoize:
       deferredSystemSession.get
-        .logWhenItTakesLonger/*in case it will never been created*/
+        .logWhenMethodTakesLonger/*in case it will never been created*/
 
   val systemUser: IO[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser))

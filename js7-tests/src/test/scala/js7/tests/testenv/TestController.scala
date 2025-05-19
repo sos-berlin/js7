@@ -15,7 +15,7 @@ import js7.base.problem.Checked
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, logWhenMethodTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
@@ -61,10 +61,10 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
       .unsafeMemoize
 
   private def stopControllerApi: IO[Unit] =
-    IO.defer(apiLazy.toOption.fold(IO.unit)(controllerApi =>
+    IO.defer(apiLazy.toOption.fold(IO.unit): controllerApi =>
       controllerApi
         .stop(dontLogout = true/*Pekko may block when server has just been shut down*/)
-        .logWhenItTakesLonger))
+        .logWhenMethodTakesLonger)
 
   def config: Config =
     conf.config
@@ -100,7 +100,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
     runningController.terminated
 
   def untilTerminated: IO[ProgramTermination] =
-    runningController.untilTerminated.logWhenItTakesLonger
+    runningController.untilTerminated.logWhenMethodTakesLonger
 
   def terminate(
     suppressSnapshot: Boolean = false,
@@ -139,7 +139,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
               .map(_.orThrow)
               .*>(untilTerminated)
         }
-    }).logWhenItTakesLonger
+    }).logWhenMethodTakesLonger
 
   def updateItemsAsSystemUser(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)

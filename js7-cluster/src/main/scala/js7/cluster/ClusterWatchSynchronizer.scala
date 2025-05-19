@@ -15,7 +15,7 @@ import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
@@ -254,7 +254,7 @@ private final class ClusterWatchSynchronizer(
         stopping.complete(())
           .flatMap(_ => heartbeat).flatMap(_.tryTake)
           .flatMap(_.fold(IO.unit)(_.joinStd))
-          .logWhenItTakesLonger
+          .logWhenMethodTakesLonger
 
     def changeClusterState(clusterState: HasNodes): Unit =
       this.clusterState = clusterState

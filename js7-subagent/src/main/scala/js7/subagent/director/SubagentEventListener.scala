@@ -18,7 +18,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.pureFiberIO
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, logWhenMethodTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -78,7 +78,7 @@ private trait SubagentEventListener:
             .flatMap(_.set(true))
             .*>(IO.defer:
               observing.joinStd))
-          .logWhenItTakesLonger
+          .logWhenMethodTakesLonger
 
   protected final def startEventListener: IO[Unit] =
     lock.lock:

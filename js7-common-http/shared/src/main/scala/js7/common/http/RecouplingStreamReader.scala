@@ -95,7 +95,7 @@ abstract class RecouplingStreamReader[
     logger.traceIO:
       stopStreaming
         .*>(coupledApiVar.terminate)
-        .logWhenItTakesLonger
+        .logWhenMethodTakesLonger
 
   def stopStreaming: IO[Unit] =
     logger.traceIO:
