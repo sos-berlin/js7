@@ -164,6 +164,11 @@ object Checked:
       orThrow //?
 
   implicit final class RichCheckedF[F[_], A](private val underlying: F[Checked[A]]) extends AnyVal:
+    def handleProblem[B >: A](f: Problem => F[B])(using F: Monad[F]): F[B] =
+      underlying.flatMap:
+        case Left(problem) => f(problem)
+        case Right(a) => F.pure(a)
+
     def onProblemHandleInF[B >: A](f: Problem => B)(implicit F: Functor[F]): F[B] =
       underlying.map:
         case Left(problem) => f(problem)
