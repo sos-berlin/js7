@@ -124,6 +124,7 @@ object OurIORuntime:
   : Resource[F, Unit] =
     val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
     for
+      _ <- env.registerPure[F, IORuntime](ioRuntime)
       _ <- env.register[F, IOExecutor](IOExecutor.resource(label))
     yield
       ()

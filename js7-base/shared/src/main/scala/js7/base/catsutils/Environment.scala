@@ -11,10 +11,12 @@ import js7.base.catsutils.Environment.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass}
 
 /** Maps a type (a Tag) to a value. */
-final class Environment:
+final class Environment(label: String = ""):
+  private val logger = Logger.withPrefix[this.type](label)
+
   private val tagToEntry = new ConcurrentHashMap[Tag[?], Entry[?]]
 
   def registerMultiple(taggedResources: Seq[TaggedResource[IO, ?]])
@@ -36,7 +38,7 @@ final class Environment:
       F.delay:
         val registered = tryRegister(resource)
         if !registered && !ignoreDuplicate then
-          throw DuplicateEnvironmentTagException(tag)
+          throw DuplicateTagException(tag, this)
         else
           () -> F.whenA(registered)(release[F, A])
 
@@ -47,13 +49,13 @@ final class Environment:
   private def tryRegister[F[_], A](resource: Resource[F, A])(using F: Sync[F], tag: Tag[A])
   : Boolean =
     if F.ne(IOSync) && F.ne(SyncIOSync) then throw IllegalArgumentException:
-      s"Environment#tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
+      s"$toString#tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
     var added = false
     tagToEntry.computeIfAbsent(tag, _ =>
       added = true
       Entry.FResource(resource))
     if added then
-      logger.trace(s"environment[${tag.tag}] registered")
+      logger.trace(s"$toString.environment[${tag.tag}] registered")
     added
 
   //def releaseAll: IO[Unit] =
@@ -68,20 +70,24 @@ final class Environment:
     F.defer:
       tagToEntry.remove(tag) match
         case alloc: Entry.FAlloc[F @unchecked, A @unchecked] =>
-          logger.traceF(s"release ${tag.tag}"):
+          logger.traceF(s"$toString.release ${tag.tag}"):
             assertThat(F eq alloc.F)
             alloc.release
         case _ =>
           F.unit
 
   /** Get a previously added `A` value from the environment. */
-  private def get[A](orRegister: Option[ResourceIO[A]] = None)(using tag: Tag[A]): IO[A] =
+  private def get[A](orRegister: Option[ResourceIO[A]] = None)
+    (using tag: Tag[A], enc: sourcecode.Enclosing)
+  : IO[A] =
     IO.defer:
       val entry = tagToEntry.get(tag)
       entry match
         case null =>
           orRegister match
-            case None => IO.raiseError(EnvironmentTagNotFoundException(tag))
+            case None =>
+              logger.debug(s"$toString.get[${tag.tag}] => unknown in ${enc.value}")
+              IO.raiseError(TagNotFoundException(tag, this, enc.value))
             case Some(resource) =>
               tagToEntry.replace(tag, entry, Entry.FResource(resource))
               get[A](orRegister)
@@ -90,21 +96,20 @@ final class Environment:
           get2[A](entry, orRegister)
 
   /** Get a previously added `A` value from the environment. */
-  private def maybe[A](using tag: Tag[A])
-  : IO[Option[A]] =
+  private def maybe[A](using tag: Tag[A], enc: sourcecode.Enclosing): IO[Option[A]] =
     IO.defer:
       val entry = tagToEntry.get(tag)
       entry match
         case null =>
           IO:
-            logger.debug(s"maybe[${tag.tag}] => None")
+            logger.debug(s"$toString.maybe[${tag.tag}] => None in ${enc.value}")
             None
         case entry: Entry[A @unchecked] =>
           get2[A](entry, orRegister = None)
             .map(Some(_))
 
   private def get2[A](entry: Entry[A], orRegister: Option[ResourceIO[A]])
-    (using tag: Tag[A])
+    (using tag: Tag[A], enc: sourcecode.Enclosing)
   : IO[A] =
     entry match
       case pure: Entry.Pure[A] =>
@@ -114,20 +119,22 @@ final class Environment:
         IO.pure(alloc.a)
 
       case entry: Entry.FResource[_, A @unchecked] =>
-        logger.debugIOWithResult(s"get[${tag.tag}] allocate"):
+        logger.debugIOWithResult(s"$toString.get[${tag.tag}] allocate"):
           import entry.F // F is Sync[IO] or Sync[SyncIO]
           toIO:
             entry.resource.allocated.flatMap: allocated =>
               val (a, release) = allocated
               val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
               if !replaced then
-                logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, releasing it"):
+                logger.debugF(s"$toString.get[${tag.tag}] concurrent duplicate allocation, releasing it"):
                   release.as(None)
               else
                 F.pure(Some(a))
           .flatMap:
             case None => get[A](orRegister)
             case Some(a) => IO.pure(a)
+
+  override def toString = s"Environment${label.nonEmpty ?? s"\"$label\""}"
 
 
 object Environment:
@@ -172,7 +179,7 @@ object Environment:
             a -> IO.whenA(registered)(env.release[IO, A])
 
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
-  def environment[A](using tag: Tag[A]): IO[A] =
+  def environment[A](using Tag[A], sourcecode.Enclosing): IO[A] =
     OurIORuntimeRegister.environment.flatMap(_.get[A]())
 
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
@@ -226,8 +233,8 @@ object Environment:
       def a: A = allocated._1
       def release: F[Unit] = allocated._2
 
-  private final class EnvironmentTagNotFoundException(val tag: Tag[?])
-  extends IllegalArgumentException(s"environment[${tag.tag}] is not defined")
+  private final class TagNotFoundException(val tag: Tag[?], env: Environment, caller: String)
+  extends IllegalArgumentException(s"${tag.tag} is not defined in $env (called by $caller)")
 
-  private final class DuplicateEnvironmentTagException(val tag: Tag[?])
-  extends IllegalArgumentException(s"environment[${tag.tag}] has already been defined")
+  private final class DuplicateTagException(val tag: Tag[?], env: Environment)
+  extends IllegalArgumentException(s"${tag.tag} has already been defined in $env")
