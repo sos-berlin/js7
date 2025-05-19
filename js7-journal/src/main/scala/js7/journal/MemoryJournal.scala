@@ -7,6 +7,7 @@ import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
@@ -32,7 +33,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   clock: WallClock,
   semaphore: Semaphore[IO])
   (implicit protected val S: JournaledState.Companion[S])
-extends Journal[S]:
+extends Journal[S], Service.StoppableByRequest:
 
   val journalId: JournalId = JournalId.random()
 
@@ -68,6 +69,9 @@ extends Journal[S]:
       queue.tornEventId
 
     override def toString = "MemoryJournal.EventWatch"
+
+  def start =
+    startService(untilStopRequested) // Nothing to do
 
   def aggregate: IO[S] =
     IO(_aggregate)
@@ -201,11 +205,12 @@ object MemoryJournal:
     size: Int,
     waitingFor: String = "releaseEvents",
     infoLogEvents: Set[String] = Set.empty,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    clock: WallClock = WallClock)
     (implicit S: JournaledState.Companion[S])
   : ResourceIO[MemoryJournal[S]] =
     for
-      clock <- Resource.eval(environmentOr[WallClock](WallClock))
+      clock <- Resource.eval(environmentOr[WallClock](clock))
       r <- Resource.eval:
         start(initial, size, waitingFor, infoLogEvents, eventIdGenerator, clock)
     yield
