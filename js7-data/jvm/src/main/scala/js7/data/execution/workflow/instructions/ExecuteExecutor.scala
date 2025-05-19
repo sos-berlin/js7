@@ -29,19 +29,18 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   val instructionClass = classOf[Execute]
 
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
-    order
-      .ifState[IsFreshOrReady].map: order =>
-        state.workflowJob(order.workflowPosition).flatMap: job =>
-          skippedReason(order, job)
-          .map: reason =>
-            // If order should start, change nextMove function, too!
-            //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-            Right:
-              (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
-          .getOrElse:
-            order.isProcessable
-              .thenMaybe:
-                attach(order, job.agentPath)
+    order.ifState[IsFreshOrReady].map: order =>
+      state.workflowJob(order.workflowPosition).flatMap: job =>
+        skippedReason(order, job).map: reason =>
+          // If order should start, change nextMove function, too!
+          //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
+          Right:
+            (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
+        .getOrElse:
+          if !order.isProcessable then
+            Right(Nil)
+          else
+            attach(order, job.agentPath)
               .getOrElse:
                 Right:
                   checkSubagentBundle(order, state) match
@@ -49,30 +48,24 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
                     case Left(problem) =>
                       (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
                         :: Nil
-      .orElse:
-        // Order.Ready: Execution has to be started by the caller
-        //order.ifState[Order.Fresh].map(order =>
-        //  OrderStarted)
-        //.orElse(
-        order
-          .ifState[Processed]
-          .map: order =>
-            val event = order.lastOutcome match
-              case OrderOutcome.Disrupted(_: ProcessLost, _) =>
-                OrderMoved(order.position) // Repeat
+    .orElse:
+      order.ifState[Processed].map: order =>
+        val event = order.lastOutcome match
+          case OrderOutcome.Disrupted(_: ProcessLost, _) =>
+            OrderMoved(order.position) // Repeat
 
-              case _: OrderOutcome.Killed =>
-                OrderProcessingKilled
+          case _: OrderOutcome.Killed =>
+            OrderProcessingKilled
 
-              case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
-                OrderFailedIntermediate_()
+          case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
+            OrderFailedIntermediate_()
 
-              case _: OrderOutcome.IsSucceeded =>
-                OrderMoved(order.position.increment)
-            Right:
-              (order.id <-: event) :: Nil
-      .getOrElse:
-        Right(Nil)
+          case _: OrderOutcome.IsSucceeded =>
+            OrderMoved(order.position.increment)
+        Right:
+          (order.id <-: event) :: Nil
+    .getOrElse:
+      Right(Nil)
 
   private def checkSubagentBundle(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
     for
