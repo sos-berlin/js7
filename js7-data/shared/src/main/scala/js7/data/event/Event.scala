@@ -22,7 +22,7 @@ trait Event:
   def hasShortString = false
 
   @targetName("toKeyedEvent")
-  final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
+  inline final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
     new KeyedEvent(this)(key)
 
   /** Ignores the key's type and returns an AnyKeyedEvent. */

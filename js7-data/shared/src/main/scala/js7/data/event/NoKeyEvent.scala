@@ -11,7 +11,10 @@ trait NoKeyEvent extends Event.IsKeyBase[NoKeyEvent]:
 
 
 object NoKeyEvent extends Event.CompanionForKey[NoKey, NoKeyEvent]:
-  implicit val implicitSelf: NoKeyEvent.type = this
+  given implicitSelf: NoKeyEvent.type = this
 
   implicit def toKeyedEvent[E <: NoKeyEvent](event: E): KeyedEvent[E] =
-    KeyedEvent(event)
+    NoKey <-: event
+  //Usage makes compiler warn: Use of implicit conversion given instance given_Conversion_E_KeyedEvent in object NoKeyEvent should be enabled
+  //given [E <: NoKeyEvent] => Conversion[E, KeyedEvent[E]] =
+  //  NoKey <-: _

@@ -180,7 +180,7 @@ object TestAgent:
     RunningAgent.resource(conf, testWiring)
       .flatMap: agent =>
         Resource.makeCase(
-          acquire = IO.pure(new TestAgent(new Allocated(agent, agent.terminate().void))))(
+          acquire = IO(new TestAgent(new Allocated(agent, agent.terminate().void))))(
           release = (agent, exitCase) => IO.defer:
             exitCase match
               case ExitCase.Errored(t) =>
