@@ -2,13 +2,14 @@ package js7.journal
 
 import cats.effect.IO
 import js7.base.problem.Checked
+import js7.base.service.Service
 import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.watch.EventWatch
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
-trait Journal[S <: JournaledState[S]]:
+trait Journal[S <: JournaledState[S]] extends Service:
 
   def journalId: JournalId
 
@@ -34,6 +35,10 @@ trait Journal[S <: JournaledState[S]]:
   inline final def persist[E <: Event](keyedEvents: IterableOnce[KeyedEvent[E]])
   : IO[Checked[Persisted[S, E]]] =
     persistKeyedEvents(keyedEvents)
+
+  final def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[S, E]]] =
+    persist[E]():
+      EventCalc.pure(keyedEvent)
 
   final def persist[E <: Event](
     commitOptions: CommitOptions = CommitOptions.default,

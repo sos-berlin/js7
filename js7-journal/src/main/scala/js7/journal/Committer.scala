@@ -1,8 +1,8 @@
 package js7.journal
 
 import cats.effect
-import cats.effect.kernel.DeferredSink
-import cats.effect.{Deferred, IO, Outcome}
+import cats.effect.kernel.{DeferredSink, Outcome}
+import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
@@ -21,10 +21,10 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLonger}
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenMethodTakesLonger, whenItTakesLonger}
 import js7.base.utils.MultipleLinesBracket.{Round, Square}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
-import js7.base.utils.{AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
+import js7.base.utils.{Allocated, AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
@@ -36,6 +36,7 @@ import js7.journal.Committer.*
 import js7.journal.FileJournal.*
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.Loggable
+import js7.journal.problems.Problems.JournalStoppedProblem
 import js7.journal.write.EventJournalWriter
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
@@ -44,7 +45,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   journal: FileJournal[S] =>
 
   private val snapshotLock = AsyncLock()
-  private val currentService = AsyncVariable(none[CommitterService])
+  private val currentService = AsyncVariable(none[Allocated[IO, CommitterService]])
   private var _isSwitchedOver = false
   private val committerTerminatedUnexpectedly = Deferred.unsafe[IO, Either[Throwable, Unit]]
   private val journalLogger = JournalLogger(conf)
@@ -85,50 +86,27 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               stopCommitter >>
                 IO.whenA(!isStopping || ignoreIsStopping):
                   startCommitter(isStarting = false)
-            .logWhenItTakesLonger
+        .logWhenMethodTakesLonger
 
   protected final def startCommitter(isStarting: Boolean): IO[Unit] =
     currentService.update:
-      case Some(_) =>
-        IO.raiseError(throw new IllegalStateException(
-          "startCommitter but committer is already running"))
+      case Some(_) => IO.raiseError:
+        throw new IllegalStateException("startCommitter but Committer is already running")
       case None =>
         logger.traceIO("startCommitter"):
-          startNewJournalFile(isStarting = isStarting).allocated.flatMap: (eventWriter, close) =>
-            Service.resource(IO(new CommitterService(eventWriter)))
-              .allocated.flatMap: (committerService, stop) =>
-                committerService.untilStopped
-                  .guarantee:
-                    close
-                  .guaranteeCase: outcome =>
-                    IO.defer:
-                      IO.unlessA(committerService.isStopping):
-                        whenKilling.tryGet.map(_.isDefined).flatMap: isKilling =>
-                          val terminated = outcomeToEither(outcome).rightAs(())
-                          // Warning might be duplicate with Service warnings ?
-                          outcome match
-                            case Outcome.Succeeded(_) =>
-                              if !isKilling then logger.warn("Committer terminated unexpectedly")
-                            case Outcome.Errored(t) =>
-                              logger.warn(s"Committer terminated unexpectedly with ${t.toStringWithCauses}")
-                            case Outcome.Canceled() =>
-                              logger.warn("Committer has been cancelled")
-                            IO.whenA(!isKilling):
-                              committerTerminatedUnexpectedly.complete(terminated).void
-                  .start
-                  .as(Some(committerService))
-          <*
-            releaseObsoleteEvents
+          CommitterService.resource(isStarting = isStarting)
+            .toAllocated
+            .productL:
+              releaseObsoleteEvents
+            .map(Some(_))
     .void
 
   protected final def stopCommitter: IO[Unit] =
     currentService.update:
       case None => IO.pure(None)
-      case Some(committerService) =>
-        committerService.stop
-          .logWhenItTakesLonger("committerService.stop")
-          .as(None)
+      case Some(allocated) => allocated.release.as(None)
     .void
+    .logWhenMethodTakesLonger
 
   protected final def onSnapshotTaken(
     eventWriter: EventJournalWriter,
@@ -167,12 +145,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     */
   final def onPassiveLost: IO[Unit] =
     noMoreAcks("onPassiveLost")
-
-  private def noMoreAcks(reason: String): IO[Unit] =
-    requireClusterAck.getAndUpdate(_ => false).map: wasAck =>
-      IO:
-        if wasAck then
-          logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
 
   /** Wait for acknowledgement of passive cluster node.
     *
@@ -230,14 +202,29 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     override def toString = "CommitterService"
 
-    def start =
+    protected def start =
       startService:
         IO.uncancelable: _ =>
-          (untilStopRequested *> journalQueue.offer(None)).background.surround:
-            runStream
-
-    override def stop =
-      super.stop
+          (untilStopRequested *> journalQueue.offer(None))
+            .background.surround:
+              runStream
+            .guaranteeCase: outcome =>
+              IO.unlessA(isStopping):
+                whenKilling.tryGet.map(_.isDefined).flatMap: isKilling =>
+                  // Warning might be duplicate with Service warnings?
+                  outcome match
+                    case Outcome.Succeeded(_) =>
+                      logger.warn:
+                        if isKilling then "Committer has been killed"
+                        else "Committer terminated unexpectedly"
+                    case Outcome.Errored(t) =>
+                      logger.warn(s"Committer terminated unexpectedly with ${t.toStringWithCauses}")
+                    case Outcome.Canceled() =>
+                      logger.warn("Committer has been cancelled")
+                  IO.whenA(!isKilling):
+                    committerTerminatedUnexpectedly.complete:
+                      outcomeToEither(outcome).rightAs(())
+                    .void
 
     private def runStream: IO[Unit] =
       fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
@@ -245,7 +232,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         .interruptWhenF(whenKilling.get)
         .compile.drain
 
-    private def pipe: fs2.Pipe[IO, QueueEntry[S], Unit] = _
+    private def pipe: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
       .chunks
       .evalMap[IO, Chunk[Applied]]/*IntelliJ*/: chunk =>
         // Try to preserve the chunks for faster processing!
@@ -253,7 +240,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           state.updateCheckedWithResult: state =>
             IO:
               (!_isSwitchedOver !! (ClusterNodeHasBeenSwitchedOverProblem: Problem)) >>
-                //?journal.checkNotStopping >>
+                (!isKilling !! (JournalStoppedProblem: Problem)) >>
                 applyEvents(state, queueEntry).map: (aggregate, applied) =>
                   state.copy(
                     uncommitted = aggregate,
@@ -291,6 +278,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
       //    .maxOption.getOrElse(ZeroDuration)
       //</editor-fold>
+      // TODO Return early when no keyedEvents
       .filter(_.nonEmpty)
       .prefetch // Process two chunks concurrently //
       .evalMap:
@@ -336,6 +324,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           releaseObsoleteEvents
       .evalMap: _ =>
         maybeDoASnasphot
+      .drain
 
     private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[(S, Applied)] =
       catchNonFatalFlatten:
@@ -452,7 +441,13 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               state.get.committed.estimatedSnapshotSize
         cachedResult
 
-  end CommitterService
+  private object CommitterService:
+    def resource(isStarting: Boolean): ResourceIO[CommitterService] =
+      for
+        eventWriter <- eventWriterResource(isStarting = isStarting)
+        committerService <- Service.resource(IO(new CommitterService(eventWriter)))
+      yield
+        committerService
 
 
   private sealed trait AppliedOrFlushed:

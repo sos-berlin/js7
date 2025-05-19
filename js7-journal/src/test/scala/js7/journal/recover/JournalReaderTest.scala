@@ -101,7 +101,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
     autoClosing(
       EventJournalWriter(journalLocation,
         fileEventId = EventId.BeforeFirst, after = EventId.BeforeFirst, journalId,
-        observer = JournalingObserver.Dummy, simulateSync = None)
+        observer = JournalingObserver.Dummy(journalLocation), simulateSync = None)
     ): writer =>
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
@@ -145,7 +145,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
       delete(file)  // File of last test
       autoClosing(
         EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
-          observer = JournalingObserver.Dummy, simulateSync = None, append = false)
+          observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)

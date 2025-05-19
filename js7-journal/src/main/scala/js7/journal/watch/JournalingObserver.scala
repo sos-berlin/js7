@@ -1,9 +1,16 @@
 package js7.journal.watch
 
 import cats.effect.unsafe.IORuntime
+import com.typesafe.scalalogging.Logger
+import java.nio.file.Files.delete
 import java.nio.file.Path
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
+import js7.journal.FileJournal.logger
+import js7.journal.data.JournalLocation
+import js7.journal.files.JournalFiles.extensions.listJournalFiles
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -33,7 +40,9 @@ private[journal] trait JournalingObserver:
 
 private[journal] object JournalingObserver:
 
-  object Dummy extends JournalingObserver:
+  private val logger = Logger[this.type]
+  
+  final class Dummy(journalLocation: JournalLocation) extends JournalingObserver:
     override def toString = "JournalingObserver.Dummy"
 
     protected[journal] def onJournalingStarted(
@@ -56,4 +65,11 @@ private[journal] object JournalingObserver:
       ()
 
     protected[journal] def releaseEvents(untilEventId: EventId)(using IORuntime): Unit =
-      ()
+      // Without a JournalingObserver, we can delete all previous journal files (for Agent)
+      val until = untilEventId
+      for j <- journalLocation.listJournalFiles if j.fileEventId < until do
+        val file = j.file
+        //assertThat(file != eventWriter.file)
+        try delete(file)
+        catch case NonFatal(t) =>
+          logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")

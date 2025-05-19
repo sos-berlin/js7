@@ -18,7 +18,7 @@ import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
@@ -79,6 +79,7 @@ extends
   val journalId: JournalId = lastJournalHeader.journalId
 
   protected val whenKilling = Deferred.unsafe[IO, Unit]
+  @volatile protected var isKilling = false
   protected var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
   protected var _suppressSnapshotWhenStopping = false
 
@@ -115,12 +116,12 @@ extends
       startCommitter(isStarting = true) *>
         startService:
           snapshotPeriodically.background.surround:
-            val whenCommitterFailed = whenCommitterTerminatedUnexpectedly.flatMap:
-              case Left(t) => IO.raiseError(t)
-              case Right(()) => IO.raiseError:
-                new RuntimeException("Journal committer terminated unexpectedly")
-            IO.race(whenCommitterFailed, untilStopRequested)
-              .map(_.merge)
+            IO.race(untilStopRequested, whenCommitterTerminatedUnexpectedly)
+              .flatMap:
+                case Left(()) => IO.unit
+                case Right(Left(t)) => IO.raiseError(t)
+                case Right(Right(())) => IO.raiseError:
+                  new RuntimeException("Journal committer terminated unexpectedly")
               .guarantee:
                 IO.defer:
                   IO.whenA(!isSwitchedOver && !_suppressSnapshotWhenStopping):
@@ -138,17 +139,33 @@ extends
     logger.infoIO:
       IO.defer:
         _suppressSnapshotWhenStopping = true
-        whenKilling.complete(()) *> stop
+        isKilling = true
+        whenKilling.complete(()) *>
+          noMoreAcks("kill") *>
+          stop
+
+  def prepareForClusterNodeStop: IO[Unit] =
+    noMoreAcks("prepareForClusterNodeStop")
+
+  protected def noMoreAcks(reason: String): IO[Unit] =
+    requireClusterAck.getAndUpdate(_ => false).map: wasAck =>
+      IO:
+        if wasAck then
+          logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
 
   protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     enqueue(persist)
       .flatMap: (_, whenPersisted) =>
         whenPersisted.get
+          //.raceMerge:
+          //  untilStopRequested *>
+          //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
+      .logWhenMethodTakesLonger
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
   : IO[(DeferredSource[IO, Checked[Persisted[S, E]]], DeferredSource[IO, Checked[Persisted[S, E]]])] =
-    // TODO
+    // TODO ?
     // WHEN STOPPED WHILE SWITCHING OVER:
     // We ignore the event and do not notify the caller,
     // because it would crash and disturb the process of switching-over.
@@ -169,7 +186,7 @@ extends
   def onPassiveNodeHasAcknowledged(eventId: EventId): IO[Unit] =
     ackSignal.update: lastAck =>
       if eventId < lastAck then
-        logger.warn(s"Passive cluster node acknowledgded old $eventId EventId after $lastAck")
+        logger.warn(s"Passive cluster node acknowledged old $eventId EventId after $lastAck")
         lastAck
       else
         val lastEventId = state.get.uncommitted.eventId
@@ -223,18 +240,8 @@ extends
   private def releaseObsoleteEventsUntil(untilEventId: EventId): Unit =
     val committedState = state.get.committed
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${committedState.journalState}, clusterState=${committedState.clusterState}")
-    journalingObserver match
-      case JournalingObserver.Dummy =>
-        // Without a JournalingObserver, we can delete all previous journal files (for Agent)
-        val until = untilEventId min lastJournalHeader.eventId
-        for j <- journalLocation.listJournalFiles if j.fileEventId < until do
-          val file = j.file
-          //assertThat(file != eventWriter.file)
-          try delete(file)
-          catch case NonFatal(t) =>
-            logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")
-      case o =>
-        o.releaseEvents(untilEventId)
+    // min lastJournalHeader.eventId, in case it's a JournalObserver.Dummy
+    journalingObserver.releaseEvents(untilEventId min lastJournalHeader.eventId)
 
   def aggregate: IO[S] =
     state.value.map(_.committed)
@@ -348,7 +355,7 @@ object FileJournal:
 
     final val whenNoFailoverByOtherNode: IO[Unit] =
       tryingPassiveLostSwitch.whenOff
-        .logWhenItTakesLonger
+        .logWhenMethodTakesLonger
 
 
   private[journal] class Statistics:

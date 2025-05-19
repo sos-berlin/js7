@@ -1,6 +1,9 @@
 package js7.journal
 
+import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.event.{Event, EventDrivenState, KeyedEvent, Stamped}
 import scala.collection.SeqView
 /** Persisted events.
@@ -24,7 +27,22 @@ final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
     else
       Right(stampedKeyedEvents.head -> aggregate)
 
+  /** Return the body if an event has been persisted. */
+  def ifPersisted[U <: Unit](body: IO[U]): IO[Checked[Unit]] =
+    if isEmpty then
+      IO.right(())
+    else
+      body.map(Right(_))
+
+  override def toString =
+    s"Persisted(${stampedKeyedEvents.mkString("[", ", ", "]")})"
 
 object Persisted:
   def empty[S <: EventDrivenState[S, E], E <: Event](aggregate: S): Persisted[S, E] =
     Persisted(aggregate, Vector.empty, aggregate)
+
+  extension [S <: EventDrivenState[S, E], E <: Event](io: IO[Checked[Persisted[S, E]]])
+    /** Return the body if an event has been persisted. */
+    def ifPersisted[U <: Unit](body: Persisted[S, E] => IO[U]): IO[Checked[Unit]] =
+      io.flatMapT: persisted =>
+        persisted.ifPersisted(body(persisted))

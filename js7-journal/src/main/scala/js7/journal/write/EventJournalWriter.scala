@@ -4,9 +4,8 @@ import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Missing
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
@@ -103,11 +102,12 @@ private[journal] object EventJournalWriter:
   private val CommitByteArray = Commit.asJson.toByteArray
 
   def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
-    observer: JournalingObserver = JournalingObserver.Dummy,
+    observer: JournalingObserver | Missing = Missing,
     append: Boolean = false)
     (using IORuntime)
   : EventJournalWriter =
-    new EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId, observer,
+    new EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId,
+      observer getOrElse JournalingObserver.Dummy(journalLocation),
       simulateSync = None, append = append)
 
   final class SerializationException(cause: Throwable)

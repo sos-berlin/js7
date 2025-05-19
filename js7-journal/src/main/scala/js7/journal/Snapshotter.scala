@@ -22,7 +22,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
   protected final def lastSnapshotTakenEventId = _lastSnapshotTakenEventId
 
-  protected final def startNewJournalFile(isStarting: Boolean): ResourceIO[EventJournalWriter] =
+  protected final def eventWriterResource(isStarting: Boolean): ResourceIO[EventJournalWriter] =
     Resource:
       state.updateWithResult: state =>
         startNewJournalFile(state, isStarting = isStarting)
