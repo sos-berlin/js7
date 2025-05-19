@@ -10,16 +10,15 @@ import js7.base.configutils.Configs.{ConvertibleConfig, HoconStringInterpolator}
 import js7.base.convert.As
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.system.Java17Polyfill.*
 import js7.base.system.startup.Halt.haltJava
 import js7.base.thread.IOExecutor
 import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Missing
 import js7.base.utils.Missing.getOrElse
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTestParallel
-import js7.base.utils.{Missing, Tests}
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
@@ -66,7 +65,7 @@ object OurIORuntime:
     val indexedLabel = toIndexedName(label)
     val myThreads = threads.getOrElse:
       if isTestParallel then
-        2 // Room for some other concurrently running tests and nodes running in this JVM
+        2 // Leave room for some other concurrently running tests and nodes running in this JVM
       else
         2 max config.as("js7.thread-pools.compute.threads")(ThreadCount)
     val resource = resource2[F](indexedLabel, threads = myThreads, shutdownHooks, computeExecutor)
@@ -131,12 +130,16 @@ object OurIORuntime:
 
   private def logAllocation[F[_]](label: String, threads: Int)(using F: Sync[F])
   : Resource[F, Unit] =
-    Resource(F.delay:
-      locally:
-        if Logger.isInitialized then
-          logger.debug(s"↘ IORuntime '$label' $threads threads ↘")
-      -> F.delay:
-        if Logger.isInitialized then logger.debug(s"↙ IORuntime '$label' closed ↙"))
+    Resource:
+      F.delay:
+        locally:
+          if Logger.isInitialized then
+            logger.debug(s"↘ Cats IORuntime '$label' $threads threads ↘")
+        -> F.delay:
+          if Logger.isInitialized then
+            val msg = s"↙ Cats IORuntime '$label' closed ⚫️ ↙"
+            logger.debug(msg)
+            logger.debug("‾" * msg.length)
 
   /** Testing only: Differentiate a repeated name with an index. */
   private def toIndexedName(name: String): String =
@@ -157,8 +160,8 @@ object OurIORuntime:
             OurIORuntime.reportFailure(t)
 
   private def reportFailure(throwable: Throwable): Unit =
-    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName
-      }': ${throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception in thread '${currentThread.getName}': ${
+      throwable.toStringWithCauses}"
 
     throwable match
       //case _: pekko.stream.StreamTcpException | _: org.apache.pekko.http.scaladsl.model.EntityStreamException =>
@@ -168,8 +171,8 @@ object OurIORuntime:
       //  logger.warn(msg, throwable.nullIfNoStackTrace)
 
       case NonFatal(_) =>
-        // Different to Monix, Cats Effect seems to call reportFailure for some irrelevant exceptions
-        logger.debug(msg, throwable.nullIfNoStackTrace)
+        // Different to Monix, Cats Effect seems to call reportFailure for some irrelevant exceptions ???
+        logger.debug(s"WARN 💥 $msg", throwable.nullIfNoStackTrace)
 
       case throwable: OutOfMemoryError =>
         logger.error(msg, throwable.nullIfNoStackTrace)
@@ -183,7 +186,7 @@ object OurIORuntime:
 
   private[catsutils] val ThreadCount: As[String, Int] =
     val Fraction = "([0-9]+)/([0-9]+)".r
-    {
+    locally:
       case Fraction(numerator, denominator) =>
         val m = denominator.toInt
         if m == 0 then throw
@@ -191,6 +194,3 @@ object OurIORuntime:
         (sys.runtime.availableProcessors * numerator.toDouble / denominator.toInt).ceil.toInt
 
       case o => o.toInt
-    }
-
-  java17Polyfill()

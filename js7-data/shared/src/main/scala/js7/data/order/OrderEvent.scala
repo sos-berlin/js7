@@ -496,7 +496,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderMoved(to: Position, reason: Option[Reason] = None)
-  extends OrderActorEvent
+  extends OrderActorEvent:
+    override def toString = s"OrderMoved($to${reason.fold("")(" " + _)})"
   object OrderMoved:
     sealed trait Reason
     case object SkippedDueToWorkflowPathControl extends Reason

@@ -64,7 +64,7 @@ trait Service:
             since.elapsed
               .flatMap: elapsed =>
                 IO:
-                  val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
+                  val msg = s"$service service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
                   if !t.isInstanceOf[MainServiceTerminationException] then
                     // A service should not die. The caller should watch untilStopped!
                     logger.error(msg, t.nullIfNoStackTrace)
@@ -72,7 +72,7 @@ trait Service:
               .void
 
           case Outcome.Canceled() =>
-            stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
+            stopped.complete(Failure(Problem.pure(s"$service service canceled").throwable))
               .void
 
           case Outcome.Succeeded(_) =>
@@ -96,17 +96,17 @@ object Service:
       acquire =
         newService.flatTap: service =>
           if service.started.getAndSet(true) then
-            IO.raiseError(IllegalStateException(s"$toString started twice"))
+            IO.raiseError(IllegalStateException(s"$toString service started twice"))
           else
-            logger.traceF(s"$service start"):
+            logger.traceF(s"$service service start"):
               service.start
                 .onError:
                   case t => IO:
                     // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                    logger.error(s"$service start => ${t.toStringWithCauses}"))(
+                    logger.error(s"$service service start => ${t.toStringWithCauses}"))(
       release =
         service => service.stop
-          .logWhenItTakesLonger(s"stopping $service"))
+          .logWhenItTakesLonger(s"stopping $service service"))
 
   private def logInfoStartAndStop[A](
     logger: Logger.Underlying,
@@ -115,11 +115,11 @@ object Service:
     (body: IO[A])
   : IO[A] =
     IO.defer:
-      logger.info(s"$serviceName${args.nonEmpty ?? s"($args)"} started")
+      logger.info(s"$serviceName${args.nonEmpty ?? s"($args)"} service started")
       body.guaranteeCase:
         case Outcome.Errored(_) => IO.unit // start logs the error
-        case Outcome.Canceled() => IO(logger.info(s"◼️  $serviceName canceled"))
-        case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName stopped"))
+        case Outcome.Canceled() => IO(logger.info(s"◼️  $serviceName service canceled"))
+        case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName service stopped"))
 
   def restartAfterFailure[Svc <: Service: Tag](
     restartDelayConf: DelayConf = defaultRestartDelayConf,

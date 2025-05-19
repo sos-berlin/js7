@@ -63,7 +63,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
             logger.traceIO(s"Stop '$jobLauncher'"):
               jobLauncher
                 .stop
-                .logWhenItTakesLonger
+                .logWhenItTakesLonger("jobLauncher.stop")
                 .handleError: throwable =>
                   logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
                     throwable.nullIfNoStackTrace)

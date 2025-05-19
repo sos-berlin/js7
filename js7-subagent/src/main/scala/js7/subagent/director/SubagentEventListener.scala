@@ -127,7 +127,7 @@ private trait SubagentEventListener:
               journal
                 .persistKeyedEvents(CommitOptions(transaction = true))(events)
                 .map(_.orThrow /*???*/)
-                // After an OrderProcessed event an DetachProcessedOrder must be sent,
+                // After an OrderProcessed event a DetachProcessedOrder must be sent,
                 // to terminate StartOrderProcess command idempotency detection and
                 // allow a new StartOrderProcess command for a next process.
                 .*>(updatedStampedSeq

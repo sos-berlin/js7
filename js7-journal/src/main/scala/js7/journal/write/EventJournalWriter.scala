@@ -62,10 +62,12 @@ extends
 
   def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false)
   : PositionAnd[EventId] =
-   logger.traceCall("### writeEvents", s"transaction=$transaction ${stampedEvents.map(o => s"${o.eventId} ${o.value.event.getClass.simpleScalaName}").mkString("[", ", ", "]")}"):
     // TODO Rollback writes in case of error (with seek?)
     if !eventsStarted then throw new IllegalStateException
     val ta = transaction && stampedEvents.lengthIs > 1
+    //logger.trace(s"### writeEvents ${ta ?? "transaction "}${
+    //  stampedEvents.map(o => s"${o.eventId}:${o.value.event.getClass.simpleScalaName}")
+    //    .mkString("[", ", ", "]")}")
     if ta then jsonWriter.write(TransactionByteArray)
     super.writeEvents(stampedEvents)
     if ta then jsonWriter.write(CommitByteArray)

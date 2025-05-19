@@ -177,12 +177,12 @@ private[agent] abstract class CommandQueue(
             asyncOnBatchSucceeded(queueableResponses)
 
           case Success(Left(problem)) =>
-            logger.debug(s"💥 sendNow: $problem")
+            logger.debug(s"💥 sendNow: $problem", problem.throwableOption.orNull)
             logger.debug(s"💥 sendNow: queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchFailed(queuable, problem)
 
           case Failure(t) =>
-            logger.debug(s"💥 sendNow: $t")
+            logger.debug(s"💥 sendNow: $t", t)
             logger.debug(s"💥 sendNow: queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchFailed(queuable, Problem.fromThrowable(t))
 

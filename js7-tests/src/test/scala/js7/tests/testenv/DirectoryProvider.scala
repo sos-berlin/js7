@@ -286,7 +286,7 @@ extends HasCloser:
     val result =
       try body(agentAllocatedSeq.map(_.allocatedThing))
       catch case NonFatal(t) =>
-        // Pekko may crash before the caller gets the error so we log the error here
+        // Pekko may crash before the caller gets the error, so we log the error here
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         try agentAllocatedSeq.parTraverse(_.release).await(99.s)
         catch case t2: Throwable if t2 ne t =>

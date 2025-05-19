@@ -560,7 +560,7 @@ object Logger extends AdHocLogger:
     def res = result_.nonEmpty ?? " • " + result_
     outcome match
       case Outcome.Errored(t) =>
-        logReturn(logger, logLevel, marker, function, args, duration, "💥️", t.toStringWithCauses + res)
+        logReturn(logger, logLevel, marker, function, args, duration, "💥️", t.toStringWithCauses + res, t)
       case Outcome.Canceled() =>
         logReturn(logger, logLevel, marker, function, args, duration, "◼️  ", "Canceled" + res)
       case Outcome.Succeeded(_) =>
@@ -574,7 +574,8 @@ object Logger extends AdHocLogger:
     args: => Any = "",
     duration: => String,
     symbol: String,
-    result: => Any)
+    result: => Any,
+    t: Throwable | Null = null)
   : Unit =
     lazy val argsString = args.toString
     marker match
@@ -582,34 +583,34 @@ object Logger extends AdHocLogger:
         if argsString.isEmpty then
           logLevel match
             case LogLevel.None =>
-            case LogLevel.Trace => logger.trace(s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Debug => logger.debug(s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Info  => logger.info (s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Warn  => logger.warn (s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Error => logger.error(s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Trace => logger.trace(s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Debug => logger.debug(s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Info  => logger.info (s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Warn  => logger.warn (s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Error => logger.error(s"↙$symbol $function => $duration$result ↙", t)
         else
           logLevel match
             case LogLevel.None =>
-            case LogLevel.Trace => logger.trace(s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Debug => logger.debug(s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Info  => logger.info (s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Warn  => logger.warn (s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Error => logger.error(s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Trace => logger.trace(s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Debug => logger.debug(s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Info  => logger.info (s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Warn  => logger.warn (s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Error => logger.error(s"↙$symbol $function($argsString) => $duration$result ↙", t)
 
       case marker: Marker =>
         if argsString.isEmpty then
           logLevel match
             case LogLevel.None =>
-            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function => $duration$result ↙")
-            case LogLevel.Error => logger.error(marker, s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function => $duration$result ↙", t)
+            case LogLevel.Error => logger.error(marker, s"↙$symbol $function => $duration$result ↙", t)
         else
           logLevel match
             case LogLevel.None =>
-            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function($argsString) => $duration$result ↙")
-            case LogLevel.Error => logger.error(marker, s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function($argsString) => $duration$result ↙", t)
+            case LogLevel.Error => logger.error(marker, s"↙$symbol $function($argsString) => $duration$result ↙", t)

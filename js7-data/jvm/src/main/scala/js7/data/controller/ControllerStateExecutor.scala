@@ -125,14 +125,14 @@ object ControllerStateExecutor:
         coll <- coll.add:
           coll.aggregate.idToOrder.values.view
             .filter(_.isAtAgent(agentPath))
-            .map: order => 
+            .map: order =>
               forciblyDetachOrder(order, agentPath)
             .toVector.combineAll
         coll <- coll.add:
           coll.aggregate.itemToAgentToAttachedState.to(View)
             .filter(_._2.contains(agentPath))
             .map(_._1)
-            .map: itemKey => 
+            .map: itemKey =>
               NoKey <-: ItemDetached(itemKey, agentPath)
       yield
         coll
