@@ -7,7 +7,6 @@ import js7.data.item.ItemRevision
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
-import scala.collection.immutable.Queue
 
 final class LockStateTest extends OurTestSuite:
 
@@ -68,27 +67,27 @@ final class LockStateTest extends OurTestSuite:
 
       "OrderLockQueued" in:
         assert(LockState(lock, Available).enqueue(a, None) ==
-          Right(LockState(lock, Available, Queue(a))))
+          Right(LockState(lock, Available, Vector(a))))
 
         assert(LockState(lock, Exclusive(a)).enqueue(a, None) ==
           Left(Problem("Lock:LOCK has already been acquired by this order")))
         assert(LockState(lock, Exclusive(a)).enqueue(b, None) ==
-          Right(LockState(lock, Exclusive(a), Queue(b))))
+          Right(LockState(lock, Exclusive(a), Vector(b))))
 
         assert(LockState(lock, NonExclusive(Map(a -> 1))).enqueue(a, None) ==
           Left(Problem("Lock:LOCK has already been acquired by this order")))
         assert(LockState(lock, NonExclusive(Map(a -> 1, b -> 1))).enqueue(a, None) ==
           Left(Problem("Lock:LOCK has already been acquired by this order")))
         assert(LockState(lock, NonExclusive(Map(a -> 1))).enqueue(b, None) ==
-          Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
+          Right(LockState(lock, NonExclusive(Map(a -> 1)), Vector(b))))
 
         assert(LockState(lock, Exclusive(a)).enqueue(b, None) ==
-          Right(LockState(lock, Exclusive(a), Queue(b))))
-        assert(LockState(lock, Exclusive(a), Queue(b)).enqueue(c, None) ==
-          Right(LockState(lock, Exclusive(a), Queue(b, c))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c)).enqueue(d, None) ==
-          Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c, d)).enqueue(c, None) ==
+          Right(LockState(lock, Exclusive(a), Vector(b))))
+        assert(LockState(lock, Exclusive(a), Vector(b)).enqueue(c, None) ==
+          Right(LockState(lock, Exclusive(a), Vector(b, c))))
+        assert(LockState(lock, Exclusive(a), Vector(b, c)).enqueue(d, None) ==
+          Right(LockState(lock, Exclusive(a), Vector(b, c, d))))
+        assert(LockState(lock, Exclusive(a), Vector(b, c, d)).enqueue(c, None) ==
           Left(Problem("Order:C already queues for Lock:LOCK")))
 
       "Child order cannot lock if parent order has locked" in:

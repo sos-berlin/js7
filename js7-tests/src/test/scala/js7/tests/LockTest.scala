@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, TransferOrders}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangeOrder, TransferOrders}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
@@ -25,8 +25,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant, expr}
 import js7.data.workflow.instructions.{Fail, Finish, Fork, ForkBranchId, LockInstruction, Options, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -35,7 +34,6 @@ import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
-import scala.collection.immutable.Queue
 import scala.util.Random
 
 final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -130,7 +128,6 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
             OrderDetachable,
             OrderDetached,
 
-
             OrderAttachable(bAgentPath),
             OrderAttached(bAgentPath),
             OrderProcessingStarted(bSubagentId),
@@ -149,8 +146,35 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Available,
-          Queue.empty))
+          Vector.empty))
     }
+
+  "ChangeOrder priority • PriorityChanged" in:
+    val eventId = eventWatch.resetLastWatchedEventId()
+    val workflow = Workflow.of:
+      LockInstruction(List(LockDemand(lockPath))):
+        Workflow.of:
+          Prompt(expr"'PROMPT'")
+
+    withItem(workflow): workflow =>
+      val freshOrders = (0 until 4).map: i =>
+        FreshOrder(OrderId(s"PRIORITY-$i"), workflow.path, priority = -i, deleteWhenTerminated = true)
+
+      controller.api.addOrders(fs2.Stream.iterable(freshOrders)).await(99.s).orThrow
+      eventWatch.await[OrderPrompted](_.key == freshOrders.head.id, after = eventId).head.value.key
+      execCmd:
+        ChangeOrder(freshOrders(1).id, priority = Some(-100))
+
+      for _ <- freshOrders.indices do
+        val orderId = eventWatch.awaitNext[OrderPrompted]().head.value.key
+        execCmd:
+          AnswerOrderPrompt(orderId)
+
+      assert(eventWatch.keyedEvents[OrderLocksAcquired](after = eventId).map(_.key) == Seq(
+        OrderId("PRIORITY-0"),
+        OrderId("PRIORITY-2"),
+        OrderId("PRIORITY-3"),
+        OrderId("PRIORITY-1")))
 
   "After releasing a lock of 2, two orders with count=1 each start simultaneously" in:
     val workflow1 = updateItem(Workflow(
@@ -160,7 +184,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
           limit2LockPath,
           count = Some(1),
           lockedWorkflow = Workflow.of:
-            Prompt(expr("'PROMPT'")))))
+            Prompt(expr"'PROMPT'"))))
 
     val workflow2 = updateItem(Workflow(
       WorkflowPath("WORKFLOW-2"),
@@ -169,7 +193,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
           limit2LockPath,
           count = Some(2),
           lockedWorkflow = Workflow.of:
-            Prompt(expr("'PROMPT'")))))
+            Prompt(expr"'PROMPT'"))))
 
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
@@ -205,7 +229,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
     deleteItems(workflow1.path, workflow2.path)
 
@@ -240,7 +264,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Failed order" in:
     val workflow = updateItem(Workflow(
@@ -301,7 +325,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(controllerState.keyTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
-        Available, Queue.empty))
+        Available, Vector.empty))
 
     deleteItems(workflow.path)
 
@@ -345,7 +369,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Failed forked order" in:
     val workflow = defineWorkflow(workflowNotation = """
@@ -385,7 +409,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Forked order with same lock" in:
     val workflow = defineWorkflow(workflowNotation = """
@@ -426,7 +450,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Finish instruction" in:
     val workflow = updateItem(Workflow(
@@ -464,7 +488,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
     controller.api
       .updateItems(Stream(
@@ -498,7 +522,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
     controller.api
       .updateItems(Stream(
@@ -530,7 +554,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Multiple locks" - {
     "All locks are available" in:
@@ -564,12 +588,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Exclusive(aOrderId),
-          Queue(bOrderId)))
+          Vector(bOrderId)))
       assert(controllerState.keyTo(LockState)(lock2Path) ==
         LockState(
           Lock(lock2Path, itemRevision = Some(ItemRevision(0))),
           Exclusive(aOrderId),
-          Queue(bOrderId)))
+          Vector(bOrderId)))
 
       ASemaphoreJob.continue()
       controller.eventWatch.await[OrderDeleted](_.key == aOrderId)
@@ -649,12 +673,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Exclusive(aOrderId),
-          Queue(bOrderId)))
+          Vector(bOrderId)))
       assert(controllerState.keyTo(LockState)(lock2Path) ==
         LockState(
           Lock(lock2Path, itemRevision = Some(ItemRevision(0))),
           Available,
-          Queue(bOrderId)))
+          Vector(bOrderId)))
 
       val cOrderId = OrderId("♠️")
       BSemaphoreJob.reset()
@@ -666,12 +690,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Exclusive(aOrderId),
-          Queue(bOrderId)))
+          Vector(bOrderId)))
       assert(controllerState.keyTo(LockState)(lock2Path) ==
         LockState(
           Lock(lock2Path, itemRevision = Some(ItemRevision(0))),
           Exclusive(cOrderId),
-          Queue(bOrderId)))
+          Vector(bOrderId)))
 
       ASemaphoreJob.continue()
       controller.eventWatch.await[OrderDeleted](_.key == aOrderId)
@@ -780,7 +804,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
     controller.api.updateItems(Stream(
       AddVersion(VersionId("DELETE")),
@@ -809,7 +833,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
-        Queue.empty))
+        Vector.empty))
 
   "Use Lock both exclusivly and non-exclusively" in:
     val exclusiveWorkflow = updateItem(Workflow(
@@ -817,13 +841,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       Seq(
         LockInstruction.single(limit2LockPath,
           count = None,
-          lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
+          lockedWorkflow = Workflow.of(Prompt(expr"'?'"))))))
     val nonExclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("NON-EXCLUSIVE-WORKFLOW"),
       Seq(
         LockInstruction.single(limit2LockPath,
           count = Some(2),
-          lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
+          lockedWorkflow = Workflow.of(Prompt(expr"'?'"))))))
 
     locally:
       // First exclusive, then non-exclusive is queued
@@ -988,7 +1012,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
           LockInstruction.single(lockPath,
             count = None,
             lockedWorkflow = Workflow.of(
-              Prompt(expr("'PROMPT'")))))
+              Prompt(expr"'PROMPT'"))))
 
       withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
@@ -1051,7 +1075,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
           LockInstruction.single(lockPath,
             count = None,
             lockedWorkflow = Workflow.of(
-              Prompt(expr("'PROMPT'")),
+              Prompt(expr"'PROMPT'"),
               Fail())))
 
       withItem(workflow, awaitDeletion = true): workflow =>
@@ -1182,7 +1206,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       WorkflowPath("A-TRANSFER-ORDERS"),
       LockInstruction(Seq(LockDemand(lock1.path), LockDemand(lock2.path))):
         Workflow.of:
-          Prompt(expr("'PROMPT'")))
+          Prompt(expr"'PROMPT'"))
 
     val bWorkflow1 = Workflow(
       WorkflowPath("B-TRANSFER-ORDERS"),
@@ -1227,8 +1251,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
-      assert(controllerState.keyTo(LockState)(lock1.path) == LockState(lock1, acquired = Available, queue = Queue.empty))
-      assert(controllerState.keyTo(LockState)(lock2.path) == LockState(lock2, acquired = Available, queue = Queue.empty))
+      assert(controllerState.keyTo(LockState)(lock1.path) == LockState(lock1, acquired = Available, queue = Vector.empty))
+      assert(controllerState.keyTo(LockState)(lock2.path) == LockState(lock2, acquired = Available, queue = Vector.empty))
 
   "Lock is not deletable while in use by a Workflow" in:
     val workflow = defineWorkflow(workflowNotation = """

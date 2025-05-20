@@ -8,12 +8,11 @@ import js7.data.item.UnsignedSimpleItemState
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
 import js7.data.order.OrderId
-import scala.collection.immutable.Queue
 
 final case class LockState(
   lock: Lock,
   acquired: Acquired = Available,
-  queue: Queue[OrderId] = Queue.empty)
+  queue: Vector[OrderId] = Vector.empty)
 extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
 
   import lock.limit
@@ -39,7 +38,7 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
         Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
       case None =>
         Right(copy(
-          queue = queue.enqueue(orderId)))
+          queue = queue :+ orderId))
 
   def isAvailable(orderId: OrderId, count: Option[Int] = None): Checked[Boolean] =
     checkAcquire(orderId, count) match
@@ -52,7 +51,7 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
       case Right(()) =>
         Right(true)
 
-  def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
+  private def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
     tryAcquire(orderId, count)
       .map(_ => ())
 

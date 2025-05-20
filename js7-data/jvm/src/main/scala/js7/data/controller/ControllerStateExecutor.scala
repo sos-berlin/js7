@@ -493,6 +493,8 @@ object ControllerStateExecutor:
   def nextOrderWatchOrderEvents(controllerState: ControllerState): View[KeyedEvent[OrderCoreEvent | ExternalOrderRejected]] =
     controllerState.ow.nextEvents(addOrder(controllerState, _, _))
 
+  // TODO Try to call with only relevant OrderIDs
+  //  For example, don't call with all orders waiting for a single-order lock.
   def nextOrderEvents(orderIds: Iterable[OrderId]): EventCalc[ControllerState, Event, TimeCtx] =
     EventCalc.multiple: controllerState_ =>
       var controllerState = controllerState_
@@ -501,9 +503,9 @@ object ControllerStateExecutor:
 
       final case class Entry(orderId: OrderId, priority: BigDecimal, index: Long)
       extends Ordered[Entry]:
-        def compare(o: Entry) =
+        def compare(o: Entry): Int =
           priority compare o.priority match
-            case 0 => o.index compare index // Early index has higher priority
+            case 0 => o.index compare index // Reverse, because early index has higher priority
             case n => n
 
       def toEntry(orderId: OrderId): Option[Entry] =
@@ -512,7 +514,7 @@ object ControllerStateExecutor:
           nextIndex += 1
           Entry(orderId, order.priority, i)
 
-      val queue = mutable.PriorityQueue.empty[Entry] ++ orderIds.flatMap(toEntry)
+      val queue = mutable.PriorityQueue.from(orderIds.view.flatMap(toEntry))
 
       @tailrec def loop(): Unit =
         if queue.nonEmpty then
@@ -533,8 +535,7 @@ object ControllerStateExecutor:
                     .collect:
                       case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
                     .flatMap(keyedEventToPendingOrderIds(controllerState, _))
-                    .toSet.view
-                    .flatMap(toEntry)
+                    .toSet.view.flatMap(toEntry)
 
                   //<editor-fold desc="if isTest ...">
                   if isTest && _keyedEvents.size >= 1_000_000 then
