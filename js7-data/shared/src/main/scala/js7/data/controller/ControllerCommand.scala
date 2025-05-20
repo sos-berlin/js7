@@ -264,6 +264,12 @@ object ControllerCommand extends CommonCommand.Companion:
   extends ControllerCommand, Big:
     type Response = Response.Accepted
 
+  final case class ChangeOrder(
+    orderId: OrderId,
+    priority: Option[BigDecimal])
+  extends ControllerCommand, Big:
+    type Response = Response.Accepted
+
   /** Transfer all Orders from the given Workflow to the newest version.
    * @param workflowId denotes the Workflow from which all Orders are transferred
    */
@@ -358,6 +364,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[ResumeOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
+    Subtype(deriveConfiguredCodec[ChangeOrder]),
     Subtype(deriveConfiguredCodec[TransferOrders]),
     Subtype(deriveConfiguredCodec[ChangePlanSchema]),
     Subtype(deriveConfiguredCodec[ChangePlan]),

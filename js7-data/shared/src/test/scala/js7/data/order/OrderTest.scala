@@ -17,7 +17,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, Sleeping, State, Stopped, StoppedWhileFresh, WaitingForLock}
-import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSleeping, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
+import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderPriorityChanged, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSleeping, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
 import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -507,6 +507,8 @@ final class OrderTest extends OurTestSuite:
       OrderLocksQueued(List(LockDemand(LockPath("LOCK"), None))),
       OrderLocksReleased(List(LockPath("LOCK"))),
 
+      OrderPriorityChanged(7),
+
       OrderPlanAttached(planId),
       OrderNoticeAnnounced(BoardPath("BOARD") \ NoticeKey.empty),
       OrderNoticePostedV2_3(
@@ -572,6 +574,7 @@ final class OrderTest extends OurTestSuite:
         detachingAllowed[Fresh] orElse
         cancelMarkedAllowed[Fresh] orElse
         suspendMarkedAllowed[Fresh] orElse
+        priorityChangedAllowed[Fresh] orElse
         planAttached[Fresh] orElse:
           case (_: OrderNoticeAnnounced, _              , _, IsDetached             ) => _.isInstanceOf[Fresh]
           case (_: OrderMoved       , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
@@ -595,6 +598,7 @@ final class OrderTest extends OurTestSuite:
         detachingAllowed[Ready] orElse
         cancelMarkedAllowed[Ready] orElse
         suspendMarkedAllowed[Ready] orElse
+        priorityChangedAllowed[Ready] orElse
         planAttached[Ready] orElse:
           case (_: OrderMoved            , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingStarted, IsSuspended(false), _            , IsAttached             ) => _.isInstanceOf[Processing]
@@ -632,6 +636,7 @@ final class OrderTest extends OurTestSuite:
         markable[WaitingForLock] orElse
         cancelMarkedAllowed[WaitingForLock] orElse
         suspendMarkedAllowed[WaitingForLock] orElse
+        priorityChangedAllowed[WaitingForLock] orElse
         planAttached[WaitingForLock] orElse:
           case (_: OrderLocksAcquired, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderStateReset, _, _, _      ) => _.isInstanceOf[Ready]
@@ -646,7 +651,8 @@ final class OrderTest extends OurTestSuite:
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse
-        suspendMarkedAllowed[ExpectingNotices] orElse:
+        suspendMarkedAllowed[ExpectingNotices] orElse
+        priorityChangedAllowed[ExpectingNotices] orElse:
           case (_: OrderNoticesRead, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderNoticesConsumptionStarted, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderCancelled   , _, _, IsDetached) => _.isInstanceOf[Cancelled]
@@ -660,6 +666,7 @@ final class OrderTest extends OurTestSuite:
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse
         suspendMarkedAllowed[Processing] orElse
+        priorityChangedAllowed[Processing] orElse
         planAttached[Processing] orElse:
           case (_: OrderProcessed, IsSuspended(false), _, IsAttached) => _.isInstanceOf[Processed]
           case (_: OrderOutcomeAdded, _              , _, _         ) => _.isInstanceOf[Processing]
@@ -672,6 +679,7 @@ final class OrderTest extends OurTestSuite:
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
         suspendMarkedAllowed[Processed] orElse
+        priorityChangedAllowed[Processed] orElse
         detachingAllowed[Processed] orElse
         planAttached[Processed] orElse:
           case (_: OrderMoved           , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
@@ -689,6 +697,7 @@ final class OrderTest extends OurTestSuite:
       checkAllEvents(Order(orderId, workflowId /: Position(0), ProcessingKilled,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         markable[ProcessingKilled] orElse
+        priorityChangedAllowed[ProcessingKilled] orElse
         detachingAllowed[ProcessingKilled] orElse
         planAttached[ProcessingKilled] orElse:
           case (OrderCancelled, _                         , _, IsDetached) => _.isInstanceOf[Cancelled]
@@ -710,6 +719,7 @@ final class OrderTest extends OurTestSuite:
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
         suspendMarkedAllowed[Prompting] orElse
+        priorityChangedAllowed[Prompting] orElse
         planAttached[Prompting] orElse:
           case (_: OrderPromptAnswered, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]  // COMPATIBLE with v2.4
@@ -724,6 +734,7 @@ final class OrderTest extends OurTestSuite:
         markable[BetweenCycles] orElse
         cancelMarkedAllowed[BetweenCycles] orElse
         suspendMarkedAllowed[BetweenCycles] orElse
+        priorityChangedAllowed[BetweenCycles] orElse
         detachingAllowed[BetweenCycles] orElse
         planAttached[BetweenCycles] orElse:
           case (_: OrderCyclingPrepared, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
@@ -745,6 +756,7 @@ final class OrderTest extends OurTestSuite:
         markable[FailedWhileFresh] orElse
         cancelMarkedAllowed[FailedWhileFresh] orElse
         suspendMarkedAllowed[FailedWhileFresh] orElse
+        priorityChangedAllowed[FailedWhileFresh] orElse
         planAttached[FailedWhileFresh] orElse:
           case (OrderCancelled      , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[FailedWhileFresh]
@@ -755,6 +767,7 @@ final class OrderTest extends OurTestSuite:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Failed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.failed))),
         markable[Failed] orElse
+        priorityChangedAllowed[Failed] orElse
         cancelMarkedAllowed[Failed] orElse
         planAttached[Failed] orElse:
           case (_: OrderResumed     , IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
@@ -766,6 +779,7 @@ final class OrderTest extends OurTestSuite:
     "FailedInFork" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedInFork, parent = Some(OrderId("PARENT")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
+        priorityChangedAllowed[FailedInFork] orElse
         cancelMarkedAllowed[FailedInFork] orElse
         planAttached[FailedInFork] orElse:
           case (_: OrderSuspensionMarked, IsSuspended(_), _, _         ) => _.isInstanceOf[FailedInFork]
@@ -780,6 +794,7 @@ final class OrderTest extends OurTestSuite:
         markable[DelayingRetry] orElse
         cancelMarkedAllowed[DelayingRetry] orElse
         suspendMarkedAllowed[DelayingRetry] orElse
+        priorityChangedAllowed[DelayingRetry] orElse
         planAttached[DelayingRetry] orElse:
           case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
           case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
@@ -796,6 +811,7 @@ final class OrderTest extends OurTestSuite:
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
         suspendMarkedAllowed[DelayedAfterError] orElse
+        priorityChangedAllowed[DelayedAfterError] orElse
         planAttached[DelayedAfterError] orElse:
           case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
           case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
@@ -808,6 +824,7 @@ final class OrderTest extends OurTestSuite:
     "Broken" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Broken()),
         markable[Broken] orElse
+        priorityChangedAllowed[Broken] orElse
         detachingAllowed[Broken] orElse
         cancelMarkedAllowed[Broken] orElse
         planAttached[Broken] orElse:
@@ -828,6 +845,7 @@ final class OrderTest extends OurTestSuite:
         detachingAllowed[Forked] orElse
         cancelMarkedAllowed[Forked] orElse
         suspendMarkedAllowed[Forked] orElse
+        priorityChangedAllowed[Forked] orElse
         planAttached[Forked] orElse:
           case (_: OrderJoined, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Processed]
           case (_: OrderOutcomeAdded, _           , _, _         ) => _.isInstanceOf[Forked]
@@ -899,6 +917,9 @@ final class OrderTest extends OurTestSuite:
     def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderSuspensionMarked, IsSuspended(false), _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
       case (_: OrderResumptionMarked , _                , _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
+
+    def priorityChangedAllowed[S <: Order.State: ClassTag]: ToPredicate =
+      case (_: OrderPriorityChanged, _, _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderAttachable, _, _, IsDetached ) => o => implicitClass[S].isAssignableFrom(o.getClass)

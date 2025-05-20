@@ -463,6 +463,13 @@ extends
                   state,
               historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
 
+      case event: OrderPriorityChanged =>
+        if isState[IsTerminated] then
+          Left(Problem.pure("Order is terminated"))
+        else
+          Right(copy(
+            priority = event.priority))
+
       case _: OrderLocksAcquired =>
         // LockState handles this event, too
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),

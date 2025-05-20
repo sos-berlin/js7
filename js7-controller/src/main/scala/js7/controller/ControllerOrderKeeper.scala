@@ -744,6 +744,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           ControllerCommand.ResumeOrder |
           ControllerCommand.ResumeOrders |
           ControllerCommand.SuspendOrders |
+          ControllerCommand.ChangeOrder |
           ControllerCommand.TransferOrders) =>
         executeCommandAndPersist(cmd)
 

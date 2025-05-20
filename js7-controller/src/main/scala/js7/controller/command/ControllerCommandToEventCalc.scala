@@ -29,6 +29,7 @@ extends CommandToEventCalc[ControllerState, Event, TimeCtx]:
       executors.resumeOrderExecutor,
       executors.resumeOrdersExecutor,
       executors.suspendOrdersExecutor,
+      executors.changeOrderExecutor,
       executors.transferOrdersExecutor)
 
 

@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.DurationRichLong
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangePlan, ChangePlanSchema, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
+import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangeOrder, ChangePlan, ChangePlanSchema, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data.plan.{PlanId, PlanSchemaId, PlanStatus}
@@ -58,6 +58,13 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
     @Nonnull position: JPosition)
   : JControllerCommand =
     JControllerCommand(GoOrder(orderId, position.asScala))
+
+  @Nonnull
+  def changeOrder(
+    @Nonnull orderId: OrderId,
+    @Nonnull priority: Optional[java.math.BigDecimal])
+  : JControllerCommand =
+    JControllerCommand(ChangeOrder(orderId, priority.toScala.map(BigDecimal(_))))
 
   @Nonnull
   @Deprecated @deprecated("Use postGlobalNotice", "v2.7.4")

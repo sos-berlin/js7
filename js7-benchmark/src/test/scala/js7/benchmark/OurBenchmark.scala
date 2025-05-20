@@ -7,6 +7,7 @@ import java.nio.file.Files.deleteIfExists
 import java.nio.file.Paths
 import java.util.regex.Pattern
 import js7.base.log.Logger
+import js7.base.utils.ScalaUtils.syntax.*
 import org.openjdk.jmh.annotations.{Scope, State, TearDown}
 import org.openjdk.jmh.results.format.ResultFormatType
 import org.openjdk.jmh.runner.Runner
@@ -19,7 +20,7 @@ open class OurBenchmark:
   deleteIfExists(Paths.get("target/js7.log"))
   deleteIfExists(Paths.get("target/js7-debug.log"))
 
-  val loggerRelease = Logger.resource[SyncIO]("TestCycleExecutorBenchmark").allocated.unsafeRunSync()._2
+  val loggerRelease = Logger.resource[SyncIO](getClass.simpleScalaName).allocated.unsafeRunSync()._2
 
   @TearDown
   def tearDown() =

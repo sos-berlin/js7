@@ -364,6 +364,14 @@ final class OrderEventTest extends OurTestSuite:
         "movedTo": [ 1 ]
       }""")
 
+  "OrderPriorityChanged" in:
+    testJson[OrderEvent](OrderPriorityChanged(7.89),
+      json"""
+      {
+        "TYPE": "OrderPriorityChanged",
+        "priority": 7.89
+      }""")
+
   "OrderFailed" in:
     testJson[OrderEvent](OrderFailed(Position(1)),
       json"""

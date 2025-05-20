@@ -702,6 +702,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderSuspended extends OrderActorEvent, IsControllerOnly
 
 
+  final case class OrderPriorityChanged(priority: BigDecimal)
+  extends OrderActorEvent, IsControllerOnly/*for now*/
+
   type OrderStopped = OrderStopped.type
   case object OrderStopped extends OrderActorEvent, IsControllerOnly
 
@@ -886,6 +889,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveConfiguredCodec[OrderSuspensionMarked]),
     Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),
+    Subtype(deriveCodec[OrderPriorityChanged]),
     Subtype(OrderStopped),
     Subtype(deriveConfiguredCodec[OrderGoMarked]),
     Subtype(OrderGoes),
