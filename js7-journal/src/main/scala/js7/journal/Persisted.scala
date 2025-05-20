@@ -7,7 +7,7 @@ import scala.collection.SeqView
   * @param originalAggregate The aggregate before the events have been applied.
   * @param stampedKeyedEvents
   * @param aggregate The aggregate with applied events. */
-final case class Persisted[S <: EventDrivenState[S, E], E <: Event](
+final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
   originalAggregate: S,
   stampedKeyedEvents: Vector[Stamped[KeyedEvent[E]]],
   aggregate: S):
@@ -23,6 +23,7 @@ final case class Persisted[S <: EventDrivenState[S, E], E <: Event](
       Problem(s"Persisted.checkedSingle: Expected one event, got ${stampedKeyedEvents.size}")
     else
       Right(stampedKeyedEvents.head -> aggregate)
+
 
 object Persisted:
   def empty[S <: EventDrivenState[S, E], E <: Event](aggregate: S): Persisted[S, E] =
