@@ -23,22 +23,18 @@ trait Journal[S <: JournaledState[S]] extends Service:
 
   def eventWatch: EventWatch
 
-  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]]
-
   def whenNoFailoverByOtherNode: IO[Unit]
 
+  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]]
+
   inline final def persist[E <: Event](keyedEvent: KeyedEvent[E])
-    (using enclosing: sourcecode.Enclosing)
-  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistKeyedEvent(keyedEvent)
+  : IO[Checked[Persisted[S, E]]] =
+    persist[E]():
+      EventCalc.pure(keyedEvent)
 
   inline final def persist[E <: Event](keyedEvents: IterableOnce[KeyedEvent[E]])
   : IO[Checked[Persisted[S, E]]] =
     persistKeyedEvents(keyedEvents)
-
-  final def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[S, E]]] =
-    persist[E]():
-      EventCalc.pure(keyedEvent)
 
   final def persist[E <: Event](
     commitOptions: CommitOptions = CommitOptions.default,
@@ -57,8 +53,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   inline final def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     persist_(persist)
 
-  final def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
-    (using enclosing: sourcecode.Enclosing)
+  final def persistSingle[E <: Event](keyedEvent: KeyedEvent[E])
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persist[E]():
       EventCalc.pure(keyedEvent)

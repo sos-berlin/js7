@@ -90,7 +90,7 @@ final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
     "Concurrent update" in:
       val updated = keys
         .map(key =>
-          journal.persist(key <-: NumberAdded)
+          journal.persistSingle(key <-: NumberAdded)
             .unsafeToFuture(): Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)

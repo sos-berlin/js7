@@ -242,7 +242,7 @@ extends Service.StoppableByRequest:
             IO.pure(orderProcessed)
           else
             journal
-              .persist(order.id <-: orderProcessed)
+              .persistSingle(order.id <-: orderProcessed)
               .map(_.orThrow._1.value.event)
         .start)
 
