@@ -210,7 +210,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               runStream
             .guaranteeCase: outcome =>
               IO.unlessA(isStopping):
-                whenKilling.tryGet.map(_.isDefined).flatMap: isKilling =>
+                whenBeingKilled.tryGet.map(_.isDefined).flatMap: isKilling =>
                   // Warning might be duplicate with Service warnings?
                   outcome match
                     case Outcome.Succeeded(_) =>
@@ -227,10 +227,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                     .void
 
     private def runStream: IO[Unit] =
-      fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
-        .through(pipe)
-        .interruptWhenF(whenKilling.get)
-        .compile.drain
+      logger.traceIO:
+        fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
+          .through(pipe)
+          .interruptWhenF(whenBeingKilled.get)
+          .compile.drain
 
     private def pipe: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
       .chunks
@@ -240,7 +241,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           state.updateCheckedWithResult: state =>
             IO:
               if _isSwitchedOver then Left(ClusterNodeHasBeenSwitchedOverProblem)
-              else if isKilling then Left(JournalKilledProblem)
+              else if isBeingKilled then
+                Left(JournalKilledProblem)
               else
                 applyEvents(state, queueEntry).map: (aggregate, applied) =>
                   state.copy(

@@ -3,18 +3,20 @@ package js7.journal
 import cats.effect.kernel.{DeferredSink, DeferredSource}
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO, ResourceIO}
+import cats.effect.{Deferred, IO, Ref, ResourceIO}
 import cats.syntax.flatMap.*
 import fs2.concurrent.SignallingRef
 import izumi.reflect.Tag
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Files, Path, Paths}
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.Environment
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked
+import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
@@ -29,6 +31,7 @@ import js7.journal.FileJournal.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.recover.Recovered
 import js7.journal.watch.{JournalEventWatch, JournalingObserver}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -78,8 +81,9 @@ extends
 
   val journalId: JournalId = lastJournalHeader.journalId
 
-  protected val whenKilling = Deferred.unsafe[IO, Unit]
-  @volatile protected var isKilling = false
+  private val _deleteJournalWhenStopping = Ref.unsafe[IO, Boolean](false)
+  protected val whenBeingKilled = Deferred.unsafe[IO, Unit]
+  @volatile protected var isBeingKilled = false
   protected var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
   protected var _suppressSnapshotWhenStopping = false
 
@@ -126,9 +130,28 @@ extends
                 IO.defer:
                   IO.whenA(!isSwitchedOver && !_suppressSnapshotWhenStopping):
                     takeSnapshot(ignoreIsStopping = true)
-                  *> stopCommitter
+              .guarantee:
+                stopCommitter
+              .guarantee:
+                rejectQueuedEntries
+              .guarantee:
+                _deleteJournalWhenStopping.get.flatMap(IO.whenA(_):
+                  IO.blocking:
+                    journalLocation.deleteJournal(ignoreFailure = true))
               .guarantee(IO:
                 logStatistics())
+
+  private def rejectQueuedEntries: IO[Unit] =
+    IO.defer:
+      val problem = Left(if isBeingKilled then JournalKilledProblem else ServiceStoppedProblem(toString))
+      ().tailRecM: _ =>
+        journalQueue.tryTake.flatMap:
+          case None => IO.right(())
+          case Some(None) => IO.left(())
+          case Some(Some(queuedEntry)) =>
+            queuedEntry.whenApplied.complete(problem) *>
+              queuedEntry.whenPersisted.complete(problem)
+                .as(Left(()))
 
   // TODO Prefer proper initialization and termination order
   override def stop: IO[Unit] =
@@ -136,13 +159,16 @@ extends
 
   /** For testing a failover. */
   def kill: IO[Unit] =
-    logger.infoIO:
+    logger.debugIO:
       IO.defer:
         _suppressSnapshotWhenStopping = true
-        isKilling = true
-        whenKilling.complete(()) *>
+        isBeingKilled = true
+        whenBeingKilled.complete(()) *>
           noMoreAcks("kill") *>
           stop
+
+  def deleteJournalWhenStopping: IO[Unit] =
+    _deleteJournalWhenStopping.set(true)
 
   def prepareForClusterNodeStop: IO[Unit] =
     noMoreAcks("prepareForClusterNodeStop")
@@ -174,14 +200,16 @@ extends
       val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
       val queueEntry = QueueEntry[S](
-        persist.eventCalc.widen[S, Event, TimeCtx],
-        persist.options, persist.since,
+        persist.eventCalc.widen[S, Event, TimeCtx], persist.options, persist.since,
         whenApplied, whenPersisted)
-      requireNotStopping *>
-        journalQueue.offer(Some(queueEntry))
-          .as:
-            (whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
-              whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
+      IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
+        case Left(problem) =>
+          whenApplied.complete(Left(problem)) *> whenPersisted.complete(Left(problem))
+        case Right(()) =>
+          journalQueue.offer(Some(queueEntry))
+      .as:
+        whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]] ->
+          whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]]
 
   def onPassiveNodeHasAcknowledged(eventId: EventId): IO[Unit] =
     ackSignal.update: lastAck =>
