@@ -54,7 +54,10 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
   private def assertNothingIsUncommitted(state: State[S]): Unit =
     if state.uncommitted ne state.committed then
-      logger.error("💥 state.uncommitted != state.committed")
+      if state.uncommitted == state.committed then
+        logger.error("💥 state.uncommitted ne state.committed DESPITE state.uncommitted == state.committed")
+      else
+        logger.error("💥 state.uncommitted != state.committed")
       logger.info(s"state.uncommitted=⏎")
       state.uncommitted.emitLineStream(logger.info(_))
       logger.info(s"state.committed=⏎")

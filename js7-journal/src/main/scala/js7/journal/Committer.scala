@@ -23,7 +23,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenMethodTakesLonger, whenItTakesLonger}
 import js7.base.utils.MultipleLinesBracket.{Round, Square}
-import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -36,7 +36,7 @@ import js7.journal.Committer.*
 import js7.journal.FileJournal.*
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.Loggable
-import js7.journal.problems.Problems.JournalStoppedProblem
+import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.write.EventJournalWriter
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
@@ -239,8 +239,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         chunk.flatTraverse: queueEntry =>
           state.updateCheckedWithResult: state =>
             IO:
-              (!_isSwitchedOver !! (ClusterNodeHasBeenSwitchedOverProblem: Problem)) >>
-                (!isKilling !! (JournalStoppedProblem: Problem)) >>
+              if _isSwitchedOver then Left(ClusterNodeHasBeenSwitchedOverProblem)
+              else if isKilling then Left(JournalKilledProblem)
+              else
                 applyEvents(state, queueEntry).map: (aggregate, applied) =>
                   state.copy(
                     uncommitted = aggregate,
@@ -251,24 +252,29 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               queueEntry.whenApplied.complete(Left(problem)) *>
                 queueEntry.whenPersisted.complete(Left(problem))
                   .as(Chunk.empty)
-            case Right(applied: Applied/*IntelliJ*/) =>
-              applied.stampedKeyedEvents.lastOption.map(_.value.event).match
-                case Some(_: ClusterSwitchedOver) =>
-                  IO:
-                    logger.debug("ClusterSwitchedOver: no more events are accepted")
-                    _isSwitchedOver = true
-                case Some(_: ClusterPassiveLost) =>
-                  processingPassiveLost += 1
-                  // onPassiveLost should already have switched off acks
-                  noMoreAcks("ClusterPassiveLost")
-                case _ => IO.unit
-              .productR:
-                applied.completeApplied
-                  .productR:
-                    IO.whenA(applied.commitOptions.commitLater):
-                      applied.completePersisted
-              .as:
-                Chunk.singleton(applied)
+            case Right(applied_) =>
+              val applied = applied_ : Applied/*IntelliJ 2025.1*/
+              if applied.stampedKeyedEvents.isEmpty then
+                // exit early
+                applied.completeApplied *> applied.completePersisted.as(Chunk.empty)
+              else
+                applied.stampedKeyedEvents.lastOption.map(_.value.event).match
+                  case Some(_: ClusterSwitchedOver) =>
+                    IO:
+                      logger.debug("ClusterSwitchedOver: no more events are accepted")
+                      _isSwitchedOver = true
+                  case Some(_: ClusterPassiveLost) =>
+                    processingPassiveLost += 1
+                    // onPassiveLost should already have switched off acks
+                    noMoreAcks("ClusterPassiveLost")
+                  case _ => IO.unit
+                .productR:
+                  applied.completeApplied
+                .productR:
+                  IO.whenA(applied.commitOptions.commitLater):
+                    applied.completePersisted
+                .as:
+                  Chunk.singleton(applied)
       // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
       //<editor-fold desc="// ...">
       //.chunks
@@ -330,14 +336,16 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       catchNonFatalFlatten:
         queueEntry.eventCalc.calculate(state.uncommitted, TimeCtx(clock.now()))
       .map: coll =>
-        assertIsRecoverable(state.uncommitted, coll.keyedEvents)
+        if coll.hasEvents then
+          assertIsRecoverable(state.uncommitted, coll.keyedEvents)
         val stamped = coll.timestampedKeyedEvents.map: o =>
           eventIdGenerator.stamp(o.keyedEvent, timestampMillis = o.maybeMillisSinceEpoch)
-        val eventId = stamped.lastOption.fold(coll.aggregate.eventId)(_.eventId)
-        val aggregate = coll.aggregate.withEventId(eventId)
+        val aggregate = stamped.lastOption.fold(coll.aggregate): last =>
+          coll.aggregate.withEventId(last.eventId)
         val applied = Applied(
           coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1,
-          queueEntry.commitOptions, queueEntry.since, queueEntry.whenApplied, queueEntry.whenPersisted)
+          queueEntry.commitOptions, queueEntry.since,
+          queueEntry.whenApplied, queueEntry.whenPersisted)
         (aggregate, applied)
 
     private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Written]] =

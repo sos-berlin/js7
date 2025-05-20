@@ -7,7 +7,6 @@ import java.nio.file.Path
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import js7.journal.FileJournal.logger
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.listJournalFiles
 import scala.util.control.NonFatal
@@ -41,7 +40,7 @@ private[journal] trait JournalingObserver:
 private[journal] object JournalingObserver:
 
   private val logger = Logger[this.type]
-  
+
   final class Dummy(journalLocation: JournalLocation) extends JournalingObserver:
     override def toString = "JournalingObserver.Dummy"
 

@@ -16,7 +16,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Stopwatch, TestWallClock, WallClock}
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.event.{EventCalc, EventId, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventCalc, EventId, SnapshotableState, Stamped}
 import js7.journal.FileJournalTest.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
@@ -90,17 +90,25 @@ final class FileJournalTest extends OurAsyncTestSuite:
         assertion
 
   "Massive parallel" - {
-    "test" in:
-      run(n = if isIntelliJIdea then 1_000_000 else 100_000, persistLimit = 500)
+    "test empty EventCalc" in:
+      run(
+        n = if isIntelliJIdea then 1_000_000 else 10_000,
+        persistLimit = 500,
+        _ => Nil)
 
-    def run(n: Int, persistLimit: Int): IO[Assertion] =
+    "test" in:
+      run(
+        n = if isIntelliJIdea then 1_000_000 else 10_000,
+        persistLimit = 500,
+        i => (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
+
+    def run(n: Int, persistLimit: Int, toEvents: Int => Seq[AnyKeyedEvent]): IO[Assertion] =
       testJournal(config"""
         js7.journal.persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
       ): journal =>
         (1 to n).toVector.parTraverse: i =>
-          journal.persist:
-            i.toString <-: TestEvent.SimpleAdded("A")
+          journal.persist(toEvents(i))
         .timed.flatMap: (duration, _) =>
           IO:
             info_(s"$n in parallel, persist-limit=$persistLimit " +

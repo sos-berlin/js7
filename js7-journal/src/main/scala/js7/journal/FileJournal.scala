@@ -261,7 +261,7 @@ extends
   private[journal] def isRequiringClusterAcknowledgement: IO[Boolean] =
     requireClusterAck.get
 
-  protected def assertIsRecoverable(aggregate: S, keyedEvents: => Seq[AnyKeyedEvent] = Nil)
+  protected def assertIsRecoverable(aggregate: S, keyedEvents: Seq[AnyKeyedEvent] = Nil)
   : Unit =
     if conf.slowCheckState then
       assertEqualSnapshotState("Recovered", aggregate, aggregate.toRecovered, keyedEvents)
