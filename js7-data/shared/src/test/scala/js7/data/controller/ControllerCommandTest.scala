@@ -485,6 +485,15 @@ final class ControllerCommandTest extends OurTestSuite:
         "mode": {}
       }""")
 
+  "ChangeOrder" in:
+    testJson[ControllerCommand](
+      ChangeOrder(OrderId("ORDER"), priority = Some(7)), json"""
+      {
+        "TYPE": "ChangeOrder",
+        "orderId": "ORDER",
+        "priority": 7
+      }""")
+
   "TransferOrders" in:
     testJson[ControllerCommand](
       TransferOrders(WorkflowPath("WORKFLOW") ~ "v1"), json"""
