@@ -28,7 +28,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.plan.{Plan, PlanId, PlanStatus}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
+import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
@@ -36,6 +36,7 @@ import js7.tests.notice.GlobalBoardTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.*
+import scala.language.implicitConversions
 
 final class GlobalBoardTest
   extends OurTestSuite, ControllerAgentForScalaTest, TransferOrdersWaitingForNoticeTest:
@@ -226,6 +227,30 @@ final class GlobalBoardTest
         OrderNoticesRead,
         OrderMoved(Position(2)),
         OrderFinished()))
+
+    "PostNotices instruction releases waiting, consuming order" in:
+      eventWatch.resetLastWatchedEventId()
+
+      val board = GlobalBoard.joc(BoardPath("BOARD"), Some(1.h))
+      val consumingWorkflow = Workflow.of(WorkflowPath("CONSUME"),
+        ConsumeNotices(board.path)())
+      val postingWorkflow = Workflow.of(WorkflowPath("POST"),
+        PostNotices(Seq(board.path)))
+
+      withItems(
+        (board, consumingWorkflow, postingWorkflow)
+      ): (board, consumingWorkflow, postingWorkflow) =>
+        val qualifier = "2222-06-06"
+        val consumingOrderId = OrderId(s"#$qualifier#CONSUME")
+
+        controller.addOrderBlocking:
+          FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
+
+        controller.runOrder:
+          FreshOrder(OrderId(s"#$qualifier#POST"), postingWorkflow.path, deleteWhenTerminated = true)
+
+        eventWatch.awaitNextKey[OrderFinished](consumingOrderId)
 
     "PostNotices command with expecting orders" in:
       val qualifier = "2222-08-08"
