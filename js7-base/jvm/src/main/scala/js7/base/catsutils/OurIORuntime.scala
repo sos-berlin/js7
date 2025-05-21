@@ -135,10 +135,12 @@ object OurIORuntime:
       F.delay:
         locally:
           if Logger.isInitialized then
-            logger.debug(s"↘ Cats IORuntime '$label' $threads threads ↘")
+            val msg = s"↘ Cats IORuntime '$label' $threads threads ↘"
+            logger.debug("_" * msg.length)
+            logger.debug(msg)
         -> F.delay:
           if Logger.isInitialized then
-            val msg = s"↙ Cats IORuntime '$label' closed ⚫️ ↙"
+            val msg = s"↙⬛️ Cats IORuntime '$label' closed ↙"
             logger.debug(msg)
             logger.debug("‾" * msg.length)
 

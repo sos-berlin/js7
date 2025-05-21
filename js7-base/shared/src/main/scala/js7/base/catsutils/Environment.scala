@@ -49,13 +49,13 @@ final class Environment(label: String = ""):
   private def tryRegister[F[_], A](resource: Resource[F, A])(using F: Sync[F], tag: Tag[A])
   : Boolean =
     if F.ne(IOSync) && F.ne(SyncIOSync) then throw IllegalArgumentException:
-      s"$toString#tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
+      s"tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
     var added = false
     tagToEntry.computeIfAbsent(tag, _ =>
       added = true
       Entry.FResource(resource))
     if added then
-      logger.trace(s"$toString.environment[${tag.tag}] registered")
+      logger.trace(s"environment[${tag.tag}] registered")
     added
 
   //def releaseAll: IO[Unit] =
@@ -70,7 +70,7 @@ final class Environment(label: String = ""):
     F.defer:
       tagToEntry.remove(tag) match
         case alloc: Entry.FAlloc[F @unchecked, A @unchecked] =>
-          logger.traceF(s"$toString.release ${tag.tag}"):
+          logger.traceF(s"release ${tag.tag}"):
             assertThat(F eq alloc.F)
             alloc.release
         case _ =>
@@ -86,7 +86,7 @@ final class Environment(label: String = ""):
         case null =>
           orRegister match
             case None =>
-              logger.debug(s"$toString.get[${tag.tag}] => unknown in ${enc.value}")
+              logger.debug(s"get[${tag.tag}] => unknown in ${enc.value}")
               IO.raiseError(TagNotFoundException(tag, this, enc.value))
             case Some(resource) =>
               tagToEntry.replace(tag, entry, Entry.FResource(resource))
@@ -102,7 +102,7 @@ final class Environment(label: String = ""):
       entry match
         case null =>
           IO:
-            logger.debug(s"$toString.maybe[${tag.tag}] => None in ${enc.value}")
+            logger.debug(s"maybe[${tag.tag}] => None in ${enc.value}")
             None
         case entry: Entry[A @unchecked] =>
           get2[A](entry, orRegister = None)
@@ -119,14 +119,14 @@ final class Environment(label: String = ""):
         IO.pure(alloc.a)
 
       case entry: Entry.FResource[_, A @unchecked] =>
-        logger.debugIOWithResult(s"$toString.get[${tag.tag}] allocate"):
+        logger.debugIOWithResult(s"get[${tag.tag}] allocate"):
           import entry.F // F is Sync[IO] or Sync[SyncIO]
           toIO:
             entry.resource.allocated.flatMap: allocated =>
               val (a, release) = allocated
               val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
               if !replaced then
-                logger.debugF(s"$toString.get[${tag.tag}] concurrent duplicate allocation, releasing it"):
+                logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, releasing it"):
                   release.as(None)
               else
                 F.pure(Some(a))

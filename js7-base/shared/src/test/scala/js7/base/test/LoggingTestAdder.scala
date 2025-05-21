@@ -18,7 +18,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
   private val suiteName = testClass.shortClassName
   private val longSuiteName = testClass.scalaName
 
-  logger.info(s"$magenta┏${"━" * barLength}┓$bold ↘ $longSuiteName$resetColor")
+  logger.info(s"$magenta┏${"━" * barLength}$bold ↘ $longSuiteName$resetColor")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
@@ -38,7 +38,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
       (ctx, testBody) => {
         if !firstTestCalled then
           firstTestCalled = true
-          logger.info(s"$magenta$bar$resetColor")
+          logger.info(s"$bar$resetColor")
 
         if suppressCorrelId then
           executeTest(ctx, testBody)
@@ -66,7 +66,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty)
-    logger.info(s"$magenta┗${"╼" * barLength}┛$bold ↙ $longSuiteName$resetColor\n")
+    logger.info(s"$magenta┗${"╼" * barLength}$bold ↙ $longSuiteName$resetColor\n")
 
 
 private object LoggingTestAdder:
@@ -104,7 +104,7 @@ private object LoggingTestAdder:
     private val prefix = nesting.view.reverse.mkString("", " · ", " · ")
 
     def beforeTest(): Unit =
-      logger.info(eager(s"""↘ $magenta$bold$prefix"$testName"$resetColor"""))
+      logger.info(eager(s"""↘ $bold$prefix"$testName"$resetColor"""))
       since
 
     def afterTest[A](tried: Try[A]): Unit =

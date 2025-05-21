@@ -162,7 +162,7 @@ private[journal] final class JournalLogger(
     sb.clear()
     sb.append:
       if frame.persist.isAcknowledged then
-        "Event ✔︎ "
+        "Event ✔"
       else
         frame.persist.clusterState match
           case "Empty" => "Event "
