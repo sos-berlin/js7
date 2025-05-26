@@ -32,7 +32,7 @@ import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
-import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
+import js7.data.subagent.Problems.{ProcessLostDueSubagentDeletedProblem, ProcessLostDueSubagentUriChangeProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
@@ -334,20 +334,34 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         logger.error(s"removeSubagent($subagentId) => $t")
       .startAndForget
 
-  private def removeSubagent(subagentId: SubagentId): IO[Unit] =
+  def removeSubagent(subagentId: SubagentId): IO[Unit] =
     logger.debugIO("removeSubagent", subagentId):
-      stateVar.value
-        .flatMap(_.idToDriver
-          .get(subagentId)
-          .fold(IO.unit): subagentDriver =>
-            subagentDriver.tryShutdown
-              .*>(stateVar.update(state => IO:
-                state.removeSubagent(subagentId)))
-              .*>(subagentDriver.terminate))
-        .*>(journal
-          .persist(ItemDetached(subagentId, agentPath))
-          .orThrow
-          .void)
+      stateVar.value.flatMap:
+        _.idToDriver.get(subagentId).fold(IO.unit): subagentDriver =>
+          subagentDriver.tryShutdownForRemoval // may take a short time
+            .productR:
+              stateVar.updateDirect: state =>
+                state.removeSubagent(subagentId)
+            .productR:
+              subagentDriver.terminate
+        .productR:
+          journal.persistTransaction: state =>
+            Right:
+              state.idToOrder.values.view
+                .flatMap(_.ifState[Order.Processing])
+                .filter(_.state.subagentId contains subagentId)
+                .map:
+                  // Not OrderOutcome.processLost because the job should not be repeated,
+                  // in case it requests the same, now deleted, Subagent.
+                  // Also, this has been this way for years.
+                  // User must be sure that the Subagent is dead !!!
+                  _.id <-: OrderProcessed(OrderOutcome.Disrupted:
+                    ProcessLostDueSubagentDeletedProblem(subagentId))
+                .concat:
+                  // Check again to be sure
+                  state.idToSubagentItemState.get(subagentId).exists(_.isDetaching) ?
+                    ItemDetached(subagentId, agentPath)
+          .orThrow.void
 
   def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
     subagentItemStates

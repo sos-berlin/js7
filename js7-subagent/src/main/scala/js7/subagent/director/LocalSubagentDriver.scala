@@ -179,8 +179,9 @@ extends SubagentDriver, Service.StoppableByRequest:
     logger.traceIO:
       stop
 
-  def tryShutdown: IO[Unit] =
-    IO.raiseError(new RuntimeException("The local Subagent cannot be shut down"))
+  def tryShutdownForRemoval: IO[Unit] =
+    IO.raiseError:
+      new RuntimeException("tryShutdownForRemoval: The local Subagent cannot be shut down")
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =

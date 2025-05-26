@@ -36,6 +36,7 @@ import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, Dedi
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.journal.Journal
+import js7.journal.problems.Problems.JournalKilledProblem
 import js7.subagent.director.RemoteSubagentDriver.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -66,6 +67,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   @volatile private var shuttingDown = false
 
   def isLocal: Boolean =
+    assert(!api.isLocal) // TODO Always false
     api.isLocal
 
   protected def isShuttingDown = shuttingDown
@@ -128,14 +130,14 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   private def suppressResetShutdown =
     conf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
 
-  def tryShutdown: IO[Unit] =
+  def tryShutdownForRemoval: IO[Unit] =
     logger.debugIO:
       IO.defer:
         shuttingDown = true
         // Wait until no Order is being processed
         orderToDeferred.stop
         // Emit event and change state ???
-      .*>(tryShutdownSubagent())
+      .*>(tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true))
 
   //def suspend: IO[Unit] =
   //  dispatcher.suspend *> stopEventListener
@@ -281,7 +283,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceIO("recoverOrderProcessing", order.id):
-      if isLocal then
+      if isLocal/*TODO always false*/ then
         emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)
           .start
@@ -398,6 +400,9 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               .getOrElse(Problem.pure("decoupled"))
             (!subagentItemState.problem.contains(problem))
               .thenList(subagentId <-: SubagentCouplingFailed(problem))
+      .onProblemRecover:
+        case JournalKilledProblem =>
+          logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
       .map(_.orThrow)
       .void
       .onError: t =>

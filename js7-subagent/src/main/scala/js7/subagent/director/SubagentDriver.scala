@@ -47,7 +47,7 @@ trait SubagentDriver:
 
   def serverMeteringScope(): Option[Scope]
 
-  def tryShutdown: IO[Unit]
+  def tryShutdownForRemoval: IO[Unit]
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit]
 
@@ -100,9 +100,8 @@ trait SubagentDriver:
   final def emitOrderProcessLostAfterRestart(order: Order[Order.Processing])
   : IO[Checked[OrderProcessed]] =
     journal.persist: aggregate =>
-      Right:
-        Seq:
-          order.id <-: aggregate.orderProcessLostIfRestartable(order, ProcessLostDueToRestartProblem)
+      Right(Seq:
+        order.id <-: aggregate.orderProcessLostIfRestartable(order, ProcessLostDueToRestartProblem))
     .map(_.flatMap(_
       .checkedSingle.map(_._1.value.event)))
 
