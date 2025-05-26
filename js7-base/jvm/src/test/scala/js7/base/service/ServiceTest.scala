@@ -94,7 +94,7 @@ final class ServiceTest extends OurAsyncTestSuite:
           IO.never.onCancel(IO:
             canceled := true)
 
-    Service.resource(IO(new CancelableService))
+    Service.resource(new CancelableService)
       .surround:
         started.get.andWait(10.ms) // Wait for IO.never
       .map: _ =>
@@ -147,7 +147,7 @@ final class ServiceTest extends OurAsyncTestSuite:
 
   private object MyService:
     def resource(setRunning: Boolean => Unit): ResourceIO[MyService] =
-      Service.resource(IO(new MyService(setRunning)))
+      Service.resource(new MyService(setRunning))
 
 
 object ServiceTest:
@@ -170,4 +170,4 @@ object ServiceTest:
     def resource(
       whenFail: IO[Unit] = IO.unit,
       onFailed: IO[Unit] = IO.unit)
-    = Service.resource(IO(FailingService(whenFail, onFailed)))
+    = Service.resource(FailingService(whenFail, onFailed))

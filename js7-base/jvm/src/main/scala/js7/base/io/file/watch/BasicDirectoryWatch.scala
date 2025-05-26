@@ -121,7 +121,8 @@ object BasicDirectoryWatch:
           Array.empty
 
   def resource(options: WatchOptions): ResourceIO[BasicDirectoryWatch] =
-    Service.resource(IO(new BasicDirectoryWatch(options)))
+    Service.resource:
+      new BasicDirectoryWatch(options)
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"

@@ -319,5 +319,5 @@ object LocalSubagentDriver:
     controllerId: ControllerId,
     subagentConf: SubagentConf)
   : ResourceIO[LocalSubagentDriver] =
-    Service.resource(IO:
-      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf))
+    Service.resource:
+      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)

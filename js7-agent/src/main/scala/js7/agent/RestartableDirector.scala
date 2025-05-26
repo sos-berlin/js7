@@ -102,5 +102,5 @@ private object RestartableDirector:
     testWiring: TestWiring = TestWiring.empty)
     (using IORuntime)
   : ResourceIO[RestartableDirector] =
-    Service.resource(IO:
-      new RestartableDirector(subagent, conf, testWiring))
+    Service.resource:
+      new RestartableDirector(subagent, conf, testWiring)

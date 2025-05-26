@@ -239,7 +239,7 @@ object Provider:
           conf.httpsConfig))
 
       itemSigner = toItemSigner(conf).orThrow
-      provider <- Service.resource(IO(new Provider(itemSigner, api, controllerApi, conf)))
+      provider <- Service.resource(new Provider(itemSigner, api, controllerApi, conf))
     yield provider
 
   private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] =

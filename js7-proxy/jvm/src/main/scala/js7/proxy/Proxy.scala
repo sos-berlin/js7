@@ -11,7 +11,7 @@ import js7.proxy.Proxy.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 
-final class Proxy(controllerApi: ControllerApi)
+final class Proxy private(controllerApi: ControllerApi)
 extends MainService, Service.StoppableByCancel:
 
   protected type Termination = ProgramTermination
@@ -45,6 +45,6 @@ object Proxy extends ServiceApp:
       controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
         ClusterWatchService.resource(clusterWatchId, apisResource, conf.config)
-      service <- Service.resource(IO(Proxy(controllerApi)))
+      service <- Service.resource(Proxy(controllerApi))
     yield
       service

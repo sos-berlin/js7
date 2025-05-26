@@ -455,7 +455,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def resource(isStarting: Boolean): ResourceIO[CommitterService] =
       for
         eventWriter <- eventWriterResource(isStarting = isStarting)
-        committerService <- Service.resource(IO(new CommitterService(eventWriter)))
+        committerService <- Service.resource(new CommitterService(eventWriter))
       yield
         committerService
 

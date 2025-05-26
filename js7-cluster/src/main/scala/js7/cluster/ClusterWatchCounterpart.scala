@@ -317,8 +317,8 @@ object ClusterWatchCounterpart:
   : ResourceIO[ClusterWatchCounterpart] =
     for
       pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]
-      service <- Service.resource(IO:
-        new ClusterWatchCounterpart(pubsub, clusterConf, timing, shuttingDown, testEventPublisher))
+      service <- Service.resource:
+        new ClusterWatchCounterpart(pubsub, clusterConf, timing, shuttingDown, testEventPublisher)
     yield
       service
 

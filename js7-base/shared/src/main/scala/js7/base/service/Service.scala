@@ -91,6 +91,9 @@ object Service:
   private val defaultRestartDelayConf: DelayConf =
     RestartAfterFailureService.defaultRestartConf
 
+  def resource[Svc <: Service](newService: => Svc): ResourceIO[Svc] =
+    resource(IO(newService))
+
   def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
     Resource.make(
       acquire =
@@ -126,8 +129,8 @@ object Service:
     runDelayConf: DelayConf = defaultRestartDelayConf)
     (serviceResource: ResourceIO[Svc])
   : ResourceIO[RestartAfterFailureService[Svc]] =
-    resource(IO:
-      new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource))
+    resource:
+      new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource)
 
   def simple(body: IO[Unit | ExitCode | ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:

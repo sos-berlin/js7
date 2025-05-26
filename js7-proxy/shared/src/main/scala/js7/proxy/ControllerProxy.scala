@@ -55,7 +55,7 @@ object ControllerProxy:
         JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
         proxyConf,
         eventBus.publish)
-      controllerProxy <- Service.resource(IO:
-        new ControllerProxy(journaledProxy, eventBus, api))
+      controllerProxy <- Service.resource:
+        new ControllerProxy(journaledProxy, eventBus, api)
     yield
       controllerProxy

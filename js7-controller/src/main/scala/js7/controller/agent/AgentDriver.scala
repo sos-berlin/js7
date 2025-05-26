@@ -524,11 +524,11 @@ private[controller] object AgentDriver:
     actorSystem: ActorSystem)
     (using IORuntime)
   : ResourceIO[AgentDriver] =
-    Service.resource(IO(
+    Service.resource:
       new AgentDriver(
         agentRef, eventId,
         adoptEvents, onOrderMarked,
-        journal, agentDriverConf, controllerConf, actorSystem)))
+        journal, agentDriverConf, controllerConf, actorSystem)
 
   sealed trait Queueable:
     def toShortString: String =

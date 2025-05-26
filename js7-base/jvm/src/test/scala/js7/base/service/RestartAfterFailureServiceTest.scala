@@ -118,13 +118,13 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
 
     (0 until 8 /*2^3 == 8 combinations*/).toVector
       .parTraverse(i => Service
-        .restartAfterFailure(restartDelayConf = DelayConf(0.s), runDelayConf = DelayConf(0.s))(
-          Service.resource(IO(
+        .restartAfterFailure(restartDelayConf = DelayConf(0.s), runDelayConf = DelayConf(0.s)):
+          Service.resource:
             new TestService(
               startFailsRandomly = (i & 1) != 0,
               runFails = (i & 2) != 0,
               stopFails = (i & 4) != 0,
-              i.toString))))
+              i.toString)
         .toAllocated)
       .flatTap(_ => IO.sleep(testDuration))
       .flatMap(allocatedServices => allocatedServices

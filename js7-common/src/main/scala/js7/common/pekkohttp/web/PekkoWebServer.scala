@@ -204,7 +204,7 @@ object PekkoWebServer:
       val httpsClientAuthRequired = config.getBoolean(
         "js7.web.server.auth.https-client-authentication")
 
-      Service.resource(IO:
+      Service.resource:
         new PekkoWebServer(
           for webServerBinding <- webServerBindings.toVector yield
             BindingAndResource(
@@ -215,7 +215,7 @@ object PekkoWebServer:
                 shutdownTimeout = shutdownTimeout,
                 shutdownDelay = shutdownDelay,
                 httpsClientAuthRequired = httpsClientAuthRequired)),
-          config)))
+          config))
 
   private lazy val stillNotAvailableRoute: Route =
     complete(WebServiceStillNotAvailableProblem)

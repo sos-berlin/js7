@@ -55,7 +55,8 @@ trait ServiceApp extends OurApp:
       suppressTerminationLogging = suppressTerminationLogging,
       suppressLogShutdown = suppressLogShutdown
     ): conf =>
-      Service.resource(IO(Service.simple(program(conf))))
+      Service.resource:
+        Service.simple(program(conf))
 
 
   protected final def programAsService(program: IO[ExitCode | Unit])

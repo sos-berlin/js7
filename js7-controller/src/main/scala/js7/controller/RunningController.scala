@@ -347,7 +347,7 @@ object RunningController:
         webServer: ControllerWebServer,
         sessionRegister: SessionRegister[SimpleSession])
       : ResourceIO[RunningController] =
-        Service.resource(IO(
+        Service.resource:
           new RunningController(
             recoveredExtract.eventWatch.strict,
             webServer,
@@ -358,7 +358,7 @@ object RunningController:
             whenReady.future, untilOrderKeeperTerminated.unsafeToFuture(),
             clusterWatchServiceFor,
             sessionRegister, conf, testEventBus,
-            actorSystem)))
+            actorSystem)
 
       for
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)

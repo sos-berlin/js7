@@ -581,9 +581,9 @@ object RemoteSubagentDriver:
     conf: RemoteSubagentDriver.Conf,
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
   : ResourceIO[RemoteSubagentDriver] =
-    Service.resource(IO:
+    Service.resource:
       new RemoteSubagentDriver(
-        subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf))
+        subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)
 
   final case class Conf(
     eventBufferDelay: FiniteDuration,

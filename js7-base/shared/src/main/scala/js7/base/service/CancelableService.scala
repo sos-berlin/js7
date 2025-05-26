@@ -15,4 +15,5 @@ extends Service.StoppableByRequest:
 
 object CancelableService:
   def resource(run: IO[Unit]): ResourceIO[CancelableService] =
-    Service.resource(IO(new CancelableService(run)))
+    Service.resource:
+      new CancelableService(run)

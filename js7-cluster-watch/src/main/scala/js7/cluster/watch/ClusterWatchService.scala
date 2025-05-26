@@ -188,7 +188,7 @@ object ClusterWatchService:
         nodeApis <- apisResource
         service <-
           Service.resource:
-            IO(ClusterWatchService(
+            new ClusterWatchService(
               clusterWatchId,
               nodeApis,
               label = label,
@@ -197,6 +197,6 @@ object ClusterWatchService:
               retryDelays =
                 config.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
               onClusterStateChanged,
-              onUndecidableClusterNodeLoss))
+              onUndecidableClusterNodeLoss)
       yield
         service)

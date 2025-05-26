@@ -28,11 +28,10 @@ object SimpleMainService:
 
   def resource(program: IO[ExitCode | Unit], label: String): ResourceIO[SimpleMainService] =
     Service.resource:
-      IO:
-        new SimpleMainService with Service.StoppableByCancel:
-          def run = program.map:
-            case () => ProgramTermination.Success
-            case o: ExitCode => ProgramTermination.fromExitCode(o)
+      new SimpleMainService with Service.StoppableByCancel:
+        def run = program.map:
+          case () => ProgramTermination.Success
+          case o: ExitCode => ProgramTermination.fromExitCode(o)
 
-          override def toString =
-            if label.nonEmpty then label else "SimpleMainService"
+        override def toString =
+          if label.nonEmpty then label else "SimpleMainService"

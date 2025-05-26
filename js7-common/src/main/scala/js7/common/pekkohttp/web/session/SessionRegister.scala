@@ -283,8 +283,8 @@ object SessionRegister:
 
   def resource[S <: Session: Tag](newSession: SessionInit => S, config: Config)
   : ResourceIO[SessionRegister[S]] =
-    Service.resource(IO:
-      new SessionRegister[S](newSession, config))
+    Service.resource:
+      new SessionRegister[S](newSession, config)
 
   // Does not stop the Actor !!!
   @TestOnly

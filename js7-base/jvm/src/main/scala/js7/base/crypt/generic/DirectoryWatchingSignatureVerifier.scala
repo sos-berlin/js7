@@ -204,9 +204,8 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
     def toResource(onUpdated: () => Unit)
     : ResourceIO[DirectoryWatchingSignatureVerifier] =
-      Service.resource(IO(
-        new DirectoryWatchingSignatureVerifier(
-          companionToDirectory, settings, onUpdated)))
+      Service.resource:
+        new DirectoryWatchingSignatureVerifier(companionToDirectory, settings, onUpdated)
 
   @deprecated("Not implemented", "")
   def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =

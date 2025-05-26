@@ -172,7 +172,7 @@ object CallMeter:
     loggingService(Conf.fromConfig(config))
 
   def loggingService(conf: Conf): ResourceIO[LoggingService] =
-    Service.resource(IO(LoggingService(conf)))
+    Service.resource(LoggingService(conf))
 
 
   final class LoggingService private[CallMeter](conf: Conf)

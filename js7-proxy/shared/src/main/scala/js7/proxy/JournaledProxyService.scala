@@ -113,7 +113,7 @@ private object JournaledProxyService:
       topic <- Resource.make(
         acquire = Topic[IO, EventAndState[Event, S]])(
         release = _.close.void)
-      journaledProxy <- Service.resource(IO:
-        new JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor))
+      journaledProxy <- Service.resource:
+        new JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor)
     yield
       journaledProxy

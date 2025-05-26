@@ -57,4 +57,5 @@ private object HttpsDirectoryWatch:
   def resource(
     settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: IO[Unit])
   : ResourceIO[HttpsDirectoryWatch] =
-    Service.resource(IO(new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)))
+    Service.resource:
+      new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)

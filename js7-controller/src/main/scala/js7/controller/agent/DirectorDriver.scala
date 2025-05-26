@@ -282,12 +282,12 @@ private[agent] object DirectorDriver:
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
   : ResourceIO[DirectorDriver] =
-    Service.resource(IO:
+    Service.resource:
       DirectorDriver(
         agentDriver, agentPath, initialEventId, client,
         dedicateAgentIfNeeded,
         onCouplingFailed, onCoupled, onDecoupled, adoptEvents,
-        journal, conf))
+        journal, conf)
 
   final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
   extends Problem.Coded:

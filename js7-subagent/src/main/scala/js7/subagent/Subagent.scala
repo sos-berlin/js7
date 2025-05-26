@@ -262,13 +262,13 @@ object Subagent:
         size = config.getInt("js7.journal.memory.event-count"),
         waitingFor = "JS7 Agent Director",
         infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
-      subagent <- Service.resource(IO(
-        new Subagent(webServer,
-          directorRouteVariable,
+      subagent <- Service.resource:
+        new Subagent(
+          webServer, directorRouteVariable,
           ForDirector(
             _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
           journal, signatureVerifier,
-          conf, jobLauncherConf, testEventBus)))
+          conf, jobLauncherConf, testEventBus)
       _ <- Resource.eval(subagentDeferred.complete(subagent))
     yield
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)

@@ -384,10 +384,10 @@ object DedicatedSubagent:
     subagentConf: SubagentConf)
     (using ioRuntime: IORuntime)
   : ResourceIO[DedicatedSubagent] =
-    Service.resource(IO:
+    Service.resource:
       DedicatedSubagent(
         subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-        jobLauncherConf, subagentConf))
+        jobLauncherConf, subagentConf)
 
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,

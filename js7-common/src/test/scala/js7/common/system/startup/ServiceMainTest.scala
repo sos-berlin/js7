@@ -40,7 +40,7 @@ object ServiceMainTest:
       IO.pure(ProgramTermination())
 
   private object TestService:
-    val resource = Service.resource(IO(new TestService))
+    val resource = Service.resource(new TestService)
 
 
   private val termination = ProgramTermination.Restart
@@ -59,4 +59,4 @@ object ServiceMainTest:
       IO.pure(ProgramTermination())
 
   private object TerminatingService:
-    val resource = Service.resource(IO(new TerminatingService))
+    val resource = Service.resource(new TerminatingService)
