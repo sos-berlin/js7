@@ -17,7 +17,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.node.NodeId
-import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -97,8 +97,8 @@ final class SwitchOverAgentClusterTest
         try
           updateItems(primarySubagentItem, backupSubagentItem, agentRef, workflow)
           val primaryDirector = currentPrimaryDirector.await(1.s)
-          primaryDirector.eventWatch.await[SubagentDedicated](_.key == primarySubagentId)
-          primaryDirector.eventWatch.await[SubagentDedicated](_.key == backupSubagentId)
+          primaryDirector.eventWatch.awaitKey[SubagentDedicated](primarySubagentId)
+          primaryDirector.eventWatch.awaitKey[SubagentDedicated](backupSubagentId)
 
           locally:
             val clusterCoupled = primaryDirector.eventWatch.await[ClusterCoupled]().head.value.event
@@ -110,15 +110,16 @@ final class SwitchOverAgentClusterTest
           controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
 
           val processingStarted = controller.eventWatch
-            .await[OrderProcessingStarted](_.key == aOrderId).last.value.event
+            .awaitNextKey[OrderProcessingStarted](aOrderId).last.value
           assert(processingStarted.subagentId contains primarySubagentId)
 
-          controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
+          controller.eventWatch.awaitNextKey[OrderStdoutWritten](aOrderId)
 
           /// SwitchOver ///
 
           val directorEventId = primaryDirector.eventWatch.lastAddedEventId
-          execCmd(ClusterSwitchOver(Some(agentPath)))
+          execCmd:
+            ClusterSwitchOver(Some(agentPath))
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
           val termination = primaryDirector.untilTerminated.await(99.s)
           assert(termination == DirectorTermination(restartDirector = true))
@@ -133,7 +134,7 @@ final class SwitchOverAgentClusterTest
 
           /// Order continues at primary's local Subagent ///
           ASemaphoreJob.continue()
-          controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
+          controller.eventWatch.awaitNextKey[OrderFinished/*?OrderTerminated*/](aOrderId)
 
           runAnOrder(OrderId("🔹"), primarySubagentId)
           runAnOrder(OrderId("🔔"), backupSubagentId)

@@ -243,10 +243,9 @@ object Subagent:
       // Stop Subagent _after_ web service to allow Subagent to execute last commands!
       subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
       directorRouteVariable = new DirectorRouteVariable
-      webServer <-
-        SubagentWebServer.resource(
-          subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)(
-          actorSystem, ioRuntime)
+      webServer <- SubagentWebServer.resource(
+        subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf
+        )(actorSystem, ioRuntime)
       _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
       iox <- Resource.eval(environment[IOExecutor])

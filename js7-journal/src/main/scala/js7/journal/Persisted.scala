@@ -37,7 +37,9 @@ final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
   override def toString =
     s"Persisted(${stampedKeyedEvents.mkString("[", ", ", "]")})"
 
+
 object Persisted:
+
   def empty[S <: EventDrivenState[S, E], E <: Event](aggregate: S): Persisted[S, E] =
     Persisted(aggregate, Vector.empty, aggregate)
 
@@ -45,4 +47,5 @@ object Persisted:
     /** Return the body if an event has been persisted. */
     def ifPersisted[U <: Unit](body: Persisted[S, E] => IO[U]): IO[Checked[Unit]] =
       io.flatMapT: persisted =>
-        persisted.ifPersisted(body(persisted))
+        persisted.ifPersisted:
+          body(persisted)

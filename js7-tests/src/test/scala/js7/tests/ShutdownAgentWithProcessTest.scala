@@ -48,20 +48,20 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
 
   override def beforeAll() =
     super.beforeAll()
-    eventWatch.await[AgentReady]()
+    eventWatch.awaitNext[AgentReady]()
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in:
     val addOrderEventId = eventWatch.lastAddedEventId
 
     val simpleOrderId = OrderId("🔹")
     controller.addOrderBlocking(FreshOrder(OrderId("🔹"), simpleWorkflow.path))
-    eventWatch.await[OrderProcessingStarted](_.key == simpleOrderId).head.eventId
-    eventWatch.await[OrderStdoutWritten](_.key == simpleOrderId)
+    eventWatch.awaitNextKey[OrderProcessingStarted](simpleOrderId).head.eventId
+    eventWatch.awaitNextKey[OrderStdoutWritten](simpleOrderId)
 
     val caughtOrderId = OrderId("🔸")
     controller.addOrderBlocking(FreshOrder(OrderId("🔸"), catchingWorkflow.path))
-    eventWatch.await[OrderProcessingStarted](_.key == caughtOrderId).head.eventId
-    eventWatch.await[OrderStdoutWritten](_.key == caughtOrderId)
+    eventWatch.awaitNextKey[OrderProcessingStarted](caughtOrderId).head.eventId
+    eventWatch.awaitNextKey[OrderStdoutWritten](caughtOrderId)
 
     val agentEnv = directoryProvider.agentEnvs.head
     locally:
@@ -73,7 +73,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
       agent.untilTerminated.await(99.s)
 
     agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
-      eventWatch.await[OrderFailed](_.key == simpleOrderId)
+      eventWatch.awaitNextKey[OrderFailed](simpleOrderId)
 
       assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
         .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
@@ -134,21 +134,21 @@ object ShutdownAgentWithProcessTest:
 
   private val simpleWorkflow = Workflow.of(
     WorkflowPath("SIMPLE") ~ versionId,
-    Execute(WorkflowJob.apply(
+    Execute(WorkflowJob(
       agentPath,
-      ShellScriptExecutable(
+      ShellScriptExecutable:
         (isWindows ?? "@echo off\n") +
           "echo TestJob\n" +
-          "sleep 99\n"))))
+          "sleep 99\n")))
 
   private val catchingWorkflow = Workflow.of(
     WorkflowPath("CATCHING") ~ versionId,
     TryInstruction(
-      Workflow.of(
-        Execute(WorkflowJob.apply(
+      Workflow.of:
+        Execute(WorkflowJob(
           agentPath,
-          ShellScriptExecutable(
+          ShellScriptExecutable:
             (isWindows ?? "@echo off\n") +
               "echo TestJob\n" +
-              "sleep 99\n")))),
+              "sleep 99\n")),
       Workflow.empty))
