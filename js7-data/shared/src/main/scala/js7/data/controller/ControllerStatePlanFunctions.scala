@@ -80,6 +80,19 @@ extends EventDrivenStateView[Self]:
     yield
       plan.plannedBoard(boardPath)
 
+  /** Returns a GlobalBoard's or PlannableBoard's PlannedBoard.
+    *
+    * @param boardPath A GlobalBoard's or PlannableBoard's BoardPath.
+    * @param planId only used when boardPath denotes a PlannableBoard.
+    */
+  final def toPlannedBoard(boardPath: BoardPath, planId: PlanId): Checked[PlannedBoard] =
+    keyTo(BoardState).checked(boardPath).flatMap: boardState =>
+      if boardState.isGlobal then
+        plan(PlanId.Global).map:
+          _.plannedBoard(boardPath)
+      else
+        toPlannedBoard(planId / boardPath)
+
   final def removeBoardInPlanSchemaStates(boardPath: BoardPath): View[PlanSchemaState] =
     keyTo(PlanSchemaState).values.view.map:
       _.removeBoard(boardPath)

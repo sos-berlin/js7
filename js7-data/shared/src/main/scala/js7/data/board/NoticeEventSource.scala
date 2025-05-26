@@ -65,7 +65,6 @@ object NoticeEventSource:
 
   private val logger = Logger[this.type]
 
-
   /** Returns the OrderNoticeAnnounced events required for an added posting order. */
   def planToNoticeAnnounced(
     planId: PlanId,
@@ -115,13 +114,13 @@ object NoticeEventSource:
   : Checked[Vector[KeyedEvent[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]]] =
     for
       _ <- postedNotices.map(_.boardPath).checkUniqueness
-      planSchemaState <- controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
-      plan <- planSchemaState.plan(planId.planKey)
       expectingOrders <- postedNotices
-        .flatMap: notice =>
-          plan.plannedBoard(notice.boardPath).expectingOrders(notice.noticeKey)
-        .distinct
-        .traverse(controllerState.idToOrder.checked)
+        .traverse: notice =>
+          controllerState.toPlannedBoard(notice.boardPath, planId).map:
+            _.expectingOrders(notice.noticeKey)
+        .flatMap:
+          _.flatten.distinct.traverse:
+            controllerState.idToOrder.checked
       events <- expectingOrders
         .traverse: expectingOrder =>
           controllerState.instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
