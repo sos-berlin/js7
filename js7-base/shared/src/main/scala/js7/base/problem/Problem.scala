@@ -165,7 +165,7 @@ object Problem extends Semigroup[Problem]:
     final def throwable =
       cause match
         case Some(p: FromEagerThrowable) => new ProblemException.NoStackTrace(this, p.throwable)
-        case _ => new ProblemException/*.NoStackTrace*/(this)
+        case _ => new ProblemException.NoStackTrace(this)
 
   trait HasCode extends Simple:
     def code: ProblemCode

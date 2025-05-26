@@ -93,10 +93,10 @@ object Stopwatch:
     override def toString: String =
       n match
         case 0 => s"0$gapOps"
-        case 1 => s"${duration.pretty}/$n$gapOps"
+        case 1 => s"⏱️  ${duration.pretty}/$n$gapOps"
         case _ =>
           val suffix = showPerSecond ?? s", $perSecondString$gapOps/s"
-          s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty})$suffix"
+          s"⏱️  ${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty})$suffix"
 
     def toShortString: String =
       if n == 0 || !showPerSecond then

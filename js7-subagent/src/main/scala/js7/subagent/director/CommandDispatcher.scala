@@ -59,10 +59,10 @@ private trait CommandDispatcher:
             for numberedExecute <- numberedExecutes do
               commandToProblem.lift(numberedExecute.value.command) match
                 case None =>
-                  logger.debug(s"⚠️ $numberedExecute => discarded")
+                  logger.debug(s"⚠️  stopWithProblem $numberedExecute => discarded")
 
                 case Some(problem) =>
-                  logger.debug(s"⚠️ $numberedExecute => $problem")
+                  logger.debug(s"⚠️  stopWithProblem $numberedExecute => $problem")
                   numberedExecute.value.tryRespond(Success(Left(problem)))
               // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
             processing.joinStd

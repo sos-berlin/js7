@@ -201,8 +201,7 @@ final class ScalaTimeTest extends OurTestSuite:
       //assert((-3*365*24*60*60).s.pretty == "-36~months")
       //assert((3*366*24*60*60).s.pretty == "3~years")
       //assert((-3*366*24*60*60).s.pretty == "-3~years")
-      //assert(Long.MaxValue.nanoseconds.pretty == "292~years")
-      assert(Long.MaxValue.nanoseconds.pretty == "15250weeks")
+      assert(Long.MaxValue.nanoseconds.pretty == "292years")
 
     "toDecimalString" in:
       assert(0.s.toDecimalString == "0")

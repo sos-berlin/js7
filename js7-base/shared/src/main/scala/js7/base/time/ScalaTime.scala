@@ -208,7 +208,9 @@ object ScalaTime:
     private def bigPretty =
       val seconds = duration.toSeconds
       val absSeconds = abs(seconds)
-      if absSeconds >= 22*24*3600 then
+      if absSeconds >= (365+365+366)*24*3600 then
+        s"${(seconds / (365.25*24*3600)).toInt}years"
+      else if absSeconds >= 22 *24*3600 then
         s"${seconds / (7*24*3600)}weeks"
       else if absSeconds >= 3*24*3600 then
         bigPretty2(24*3600, "days", 3600, "h")

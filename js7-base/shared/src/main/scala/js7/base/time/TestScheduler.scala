@@ -87,13 +87,14 @@ private final class TestScheduler(start: Timestamp = DefaultStartTimestamp)
       if tasks.nonEmpty then
         var prefix, lastPrefix = ""
         if indent then
-          prefix = "├"
-          lastPrefix = "└"
+          prefix = "│ " //"├╴"
+          lastPrefix = "└╴"
         val last = tasks.last
 
         for task <- tasks do
           val prfx = if task eq last then lastPrefix else prefix
-          logger.trace(s"${prfx}Task queue: $task")
+          logger.trace(s" ${prfx}Task queue: $task")
+
 
   private final case class Task(at: Long, id: Long, runnable: Runnable) extends Ordered[Task]:
     def compare(that: Task) =

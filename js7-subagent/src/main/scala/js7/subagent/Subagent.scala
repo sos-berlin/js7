@@ -173,7 +173,7 @@ extends MainService, Service.StoppableByRequest:
     if existing.subagentId != cmd.subagentId then
       errors += s"Renaming dedication as ${cmd.subagentId} rejected"
     if existing.agentPath != cmd.agentPath then
-      errors += s"Subagent is dedicated to an other ${existing.agentPath}"
+      errors += s"Subagent is already dedicated to ${existing.agentPath}"
     if existing.controllerId != cmd.controllerId then
       errors += s"Subagent is dedicated to ${existing.agentPath} of alien ${existing.controllerId}"
     else if existing.agentPath == cmd.agentPath && existing.agentRunId != cmd.agentRunId then

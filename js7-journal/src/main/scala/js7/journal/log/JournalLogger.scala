@@ -241,10 +241,16 @@ object JournalLogger:
     var isFirstEvent = true
     var isLastEvent = true
 
+    /** Mark a Chunk and Loggables (collapsed persist operations) and each end of Loggable. */
     def persistMarker: Char =
       if persistCount == 1 then ' '
-      else if persistIndex == 0 & isFirstEvent then '┌'
-      else if persistIndex == persistCount - 1 & isLastEvent then '└'
+      else if persistIndex == 0 & isFirstEvent then // chunk starts
+        if isLastEvent then
+          '╒' // Start of the Chunk and end of the first (one-event) Loggable
+        else
+          '┌' // Start of the Chunk
+      else if persistIndex == persistCount - 1 & isLastEvent then '└' // chunk ends
+      else if isLastEvent then '├' // End of Loggable
       else '│'
 
     def transactionMarker(forTrace: Boolean): Char =

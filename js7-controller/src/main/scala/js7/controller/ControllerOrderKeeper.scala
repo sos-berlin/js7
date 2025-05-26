@@ -835,9 +835,9 @@ extends Stash, JournalingActor[ControllerState, Event]:
                 // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
                 agentRefState.couplingState match
                   case Resetting(frc) if !force || frc != force =>
-                    Future.successful(Left(Problem.pure("AgentRef is already in state 'Resetting'")))
+                    Future.successful(Left(Problem.pure("AgentRef is already in Resetting state")))
                   case reset: Reset if !force =>
-                    Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
+                    Future.successful(Left(Problem.pure(s"AgentRef is already in $reset state")))
                   case _ =>
                     ControllerStateExecutor.resetAgent(agentPath, force = force)
                       .calculate(journal.unsafeAggregate(), TimeCtx(Timestamp.now))

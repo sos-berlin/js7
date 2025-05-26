@@ -196,8 +196,8 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
   "ResetAgent when Agent is reset already" in:
     val checked = controller.api.executeCommand(ResetAgent(agentPath)).await(99.s)
     val possibleProblems = Set(
-      Problem("AgentRef is already in state 'Resetting'"),
-      Problem("AgentRef is already in state 'Reset(ResetCommand)'"))
+      Problem("AgentRef is already in Resetting state"),
+      Problem("AgentRef is already in Reset(ResetCommand) state"))
     assert(checked.left.exists(possibleProblems.contains))
 
     def isResettingOrReset(s: DelegateCouplingState) = s match
@@ -273,7 +273,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
         // Simple ResetAgent does not work
         val checked = secondControllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
         // TODO Should reject Subagent due to non-matching SubagentRunId --> check SubagentRunId!
-        assert(checked == Left(Problem("AgentRef is already in state 'Reset(Fresh)'")))
+        assert(checked == Left(Problem("AgentRef is already in Reset(Fresh) state")))
 
         // Steal this Agent with ReseAgent(force)!
         secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)
