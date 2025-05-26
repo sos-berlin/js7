@@ -7,9 +7,9 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.utils.Tests
-import js7.base.utils.Tests.isIntelliJIdea
+import js7.base.utils.Tests.longTestEnabled
 import js7.data.event.{EventId, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
@@ -21,6 +21,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.subagent.SubagentMultipleOrdersTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import org.scalatest.Assertion
+import scala.concurrent.duration.Deadline
 
 final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
 
@@ -31,7 +32,8 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
 
   "Multiple orders" in:
     runSubagent(bareSubagentItem) { _ =>
-      val n = if isIntelliJIdea then 20000 else 100
+      val n = if longTestEnabled then 20000 else 100
+      val since = Deadline.now
       val runOrders = runMultipleOrders(
         orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i"),
         assertEvents = (orderId, events) =>
@@ -56,7 +58,8 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
           logger.info(s"$orderId ✔︎")
           result)
 
-      runOrders.await(99.s)
+      runOrders.await(if longTestEnabled then 999.s else 99.s)
+      logger.info(itemsPerSecondString(since.elapsed, n, "orders"))
       assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet == Set(
         Some(localSubagentId),
         Some(bareSubagentItem.id)))

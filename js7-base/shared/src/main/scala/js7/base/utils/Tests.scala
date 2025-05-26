@@ -5,7 +5,7 @@ import js7.base.utils.SystemPropertiesExtensions.asSwitch
 
 object Tests:
 
-  val (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict) =
+  val (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict, longTestEnabled) =
     val classNames = TestsPlatform.allActiveClasses
 
     def hasPackagePrefix(packagePrefixes: Set[String]): Boolean =
@@ -19,8 +19,9 @@ object Tests:
       && !sys.props.asSwitch("js7.noTest")
       && !sys.props.contains("test.speed")
     val isStrict = sys.props.asSwitch("js7.strict", ifMissing = isTest)
+    val longTestEnabled = (isTest && isIntelliJIdea) || sys.props.asSwitch("js7.longTest")
 
-    (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict)
+    (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict, longTestEnabled)
 
   def log(): Unit =
     val onlyTrues = Vector(
@@ -28,6 +29,7 @@ object Tests:
       "isTest" -> isTest,
       "isIntelliJIdea" -> isIntelliJIdea,
       "isScalaTest" -> isScalaTest,
+      "longTestEnabled" -> longTestEnabled,
       "isSbt" -> isSbt
     ).filter(_._2)
     if onlyTrues.nonEmpty then
