@@ -26,9 +26,9 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanId, PlanStatus}
-import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
+import js7.data.plan.{Plan, PlanId, PlanSchema, PlanSchemaId, PlanStatus}
+import js7.data.value.expression.Expression.expr
+import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
@@ -36,6 +36,7 @@ import js7.tests.notice.GlobalBoardTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.*
+import scala.language.implicitConversions
 
 final class GlobalBoardTest
   extends OurTestSuite, ControllerAgentForScalaTest, TransferOrdersWaitingForNoticeTest:
@@ -227,6 +228,37 @@ final class GlobalBoardTest
         OrderMoved(Position(2)),
         OrderFinished()))
 
+    "FIX JOC-2043 An Order in a Plan executes PostNotices to a GlobalBoard" in:
+      eventWatch.resetLastWatchedEventId()
+
+      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+      val board = GlobalBoard(
+        BoardPath("BOARD"),
+        postOrderToNoticeKey = expr"'NOTICE'",
+        expectOrderToNoticeKey = expr"'NOTICE'",
+        endOfLife = expr"3600")
+      val consumingWorkflow = Workflow.of(WorkflowPath("CONSUME"),
+        ConsumeNotices(board.path)())
+      val postingWorkflow = Workflow.of(WorkflowPath("POST"),
+        PostNotices(Seq(board.path)))
+
+      withItems(
+        (dailyPlan, board, consumingWorkflow, postingWorkflow)
+      ): (dailyPlan, board, consumingWorkflow, postingWorkflow) =>
+        val planId = dailyPlan.path / "2025-05-26"
+        val consumingOrderId = OrderId("CONSUME")
+
+        controller.addOrderBlocking:
+          FreshOrder(consumingOrderId, consumingWorkflow.path, planId = planId,
+            deleteWhenTerminated = true)
+        eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
+
+        controller.runOrder:
+          FreshOrder(OrderId("POST"), postingWorkflow.path, planId = planId,
+            deleteWhenTerminated = true)
+
+        eventWatch.awaitNextKey[OrderFinished](consumingOrderId)
+
     "PostNotices command with expecting orders" in:
       val qualifier = "2222-08-08"
       val noticeId = PlanId.Global / board0.path / NoticeKey(qualifier)
@@ -411,7 +443,7 @@ final class GlobalBoardTest
   "Update GlobalBoard" in:
     val boardState = controllerState.keyTo(BoardState)(board0.path)
 
-    val updatedBoard = board0.copy(postOrderToNoticeKey = expr("orderId"))
+    val updatedBoard = board0.copy(postOrderToNoticeKey = expr"orderId")
     controller.api.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
     assert(controllerState.keyTo(BoardState)(board0.path) ==
