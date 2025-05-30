@@ -26,7 +26,7 @@ final class ConvertibleMultiPartialFunctionTest extends OurTestSuite:
 
   "as X" in:
     case class X(s: String)
-    assert(convertible("KEY" -> List("111")).as[X]("KEY")(As(X(_))) == X("111"))
+    assert(convertible("KEY" -> List("111")).as[X]("KEY")(using As(X(_))) == X("111"))
 
   "optionAs" in:
     assert(convertible[String, String]().optionAs[Int]("KEY") == None)

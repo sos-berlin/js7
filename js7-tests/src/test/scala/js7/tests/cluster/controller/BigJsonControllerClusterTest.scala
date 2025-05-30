@@ -49,7 +49,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
         Admission(primaryController.localUri, Some(userAndPassword)),
         Admission(backupController.localUri, Some(userAndPassword)))
       val controllerApi = new ControllerApi(
-        admissionsToApiResource(admissions)(primaryController.actorSystem))
+        admissionsToApiResource(admissions)(using primaryController.actorSystem))
 
       val orderId = OrderId("BIG-ORDER")
       controllerApi

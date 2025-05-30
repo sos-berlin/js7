@@ -96,7 +96,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     callback: Persisted[S, EE] => A)
   : Future[A] =
     persistEventCalcReturnChecked2(eventCalc, options, async)(callback)
-      .map(_.orThrow)(ioRuntime.compute)
+      .map(_.orThrow)(using ioRuntime.compute)
 
   protected final def persistKeyedEventsReturnChecked[EE <: E, A](
     eventCalc: EventCalc[S, EE, TimeCtx],

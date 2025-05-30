@@ -74,7 +74,7 @@ trait ExceptionHandling:
         complete(status)
 
   protected final def seal(route: Route): Route =
-    Route.seal(route)(exceptionHandler = exceptionHandler)
+    Route.seal(route)(using exceptionHandler = exceptionHandler)
 
 
 object ExceptionHandling:

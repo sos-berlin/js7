@@ -98,7 +98,7 @@ extends ScheduleSimulator:
     import periodic.{offsets, period}
     val scheduleMillis = offsets.view.map(_.toMillis)
     val p = period.toMillis
-    val localMilli = last.toZonedDateTime(zone).toLocalDateTime.toInstant(UTC).toEpochMilli
+    val localMilli = last.toZonedDateTime(using zone).toLocalDateTime.toInstant(UTC).toEpochMilli
     val localPeriodStart = localMilli / p * p
     val localMilliOfPeriod = localMilli % p
 

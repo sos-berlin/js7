@@ -19,7 +19,7 @@ extends ProcessJobLauncher:
 
   def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]] =
     IO:
-      new CommandLineEvaluator()(processOrder.scope)
+      new CommandLineEvaluator()(using processOrder.scope)
         .eval(executable.commandLineExpression)
         .flatMap: commandLine =>
           warnIfNotExecutable(commandLine.file)

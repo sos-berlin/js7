@@ -47,7 +47,7 @@ object UnsignedVersionedItemId:
   val VersionSeparator = "~"  // Can be used in an Pekko actor name
 
   // TODO Use this implicit conversion only for tests
-  implicit def pathToItemId[P <: VersionedControlPath: js7.data.item.VersionedControlPath.Companion](path: P): UnsignedVersionedItemId[P] =
+  implicit def pathToItemId[P <: VersionedControlPath](path: P): UnsignedVersionedItemId[P] =
     UnsignedVersionedItemId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: VersionedControlPath]: Ordering[UnsignedVersionedItemId[P]] =
@@ -60,12 +60,13 @@ object UnsignedVersionedItemId:
       "path" -> o.path.asJson,
       "versionId" -> o.versionId.asJson)
 
-  implicit def jsonDecoder[P <: VersionedControlPath: VersionedControlPath.Companion: Decoder]: Decoder[UnsignedVersionedItemId[P]] =
+  implicit def jsonDecoder[P <: VersionedControlPath: Decoder]: Decoder[UnsignedVersionedItemId[P]] =
     cursor =>
       for
         path <- cursor.get[P]("path")
         version <- cursor.get[VersionId]("versionId")
-      yield UnsignedVersionedItemId(path, version)
+      yield 
+        UnsignedVersionedItemId(path, version)
 
   trait Companion[P <: VersionedControlPath]
   extends UnsignedItemKey.Companion[UnsignedVersionedItemId[P]]:

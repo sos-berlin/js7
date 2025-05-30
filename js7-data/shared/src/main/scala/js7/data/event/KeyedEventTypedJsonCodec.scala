@@ -63,7 +63,7 @@ extends Codec.AsObject[KeyedEvent[E]]:
       (subtypes ++ other.subtypes))
 
   def encodeObject(keyedEvent: KeyedEvent[E]): JsonObject =
-    keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
+    keyedEvent.asJsonObject(using encoder = classToEncoder(keyedEvent.event.getClass))
 
   def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
     for

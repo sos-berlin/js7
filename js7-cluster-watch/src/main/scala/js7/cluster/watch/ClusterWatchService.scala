@@ -153,12 +153,13 @@ object ClusterWatchService:
   def completeResource(conf: ClusterWatchConf): ResourceIO[ClusterWatchService] =
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for
-      pekko <- actorSystemResource(name = "ClusterWatch", config)
+      actorSystem <- actorSystemResource(name = "ClusterWatch", config)
       service <- resource(
         conf.clusterWatchId,
         apisResource = clusterNodeAdmissions
           .traverse(admission => PekkoHttpClient
-            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(pekko)
+            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(
+              using actorSystem)
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
     yield service

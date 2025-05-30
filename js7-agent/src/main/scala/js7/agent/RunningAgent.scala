@@ -223,7 +223,7 @@ object RunningAgent:
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
           (admission, label, actorSystem) => AgentClient.resource(
-            admission, label, httpsConfig)(actorSystem),
+            admission, label, httpsConfig)(using actorSystem),
           licenseChecker,
           journalLocation, clusterConf, eventIdGenerator, subagent.testEventBus)
         director <-

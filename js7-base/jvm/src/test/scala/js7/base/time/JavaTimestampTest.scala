@@ -32,13 +32,13 @@ final class JavaTimestampTest extends OurTestSuite:
     assert(timestamp.toInstant == Instant.parse("2021-08-29T22:00:00Z"))
 
   "toLocalDateTime" in:
-    assert(timestamp.toLocalDateTime(zone) == local)
+    assert(timestamp.toLocalDateTime(using zone) == local)
 
   "toZonedDateTime" in:
-    assert(timestamp.toZonedDateTime(zone) == ZonedDateTime.of(local, zone))
+    assert(timestamp.toZonedDateTime(using zone) == ZonedDateTime.of(local, zone))
 
   "toOffsetDateTime" in:
-    assert(timestamp.toOffsetDateTime(zone) == OffsetDateTime.of(local, ZoneOffset.of("+03:00")))
+    assert(timestamp.toOffsetDateTime(using zone) == OffsetDateTime.of(local, ZoneOffset.of("+03:00")))
 
   "local" in:
-    assert(JavaTimestamp.local("2021-10-01T00:00")(zone) == ts"2021-09-30T21:00:00Z")
+    assert(JavaTimestamp.local("2021-10-01T00:00")(using zone) == ts"2021-09-30T21:00:00Z")

@@ -1,11 +1,9 @@
 package js7.base.fs2utils
 
-import cats.effect
 import cats.effect.{Concurrent, Resource, Sync}
 import cats.syntax.functor.*
 import fs2.Stream
 import fs2.concurrent.Topic
-import js7.base.catsutils.UnsafeMemoizable
 
 final class Fs2PubSub[F[_], A <: AnyRef] private(topic: Topic[F, A])
   (using F: Concurrent[F] & Sync[F]):
@@ -26,8 +24,10 @@ final class Fs2PubSub[F[_], A <: AnyRef] private(topic: Topic[F, A])
   def streamResource: Resource[F, Stream[F, A]] =
     topic.subscribeAwait(maxQueued = 0)
 
+
 object Fs2PubSub:
-  def resource[F[_]: UnsafeMemoizable, A <: AnyRef](using F: Concurrent[F] & Sync[F])
+  
+  def resource[F[_], A <: AnyRef](using F: Concurrent[F] & Sync[F])
   : Resource[F, Fs2PubSub[F, A]] =
     for
       topic <- Resource.eval(Topic[F, A])

@@ -257,7 +257,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
           admissionsToApiResource(Nel.one(Admission(
             secondController.localUri,
             Some(directoryProvider.controllerEnv.userAndPassword))
-          ))(secondController.actorSystem))
+          ))(using secondController.actorSystem))
         secondControllerApi.updateItems(Stream(
           AddOrChangeSimple(AgentRef(agentPath, Seq(agentEnv.localSubagentId))),
           AddOrChangeSimple(SubagentItem(agentEnv.localSubagentId, agentPath, agents(0).localUri)),

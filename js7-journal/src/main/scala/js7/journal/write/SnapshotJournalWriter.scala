@@ -15,7 +15,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{EventId, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file
 import scala.concurrent.duration.*
@@ -59,7 +59,7 @@ extends JournalWriter(S, file, after = after, append = false):
         case _ => true
       .mapParallelBatch(): snapshotObject =>
         //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
-        snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
+        snapshotObject.asJson(using S.snapshotObjectJsonCodec).toByteArray
       .foreach: byteArray =>
         IO.blocking:
           writeSnapshot(byteArray)

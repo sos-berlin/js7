@@ -19,7 +19,7 @@ object ReturnCodeMeaning:
   val NoFailure: ReturnCodeMeaning = Failure(RangeSet.empty)
 
   implicit val ReturnCodeMeaningIsEmpty: IsEmpty[ReturnCodeMeaning] =
-    IsEmpty(_ == Default)
+    IsEmpty(using _ == Default)
 
   final case class Success(returnCodes: RangeSet[ReturnCode]) extends ReturnCodeMeaning:
     def isSuccess(returnCode: ReturnCode): Boolean =
@@ -39,9 +39,10 @@ object ReturnCodeMeaning:
     implicit val jsonEncoder_ : Encoder[RangeSet[ReturnCode]] =
       RangeSet.jsonEncoder[ReturnCode]
 
-    Encoder.AsObject[ReturnCodeMeaning]:
-      case Success(o) => JsonObject.singleton("success", o.asJson)
-      case Failure(o) => JsonObject.singleton("failure", o.asJson)
+    Encoder.AsObject[ReturnCodeMeaning](using meaning => 
+      meaning match
+        case Success(o) => JsonObject.singleton("success", o.asJson)
+        case Failure(o) => JsonObject.singleton("failure", o.asJson))
 
   implicit val jsonDecoder: Decoder[ReturnCodeMeaning] =
     c => {

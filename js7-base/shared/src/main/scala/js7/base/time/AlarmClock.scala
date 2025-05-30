@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, Sync}
 import js7.base.monixlike.SyncCancelable
 import js7.base.time.ScalaTime.*
 import js7.base.utils.LabeledRunnable
+import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.util.NotGiven
 
@@ -41,7 +42,7 @@ trait AlarmClock extends WallClock:
         Some(IO(cancelable.cancel()))
 
   /** TestAlarmClock synchronizes time query and time change. */
-  def lock[A](body: => A)(using NotGiven[A <:< IO[?]]): A =
+  def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
     body
 
 

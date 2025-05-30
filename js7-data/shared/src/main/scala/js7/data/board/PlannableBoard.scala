@@ -49,7 +49,7 @@ extends
 
   private def postingOrderToNoticeKey(scope: Scope): Checked[NoticeKey] =
     for
-      noticeKey <- postOrderToNoticeKey.evalAsString(scope)
+      noticeKey <- postOrderToNoticeKey.evalAsString(using scope)
       noticeKey <- NoticeKey.checked(noticeKey)
     yield
       noticeKey
@@ -57,7 +57,7 @@ extends
   def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView): Checked[NoticeId] =
     val scope = state.toPlanOrderScope(order)
     for
-      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
+      noticeKey <- expectOrderToNoticeKey.evalAsString(using scope)
     yield
       order.planId / path / noticeKey
 

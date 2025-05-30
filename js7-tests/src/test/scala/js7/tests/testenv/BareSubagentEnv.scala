@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
+import scala.annotation.unused
 
 /** Environment with config and data directories for a bare Subagent. */
 final class BareSubagentEnv private[testenv](
@@ -39,7 +40,7 @@ extends SubagentEnv:
      |}
      |""".stripMargin
 
-  def programResource(using IORuntime): ResourceIO[Subagent] =
+  def programResource(using @unused u: IORuntime): ResourceIO[Subagent] =
     subagentResource()
 
   def subagentResource(envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)

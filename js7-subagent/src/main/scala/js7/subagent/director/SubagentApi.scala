@@ -16,7 +16,7 @@ trait SubagentApi extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrac
   def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId)
-    (implicit kd: Decoder[KeyedEvent[E]])
+    (using Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]]
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])

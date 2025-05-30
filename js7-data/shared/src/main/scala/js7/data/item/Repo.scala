@@ -330,7 +330,7 @@ extends
   def idToSigned[A <: VersionedItem](A: VersionedItem.Companion[A])(id: VersionedItemId[A.Path])
   : Checked[Signed[A]] =
     for signed <- anyIdToSigned(id) yield
-      signed.copy(signed.value.cast(A))
+      signed.copy(signed.value.cast(using A))
 
   /** Returns the VersionedItem for a VersionedItemId. */
   def anyIdToSigned(id: VersionedItemId_): Checked[Signed[VersionedItem]] =

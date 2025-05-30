@@ -14,6 +14,8 @@ final class FileSourceTest extends OurTestSuite:
     val file = createTempFile("test-", ".tmp")
     file := "<test/>"
     val source = new FileSource(file)
-    assert(scala.io.Source.fromInputStream(source.getInputStream)(UTF_8).getLines().mkString == "<test/>")
+    assert:
+      scala.io.Source.fromInputStream(source.getInputStream)(using UTF_8).getLines().mkString == 
+        "<test/>"
     source.close()
     delete(file)  // Under Windows, file must be closed now

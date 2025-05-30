@@ -15,7 +15,6 @@ import js7.base.problem.Checked
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
 import js7.common.http.StreamingSupport.*
-import js7.common.http.{JsonStreamingSupport, PekkoHttpClient}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -248,7 +247,7 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
-  def completeWithCheckedJsonStream[A: Encoder: Tag](chunkSize: Int, prefetch: Int = 0)
+  def completeWithCheckedJsonStream[A: Encoder](chunkSize: Int, prefetch: Int = 0)
     (stream: IO[Checked[Stream[IO, A]]])
     (using IORuntime)
   : Route =
@@ -313,17 +312,15 @@ object PekkoHttpServerUtils:
           })
 
   // Was observableToResponseMarshallable in v2.6
-  def encodeAndHeartbeat[A: Encoder : Tag](
+  def encodeAndHeartbeat[A: Encoder](
     httpChunkSize: Int,
     keepAlive: FiniteDuration,
     prefetch: Int = 0)
-    (using IORuntime)
   : Pipe[IO, A, ByteString] =
     _.through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
       .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
 
-  def encodeParallel[A: Encoder : Tag](httpChunkSize: Int, prefetch: Int = 0)
-    (using IORuntime)
+  def encodeParallel[A: Encoder](httpChunkSize: Int, prefetch: Int = 0)
   : Pipe[IO, A, ByteString] =
     _.mapParallelBatch(/*responsive = true,*//* prefetch = prefetch*/)(_
         .asJson

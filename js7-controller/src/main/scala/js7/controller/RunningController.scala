@@ -182,7 +182,7 @@ extends MainService, Service.StoppableByRequest:
     // Wait for JournalActor start
     waitForCondition(10.s, 10.ms)(Try(actorSel.resolveOne(99.s).await(99.s)).isSuccess)
     val actor = actorSel.resolveOne(99.s).await(99.s)
-    (actor ? JournalActor.Input.GetJournalActorState)(Timeout(99.s))
+    (actor ? JournalActor.Input.GetJournalActorState)(using Timeout(99.s))
     .mapTo[JournalActor.Output.JournalActorState]
     .await(99.s)
 
@@ -250,7 +250,7 @@ object RunningController:
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
         (admission, name, actorSystem) => PekkoHttpControllerApi.resource(
-          admission, httpsConfig, name = name)(actorSystem),
+          admission, httpsConfig, name = name)(using actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdGenerator, testEventBus)
 

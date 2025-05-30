@@ -444,7 +444,7 @@ final class OrderTest extends OurTestSuite:
     val b = Order(OrderId("B"), WorkflowPath("WORKFLOW") /: Position(0), Fresh(), priority = 2)
     val c = Order(OrderId("C"), WorkflowPath("WORKFLOW") /: Position(0), Fresh(), priority = 1)
     for permuation <- Seq(a, b, c).permutations do
-      assert(permuation.sorted(Order.priorityOrdering) == Seq(a, b, c))
+      assert(permuation.sorted(using Order.priorityOrdering) == Seq(a, b, c))
     assert(Order.priorityOrdering.compare(a, b) == -1)
     assert(Order.priorityOrdering.compare(a, c) == -1)
     assert(Order.priorityOrdering.compare(b, c) == -1)

@@ -186,7 +186,7 @@ final class ControllerRepoTest extends OurTestSuite:
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
         actorSystemResource(name = "ControllerRepoTest-SPEED")
           .use(actorSystem => IO {
-            val apiResource  = resource(Admission(uri, credentials))(actorSystem)
+            val apiResource  = resource(Admission(uri, credentials))(using actorSystem)
             val controllerApi = new ControllerApi(apiResource map Nel.one)
             for _ <- 1 to n do {
               val t = now

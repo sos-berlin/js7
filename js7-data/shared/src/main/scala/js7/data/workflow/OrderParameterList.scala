@@ -78,7 +78,7 @@ final case class OrderParameterList(
 
             case (None, p: OrderParameter.HasExpression) =>
               // A pure expression can be checked beforehand
-              (!p.expression.isPure ? p.expression.eval(recursiveScope).map(p.name -> _))
+              (!p.expression.isPure ? p.expression.eval(using recursiveScope).map(p.name -> _))
                 .sequence
                 .left.map(EvaluationFailedProblem(p.name, p.expression, _))
 

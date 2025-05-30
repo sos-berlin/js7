@@ -32,11 +32,11 @@ object CatsEffectExtensions:
       io.onCancel(IO.defer(fin))
 
     // inline for proper processing of Enclosing
-    inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
+    inline def adHocInfo(inline toMsg: A => String): IO[A] =
       io.flatTap(a => IO(logger.info(toMsg(a))))
 
     // inline for proper processing of Enclosing
-    inline def adHocInfo(inline msg: String)(using src: sourcecode.Enclosing): IO[A] =
+    inline def adHocInfo(inline msg: String): IO[A] =
       io.flatTap(a => IO(logger.info(msg)))
 
     /** Converts a failed IO into a `Checked[A]`. */

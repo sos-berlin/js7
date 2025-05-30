@@ -212,9 +212,9 @@ object Provider:
   private val logger = Logger[this.type]
   private val readers = Seq(
     WorkflowReader,
-    SimpleItemReader(AgentRef),
-    SimpleItemReader(SubagentItem),
-    SimpleItemReader(Calendar))
+    SimpleItemReader(using AgentRef),
+    SimpleItemReader(using SubagentItem),
+    SimpleItemReader(using Calendar))
 
   def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for

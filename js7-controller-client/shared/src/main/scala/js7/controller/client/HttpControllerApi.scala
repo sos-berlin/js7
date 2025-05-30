@@ -3,7 +3,6 @@ package js7.controller.client
 import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
-import izumi.reflect.Tag
 import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
@@ -40,7 +39,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): IO[B] =
     httpClient.post[A, B](baseUri /? uriTail, data)
 
-  final def postStream[A: Encoder: Tag, B: Decoder](uriTail: String, stream: Stream[IO, A]): IO[B] =
+  final def postStream[A: Encoder, B: Decoder](uriTail: String, stream: Stream[IO, A]): IO[B] =
     httpClient.postStream[A, B](baseUri /? uriTail, stream)
 
   @TestOnly

@@ -78,7 +78,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
       val snapshots = boardState.toSnapshotStream
         .append(plannedBoard.toSnapshotStream)
         .map(_
-          .asJson(ControllerState.snapshotObjectJsonCodec)
+          .asJson(using ControllerState.snapshotObjectJsonCodec)
           .compactPrint)
         .map(s => parseJson(s).orThrow)
         .compile
@@ -125,7 +125,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
       "toSnapshotStream JSON" in:
         val snapshots = boardState.toSnapshotStream
           .map(_
-            .asJson(ControllerState.snapshotObjectJsonCodec)
+            .asJson(using ControllerState.snapshotObjectJsonCodec)
             .printWith(CompactPrinter))
           .map(s => io.circe.parser.parse(s).orThrow)
           .compile.toVector
@@ -177,7 +177,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
       "toSnapshotStream JSON" in:
         val snapshots = boardState.toSnapshotStream
           .map(_
-            .asJson(ControllerState.snapshotObjectJsonCodec)
+            .asJson(using ControllerState.snapshotObjectJsonCodec)
             .printWith(CompactPrinter))
           .map(s => io.circe.parser.parse(s).orThrow)
           .compile.toVector

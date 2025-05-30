@@ -15,7 +15,7 @@ final class NowScopeTest extends OurTestSuite:
   "Example with now() and $js7EpochSecond" in:
     val checkedValue = nowScope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \", $js7EpochSecond\"")
-    val yyyymmdd = nowScope.now.toLocalDateTime(ZoneId.of("Antarctica/Troll"))
+    val yyyymmdd = nowScope.now.toLocalDateTime(using ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val epochSecond = nowScope.now.toEpochMilli / 1000
 
@@ -25,7 +25,7 @@ final class NowScopeTest extends OurTestSuite:
   format in:
     val now = nowScope.now
     val checkedValue = nowScope.parseAndEval(s"now(format='$format')")
-    val expected = now.toOffsetDateTime(ZoneId.systemDefault())
+    val expected = now.toOffsetDateTime(using ZoneId.systemDefault())
       .format(DateTimeFormatter.ofPattern(format))
     assert(checkedValue == Right(StringValue((expected))))
 

@@ -14,4 +14,4 @@ object MonixAntiBlocking:
     * - After 20s, actor.creation-timeout kicks in.
     */
   def executeOn[A](ec: ExecutionContext)(future: ExecutionContext => Future[A]): Future[A] =
-    Future(future(ec))(ec).flatten
+    Future(future(ec))(using ec).flatten

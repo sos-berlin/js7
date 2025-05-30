@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.time.ScalaTime.*
+import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 import scala.util.NotGiven
 
@@ -11,7 +12,7 @@ trait TestAlarmClock(start: Timestamp) extends AlarmClock:
 
   final def epochMilli() = scheduler.nowMillis()
 
-  override def lock[A](body: => A)(using NotGiven[A <:< IO[?]]): A =
+  override def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
     scheduler.lock(body)
 
   /** Reset the wall clock but not the monotonic clock (move the clock hands).

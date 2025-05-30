@@ -37,7 +37,7 @@ final class SubagentBundleTest extends OurTestSuite:
         json""" "SubagentBundle:BUNDLE" """)
 
     "ItemAttached" in:
-      given TypedJsonCodec[BasicItemEvent] = BasicItemEvent.jsonCodec(ControllerState)
+      given TypedJsonCodec[BasicItemEvent] = BasicItemEvent.jsonCodec(using ControllerState)
 
       testJson[BasicItemEvent](
         ItemAttached(SubagentBundleId("BUNDLE"), None, AgentPath("AGENT")),
@@ -72,7 +72,7 @@ final class SubagentBundleTest extends OurTestSuite:
         json""" "SubagentSelection:BUNDLE" """)
 
     "ItemAttached" in:
-      given TypedJsonCodec[BasicItemEvent] = BasicItemEvent.jsonCodec(ControllerState)
+      given TypedJsonCodec[BasicItemEvent] = BasicItemEvent.jsonCodec(using ControllerState)
 
       testJsonDecoder[BasicItemEvent](
         ItemAttached(SubagentBundleId("BUNDLE"), None, AgentPath("AGENT")),

@@ -148,7 +148,7 @@ extends Actor, Stash, SimpleStateActor:
                 .fold(IO.unit)(dedicated => IO
                   .fromFuture(IO(
                     (dedicated.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
-                      subagentResetTimeout)))
+                      using subagentResetTimeout)))
                   .void)
                 .recoverWith:
                   case e: AskTimeoutException => IO:

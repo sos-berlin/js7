@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
 import org.apache.pekko.util.{ByteString, CompactByteString}
+import scala.annotation.unused
 
 object ByteStringByteSequence extends ByteSequence[ByteString]:
 
@@ -22,7 +23,7 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
   def unsafeWrap(bytes: Array[Byte]): ByteString =
     ByteString.fromArrayUnsafe(bytes)
 
-  override def isEmpty(byteString: ByteString)(implicit ev: Eq[ByteString]): Boolean =
+  override def isEmpty(byteString: ByteString)(using @unused Eq: Eq[ByteString]): Boolean =
     byteString.isEmpty
 
   def eqv(a: ByteString, b: ByteString): Boolean =

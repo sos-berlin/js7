@@ -18,7 +18,7 @@ extends EventInstructionExecutor:
             val msg = fail.message
               .map(messageExpr => state
                 .toImpureOrderExecutingScope(order, clock.now())
-                .flatMap(messageExpr.evalAsString(_))
+                .flatMap(messageExpr.evalAsString(using _))
                 .fold(_.toString, identity))
             val outcome = OrderOutcome.Failed(msg, fail.namedValues, uncatchable = fail.uncatchable)
             val event = OrderFailedIntermediate_(Some(outcome))

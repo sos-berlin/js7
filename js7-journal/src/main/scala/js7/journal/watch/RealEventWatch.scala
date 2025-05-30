@@ -309,7 +309,7 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
     awaitAsync[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
 
@@ -317,8 +317,7 @@ trait RealEventWatch extends EventWatch:
   final def awaitAsync[E <: Event](
     eventRequest: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean)
-    (using ioRuntime: IORuntime,
-      enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+    (using file: sourcecode.FileName, line: sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
     lazy val label = s"awaitAsync[${
       eventRequest.eventClasses.view.map(_.shortClassName).toVector.sorted.mkString(" | ")

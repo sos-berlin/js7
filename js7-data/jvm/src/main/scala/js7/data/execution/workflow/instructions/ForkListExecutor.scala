@@ -25,7 +25,7 @@ extends ForkInstructionExecutor:
     for
       scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
       scope =  scope0 |+| new AgentsSubagentIdsScope(state)
-      elements <- fork.children.evalAsVector(scope)
+      elements <- fork.children.evalAsVector(using scope)
       childIds <- elements
         .traverseWithIndexM { case (element, i) =>
           fork.childToId

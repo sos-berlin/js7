@@ -510,7 +510,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
       val extraOrderId = OrderId("JOB-LIMIT-EXTRA")
       controller.api.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
-      assert(orderToObstacles(extraOrderId)(WallClock) ==
+      assert(orderToObstacles(extraOrderId)(using WallClock) ==
         Right(Set(jobProcessLimitReached)))
 
       execCmd(CancelOrders(extraOrderId :: Nil))
@@ -604,7 +604,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.expect[OrderAttached](_.key == orderId):
         controller.api.addOrder(FreshOrder(orderId, workflowPath)).await(99.s).orThrow
       retryUntil(9.s, 10.ms):
-        assert(orderToObstacles(orderId)(WallClock) == Right(Set(agentProcessLimitReached)))
+        assert(orderToObstacles(orderId)(using WallClock) == Right(Set(agentProcessLimitReached)))
       assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
   }
 

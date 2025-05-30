@@ -2,7 +2,6 @@ package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO, ResourceIO}
 import cats.syntax.apply.*
-import izumi.reflect.Tag
 import js7.base.catsutils.OurApp
 import js7.base.metering.CallMeter
 import js7.base.service.{MainService, Service, SimpleMainService}
@@ -22,7 +21,7 @@ trait ServiceApp extends OurApp:
     runService[Cnf, MainService](args, toConf, suppressTerminationLogging = true):
       conf => programAsService(program(conf))
 
-  protected final def runService[Cnf <: BasicConfiguration, Svc <: MainService : Tag](
+  protected final def runService[Cnf <: BasicConfiguration, Svc <: MainService](
     args: List[String],
     argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,
@@ -42,7 +41,7 @@ trait ServiceApp extends OurApp:
           program(cnf),
       use)
 
-  protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService : Tag](
+  protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService](
     args: List[String],
     argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,

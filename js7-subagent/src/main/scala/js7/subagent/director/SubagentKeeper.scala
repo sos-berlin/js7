@@ -229,7 +229,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toOrderScope(order)
         jobsBundleId <- job.subagentBundleId
-          .traverse(_.evalAsString(scope)
+          .traverse(_.evalAsString(using scope)
           .flatMap(SubagentBundleId.checked))
       yield
         determineSubagentBundle(order, agentPath, jobsBundleId)

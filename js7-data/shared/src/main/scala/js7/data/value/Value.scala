@@ -542,7 +542,7 @@ object ValueType:
           typ <- c.get[String]("TYPE")
           valueType <- typ match
             case "List" =>
-              c.get[ValueType]("elementType")(jsonDecoder)
+              c.get[ValueType]("elementType")(using jsonDecoder)
                 .map(ListType(_))
 
             case "Object" =>
@@ -551,10 +551,8 @@ object ValueType:
                 .view
                 .filter(_._1 != "TYPE")
                 .toVector
-                .traverse { case (k, v) => jsonDecoder
-                  .decodeJson(v)
-                  .map(k -> _)
-                }
+                .traverse: (k, v) =>
+                  jsonDecoder.decodeJson(v).map(k -> _)
                 .map(fields => ObjectType(fields.toMap))
 
             case typeName =>

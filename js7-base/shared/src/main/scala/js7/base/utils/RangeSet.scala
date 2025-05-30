@@ -194,7 +194,7 @@ object RangeSet:
 
   // Must be explicitly and locally imported, !!!
   // otherwise it collides with Circe's Decoder[Iterable[A]].
-  implicit def jsonEncoder[A: Ordering: Encoder]: Encoder[RangeSet[A]] =
+  implicit def jsonEncoder[A: Encoder]: Encoder[RangeSet[A]] =
     rangeSet => Json.fromString(rangeSet.asString)
 
   private def valueToString[A: Encoder](a: A): String =
@@ -223,11 +223,11 @@ object RangeSet:
 
         case Some(array) =>
           array
-            .traverse(_.as(asArrayRangeDecoder[A]))
+            .traverse(_.as(using asArrayRangeDecoder[A]))
             .map(fromRanges(_))
 
   @TestOnly
-  private[utils] def asArrayJsonEncoder[A: Ordering: Encoder]: Encoder.AsArray[RangeSet[A]] =
+  private[utils] def asArrayJsonEncoder[A: Encoder]: Encoder.AsArray[RangeSet[A]] =
     rangeSet =>
       rangeSet.ranges.map:
         case Single(a) => a.asJson
@@ -240,7 +240,7 @@ object RangeSet:
         case None => Left(DecodingFailure("RangeSet must be an array", c.history))
         case Some(array) =>
           array
-            .traverse(_.as(asArrayRangeDecoder[A]))
+            .traverse(_.as(using asArrayRangeDecoder[A]))
             .map(fromRanges(_))
 
   @TestOnly

@@ -3,7 +3,8 @@ package js7.data.value.expression.scopes
 import js7.base.problem.Checked
 import js7.data.value.Value
 import js7.data.value.expression.Expression.FunctionCall
-import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.expression.Scope
+import scala.annotation.unused
 
 final class ArgumentlessFunctionScope(
   symbolToValue: PartialFunction[String, Checked[Value]])
@@ -11,7 +12,7 @@ extends Scope:
 
   private def lifted = symbolToValue.lift
 
-  override def evalFunctionCall(functionCall: FunctionCall)(using Scope) =
+  override def evalFunctionCall(functionCall: FunctionCall)(using @unused scope: Scope) =
     functionCall match
       case FunctionCall(name, None | Some(Nil)) => lifted(name)
       case _ => None

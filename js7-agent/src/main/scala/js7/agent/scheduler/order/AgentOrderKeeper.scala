@@ -694,7 +694,7 @@ extends JournalingActor[AgentState, Event], Stash:
                         .*>(IO.defer {
                           logger.warn(s"Repeating $cmd due to race condition: $problem")
                           val promise = Promise[Checked[Response]]()
-                          self.!(Input.ExternalCommand(cmd, CorrelId.current, promise))(sender)
+                          self.!(Input.ExternalCommand(cmd, CorrelId.current, promise))(using sender)
                           IO
                             .fromFuture(IO.pure(promise.future))
                             .map(_.map(_.asInstanceOf[Response.Accepted]))

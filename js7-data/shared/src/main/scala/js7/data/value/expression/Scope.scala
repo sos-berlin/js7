@@ -51,7 +51,7 @@ trait Scope:
 
   def parseAndEval(expression: String): Checked[Value] =
     parseExpression(expression)
-      .flatMap(_.eval(this))
+      .flatMap(_.eval(using this))
 
   final def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =
     evalLazilyExpressions(nameToExpr.view)(this)
@@ -93,7 +93,7 @@ object Scope extends Monoid[Scope]:
     lazy val myScope = scope
     nameToExpr
       .map: (name, expr) =>
-        name -> Lazy(expr.eval(myScope))
+        name -> Lazy(expr.eval(using myScope))
       .toMap // memoize Lazy
       .view
       // Evaluate lazily (Lazy evaluates only once)

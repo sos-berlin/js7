@@ -14,8 +14,8 @@ import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, Objec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
-import org.scalatest.Assertions.assert
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
+import scala.annotation.unused
 import scala.collection.MapView
 import scala.language.implicitConversions
 
@@ -68,7 +68,7 @@ final class ExpressionTest extends OurTestSuite:
           case _ =>
             None
 
-      override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
+      override def evalFunctionCall(functionCall: FunctionCall)(using Scope) =
         functionCall match
           case FunctionCall("myFunction", Some(Seq(Argument(expr, None)))) =>
             Some(
@@ -79,7 +79,7 @@ final class ExpressionTest extends OurTestSuite:
 
           case _ => None
 
-      override def evalJobResourceVariable(v: JobResourceVariable)(implicit scope: Scope) =
+      override def evalJobResourceVariable(v: JobResourceVariable)(using @unused scope: Scope) =
         v match
           case JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE")) =>
             Some(Right(StringValue("myJobResource,VARIABLE,value")))

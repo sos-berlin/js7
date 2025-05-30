@@ -85,8 +85,8 @@ final class TimestampTest extends OurTestSuite:
   if sys.props contains "test.speed" then
   "JSON String/Number speed comparision" in:
     val n = 100000
-    run("milliseconds")(Timestamp.implementation.NumericTimestampJsonEncoder, Timestamp.jsonDecoder)
-    run("ISO string  ")(Timestamp.implementation.StringTimestampJsonEncoder, Timestamp.jsonDecoder)
+    run("milliseconds")(using Timestamp.implementation.NumericTimestampJsonEncoder, Timestamp.jsonDecoder)
+    run("ISO string  ")(using Timestamp.implementation.StringTimestampJsonEncoder, Timestamp.jsonDecoder)
 
     def run(what: String)(implicit encoder: Encoder[Timestamp], decoder: Decoder[Timestamp]) =
       for i <- 1 to 100000 do Timestamp.ofEpochMilli(i).asJson.as[Timestamp].orThrow  // Warm-up

@@ -132,7 +132,7 @@ object TestAddOrders:
       Pekkos.actorSystemResource("TestAddOrders", config)
         .flatMap: actorSystem =>
           ControllerApi.resource(
-            admissionsToApiResource(settings.admissions)(actorSystem),
+            admissionsToApiResource(settings.admissions)(using actorSystem),
             ProxyConfs.fromConfig(config))
         .use: controllerApi =>
           val testAddOrders = new TestAddOrders(controllerApi, settings)

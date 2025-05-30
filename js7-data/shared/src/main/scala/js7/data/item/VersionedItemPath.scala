@@ -6,7 +6,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.item.VersionedItemPath.*
-import scala.reflect.ClassTag
 
 trait VersionedItemPath extends InventoryItemPath:
   def companion: Companion[? <: VersionedItemPath]
@@ -44,7 +43,7 @@ object VersionedItemPath:
     def ~(v: VersionId): VersionedItemId[P] =
       VersionedItemId(underlying, v)
 
-  abstract class Companion[P <: VersionedItemPath: ClassTag]
+  abstract class Companion[P <: VersionedItemPath]
   extends InventoryItemPath.Companion[P]:
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked("⊥")

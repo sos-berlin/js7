@@ -21,7 +21,7 @@ final class TypedJsonCodecTest extends OurTestSuite:
 
   "encode unknown subclass" in:
     intercept[UnknownClassForJsonException] {
-      (NotRegistered(1): A).asJson(AJsonCodec)
+      (NotRegistered(1): A).asJson(using AJsonCodec)
     }.getMessage should include (
       "Class 'TypedJsonCodecTest.NotRegistered' is not registered in " +
         "js7.base.circeutils.typed.TypedJsonCodecTest.AJsonCodec: " +

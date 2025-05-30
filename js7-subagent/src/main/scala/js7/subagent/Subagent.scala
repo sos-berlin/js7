@@ -245,7 +245,7 @@ object Subagent:
       directorRouteVariable = new DirectorRouteVariable
       webServer <- SubagentWebServer.resource(
         subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf
-        )(actorSystem, ioRuntime)
+        )(using actorSystem, ioRuntime)
       _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
       iox <- Resource.eval(environment[IOExecutor])

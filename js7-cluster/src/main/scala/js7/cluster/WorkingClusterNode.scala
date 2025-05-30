@@ -36,9 +36,7 @@ import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
   * WorkingClusterNode also starts ActiveClusterNodes after
   * the ClusterNodesAppointed event.
   */
-final class WorkingClusterNode[
-  S <: ClusterableState[S]: ClusterableState.Companion: Tag
-] private(
+final class WorkingClusterNode[S <: ClusterableState[S]] private(
   val failedNodeId: Option[NodeId],
   val journal: FileJournal[S],
   val journalActor: ActorRef @@ JournalActor.type,

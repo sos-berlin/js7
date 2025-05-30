@@ -94,7 +94,7 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
        |}
        |""".stripMargin
 
-  def programResource(using IORuntime): ResourceIO[RunningAgent] =
+  def programResource(using @unused u: IORuntime): ResourceIO[RunningAgent] =
     directorResource
 
   def directorResource: ResourceIO[RunningAgent] =

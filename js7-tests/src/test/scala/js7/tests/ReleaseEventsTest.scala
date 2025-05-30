@@ -68,7 +68,9 @@ final class ReleaseEventsTest extends OurTestSuite, DirectoryProviderForScalaTes
     assertControllerJournalFileCount(2)
     assert(agentJournalFiles.size == 2)
 
-    directoryProvider.run { case (controller, Seq(agent)) =>
+    directoryProvider.run { (controller, agents) =>
+      assert(agents.size == 1)
+      val agent = agents.head
       import controller.eventWatch.{lastFileEventId, tornEventId}
 
       val finished = controller.eventWatch.await[OrderFinished](predicate = _.key == aOrder.id)

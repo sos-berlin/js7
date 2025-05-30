@@ -159,7 +159,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
           .traverse { case (name, expr) =>
             for
               scope <- state.toImpureOrderExecutingScope(childOrder, now)
-              value <- expr.eval(scope)
+              value <- expr.eval(using scope)
             yield name -> value
           })
 

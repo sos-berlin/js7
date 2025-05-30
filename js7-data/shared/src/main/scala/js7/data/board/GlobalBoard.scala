@@ -48,7 +48,7 @@ extends
     for
       // Does this Scope make sense??? It differs from scope in expectingOrderToNoticeId.
       scope <- state.toImpureOrderExecutingScope(order, now)
-      noticeKey <- postOrderToNoticeKey.evalAsString(scope)
+      noticeKey <- postOrderToNoticeKey.evalAsString(using scope)
       plannedNoticeKey <- GlobalNoticeKey.checked(noticeKey)
       notice <- toNotice(plannedNoticeKey)(scope)
     yield
@@ -58,14 +58,14 @@ extends
   : Checked[NoticeId] =
     for
       scope <- state.toOrderScope(order)
-      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
+      noticeKey <- expectOrderToNoticeKey.evalAsString(using scope)
       plannedNoticeKey <- GlobalNoticeKey.checked(noticeKey)
     yield
       path / plannedNoticeKey
 
   def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     endOfLife
-      .eval(scope)
+      .eval(using scope)
       .map(_.missingToNone)
       .flatMap(_.traverse(_.asLongIgnoreFraction))
       .map(_.map(Timestamp.ofEpochMilli))

@@ -258,7 +258,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
     "toSnapshot" in:
       given TypedJsonCodec[Any] =
         TypedJsonCodec(
-          Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
+          Subtype(UnsignedSimpleItemEvent.jsonCodec(using ControllerState)),
           Subtype[OrderWatchState.Snapshot])
 
       val snapshot = orderWatchState.toSnapshotStream.compile.toVector

@@ -53,7 +53,7 @@ object JOrderPredicates:
     val service = new InstructionExecutorService(WallClock.fixed(now.toTimestamp))
 
     order => new OrderObstacleCalculator(state.asScala)
-      .orderToObstacles(order.id)(service)
+      .orderToObstacles(order.id)(using service)
       .exists(_.exists(cls.isInstance(_)))
 
   @Nonnull

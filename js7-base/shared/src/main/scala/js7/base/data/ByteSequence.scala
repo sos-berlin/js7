@@ -281,7 +281,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     iterator(byteSeq).copyToArray(array, start, len)
 
   def toByteArray(byteSeq: ByteSeq): ByteArray =
-    toByteSequence(byteSeq)(ByteArray)
+    toByteSequence(byteSeq)(using ByteArray)
 
   def toByteSequence[A](byteSeq: ByteSeq)(implicit A: ByteSequence[A]): A =
     if A.asInstanceOf[ByteSequence[ByteSeq]] eq this then

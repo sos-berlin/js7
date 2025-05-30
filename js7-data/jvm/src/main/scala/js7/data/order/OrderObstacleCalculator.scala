@@ -29,7 +29,7 @@ final class OrderObstacleCalculator(val stateView: StateView):
     orderIds
       .toVector
       .traverse(orderId =>
-        orderToObstacles(orderId)(instructionService)
+        orderToObstacles(orderId)(using instructionService)
           .map(obstacles => orderId -> obstacles))
       .map(_
         .view

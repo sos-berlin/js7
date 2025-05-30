@@ -24,7 +24,7 @@ final class ConvertiblePartialFunctionTest extends OurTestSuite:
 
   "as X" in:
     case class X(s: String)
-    assert(convertible("KEY" -> "111").as[X]("KEY")(As(X(_))) == X("111"))
+    assert(convertible("KEY" -> "111").as[X]("KEY")(using As(X(_))) == X("111"))
 
   "checkedAs" in:
     assert(convertible[String, String]().checkedAs[Int]("KEY") == Left(MissingConfigurationKeyProblem("KEY")))

@@ -12,4 +12,4 @@ object ByteStrings:
 
     implicit final class ByteStringToByteSequence[A](private val byteSeq: A) extends AnyVal:
       def toByteString(implicit A: ByteSequence[A]): ByteString =
-        byteSeq.toByteSequence(byteStringByteSequence)
+        byteSeq.toByteSequence(using byteStringByteSequence)

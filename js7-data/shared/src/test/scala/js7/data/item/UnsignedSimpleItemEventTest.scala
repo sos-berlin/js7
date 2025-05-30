@@ -11,7 +11,7 @@ import js7.tester.CirceJsonTester.testJson
 final class UnsignedSimpleItemEventTest extends OurTestSuite:
 
   implicit private val jsonCodec: TypedJsonCodec[UnsignedSimpleItemEvent] =
-    UnsignedSimpleItemEvent.jsonCodec(ControllerState)
+    UnsignedSimpleItemEvent.jsonCodec(using ControllerState)
 
   "JSON" - {
     "UnsignedSimpleItemAdded" in:

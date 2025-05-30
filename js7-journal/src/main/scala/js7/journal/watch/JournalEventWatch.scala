@@ -76,7 +76,7 @@ extends AutoCloseable,
       .map(_._2.file.toFile)
       .map(file => Checked
         .catchNonFatal(
-          autoClosing(scala.io.Source.fromFile(file)(UTF_8))(_.getLines().next()))
+          autoClosing(scala.io.Source.fromFile(file)(using UTF_8))(_.getLines().next()))
         .flatMap(_.parseJsonAs[JournalHeader])
         .map(_.journalId)
         .mapProblem(Problem.pure(s"Invalid journal file '$file': ") |+| _)

@@ -32,7 +32,7 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
     catchExpected[Exception]:
       val zone = maybeTimezone.fold(ZoneId.systemDefault())(ZoneId.of)
-      this.toOffsetDateTime(zone).format(DateTimeFormatter.ofPattern(format))
+      this.toOffsetDateTime(using zone).format(DateTimeFormatter.ofPattern(format))
 
   def copy(epochMilli: Long): Timestamp =
     JavaTimestamp.ofEpochMilli(epochMilli)

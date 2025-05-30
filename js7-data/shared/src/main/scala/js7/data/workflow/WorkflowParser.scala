@@ -116,10 +116,10 @@ object WorkflowParser:
           else checkedToParser(CommandLineParser.parse(command)
             .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
         case ("script", script: Expression) =>
-          checkedToParser(script.evalAsString(Scope.empty)
+          checkedToParser(script.evalAsString(using Scope.empty)
             .map(string => ShellScriptExecutable(string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
         case ("internalJobClass", className: Expression) =>
-          checkedToParser(className.evalAsString(Scope.empty)
+          checkedToParser(className.evalAsString(using Scope.empty)
             .map(string => InternalExecutable(className = string,
               jobArguments = jobArguments.nameToExpr,
               arguments = arguments.nameToExpr)))
@@ -162,7 +162,7 @@ object WorkflowParser:
         ~ keyword("fail")
         ~ (w *> inParentheses(keyValues(
         keyValueConvert("namedValues", objectExpression)(o =>
-          o.evalAs(ObjectValue, Scope.empty).map(_.nameToValue)) |
+          o.evalAs(using ObjectValue, Scope.empty).map(_.nameToValue)) |
         keyValue("message", expression) |
         keyValue("uncatchable", booleanConstant)))).backtrack.?
         ~ hardEnd)

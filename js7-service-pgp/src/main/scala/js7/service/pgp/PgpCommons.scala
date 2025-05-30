@@ -44,7 +44,7 @@ object PgpCommons:
       " fingerprint=" + fingerPrintAsString(key)
 
   implicit val PGPPublicKeyShow: Show[PGPPublicKey] =
-    Show[PGPPublicKey]: key =>
+    Show[PGPPublicKey](using key => {
       import key.*
       f"PGPPublicKey($getKeyID%08X" +
         " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
@@ -54,20 +54,20 @@ object PgpCommons:
         " isEncryptionKey=" + isEncryptionKey +
         " isMasterKey=" + isMasterKey +
         ")"
+    })
 
   private def fingerPrintAsString(key: PGPPublicKey): String =
     Option(key.getFingerprint).fold(ByteArray.empty)(ByteArray(_)).toHexRaw
 
   implicit val PGPPublicKeyRingShow: Show[PGPPublicKeyRing] =
-    Show:
-      _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")")
+    Show(using _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
 
   implicit val PGPPublicKeyRingCollectionShow: Show[PGPPublicKeyRingCollection] =
-    Show[PGPPublicKeyRingCollection]:
-      _.asScala.toVector.mkString_("", ", ", "")
+    Show[PGPPublicKeyRingCollection](
+      using _.asScala.toVector.mkString_("", ", ", ""))
 
   implicit val PGPSecretKeyShow: Show[PGPSecretKey] =
-    Show: key =>
+    Show(using key => {
       import key.*
       "PGPSecretKey(" +
         getPublicKey.show +
@@ -75,17 +75,18 @@ object PgpCommons:
         " isSigningKey=" + isSigningKey +
         " isMasterKey=" + isMasterKey +
         ")"
+    })
 
   implicit val PGPSecretKeyRingShow: Show[PGPSecretKeyRing] =
-    Show: o =>
-      "PGPSecretKeyRing(" + o.getPublicKey.show + ")"
+    Show(using o =>
+      "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
 
   implicit val PGPSecretKeyRingCollectionShow: Show[PGPSecretKeyRingCollection] =
-    Show: o =>
-      f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})"
+    Show(using o =>
+      f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
 
   implicit val PGPSignatureShow: Show[PGPSignature] =
-    Show: sig =>
+    Show(using sig => {
       import sig.*
       "PGPSignature(" +
         signatureTypeToString(getSignatureType) +
@@ -95,6 +96,7 @@ object PgpCommons:
         //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
         f" publicKeyID=$getKeyID%08X" +
         ")"
+    })
 
   private def signatureTypeToString(t: Int) =
     t match

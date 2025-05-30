@@ -570,11 +570,10 @@ object ControllerStateExecutorTest:
         agentPath, InternalExecutable("UNKNOWN")))
 
 
-  private class Executor(var coll: EventColl[ControllerState, Event, TimeCtx])
-    (using IORuntime):
+  private class Executor(var coll: EventColl[ControllerState, Event, TimeCtx]):
     def controllerState = coll.aggregate
 
-    def this(controllerState: ControllerState = ControllerState.empty)(using IORuntime) =
+    def this(controllerState: ControllerState = ControllerState.empty) =
       this(EventColl(controllerState, timeCtx))
 
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)

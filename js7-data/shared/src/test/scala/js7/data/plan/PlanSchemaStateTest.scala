@@ -14,7 +14,6 @@ import js7.data.plan.PlanEvent.PlanOpened
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
 import js7.data.plan.PlanStatus.Open
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.exprFun
 
 final class PlanSchemaStateTest extends OurTestSuite:
@@ -44,7 +43,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
 
     val snapshots = planSchemaState.toSnapshotStream
       .map(_
-        .asJson(ControllerState.snapshotObjectJsonCodec)
+        .asJson(using ControllerState.snapshotObjectJsonCodec)
         .printWith(CompactPrinter))
       .map(s => io.circe.parser.parse(s).orThrow)
       .compile.toVector

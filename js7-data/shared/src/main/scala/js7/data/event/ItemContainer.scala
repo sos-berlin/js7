@@ -103,7 +103,7 @@ object ItemContainer:
     TypedJsonCodec[VersionedControl](versionedControls.map(_.subtype)*)
 
     implicit final lazy val basicItemEventJsonCodec: TypedJsonCodec[BasicItemEvent] =
-      BasicItemEvent.jsonCodec(this)
+      BasicItemEvent.jsonCodec(using this)
 
     implicit final lazy val delegateIdJsonCodec: Codec[DelegateId] =
       InventoryItemPath.jsonCodec(delegateIds)

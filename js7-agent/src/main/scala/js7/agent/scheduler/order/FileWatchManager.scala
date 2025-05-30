@@ -146,7 +146,7 @@ final class FileWatchManager(
   private def watch(fileWatchState: FileWatchState, stop: Signal[IO, Boolean]): Checked[IO[Unit]] =
     import fileWatchState.fileWatch
     fileWatch.directoryExpr
-      .evalAsString(EnvScope)
+      .evalAsString(using EnvScope)
       .flatMap: string =>
         catchNonFatal(Paths.get(string))
       .map: directory =>

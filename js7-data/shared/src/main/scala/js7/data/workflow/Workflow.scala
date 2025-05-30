@@ -27,7 +27,6 @@ import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, NoticeInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.*
-import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import scala.annotation.tailrec
 import scala.collection.View
@@ -205,7 +204,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
     workflowJobs.view.flatMap(_
       .subagentBundleId
       .flatMap(_
-        .evalAsString(Scope.empty)
+        .evalAsString(using Scope.empty)
         .flatMap(SubagentBundleId.checked)
         .toOption))
       .toSet

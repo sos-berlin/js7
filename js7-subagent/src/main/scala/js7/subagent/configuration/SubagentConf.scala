@@ -1,6 +1,5 @@
 package js7.subagent.configuration
 
-import cats.syntax.semigroup.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -140,10 +139,10 @@ object SubagentConf:
       configDirectory = configDirectory,
       dataDirectory = common.dataDirectory,
       workDirectory = common.workDirectory,
-      logDirectory = args.optionAs("--log-directory=")(asAbsolutePath)
-        .orElse(config.optionAs("js7.job.execution.log.directory")(asAbsolutePath))
+      logDirectory = args.optionAs("--log-directory=")(using asAbsolutePath)
+        .orElse(config.optionAs("js7.job.execution.log.directory")(using asAbsolutePath))
         .getOrElse(common.logDirectory),
-      jobWorkingDirectory = args.as("--job-working-directory=", WorkingDirectory)(asAbsolutePath),
+      jobWorkingDirectory = args.as("--job-working-directory=", WorkingDirectory)(using asAbsolutePath),
       common.webServerPorts,
       name = name,
       config)

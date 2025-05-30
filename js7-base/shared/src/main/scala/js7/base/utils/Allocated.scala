@@ -6,6 +6,7 @@ import cats.{:<:, Applicative}
 import izumi.reflect.Tag
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.utils.AutoClosing.autoClosing
+import scala.annotation.unused
 
 final class Allocated[F[_]: UnsafeMemoizable, +A](
   val allocatedThing: A,
@@ -30,7 +31,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
   def use[R](body: A => F[R])(using F: MonadCancel[F, ?]): F[R] =
     body(allocatedThing).guarantee(release)
 
-  def blockingUse[R](body: A => R)(using F :<: SyncIO): R =
+  def blockingUse[R](body: A => R)(using @unused u: F :<: SyncIO): R =
     val ac: AutoCloseable = () => release.asInstanceOf[SyncIO[Unit]].unsafeRunSync()
     autoClosing(ac)(_ => body(allocatedThing))
 

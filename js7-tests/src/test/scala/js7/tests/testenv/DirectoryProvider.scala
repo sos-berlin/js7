@@ -155,8 +155,8 @@ extends HasCloser:
   def controllerApiResource(runningController: RunningController): ResourceIO[ControllerApi] =
     ControllerApi.resource(
       admissionsToApiResource(
-        Nel.one(controllerAdmission(runningController)))(
-        runningController.actorSystem))
+        Nel.one(controllerAdmission(runningController))
+      )(using runningController.actorSystem))
 
   def controllerAdmission(runningController: RunningController): Admission =
     Admission(runningController.localUri, Some(controllerEnv.userAndPassword))
@@ -214,7 +214,6 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-    (using IORuntime)
   : ResourceIO[TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
@@ -299,20 +298,18 @@ extends HasCloser:
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-    (using IORuntime)
   : IO[Seq[TestAgent]] =
     agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
 
   def startAgent(
     agentPath: AgentPath,
     testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-    (using IORuntime)
   : IO[TestAgent] =
     TestAgent.start(
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startBareSubagents()(using IORuntime): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
+  def startBareSubagents(): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
         bareSubagentResource(subagentItem, config = agentConfig.withFallback(TestConfig))
@@ -350,7 +347,6 @@ extends HasCloser:
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-    (using IORuntime)
   : ResourceIO[DirectorEnv] =
     Resource
       .fromAutoCloseable(IO(
@@ -387,7 +383,6 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     testWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
-    (using IORuntime)
   : ResourceIO[Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
@@ -405,7 +400,6 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-    (using IORuntime)
   : ResourceIO[BareSubagentEnv] =
     Resource.fromAutoCloseable(IO:
       new BareSubagentEnv(

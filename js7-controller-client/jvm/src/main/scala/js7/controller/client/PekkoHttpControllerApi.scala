@@ -45,7 +45,7 @@ object PekkoHttpControllerApi:
     val myName = if name.nonEmpty then name else "PekkoHttpControllerApi"
     for
       actorSystem <- actorSystemResource(name = myName, config)
-      api <- resource(admission, httpsConfig, name = myName)(actorSystem)
+      api <- resource(admission, httpsConfig, name = myName)(using actorSystem)
     yield api
 
   def admissionsToApiResource(

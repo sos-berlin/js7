@@ -49,7 +49,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
     runningController.conf
 
   private val apiLazy = Lazy(new ControllerApi(
-    admissionsToApiResource(Nel.one(admission))(actorSystem),
+    admissionsToApiResource(Nel.one(admission))(using actorSystem),
     failWhenUnreachable = true))
 
   implicit lazy val api: ControllerApi =

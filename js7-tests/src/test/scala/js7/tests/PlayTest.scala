@@ -45,7 +45,7 @@ final class PlayTest extends OurTestSuite, ControllerAgentForScalaTest:
       expectedOutcomes = Nil)
 
   private def toWorkflow(json: Json): Workflow =
-    json.as(Workflow.topJsonDecoder).toChecked.orThrow
+    json.as(using Workflow.topJsonDecoder).toChecked.orThrow
 
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,

@@ -6,7 +6,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.item.VersionedControlPath.*
-import scala.reflect.ClassTag
 
 trait VersionedControlPath extends UnsignedItemPath:
   def companion: Companion[? <: VersionedControlPath]
@@ -33,7 +32,7 @@ object VersionedControlPath:
     def ~(v: VersionId): UnsignedVersionedItemId[P] =
       UnsignedVersionedItemId(underlying, v)
 
-  abstract class Companion[P <: VersionedControlPath: ClassTag]
+  abstract class Companion[P <: VersionedControlPath]
   extends UnsignedItemPath.Companion[P]:
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     implicit override final val self: Companion[P] = this

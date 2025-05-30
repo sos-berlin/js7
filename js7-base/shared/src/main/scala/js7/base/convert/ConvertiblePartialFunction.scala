@@ -12,31 +12,32 @@ import js7.base.problem.{Checked, Problem}
   */
 trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
 
-  def as[W](key: K)(implicit convert: As[V, W]): W =
+  def as[W](key: K)(using convert: As[V, W]): W =
     wrappedConvert(convert.apply, renderKey(key))(apply(key))
 
-  def as[W](key: K, default: => W)(implicit convert: As[V, W]): W =
+  def as[W](key: K, default: => W)(using convert: As[V, W]): W =
     optionAs[W](key) getOrElse default
 
-  def checkedAs[W](key: K)(implicit convert: As[V, W]): Checked[W] =
+  def checkedAs[W](key: K)(using convert: As[V, W]): Checked[W] =
     checkedAs[W](key, None)
 
-  def checkedAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Checked[W] =
+  def checkedAs[W](key: K, default: => Option[W])(using convert: As[V, W]): Checked[W] =
     optionAs[W](key, default).toChecked(MissingConfigurationKeyProblem(key.toString))
 
-  def checkedOptionAs[W](key: K)(implicit convert: As[V, W]): Checked[Option[W]] =
+  def checkedOptionAs[W](key: K)(using convert: As[V, W]): Checked[Option[W]] =
     Right(lift(key) map wrappedConvert(convert.apply, renderKey(key)))
 
-  def optionAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Option[W] =
-    optionAs(key)(convert) orElse default
+  def optionAs[W](key: K, default: => Option[W])(using convert: As[V, W]): Option[W] =
+    optionAs(key)(using convert) orElse default
 
-  def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =
+  def optionAs[W](key: K)(using convert: As[V, W]): Option[W] =
     lift(key) map wrappedConvert(convert.apply, renderKey(key))
 
   protected def renderKey(key: K) = s"key '$key'"
 
 
 object ConvertiblePartialFunction:
+  
   final case class MissingConfigurationKeyProblem(key: String) extends Problem.Coded:
     def arguments: Map[String, String] =
       Map(

@@ -67,7 +67,7 @@ object OurIORuntime:
       if isTestParallel then
         2 // Leave room for some other concurrently running tests and nodes running in this JVM
       else
-        2 max config.as("js7.thread-pools.compute.threads")(ThreadCount)
+        2 max config.as("js7.thread-pools.compute.threads")(using ThreadCount)
     val resource = resource2[F](indexedLabel, threads = myThreads, shutdownHooks, computeExecutor)
     Resource.defer:
       // Do not log for the initial IORuntime, before logging has been initialized.

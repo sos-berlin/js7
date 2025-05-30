@@ -72,7 +72,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       scope <- state.toOrderScope(order)
       job <- state.workflowJob(order.workflowPosition)
       maybeSubagentBundleId <- job.subagentBundleId.traverse(_
-        .evalAsString(scope)
+        .evalAsString(using scope)
         .flatMap(SubagentBundleId.checked))
       maybeSubagentBundle <- maybeSubagentBundleId
         .traverse(o => state

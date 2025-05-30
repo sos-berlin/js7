@@ -25,7 +25,7 @@ extends EventInstructionExecutor:
       order.ifState[Order.Ready].map: order =>
         for
           scope <- state.toImpureOrderExecutingScope(order, clock.now())
-          value <- instr.duration.eval(scope).map(_.missingTo(NumberValue.Zero))
+          value <- instr.duration.eval(using scope).map(_.missingTo(NumberValue.Zero))
           number <- value.toNumberValue
           duration = bigDecimalSecondsToDuration(number.number)
         yield

@@ -285,7 +285,9 @@ private[launcher] object WindowsProcess:
     process.getOutputStream.close()  // stdin
     val lines =
       val commandCodec = new Codec(Charset.forName("cp850"))  // 850 contains all characters of ISO-8859-1
-      try autoClosing(process.getInputStream) { in => scala.io.Source.fromInputStream(in)(commandCodec).getLines().toVector }
+      try
+        autoClosing(process.getInputStream): in =>
+          scala.io.Source.fromInputStream(in)(using commandCodec).getLines().toVector
       catch case NonFatal(t) =>
         Vector(s"error message not readable: $t")
     val returnCode = process.waitFor()

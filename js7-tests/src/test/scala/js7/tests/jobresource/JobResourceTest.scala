@@ -160,7 +160,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       logger.info(stdouterr.trim)
       val dateTime = scheduledFor
-        .toOffsetDateTime(ZoneId.systemDefault())
+        .toOffsetDateTime(using ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
       assert(stdouterr.contains(s"JS7_SCHEDULED_DATE=/$dateTime/$nl"))
       assert(stdouterr.contains(s"JS7_SCHEDULED_YEAR=/2021/$nl"))

@@ -23,10 +23,10 @@ extends SubagentApi, SessionApi.Dummy:
   def eventStream[E <: Event : ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId)
-    (implicit kd: Decoder[KeyedEvent[E]])
+    (using Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    IO.pure(
-      subagent.journal.eventWatch.stream(request))
+    IO.pure:
+      subagent.journal.eventWatch.stream(request)
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =

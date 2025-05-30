@@ -126,7 +126,7 @@ final class FileValueScopeTest extends OurTestSuite:
 
   private def toFile(fileValueScope: FileValueScope, args: Seq[String]): Checked[Path] =
     Expression.FunctionCall(functionName, Some(args.map(a => Argument(StringConstant(a)))))
-      .evalAsString(fileValueScope)
+      .evalAsString(using fileValueScope)
       .map(Paths.get(_))
 
   private def check(body: FileValueScope => Unit): Unit =

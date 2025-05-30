@@ -60,7 +60,7 @@ final case class ExprFunction(
     else
       val argScope = NamedValueScope.simple:
         parameters.view.map(_.name).zip(arguments).toMap
-      expression.eval(argScope |+| scope)
+      expression.eval(using argScope |+| scope)
 
   override def toString =
     parameters.match

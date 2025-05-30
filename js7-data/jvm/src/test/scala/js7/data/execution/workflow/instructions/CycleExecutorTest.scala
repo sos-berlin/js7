@@ -274,7 +274,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     : Seq[Timestamp] =
       val clock = TestWallClock(timeInterval.start)
       val stepper = new Stepper(
-        OrderId("#" + timeInterval.start.toLocalDateTime(zone).toLocalDate + "#"),
+        OrderId("#" + timeInterval.start.toLocalDateTime(using zone).toLocalDate + "#"),
         Workflow(
           workflowId,
           Seq(

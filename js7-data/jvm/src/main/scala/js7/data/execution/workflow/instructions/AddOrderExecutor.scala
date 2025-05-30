@@ -31,8 +31,8 @@ extends EventInstructionExecutor:
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
               planId <- addOrder.planId.fold_(Checked(order.planId), PlanId.evalPlanIdExpr(_, scope))
-              addedOrderId <- addOrder.orderId.evalAsString:
-                scope |+| UniqueOrderIdScope(controllerState.idToOrder.keySet)
+              addedOrderId <- addOrder.orderId.evalAsString(
+                using scope |+| UniqueOrderIdScope(controllerState.idToOrder.keySet))
               addedOrderId <- OrderId.checked(addedOrderId)
               args <- evalExpressionMap(addOrder.arguments, scope)
               //computedPlanId <- controllerState.evalOrderToPlanId(Order.fromOrderAdded(addedOrderId, orderAdded))

@@ -318,7 +318,7 @@ object CirceUtils:
           anyToJson(arg, unknownToString = true).toString
 
   def reparseJson[A](a: A, codec: Codec[A]): Either[circe.Error, A] =
-    reparseJson(a)(codec, codec)
+    reparseJson(a)(using codec, codec)
 
   def reparseJson[A](a: A)(implicit decoder: Decoder[A], encoder: Encoder[A])
   : Either[circe.Error, A] =

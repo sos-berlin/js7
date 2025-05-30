@@ -32,7 +32,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       branchId <-
         instruction.ifThens.view
           .scanLeft(Checked(false) -> 0):
-            case ((_, i), ifThen) => ifThen.predicate.evalAsBoolean(scope) -> (i + 1)
+            case ((_, i), ifThen) => ifThen.predicate.evalAsBoolean(using scope) -> (i + 1)
           .appended:
             Right(true) -> instruction.elseBlock.fold(-1)(_ => 0)
           .takeThrough: o => // Skip false predicates

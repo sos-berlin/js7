@@ -75,7 +75,7 @@ object Futures:
         val callersStackTrace = new Exception().getStackTrace
         delegate.recoverWith {
           case t => Future.failed[A](t.appendStackTrace(callersStackTrace))
-        } (SynchronousExecutionContext)
+        } (using SynchronousExecutionContext)
 
       /**
         * Awaits the futures completion for the duration or infinite.
@@ -119,14 +119,14 @@ object Futures:
           case None => awaitInfinite
 
       def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]], MA: Tag[M[A]]): M[A] =
-        Future.sequence(future)(cbf, ec).await(duration)
+        Future.sequence(future)(using cbf, ec).await(duration)
 
       def awaitInfinite(using
         ec: ExecutionContext,
         bf: BuildFrom[M[Future[A]], A, M[A]],
-        A: Tag[M[A]], src: sourcecode.Enclosing, file: sourcecode.File, line: sourcecode.Line)
+        A: Tag[M[A]], src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : M[A] =
-        Future.sequence(future)(bf, ec).awaitInfinite
+        Future.sequence(future)(using bf, ec).awaitInfinite
 
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal:
       def successValue: A = delegate.future.successValue

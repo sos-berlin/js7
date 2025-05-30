@@ -15,7 +15,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 final class BasicItemEventTest extends OurTestSuite:
 
   implicit private val jsonCodec: TypedJsonCodec[BasicItemEvent] =
-    BasicItemEvent.jsonCodec(ControllerState)
+    BasicItemEvent.jsonCodec(using ControllerState)
 
   "JSON" - {
     "ItemDeletionMarked" in:

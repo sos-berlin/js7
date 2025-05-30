@@ -3,12 +3,10 @@ package js7.provider
 import cats.Show
 import cats.effect.IO
 import cats.effect.Resource.ExitCase
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.nio.file.StandardWatchEventKinds.*
 import java.nio.file.{Path, WatchEvent}
 import js7.base.log.Logger
-import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -20,7 +18,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcher(directory: Path, timeout: Duration)(using IORuntime)
+final class DirectoryWatcher(directory: Path, timeout: Duration)
 extends AutoCloseable:
 
   private val watchService = directory.getFileSystem.newWatchService()

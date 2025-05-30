@@ -52,7 +52,7 @@ object VersionedItemId:
   val VersionSeparator = "~"  // Can be used in an Pekko actor name
 
   // TODO Use this implicit convertion only for tests
-  implicit def pathToItemId[P <: VersionedItemPath: VersionedItemPath.Companion](path: P): VersionedItemId[P] =
+  implicit def pathToItemId[P <: VersionedItemPath](path: P): VersionedItemId[P] =
     VersionedItemId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: VersionedItemPath]: Ordering[VersionedItemId[P]] =

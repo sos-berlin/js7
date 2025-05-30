@@ -4,7 +4,6 @@ import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.Decoder
 import js7.base.auth.Admission
-import js7.base.data.ByteArray
 import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -61,7 +60,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     eventStream(request, subagentRunId, heartbeat = None)
 
-  def eventStream[E <: Event: ClassTag](
+  def eventStream[E <: Event](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
     heartbeat: Option[FiniteDuration] = None,

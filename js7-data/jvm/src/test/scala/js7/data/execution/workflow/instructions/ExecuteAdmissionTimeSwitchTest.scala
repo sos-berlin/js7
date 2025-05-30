@@ -99,7 +99,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
       WeekdayPeriod(SUNDAY, LocalTime.of(23, 0), 3.h)))  // Until Monday 2:00
 
     val tester = new Tester(admissionTimeScheme)
-    assert(local("2021-03-22T00:00").toLocalDateTime(zone).getDayOfWeek == MONDAY)
+    assert(local("2021-03-22T00:00").toLocalDateTime(using zone).getDayOfWeek == MONDAY)
 
     tester.check(local("2021-03-22T00:00"), // Monday
       switched = Some(TimeInterval(local("2021-03-21T23:00"), 3.h)),

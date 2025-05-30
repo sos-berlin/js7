@@ -88,7 +88,7 @@ object BlockingInternalJob:
       finally for o <- errLazy do o.close()
 
     def evalExpression(expression: JExpression): VEither[Problem, Value] =
-      expression.asScala.eval(asScala.processOrder.scope)
+      expression.asScala.eval(using asScala.processOrder.scope)
         .toVavr
 
     def jobResourceToNameToCheckedValue: JMap[JobResourcePath, JMap[String, VEither[Problem, Value]]] =

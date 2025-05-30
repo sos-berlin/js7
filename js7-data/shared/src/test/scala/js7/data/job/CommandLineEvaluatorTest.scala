@@ -46,7 +46,7 @@ final class CommandLineEvaluatorTest extends OurTestSuite:
 
   private val commandLineEvaluator =
     new CommandLineEvaluator()(
-      new Scope {
+      using new Scope {
         override val nameToCheckedValue =
           MapView(
             "NAME" -> Right(StringValue("MY NAME")),

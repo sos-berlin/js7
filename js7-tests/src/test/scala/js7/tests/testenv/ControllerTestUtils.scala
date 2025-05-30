@@ -11,7 +11,7 @@ object ControllerTestUtils:
   def newControllerApi(controller: TestController, userAndPassword: Option[UserAndPassword] = None) =
     new ControllerApi(
       admissionsToApiResource(Nel.one(Admission(controller.localUri, userAndPassword)))(
-        controller.actorSystem))
+        using controller.actorSystem))
 
   object syntax:
     @TestOnly

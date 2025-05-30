@@ -5,6 +5,7 @@ import fs2.Chunk
 import java.nio.ByteBuffer
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
+import scala.annotation.unused
 
 object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
 
@@ -20,7 +21,7 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
   def unsafeWrap(bytes: Array[Byte]): Chunk[Byte] =
     Chunk.array(bytes)
 
-  override def isEmpty(chunk: Chunk[Byte])(implicit ev: Eq[Chunk[Byte]]): Boolean =
+  override def isEmpty(chunk: Chunk[Byte])(using @unused Eq: Eq[Chunk[Byte]]): Boolean =
     chunk.isEmpty
 
   def length(chunk: Chunk[Byte]): Int =

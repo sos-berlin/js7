@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TestScheduler.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import scala.annotation.unused
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
@@ -47,7 +48,7 @@ private final class TestScheduler(start: Timestamp = DefaultStartTimestamp)
   def now(): Timestamp =
     Timestamp.ofEpochMilli(nowMillis())
 
-  def lock[A](body: => A)(using NotGiven[A <:< IO[?]]): A =
+  def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
     synchronized(body)
 
   /** Reset the wall clock but not the monotonic clock (move the clock hands). */

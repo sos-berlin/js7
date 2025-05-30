@@ -39,7 +39,7 @@ sealed trait CorrelId extends GenericString:
 
   /** For a synchronous non-Unit executable body only, uses `CanBindLocals.synchronous`. */
   def bindNow[R](body: => R): R =
-    bind(body)(CanBindCorrelId.synchronous)
+    bind(body)(using CanBindCorrelId.synchronous)
 
   def fold[A](whenEmpty: => A, whenNonEmpty: CorrelId => A): A =
     if isEmpty then whenEmpty

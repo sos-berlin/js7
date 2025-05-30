@@ -25,8 +25,8 @@ trait ConvertibleMultiPartialFunction[K, V]:
       if iterator.hasNext then throwNotUnique(key)
       result
 
-  def optionAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Option[W] =
-    optionAs(key)(convert) orElse default
+  def optionAs[W](key: K, default: => Option[W])(using convert: As[V, W]): Option[W] =
+    optionAs(key)(using convert) orElse default
 
   def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =
     seqAs(key) match

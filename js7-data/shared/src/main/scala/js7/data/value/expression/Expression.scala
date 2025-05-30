@@ -22,6 +22,7 @@ import js7.data.value.{BooleanValue, FunctionValue, GoodValue, ListValue, Missin
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
+import scala.annotation.unused
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 import scala.math.Ordered.orderingToOrdered
@@ -105,7 +106,7 @@ object Expression:
     final def subexpressions: Iterable[Expression] = Nil
     def toValue: Value
 
-    final def evalRaw(using scope: Scope): Checked[Value] =
+    final def evalRaw(using @unused scope: Scope): Checked[Value] =
       Right(toValue)
 
   sealed trait SimpleValueExpr extends Expression
@@ -457,7 +458,7 @@ object Expression:
     val empty: ObjectExpr = ObjectExpr(Map.empty)
 
     implicit val objectExpressionIsEmpty: IsEmpty[ObjectExpr] =
-      IsEmpty[ObjectExpr](_.isEmpty)
+      IsEmpty[ObjectExpr](using _.isEmpty)
 
     implicit val jsonEncoder: Encoder.AsObject[ObjectExpr] =
       o => JsonObject.fromIterable(o.nameToExpr.view.mapValues(_.asJson).toSeq)
@@ -470,7 +471,7 @@ object Expression:
   extends Expression.IsPureIfSubexpressionsArePure:
     def subexpressions: Iterable[Expression] = function.expression :: Nil
 
-    protected def evalRaw(using scope: Scope) =
+    protected def evalRaw(using @unused scope: Scope) =
       Right(FunctionValue(function))
 
     protected def precedence = Precedence.Function
@@ -483,7 +484,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = expression :: Nil
 
-    protected def evalRaw(using scope: Scope) =
+    protected def evalRaw(using @unused scope: Scope) =
       expression.eval.flatMap(_.toNumberValue)
 
     override def toString = s"toNumber($expression)"
@@ -494,7 +495,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = expression :: Nil
 
-    protected def evalRaw(using scope: Scope) =
+    protected def evalRaw(using @unused scope: Scope) =
       expression.eval.flatMap(_.toBooleanValue)
 
     override def toString = s"toBoolean($expression)"
@@ -891,7 +892,7 @@ object Expression:
   final class ImpureTest(eval: () => Checked[Value]) extends IsImpure:
     def precedence: Int = Precedence.Highest
     def subexpressions: Iterable[Expression] = Nil
-    protected def evalRaw(using scope: Scope) = eval()
+    protected def evalRaw(using @unused scope: Scope) = eval()
 
   private def unexpectedType(t: ValueType, v: Value): Checked[Value] =
     v match

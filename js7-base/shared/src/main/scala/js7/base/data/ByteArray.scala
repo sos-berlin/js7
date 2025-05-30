@@ -10,6 +10,7 @@ import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
+import scala.annotation.unused
 import scala.collection.mutable
 
 final class ByteArray private(val unsafeArray: Array[Byte]):
@@ -88,7 +89,7 @@ object ByteArray extends ByteSequence[ByteArray]:
   override def apply(string: String): ByteArray =
     super.apply(string)
 
-  override def isEmpty(byteArray: ByteArray)(implicit ev: Eq[ByteArray]): Boolean =
+  override def isEmpty(byteArray: ByteArray)(using @unused Eq: Eq[ByteArray]): Boolean =
     byteArray.isEmpty
 
   def eqv(a: ByteArray, b: ByteArray): Boolean =

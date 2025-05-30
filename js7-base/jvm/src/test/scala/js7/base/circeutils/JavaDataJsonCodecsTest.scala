@@ -24,8 +24,8 @@ final class JavaDataJsonCodecsTest extends OurTestSuite:
     "String/Number speed comparision" in:
       val millis = Instant.parse("2015-06-09T12:22:33.987Z").toEpochMilli
       val n = 100000
-      run("milliseconds")(NumericInstantEncoder, InstantDecoder)
-      run("ISO string  ")(StringInstantEncoder, InstantDecoder)
+      run("milliseconds")(using NumericInstantEncoder, InstantDecoder)
+      run("ISO string  ")(using StringInstantEncoder, InstantDecoder)
 
       def run(what: String)(implicit instantJsonCodec: Encoder[Instant], decoder: Decoder[Instant]) =
         for i <- 1 to 100000 do Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up

@@ -495,7 +495,7 @@ extends Service.StoppableByRequest:
       AgentClient(
         Admission(uri, agentUserAndPassword),
         label = agentPath.toString,
-        controllerConfiguration.httpsConfig)(actorSystem)
+        controllerConfiguration.httpsConfig)(using actorSystem)
     })
 
   private def maybeAgentRunId: IO[Option[AgentRunId]] =

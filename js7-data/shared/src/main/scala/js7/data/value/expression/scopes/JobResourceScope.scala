@@ -10,6 +10,7 @@ import js7.data.value.ValueType.UnknownNameInExpressionProblem
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ObjectValue, Value}
+import scala.annotation.unused
 
 final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
@@ -17,13 +18,13 @@ final class JobResourceScope(
 extends Scope:
 
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
-    (implicit fullScope: Scope)
+    (using @unused fullScope: Scope)
   : Option[Checked[Value]] =
     // fullScope is the complete scope, maybe containing order variables,
     // which should not be accessible for a JobResource, to avoid name clash and
     // unexpected depedency to the order.
     // Maybe prefer useScope (via constructor) over fullscope (via function call) in all cases ???
-    evalJobResourceVariable2(v)(useScope)  // escape implicit fullScope
+    evalJobResourceVariable2(v)(using useScope)  // escape implicit fullScope
 
   private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
     Some(jobResourceVariable(v.jobResourcePath, v.name))

@@ -160,7 +160,7 @@ object Feed:
     Pekkos.actorSystemResource("Feed")
       .flatMap: actorSystem =>
         ControllerApi.resource:
-          admissionsToApiResource(conf.admissions)(actorSystem)
+          admissionsToApiResource(conf.admissions)(using actorSystem)
       .use: controllerApi =>
         Feed(controllerApi, conf).run(in)
 

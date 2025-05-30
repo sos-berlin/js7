@@ -269,7 +269,7 @@ extends JJournaledState[JControllerState, ControllerState]:
     val service = new InstructionExecutorService(
       WallClock.fixed(now.toTimestamp))
     orderObstacleCalculator
-      .orderToObstacles(orderId)(service)
+      .orderToObstacles(orderId)(using service)
       .map(_.map(JOrderObstacle(_)).asJava)
       .toVavr
 

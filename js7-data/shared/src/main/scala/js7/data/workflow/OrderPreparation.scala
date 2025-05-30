@@ -19,7 +19,7 @@ object OrderPreparation:
   val default: OrderPreparation = OrderPreparation(OrderParameterList.default)
 
   implicit val orderPreparationIsEmpty: IsEmpty[OrderPreparation] =
-    IsEmpty(_.isEmpty)
+    IsEmpty(using _.isEmpty)
 
   implicit val jsonEncoder: Encoder.AsObject[OrderPreparation] =
     o => JsonObject(

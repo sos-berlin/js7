@@ -84,7 +84,7 @@ trait EventWatch:
   def awaitAsync[E <: Event](
     eventRequest: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   @TestOnly
@@ -92,7 +92,7 @@ trait EventWatch:
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   def lastAddedEventId: EventId

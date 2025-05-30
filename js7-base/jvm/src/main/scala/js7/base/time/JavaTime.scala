@@ -146,5 +146,5 @@ object JavaTime:
       Checked.catchExpected[RuntimeException](ZoneId.of(timeZone.string))
 
   implicit val JavaUtilDateShow: Show[Date] =
-    Show[java.util.Date](o =>
+    Show[java.util.Date](using o =>
       JavaTimestamp(o).show)

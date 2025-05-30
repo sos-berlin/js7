@@ -44,7 +44,6 @@ object MonixLikeExtensions:
       Deadline(scheduler.monotonicNanos().ns)
 
     def scheduleOnce(after: FiniteDuration)(callback: => Unit)
-      (using sourcecode.FullName)
     : SyncCancelable =
       SyncCancelable:
         scheduler.sleep(after max ZeroDuration, () => callback)
@@ -204,8 +203,8 @@ object MonixLikeExtensions:
         .map(_.flatten)
         .map(_.getOrElse(throw new NoSuchElementException(".lastL on empty stream")))
 
-    def toListL(using fs2.Compiler[F, F], Functor[F]): F[List[A]] =
+    def toListL(using fs2.Compiler[F, F]): F[List[A]] =
       stream.compile.toList
 
-    def completedL(using fs2.Compiler[F, F], Functor[F]): F[Unit] =
+    def completedL(using fs2.Compiler[F, F]): F[Unit] =
       stream.compile.drain

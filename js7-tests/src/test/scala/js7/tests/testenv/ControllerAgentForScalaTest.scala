@@ -84,7 +84,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   protected final def orderToObstacles(orderId: OrderId)(implicit clock: WallClock)
   : Checked[Set[OrderObstacle]] =
     val service = new InstructionExecutorService(clock)
-    orderObstacleCalculator.orderToObstacles(orderId)(service)
+    orderObstacleCalculator.orderToObstacles(orderId)(using service)
 
   protected final def orderObstacleCalculator: OrderObstacleCalculator =
     new OrderObstacleCalculator(controllerState)

@@ -61,7 +61,7 @@ extends OrderWatch:
       val scope = FileWatchScope(path, matcher) |+| EnvScope |+| NowScope(now)
       (orderExpr, orderIdExpression) match
         case (Some(orderExpr), None) =>
-          orderExpr.evalAs(ObjectValue, scope).flatMap: obj =>
+          orderExpr.evalAs(using ObjectValue, scope).flatMap: obj =>
             for
               orderId <- obj.nameToValue.get("orderId").fold(checkedDefaultOrderId):
                 _.asString.flatMap(OrderId.checked)
@@ -80,7 +80,9 @@ extends OrderWatch:
 
         case (None, Some(legacyOrderIdExpr)) =>
           legacyOrderId.map(orderId => Checked(orderId -> PlanId.Global)).getOrElse:
-            legacyOrderIdExpr.evalAsString(scope).flatMap(OrderId.checked).map(_ -> PlanId.Global)
+            legacyOrderIdExpr.evalAsString(using scope)
+              .flatMap(OrderId.checked)
+              .map(_ -> PlanId.Global)
 
         case (None, None) =>
           checkedDefaultOrderId.map(_ -> PlanId.Global)

@@ -32,7 +32,7 @@ object InventoryItemPath:
   
   given Ordering[InventoryItemPath] = GenericString.ordering
 
-  abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]:
+  abstract class Companion[P <: InventoryItemPath] extends Js7PathValidating[P]:
     private lazy val itemTypeName_ =
       if name.endsWith("Path")
       then name.stripSuffix("Path")

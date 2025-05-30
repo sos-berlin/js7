@@ -29,7 +29,7 @@ object StandardDirectives:
     * treating encoded slashes (%2F) like unencoded ones.
     * "a/b" ~ "a%2Fb"
     */
-  def remainingItemPath[P <: VersionedItemPath: VersionedItemPath.Companion: CheckedString]: PathMatcher1[P] =
+  def remainingItemPath[P <: VersionedItemPath: CheckedString]: PathMatcher1[P] =
     new PathMatcher1[P]:
       def apply(path: Path) =
         uriPathToCheckedString[P](path) match

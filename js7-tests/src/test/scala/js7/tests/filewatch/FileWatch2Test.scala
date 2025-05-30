@@ -199,8 +199,8 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           val client = AgentClient(
             Admission(
               aAgent.localUri,
-              directoryProvider.agentEnvs.head.controllerUserAndPassword))(
-            aAgent.actorSystem)
+              directoryProvider.agentEnvs.head.controllerUserAndPassword)
+          )(using aAgent.actorSystem)
           checkAgentEvents(client)
         }
       }

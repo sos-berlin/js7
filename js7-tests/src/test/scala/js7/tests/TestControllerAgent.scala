@@ -223,7 +223,8 @@ object TestControllerAgent extends OurApp:
           workflowLength = a.as[Int]("--jobs-per-agent=", 1),
           tasksPerJob = a.as[Int]("--tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[FiniteDuration]("--job-duration=", 0.s),
-          stdoutSize = a.as("--stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
+          stdoutSize = a.as("--stdout-size=", StdoutRowSize)(using o =>
+            DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
           period = a.as[FiniteDuration]("--period=", 1.s),
           orderGeneratorCount = a.as[Int]("--orders=", 1))
         if a.boolean("-?") || a.boolean("--help") then

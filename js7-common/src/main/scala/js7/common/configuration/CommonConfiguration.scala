@@ -79,5 +79,5 @@ object CommonConfiguration:
         configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
         dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
         webServerPorts =
-          a.seqAs("--http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
-          a.seqAs("--https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_)))
+          a.seqAs("--http-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
+          a.seqAs("--https-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Https(_)))

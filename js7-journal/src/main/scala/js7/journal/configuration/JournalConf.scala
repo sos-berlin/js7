@@ -43,9 +43,10 @@ object JournalConf:
       delay = (if syncOnCommit then syncDelay max delay else delay) min 1.s,
       persistLimit = config.as[Int]("js7.journal.persist-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
-      fileSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
+      fileSizeLimit =
+        config.as("js7.journal.snapshot.when-bigger-than")(using StringAsByteCountWithDecimalPrefix),
       snapshotSizeEstimateEventThreshold = config.as(
-        "js7.journal.snapshot.estimate-event-threshold")(StringAsByteCountWithDecimalPrefix),
+        "js7.journal.snapshot.estimate-event-threshold")(using StringAsByteCountWithDecimalPrefix),
       ackWarnDurations = config.getDurationList("js7.journal.log.ack-warn-durations")
         .asScala.toSeq.map(_.toFiniteDuration),
       persistWarnDurations = config.getDurationList("js7.journal.persist-warn-durations")

@@ -38,7 +38,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest,
         PekkoHttpControllerApi.resource(
           Admission(a.uri, a.userAndPassword),
           name = s"${getClass.simpleScalaName}-Controller-$i")(
-          actorSystem)
+          using actorSystem)
       },
     ProxyConfs.fromConfig(config))
 

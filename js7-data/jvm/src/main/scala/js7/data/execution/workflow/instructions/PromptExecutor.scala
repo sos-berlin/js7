@@ -22,7 +22,7 @@ extends EventInstructionExecutor:
         .ifState[Ready].map: _ =>
           for
             scope <- state.toImpureOrderExecutingScope(order, clock.now())
-            question <- prompt.question.evalAs(GoodValue.companion, scope)
+            question <- prompt.question.evalAs(using GoodValue.companion, scope)
           yield
             (order.id <-: OrderPrompted(question)) :: Nil)
       .getOrElse:

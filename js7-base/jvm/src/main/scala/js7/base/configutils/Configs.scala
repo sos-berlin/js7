@@ -107,10 +107,13 @@ object Configs:
       else
         default
 
-    def seqAs[W](path: String, default: => Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
-      if underlying.hasPath(path) then seqAs(path)(convert) else default.toVector
+    def seqAs[W](path: String, default: => Iterable[W])(using convert: As[String, W]): IndexedSeq[W] =
+      if underlying.hasPath(path) then
+        seqAs(path)(using convert)
+      else
+        default.toVector
 
-    def seqAs[W](path: String)(implicit convert: As[String, W]): IndexedSeq[W] =
+    def seqAs[W](path: String)(using convert: As[String, W]): IndexedSeq[W] =
       stringSeq(path) map wrappedConvert(convert.apply, path)
 
     def stringSeq(path: String, default: => Iterable[String]): IndexedSeq[String] =

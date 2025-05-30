@@ -28,7 +28,7 @@ object ServiceMain:
   def initialize(): Unit = ()
 
   /** Returns the return code. */
-  def runAsMain[Cnf <: BasicConfiguration, Svc <: MainService: Tag](
+  def runAsMain[Cnf <: BasicConfiguration, Svc <: MainService](
     args: Seq[String],
     name: String,
     argsToConf: CommandLineArguments => Cnf,
@@ -114,7 +114,7 @@ object ServiceMain:
       logConfig(conf.config)
       logJavaSettings()
 
-    private[ServiceMain] def run[Svc <: MainService: Tag](
+    private[ServiceMain] def run[Svc <: MainService](
       resource: ResourceIO[Svc])
       (use: Svc => IO[ProgramTermination])
     : IO[ProgramTermination] =

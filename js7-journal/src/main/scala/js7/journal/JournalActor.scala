@@ -5,10 +5,9 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
-import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
@@ -82,7 +81,7 @@ extends Actor, Stash:
           sender ! Output.SnapshotTaken
 
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
-    replyTo.!(msg)(sender)
+    replyTo.!(msg)(using sender)
 
   private def receiveGet: Receive =
     case Input.GetJournalActorState =>

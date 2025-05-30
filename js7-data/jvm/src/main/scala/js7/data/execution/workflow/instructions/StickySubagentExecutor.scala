@@ -27,7 +27,7 @@ extends EventInstructionExecutor:
           Checked(None),
           expr => state
             .toOrderScope(order)
-            .flatMap(expr.evalAsString(_))
+            .flatMap(expr.evalAsString(using _))
             .flatMap(SubagentBundleId.checked(_))
             .flatMap(subagentBundleId => state
               // Check existence

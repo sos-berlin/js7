@@ -197,7 +197,7 @@ private object DirectorState:
       Prioritized:
         subagentToExpr.toVector.flatMap: (subagentId, expr) =>
           toScope(subagentId).flatMap: scope =>
-            expr.eval(scope).flatMap(_.asMissingOr[NumberValue]) match
+            expr.eval(using scope).flatMap(_.asMissingOr[NumberValue]) match
               case Left(problem) =>
                 logger.error(s"$bundleId: $subagentId priority expression failed with $problem")
                 None // Subagent is not selected

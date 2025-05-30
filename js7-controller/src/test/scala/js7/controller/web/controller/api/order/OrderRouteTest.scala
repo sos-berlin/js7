@@ -89,7 +89,8 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
     Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Conflict)  // Duplicate order
       assert(response.header3[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
-      assert(responseAs[Json] == Problem("Order:DUPLICATE has already been added").asJson(Problem.typedJsonEncoder))
+      assert(responseAs[Json] == Problem("Order:DUPLICATE has already been added")
+        .asJson(using Problem.typedJsonEncoder))
 
   "POST multiple orders" in:
     val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW")) :: Nil

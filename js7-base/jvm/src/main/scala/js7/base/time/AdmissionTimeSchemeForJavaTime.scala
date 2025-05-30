@@ -27,7 +27,7 @@ object AdmissionTimeSchemeForJavaTime:
     def findTimeIntervals(
       from: Timestamp, until: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
     : View[(Int, TimeInterval)] =
-      findLocalIntervals(from.toLocalDateTime(zone), dateOffset)
+      findLocalIntervals(from.toLocalDateTime(using zone), dateOffset)
         .map: (periodIndex, localInterval) =>
           periodIndex -> localInterval.toTimeInterval(zone)
         .takeWhile(_._2.startsBefore(until))
@@ -37,7 +37,7 @@ object AdmissionTimeSchemeForJavaTime:
      * Shifts the interval when daylight saving time skips an hour. */
     def findTimeInterval(from: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
     : Option[TimeInterval] =
-      findLocalIntervals(from.toLocalDateTime(zone), dateOffset)
+      findLocalIntervals(from.toLocalDateTime(using zone), dateOffset)
         .map(_._2)
         .map(_.toTimeInterval(zone))
         .filterNot(_.endsBefore(from))

@@ -28,7 +28,7 @@ extends AutoCloseable:
   def read: IO[NamedValues] =
     meterReadShellReturnValues:
       IO.interruptible:
-        autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)): source =>
+        autoClosing(scala.io.Source.fromFile(file.toFile)(using encoding)): source =>
           source.getLines().map(lineToNamedvalue).toMap
 
   private def lineToNamedvalue(line: String): (String, StringValue) =

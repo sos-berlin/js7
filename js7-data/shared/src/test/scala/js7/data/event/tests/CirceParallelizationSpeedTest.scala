@@ -93,14 +93,18 @@ final class CirceParallelizationSpeedTest extends OurAsyncTestSuite:
   private val iterations = 0 until 20
   private val logFrom = 15
 
-  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit =
+  private def testEncode[A](seq: Seq[A], plural: String)
+    (body: Seq[A] => Seq[ByteArray])
+  : Unit =
     for i <- iterations do
       //System.gc()
       val timing = measureTimeOfSingleRun(seq.size, plural):
         body(seq)
       if i > logFrom then logger.info(s"Encode $timing")
 
-  private def testDecode[A: Decoder](seq: Seq[ByteArray], plural: String)(body: Seq[ByteArray] => Seq[A]): Unit =
+  private def testDecode[A](seq: Seq[ByteArray], plural: String)
+    (body: Seq[ByteArray] => Seq[A])
+  : Unit =
     for i <- iterations do
       //System.gc()
       val timing = measureTimeOfSingleRun(seq.size, plural):

@@ -365,7 +365,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       var eventId = eventWatch.lastAddedEventId
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
-      val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
+      val orderDate = timeInterval.start.toLocalDateTime(using zone).toLocalDate
       val orderId = OrderId(s"#$orderDate#ScheduleTesterStandardExample")
       logger.debug(s"addOrder $orderId")
       val workflow =

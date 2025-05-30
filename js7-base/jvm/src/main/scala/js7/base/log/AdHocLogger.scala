@@ -229,7 +229,7 @@ transparent trait AdHocLogger:
     logger.debugResource[F, A](resource)
 
   def debugResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
-    (using Sync[F], Tag[A], sourcecode.Enclosing)
+    (using Sync[F], sourcecode.Enclosing)
   : Resource[F, A] =
     logger.debugResource[F, A](function, args)(resource)
 
@@ -264,7 +264,7 @@ transparent trait AdHocLogger:
     logger.traceStream[F, A](stream)
 
   def traceStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
-    (using Sync[F], sourcecode.Enclosing, Tag[A])
+    (using Sync[F], sourcecode.Enclosing)
   : Stream[F, A] =
     logger.traceStream[F, A](function, args)(stream)
 

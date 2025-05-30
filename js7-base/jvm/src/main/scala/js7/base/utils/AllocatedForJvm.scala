@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.:<:
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import izumi.reflect.Tag
@@ -12,9 +11,7 @@ import scala.concurrent.duration.Duration
 object AllocatedForJvm:
 
   extension[F[_], A](allocated: Allocated[F, A])
-    def useSync[R](stopTimeout: Duration)(body: A => R)
-      (using IORuntime, F :<: IO, sourcecode.Enclosing)
-    : R =
+    def useSync[R](stopTimeout: Duration)(body: A => R)(using IORuntime, sourcecode.Enclosing): R =
       val stop = allocated.release.asInstanceOf[IO[Unit]]
       val ac: AutoCloseable = () =>
         stop

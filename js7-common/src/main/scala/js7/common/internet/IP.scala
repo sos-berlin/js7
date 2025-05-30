@@ -18,12 +18,17 @@ object IP:
       if o.trim.isEmpty then throw new IllegalArgumentException("Missing IP address")
       InetAddress.getByName(o)
 
-  def toInetSocketAddress(string: String, defaultHost: String, defaultPort: Option[Int] = None): InetSocketAddress =
-    convert[String, InetSocketAddress](string)(new StringToInetSocketAddress(defaultHost, defaultPort))
+  def toInetSocketAddress(string: String, defaultHost: String, defaultPort: Option[Int] = None)
+  : InetSocketAddress =
+    convert[String, InetSocketAddress](string)(
+      using new StringToInetSocketAddress(defaultHost, defaultPort))
 
-  val StringToServerInetSocketAddress = new StringToInetSocketAddress(defaultHost = "0.0.0.0", defaultPort = None)
+  val StringToServerInetSocketAddress: StringToInetSocketAddress =
+    new StringToInetSocketAddress(defaultHost = "0.0.0.0", defaultPort = None)
 
-  final class StringToInetSocketAddress(defaultHost: String, defaultPort: Option[Int]) extends As[String, InetSocketAddress]:
+
+  final class StringToInetSocketAddress(defaultHost: String, defaultPort: Option[Int])
+  extends As[String, InetSocketAddress]:
     import StringToInetSocketAddress.*
 
     def apply(string: String): InetSocketAddress =
@@ -35,12 +40,14 @@ object IP:
         case _ if string.forall(_.isDigit) => makeInetSocketAddress(defaultHost, string)
         case _ => makeInetSocketAddress(string, defaultPortString)
       catch
-        case NonFatal(t) => throw new IllegalArgumentException(s"Invalid IP address and port combination in '$string': $t", t)
+        case NonFatal(t) => throw new IllegalArgumentException(
+          s"Invalid IP address and port combination in '$string': $t", t)
 
     private def useDefaults(host: String, port: String) =
       makeInetSocketAddress(host.substitute("", defaultHost), port.substitute("", defaultPort.toString))
 
     private def defaultPortString = defaultPort.map(_.toString) getOrElse ""
+
 
   implicit object StringToInetSocketAddress extends As[String, InetSocketAddress]:
     private val StandardRegex = """([^:]*):(\d*)""".r
@@ -57,6 +64,7 @@ object IP:
       if host.trim.isEmpty then throw new IllegalArgumentException("Missing IP address")
       if port.trim.isEmpty then throw new IllegalArgumentException("Missing port number")
       new InetSocketAddress(host, port.toInt)
+
 
   implicit val inetSocketAddressShow: Show[InetSocketAddress] =
     a => s"${a.getAddress.getHostAddress}:${a.getPort}"

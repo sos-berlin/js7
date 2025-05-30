@@ -212,7 +212,7 @@ object CallMeter:
         shortPeriod =
           config.finiteDuration("js7.metering.short-period") getOrElse 1.minutes,
         shortMinimumQuote =
-          config.optionAs("js7.metering.short-period-minimum-quote")(StringAsPercentage)
+          config.optionAs("js7.metering.short-period-minimum-quote")(using StringAsPercentage)
             .fold(0.1)(_.toDouble),
         longPeriod =
           config.finiteDuration("js7.metering.long-period") getOrElse 10.minutes)

@@ -119,7 +119,7 @@ trait WebLogDirectives extends ExceptionHandling:
                     chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
                       tried.fold(t => " " + t.toStringWithCauses, _ => ""))
-              }(ioRuntime.compute)
+              }(using ioRuntime.compute)
               mat)
       case _ => response
 

@@ -24,7 +24,7 @@ object ScheduledOrderGeneratorXmlParser:
         import eventReader.*
         val folderPath = FolderPath.parentOf(id.path)
         parseElement("order"):
-          val workflowPath = attributeMap.as("job_chain")(As(o => folderPath.resolve[WorkflowPath](o)))
+          val workflowPath = attributeMap.as("job_chain")(using As(o => folderPath.resolve[WorkflowPath](o)))
           val elements = forEachStartElement:
             case "params" => VariablesXmlParser.parse(eventReader).mapValuesStrict(StringValue.apply)
             case "run_time" => OldScheduleXmlParser.parse(eventReader, timeZone)

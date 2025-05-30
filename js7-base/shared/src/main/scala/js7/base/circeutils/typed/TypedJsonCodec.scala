@@ -118,11 +118,10 @@ object TypedJsonCodec:
       enclosing.value + ": TypedJsonCodec[" + implicitClass[A].shortClassName + "]",
       subtypes)
 
-  def named[A: ClassTag](name: String, subtypes: Subtype[A]*)
-  : TypedJsonCodec[A] =
+  def named[A](name: String, subtypes: Subtype[A]*): TypedJsonCodec[A] =
     fromIterable(name, subtypes)
 
-  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[? <: A]])
+  def fromIterable[A](name: String, subtypes: Iterable[Subtype[? <: A]])
   : TypedJsonCodec[A] =
     new TypedJsonCodec[A](name, subtypes.toSeq.asInstanceOf[Seq[Subtype[A]]])
 

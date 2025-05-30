@@ -51,7 +51,7 @@ object Stamped:
 
     checked
 
-  implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
+  implicit def stampedEq[A]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
   implicit val functor: Functor[Stamped] = new Functor[Stamped]:
     def map[A,B](fa: Stamped[A])(f: A => B) =

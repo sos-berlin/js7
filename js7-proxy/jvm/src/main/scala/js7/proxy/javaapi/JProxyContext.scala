@@ -66,8 +66,8 @@ extends AutoCloseable:
   : JControllerApi =
     val apiResource = admissionsToApiResource(
       Nel.unsafe(admissions.asScala.map(_.asScala).toList),
-      httpsConfig.asScala)(
-      actorSystem)
+      httpsConfig.asScala
+    )(using actorSystem)
     new JControllerApi(
       new ControllerApi(apiResource, proxyConf),
       config_)
