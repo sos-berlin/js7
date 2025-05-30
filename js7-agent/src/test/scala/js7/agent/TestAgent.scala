@@ -22,7 +22,7 @@ import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.useSync
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
@@ -76,10 +76,13 @@ extends
         // The Agent's own test IORuntime has been shutdown
         IO.pure(ProgramTermination())
       else
-        logger.traceIO:
-          agent
-            .terminate(processSignal, clusterAction, suppressSnapshot)
-            .guarantee(stopThis)
+        logger.traceIO("terminate", s"${Seq(processSignal, clusterAction).flatten.mkString(" ")}"):
+          // Stops IORuntime, too
+          agent.terminate(
+            processSignal, clusterAction,
+            suppressSnapshot = suppressSnapshot)
+        .guarantee:
+          stopThis.logWhenItTakesLonger("terminate -> stopThis")
 
   /** Use TestAgent once, then stop it. */
   def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(using IORuntime): R =
@@ -102,10 +105,10 @@ extends
     given IORuntime = agent.ioRuntime
     agent.agentState.await(99.s).orThrow
 
-  def eventWatch: StrictEventWatch =
+  val eventWatch: StrictEventWatch =
     agent.eventWatch
 
-  export agent.eventWatch.{await, awaitNext, resetLastWatchedEventId}
+  export eventWatch.{await, awaitKey, awaitKeys, awaitNext, awaitNextKey, eventsByKey, expect, resetLastWatchedEventId}
 
   def testEventBus: StandardEventBus[Any] =
     agent.testEventBus

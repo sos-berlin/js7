@@ -47,7 +47,7 @@ trait ScheduleTester extends OurTestSuite:
 
 object ScheduleTester:
 
-  val dateOffset = 6.h // Business day starts at 6:00 (i.e., switching from monday to tuesday)
+  val dateOffset = 6.h // Business day starts at 6:00 (i.e., switching from Monday to Tuesday)
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
 
   val schedule: Schedule =
@@ -63,8 +63,8 @@ object ScheduleTester:
 
       Scheme(
         AdmissionTimeScheme(Seq(
-          WeekdayPeriod(TUESDAY, localTime("02:00"), 1.h), // Business day monday night
-          WeekdayPeriod(SATURDAY, localTime("04:00"), 1.h))), // Business day friday night
+          WeekdayPeriod(TUESDAY, localTime("02:00"), 1.h), // Business day Monday night
+          WeekdayPeriod(SATURDAY, localTime("04:00"), 1.h))), // Business day Friday night
         Ticking(20.minutes)),
 
       Scheme(

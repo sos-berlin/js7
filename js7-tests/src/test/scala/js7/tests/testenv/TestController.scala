@@ -75,7 +75,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
   val eventWatch: StrictEventWatch =
     runningController.eventWatch
 
-  export eventWatch.{await, awaitNext, resetLastWatchedEventId}
+  export eventWatch.{await, awaitKey, awaitKeys, awaitNext, awaitNextKey, eventsByKey, expect, resetLastWatchedEventId}
 
   def recoveredEventId: EventId =
     runningController.recoveredEventId
