@@ -1,12 +1,12 @@
 package js7.base.thread
 
-import java.util.concurrent.{Semaphore, ThreadFactory}
+import java.util.concurrent.Semaphore
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.base.utils.{Atomic, Tests}
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.{Deadline, FiniteDuration, SECONDS}
 import scala.util.control.NonFatal

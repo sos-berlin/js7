@@ -59,7 +59,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map2
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex

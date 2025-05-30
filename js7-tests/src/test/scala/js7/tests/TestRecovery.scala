@@ -13,7 +13,6 @@ import js7.base.time.ScalaTime.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.system.startup.ServiceApp
-import js7.data.agent.AgentRef
 import js7.data.controller.ControllerState
 import js7.data.event.JournalHeader
 import js7.journal.recover.StateRecoverer

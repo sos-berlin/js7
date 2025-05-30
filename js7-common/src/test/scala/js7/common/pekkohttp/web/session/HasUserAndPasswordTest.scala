@@ -8,7 +8,6 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.data.session.HttpSessionApi

@@ -10,7 +10,7 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
+import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive}
 
 final class ActivationInhibitorTest extends OurAsyncTestSuite:
 

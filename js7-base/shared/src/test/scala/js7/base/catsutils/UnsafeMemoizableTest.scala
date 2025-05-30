@@ -2,7 +2,6 @@ package js7.base.catsutils
 
 import cats.effect.{IO, Sync, SyncIO}
 import cats.syntax.all.*
-import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.{memoize, given}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*

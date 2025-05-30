@@ -9,7 +9,6 @@ import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.*
-import js7.base.log
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked
 import js7.base.time.Timestamp

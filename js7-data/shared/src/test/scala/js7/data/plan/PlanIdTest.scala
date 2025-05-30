@@ -2,7 +2,6 @@ package js7.data.plan
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
 final class PlanIdTest extends OurTestSuite:

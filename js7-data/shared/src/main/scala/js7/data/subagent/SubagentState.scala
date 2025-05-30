@@ -1,12 +1,11 @@
 package js7.data.subagent
 
-import cats.syntax.option.*
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.event.JournalEvent.Heartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
+import js7.data.event.{Event, EventId, ItemContainer, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}

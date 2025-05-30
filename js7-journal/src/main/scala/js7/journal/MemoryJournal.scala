@@ -15,7 +15,7 @@ import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
+import js7.base.utils.{AsyncLock, Atomic, CloseableIterator}
 import js7.data.cluster.ClusterState
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.MemoryJournal.*

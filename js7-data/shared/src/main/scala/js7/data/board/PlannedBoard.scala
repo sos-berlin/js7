@@ -5,10 +5,10 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
+import js7.base.utils.L3
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{L3, Tests}
 import js7.data.board
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.PlannedBoard.*

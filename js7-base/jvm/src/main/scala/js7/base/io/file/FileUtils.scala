@@ -8,7 +8,7 @@ import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exist
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops.*
 import js7.base.data.{ByteArray, ByteSequence, Writable}

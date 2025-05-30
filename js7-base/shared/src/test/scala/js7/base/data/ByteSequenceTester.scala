@@ -12,7 +12,6 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
 import fs2.{Chunk, Stream}
-import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])

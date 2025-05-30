@@ -3,7 +3,6 @@ package js7.data.workflow
 import js7.base.annotation.javaApi
 import js7.base.problem.Checked
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
-import js7.data.workflow.WorkflowControlPath.mayThrow
 
 final case class WorkflowPathControlPath(workflowPath: WorkflowPath)
 extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:

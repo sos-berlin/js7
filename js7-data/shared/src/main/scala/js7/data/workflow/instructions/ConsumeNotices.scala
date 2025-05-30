@@ -6,10 +6,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.L3
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardPathExpression, NoticeId}
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
-import js7.data.workflow.instructions.ConsumeNotices.*
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{SkipWhenNoNotice, Wait}
 import js7.data.workflow.position.{BranchId, Position}

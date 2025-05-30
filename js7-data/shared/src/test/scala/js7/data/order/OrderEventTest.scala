@@ -17,7 +17,7 @@ import js7.data.lock.LockPath
 import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.OrderEvent.*
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
-import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
+import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, StringValue}

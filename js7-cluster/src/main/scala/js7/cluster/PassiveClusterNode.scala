@@ -48,7 +48,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostPro
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation

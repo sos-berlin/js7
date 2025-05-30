@@ -5,7 +5,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
-import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichString}

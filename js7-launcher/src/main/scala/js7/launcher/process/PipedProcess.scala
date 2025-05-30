@@ -3,7 +3,6 @@ package js7.launcher.process
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import java.io.{IOException, InputStream}
-import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
@@ -15,7 +14,6 @@ import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnC
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
-import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*

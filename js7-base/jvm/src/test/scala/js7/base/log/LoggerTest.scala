@@ -6,7 +6,6 @@ import js7.base.log.LoggerTest.*
 import js7.base.monixlike.MonixLikeExtensions.nowAsDeadline
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.RichDeadline
-import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
 import org.scalatest.Assertion
 

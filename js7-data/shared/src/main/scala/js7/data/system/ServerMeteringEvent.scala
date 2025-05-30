@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{NoKeyEvent, NonPersistentEvent}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{MissingValue, NumberValue, Value}
+import js7.data.value.{MissingValue, NumberValue}
 
 /**
  * @param testMeteringValue is used only for build tests.

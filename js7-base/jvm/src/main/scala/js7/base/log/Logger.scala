@@ -1,6 +1,5 @@
 package js7.base.log
 
-import cats.effect.Resource.ExitCase
 import cats.effect.implicits.monadCancelOps
 import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*

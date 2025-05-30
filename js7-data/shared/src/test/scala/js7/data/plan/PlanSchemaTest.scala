@@ -5,7 +5,6 @@ import js7.base.test.OurTestSuite
 import js7.data.item.{InventoryItem, ItemRevision}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.exprFun
-import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class PlanSchemaTest extends OurTestSuite:

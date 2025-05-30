@@ -66,7 +66,7 @@ import js7.journal.JournalingActor
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import org.apache.pekko.actor.{ActorRef, Stash, SupervisorStrategy, Terminated}
+import org.apache.pekko.actor.{Stash, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
 import scala.collection.mutable

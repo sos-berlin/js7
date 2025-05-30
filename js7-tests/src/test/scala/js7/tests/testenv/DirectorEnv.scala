@@ -19,6 +19,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.*
+import scala.annotation.unused
 
 /** Environment with config and data directories for a Subagent with Agent Director. */
 final class DirectorEnv(

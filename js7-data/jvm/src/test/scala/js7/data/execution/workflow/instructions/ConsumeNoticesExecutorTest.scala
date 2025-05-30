@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{ScalaTime, TestWallClock, Timestamp}
+import js7.base.time.{TestWallClock, Timestamp}
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
@@ -25,7 +25,6 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import org.scalactic.source
 import scala.language.implicitConversions
-import scala.runtime.stdLibPatches.Predef.assert
 
 final class ConsumeNoticesExecutorTest extends OurTestSuite:
 

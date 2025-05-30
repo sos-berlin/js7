@@ -12,7 +12,6 @@ import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, D
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
-import js7.data.value.StringValue
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{DontWait, SkipWhenNoNotice, Wait}

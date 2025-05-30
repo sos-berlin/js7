@@ -11,8 +11,8 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.BoardPathExpression.syntax.{boardPathToExpr, &, |}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, NoticeKey, NoticePlace}
+import js7.data.board.BoardPathExpression.syntax.{&, boardPathToExpr, |}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, NoticeKey}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}

@@ -2,7 +2,6 @@ package js7.launcher.process
 
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.launcher.process.ProcessTreeTest.*

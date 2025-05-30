@@ -6,7 +6,7 @@ import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
 import js7.base.stream.IncreasingNumberSync
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.{Assertions, CloseableIterator}
+import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
 import js7.journal.data.JournalLocation

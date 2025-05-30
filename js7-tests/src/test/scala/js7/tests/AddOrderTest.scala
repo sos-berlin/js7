@@ -21,7 +21,6 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{AddOrder, Fail, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.AddOrderTest.*
 import js7.tests.jobs.EmptyJob

@@ -20,7 +20,7 @@ import js7.data.board.BoardPathExpression.syntax.{&, boardPathToExpr}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannedBoard}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, PostNotice, ResumeOrder, SuspendOrders}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh

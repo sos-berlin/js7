@@ -1,7 +1,5 @@
 package js7.base.utils
 
-import js7.base.utils.ScalaUtils.*
-
 final case class LabeledRunnable(label: String, runnable: Runnable) extends Runnable:
 
   def run(): Unit = runnable.run()

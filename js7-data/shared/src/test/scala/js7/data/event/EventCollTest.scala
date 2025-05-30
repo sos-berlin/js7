@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.crypt.silly.SillySigner
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.controller.ControllerState

@@ -12,7 +12,6 @@ import org.openjdk.jmh.annotations.{Scope, State, TearDown}
 import org.openjdk.jmh.results.format.ResultFormatType
 import org.openjdk.jmh.runner.Runner
 import org.openjdk.jmh.runner.options.OptionsBuilder
-import scala.jdk.CollectionConverters.*
 
 @State(Scope.Benchmark)
 open class OurBenchmark:

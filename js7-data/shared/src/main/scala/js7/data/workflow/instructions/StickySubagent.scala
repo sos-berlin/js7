@@ -1,8 +1,6 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.problem.Checked
 import js7.data.agent.AgentPath

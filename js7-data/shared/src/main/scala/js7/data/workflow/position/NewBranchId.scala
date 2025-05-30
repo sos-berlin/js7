@@ -2,7 +2,6 @@ package js7.data.workflow.position
 
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.ForkBranchId
 

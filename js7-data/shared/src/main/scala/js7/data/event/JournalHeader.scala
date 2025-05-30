@@ -1,6 +1,5 @@
 package js7.data.event
 
-import cats.syntax.semigroup.*
 import io.circe.{Encoder, Json}
 import java.io.{BufferedReader, FileInputStream, InputStreamReader}
 import java.nio.file.Path

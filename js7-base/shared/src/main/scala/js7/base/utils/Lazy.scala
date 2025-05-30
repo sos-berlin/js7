@@ -1,7 +1,6 @@
 package js7.base.utils
 
 import cats.InvariantMonoidal
-import cats.instances.option.*
 import java.util.concurrent.locks.ReentrantLock
 import js7.base.utils.ScalaUtils.use
 

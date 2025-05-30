@@ -13,7 +13,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -25,9 +25,9 @@ import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
 import js7.common.http.PekkoHttpClientTest.*
+import js7.common.pekkohttp.CirceJsonSupport
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream}
 import js7.common.pekkohttp.web.PekkoWebServer
-import js7.common.pekkohttp.{CirceJsonSupport, PekkoHttpServerUtils}
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -41,7 +41,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Await
-import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success, Try}
 

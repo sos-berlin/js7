@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.{CatsUtils, DelayConf}
+import js7.base.utils.DelayConf
 import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}

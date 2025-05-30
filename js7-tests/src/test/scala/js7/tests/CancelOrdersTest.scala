@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.runProcess
-import js7.base.io.process.{Pid, ProcessSignal, Processes, ReturnCode}
+import js7.base.io.process.{Pid, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.{isUnix, isWindows}

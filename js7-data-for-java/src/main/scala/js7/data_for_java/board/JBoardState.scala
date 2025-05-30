@@ -2,7 +2,6 @@ package js7.data_for_java.board
 
 import javax.annotation.Nonnull
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, PlannableBoard}
-import scala.jdk.OptionConverters.*
 
 final case class JBoardState(asScala: BoardState):
 

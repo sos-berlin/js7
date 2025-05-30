@@ -4,8 +4,8 @@ import io.circe.Codec
 import js7.base.circeutils.CirceUtils.enumCodec
 import js7.base.utils.L3
 import js7.data.board.{BoardPathExpression, NoticeId}
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent}
 
 trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
 

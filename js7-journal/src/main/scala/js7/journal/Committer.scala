@@ -3,7 +3,6 @@ package js7.journal
 import cats.effect
 import cats.effect.kernel.{DeferredSink, Outcome}
 import cats.effect.{Deferred, IO, ResourceIO}
-import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
@@ -15,8 +14,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.metering.CallMeter
 import js7.base.monixutils.AsyncVariable
+import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
-import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
@@ -24,14 +23,14 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenMethodTakesLonger, whenItTakesLonger}
 import js7.base.utils.MultipleLinesBracket.{Round, Square}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, AsyncLock, Atomic, ByteUnits, MultipleLinesBracket}
+import js7.base.utils.{Allocated, AsyncLock, Atomic}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Committer.*
 import js7.journal.FileJournal.*
 import js7.journal.log.JournalLogger

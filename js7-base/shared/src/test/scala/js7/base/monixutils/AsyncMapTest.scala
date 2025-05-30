@@ -2,7 +2,6 @@ package js7.base.monixutils
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.apply.*
 import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}

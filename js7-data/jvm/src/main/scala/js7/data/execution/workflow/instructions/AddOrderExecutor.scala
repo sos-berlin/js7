@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichOption
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.plan.PlanId
 import js7.data.state.{StateView, UniqueOrderIdScope}

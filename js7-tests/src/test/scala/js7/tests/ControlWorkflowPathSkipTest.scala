@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
-import js7.base.time.{TestAlarmClock, Timestamp}
+import js7.base.time.TestAlarmClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -33,8 +33,8 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ControlWorkflowPathSkipTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class ControlWorkflowPathSkipTest
 extends OurTestSuite, ControllerAgentForScalaTest:

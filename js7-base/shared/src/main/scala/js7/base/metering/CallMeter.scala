@@ -3,7 +3,6 @@ package js7.base.metering
 import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
-import js7.base.convert.As
 import js7.base.convert.As.StringAsPercentage
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*

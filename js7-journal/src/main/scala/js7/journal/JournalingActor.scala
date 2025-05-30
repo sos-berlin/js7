@@ -18,7 +18,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.pekkoutils.ReceiveLoggingActor
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}

@@ -1,6 +1,5 @@
 package js7.common.configuration
 
-import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.configutils.Configs.*

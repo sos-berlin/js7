@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderNoticesConsumed}
-import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.ConsumeNotices
 

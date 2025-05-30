@@ -1,6 +1,5 @@
 package js7.base.problem
 
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemTest.*

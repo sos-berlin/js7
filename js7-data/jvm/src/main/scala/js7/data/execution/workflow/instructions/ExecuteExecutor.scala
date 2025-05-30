@@ -12,7 +12,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached}
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}

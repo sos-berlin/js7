@@ -11,7 +11,6 @@ import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.monixutils.StreamPauseDetectorTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
 import scala.concurrent.duration.Deadline
 

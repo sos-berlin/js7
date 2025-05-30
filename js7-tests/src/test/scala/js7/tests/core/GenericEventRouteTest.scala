@@ -19,7 +19,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.base.web.Uri
 import js7.base.web.Uris.{encodePath, encodeQuery}

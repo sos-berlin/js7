@@ -3,7 +3,6 @@ package js7.data.board
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.data.plan.{PlanKey, PlanSchemaId}
-import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
 final class PlannedNoticeKeyTest extends OurTestSuite:

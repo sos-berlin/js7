@@ -20,7 +20,6 @@ import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Stopwatch}
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.configuration.Js7Configuration
 import js7.common.system.ThreadPools
@@ -37,7 +36,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.crashpidfile.CrashPidFileService
 import js7.launcher.process.ProcessDriverTest.*
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.compatible.Assertion
 
 /**
   * @author Joacim Zschimmer

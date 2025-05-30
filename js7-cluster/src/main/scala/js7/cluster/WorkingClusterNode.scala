@@ -24,8 +24,7 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.recover.Recovered
-import js7.journal.{CommitOptions, EventIdGenerator, FileJournal, JournalActor}
-import org.apache.pekko
+import js7.journal.{EventIdGenerator, FileJournal, JournalActor}
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.

@@ -8,7 +8,7 @@ import js7.controller.command.ControllerCommandToEventCalcTest.*
 import js7.data.board.BoardPath
 import js7.data.controller.ControllerCommand.DeleteNotice
 import js7.data.controller.ControllerState
-import js7.data.event.{Event, TimeCtx}
+import js7.data.event.TimeCtx
 import js7.data.plan.PlanId
 
 final class ControllerCommandToEventCalcTest extends OurTestSuite:

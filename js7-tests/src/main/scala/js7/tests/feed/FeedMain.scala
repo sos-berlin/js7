@@ -1,7 +1,6 @@
 package js7.tests.feed
 
 import cats.effect.{ExitCode, IO, Resource}
-import js7.agent.main.AgentMain.runService
 import js7.base.service.SimpleMainService
 import js7.common.system.startup.ServiceApp
 

@@ -17,7 +17,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupportRouteTest.*
-import js7.common.pekkohttp
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithByteStream
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer

@@ -26,23 +26,21 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.common.configuration.Js7Configuration
 import js7.common.http.PekkoHttpUtils.*
 import js7.common.http.StreamingSupport.asFs2Stream
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.web.PekkoWebServerTest.*
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.impl.util.JavaVersion
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
+import org.apache.pekko.http.scaladsl.model.HttpRequest
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpRequest, MediaTypes}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.util.ByteString

@@ -15,7 +15,6 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedJsonStream, completeWithIOStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider

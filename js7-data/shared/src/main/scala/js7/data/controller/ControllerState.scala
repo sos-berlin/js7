@@ -52,7 +52,7 @@ import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.instructions.ConsumeNotices
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import scala.collection.{MapView, View, immutable}
+import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
 /**

@@ -2,7 +2,6 @@ package js7.launcher.crashpidfile
 
 import cats.effect.kernel.Resource
 import cats.effect.{IO, ResourceIO}
-import java.nio.ByteBuffer
 import java.nio.file.Path
 
 trait IndexedRecordSet[A]:

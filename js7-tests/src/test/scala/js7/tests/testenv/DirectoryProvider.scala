@@ -6,7 +6,7 @@ import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2.Stream
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.orIfNone

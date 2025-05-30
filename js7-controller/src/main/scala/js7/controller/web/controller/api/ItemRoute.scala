@@ -16,7 +16,6 @@ import js7.base.utils.LineSplitterPipe
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.item.ItemUpdater

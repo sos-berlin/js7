@@ -15,8 +15,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderCancelled, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.value.NamedValues
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}

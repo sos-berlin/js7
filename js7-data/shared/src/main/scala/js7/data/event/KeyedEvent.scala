@@ -3,7 +3,6 @@ package js7.data.event
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder}
 import js7.base.annotation.javaApi
-import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.DecoderOK
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.*

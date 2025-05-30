@@ -8,7 +8,7 @@ import cats.syntax.flatMap.*
 import fs2.concurrent.SignallingRef
 import izumi.reflect.Tag
 import java.nio.file.Files.{delete, exists}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Path, Paths}
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.Environment
 import js7.base.log.Logger
@@ -24,7 +24,6 @@ import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{MultipleLinesBracket, Tests}
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState, TimeCtx}
 import js7.journal.FileJournal.*

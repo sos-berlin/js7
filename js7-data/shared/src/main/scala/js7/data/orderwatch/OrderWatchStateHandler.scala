@@ -6,10 +6,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{Assertions, Tests}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderExternalVanished}
-import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}

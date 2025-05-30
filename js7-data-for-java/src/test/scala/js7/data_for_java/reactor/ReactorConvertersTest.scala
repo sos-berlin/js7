@@ -13,7 +13,6 @@ import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.data_for_java.reactor.ReactorConverters.{asFlux, asFs2Stream}
 import js7.data_for_java.reactor.ReactorConvertersTest.*
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertions.assert
 import reactor.core.publisher.Flux

@@ -2,7 +2,6 @@ package js7.base.catsutils
 
 import cats.effect.{IO, IOLocal}
 import js7.base.test.OurAsyncTestSuite
-import js7.base.utils.ScalaUtils.*
 
 /** Some tests to show how IOLocal works. */
 final class IOLocalTest extends OurAsyncTestSuite:

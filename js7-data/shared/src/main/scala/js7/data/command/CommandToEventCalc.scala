@@ -3,7 +3,6 @@ package js7.data.command
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.data.command.CommandToEventCalc.*
 import js7.data.event.EventCalc.OpaqueEventColl
 import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState, KeyedEvent}
 import scala.reflect.ClassTag

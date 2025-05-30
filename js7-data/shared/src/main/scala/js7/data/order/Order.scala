@@ -4,7 +4,7 @@ import io.circe
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfiguredCodec, deriveDecoderWithDefaults, deriveRenamingCodec, deriveRenamingDecoder}
+import js7.base.circeutils.CirceUtils.{deriveConfiguredCodec, deriveDecoderWithDefaults, deriveRenamingCodec}
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
@@ -19,8 +19,8 @@ import js7.data.Problems.{GoOrderInapplicableProblem, OrderCannotAttachedToPlanP
 import js7.data.agent.AgentPath
 import js7.data.board.{NoticeId, NoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.event.EventDriven
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
-import js7.data.event.{EventDriven, EventDrivenState}
 import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.{OrderMoved, *}

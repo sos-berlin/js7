@@ -3,7 +3,6 @@ package js7.tests
 import cats.effect.ExitCode
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
 import js7.controller.client.main.ControllerClientMain.Conf

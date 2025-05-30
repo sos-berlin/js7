@@ -21,7 +21,6 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithStream, pathSegments}
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence

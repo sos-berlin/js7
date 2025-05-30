@@ -1,6 +1,5 @@
 package js7.base.problem
 
-import cats.syntax.semigroup.*
 import cats.{Eq, Semigroup}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}

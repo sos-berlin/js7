@@ -9,7 +9,6 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.common.files.ByteSeqFileReader.fileStream
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, passIf}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute.*

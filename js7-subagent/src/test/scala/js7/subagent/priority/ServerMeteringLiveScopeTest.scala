@@ -9,7 +9,6 @@ import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.{NumberValue, Value}

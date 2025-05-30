@@ -6,7 +6,7 @@ import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils
-import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
+import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}

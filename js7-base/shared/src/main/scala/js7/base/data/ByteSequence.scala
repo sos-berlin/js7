@@ -16,7 +16,6 @@ import js7.base.utils.Ascii.byteToPrintableChar
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Ascii, Assertions}
 import scala.annotation.targetName
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq

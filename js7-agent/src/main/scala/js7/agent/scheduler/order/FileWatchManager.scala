@@ -33,7 +33,6 @@ import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.Journal

@@ -1,7 +1,5 @@
 package js7.data.event
 
-import cats.instances.int.*
-import cats.instances.string.*
 import cats.laws.discipline.FunctorTests
 import js7.base.time.Timestamp
 import js7.data.event.Stamped.*

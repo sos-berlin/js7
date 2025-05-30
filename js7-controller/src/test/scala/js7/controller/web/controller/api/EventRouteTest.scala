@@ -13,7 +13,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.LineSplitterPipe
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpUtils.{RichHttpResponse, RichResponseEntity}
 import js7.common.http.StreamingSupport.asFs2Stream

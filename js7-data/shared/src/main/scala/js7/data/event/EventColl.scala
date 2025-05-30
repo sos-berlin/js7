@@ -1,7 +1,6 @@
 package js7.data.event
 
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass

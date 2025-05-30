@@ -13,7 +13,6 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherIterable}
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
-import js7.data.workflow.instructions.Fork.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 import org.jetbrains.annotations.TestOnly

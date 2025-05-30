@@ -1,7 +1,6 @@
 package js7.data.orderwatch
 
 import fs2.Stream
-import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.fs2utils.StreamExtensions.*

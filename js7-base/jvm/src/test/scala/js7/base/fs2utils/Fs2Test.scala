@@ -6,7 +6,6 @@ import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pipe, Pull, Stream}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.collection.immutable.ArraySeq
 import scala.concurrent.duration.*

@@ -20,8 +20,8 @@
  */
 package js7.base.test
 
+import cats.effect.testkit.TestContext
 import cats.effect.testkit.TestControl.NonTerminationException
-import cats.effect.testkit.{TestContext, TestControl}
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 import cats.effect.{IO, Outcome, SyncIO}
 import cats.{Id, ~>}

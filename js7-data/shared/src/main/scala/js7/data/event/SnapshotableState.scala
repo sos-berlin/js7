@@ -12,7 +12,6 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.NullWriter
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.AutoClosing
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowableEither}
 import js7.base.utils.Tests.isTest

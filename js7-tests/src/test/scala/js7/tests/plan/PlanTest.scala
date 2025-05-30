@@ -17,7 +17,6 @@ import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
-import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}

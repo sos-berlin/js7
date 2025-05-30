@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeKey}
+import js7.data.board.{BoardPath, GlobalBoard, NoticeKey}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted

@@ -5,7 +5,6 @@ import cats.syntax.traverse.*
 import js7.base.metering.CallMeterTest.{meterConstant, meterDecrement, meterIO, meterNanoTime}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
 
 final class CallMeterTest extends OurAsyncTestSuite:

@@ -4,8 +4,8 @@ import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.utils.L3
 import js7.data.board.{BoardPath, BoardPathExpression, NoticeId}
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.ExpectNotices.*

@@ -1,7 +1,6 @@
 package js7.base.io
 
 import cats.effect.{IO, Resource}
-import cats.syntax.traverse.*
 import java.io.{InputStream, OutputStream, PipedInputStream, PipedOutputStream, PipedReader, PipedWriter, Reader, Writer}
 import js7.base.data.ByteArray
 import js7.base.io.ReaderStreams.{inputStreamToByteStream, readerToCharStream}

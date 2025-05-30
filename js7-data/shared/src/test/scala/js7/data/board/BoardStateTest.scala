@@ -14,7 +14,6 @@ import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class BoardStateTest extends OurAsyncTestSuite:

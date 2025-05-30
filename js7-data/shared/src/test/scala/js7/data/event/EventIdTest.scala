@@ -4,7 +4,6 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
-import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
 /**

@@ -9,17 +9,17 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.StandardMapView
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
-import js7.data.board.{BoardPath, BoardState, Notice, NoticePlace, PlannedBoard}
+import js7.data.board.{BoardPath, BoardState, Notice, NoticePlace}
 import js7.data.cluster.ClusterStateSnapshot
 import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
 import js7.data.job.JobResource
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{Plan, PlanId, PlanSchema, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanSchemaState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemState
 import js7.data.workflow.position.WorkflowPosition

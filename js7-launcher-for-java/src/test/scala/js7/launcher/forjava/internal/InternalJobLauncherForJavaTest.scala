@@ -17,7 +17,6 @@ import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedNonVirtualExecutionContext
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId

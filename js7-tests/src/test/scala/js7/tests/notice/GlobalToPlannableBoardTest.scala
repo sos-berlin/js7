@@ -11,8 +11,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.NoticeEvent.{NoticeMoved, NoticePosted}
-import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticeEvent, NoticeKey, NoticePlace, PlannableBoard}
-import js7.data.controller.ControllerCommand
+import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand.{ChangeGlobalToPlannableBoard, PostNotice}
 import js7.data.event.Event
 import js7.data.event.KeyedEvent.NoKey

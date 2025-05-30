@@ -3,7 +3,7 @@ package js7.tests.feed
 import cats.syntax.option.*
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.exists
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.crypt.DocumentSigner

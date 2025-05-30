@@ -16,8 +16,6 @@ import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import org.scalatest.Assertions.succeed
-import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 

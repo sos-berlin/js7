@@ -6,7 +6,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{L3, StandardMapView}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved}
-import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedBoardId, PlannedNoticeKey}
+import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedBoardId, PlannedNoticeKey}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventColl, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
@@ -14,7 +14,7 @@ import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.OrderStateReset
 import js7.data.order.{Order, OrderEvent}
 import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View}

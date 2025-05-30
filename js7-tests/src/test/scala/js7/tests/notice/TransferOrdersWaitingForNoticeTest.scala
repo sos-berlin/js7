@@ -2,13 +2,12 @@ package js7.tests.notice
 
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeKey}
 import js7.data.controller.ControllerCommand.{PostNotice, TransferOrders}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTerminated, OrderTransferred}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.plan.PlanId
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}

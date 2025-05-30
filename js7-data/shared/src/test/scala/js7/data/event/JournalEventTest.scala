@@ -7,7 +7,6 @@ import js7.base.data.ByteArray
 import js7.base.test.OurTestSuite
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeat, StampedHeartbeatByteArray, jsonCodec}
 import js7.tester.CirceJsonTester.*
-import scala.runtime.stdLibPatches.Predef.assert
 
 /**
   * @author Joacim Zschimmer

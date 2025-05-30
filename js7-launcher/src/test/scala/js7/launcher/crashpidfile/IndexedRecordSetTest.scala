@@ -1,7 +1,6 @@
 package js7.launcher.crashpidfile
 
 import cats.effect.IO
-import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*

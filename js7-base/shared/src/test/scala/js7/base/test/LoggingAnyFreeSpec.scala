@@ -1,9 +1,7 @@
 package js7.base.test
 
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax.*
 import org.scalactic.source.Position
-import org.scalatest.Assertions.fail
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{Args, PendingStatement, Status, Tag}
 import scala.language.implicitConversions

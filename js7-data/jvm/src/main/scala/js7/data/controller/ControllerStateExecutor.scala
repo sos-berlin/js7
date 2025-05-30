@@ -23,7 +23,6 @@ import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.LockState
-import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey

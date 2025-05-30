@@ -4,7 +4,6 @@ import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Instruction, WorkflowPath}
 

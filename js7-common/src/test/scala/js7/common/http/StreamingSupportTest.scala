@@ -3,7 +3,6 @@ package js7.common.http
 import cats.effect.IO
 import cats.syntax.applicativeError.*
 import fs2.Stream
-import java.util
 import js7.base.catsutils.CatsEffectExtensions.fromOutcome
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurAsyncTestSuite

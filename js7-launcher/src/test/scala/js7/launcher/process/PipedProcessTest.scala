@@ -7,7 +7,7 @@ import js7.base.io.file.FileDeleter.tryDeleteFile
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.Processes.{newTemporaryShellFile, temporaryShellFileResource}
-import js7.base.io.process.{Processes, ReturnCode}
+import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurAsyncTestSuite

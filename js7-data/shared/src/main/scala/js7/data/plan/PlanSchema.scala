@@ -1,6 +1,5 @@
 package js7.data.plan
 
-import cats.syntax.traverse.*
 import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.metering.CallMeter

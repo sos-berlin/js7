@@ -2,13 +2,12 @@ package js7.subagent.director
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
-import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option.*
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
-import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenRight, joinStd, left, materializeIntoChecked, orThrow, right, startAndForget}
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -44,7 +43,7 @@ import js7.subagent.director.SubagentKeeper.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 
-final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
+final class SubagentKeeper[S <: SubagentDirectorState[S]](
   localSubagentId: SubagentId,
   localSubagent: Subagent,
   agentPath: AgentPath,

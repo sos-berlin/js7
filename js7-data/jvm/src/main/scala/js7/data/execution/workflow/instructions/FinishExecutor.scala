@@ -5,8 +5,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFinished, OrderMoved, OrderOutcomeAdded}
-import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction}

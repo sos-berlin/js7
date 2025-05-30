@@ -8,8 +8,8 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
-import js7.data.value.{MissingValue, NumberValue}
 import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{MissingValue, NumberValue}
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.DirectorState.*
 import js7.subagent.director.priority.Prioritized

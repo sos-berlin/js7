@@ -2,7 +2,6 @@ package js7.data.plan
 
 import cats.syntax.traverse.*
 import fs2.Stream
-import io.circe.generic.semiauto
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -11,7 +10,6 @@ import js7.base.fs2utils.StreamExtensions.:+
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -23,8 +21,8 @@ import js7.data.plan.PlanSchemaState.*
 import js7.data.plan.PlanStatus.{Closed, Deleted, Finished, Open}
 import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
+import scala.collection.View
 import scala.collection.immutable.Map.Map1
-import scala.collection.{View, immutable}
 import scala.concurrent.duration.FiniteDuration
 
 final case class PlanSchemaState(

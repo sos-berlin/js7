@@ -3,7 +3,6 @@ package js7.base.io.process
 import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions.*
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import js7.base.io.process.OperatingSystemSpecific.*
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 

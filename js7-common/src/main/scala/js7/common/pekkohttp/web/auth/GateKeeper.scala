@@ -12,7 +12,6 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.IdToUser
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.*

@@ -2,13 +2,12 @@ package js7.journal.watch
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import fs2.Stream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, exists, size}
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.*

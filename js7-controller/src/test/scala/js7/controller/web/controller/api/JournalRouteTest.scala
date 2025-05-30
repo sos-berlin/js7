@@ -14,9 +14,9 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CancelableFuture
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.base.utils.{CancelableFuture, Tests}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.PekkoHttpClient
 import js7.common.jsonseq.PositionAnd

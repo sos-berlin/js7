@@ -5,7 +5,7 @@ import fs2.{Chunk, Stream}
 import java.io.{InputStream, Reader}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels.newChannel
-import java.nio.channels.{Channels, ReadableByteChannel}
+import java.nio.channels.ReadableByteChannel
 import js7.base.fs2utils.Fs2ChunkByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread

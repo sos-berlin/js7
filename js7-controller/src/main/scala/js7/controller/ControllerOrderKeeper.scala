@@ -37,7 +37,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{Allocated, Assertions, ProgramTermination, SetOnce, Tests}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.startup.ServiceMain

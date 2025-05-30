@@ -1,12 +1,11 @@
 package js7.data
 
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data
 import js7.data.item.{UnsignedVersionedItemId, VersionId, VersionedControlPath, VersionedItemId}
 
 package object workflow:
   type WorkflowId = VersionedItemId[WorkflowPath]
-  val WorkflowId: data.workflow.WorkflowPath.VersionedItemIdCompanion.type = WorkflowPath.VersionedItemIdCompanion
+  val WorkflowId: WorkflowPath.VersionedItemIdCompanion.type = WorkflowPath.VersionedItemIdCompanion
 
   type WorkflowControlId = UnsignedVersionedItemId[WorkflowControlPath]
 

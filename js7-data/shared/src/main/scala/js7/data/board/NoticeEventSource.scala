@@ -11,7 +11,7 @@ import js7.data.board.NoticeEventSource.*
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.Workflow

@@ -2,7 +2,6 @@ package js7.data.workflow
 
 import js7.base.annotation.javaApi
 import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
-import js7.data.workflow.WorkflowControlPath.mayThrow
 
 final case class WorkflowPath private(string: String)
 extends VersionedItemPath, InventoryItemPath.AttachableToAgent:

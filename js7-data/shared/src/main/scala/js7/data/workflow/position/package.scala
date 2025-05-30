@@ -1,7 +1,5 @@
 package js7.data.workflow
 
-import js7.base.utils.ScalaUtils.syntax.*
-
 /**
   * @author Joacim Zschimmer
   */

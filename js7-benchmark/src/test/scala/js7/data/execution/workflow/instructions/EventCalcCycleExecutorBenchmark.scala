@@ -6,10 +6,8 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, WallClock}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.benchmark.OurBenchmark
-import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
-import js7.data.event
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded

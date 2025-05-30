@@ -2,7 +2,6 @@ package js7.data.plan
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
-import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean

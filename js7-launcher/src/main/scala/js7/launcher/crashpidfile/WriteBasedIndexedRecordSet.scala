@@ -5,7 +5,6 @@ import cats.syntax.option.*
 import java.io.RandomAccessFile
 import java.nio.ByteOrder.BIG_ENDIAN
 import java.nio.channels.FileChannel
-import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Path
 import java.nio.{ByteBuffer, ByteOrder}

@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.calendar.{Calendar, CalendarExecutor, CalendarPath}
-import js7.data.event.{EventCalc, EventColl, TimeCtx}
+import js7.data.event.{EventCalc, TimeCtx}
 import js7.data.execution.workflow.instructions.ScheduleCalculator.Do
 import js7.data.order.Order.{BetweenCycles, Fresh, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved, OrderStarted}
@@ -13,7 +13,6 @@ import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
 import js7.data.state.EventDrivenStateView
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
-import js7.data.{event, state}
 
 private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateView[S]]:
 

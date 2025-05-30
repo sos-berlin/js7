@@ -15,7 +15,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{Assertions, Tests}
 import js7.launcher.processkiller.ProcessKiller.*
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline

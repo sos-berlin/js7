@@ -11,7 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction.*
 import js7.data.workflow.position.*
-import js7.data.workflow.{Instruction, Workflow, WorkflowId}
+import js7.data.workflow.{Instruction, Workflow}
 import scala.concurrent.duration.FiniteDuration
 
 /**

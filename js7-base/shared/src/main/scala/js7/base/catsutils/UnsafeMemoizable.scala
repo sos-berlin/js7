@@ -4,7 +4,6 @@ import cats.effect.syntax.monadCancel.*
 import cats.effect.{Async, Deferred, SyncIO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
-import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.utils.{Atomic, Lazy}
 
 /** Typeclass for Monix Task like unsafe memoize for Cats Effect. */

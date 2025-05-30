@@ -18,14 +18,13 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
-import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
 import js7.data.controller.ControllerCommand
+import js7.data.event.JournalEvent
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
-import js7.data.event.{JournalEvent, JournalSeparators}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}

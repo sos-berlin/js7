@@ -10,7 +10,6 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, encodeAndHeartbeat}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
