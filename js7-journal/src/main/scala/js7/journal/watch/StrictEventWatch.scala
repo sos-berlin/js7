@@ -106,28 +106,29 @@ final class StrictEventWatch(val underlying: FileEventWatch):
       sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[E]] =
     val E = implicitClass[E]
+    if E eq classOf[Nothing] then
+      throw new IllegalArgumentException("awaitKey[Nothing]: Missing type parameter?")
     locally:
       if classOf[OrderEvent].isAssignableFrom(E)
-        && !classOf[OrderTerminated].isAssignableFrom(E)
+        //&& !classOf[OrderTerminated].isAssignableFrom(E)
         && E != OrderDeleted.getClass /*TODO Detect a failed Order*/
       then
-        if implicitClass[E] eq classOf[Nothing] then
-          throw new IllegalArgumentException("await[Nothing]: Missing type parameter?")
-        val stamped = underlying
-          .awaitAsync[E | OrderTerminated](
+        val stamped =
+          underlying.awaitAsync[E | OrderTerminated](
             EventRequest[E | OrderTerminated](
-              Set(implicitClass[E], classOf[OrderTerminated]),
+              Set(E, classOf[OrderTerminated]),
               after, Some(timeout)),
             ke =>
               ke.key == key && (
-                E.isAssignableFrom(ke.event.getClass)
-                  && predicate(ke.asInstanceOf[KeyedEvent[E]])
+                E.isAssignableFrom(ke.event.getClass) && predicate(ke.asInstanceOf[KeyedEvent[E]])
                   || ke.event.isInstanceOf[OrderTerminated]))
           .await(timeout + 1.s, dontLog = true)
-        if stamped.head.value.event.isInstanceOf[OrderTerminated] then
+        if !E.isAssignableFrom(stamped.head.value.event.getClass) then
           sys.error(s"await[${E.shortClassName}]: got ${stamped.head}")
-        stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
-          .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
+        stamped.filterNot: stamped =>
+          stamped.value.event.isInstanceOf[OrderTerminated] &&
+            !E.isAssignableFrom(stamped.value.event.getClass)
+        .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
       else
         underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout)
     .map(stamped => stamped.copy(value = stamped.value.event))
@@ -172,7 +173,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def eventsByKey[E <: Event: ClassTag: Tag](
+  def eventsByKey[E <: Event: {ClassTag, Tag}](
     using E: Event.KeyCompanion[? >: E], ioRuntime: IORuntime)
     (key: E.Key, after: EventId = tornEventId)
   : Seq[E] =
@@ -181,7 +182,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: Tag](
+  def keyedEvents[E <: Event: {ClassTag, Tag}](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId)
     (using ioRuntime: IORuntime)
