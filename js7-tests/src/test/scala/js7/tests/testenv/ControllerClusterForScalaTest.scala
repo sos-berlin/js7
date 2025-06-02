@@ -69,7 +69,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   protected final lazy val controllerAdmissions =
     Nel.of(primaryControllerAdmission, backupControllerAdmission)
 
-  protected val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
+  protected val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 1000.ms)
 
   protected def clusterWatchConfig: Config =
     ConfigFactory.empty()
