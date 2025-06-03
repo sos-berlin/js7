@@ -51,10 +51,10 @@ private trait CommandDispatcher:
   private def stopWithProblem(
     commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
   : IO[Unit] =
-    lock.lock(
-      processingAllowed.switchOff.*>(logger.debugIO(
-        queue.stop
-          .flatMap { numberedExecutes =>
+    lock.lock:
+      processingAllowed.switchOff *>
+        logger.debugIO:
+          queue.stop.flatMap: numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
             for numberedExecute <- numberedExecutes do
               commandToProblem.lift(numberedExecute.value.command) match
@@ -64,9 +64,8 @@ private trait CommandDispatcher:
                 case Some(problem) =>
                   logger.debug(s"⚠️  stopWithProblem $numberedExecute => $problem")
                   numberedExecute.value.tryRespond(Success(Left(problem)))
-              // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
+            // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
             processing.joinStd
-          })))
 
   //def dequeueAll: IO[Seq[Numbered[Command]]] =
   //  queue.dequeueAll.map(_.map(_.map(_.command)))
@@ -90,24 +89,24 @@ private trait CommandDispatcher:
       .map(_ => executes.map(_.responded))
 
   private def processQueue(subagentRunId: SubagentRunId): IO[Unit] =
-    logger.debugIO(IO.defer {
-      // Save queue, because it may changes with stop and start
-      val queue = this.queue
-      queue
-        .stream
-        .takeUntilEval(processingAllowed.whenOff)
-        .evalMap(numbered =>
-          numbered.value.correlId.bind(
-            executeCommandNow(subagentRunId, numbered)
-              .materialize
-              .flatTap(_ => queue
-                .release(numbered.number)
-                .map(_.orThrow)
-                .handleError(t =>
-                  logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
-              .map(numbered.value/*Execute*/.respond)))
-        .completedL
-    })
+    logger.debugIO:
+      IO.defer:
+        // Save queue, because it may changes with stop and start
+        val queue = this.queue
+        queue
+          .stream
+          .takeUntilEval(processingAllowed.whenOff)
+          .evalMap(numbered =>
+            numbered.value.correlId.bind(
+              executeCommandNow(subagentRunId, numbered)
+                .materialize
+                .flatTap(_ => queue
+                  .release(numbered.number)
+                  .map(_.orThrow)
+                  .handleError(t =>
+                    logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
+                .map(numbered.value/*Execute*/.respond)))
+          .completedL
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
   : IO[Checked[Response]] =

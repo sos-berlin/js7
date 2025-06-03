@@ -99,10 +99,9 @@ final class RecoveryTest extends OurTestSuite:
               val orderStampedSeq = controller.eventWatch.await[Event](_.key == orderId)
               withClue(s"$orderId"):
                 try assert(deleteRestartedJobEvents(orderStampedSeq.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
-                catch { case NonFatal(t) =>
+                catch case NonFatal(t) =>
                   logger.error("Test failed due to unexpected events:\n" + orderStampedSeq.mkString("\n"))
                   throw t
-                }
                 assert(controller.controllerState().idToOrder.keySet ==
                   (orders :+ QuickOrder).map(_.id).toSet)
             }
