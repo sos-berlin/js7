@@ -129,6 +129,14 @@ object AgentCommand extends CommonCommand.Companion:
 
   sealed trait ShutdownOrAbort extends AgentCommand
 
+  /**
+    * @param processSignal Whether to kill the local Subagent's processes.
+    * @param clusterAction For testing only
+    * @param suppressSnapshot For testing only
+    * @param restart Terminate program with a special return code which lets the
+    *                outer script restart the Director
+    * @param restartDirector Keep the local Subagent running but restart the Director.
+    */
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,

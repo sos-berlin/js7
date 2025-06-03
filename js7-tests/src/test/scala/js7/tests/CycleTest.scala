@@ -226,11 +226,10 @@ with ControllerAgentForScalaTest with ScheduleTester:
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId(s"#$orderDate#CANCEL")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
+    eventWatch.awaitNextKey[OrderCyclingPrepared](orderId)
 
     execCmd(CancelOrders(Seq(orderId)))
-    eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
-      .map(_.value.event)
+    eventWatch.awaitKey[OrderCancelled](orderId, after = eventId)
 
     assert(eventWatch.eventsByKey[OrderEvent](key = orderId, after = eventId) == Seq(
       OrderAdded(workflow.id),
@@ -359,10 +358,11 @@ with ControllerAgentForScalaTest with ScheduleTester:
   }
 
   "ScheduleTester standard example" - {
-    clock.resetTo(local("2021-10-01T00:00"))
+    "(init)" in:
+      clock.resetTo(local("2021-10-01T00:00"))
 
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
-      var eventId = eventWatch.lastAddedEventId
+    addStandardScheduleTests: (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
+      eventWatch.resetLastWatchedEventId()
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
       val orderDate = timeInterval.start.toLocalDateTime(using zone).toLocalDate
@@ -375,7 +375,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         .await(99.s).orThrow
 
       if expected.nonEmpty then
-        eventWatch.await[OrderCyclingPrepared](_.key == orderId)
+        eventWatch.awaitNextKey[OrderCyclingPrepared](orderId)
       val cycleStartedTimes = new VectorBuilder[Timestamp]
       val expectedCycleStartTimes = expected
         .map: (cycleWaitTimestamp, cycleState) =>
@@ -383,22 +383,17 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
       for t <- expectedCycleStartTimes do
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
-        val stamped = eventWatch
-          .await[OrderCycleStarted](_.key == orderId, after = eventId)
-          .head
+        val stamped = eventWatch.awaitNextKey[OrderCycleStarted](orderId).head
         cycleStartedTimes += stamped.timestamp
-        eventId = stamped.eventId
 
         clock += cycleDuration
         TestJob.continue()
-        eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
-          .head.eventId
+        eventWatch.awaitNextKey[OrderCycleFinished](orderId)
       assert(cycleStartedTimes.result() == expectedCycleStartTimes)
 
       for ts <- cycleStartedTimes.result().lastOption do
         clock := ts + cycleDuration
-      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-    }
+      eventWatch.awaitNextKey[OrderFinished](orderId)
   }
 
   "Ticking: One first cycle in mid of period (bug JS-2012)" in:
@@ -413,27 +408,27 @@ with ControllerAgentForScalaTest with ScheduleTester:
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
-    var eventId = eventWatch.lastAddedEventId
+    var eventId = eventWatch.resetLastWatchedEventId()
     val orderId = OrderId("#2021-10-01#ONCE-A-DAY")
     controller.api.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
 
     clock.tick()
-    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    eventWatch.awaitNextKey[OrderCycleStarted](orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 1)
 
     clock.tick(30.minutes - 1.s)
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 1)
 
     clock.tick(1.s)
-    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    eventWatch.awaitNextKey[OrderCycleStarted](orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 2)
 
     clock.tick(1.h - 1.s)
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 2)
 
     clock.tick(1.s)
-    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    eventWatch.awaitNextKey[OrderCycleStarted](orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 3)
 
   "Ticking: Late OrderCycleStart should skip gone cycles (JS-2189)" in:

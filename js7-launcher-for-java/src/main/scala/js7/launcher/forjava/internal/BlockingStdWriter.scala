@@ -13,7 +13,7 @@ private final class BlockingStdWriter(stdWriter: StdWriter)(using IORuntime) ext
   override def write(string: String): Unit =
     stdWriter.write(string).awaitInfinite
 
-  /** NOT IMPLEMENTED. */
+  /** This class doesn't buffer. */
   def flush(): Unit = {}
 
   /** Does nothing, because stdout and stdin are closed by the JS7 Engine. */

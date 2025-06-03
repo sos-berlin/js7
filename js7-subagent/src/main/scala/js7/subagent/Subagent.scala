@@ -211,7 +211,7 @@ extends MainService, Service.StoppableByRequest:
   private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
     dedicatedAllocated.checked.map(_.allocatedThing)
 
-  def supressJournalLogging(suppressed: Boolean): Unit =
+  def suppressJournalLogging(suppressed: Boolean): Unit =
     journal.suppressLogging(suppressed)
 
   override def toString =

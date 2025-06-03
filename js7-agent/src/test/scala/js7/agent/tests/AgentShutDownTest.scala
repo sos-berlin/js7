@@ -69,13 +69,13 @@ final class AgentShutDownTest
           .commandExecute(AttachItem(AgentRef(agentPath, Seq(SubagentId("SUBAGENT")))))
           .await(99.s)
 
-            val subagentId = SubagentId("SUBAGENT")
-            client
-              .repeatUntilAvailable(99.s)(
-                client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri))))
-              .await(99.s).orThrow
-            client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
-              .await(99.s).orThrow
+        val subagentId = SubagentId("SUBAGENT")
+        client
+          .repeatUntilAvailable(99.s)(
+            client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri))))
+          .await(99.s).orThrow
+        client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
+          .await(99.s).orThrow
 
         (for orderId <- orderIds yield
           client.commandExecute(AttachOrder(

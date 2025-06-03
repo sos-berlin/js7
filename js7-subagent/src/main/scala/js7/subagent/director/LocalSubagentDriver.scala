@@ -46,7 +46,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   protected val api = new LocalSubagentApi(subagent)
   @volatile private var _testFailover = false
 
-  subagent.supressJournalLogging(true) // Events are logged by the Director's Journal
+  subagent.suppressJournalLogging(true) // Events are logged by the Director's Journal
 
   protected def isHeartbeating = true
 

@@ -117,7 +117,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
             ConfirmClusterNodeLoss(agentPath, lostNodeId = NodeId.primary,
               confirmer = "UntaughtAgentClusterWatchTest")
 
-          controller.awaitNext[AgentClusterWatchManuallyConfirmed](_.key == agentPath)
+          controller.awaitNextKey[AgentClusterWatchManuallyConfirmed](agentPath)
           assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
             .nodeToLossNotConfirmedProblem.isEmpty)
 

@@ -333,30 +333,27 @@ extends Service.StoppableByRequest:
 
   private def dedicateAgentIfNeeded(directorDriver: DirectorDriver)
   : IO[Checked[(AgentRunId, EventId)]] =
-    logger.traceIO(IO.defer:
-      checkedAgentRefState
-        .flatMapT: agentRefState =>
+    logger.traceIO:
+      IO.defer:
+        checkedAgentRefState.flatMapT: agentRefState =>
           import agentRefState.agentRef.directors
           agentRefState.agentRunId match
             case Some(agentRunId) => IO.right(agentRunId -> state.adoptedEventId)
             case None =>
-              val controllerRunId = ControllerRunId(journal.journalId)
-              directorDriver
-                .executeCommand(
-                  DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath))
-                .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
-                  (if noJournal then
-                    IO.right(())
-                  else
-                    journal
-                      .persist(
-                        agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
-                      .flatMapT { _ =>
-                        lastAgentRunId = Some(agentRunId)
-                        reattachSomeItems().map(Right(_))
-                      }
-                  ).rightAs(agentRunId -> agentEventId)
-                })
+              directorDriver.executeCommand:
+                val controllerRunId = ControllerRunId(journal.journalId)
+                DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
+              .flatMapT: response =>
+                import response.{agentEventId, agentRunId}
+                (if noJournal then
+                  IO.right(())
+                else
+                  journal.persist:
+                    agentPath <-: AgentDedicated(agentRunId, Some(agentEventId))
+                  .flatMapT: _ =>
+                    lastAgentRunId = Some(agentRunId)
+                    reattachSomeItems().map(Right(_))
+                ).rightAs(agentRunId -> agentEventId)
 
   private def reattachSomeItems(): IO[Unit] =
     journal.aggregate.flatMap(controllerState =>
