@@ -22,7 +22,6 @@ extends EventInstructionExecutor:
   val instructionClass = classOf[Cycle]
 
   def toEvents(instr: Cycle, order: Order[Order.State], state: StateView) =
-    val now = clock.now()
     start(order)
       .orElse(order.ifState[Ready].map: order =>
         for
@@ -31,15 +30,15 @@ extends EventInstructionExecutor:
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         yield
-          val cycleState = calculator.nextCycleState(
+          calculator.nextCycleState(
             CycleState(
               next = timeInterval.start,
               end = timeInterval.end,
               schemeIndex = -1,
               periodIndex = -1,
               index = 0),
-            now)
-          cycleState match
+            clock.now())
+          match
             case Some(cycleState) =>
               (order.id <-: OrderCyclingPrepared(cycleState)) :: Nil
             case None =>
@@ -52,7 +51,7 @@ extends EventInstructionExecutor:
           case Some(cycleState) =>
             toScheduleCalculator(order, instr, state)
               .flatMap:
-                _.onNextCycleIsDue(cycleState, now)
+                _.onNextCycleIsDue(cycleState, clock.now())
               .map:
                 case Do.KeepWaiting => Nil
 
@@ -72,16 +71,16 @@ extends EventInstructionExecutor:
 
   override def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State], state: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
-    val checkedKeyedEvent = for
-      calculator <- toScheduleCalculator(order, instr, state)
-      branchId <- order.position.branchPath.lastOption.map(_.branchId)
-        .toChecked(Problem(s"${order.id} Cycle Position expected: ${order.position}"))
-      cycleState <- branchId.toCycleState
-    yield
-      order.id <-: OrderCycleFinished(
-        calculator.nextCycleState(cycleState, clock.now()))
-
-    checkedKeyedEvent.map(_ :: Nil)
+    locally:
+      for
+        calculator <- toScheduleCalculator(order, instr, state)
+        branchId <- order.position.branchPath.lastOption.map(_.branchId)
+          .toChecked(Problem(s"${order.id} Cycle Position expected: ${order.position}"))
+        cycleState <- branchId.toCycleState
+      yield
+        order.id <-: OrderCycleFinished(
+          calculator.nextCycleState(cycleState, clock.now()))
+    .map(_ :: Nil)
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
     for
@@ -102,7 +101,8 @@ extends EventInstructionExecutor:
       zone <- workflow.timeZone.toZoneId
       calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset,
         onlyOnePeriod = cycle.onlyOnePeriod)
-    yield calendar -> calculator
+    yield 
+      calendar -> calculator
 
   override def toObstacles(
     order: Order[Order.State],
