@@ -11,6 +11,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
+import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.controller.ControllerCommand.{CancelOrders, ResetAgent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
@@ -18,8 +20,8 @@ import js7.data.workflow.position.{InstructionNr, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.ResetAgentWhenCancelingTest.*
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class ResetAgentWhenCancelingTest
   extends OurTestSuite, ControllerAgentForScalaTest:
@@ -45,7 +47,7 @@ final class ResetAgentWhenCancelingTest
       TestJob.execute(agentPath))))
     val orderId = OrderId("CANCELING")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](_.key == orderId)
+    eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
 
     val agentTerminated = agent.terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover)).unsafeToFuture()
     sleep(500.ms) // Give terminate some time to start !!!
@@ -53,14 +55,19 @@ final class ResetAgentWhenCancelingTest
     // May wait forever and fail when second job has been started while terminating !!!
     agentTerminated.await(99.s)
 
-    execCmd(CancelOrders(Seq(orderId)))
+    execCmd:
+      CancelOrders(Seq(orderId))
 
     // Delete Agent's journal
     deleteDirectoryContentRecursively(directoryProvider.agentEnvs.head.stateDir)
 
     val freshAgent = directoryProvider.startAgent(agentPath).await(99.s)
-    execCmd(ResetAgent(agentPath))
-    eventWatch.await[OrderTerminated](_.key == orderId)
+    eventWatch.awaitNext[AgentCouplingFailed](_.event.problem is AgentNotDedicatedProblem)
+
+    execCmd:
+      ResetAgent(agentPath)
+    eventWatch.awaitNextKey[OrderTerminated](orderId)
+    eventWatch.awaitNext[AgentDedicated]()
 
     // TODO 💥While resetting, the order may start the second job, but the test does not expect this
     assert(eventWatch.eventsByKey[OrderEvent](orderId)

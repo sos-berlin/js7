@@ -839,7 +839,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                   case reset: Reset if !force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in $reset state")))
                   case _ =>
-                    ControllerStateExecutor.resetAgent(agentPath, force = force)
+                    ControllerStateExecutor.startResetAgent(agentPath, force = force)
                       .calculate(journal.unsafeAggregate(), TimeCtx(Timestamp.now))
                     match
                       case Left(problem) => Future.successful(Left(problem))

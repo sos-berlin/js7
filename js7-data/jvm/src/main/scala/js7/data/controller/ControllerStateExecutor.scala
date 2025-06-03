@@ -112,7 +112,7 @@ object ControllerStateExecutor:
     yield
       position
 
-  def resetAgent(agentPath: AgentPath, force: Boolean): EventCalc[ControllerState, Event, TimeCtx] =
+  def startResetAgent(agentPath: AgentPath, force: Boolean): EventCalc[ControllerState, Event, TimeCtx] =
     EventCalc: coll =>
       for
         coll <- coll.add:

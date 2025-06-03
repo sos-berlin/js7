@@ -93,13 +93,13 @@ extends Service.StoppableByRequest:
               IO.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
 
             case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
-              executeCommand(AgentCommand.Reset(maybeAgentRunId))
-                .map:
-                  case Left(AgentNotDedicatedProblem) => Checked.unit // Already reset
-                  case o => o
+              resetAgent(maybeAgentRunId)
                 .flatMapT: _ =>
-                  journal.persist(agentPath <-: AgentReset)
-
+                  journal.persist:
+                    _.keyTo(AgentRefState).checked(agentPath).map: agentRefState =>
+                      agentRefState.couplingState match
+                        case _: Resetting => Some(agentPath <-: AgentReset)
+                        case _ => None
             case _ =>
               IO.pure(Checked.unit)
         .flatMapT: _ =>
@@ -232,6 +232,9 @@ extends Service.StoppableByRequest:
     logger.debugIO:
       executeCommand(client, AgentCommand.Reset(agentRunId))
         .logWhenMethodTakesLonger
+        .recoverFromProblem:
+          case problem @ AgentNotDedicatedProblem =>
+            logger.info(s"AgentCommand.Reset: Agent is already reset: $problem")
         .rightAs(())
 
   def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)

@@ -44,7 +44,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 
-  "resetAgent" in:
+  "startResetAgent" in:
     pending // TODO
 
   private lazy val stdVerifiedUpdateItems = VerifiedUpdateItems(
