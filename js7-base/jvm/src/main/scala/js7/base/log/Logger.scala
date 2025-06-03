@@ -23,9 +23,9 @@ import scala.annotation.unused
 import scala.concurrent.duration.Deadline
 import scala.reflect.ClassTag
 
-object Logger extends AdHocLogger:
+type Logger = ScalaLogger
 
-  type Underlying = ScalaLogger
+object Logger extends AdHocLogger:
 
   private val ifNotInitialized = new Once
   private val initLogged = Atomic(false)
@@ -219,11 +219,11 @@ object Logger extends AdHocLogger:
 
       def debugIOWithResult[A](function: String)(body: IO[A])
       : IO[A] =
-        logF[IO, A](logger, LogLevel.Debug, function)(body)
+        logF[IO, A](logger, LogLevel.Debug, function, resultToLoggable = identity)(body)
 
       def debugIOWithResult[A](function: String, args: => Any)(io: IO[A])
       : IO[A] =
-        logF[IO, A](logger, LogLevel.Debug, function, args)(io)
+        logF[IO, A](logger, LogLevel.Debug, function, args, resultToLoggable = identity)(io)
 
       def debugIOWithResult[A](
         function: String,

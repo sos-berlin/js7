@@ -14,6 +14,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
@@ -40,6 +41,7 @@ import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
+import scala.concurrent.duration.Deadline
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -72,14 +74,8 @@ extends Service.StoppableByRequest:
     shuttingDown.get()
 
   protected def start =
-    startService(
-      untilStopRequested *>
-        //director
-        //  .use {
-        //  case None => IO.unit
-        //  case Some(allocated) => allocated.release
-        //} *>
-        terminate(Some(SIGTERM)))
+    startService:
+      untilStopRequested *> terminate(Some(SIGTERM))
 
   private[subagent] def terminate(
     signal: Option[ProcessSignal],
@@ -174,13 +170,17 @@ extends Service.StoppableByRequest:
   private def awaitOrderAcknowledgements: IO[Unit] =
     logger.debugIO:
       IO.defer:
+        val since = Deadline.now
         val oToP = orderToProcessing.toMap.toVector
-        for orderId <- oToP.map(_._1).sorted do logger.info:
-          s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId"
-        oToP.parTraverse: (orderId, processing) =>
+        // TODO Wait a second before logging at info level
+        logger.info(s"🟡 Delaying shutdown until Agent Director has acknowledged processing of ${
+          oToP.map(_._1).sorted.mkStringLimited(3)}")
+        oToP.parFoldMapA: (orderId, processing) =>
           processing.acknowledged.get *>
-            IO(logger.info(s"🟢 Director has acknowledged processing of $orderId"))
-        .map(_.combineAll)
+            IO(logger.debug(s"🟢 Director has acknowledged processing of $orderId"))
+        *>
+          IO(logger.info(s"🟢 Director has acknowledged processing of all orders after ${
+            since.elapsed.pretty}"))
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("killAndStopAllJobs", signal)(
@@ -365,8 +365,11 @@ extends Service.StoppableByRequest:
           _.killProcess(orderId, signal)
     yield ()
 
+  def longName: String =
+    s"$subagentId in $agentPath for $controllerId"
+
   override def toString =
-    s"DedicatedSubagent($subagentId in $agentPath for $controllerId)"
+    s"DedicatedSubagent($longName)"
 
 
 object DedicatedSubagent:

@@ -1,6 +1,6 @@
 package js7.base.test
 
-import js7.base.log.LoggingEscapeCodes.{bold, green, magenta, orange, resetColor}
+import js7.base.log.LoggingEscapeCodes.{blue, bold, green, magenta, orange, resetColor}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.UnifiedStringWrapper
 import js7.base.test.LoggingTestAdder.*
@@ -104,7 +104,7 @@ private object LoggingTestAdder:
     private val prefix = nesting.view.reverse.mkString("", " · ", " · ")
 
     def beforeTest(): Unit =
-      logger.info(eager(s"""↘ $bold$prefix"$testName"$resetColor"""))
+      logger.info(eager(s"""↘ $blue$bold$prefix"$testName"$resetColor"""))
       since
 
     def afterTest[A](tried: Try[A]): Unit =
@@ -119,12 +119,12 @@ private object LoggingTestAdder:
         case Success(_) =>
           adder.succeededCount += 1
           logger.info(logLine)
-          logger.info(eager(successMarkup + bar + resetColor))
+          logger.info(eager(bar + resetColor))
 
         case Failure(_: TestPendingException) =>
           adder.pendingCount += 1
           logger.warn(logLine)
-          logger.info(eager(pendingMarkup + bar + resetColor))
+          logger.info(eager(bar + resetColor))
 
         case Failure(t) =>
           clipStackTrace(t)
@@ -132,7 +132,7 @@ private object LoggingTestAdder:
           if isSbt then System.err.println(logLine)
           logger.error(logLine)
           logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-          logger.info(eager(failureMarkup + bar + resetColor))
+          logger.info(eager(bar + resetColor))
           clipStackTrace(t)
 
       collectResult(result)

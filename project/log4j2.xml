@@ -18,7 +18,7 @@
           How to use a single file handle for all subprojects ???-->
       <!-- append=true is required to let forked tests append. -->
       <patternLayout
-        pattern="%highlight{%d{yyyy-MM-dd HH:mm:ss.nnnnnn} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message}{ERROR=red bold,WARN=red,INFO=default,DEBUG=blue,TRACE=bright_black}%n"
+        pattern="%highlight{%d{yyyy-MM-dd HH:mm:ss.nnnnnn} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }%threadName %logger - %message}{ERROR=red bold,WARN=red,INFO=default,DEBUG=blue,TRACE=bright_black}%n"
         header="%d{yyyy-MM-dd HH:mm:ss.nnnnnn} Begin JS7 %X{js7.serverId} · %X{js7.prettyVersion} · %X{js7.system}%n"
         footer="%d{yyyy-MM-dd HH:mm:ss.nnnnnn} End of logging%n"
         charset="UTF-8"/>

@@ -50,6 +50,8 @@ extends AbstractIterator[EventId]:
     val ts = timestampMillis getOrElse EventId.toEpochMilli(eventId)
     new Stamped(eventId, ts, a)
 
+  override def toString = s"EventIdGenerator(${lastResult.get()})"
+
 
 object EventIdGenerator:
 

@@ -214,7 +214,8 @@ extends MainService, Service.StoppableByRequest:
   def supressJournalLogging(suppressed: Boolean): Unit =
     journal.suppressLogging(suppressed)
 
-  override def toString = s"Subagent${checkedDedicatedSubagent.toOption.fold("")(o => s"($o)")}"
+  override def toString =
+    s"Subagent${dedicatedAllocated.toOption.map(_.allocatedThing.longName).fold("")(o => s"($o)")}"
 
   def localUri: Uri =
     webServer.localUri
