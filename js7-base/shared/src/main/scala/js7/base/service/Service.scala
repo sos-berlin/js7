@@ -47,11 +47,21 @@ trait Service:
           case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
           case Right(r) => IO.pure(r)
 
-  protected final def startServiceAndLog(logger: Logger.Underlying, args: String = "")(run: IO[Unit])
+  /** Like `startService`, and logs start and stop at info level. */
+  protected final def startServiceAndLog(logger: Logger, args: String = "")(run: IO[Unit])
   : IO[Started] =
-    startService(
-      logInfoStartAndStop(logger, service.toString, args)(
-        run))
+    startService:
+      logInfoStartAndStop(logger, args):
+        run
+
+  private def logInfoStartAndStop[A](logger: Logger, args: String = "")(body: IO[A])
+  : IO[A] =
+    IO.defer:
+      logger.info(s"$service${args.nonEmpty ?? s"($args)"} started")
+      body.guaranteeCase:
+        case Outcome.Errored(_) => IO.unit // startService has logged the error
+        case Outcome.Canceled() => IO(logger.info(s"◼️  $service canceled"))
+        case Outcome.Succeeded(_) => IO(logger.info(s"$service stopped"))
 
   /** Run the provided service until it terminates. */
   protected final def startService(run: IO[Unit]): IO[Started] =
@@ -103,26 +113,12 @@ object Service:
           else
             logger.traceF(s"$service start"):
               service.start
-                .onError:
-                  case t => IO:
+                .onError: t =>
+                  IO:
                     // Maybe duplicate, but some tests don't propagate this error and silently deadlock
                     logger.error(s"$service start => ${t.toStringWithCauses}"))(
-      release =
-        service => service.stop
-          .logWhenItTakesLonger(s"stopping $service"))
-
-  private def logInfoStartAndStop[A](
-    logger: Logger.Underlying,
-    serviceName: String,
-    args: String = "")
-    (body: IO[A])
-  : IO[A] =
-    IO.defer:
-      logger.info(s"$serviceName${args.nonEmpty ?? s"($args)"} started")
-      body.guaranteeCase:
-        case Outcome.Errored(_) => IO.unit // start logs the error
-        case Outcome.Canceled() => IO(logger.info(s"◼️  $serviceName canceled"))
-        case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName stopped"))
+      release = service =>
+        service.stop.logWhenItTakesLonger(s"stopping $service"))
 
   def restartAfterFailure[Svc <: Service: Tag](
     restartDelayConf: DelayConf = defaultRestartDelayConf,
@@ -142,10 +138,12 @@ object Service:
   trait StoppableByCancel extends StoppableByRequest:
     override protected[service] val stoppableByCancel = true
 
-  /** Marker type to ensure call of `startFiber`. */
+
+  /** Marker type to ensure call of `startService`. */
   final class Started private[Service]:
     override def toString = "Service.Started"
-  private val Started = new Started
+
+  private val Started: Started = new Started
 
 
   //type Empty = Empty.type

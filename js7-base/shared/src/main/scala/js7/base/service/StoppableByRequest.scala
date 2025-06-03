@@ -1,7 +1,7 @@
 package js7.base.service
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
-import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, raiseError_}
+import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, raiseError_, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -43,6 +43,13 @@ trait StoppableByRequest:
 
   protected def stop: IO[Unit] =
     memoizedStop
+
+  protected final def initiateStop: IO[Unit] =
+    IO.defer:
+      logger.trace(s"$toString initiateStop")
+      _isStopping = true
+      stopRequested.complete(()) *>
+        stop.startAndForget
 
   /** When stop is being requested, cancel the body and throw. */
   protected final def cancelOnStopRequest[A](body: IO[A]): IO[A] =
