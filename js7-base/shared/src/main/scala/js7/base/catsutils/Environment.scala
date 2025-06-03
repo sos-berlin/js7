@@ -11,7 +11,7 @@ import js7.base.catsutils.Environment.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass}
+import js7.base.utils.ScalaUtils.syntax.*
 
 /** Maps a type (a Tag) to a value. */
 final class Environment(label: String = ""):
@@ -40,10 +40,16 @@ final class Environment(label: String = ""):
         if !registered && !ignoreDuplicate then
           throw DuplicateTagException(tag, this)
         else
+          if !registered && ignoreDuplicate then
+            val pureValue = resource match
+              case o: Resource.Pure[F, A] => s", tried=${o.a}"
+              case _ => ""
+            val registeredValue = Option(tagToEntry.get(tag.tag)).fold("")(o => s", registered=$o")
+            logger.debug:
+              s"⚠️  environment[${tag.tag}] has already been registered$pureValue$registeredValue"
           () -> F.whenA(registered)(release[F, A])
 
   /** Add a Resource of unique type `A` to the `Environment`.
-   * <p>
    * @return false, iff A type has already been registered
    */
   private def tryRegister[F[_], A](resource: Resource[F, A])(using F: Sync[F], tag: Tag[A])
@@ -51,11 +57,16 @@ final class Environment(label: String = ""):
     if F.ne(IOSync) && F.ne(SyncIOSync) then throw IllegalArgumentException:
       s"tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
     var added = false
+    val entry = resource match
+      case o: Resource.Pure[F, A] => Entry.Pure(o.a)
+      case _ => Entry.FResource(resource)
+
     tagToEntry.computeIfAbsent(tag, _ =>
       added = true
-      Entry.FResource(resource))
+      entry)
     if added then
-      logger.trace(s"environment[${tag.tag}] registered")
+      val value = entry.valueString
+      logger.trace(s"environment[${tag.tag}] registered${value.nonEmpty ?? s" $value"}")
     added
 
   //def releaseAll: IO[Unit] =
@@ -70,7 +81,7 @@ final class Environment(label: String = ""):
     F.defer:
       tagToEntry.remove(tag) match
         case alloc: Entry.FAlloc[F @unchecked, A @unchecked] =>
-          logger.traceF(s"release ${tag.tag}"):
+          logger.traceF(s"release ${tag.tag} ${alloc.valueString}"):
             assertThat(F eq alloc.F)
             alloc.release
         case _ =>
@@ -219,19 +230,26 @@ object Environment:
       TaggedResource(tag, Resource.eval(Fa))
 
 
-  private sealed trait Entry[A]
+  private sealed trait Entry[A]:
+    def valueString: String
+
   private object Entry:
     final case class Pure[A](a: A)
-    extends Entry[A]
+    extends Entry[A]:
+      def valueString = a.toString
 
     final case class FResource[Fa[_], A](resource: Resource[Fa, A])(using val F: Sync[Fa])
     extends Entry[A]:
       type F[x] = Fa[x]
+      def valueString = resource match
+        case o: Resource.Pure[Fa, A] => o.a.toString
+        case _ => ""
 
     final case class FAlloc[F[_], A](allocated: (A, F[Unit]))(using val F: Sync[F])
     extends Entry[A]:
       def a: A = allocated._1
       def release: F[Unit] = allocated._2
+      def valueString = a.toString
 
   private final class TagNotFoundException(val tag: Tag[?], env: Environment, caller: String)
   extends IllegalArgumentException(s"${tag.tag} is not defined in $env (called by $caller)")
