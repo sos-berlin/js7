@@ -80,11 +80,11 @@ object JobIsNotRestartableTest:
             if isWindows then
               """@echo off
                 |echo STARTED
-                |ping -n 100 127.0.0.1 >nul
+                |ping -n 200 127.0.0.1 >nul
                 |""".stripMargin
             else
               """#!/usr/bin/env bash
                 |echo STARTED
-                |sleep 99
+                |sleep 199
                 |""".stripMargin,
           isNotRestartable = true)))

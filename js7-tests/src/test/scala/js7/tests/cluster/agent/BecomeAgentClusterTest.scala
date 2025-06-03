@@ -4,14 +4,13 @@ import cats.effect.IO
 import js7.agent.data.commands.AgentCommand
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
@@ -20,15 +19,15 @@ import js7.data.cluster.ClusterState
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
-import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.BecomeAgentClusterTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
-import scala.util.control.NonFatal
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class BecomeAgentClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest:
@@ -54,9 +53,9 @@ final class BecomeAgentClusterTest
   protected override val agentPaths = Seq(agentPath)
 
   private lazy val backupSubagentItem = SubagentItem(
-    SubagentId("Backup-SUBAGENT"), agentPath, findFreeLocalUri())
+    backupSubagentId, agentPath, findFreeLocalUri())
 
-  override protected def items = Seq(workflow)
+  protected def items = Seq(workflow)
 
   "Run an Order without cluster" in:
     val stampedEvents = controller.runOrder(FreshOrder(OrderId("SIMPLE"), workflow.path))
@@ -77,69 +76,76 @@ final class BecomeAgentClusterTest
         .await(99.s)
 
     TestAgent(subagentAllocated).useSync(99.s): backupDirector =>
-      try
-        assert(controller.runOrder(FreshOrder(OrderId("🟦"), workflow.path))
-          .last.value == OrderFinished())
+      val agentRef =
+        val a = controllerState.keyToItem(AgentRef)(agentPath)
+        a.copy(
+          directors = a.directors :+ backupSubagentId,
+          itemRevision = None)
 
-        assert(controllerState.itemToAgentToAttachedState == Map(
-          agentPath -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
-          primarySubagentId -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
-          workflow.id -> Map(agentPath -> Attached(None))))
+      val semaWorkflow = Workflow(
+        WorkflowPath("SEMAPHORE-WORKFLOW"),
+        Seq:
+          ASemaphoreJob.execute(agentPath, isNotRestartable = true,
+            subagentBundleId = Some(StringConstant(backupSubagentId.string))))
 
-        var eventId = eventWatch.lastAddedEventId
-        val agentRef = controllerState.keyToItem(AgentRef)(agentPath)
-        updateItems(
-          backupSubagentItem,
-          agentRef.copy(
-            directors = agentRef.directors :+ backupSubagentItem.id,
-            itemRevision = None))
+      val eventId = eventWatch.resetLastWatchedEventId()
 
-        eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
-          && ke.event.key == agentPath, after = eventId)
-        eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
-          && ke.event.key == backupSubagentItem.id, after = eventId)
+      updateItems(agentRef, backupSubagentItem, semaWorkflow)
+      assert(controller.runOrder(FreshOrder(OrderId("🟦"), workflow.path))
+        .last.value == OrderFinished())
 
-        assert(controllerState.itemToAgentToAttachedState == Map(
-          // 👇ItemRevision(1) because AgentRef has been changed
-          agentPath -> Map(agentPath -> Attached(Some(ItemRevision(1)))),
-          primarySubagentId -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
-          // 👇backupSubagentItem is attached to Agent now
-          backupSubagentItem.id -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
-          workflow.id -> Map(agentPath -> Attached(None))))
+      eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
+        && ke.event.key == agentPath, after = eventId)
+      eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
+        && ke.event.key == backupSubagentItem.id, after = eventId)
 
-        agent.eventWatch.await[ClusterNodesAppointed]()
-        agent.eventWatch.await[ClusterWatchRegistered]()
-        agent.eventWatch.await[ClusterCoupled]()
+      assert(controllerState.itemToAgentToAttachedState == Map(
+        // 👇ItemRevision(1) because AgentRef has been changed
+        agentPath -> Map(agentPath -> Attached(Some(ItemRevision(1)))),
+        primarySubagentId -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+        // 👇backupSubagentItem is attached to Agent now
+        backupSubagentItem.id -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+        workflow.id -> Map(agentPath -> Attached(None))))
 
-        assert(controller.runOrder(FreshOrder(OrderId("🔹"), workflow.path))
-          .last.value == OrderFinished())
+      agent.eventWatch.await[ClusterNodesAppointed]()
+      agent.eventWatch.await[ClusterWatchRegistered]()
+      agent.eventWatch.await[ClusterCoupled]()
 
-        def agentClusterState() = controller.controllerState().keyTo(AgentRefState)(agentPath)
-          .clusterState
-        assert(agentClusterState().isInstanceOf[ClusterState.Coupled])
+      assert:
+        controller.runOrder:
+          FreshOrder(OrderId("🔹"), workflow.path, deleteWhenTerminated = true)
+        .exists(_.value == OrderFinished())
 
-        val failOverOrderId = OrderId("🔺")
-        controller.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
-        controller.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId)
+      assert(controllerState.keyTo(AgentRefState)(agentPath).clusterState
+        .isInstanceOf[ClusterState.Coupled])
 
-        // Kill Agent roughly
-        agent.terminate(
-          processSignal = Some(SIGKILL),
+      val failoverOrderId = OrderId("🔺")
+      controller.api.addOrder:
+        FreshOrder(failoverOrderId, semaWorkflow.path, deleteWhenTerminated = true)
+      .await(99.s).orThrow
+      eventWatch.awaitNextKey[OrderProcessingStarted](failoverOrderId)
+      eventWatch.awaitNextKey[OrderStdoutWritten](failoverOrderId)
+
+      // Kill Agent roughly //
+      agent.terminate(
           clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
-          .await(99.s)
+        .await(99.s)
 
-        eventId = controller.eventWatch
-          .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
-          .head.eventId
-      catch case NonFatal(t) =>
-        logger.error(t.toStringWithCauses, t)
-        throw t
+      // Failed over //
+      eventWatch
+        .awaitNext[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
+        .head.eventId
+
+      ASemaphoreJob.continue()
+      eventWatch.awaitNextKey[OrderProcessed](failoverOrderId)
+      eventWatch.awaitNextKey[OrderFinished](failoverOrderId)
 
 
 object BecomeAgentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)
+  private val backupSubagentId = SubagentId("Backup-SUBAGENT")
 
   private val workflow = Workflow(
     WorkflowPath("MY-WORKFLOW") ~ "INITIAL",

@@ -99,14 +99,16 @@ final class BlockingInternalJobTest
         val orderId = OrderId("THROWING-INTERRUPTIBLE-BLOCKING-JOB")
 
         ThrowingInterruptibleJob.lock.lock()
-        controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-          .await(99.s).orThrow
+        controller.api.addOrder:
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        .await(99.s).orThrow
         eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
 
         waitForCondition(10.s, 10.ms):
           ThrowingInterruptibleJob.lock.isLocked
 
-        execCmd(CancelOrders(Seq(orderId), CancellationMode.kill()))
+        execCmd:
+          CancelOrders(Seq(orderId), CancellationMode.kill())
         eventWatch.awaitNext[OrderTerminated](_.key == orderId).head.value.event
 
         ThrowingInterruptibleJob.lock.unlock()
@@ -116,7 +118,7 @@ final class BlockingInternalJobTest
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderStdoutWritten("ThrowingInterruptibleJob\n"),
+          OrderStdoutWritten("ThrowingInterruptibleJob"),
           OrderCancellationMarked(CancellationMode.kill()),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("java.lang.InterruptedException")))),
@@ -152,7 +154,7 @@ final class BlockingInternalJobTest
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderStdoutWritten("InterruptibleJob\n"),
+          OrderStdoutWritten("InterruptibleJob"),
           OrderCancellationMarked(CancellationMode.kill()),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("java.lang.InterruptedException")))),
@@ -178,7 +180,7 @@ object BlockingInternalJobTest:
   final class NonInterruptibleJob extends BlockingInternalJob:
     def toOrderProcess(step: Step) =
       () =>
-        step.out.println("NonInterruptibleJob")
+        step.out.print("NonInterruptibleJob")
         NonInterruptibleJob.lock.lockInterruptibly()
         JOutcome.succeeded
 
@@ -190,7 +192,7 @@ object BlockingInternalJobTest:
     def toOrderProcess(step: Step) =
       new InterruptibleOrderProcess:
         def runInterruptible() =
-          step.out.println("ThrowingInterruptibleJob")
+          step.out.print("ThrowingInterruptibleJob")
           ThrowingInterruptibleJob.lock.lockInterruptibly()
           JOutcome.succeeded
 
@@ -201,7 +203,7 @@ object BlockingInternalJobTest:
   final class InterruptibleJob extends BlockingInternalJob:
     def toOrderProcess(step: Step): BlockingInternalJob.InterruptibleOrderProcess =
       () =>
-        step.out.println("InterruptibleJob")
+        step.out.print("InterruptibleJob")
         InterruptibleJob.lock.lockInterruptibly()
         JOutcome.succeeded
 

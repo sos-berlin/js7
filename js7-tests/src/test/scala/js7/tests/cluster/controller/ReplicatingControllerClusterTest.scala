@@ -9,6 +9,7 @@ import js7.data.cluster.{ClusterEvent, ClusterTiming}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 
@@ -25,7 +26,8 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester:
         primaryController.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
-        assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
+        // isRequiringClusterAcknowledgement is set after ClusterCoupled (maybe bad)
+        awaitAndAssert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
 
         primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
 

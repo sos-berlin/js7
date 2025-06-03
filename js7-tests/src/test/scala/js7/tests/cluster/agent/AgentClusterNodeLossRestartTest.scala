@@ -20,6 +20,7 @@ import js7.data.cluster.ClusterTiming
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.agent.AgentClusterNodeLossRestartTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{DirectorEnv, DirectoryProviderForScalaTest}
@@ -116,7 +117,8 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 
         /// Now, nodeToLossNotConfirmedProblem must be empty ///
 
-        assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
+        // Is await required ???
+        awaitAndAssert(controller.controllerState().keyTo(AgentRefState)(agentPath)
           .nodeToLossNotConfirmedProblem.isEmpty)
 
         // FIXME Delay, otherwise SubagentEventListener.observeEvents may not be stoppable

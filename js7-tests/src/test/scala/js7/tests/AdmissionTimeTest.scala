@@ -22,6 +22,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AddOrder, Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.AdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -42,7 +43,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
   private implicit val timeZone: ZoneId = AdmissionTimeTest.timeZone
-  private implicit val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
+  private implicit lazy val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
     alarmClock = Some(clock))
@@ -63,8 +64,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 1)
 
       clock := local("2021-03-21T02:59")
-      sleep(100.ms)
-      assert(controllerState.idToOrder(orderId).isState[Fresh])
+      awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
@@ -135,8 +135,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
     clock := local("2021-11-01T07:59")
-    sleep(100.ms)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
     clock := local("2021-11-01T08:00")
@@ -161,8 +160,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     val tooLate = local("2021-11-08T10:00")
     assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, timeZone, dateOffset = 0.s))
     clock := tooLate  // To late
-    sleep(100.ms)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
   "forceJobAdmission in AddOrder command" in:

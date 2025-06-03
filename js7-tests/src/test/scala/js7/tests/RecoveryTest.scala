@@ -18,6 +18,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.{NumberValue, StringValue}
@@ -78,6 +79,8 @@ final class RecoveryTest extends OurTestSuite:
             controller.addOrderBlocking(order2)
             lastEventId = lastEventIdOf(controller.eventWatch
               .await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            lastEventId = lastEventIdOf(controller.eventWatch
+              .await[OrderProcessingStarted](after = lastEventId, predicate = _.key == order2.id))
           }
 
           logger.info("*** RESTARTING AGENTS ***\n")
@@ -199,7 +202,7 @@ private object RecoveryTest:
     val result = mutable.Buffer[Event]()
     while events.hasNext do
       events.next() match
-        case OrderProcessed.processLostDueToRestart =>
+        case OrderProcessed(OrderOutcome.Disrupted(ProcessLost(_), false)) =>
           while !result.last.isInstanceOf[OrderProcessingStarted] do
             result.remove(result.size - 1)
           result.remove(result.size - 1)
