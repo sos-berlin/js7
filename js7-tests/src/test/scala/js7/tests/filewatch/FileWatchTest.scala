@@ -1,5 +1,6 @@
 package js7.tests.filewatch
 
+import com.typesafe.config.ConfigFactory
 import fs2.Stream
 import java.io.File
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
@@ -58,7 +59,13 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    """
+    """.withFallback:
+      if isMac then
+        // Maybe since Java 24, directory changes are detected only when polling.
+        // So we shorten the default 60s
+        config"""js7.directory-watch.poll-timeout = 10s"""
+      else
+        ConfigFactory.empty()
 
   // Calculate directory path from an environment variable
   private val watchPrefix = (directoryProvider.agentEnvs(0).dataDir / "work").toString + File.separator
