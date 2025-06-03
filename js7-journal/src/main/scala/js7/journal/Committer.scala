@@ -128,7 +128,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       IO:
         statistics.onPersisted(eventCount = 1, since)
         journalLogger.logCommitted(snapshotTaken :: Nil,
-          eventNumber = eventNumber, since,
+          eventNumber = eventNumber,
+          since,
           clusterState = unsafeAggregate().clusterState.getClass.simpleScalaName,
           isAcknowledged = isAcknowledged)
         eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)

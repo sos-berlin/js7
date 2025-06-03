@@ -28,11 +28,11 @@ final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
       Right(stampedKeyedEvents.head -> aggregate)
 
   /** Return the body if an event has been persisted. */
-  def ifPersisted[U <: Unit](body: IO[U]): IO[Checked[Unit]] =
+  def ifNonEmpty[U <: Unit](body: IO[U]): IO[Checked[this.type]] =
     if isEmpty then
-      IO.right(())
+      IO.right(this)
     else
-      body.map(Right(_))
+      body.as(Right(this))
 
   override def toString =
     s"Persisted(${stampedKeyedEvents.mkString("[", ", ", "]")})"
@@ -45,7 +45,7 @@ object Persisted:
 
   extension [S <: EventDrivenState[S, E], E <: Event](io: IO[Checked[Persisted[S, E]]])
     /** Return the body if an event has been persisted. */
-    def ifPersisted[U <: Unit](body: Persisted[S, E] => IO[U]): IO[Checked[Unit]] =
+    def ifPersisted[U <: Unit](body: Persisted[S, E] => IO[U]): IO[Checked[Persisted[S, E]]] =
       io.flatMapT: persisted =>
-        persisted.ifPersisted:
+        persisted.ifNonEmpty:
           body(persisted)

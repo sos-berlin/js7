@@ -468,12 +468,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   private def emitLocalSubagentCoupled: IO[Unit] =
     journal
       .persist: agentState =>
-        Right:
-          agentState
-            .idToSubagentItemState.get(localSubagentId)
-            .exists(_.couplingState != Coupled)
-            .thenList:
-              localSubagentId <-: SubagentCoupled
+        agentState
+          .idToSubagentItemState.get(localSubagentId)
+          .exists(_.couplingState != Coupled)
+          .thenList:
+            localSubagentId <-: SubagentCoupled
       .orThrow
       .void
 

@@ -35,8 +35,8 @@ private[journal] final class JournalLogger(
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     eventNumber: Long,
     since: Deadline,
-    isTransaction: Boolean = false,
     clusterState: String,
+    isTransaction: Boolean = false,
     isAcknowledged: Boolean = false)
   : Unit =
     logCommitted:

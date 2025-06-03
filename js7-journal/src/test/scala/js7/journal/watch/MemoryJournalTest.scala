@@ -104,10 +104,9 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
           Stamped(1000, "A" <-: TestEvent.Added("A")),
           Stamped(1001, "B" <-: TestEvent.Added("B"))))
 
-        journal
-          .persist(_ => Right(Seq(
-            "C" <-: TestEvent.Added("C"))))
-          .await(99.s).orThrow
+        journal.persist:
+          "C" <-: TestEvent.Added("C")
+        .await(99.s).orThrow
 
         waitForCondition(10.s, 10.ms)(synchronized(observed.size == 3))
         assert(observed == Seq(
@@ -269,13 +268,11 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
             succeed
 
   private def journal(size: Int = Int.MaxValue): ResourceIO[MemoryJournal[TestState]] =
-    MemoryJournal
-      .resource(
-        TestState.empty,
-        size = size,
-        infoLogEvents = Set.empty,
-        eventIdGenerator = EventIdGenerator.withFixedClock(epochMilli = 1),
-        clock = WallClock)
+    MemoryJournal.resource(
+      TestState.empty,
+      size = size,
+      infoLogEvents = Set.empty,
+      eventIdGenerator = EventIdGenerator.withFixedClock(epochMilli = 1))
 
 
 object MemoryJournalTest:

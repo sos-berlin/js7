@@ -271,13 +271,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   : IO[Checked[Unit]] =
     journal
       .persist: state =>
-        Right:
-          state.idToOrder.get(startOrderProcess.orderId)
-            .filter(o => // Just to be sure, condition should always be true:
-              o.state == Order.Processing(subagentId) &&
-                o.workflowPosition == startOrderProcess.order.workflowPosition)
-            .map(_.id <-: orderProcessed)
-            .toList
+        state.idToOrder.get(startOrderProcess.orderId)
+          .filter(o => // Just to be sure, condition should always be true:
+            o.state == Order.Processing(subagentId) &&
+              o.workflowPosition == startOrderProcess.order.workflowPosition)
+          .map(_.id <-: orderProcessed)
+          .toList
       .rightAs(())
 
   /** Continue a recovered processing Order. */

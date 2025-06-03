@@ -72,10 +72,10 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   private def persistDedicated(subagentRunId: SubagentRunId): IO[Checked[Unit]] =
     journal
-      .persist(state => Right:
+      .persist: state =>
         state.idToSubagentItemState.get(subagentId).exists(_.subagentRunId.nonEmpty)
           .thenList(subagentId <-: SubagentRestarted)
-          .appended(subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))))
+          .appended(subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo())))
       .rightAs(())
 
   def startObserving: IO[Unit] =

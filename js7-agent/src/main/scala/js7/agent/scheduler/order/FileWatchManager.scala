@@ -93,21 +93,19 @@ final class FileWatchManager(
 
   def remove(fileWatchPath: OrderWatchPath): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath):
-      journal
-        .persist: agentState =>
-          Right:
-            agentState.keyTo(FileWatchState).get(fileWatchPath) match
-              case None => Nil
-              case Some(fileWatchState) =>
-                // When a FileWatch is detached, all appeared files vanish now,
-                // to allow proper removal of the Controller's orders (after OrderFinished), and
-                // to allow the Controller to move the FileWatch to a different Agent,
-                // because the other Agent will start with an empty FileWatchState.
-                fileWatchState.allFilesVanished.toVector :+
-                  (NoKey <-: ItemDetached(fileWatchPath, ownAgentPath))
-        .flatMapT: persisted =>
-          stopWatching(fileWatchPath)
-            .as(Checked.unit)
+      journal.persist: agentState =>
+        agentState.keyTo(FileWatchState).get(fileWatchPath) match
+          case None => Nil
+          case Some(fileWatchState) =>
+            // When a FileWatch is detached, all appeared files vanish now,
+            // to allow proper removal of the Controller's orders (after OrderFinished), and
+            // to allow the Controller to move the FileWatch to a different Agent,
+            // because the other Agent will start with an empty FileWatchState.
+            fileWatchState.allFilesVanished.toVector :+
+              (NoKey <-: ItemDetached(fileWatchPath, ownAgentPath))
+      .flatMapT: persisted =>
+        stopWatching(fileWatchPath)
+          .as(Checked.unit)
 
   private def startWatching(fileWatchState: FileWatchState): IO[Checked[Unit]] =
     val id = fileWatchState.fileWatch.path
@@ -188,31 +186,30 @@ final class FileWatchManager(
         IO.right(Persisted.empty(agentState))
       else
         journal.persist: agentState =>
-          Right:
-            agentState.keyTo(FileWatchState)
-              .get(fileWatch.path)
-              // Ignore late events after FileWatch has been removed
-              .toVector
-              .flatMap: fileWatchState =>
-                dirEventSeqs
-                  // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
-                  // We check this here.
-                  .asSeq
-                  .flatMap: dirEvent =>
-                    dirEvent match
-                      case FileAdded(path)
-                        if !fileWatchState.containsPath(path) =>
-                        Some(ExternalOrderAppeared(
-                          ExternalOrderName(path.toString),
-                          toOrderArguments(directory, path)))
+          agentState.keyTo(FileWatchState)
+            .get(fileWatch.path)
+            // Ignore late events after FileWatch has been removed
+            .toVector
+            .flatMap: fileWatchState =>
+              dirEventSeqs
+                // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
+                // We check this here.
+                .asSeq
+                .flatMap: dirEvent =>
+                  dirEvent match
+                    case FileAdded(path)
+                      if !fileWatchState.containsPath(path) =>
+                      Some(ExternalOrderAppeared(
+                        ExternalOrderName(path.toString),
+                        toOrderArguments(directory, path)))
 
-                      case FileDeleted(path) if fileWatchState.containsPath(path) =>
-                        Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
+                    case FileDeleted(path) if fileWatchState.containsPath(path) =>
+                      Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
 
-                      case event =>
-                        logger.debug(s"Ignore $event")
-                        None
-              .map(fileWatch.path <-: _)
+                    case event =>
+                      logger.debug(s"Ignore $event")
+                      None
+            .map(fileWatch.path <-: _)
 
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))

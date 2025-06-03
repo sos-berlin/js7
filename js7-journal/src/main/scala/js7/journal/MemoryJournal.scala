@@ -42,7 +42,7 @@ extends Journal[S], Service.StoppableByRequest:
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
   @volatile private var _aggregate = initial
   @volatile private var eventWatchStopped = false
-  private val _eventCount = Atomic(0L)
+  private var _eventCount = 0L
 
   private val journalLogger = new JournalLogger("memory", infoLogEvents, suppressTiming = true)
 
@@ -118,8 +118,8 @@ extends Journal[S], Service.StoppableByRequest:
             events = q.events ++ stampedEvents,
             lastEventId = eventId)
           _aggregate = aggregate.withEventId(eventId)
-          val n = _eventCount += stampedEvents.length
-          log(n, stampedEvents, since)
+          log(_eventCount + 1, stampedEvents, since)
+          _eventCount += stampedEvents.length
           eventWatch.onEventsCommitted(eventId)
           queue = q
 
@@ -130,10 +130,8 @@ extends Journal[S], Service.StoppableByRequest:
       //CorrelId.current,
       stampedEvents,
       eventNumber = eventNumber,
-      since = since,
-      isTransaction = false,
-      clusterState = ClusterState.Empty.getClass.simpleScalaName,
-      isAcknowledged = false)
+      since,
+      clusterState = ClusterState.Empty.getClass.simpleScalaName)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueLock.lock(IO.defer:
@@ -170,8 +168,8 @@ extends Journal[S], Service.StoppableByRequest:
       else
         Some(q.events.drop(index + found.toInt).iterator)
 
-  def suppressLogging(supress: Boolean): Unit =
-    journalLogger.suppress(supress)
+  def suppressLogging(suppress: Boolean): Unit =
+    journalLogger.suppress(suppress)
 
   /** To simulate sudden death. */
   @TestOnly
@@ -205,27 +203,14 @@ object MemoryJournal:
     size: Int,
     waitingFor: String = "releaseEvents",
     infoLogEvents: Set[String] = Set.empty,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    clock: WallClock = WallClock)
-    (implicit S: JournaledState.Companion[S])
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    (using JournaledState.Companion[S])
   : ResourceIO[MemoryJournal[S]] =
     for
-      clock <- Resource.eval(environmentOr[WallClock](clock))
-      r <- Resource.eval:
-        start(initial, size, waitingFor, infoLogEvents, eventIdGenerator, clock)
+      clock <- Resource.eval(environmentOr[WallClock](WallClock))
+      semaphore <- Resource.eval(Semaphore[IO](size))
+      memoryJournal <- Service.resource:
+        new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
+          clock, semaphore)
     yield
-      r
-
-  def start[S <: JournaledState[S]](
-    initial: S,
-    size: Int,
-    waitingFor: String = "releaseEvents",
-    infoLogEvents: Set[String] = Set.empty,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    clock: WallClock)
-    (implicit S: JournaledState.Companion[S])
-  : IO[MemoryJournal[S]] =
-    Semaphore[IO](size).flatMap: semaphore =>
-      IO:
-        new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator, clock,
-          semaphore)
+      memoryJournal
