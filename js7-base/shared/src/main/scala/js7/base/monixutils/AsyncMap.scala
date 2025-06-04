@@ -80,7 +80,7 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
       case None => IO.left(UnknownKeyProblem(implicitly[Tag[K]].tag.shortName, key))
       case Some(existing) => update(existing)
 
-  final def getOrElseUpdate(key: K, value: IO[V])
+  final def getOrElseUpdate(key: K, value: => IO[V])
     (using sourcecode.Enclosing)
   : IO[V] =
     update(key):
