@@ -181,7 +181,7 @@ extends Service.StoppableByRequest:
 
           case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow:
             logger.info:
-              s"◼️  ${request.toShortString} => Canceled after ${since.elapsed.pretty}"
+              s"◼️ ${request.toShortString} => Canceled after ${since.elapsed.pretty}"
 
           case _ => IO.unit
         .guarantee(IO:

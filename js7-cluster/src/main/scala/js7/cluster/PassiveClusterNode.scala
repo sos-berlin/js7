@@ -254,7 +254,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         common.tryEndlesslyToSendCommand(activeApiResource, toCommand))
       .flatMap:
         case Left(()) => IO(logger.debug(
-          s"◼️  tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
+          s"◼️ tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
         case Right(()) => IO.unit
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)

@@ -561,7 +561,7 @@ object Logger extends AdHocLogger:
       case Outcome.Errored(t) =>
         logReturn(logger, logLevel, marker, function, args, duration, "💥️", t.toStringWithCauses + res, t)
       case Outcome.Canceled() =>
-        logReturn(logger, logLevel, marker, function, args, duration, "◼️  ", "Canceled" + res)
+        logReturn(logger, logLevel, marker, function, args, duration, "◼️ ", "Canceled" + res)
       case Outcome.Succeeded(_) =>
         logReturn(logger, logLevel, marker, function, args, duration, "", "Completed" + res)
 

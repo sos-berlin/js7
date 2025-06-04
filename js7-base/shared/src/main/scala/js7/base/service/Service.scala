@@ -60,7 +60,7 @@ trait Service:
       logger.info(s"$service${args.nonEmpty ?? s"($args)"} started")
       body.guaranteeCase:
         case Outcome.Errored(_) => IO.unit // startService has logged the error
-        case Outcome.Canceled() => IO(logger.info(s"◼️  $service canceled"))
+        case Outcome.Canceled() => IO(logger.info(s"◼️ $service canceled"))
         case Outcome.Succeeded(_) => IO(logger.info(s"$service stopped"))
 
   /** Run the provided service until it terminates. */
