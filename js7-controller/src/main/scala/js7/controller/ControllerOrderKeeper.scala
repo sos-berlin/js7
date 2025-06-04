@@ -79,8 +79,8 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.{CommitOptions, JournalingActor, Persisted}
-import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy}
+import js7.journal.{CommitOptions, JournalActor, JournalingActor, Persisted}
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Status, SupervisorStrategy}
 import org.apache.pekko.pattern.pipe
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
@@ -93,6 +93,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
+  protected val journalActor: ActorRef @@ JournalActor.type,
   clusterNode: WorkingClusterNode[ControllerState],
   clock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
@@ -108,7 +109,6 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
   protected def journalConf = controllerConfiguration.journalConf
-  protected val journalActor = clusterNode.journalActor
   private val journal = clusterNode.journal
 
   private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)

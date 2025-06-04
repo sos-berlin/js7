@@ -18,3 +18,5 @@ object AgentMain extends ServiceApp:
           _ <- agent.webServer.restartWhenHttpsChanges
         yield
           agent
+    .recover:
+      case t: RunningAgent.DirectorTerminatedException => t.termination.toExitCode

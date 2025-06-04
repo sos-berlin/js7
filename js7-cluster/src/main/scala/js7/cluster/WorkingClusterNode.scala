@@ -2,7 +2,6 @@ package js7.cluster
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
-import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
@@ -25,8 +24,7 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.recover.Recovered
-import js7.journal.{EventIdGenerator, FileJournal, JournalActor}
-import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
+import js7.journal.{EventIdGenerator, FileJournal}
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *
@@ -39,7 +37,6 @@ import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 final class WorkingClusterNode[S <: ClusterableState[S]] private(
   val failedNodeId: Option[NodeId],
   val journal: FileJournal[S],
-  val journalActor: ActorRef @@ JournalActor.type,
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (using nodeNameToPassword: NodeNameToPassword[S]):
@@ -183,20 +180,16 @@ object WorkingClusterNode:
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
     (implicit
       nodeNameToPassword: NodeNameToPassword[S],
-      ioRuntime: IORuntime,
-      actorRefFactory: ActorRefFactory)
+      ioRuntime: IORuntime)
   : ResourceIO[WorkingClusterNode[S]] =
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
         common.requireValidLicense.map(_.orThrow))
-      journal <-
-        FileJournal.resource(recovered, clusterConf.journalConf, Some(eventIdGenerator))
-      journalActor <- JournalActor.resource(journal)
+      journal <- FileJournal.resource(recovered, clusterConf.journalConf, Some(eventIdGenerator))
       workingClusterNode <- Resource.make(
         acquire = IO.defer:
-          val w = new WorkingClusterNode(recovered.failedNodeId, journal, journalActor, common, clusterConf)
-          w.start(recovered.clusterState, recovered.eventId).as(w)
-        )(
+          val w = new WorkingClusterNode(recovered.failedNodeId, journal, common, clusterConf)
+          w.start(recovered.clusterState, recovered.eventId).as(w))(
         release = _.stop)
       _ <- Resource.onFinalize:
         journal.prepareForStopOfClusterNodeStop *>

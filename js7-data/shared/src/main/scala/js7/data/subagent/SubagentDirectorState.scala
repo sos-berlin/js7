@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentRunId
 import js7.data.event.JournaledState
-import js7.data.item.SignableItem
+import js7.data.item.{SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -20,12 +20,22 @@ extends JournaledState[S]:
   this: S =>
 
   def agentRunId: AgentRunId
+
   def idToOrder: Map[OrderId, Order[Order.State]]
+
   def idToWorkflow: Map[WorkflowId, Workflow]
+
   def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob]
+
   def idToSubagentItemState: MapView[SubagentId, SubagentItemState]
+
+  def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
+  : MapView[A.Path, A]
+
   def pathToJobResource: Map[JobResourcePath, JobResource]
+
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]]
+
   def toOrderScope(order: Order[Order.State]): Checked[Scope]
 
   final def jobKey(workflowPosition: WorkflowPosition): Checked[JobKey] =

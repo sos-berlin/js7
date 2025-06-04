@@ -1,6 +1,6 @@
-package js7.agent.scheduler.order
+package js7.agent.motor
 
-import cats.effect.IO
+import cats.effect.{IO, ResourceIO}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
@@ -11,7 +11,7 @@ import fs2.concurrent.{Signal, SignallingRef}
 import java.nio.file.{Path, Paths}
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
-import js7.agent.scheduler.order.FileWatchManager.*
+import js7.agent.motor.FileWatchManager.*
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, right}
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
@@ -21,8 +21,9 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
+import js7.base.service.Service
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{RichF, logWhenItTakesLonger}
 import js7.base.utils.Delayer.extensions.onFailureRestartWithDelayer
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
@@ -35,32 +36,38 @@ import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrder
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.value.{NamedValues, StringValue}
-import js7.journal.Journal
-import js7.journal.Persisted
+import js7.journal.{Journal, Persisted}
 import scala.collection.View
 
 /** Persists, recovers and runs FileWatches. */
-final class FileWatchManager(
+private final class FileWatchManager(
   ownAgentPath: AgentPath,
   journal: Journal[AgentState],
-  config: Config):
+  config: Config)
+extends
+  Service.StoppableByRequest:
 
   private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, IO[Unit]])
 
-  def stop: IO[Unit] =
-    idToStopper.removeAll
-      .flatMap(_.values.toVector.parUnorderedSequence)
-      .map(_.unorderedFold)
-
-  def start: IO[Checked[Unit]] =
+  protected def start =
     journal.aggregate
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_
         .toVector
         .traverse(startWatching)
         .map(_.combineAll))
+      .map(_.orThrow)
+      .containsType[Unit]
+      .productR:
+        startService:
+          untilStopRequested *> stopMe
+
+  private def stopMe: IO[Unit] =
+    idToStopper.removeAll
+      .flatMap(_.values.toVector.parUnorderedSequence)
+      .map(_.unorderedFold)
 
   def update(fileWatch: FileWatch): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatch.path):
@@ -215,5 +222,13 @@ final class FileWatchManager(
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
 
 
-object FileWatchManager:
+private object FileWatchManager:
   private val logger = Logger[this.type]
+
+  def resource(
+    ownAgentPath: AgentPath,
+    journal: Journal[AgentState],
+    config: Config)
+  : ResourceIO[FileWatchManager] =
+    Service.resource:
+      new FileWatchManager(ownAgentPath, journal, config)

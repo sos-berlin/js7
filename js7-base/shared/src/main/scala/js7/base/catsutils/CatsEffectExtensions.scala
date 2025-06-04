@@ -13,6 +13,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NonFatalInterruptedException
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unchecked.uncheckedVariance
+import scala.annotation.unused
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,6 +23,12 @@ object CatsEffectExtensions:
   private lazy val logger = Logger[this.type]
 
   extension[A](io: IO[A])
+
+    def whenDeferred(condition: => Boolean)(body: IO[Unit]): IO[Unit] =
+      IO.defer(IO.whenA(condition)(body))
+
+    def unlessDeferred(condition: => Boolean)(body: IO[Unit]): IO[Unit] =
+      IO.defer(IO.unlessA(condition)(body))
 
     /** Evaluates the Canceled() case only when not Canceled. */
     def guaranteeCaseLazy(finalizer: OutcomeIO[A @uncheckedVariance] => IO[Unit]): IO[A] =
@@ -137,6 +144,7 @@ object CatsEffectExtensions:
   private val trueIO = IO.pure(true)
   private val falseIO = IO.pure(false)
   private val completedIO = IO.pure(Completed)
+  private val rightUnitIO = IO.pure(Right(()))
 
   extension(x: IO.type)
     def blockingOn[A](executionContext: ExecutionContext)(body: => A): IO[A] =
@@ -155,6 +163,9 @@ object CatsEffectExtensions:
 
     def right[R](value: R): IO[Either[Nothing, R]] =
       IO.pure(Right(value))
+
+    inline def right(@unused u: Unit): IO[Either[Nothing, Unit]] =
+      rightUnitIO
 
     inline def True: IO[Boolean] =
       trueIO

@@ -10,10 +10,13 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentRefStateEvent.AgentReady
+import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.{AddOrChangeSimple, DeleteSimple}
-import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderOutcome.Disrupted
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.subagent.Problems.ProcessLostDueSubagentDeletedProblem
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentDeleteTest.*
@@ -156,7 +159,11 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
       //  due to deletion while still recovering processing Orders.
       //  See fixme in SubagentKeeper
       eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+      eventWatch.awaitNextKey[OrderTerminated](orderId)
+      assert(controllerState.idToOrder(orderId).lastOutcome ==
+        OrderOutcome.Disrupted(ProcessLostDueSubagentDeletedProblem(bareSubagentId)))
+      execCmd:
+        DeleteOrdersWhenTerminated(orderId :: Nil)
 
       // Subagent is being removed
       eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId)

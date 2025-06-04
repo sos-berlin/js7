@@ -92,6 +92,9 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     else
       Checked.unit
 
+  def isOrderProcessable(orderId: OrderId): Boolean =
+    idToOrder.get(orderId).exists(isOrderProcessable)
+
   def isOrderProcessable(order: Order[Order.State]): Boolean =
     order.isProcessable &&
       !isOrderAtStopPosition(order) &&
