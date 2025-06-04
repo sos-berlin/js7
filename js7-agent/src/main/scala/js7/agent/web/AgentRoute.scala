@@ -5,7 +5,6 @@ import cats.effect.unsafe.IORuntime
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.views.AgentOverview
 import js7.base.auth.SimpleUser
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -26,7 +25,6 @@ import org.apache.pekko.http.scaladsl.server.Route
  * @author Joacim Zschimmer
  */
 final class AgentRoute(
-  protected val agentOverview: IO[AgentOverview],
   routeBinding: RouteBinding,
   protected val executeCommand: (AgentCommand, CommandMeta) => IO[Checked[AgentCommand.Response]],
   protected val clusterNode: ClusterNode[AgentState],

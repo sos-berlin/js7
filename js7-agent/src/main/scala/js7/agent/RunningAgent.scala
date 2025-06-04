@@ -333,14 +333,6 @@ object RunningAgent:
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
-    val agentOverview = IO(AgentOverview(
-      startedAt = StartUp.startedAt,
-      version = BuildInfo.prettyVersion,
-      buildId = BuildInfo.buildId,
-      //isTerminating = isTerminating,
-      system = systemInformation(),
-      java = javaInformation()))
-
     def executeCommand(cmd: AgentCommand, meta: CommandMeta)
     : IO[Checked[AgentCommand.Response]] =
       logger.debugIO(s"executeCommand ${cmd.getClass.shortClassName}")(cmd
@@ -400,7 +392,6 @@ object RunningAgent:
       _ <- forDirector.subagent.directorRegisteringResource:
         routeBinding => IO.pure:
           new AgentRoute(
-            agentOverview,
             routeBinding,
             agent.executeCommand,
             clusterNode,

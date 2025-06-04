@@ -29,7 +29,7 @@ final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebServ
 
   protected def whenShuttingDown = Deferred.unsafe
 
-  protected def agentOverview = IO.pure(AgentOverview(
+  override protected def agentOverview() = AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
     buildId = "BUILD-ID",
@@ -39,7 +39,7 @@ final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebServ
       version = "x.y.z",
       availableProcessors = 8,
       JavaInformation.Memory(maximum = 3, total = 2, free = 1),
-      systemProperties = Map("test" -> "TEST"))))
+      systemProperties = Map("test" -> "TEST")))
 
   private def expectedOverviewJson = json"""{
     "startedAt": 1433160000000,
