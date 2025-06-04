@@ -140,8 +140,8 @@ private object ReleaseEventsTest:
     Execute(WorkflowJob(TestAgentPath, TestPathExecutable)))
   private val aOrder = FreshOrder(OrderId("🟦"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)
-  private val cOrder = FreshOrder(OrderId("🔻"), TestWorkflow.id.path)
-  private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
+  private val cOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
+  private val dOrder = FreshOrder(OrderId("🧲"), TestWorkflow.id.path)
 
   private def newApi(controller: TestController, credentials: UserAndPassword)
     (using IORuntime)

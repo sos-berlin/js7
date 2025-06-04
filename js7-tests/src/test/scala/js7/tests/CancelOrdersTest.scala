@@ -141,7 +141,7 @@ final class CancelOrdersTest
       OrderCancelled))
 
   "Cancel an order and the first job" in:
-    val order = FreshOrder(OrderId("🔻"), singleJobWorkflow.path, Map("sleep" -> 100))
+    val order = FreshOrder(OrderId("🍊"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
 
   "Cancel an order but not the first job" in:

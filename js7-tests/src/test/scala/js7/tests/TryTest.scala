@@ -19,8 +19,8 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.TryTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import org.scalactic.source
 
 final class TryTest
@@ -101,7 +101,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
           tryWorkflow = Workflow.of(Fail()),
           catchWorkflow = Workflow.of(Fail()))))): @unchecked
 
-    val orderId = OrderId("🔻")
+    val orderId = OrderId("🍊")
     controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     checkEventSeq(

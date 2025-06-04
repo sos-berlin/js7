@@ -50,7 +50,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   "Sunday at start of daylight saving time" - {
     "Wait for start of permission period" in:
-      val orderId = OrderId("🔻")
+      val orderId = OrderId("🍊")
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
