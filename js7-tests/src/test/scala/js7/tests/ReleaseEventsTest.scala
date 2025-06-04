@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
@@ -11,7 +12,7 @@ import js7.base.session.SessionApi
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.controller.client.{PekkoHttpControllerApi, HttpControllerApi}
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{ReleaseEvents, TakeSnapshot}
@@ -28,7 +29,6 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
-import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer

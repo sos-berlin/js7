@@ -93,7 +93,8 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(FreshOrder(cycleOrderId, cycleWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderCyclingPrepared](_.key == cycleOrderId)
 
-    execCmd(ResetAgent(agentPath))
+    execCmd:
+      ResetAgent(agentPath)
     myAgent.untilTerminated.await(99.s)
 
     eventWatch.await[OrderTerminated](_.key == lockingOrderId)

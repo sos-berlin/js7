@@ -29,7 +29,7 @@ final class NoticeEndOfLifeTest
 
   protected val agentPaths = Seq(agentPath)
 
-  private val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = Some(500.ms))
+  private val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = Some(500.ms)) // TODO Time critical test
   private val postWorkflow = Workflow(WorkflowPath("POST-WORKFLOW"), Vector(
     PostNotices(Seq(board.path))))
   private val consumeWorkflow = Workflow(WorkflowPath("CONSUME-WORKFLOW"), Vector(

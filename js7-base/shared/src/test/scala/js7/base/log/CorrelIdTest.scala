@@ -73,7 +73,7 @@ final class CorrelIdTest extends OurTestSuite:
       assert(correlId.string.length == CorrelId.width)
 
   "bind[Unit]" in:
-    pending // FIXME Monix
+    pending // Since Cats Effects
     assert(CorrelId.current.isEmpty)
     var a: CorrelId = null.asInstanceOf[CorrelId]
     CorrelId("__SYNC__").bind:
@@ -82,7 +82,7 @@ final class CorrelIdTest extends OurTestSuite:
     assert(a == CorrelId("__SYNC__"))
 
   "bindNow" in:
-    pending // FIXME Monix
+    pending // Since Cats Effects
     assert(CorrelId.current.isEmpty)
     var a: CorrelId = null.asInstanceOf[CorrelId]
     CorrelId("__SYNC__").bindNow:
@@ -92,7 +92,7 @@ final class CorrelIdTest extends OurTestSuite:
     assert(a == CorrelId("__SYNC__"))
 
   "bind[String]" in:
-    pending // FIXME Monix
+    pending // Since Cats Effects
     import CanBindCorrelId.implicits.synchronousAsDefault
     assert(CorrelId.current.isEmpty)
     val result = CorrelId("__SYNC__").bind:

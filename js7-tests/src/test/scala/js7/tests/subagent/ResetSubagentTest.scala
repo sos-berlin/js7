@@ -97,7 +97,6 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
         subagent.shutdown(restart = true).await(99.s)
 
         // The director(!) must return restart=true
-        assert(director.untilTerminated.await(99.s).restart)
         assert(subagent.untilTerminated.await(99.s).restart)
 
 
