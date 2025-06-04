@@ -19,8 +19,9 @@ object SubagentWebServer:
     toDirectorRoute: DirectorRouteVariable.ToRoute,
     sessionRegister: SessionRegister[SubagentSession],
     conf: SubagentConf)
-    (implicit actorSystem: ActorSystem, ioRuntime: IORuntime)
-  : ResourceIO[(PekkoWebServer)] =
+    (using actorSystem: ActorSystem,
+    ioRuntime: IORuntime)
+  : ResourceIO[PekkoWebServer] =
     PekkoWebServer.resource(
       conf.webServerBindings,
       conf.config,

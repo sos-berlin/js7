@@ -21,7 +21,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenMethodTakesLonger, whenItTakesLonger}
-import js7.base.utils.MultipleLinesBracket.{Round, Square}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, Atomic}
 import js7.common.jsonseq.PositionAnd
@@ -474,12 +473,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     protected final def persisted: Persisted[S, Event] =
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)
 
-    def traceLog(): Unit =
-      val prefix = if this.isInstanceOf[Written] then "✔" else "+"
-      stampedKeyedEvents.foreachWithBracket(
-        if commitOptions.transaction then Round else Square
-      ): (o, br) =>
-        logger.trace(s"### $prefix$br$o")
+    //def traceLog(): Unit =
+    //  val prefix = if this.isInstanceOf[Written] then "✔" else "+"
+    //  stampedKeyedEvents.foreachWithBracket(
+    //    if commitOptions.transaction then Round else Square
+    //  ): (o, br) =>
+    //    logger.trace(s"$prefix$br$o")
 
 
   /** Events have been applied to State#uncommitted. */

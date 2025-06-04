@@ -25,7 +25,7 @@ import scala.language.unsafeNulls
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]: Tag] private(journal: FileJournal[S])
+final class JournalActor[S <: SnapshotableState[S]: Tag](journal: FileJournal[S])
   (using ioRuntime: IORuntime)
 extends Actor, Stash:
 

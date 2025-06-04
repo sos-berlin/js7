@@ -1,4 +1,4 @@
-package js7.agent.command
+package js7.agent
 
 import cats.effect.IO
 import js7.agent.data.commands.AgentCommand

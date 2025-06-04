@@ -62,26 +62,37 @@ final class AgentTest extends OurTestSuite, AgentTester:
               subagentConf = agentConf.subagentConf.copy(
                 jobWorkingDirectory = workingDirectory))
           TestAgent.blockingRun(agentConf, 99.s) { agent =>
-            val agentApi = agent.untilReady.await(99.s).api.apply(CommandMeta(TestUser))
+            val agentApi = agent.untilReady.await(99.s).orThrow
             val controllerRunId = ControllerRunId(JournalId.random())
             agentApi
-              .commandExecute(
-                DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
+              .execute(
+                DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath),
+                CommandMeta(TestUser))
               .await(99.s).orThrow
             agentApi
-              .commandExecute(
-                AttachItem(AgentRef(agentPath, Seq(subagentId))))
+              .execute(
+                AttachItem(AgentRef(agentPath, Seq(subagentId))),
+                CommandMeta(TestUser))
               .await(99.s).orThrow
             agentApi
-              .commandExecute(
-                AttachItem(SubagentItem(subagentId, agentPath, Uri("https://127.0.0.1:0"))))
+              .execute(
+                AttachItem(SubagentItem(subagentId, agentPath, Uri("https://127.0.0.1:0"))),
+                CommandMeta(TestUser))
               .await(99.s).orThrow
 
-            assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
-              == Right(AgentCommand.Response.Accepted))
+            assert:
+              agentApi.execute(
+                AttachSignedItem(itemSigner.sign(TestWorkflow)),
+                CommandMeta(TestUser)
+              ).await(99.s)
+                == Right(AgentCommand.Response.Accepted)
             val order = Order(OrderId("TEST"), TestWorkflow.id /: Position(0), Order.Ready())
-            assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
-              == Right(AgentCommand.Response.Accepted))
+            assert:
+              agentApi.execute(
+                AttachOrder(order, TestAgentPath),
+                CommandMeta(TestUser)
+              ).await(99.s)
+                == Right(AgentCommand.Response.Accepted)
             val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == OrderOutcome.Succeeded(Map(
               "returnCode" -> NumberValue(0),

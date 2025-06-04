@@ -95,7 +95,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
                 .last.value.event
               assert(forceOrderProcessingStarted.subagentId contains subagentIds(0))
 
-              primaryDirector.killForFailOver.await(99.s)
+              primaryDirector.kill.await(99.s)
 
               val eventId = primaryController.eventWatch
                 .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])

@@ -31,10 +31,10 @@ extends EventDriven[JournalState, JournalEvent]:
         case Heartbeat => // for completeness
           this
 
-  def toReleaseEventId(acknowledegedEventId: EventId, userIds: Iterable[UserId]): EventId =
+  def toReleaseEventId(acknowledgedEventId: EventId, userIds: Iterable[UserId]): EventId =
     val defaults = userIds.map(_ -> EventId.BeforeFirst).toMap
     val userToEventId = defaults ++ userIdToReleasedEventId
-    (userToEventId.values.view :+ acknowledegedEventId).min
+    (userToEventId.values.view :+ acknowledgedEventId).min
 
 
 object JournalState extends EventDriven.Companion[JournalState, JournalEvent]:

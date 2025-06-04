@@ -115,8 +115,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
               _.release.logWhenItTakesLonger("clusterWatchServiceOnce.release")
             .map(_.combineAll),
           agents
-            .parTraverse:
-              _.terminate(Some(SIGKILL)).void.logWhenItTakesLonger("agent.terminate")
+            .parTraverse: agent =>
+              agent.terminate(Some(SIGKILL))
+                .void.logWhenItTakesLonger(s"$agent.terminate")
             .map(_.combineAll),
           idToAllocatedSubagent.values.toVector.parTraverse:
             _.release.logWhenItTakesLonger("Subagent release")

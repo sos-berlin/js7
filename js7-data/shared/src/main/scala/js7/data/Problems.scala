@@ -122,6 +122,11 @@ object Problems:
   case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503  // ServiceUnavailable
 
+  final case class ClusterSwitchOverButNotCoupledProblem(clusterState: ClusterState)
+  extends Problem.Coded:
+    def arguments = Map1("clusterState", clusterState.getClass.shortClassName)
+
+
   case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503  // ServiceUnavailable
 
