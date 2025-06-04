@@ -60,7 +60,9 @@ with ControllerAgentForScalaTest with ScheduleTester:
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private implicit val clock: TestAlarmClock = CycleTest.clock
+  private implicit lazy val clock: TestAlarmClock =
+    CycleTest.clock = TestAlarmClock(local("2021-10-01T04:00"))
+    CycleTest.clock
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
@@ -1064,7 +1066,7 @@ object CycleTest:
   private val subagentId = toLocalSubagentId(agentPath)
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   private val timezone = Timezone(zone.getId)
-  private val clock = TestAlarmClock(local("2021-10-01T04:00"))
+  private var clock = null.asInstanceOf[TestAlarmClock]
 
   private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"), dateOffset = 0.h)
 

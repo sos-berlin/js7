@@ -1,16 +1,20 @@
 package js7.base.time
 
-import js7.base.test.OurTestSuite
+import cats.effect.IO
+import cats.effect.std.Dispatcher
+import cats.effect.unsafe.IORuntime
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import scala.concurrent.duration.*
 
-final class TestAlarmClockTest extends OurTestSuite:
+final class TestAlarmClockTest extends OurAsyncTestSuite:
 
   private val start = ts"2021-01-01T00:00:00Z"
   private val clockCheckInterval = 1.minute
+  private given IORuntime = ioRuntime
 
   "scheduleAt, and tick at scheduled time" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
@@ -175,3 +179,21 @@ final class TestAlarmClockTest extends OurTestSuite:
     clock.tick(20.minutes)
     assert(x.get() == 50)
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
+
+  "schedulerIOAt cancel" in:
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    Dispatcher.parallel[IO].use: dispatcher =>
+      given Dispatcher[IO] = dispatcher
+      @volatile var called = false
+      locally:
+        for
+          cancel1 <- clock.scheduleIOAt(start + 1.s)(IO { called = true })
+          cancel2 <- clock.scheduleIOAt(start + 2.s)(IO { called = true })
+          cancel3 <- clock.scheduleIOAt(start + 4.s)(IO { called = true })
+          _ = assert(clock.toString.endsWith(", 3 alarms)"))
+          _ <- cancel1
+          _ = assert(clock.toString.endsWith(", 2 alarms)"))
+          _ <- cancel2
+          _ <- cancel3
+        yield
+          assert(clock.toString.endsWith(", no alarm)") && !called)

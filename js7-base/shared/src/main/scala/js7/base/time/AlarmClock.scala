@@ -1,52 +1,87 @@
 package js7.base.time
 
+import cats.effect.std.Dispatcher
 import cats.effect.unsafe.Scheduler
-import cats.effect.{IO, Resource, Sync}
+import cats.effect.{IO, Outcome, Resource, Sync}
+import js7.base.log.Logger
 import js7.base.monixlike.SyncCancelable
+import js7.base.time.AlarmClock.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.LabeledRunnable
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.util.NotGiven
 
 trait AlarmClock extends WallClock:
 
-  def stop(): Unit
+  private[time] def stop(): Unit
 
   final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
     (using fullName: sourcecode.FullName)
   : SyncCancelable =
     scheduleOnce(delay, fullName.value)(callback)
 
-  def scheduleOnce(delay: FiniteDuration, label: => String)(callback: => Unit)
-  : SyncCancelable
+  def scheduleOnce(delay: FiniteDuration, label: => String)(callback: => Unit): SyncCancelable
 
   final def scheduleAt(timestamp: Timestamp)(callback: => Unit)
     (using fullName: sourcecode.FullName)
   : SyncCancelable =
     scheduleAt(timestamp, fullName.value)(callback)
 
-  def scheduleAt(timestamp: Timestamp, label: => String = "")(callback: => Unit)
-  : SyncCancelable
+  def scheduleAt(timestamp: Timestamp, label: => String = "")(callback: => Unit): SyncCancelable
+
+  /** @return An IO in an IO, to allow cancellation of the schedule (but not the scheduled IO). */
+  final def scheduleIOOnce(delay: FiniteDuration, label: => String = "")(io: IO[Unit])
+    (using dispatcher: Dispatcher[IO])
+  : IO[IO[Unit]] =
+    scheduleIO(scheduleOnce(delay, label), s"scheduleIOOnce($delay, $label)", io)
+
+  /** @return An IO in an IO, to allow cancellation of the schedule (but not the scheduled IO). */
+  final def scheduleIOAt(timestamp: Timestamp, label: => String = "")(io: IO[Unit])
+    (using dispatcher: Dispatcher[IO])
+  : IO[IO[Unit]] =
+    scheduleIO(scheduleAt(timestamp, label), s"scheduleIOAt($timestamp, $label)", io)
+
+  private final def scheduleIO(schedule: (=> Unit) => SyncCancelable, label: String, io: IO[Unit])
+    (using dispatcher: Dispatcher[IO])
+  : IO[IO[Unit]] =
+    IO:
+      val scheduled = schedule:
+        dispatcher.unsafeRunAndForget:
+          io.guaranteeCase:
+            case Outcome.Succeeded(_) => IO.unit
+            case Outcome.Canceled() => IO(logger.debug(s"◼️ $label: Canceled"))
+            case Outcome.Errored(t) => IO(logger.error(s"$label: ${t.toStringWithCauses}", t))
+      IO(scheduled.cancel())
+
 
   final def sleep(duration: FiniteDuration, label: => String = ""): IO[Unit] =
-    sleepX(scheduleOnce(duration, label))
+    toIO:
+      scheduleOnce(duration, label)
 
   final def sleepUntil(timestamp: Timestamp, label: => String = ""): IO[Unit] =
-    sleepX(scheduleAt(timestamp, label))
+    toIO:
+      scheduleAt(timestamp, label)
 
-  private def sleepX(schedule: (=> Unit) => SyncCancelable): IO[Unit] =
+  private def toIO(schedule: (=> Unit) => SyncCancelable): IO[Unit] =
     IO.async: onComplete =>
       IO:
         val cancelable = schedule(onComplete(Right(())))
         Some(IO(cancelable.cancel()))
 
-  /** TestAlarmClock synchronizes time query and time change. */
   def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
     body
 
+  /** TestAlarmClock synchronizes time query and time change. */
+  def lockIO[A](body: Timestamp => IO[A]): IO[A] =
+    IO.defer:
+      body(now())
+
 
 object AlarmClock:
+
+  private val logger = Logger[this.type]
 
   def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
     (using F: Sync[F], scheduler: Scheduler)

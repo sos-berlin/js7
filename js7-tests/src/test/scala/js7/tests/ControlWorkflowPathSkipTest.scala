@@ -51,7 +51,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(aWorkflow, bWorkflow, calendar)
 
-  private val clock =
+  private lazy val clock =
     given ZoneId = ZoneId.of("Europe/Stockholm")
     TestAlarmClock(local("2024-07-06T12:00"))
 

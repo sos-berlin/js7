@@ -58,7 +58,7 @@ final class GlobalBoardTest
     expecting01Workflow, expecting02Workflow,
     postingAgentWorkflow, expectingAgentWorkflow)
 
-  private val clock = TestAlarmClock(startTimestamp)
+  private lazy val clock = TestAlarmClock(startTimestamp)
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))

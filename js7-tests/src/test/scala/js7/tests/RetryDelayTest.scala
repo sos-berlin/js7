@@ -38,7 +38,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   private given ZoneId = ZoneId.of("Europe/Mariehamn")
 
   private val start = local("2022-10-25T12:00")
-  private val clock = TestAlarmClock(start)
+  private lazy val clock = TestAlarmClock(start)
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))

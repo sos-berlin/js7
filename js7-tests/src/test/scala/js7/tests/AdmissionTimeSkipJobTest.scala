@@ -40,7 +40,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
   protected def items = Seq(singleJobWorkflow, multipleJobsWorkflow)
 
   private implicit val timeZone: ZoneId = AdmissionTimeSkipJobTest.timeZone
-  private val clock = TestAlarmClock(local("2021-09-09T00:00"))
+  private lazy val clock = TestAlarmClock(local("2021-09-09T00:00"))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))

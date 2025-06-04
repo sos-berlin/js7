@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import cats.effect.unsafe.IORuntime
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
@@ -10,11 +11,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
-import org.scalatest.Assertions.assert
 import scala.concurrent.duration.*
 
 final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "AdmissionTimeScheme.always" in:
     val now = ts"2021-01-01T12:00:00Z"
@@ -128,8 +129,6 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
       admissionStarted = true,
       isAdmitted = true)
 
-
-object ExecuteAdmissionTimeSwitchTest:
 
   private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(using zone: ZoneId):
     import scala.language.unsafeNulls

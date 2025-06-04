@@ -45,11 +45,10 @@ private[time] trait ClockChecking extends Runnable:
   : SyncCancelable =
     scheduleAt(now() + delay, label)(callback)
 
-  final def scheduleAt(at: Timestamp, label: => String)(callback: => Unit)
-  : SyncCancelable =
+  final def scheduleAt(at: Timestamp, label: => String)(callback: => Unit): SyncCancelable =
     val milli = at.toEpochMilli
     if toMs(milli - epochMilli()).isFailure then
-      logger.warn(s"schedulerAt($at, $label) ignored because its out of range")
+      logger.warn(s"schedulerAt($at, $label) ignored because it is out of range")
       SyncCancelable.empty
     else
       val alarm = new Alarm(milli, callback)
@@ -101,6 +100,7 @@ private[time] trait ClockChecking extends Runnable:
       ticker := SyncCancelable.empty
       //logger.trace(s"Ticking stopped")
 
+  /** Runnable run to be used for Cats Effect's Scheduler#sleep. */
   final def run(): Unit =
     if !stopped then
       if nextMilli <= epochMilli() then
@@ -143,6 +143,7 @@ private[time] trait ClockChecking extends Runnable:
           else
             epochMilliToAlarms -= epochMilli
             scheduleNext()
+
 
 object ClockChecking:
   private val logger = Logger[this.type]
