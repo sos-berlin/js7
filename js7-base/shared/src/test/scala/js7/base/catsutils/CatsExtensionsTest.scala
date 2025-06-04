@@ -22,3 +22,21 @@ final class CatsExtensionsTest extends AnyFreeSpec:
     val e = new Exception
     val failure: Try[7] = Failure(e)
     assert(SyncIO(failure).untry.attempt.unsafeRunSync() == Left(e))
+
+  "flatMapSome" in:
+    val some: Option[Int] = Some(1)
+    val none: Option[Int] = None
+    assert(Option(some).flatMapSome(i => Option(i + 1)) == Some(Some(2)))
+    assert(SyncIO(some).flatMapSome(i => SyncIO(i + 1)).unsafeRunSync() == Some(2))
+    assert(SyncIO(none).flatMapSome(i => SyncIO(i + 1)).unsafeRunSync() == None)
+
+  "flatTapSome" in:
+    val some: Option[Int] = Some(1)
+    val none: Option[Int] = None
+    assert(Option(some).flatTapSome(i => Option(i + 1)) == Some(Some(1)))
+
+    var count = 0
+    assert(SyncIO(some).flatTapSome(i => SyncIO { i + 1; count = 1 }).unsafeRunSync() == Some(1))
+    assert(count == 1)
+    assert(SyncIO(none).flatTapSome(i => SyncIO { i + 1; count = 2 }).unsafeRunSync() == None)
+    assert(count == 1)
