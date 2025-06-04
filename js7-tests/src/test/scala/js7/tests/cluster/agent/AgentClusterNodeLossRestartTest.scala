@@ -74,7 +74,7 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
         _.event.keyedEvent.event.isInstanceOf[ClusterCoupled]
 
     TestAgent(backupDirectorAllocated).useSync(99.s) { backupDirector =>
-      // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
+      // Suppress acknowledge heartbeat, simulating a connection loss between the cluster nodes
       logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testHeartbeatLossPropertyKey) = "true"
       sys.props(testAckLossPropertyKey) = "true"

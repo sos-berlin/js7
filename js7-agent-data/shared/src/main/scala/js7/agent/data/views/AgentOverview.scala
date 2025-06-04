@@ -11,7 +11,6 @@ final case class AgentOverview(
   version: String,
   buildId: String,
   startedAt: Timestamp,
-  //isTerminating: Boolean,
   system: SystemInformation,
   java: JavaInformation)
 extends DelegateOverview

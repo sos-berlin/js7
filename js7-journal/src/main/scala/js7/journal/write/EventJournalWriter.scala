@@ -64,9 +64,6 @@ extends
     // TODO Rollback writes in case of error (with seek?)
     if !eventsStarted then throw new IllegalStateException
     val ta = transaction && stampedEvents.lengthIs > 1
-    //logger.trace(s"### writeEvents ${ta ?? "transaction "}${
-    //  stampedEvents.map(o => s"${o.eventId}:${o.value.event.getClass.simpleScalaName}")
-    //    .mkString("[", ", ", "]")}")
     if ta then jsonWriter.write(TransactionByteArray)
     super.writeEvents(stampedEvents)
     if ta then jsonWriter.write(CommitByteArray)

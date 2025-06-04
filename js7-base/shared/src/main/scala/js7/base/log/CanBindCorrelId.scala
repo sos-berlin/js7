@@ -8,7 +8,7 @@ import scala.annotation.{implicitNotFound, unused}
 import scala.concurrent.Future
 import scala.util.NotGiven
 
-// FIXME CorreldId for Cats Effect 3
+// TODO CorrelId for Cats Effect 3
 
 // Inspired by Monix 3.4 CanBindLocals
 @implicitNotFound("""Cannot find an implicit value for CanBindCorrelId[${R}].

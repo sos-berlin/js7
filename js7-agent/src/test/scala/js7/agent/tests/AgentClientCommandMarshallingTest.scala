@@ -44,7 +44,7 @@ extends OurTestSuite, ScalaFutures, AgentTester:
 
   List[(AgentCommand, Checked[AgentCommand.Response])](
     ExpectedTerminate -> Right(AgentCommand.Response.Accepted),
-    EmergencyStop(false) -> Right(AgentCommand.Response.Accepted))
+    EmergencyStop() -> Right(AgentCommand.Response.Accepted))
   .foreach { case (command, response) =>
     command.getClass.simpleScalaName in:
       pending

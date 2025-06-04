@@ -50,7 +50,7 @@ final class BecomeAgentClusterTest
     }
     """
 
-  protected override val agentPaths = Seq(agentPath)
+  override val agentPaths = Seq(agentPath)
 
   private lazy val backupSubagentItem = SubagentItem(
     backupSubagentId, agentPath, findFreeLocalUri())
@@ -148,7 +148,7 @@ object BecomeAgentClusterTest:
   private val backupSubagentId = SubagentId("Backup-SUBAGENT")
 
   private val workflow = Workflow(
-    WorkflowPath("MY-WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
       EmptyJob.execute(agentPath)))
 
