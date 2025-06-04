@@ -149,6 +149,71 @@ final class CheckedTest extends OurAsyncTestSuite:
     assert(Left(Problem("X")).onProblemHandle { _ => flag = true; 7 } == 7)
     assert(flag)
 
+  "handleProblem in IO" in:
+    val left: Checked[Int] = Left(Problem("PROBLEM"))
+    val right: Checked[Int] = Right(1)
+    IO(left).handleProblem(problem => problem.toString).map: x =>
+      assert(x == "PROBLEM")
+    IO(right).handleProblem(problem => problem.toString).map: x =>
+      assert(x == 1)
+
+  "handleProblemWith in IO" in:
+    val left: Checked[Int] = Left(Problem("PROBLEM"))
+    val right: Checked[Int] = Right(1)
+    IO(left).handleProblemWith(problem => IO(problem.toString)).map: x =>
+      assert(x == "PROBLEM")
+    IO(right).handleProblemWith(problem => IO(problem.toString)).map: x =>
+      assert(x == 1)
+
+  "recoverFromProblem in IO" in:
+    val left1: Checked[Int] = Left(Problem("PROBLEM"))
+    val left2: Checked[Int] = Left(Problem("PROBLEM-2"))
+    val right: Checked[Int] = Right(1)
+
+    IO(left1).recoverFromProblem:
+      case problem if problem == Problem("PROBLEM") => problem.toString
+    .map: x =>
+      assert(x == Right("PROBLEM"))
+
+    IO(left2).recoverFromProblem:
+      case problem if problem == Problem("PROBLEM") => problem.toString
+    .map: x =>
+      assert(x == Left(Problem("PROBLEM-2")))
+
+  "recoverFromProblemWith in IO" in:
+    val left1: Checked[Int] = Left(Problem("PROBLEM"))
+    val left2: Checked[Int] = Left(Problem("PROBLEM-2"))
+    val right: Checked[Int] = Right(1)
+
+    IO(left1).recoverFromProblemWith:
+      case problem if problem == Problem("PROBLEM") => IO(Right(problem.toString))
+    .map: x =>
+      assert(x == Right("PROBLEM"))
+
+    IO(left2).recoverFromProblemWith:
+      case problem if problem == Problem("PROBLEM") => IO(Right(problem.toString))
+    .map: x =>
+      assert(x == Left(Problem("PROBLEM-2")))
+
+  "recoverFromProblemWith in IO (2)" in :
+    val ok: IO[Checked[Int]] = IO.pure(Right(1))
+    val failed: IO[Checked[Int]] = IO.pure(Left(TestCodeProblem))
+    for
+      x <- ok.recoverFromProblemWith:
+        case TestCodeProblem => IO.pure(Right(999))
+      _ = assert(x == Right(1))
+      x <- failed.recoverFromProblemWith:
+        case TestCodeProblem if false => IO.pure(Right(2))
+      _ = assert(x == Left(TestCodeProblem))
+      x <- failed.recoverFromProblemWith:
+        case TestCodeProblem => IO.pure(Right(2))
+      _ = assert(x == Right(2))
+      x <- failed.recoverFromProblemWith:
+        case TestCodeProblem => IO.pure(Left(Problem("PROBLEM")))
+      _ = assert(x == Left(Problem("PROBLEM")))
+    yield
+      succeed
+
   "traverse with Checked" in:
     def check(i: Int): Checked[String] = if (i % 2) == 0 then Right(i.toString) else Left(Problem(s"odd $i"))
     assert(Left(Problem("PROBLEM")).traverse(check) == Right(Left(Problem("PROBLEM"))))
@@ -221,25 +286,6 @@ final class CheckedTest extends OurAsyncTestSuite:
     assert(List(Right(1), Right(2)).combineProblems == Right(Seq(1, 2)))
     assert(List(Left(Problem("ONE")), Right(2), Left(Problem("TWO"))).combineProblems ==
       Left(Problem.combined(List("ONE", "TWO"))))
-
-  "onProblemRecoverWith" in:
-    val ok: IO[Checked[Int]] = IO.pure(Right(1))
-    val failed: IO[Checked[Int]] = IO.pure(Left(TestCodeProblem))
-    for
-      x <- ok.onProblemRecoverWith:
-        case TestCodeProblem => IO.pure(Right(999))
-      _ = assert(x == Right(1))
-      x <- failed.onProblemRecoverWith:
-        case TestCodeProblem if false => IO.pure(Right(2))
-      _ = assert(x == Left(TestCodeProblem))
-      x <- failed.onProblemRecoverWith:
-        case TestCodeProblem => IO.pure(Right(2))
-      _ = assert(x == Right(2))
-      x <- failed.onProblemRecoverWith:
-        case TestCodeProblem => IO.pure(Left(Problem("PROBLEM")))
-      _ = assert(x == Left(Problem("PROBLEM")))
-    yield
-      succeed
 
   "failFastMap" - {
     "Invalid" in:

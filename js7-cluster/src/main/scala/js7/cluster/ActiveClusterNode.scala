@@ -478,7 +478,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                       .map(_.toCompleted)
                       .rightAs(true)
-                  .onProblemRecoverWith:
+                  .recoverFromProblemWith:
                     case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
                       journal.kill  // avoid taking a snapshot
                         .as(Left(problem))

@@ -462,7 +462,8 @@ extends Service.StoppableByRequest:
               nodeToClusterWatchConfirmationRequired.nonEmpty.thenList(
                 agentPath <-: AgentClusterWatchManuallyConfirmed)))
       .rightAs(())
-      .handleProblem(problem => IO(logger.error(problem.toString)))
+      .handleProblemWith(problem => IO:
+        logger.error(problem.toString))
 
   private def activeClientResource: ResourceIO[AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi(

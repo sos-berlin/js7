@@ -399,7 +399,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               .getOrElse(Problem.pure("decoupled"))
             (!subagentItemState.problem.contains(problem))
               .thenList(subagentId <-: SubagentCouplingFailed(problem))
-      .onProblemRecover:
+      .recoverFromProblem:
         case JournalKilledProblem =>
           logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
       .map(_.orThrow)

@@ -164,17 +164,17 @@ object Checked:
       orThrow //?
 
   implicit final class RichCheckedF[F[_], A](private val underlying: F[Checked[A]]) extends AnyVal:
-    def handleProblem[B >: A](f: Problem => F[B])(using F: Monad[F]): F[B] =
-      underlying.flatMap:
-        case Left(problem) => f(problem)
-        case Right(a) => F.pure(a)
-
-    def onProblemHandleInF[B >: A](f: Problem => B)(implicit F: Functor[F]): F[B] =
+    def handleProblem[B](f: Problem => B)(using F: Monad[F]): F[A | B] =
       underlying.map:
         case Left(problem) => f(problem)
         case Right(a) => a
 
-    def onProblemRecover[B >: A](f: PartialFunction[Problem, B])(implicit F: Functor[F]): F[Checked[B]] =
+    def handleProblemWith[B](f: Problem => F[B])(using F: Monad[F]): F[A | B] =
+      underlying.flatMap:
+        case Left(problem) => f(problem).widen[A | B]
+        case Right(a) => F.pure(a)
+
+    def recoverFromProblem[B](f: PartialFunction[Problem, B])(using Functor[F]): F[Checked[A | B]] =
       underlying.map:
         case Left(problem) =>
           f.lift(problem) match
@@ -182,12 +182,13 @@ object Checked:
             case Some(b) => Right(b)
         case Right(a) => Right(a)
 
-    def onProblemRecoverWith[B >: A](f: PartialFunction[Problem, F[Checked[B]]])(implicit F: Monad[F]): F[Checked[B]] =
+    def recoverFromProblemWith[B](f: PartialFunction[Problem, F[Checked[B]]])(using F: Monad[F])
+    : F[Checked[A | B]] =
       underlying.flatMap:
         case Left(problem) =>
           f.lift(problem) match
             case None => F.pure(Left(problem))
-            case Some(b) => b
+            case Some(b) => b.widen[Checked[A | B]]
         case Right(a) => F.pure(Right(a))
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal:
