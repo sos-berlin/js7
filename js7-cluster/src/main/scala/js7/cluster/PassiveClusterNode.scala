@@ -128,7 +128,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
             throwable.nullIfNoStackTrace)))
         .timeoutTo(clusterConf.timing.heartbeat /*some short time*/ , IO.unit)
-        .logWhenItTakesLonger
+        .logWhenItTakesLonger("notifyActiveNodeAboutShutdown#noticeActive")
 
       IO.race(untilDecoupled, notifyActive.delayBy(50.ms))
         .flatTap:
