@@ -99,7 +99,9 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
     def onSkipped(): Unit =
       skipped += 1
       val duration = runningSince.elapsed
-      if !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s) then
+      if duration >= LogThreshold &&
+        !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s)
+      then
         logger.debug:
           s"⏳ $skipped events (${toKBGB(position - startPosition)
           }) skipped since ${duration.pretty} ago: ${EventId.toDateTimeString(startEventId)
@@ -107,16 +109,18 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
         debugIssued = true
 
     def end(): Unit =
-      val skippedSize = position - startPosition
       val duration = runningSince.elapsed
-      val logLevel = if skipped == 0 then LogLevel.None
-        else if skippedSize >= InfoSkippedSize || duration >= InfoDuration then LogLevel.Info
-        else LogLevel.Trace
-      logger.log(logLevel, s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${
-        duration.pretty}: ${EventId.toString(startEventId)}..${EventId.toString(after)}")
+      if duration >= LogThreshold then
+        val skippedSize = position - startPosition
+        val logLevel = if skipped == 0 then LogLevel.None
+          else if skippedSize >= InfoSkippedSize || duration >= InfoDuration then LogLevel.Info
+          else LogLevel.Trace
+        logger.log(logLevel, s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${
+          duration.pretty}: ${EventId.toString(startEventId)}..${EventId.toString(after)}")
 
 
 object FileEventIterator:
   private val InfoSkippedSize = 10*1000*1000
   private val InfoDuration = 3.s
   private val meterSkip = CallMeter("FileEventIterator.skipToEventAfter")
+  private val LogThreshold = 500.µs

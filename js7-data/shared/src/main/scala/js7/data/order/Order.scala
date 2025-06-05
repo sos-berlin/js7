@@ -1543,8 +1543,5 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
   extends Problem.Coded:
     def arguments: Map[String, String] = Map(
-      "orderId" -> order.id.string,
       "event" -> event.toString,
-      "workflowPosition" -> order.workflowPosition.toString,
-      "state" -> order.state.getClass.simpleScalaName,
-      "more" -> (order.markString.fold("")(o => s"$o, ") + order.attachedStateString))
+      "order" -> order.toString)
