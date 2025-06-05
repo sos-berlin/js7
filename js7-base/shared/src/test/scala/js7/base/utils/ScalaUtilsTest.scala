@@ -415,6 +415,15 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "IterableOnce" - {
+    "foldMap" in:
+      assert(Iterator.empty[Int].foldMap(_.toString) == "")
+      assert(Vector.empty[Int].foldMap(_.toString) == "")
+      assert(List.empty[Int].foldMap(_.toString) == "")
+
+      assert(Iterator(1, 2, 3).foldMap(_.toString) == "123")
+      assert(Vector(1, 2, 3).foldMap(_.toString) == "123")
+      assert(List(1, 2, 3).foldMap(_.toString) == "123")
+
     "repeatLast" in:
       assert(Nil.repeatLast.isEmpty)
       assert(Iterator.empty.repeatLast.isEmpty)

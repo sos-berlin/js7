@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.syntax.foldable.*
 import cats.syntax.functor.*
 import cats.syntax.option.*
-import cats.{Functor, Monad, Monoid, Semigroup}
+import cats.{Foldable, Functor, Monad, Monoid, Semigroup}
 import izumi.reflect.Tag
 import izumi.reflect.macrortti.LightTypeTag
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
@@ -38,6 +38,14 @@ object ScalaUtils:
   private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
   private lazy val makeUniqueMeter = CallMeter("makeUnique")
   private lazy val logger = Logger[this.type]
+
+  //given iterableMonoid: Foldable[Iterable] =
+  //  new Foldable[Iterable]:
+  //    def foldLeft[A, B](fa: Iterable[A], b: B)(f: (B, A) => B): B =
+  //      fa.foldLeft(b)(f)
+  //
+  //    def foldRight[A, B](fa: Iterable[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+  //      ###
 
   object syntax:
     implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal:
@@ -324,6 +332,12 @@ object ScalaUtils:
 
 
     extension [A](iterable: Iterable[A])
+      def foldMap[B: Monoid as B](f: A => B): B =
+        //iterable.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
+        iterable match
+          case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
+          case _ => B.combineAll(iterable.map(f))
+
       /** Like mkString but limits the number of shown elements.
         *
         * With a dynamically calculated Iterable of unknown size,
@@ -382,6 +396,14 @@ object ScalaUtils:
                 case a: A @unchecked => a
 
     extension [A](iterableOnce: IterableOnce[A])
+      def foldMap[B: Monoid as B](f: A => B): B =
+        iterableOnce match
+          case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
+          case iterable: Iterable[A] => iterable.foldMap(f)
+          case _ => iterableOnce.iterator.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
+        //iterableOnce match
+        //  case iterable: Iterable[A] => B.combineAll(iterable.map(f))
+        //  case _ => B.combineAll(iterableOnce.iterator.map(f))
 
       def repeatLast: LazyList[A] =
         iterableOnce match
@@ -989,6 +1011,7 @@ object ScalaUtils:
         var i = 0
         while i < len && underlying(i) != byte do i = i + 1
         if i == len then -1 else i
+  end syntax
 
   extension (lock: ReentrantLock)
     def use[A](body: => A): A =
