@@ -21,14 +21,10 @@ final class ExecuteAdmissionTimeSwitch(
   @TestOnly
   private[instructions] def nextTime = _nextTime
 
-  /** Cancel the callback _fiber for admission start. */
-  def cancel: IO[Unit] =
+  def cancelDelay: IO[Unit] =
     IO.defer:
       _nextTime = None
       cancelSchedule.get.flatten
-
-  def cancelDelay: IO[Unit] =
-    cancel // TODO Cancel only delay, but not onAdmissionStart
 
   /** Update the state with the current or next admission time and set a _fiber.
    * @return true iff an AdmissionTimeInterval is effective now. */

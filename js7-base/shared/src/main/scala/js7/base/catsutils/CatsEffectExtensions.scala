@@ -24,12 +24,6 @@ object CatsEffectExtensions:
 
   extension[A](io: IO[A])
 
-    def whenDeferred(condition: => Boolean)(body: IO[Unit]): IO[Unit] =
-      IO.defer(IO.whenA(condition)(body))
-
-    def unlessDeferred(condition: => Boolean)(body: IO[Unit]): IO[Unit] =
-      IO.defer(IO.unlessA(condition)(body))
-
     /** Evaluates the Canceled() case only when not Canceled. */
     def guaranteeCaseLazy(finalizer: OutcomeIO[A @uncheckedVariance] => IO[Unit]): IO[A] =
       io.guaranteeCase:

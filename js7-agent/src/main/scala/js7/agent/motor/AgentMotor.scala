@@ -13,7 +13,8 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, ResetSubagent, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, materializeIntoChecked, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget}
+import js7.base.catsutils.CatsEffectUtils.whenDeferred
 import js7.base.catsutils.Environment.environment
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -26,11 +27,10 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
+import js7.base.time.{AlarmClock, Timestamp}
+import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.pureFiberIO
-import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, DuplicateKeyException}
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -46,25 +46,22 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, EventId, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem, VersionedItemId}
-import js7.data.job.{JobKey, JobResource}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
+import js7.data.job.JobResource
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
 import js7.journal.Persisted
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import org.apache.pekko.actor.ActorSystem
-import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 
 /** The dedicated Director.
@@ -89,10 +86,10 @@ final class AgentMotor private(
 extends Service.StoppableByRequest:
 
   private val journal = workingClusterNode.journal
-  private val lock = AsyncLock() // FIXME Use this more? Only to be sure. Avoid using this lock!
-  private val orderToEntry = AsyncMap.empty[OrderId, OrderEntry]
-  private val jobToEntry = mutable.Map.empty[JobKey, JobEntry]
-  private var agentProcessCount: Int = 0
+  private val orderToEntry = AsyncMap[OrderId, OrderEntry]
+  private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
+    isStopping = isStopping)
+  private val agentProcessCount = Atomic(0)
   private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
   private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)
   /** When only the Director should be shut down while the Subagent keeps running. */
@@ -114,8 +111,8 @@ extends Service.StoppableByRequest:
 
   private def stopMe: IO[Unit] =
     IO.defer:
-      orderToEntry.toMap.values.toVector.foldMap(_.stop) *>
-        jobToEntry.toMap.values.toVector.foldMap(_.stop) *>
+      orderToEntry.toMap.values.foldMap(_.stop) *>
+        jobMotor.stop *>
         _stopImmediately.get.flatMap:
           IO.unlessA(_):
             _inhibitShutdownLocalSubagent.get.flatMap:
@@ -135,44 +132,25 @@ extends Service.StoppableByRequest:
         stop *> subagentKeeper.kill *> journal.kill
 
   private def recoverJobEntries(agentState: AgentState): IO[Unit] =
-    agentState.idToWorkflow.values.toVector.foldMap:
-      createJobEntries
-
-  private def deleteJobEntries(workflowId: WorkflowId): IO[Unit] =
-    IO:
-      synchronized:
-        jobToEntry --=
-          jobToEntry.values.toVector.filter(_.jobKey.workflowId == workflowId).map(_.jobKey)
-
-  private def createJobEntries(workflow: Workflow): IO[Unit] =
-    IO:
-      synchronized:
-        val timezone = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
-        workflow.keyToJob.filter(_._2.agentPath == agentPath).foreach: (jobKey, job) =>
-          jobToEntry.insert(jobKey, JobEntry(jobKey, job, timezone))
+    agentState.idToWorkflow.values.foldMap:
+      jobMotor.createJobEntries
 
   private def recoverOrders(agentState: AgentState): IO[Unit] =
     val orders = agentState.idToOrder.values.view
     val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
     val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
-    processingOrders.foldMap: order =>
-      IO.defer:
-        agentState.jobKey(order.workflowPosition).foreach: jobKey =>
-          jobToEntry(jobKey).recoverProcessingOrder(order)
-          agentProcessCount += 1
-
-        // TODO Process all recovered Orders in a batch!
-        subagentKeeper.recoverOrderProcessing(order, onSubagentEvents)
-          .materializeIntoChecked // TODO Do not expect an exception
-          .flatMapT: fiber =>
-            fiber.joinStd.flatMap: (_: OrderProcessed) =>
-              proceedWithOrders(order :: Nil)
-            .onError(t => IO:
-              logger.error(s"recoverOrderProcessing(${order.id}): ${t.toStringWithCauses}", t))
-            .startAndForget
-            .map(Right(_))
-          .handleProblemWith: problem =>
-            IO(logger.error(s"recoverOrderProcessing(${order.id}): $problem"))
+    // Continue already processing Orders
+    jobMotor.recoverProcessingOrders(processingOrders).map: checkedFibers =>
+      checkedFibers.map: (orderId, checkedFiber) =>
+        checkedFiber.traverse: fiber =>
+          fiber.joinStd.flatMap: (_: OrderProcessed) =>
+            proceedWithOrder(orderId)
+          .handleErrorWith: t =>
+            IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
+          .startAndForget
+          .map(Right(_))
+        .handleProblemWith: problem =>
+          IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
     .productR:
       proceedWithOrders(otherOrders)
 
@@ -208,22 +186,18 @@ extends Service.StoppableByRequest:
               if agentPath != this.agentPath then
                 IO.left(Problem(s"Wrong $agentPath"))
               else
-                agentState().idToWorkflow.get(order.workflowId) match
-                  case None =>
-                    IO.left(Problem.pure(s"Unknown ${order.workflowId}"))
-                  case Some(workflow) =>
+                persist: agentState =>
+                  agentState.idToWorkflow.checked(order.workflowId).flatMap: workflow =>
                     if !workflow.isDefinedAt(order.position) then
-                      IO.left(Problem.pure(s"Unknown Position ${order.workflowPosition}"))
-                    else if agentState().idToOrder.contains(order.id) then
-                      IO.left(AgentDuplicateOrder(order.id))
+                      Left(Problem.pure(s"Unknown Position ${order.workflowPosition}"))
+                    else if agentState.idToOrder.contains(order.id) then
+                      Left(AgentDuplicateOrder(order.id))
                     else if isStopping then
-                      IO.left(AgentIsShuttingDown)
+                      Left(AgentIsShuttingDown)
                     else
-                      /*workflowRegister.reuseMemory*/
-                      IO.pure(order.toOrderAttachedToAgent).flatMapT: event =>
-                        persist:
-                          order.id <-: event
-                        .rightAs(Response.Accepted)
+                      order.toOrderAttachedToAgent.map: event =>
+                        Some(order.id <-: event)
+                .rightAs(Response.Accepted)
 
       case DetachOrder(orderId) =>
         if isStopping then
@@ -283,10 +257,9 @@ extends Service.StoppableByRequest:
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        //val previousItem = agentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item))
           .flatMapT: _ =>
-            proceedWithItem(/*previousItem,*/ item)
+            proceedWithItem(item)
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
@@ -328,9 +301,9 @@ extends Service.StoppableByRequest:
               Left(Problem.pure:
                 s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")
         .flatMapT: persisted =>
-          persisted.keyedEvents.toVector.foldMap:
+          persisted.keyedEvents.foldMap:
             case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
-              createJobEntries(persisted.aggregate.idToWorkflow(workflow.id))
+              jobMotor.createJobEntries(persisted.aggregate.idToWorkflow(workflow.id))
             case _ => IO.unit
           .map(Right(_))
         .rightAs(AgentCommand.Response.Accepted)
@@ -341,9 +314,9 @@ extends Service.StoppableByRequest:
         ifItemKeyExists(agentState):
           ItemDetached(itemKey, agentPath)
       .ifPersisted: persisted =>
-        persisted.keyedEvents.toVector.foldMap:
+        persisted.keyedEvents.foldMap:
           case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
-            deleteJobEntries(workflowId)
+            jobMotor.deleteEntriesForWorkflow(workflowId)
           case _ => IO.unit
 
     def ifItemKeyExists[E <: InventoryItemEvent](agentState: AgentState)(event: => E) =
@@ -387,9 +360,9 @@ extends Service.StoppableByRequest:
       case _ =>
         persistItemDetachedIfExists
           .rightAs(AgentCommand.Response.Accepted)
+  end detachItem
 
-  private def proceedWithItem(/*previous: Option[InventoryItem],*/ item: InventoryItem)
-  : IO[Checked[Unit]] =
+  private def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
         //TODO val processLimitIncreased = previous
@@ -397,21 +370,21 @@ extends Service.StoppableByRequest:
         //  .flatten
         //  .forall(previous => agentRef.processLimit.forall(previous < _))
         //if processLimitIncreased then
-        tryStartProcessing.map(Right(_))
+        jobMotor.tryStartProcessing.map(Right(_))
 
       case subagentItem: SubagentItem =>
         journal.aggregate.flatMap:
           _.idToSubagentItemState.get(subagentItem.id)
             .fold(IO.pure(Checked.unit)): subagentItemState =>
               subagentKeeper.proceedWithSubagent(subagentItemState)
-                .materializeIntoChecked
+                .catchIntoChecked
         .flatMapT: _ =>
-          tryStartProcessing.map(Right(_))
+          jobMotor.tryStartProcessing.map(Right(_))
 
       case subagentBundle: SubagentBundle =>
         subagentKeeper.addOrReplaceSubagentBundle(subagentBundle)
           .flatMapT: _ =>
-            tryStartProcessing.map(Right(_))
+            jobMotor.tryStartProcessing.map(Right(_))
 
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then
@@ -485,15 +458,18 @@ extends Service.StoppableByRequest:
                     Some(NodeId.primary)
                   case clusterState: ClusterState.HasNodes =>
                     (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
-                .fold(journal.persist(event).rightAs(())): activeNodeId =>
-                  workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
+                .match
+                  case None =>
+                    journal.persist(event).rightAs(())
+                  case Some(activeNodeId) =>
+                    workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */
-  private def demandedClusterNodeUris(state: AgentState): Option[Map[NodeId, Uri]] =
+  private def demandedClusterNodeUris(agentState: AgentState): Option[Map[NodeId, Uri]] =
     for
-      agentRef <- state.keyToItem(AgentRef).get(state.meta.agentPath)
+      agentRef <- agentState.keyToItem(AgentRef).get(agentState.meta.agentPath)
       if agentRef.directors.length == 2
-      subagentItems <- agentRef.directors.traverse(state.keyToItem(SubagentItem).get)
+      subagentItems <- agentRef.directors.traverse(agentState.keyToItem(SubagentItem).get)
       if subagentItems.length == 2
     yield
       Map(
@@ -501,7 +477,8 @@ extends Service.StoppableByRequest:
         NodeId.backup -> subagentItems(1).uri)
 
   def resetAllSubagents: IO[Unit] =
-    subagentKeeper.resetAllSubagents(except = agentState().meta.directors.toSet)
+    journal.aggregate.flatMap: agentState =>
+      subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 
   private def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[AgentState, E]]] =
     persist(EventCalc.pure(keyedEvent))
@@ -528,9 +505,9 @@ extends Service.StoppableByRequest:
         .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, OrderDetached) =>
-        orderToEntry.remove(orderId).flatMap(_.fold(IO.unit):
-          _.stop)
-          .as(Vector(orderId))
+        orderToEntry.remove(orderId).flatMapSome:
+          _.stop
+        .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, _) =>
         IO.pure(Vector(orderId))
@@ -542,169 +519,62 @@ extends Service.StoppableByRequest:
         touchedOrderIds.distinct
           .flatMap(persisted.aggregate.idToOrder.get)
 
-  private def onSubagentEvents(
-    events: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed],
-    order: Order[Order.State])
+  private def onSubagentEvents(orderId: OrderId)
+    (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
   : IO[Unit] =
     events.foldMap:
       case OrderStarted => IO.unit
-
-      case _: OrderProcessingStarted =>
-        maybeKillOrder(order.id)
-
-      case event: OrderProcessed =>
-        IO.defer:
-          val jobEntry = orderToJobEntry(order.workflowPosition).orThrow
-          synchronized: // FIXME
-            jobEntry.remove(order.id)
-            agentProcessCount -= 1
-          tryStartProcessing(jobEntry)
-            *> tryStartProcessing // In case, agentProcessCount gets below agentProcessLimit TODO Don't check too often
+      case _: OrderProcessingStarted => maybeKillOrder(orderId)
+      case _: OrderProcessed => jobMotor.onOrderProcessed(orderId)
     .productR:
-      withCurrentOrder(order.id): order =>
-        proceedWithOrders(order :: Nil)
+      proceedWithOrder(orderId)
+
+  private def proceedWithOrder(orderId: OrderId): IO[Unit] =
+    withCurrentOrder(orderId): order =>
+      proceedWithOrders(order :: Nil)
 
   private def proceedWithOrders(orders: Seq[Order[Order.State]]): IO[Unit] =
-    IO.defer:
-      IO.whenA(orders.nonEmpty && !isStopping):
-        val now = clock.now()
-        val (delayUntil, immediateOrders) =
+    whenDeferred(orders.nonEmpty && !isStopping):
+      clock.lockIO: now =>
+        val (delayOrders, immediateOrders) =
           orders.map: order =>
             order -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
           .partition(_._2 > now)
-        delayUntil.foldMap: (order, delayUntil) =>
+        delayOrders.foldMap: (order, delayUntil) =>
           val orderId = order.id
           orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
             entry.schedule(delayUntil):
-              // TODO Cancel this fiber in case of order cancellation ?
-              IO.unlessA(isStopping):
-                withCurrentOrder(orderId): order =>
-                  proceedWithOrders(order :: Nil)
-        .productR:
-          val orderIds = immediateOrders.map(_._1.id)
-          // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
-          persist[OrderActorEvent | PlanFinishedEvent]: agentState =>
-            Right:
-              orderIds.flatMap: orderId =>
-                val keyedEvents: Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
-                  OrderEventSource(agentState)(using InstructionExecutorService(clock))
-                    .nextEvents(orderId)
-                keyedEvents
-          .map(_.orThrow) // TODO throws
-          .flatMap: persisted =>
-            orderIds.foldMap: orderId =>
-              persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+              proceedWithOrder(orderId) // Try again after delay
+        .as(immediateOrders.map(_._1.id))
+      .flatMap: (orderIds: Seq[OrderId]/*IntelliJ*/) =>
+        // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
+        persist: agentState =>
+          Right:
+            orderIds.flatMap: orderId =>
+              OrderEventSource(agentState)(using InstructionExecutorService(clock))
+                .nextEvents(orderId)
+        .map(_.orThrow) // TODO throws
+        .flatMap: (persisted: Persisted[AgentState, Event]/*IntelliJ*/) =>
+          orderIds.foldMap: orderId =>
+            persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+              IO.whenA(
+                persisted.isEmpty
+                  && persisted.aggregate.isOrderProcessable(orderId)
+                  && order.isAttached
+              ):
+                jobMotor.onOrderIsProcessable(order)
+        .flatMap: _ =>
+          journal.aggregate.flatMap: agentState =>
+            orderIds.flatMap(agentState.idToOrder.get).foldMap: order =>
+              order.ifState[Order.IsFreshOrReady].map: order =>
                 IO.whenA(
-                  persisted.keyedEvents.isEmpty
-                    && persisted.aggregate.isOrderProcessable(orderId)
-                    && order.isAttached
-                    && !isStopping
+                  order.isAttached
+                    && agentState.instruction(order.workflowPosition).isInstanceOf[Execute]
+                    && order.isProcessable
                 ):
-                  onOrderIsProcessable(order)
-                //if noticeDeletedEvents.nonEmpty then
-                //  persist(EventCalc.pure(orderKeyedEvents)) { _ => }
-          .flatMap: _ =>
-            journal.aggregate.flatMap: agentState =>
-              orderIds.flatMap(agentState.idToOrder.get).foldMap: order =>
-                order.ifState[Order.IsFreshOrReady].map: order =>
-                  IO.whenA(
-                    order.isAttached
-                      && agentState.instruction(order.workflowPosition).isInstanceOf[Execute]
-                      && order.isProcessable
-                  ):
-                    IO.defer:
-                      val jobEntry = orderToJobEntry(order.workflowPosition).orThrow
-                      jobEntry.enqueue(order.id)
-                      tryStartProcessing(jobEntry)
-                .getOrElse:
-                  IO.unit
-
-  private def onOrderIsProcessable(order: Order[Order.State]): IO[Unit] =
-    IO.defer:
-      agentState()
-        .idToWorkflow.checked(order.workflowId)
-        .map(workflow => workflow -> workflow.instruction(order.position))
-        .match
-          case Left(problem) =>
-            logger.error(s"onOrderIsProcessable => $problem")
-            IO.unit
-
-          case Right((workflow, execute: Execute)) =>
-            val checkedJobKey = execute match
-              case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
-              case o: Execute.Named => workflow.jobKey(order.position.branchPath, o.name) // defaultArguments are extracted later
-            checkedJobKey
-              .flatMap(jobToEntry.checked)
-              .onProblem: problem =>
-                logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem")
-              .fold(IO.unit): jobEntry =>
-                onOrderAvailableForJob(order.id, jobEntry)
-
-          case Right(_) => IO.unit
-
-  private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): IO[Unit] =
-    IO.defer:
-      synchronized:
-        if !jobEntry.isKnown(orderId) then
-          jobEntry.enqueue(orderId)
-          tryStartProcessing(jobEntry)
-        else
-          IO.unit
-
-  private def tryStartProcessing: IO[Unit] =
-    IO.defer:
-      // TODO Respect Order's priority
-      synchronized/*FIXME*/(jobToEntry.values.toVector).foldMap: jobEntry =>
-        tryStartProcessing(jobEntry)
-
-  private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
-   lock.lock:
-    logger.traceIO("tryStartProcessing", jobEntry.jobKey):
-      jobEntry.onAdmissionTimeInterval:
-        IO.defer:
-          IO.unlessA(isStopping):
-            synchronized/*FIXME*/(jobToEntry.get(jobEntry.jobKey)).fold(IO.unit): jobEntry =>
-              tryStartProcessing(jobEntry).onError: t =>
-                IO(logger.error(s"tryStartProcessing onAdmissionTimeInterval: ${
-                  jobEntry.jobKey}: ${t.toStringWithCauses}", t))
-              .startAndForget // Avoid deadlock due to recursion! ???
-      .flatMap: isEnterable =>
-        // TODO Cancel this when order.forceJobAdmission or when Order has been canceled
-        journal.aggregate.flatMap: agentState =>
-          fs2.Stream.eval:
-            IO:
-              jobEntry.isBelowProcessLimit && isBelowAgentProcessLimit() thenMaybe:
-                jobEntry.dequeueWhere: orderId =>
-                  // Always check Order's existence.
-                  // Order may have been enqueued after we have read our AgentState.
-                  agentState.idToOrder.get(orderId).exists: order =>
-                    order.forceJobAdmission || isEnterable
-          .unNoneTerminate
-          .evalMap: orderId =>
-            // Get a fresh AgentState, because the Order may have been concurrently enqueued after
-            // the previous AgentState had been read — TODO Bad concurrency, use a lock?
-            journal.aggregate.flatMap: agentState =>
-              agentState.idToOrder.checked(orderId)
-                .flatMap(_.checkedState[Order.IsFreshOrReady])
-                .flatTap: order =>
-                  order.isProcessable !! Problem(s"startProcessing but $orderId is not processable • $order")
-                .match
-                  case Left(problem) =>
-                    IO(logger.error(s"tryStartProcessing(${jobEntry.jobKey}) $orderId: $problem"))
-                  case Right(order) =>
-                    IO:
-                      synchronized: // FIXME
-                        jobEntry.processCount += 1
-                        agentProcessCount += 1
-                    *>
-                      // subagentKeeper.startProcess blocks until a Subagent becomes available
-                      subagentKeeper.processOrder(order, onSubagentEvents)
-                        .catchIntoChecked
-                        .handleProblemWith: problem =>
-                          IO(logger.error:
-                            s"startOrderProcessing(${jobEntry.jobKey}) $orderId: $problem • $order")
-                        .startAndForget
-          .compile.drain
+                  jobMotor.enqueueProcessableOrder(order)
+              .getOrElse:
+                IO.unit
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
     _shutdown.set(Some(cmd)) *>
@@ -732,21 +602,6 @@ extends Service.StoppableByRequest:
           order.id,
           if kill.immediately then SIGKILL else SIGTERM)
 
-  private def orderToJobEntry(workflowPosition: WorkflowPosition)
-  : Checked[JobEntry] =
-    agentState().jobKey(workflowPosition).flatMap(jobToEntry.checked)
-
-  private def isBelowAgentProcessLimit() =
-    agentProcessLimit().forall(agentProcessCount < _)
-
-  private def agentProcessLimit(): Option[Int] =
-    agentState().keyToItem(AgentRef).get(agentPath) match
-      case None =>
-        logger.debug("❓  Missing own AgentRef — assuming processLimit = 0")
-        Some(0)
-      case Some(agentRef) =>
-        agentRef.processLimit
-
   private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
     journal.aggregate.flatMap: agentState =>
       agentState.idToOrder.get(orderId).foldMap:
@@ -761,8 +616,7 @@ extends Service.StoppableByRequest:
 object AgentMotor:
   private val logger = Logger[this.type]
 
-  /** AgentMotor with SubagentKeeper (including local Subagent) and FileWatchManager.
-    */
+  /** AgentMotor with SubagentKeeper (including local Subagent) and FileWatchManager. */
   def resource(
     failedOverSubagentId: Option[SubagentId],
     forDirector: Subagent.ForDirector,
@@ -826,112 +680,3 @@ object AgentMotor:
       .flatMap: cancel =>
         cancelScheduleRef.getAndSet(cancel)
           .flatten/*cancel previous schedule*/
-
-  private final class JobEntry(
-    val jobKey: JobKey,
-    val workflowJob: WorkflowJob,
-    zoneId: ZoneId)
-    (using Dispatcher[IO]):
-
-    private val queue = new OrderQueue
-    private val admissionTimeIntervalSwitch = ExecuteAdmissionTimeSwitch(
-      workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
-      zoneId,
-      onSwitch = to =>
-        IO:
-          if !to.contains(TimeInterval.Always) then
-            logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zoneId"))
-
-    var processCount = 0
-
-    def stop: IO[Unit] =
-      admissionTimeIntervalSwitch.cancelDelay
-
-    def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
-      synchronized: // FIXME
-        processCount += 1
-        queue.recoverProcessingOrder(order)
-
-    def isKnown(orderId: OrderId): Boolean =
-      synchronized: // FIXME
-        queue.isKnown(orderId)
-
-    def hasQueuedOrders: Boolean =
-      synchronized: // FIXME
-        queue.nonEmpty
-
-    def queueSize =
-      synchronized: // FIXME
-        queue.size
-
-    def enqueue(orderId: OrderId): Unit =
-      synchronized: // FIXME
-        if !queue.isKnown(orderId) then
-          queue.enqueue(orderId)
-
-    def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
-      synchronized: // FIXME
-        queue.dequeueWhere(predicate)
-
-    def remove(orderId: OrderId, dontWarn: Boolean = false): Boolean =
-      synchronized: // FIXME
-        queue.isKnown(orderId) && locally:
-          queue.remove(orderId, dontWarn = dontWarn)
-          processCount -= 1
-          true
-
-    def onAdmissionTimeInterval(onPermissionGranted: IO[Unit])(using clock: AlarmClock)
-    : IO[Boolean] =
-      //synchronized:
-        admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
-
-    def isBelowProcessLimit =
-      processCount < workflowJob.processLimit
-
-    override def toString = s"JobEntry($jobKey)"
-
-
-  private final class OrderQueue:
-    private val queue = mutable.ListBuffer.empty[OrderId]
-    private val queueSet = mutable.Set.empty[OrderId]
-    private val inProcess = mutable.Set.empty[OrderId]
-
-    def isEmpty: Boolean = queue.isEmpty
-    def nonEmpty: Boolean = !isEmpty
-
-    def isKnown(orderId: OrderId): Boolean =
-      queueSet.contains(orderId) || inProcess.contains(orderId)
-
-    def size: Int =
-      queue.size
-
-    def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
-      queue.nonEmpty.thenSome:
-        queue.indexWhere(predicate) match
-          case -1 => None
-          case i =>
-            val orderId = queue.remove(i)
-            queueSet -= orderId
-            inProcess += orderId
-            Some(orderId)
-      .flatten
-
-    def enqueue(orderId: OrderId): Unit =
-      if inProcess(orderId) then throw new DuplicateKeyException(s"Duplicate $orderId")
-      if queueSet contains orderId then throw new DuplicateKeyException(s"Duplicate $orderId")
-      queue += orderId
-      queueSet += orderId
-
-    def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
-      inProcess += order.id
-
-    def remove(orderId: OrderId, dontWarn: Boolean = false): Unit =
-      if !inProcess.remove(orderId) then
-        val size = queue.size
-        queue -= orderId
-        if !dontWarn && queue.size == size then
-          logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
-        queueSet -= orderId
-
-    override def toString =
-      s"OrderQueue(${queue.size} orders, ${inProcess.size} in process)"

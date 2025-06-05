@@ -48,4 +48,3 @@ object CatsEffectUtils:
 
 
   final class FiberCanceledException extends CancellationException("Fiber has been canceled")
-
