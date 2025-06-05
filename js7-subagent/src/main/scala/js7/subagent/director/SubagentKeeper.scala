@@ -132,7 +132,7 @@ extends Service.StoppableByRequest:
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
-    onEvents: (Seq[OrderStarted | OrderProcessingStarted | OrderProcessed], Order[Order.State]) => IO[Unit])
+    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
   : IO[Checked[Unit]] =
     val orderId = order.id
     selectSubagentDriverCancelable(order).flatMap:
@@ -158,7 +158,7 @@ extends Service.StoppableByRequest:
 
   private def processOrderAndForwardEvents(
     orderId: OrderId,
-    onEvents: (Seq[OrderStarted | OrderProcessingStarted | OrderProcessed], Order[Order.State]) => IO[Unit],
+    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
   : IO[Checked[Unit]] =
     // TODO Race with CancelOrders ?
@@ -191,7 +191,7 @@ extends Service.StoppableByRequest:
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],
-    onEvents: (Seq[OrderProcessed], Order[Order.State]) => IO[Unit])
+    onEvents: Seq[OrderProcessed] => IO[Unit])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("recoverOrderProcessing", order.id):
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
@@ -221,15 +221,13 @@ extends Service.StoppableByRequest:
   private def persist[E <: OrderCoreEvent](
     orderId: OrderId,
     events: Seq[E],
-    onEvents: (Seq[E], Order[Order.State]) => IO[Unit])
+    onEvents: Seq[E] => IO[Unit])
   : IO[Checked[Persisted[S, E]]] =
     journal
       .persist(events.map(orderId <-: _))
       .flatTapT(onPersisted(orderId, onEvents))
 
-  private def onPersisted[E <: OrderCoreEvent](
-    orderId: OrderId,
-    onEvents: (Seq[E], Order[Order.State]) => IO[Unit])
+  private def onPersisted[E <: OrderCoreEvent](orderId: OrderId, onEvents: Seq[E] => IO[Unit])
     (persisted: Persisted[S, E])
   : IO[Checked[Unit]] =
       persisted.aggregate.idToOrder.get(orderId) match
@@ -239,13 +237,13 @@ extends Service.StoppableByRequest:
           IO.pure(Checked.unit)
         case Some(order) =>
           assertThat(persisted.keyedEvents.forall(_.key == orderId))
-          val events = persisted.keyedEvents.map(_.event).toVector
-          onEvents(events, order).as(Checked.unit)
+          onEvents(persisted.keyedEvents.map(_.event).toVector)
+            .as(Checked.unit)
 
   private def forProcessingOrder(
     orderId: OrderId,
     subagentDriver: SubagentDriver,
-    onEvents: (Seq[OrderProcessed], Order[Order.State]) => IO[Unit])
+    onEvents: Seq[OrderProcessed] => IO[Unit])
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToSubagent.put(orderId, subagentDriver) *>
@@ -258,7 +256,7 @@ extends Service.StoppableByRequest:
               journal.aggregate.flatMap:
                 _.idToOrder.get(orderId) match
                   case None => IO.pure(Checked.unit)
-                  case Some(order) => onEvents(orderProcessed :: Nil, order)
+                  case Some(order) => onEvents(orderProcessed :: Nil)
             .guarantee:
               orderToSubagent.remove(orderId).void
             .start
