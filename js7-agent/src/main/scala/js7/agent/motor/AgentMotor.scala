@@ -3,7 +3,6 @@ package js7.agent.motor
 import cats.effect.std.Dispatcher
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO, Ref, Resource, ResourceIO}
-import cats.implicits.toFoldableOps
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
@@ -55,7 +54,6 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.plan.PlanFinishedEvent
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}

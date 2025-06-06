@@ -82,7 +82,7 @@ extends
       case SubagentShutdown =>
         Right(copy(
           couplingState = Reset.shutdown,
-          subagentRunId = None,
+          //subagentRunId = None,  (this would confuse the client)
           eventId = EventId.BeforeFirst,
           problem = None))
 

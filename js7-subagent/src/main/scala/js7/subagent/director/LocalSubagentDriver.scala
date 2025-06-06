@@ -26,7 +26,7 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
-import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
+import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent, SubagentRunId}
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.{CommitOptions, Journal}
 import js7.subagent.configuration.SubagentConf
@@ -85,7 +85,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   def startObserving: IO[Unit] =
     observe
       .handleErrorWith(t => IO:
-        logger.error(s"startObserving (in background) => ${t.toStringWithCauses}"))
+        logger.error(s"observe (in background) => ${t.toStringWithCauses}"))
       .startAndForget
 
   // TODO Similar to SubagentEventListener
@@ -98,7 +98,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): fs2.Stream[IO, Unit] =
-    logger.debugStream:
+    logger.debugStream("observeAfter", eventId):
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
@@ -106,7 +106,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
         .evalMap: chunk =>
           val stampedEvents = chunk.toVector.flatMap(_._1)
-          val followUpAll = chunk.traverse(_._2).void
+          val followUpAll = chunk.foldMap(_._2)
           IO.whenA(stampedEvents.nonEmpty):
             stampedEvents.traverse: stamped =>
               stamped.value match
@@ -120,7 +120,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                       CommandMeta.System)
                     .orThrow
                     .void
-                case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown) =>
                   whenSubagentShutdown.complete(()).void
                 case _ => IO.unit
             .flatMap: _ =>
@@ -162,7 +162,9 @@ extends SubagentDriver, Service.StoppableByRequest:
             IO.pure(None -> IO.unit)
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-        IO.pure(Some(stamped) -> IO.unit)
+        IO.pure:
+          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdown))
+            -> IO.unit
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
         logger.debug(event.toShortString)
