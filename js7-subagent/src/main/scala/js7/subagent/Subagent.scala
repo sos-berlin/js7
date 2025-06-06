@@ -191,9 +191,8 @@ extends MainService, Service.StoppableByRequest:
       .flatMapT(_.startOrderProcess(order, executeDefaultArguments))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Checked[Unit]] =
-    subagent.checkedDedicatedSubagent
-      .traverse(_
-        .killProcess(orderId, signal))
+    subagent.checkedDedicatedSubagent.traverse:
+      _.killProcess(orderId, signal)
 
   def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     IO(checkedDedicatedSubagent)
