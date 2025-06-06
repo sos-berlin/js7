@@ -163,26 +163,25 @@ extends Service.StoppableByRequest:
   : IO[Checked[Unit]] =
     // TODO Race with CancelOrders ?
     import selectedDriver.{stick, subagentDriver}
-
     journal.persist: agentState =>
       agentState.idToOrder.checked(orderId).map: order =>
-        locally[Seq[OrderStarted | OrderProcessingStarted]]:
+        val events: List[OrderStarted | OrderProcessingStarted] =
           order.isState[Order.Fresh].thenList(OrderStarted) :::
             OrderProcessingStarted(
               Some(subagentDriver.subagentId),
               selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
               stick = stick) ::
             Nil
-        .map(orderId <-: _)
+        events.map(orderId <-: _)
     .flatTapT(onPersisted(orderId, onEvents))
-    .flatTapT: persisted =>
+    .flatMapT: persisted =>
       IO.pure:
         persisted.aggregate.idToOrder.checked(orderId)
           .flatMap(_.checkedState[Order.Processing])
-      .flatMapT: order =>
-        forProcessingOrder(orderId, subagentDriver, onEvents):
-          subagentDriver.startOrderProcessing(order)
-        .containsType[Checked[FiberIO[OrderProcessed]]]
+    .flatMapT: order =>
+      forProcessingOrder(orderId, subagentDriver, onEvents):
+        subagentDriver.startOrderProcessing(order)
+      .containsType[Checked[FiberIO[OrderProcessed]]]
     .handleErrorWith(t => IO:
       logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
         t.nullIfNoStackTrace)
@@ -236,7 +235,7 @@ extends Service.StoppableByRequest:
             persisted.keyedEvents.map(_.event.toShortString)}")
           IO.pure(Checked.unit)
         case Some(order) =>
-          assertThat(persisted.keyedEvents.forall(_.key == orderId))
+          assert(persisted.keyedEvents.forall(_.key == orderId))
           onEvents(persisted.keyedEvents.map(_.event).toVector)
             .as(Checked.unit)
 
