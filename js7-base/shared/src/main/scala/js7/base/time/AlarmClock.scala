@@ -7,13 +7,15 @@ import js7.base.log.Logger
 import js7.base.monixlike.SyncCancelable
 import js7.base.time.AlarmClock.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.LabeledRunnable
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.{AsyncLock, LabeledRunnable}
 import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.util.NotGiven
 
 trait AlarmClock extends WallClock:
+
+  private val clockLock = AsyncLock()
 
   private[time] def stop(): Unit
 
@@ -74,9 +76,13 @@ trait AlarmClock extends WallClock:
     body
 
   /** TestAlarmClock synchronizes time query and time change. */
-  def lockIO[A](body: Timestamp => IO[A]): IO[A] =
-    IO.defer:
-      body(now())
+  def lockIO[A](body: Timestamp => IO[A])(using sourcecode.Enclosing): IO[A] =
+    // We lock as TestScheduler does, otherwise the behaviour would differ between testing and
+    // production code.
+    // If we use a lock when using TestScheduler, we should also use a lock in production.
+    clockLock.lock:
+      IO.defer:
+        body(now())
 
 
 object AlarmClock:

@@ -2,11 +2,12 @@ package js7.agent.motor
 
 import cats.effect.std.Dispatcher
 import cats.effect.{FiberIO, IO}
+import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, startAndForget}
-import js7.base.catsutils.CatsEffectUtils.unlessDeferred
+import js7.base.catsutils.CatsEffectUtils.{unlessDeferred, whenDeferred}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.{AsyncMap, SimpleLock}
@@ -25,14 +26,13 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId}
-import js7.journal.Journal
 import js7.subagent.director.SubagentKeeper
 import scala.collection.mutable
 
 final class JobMotor(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
-  journal: Journal[AgentState],
+  getAgentState: IO[AgentState],
   onSubagentEvents: OrderId => Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
   isStopping: => Boolean)
   (using AlarmClock, Dispatcher[IO]):
@@ -57,58 +57,66 @@ final class JobMotor(
         jobKey.workflowId == workflowId
       .void
 
-  def recoverProcessingOrder(jobKey: JobKey, order: Order[Order.Processing])
-  : IO[Checked[FiberIO[OrderProcessed]]] =
-    IO.defer:
-      jobToEntry.checked(jobKey).orThrow.recoverProcessingOrder(order)
-        .productR:
-          subagentKeeper.recoverOrderProcessing(order, onSubagentEvents(order.id))
-            .catchIntoChecked
+  def recoverProcessingOrders(orders: Seq[Order[Order.Processing]])
+  : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
+    getAgentState.flatMap: agentState =>
+      orders.traverse: order =>
+        // Sequentially
+        agentState.jobKey(order.workflowPosition)
+          .flatMap(jobToEntry.checked)
+          .traverse: jobEntry =>
+            jobEntry.recoverProcessingOrder(order).as(jobEntry)
+          .map(order -> _)
+      .flatMap:
+        // TODO Could be concurrent
+        _.traverse: (order, checkedJobEntry) =>
+          checkedJobEntry.flatTraverse: jobEntry =>
+            subagentKeeper.recoverOrderProcessing(order, onSubagentEvents(order.id))
+              .catchIntoChecked
+          .map(order.id -> _)
 
   def onOrderProcessed(orderId: OrderId): IO[Unit] =
-    journal.aggregate.flatMap: agentState =>
+    getAgentState.flatMap: agentState =>
       agentState.idToOrder.get(orderId).fold(IO.unit): order =>
         val jobEntry = orderToJobEntry(agentState, order.workflowPosition).orThrow
         jobEntry.remove(orderId) *>
-        tryStartProcessing(jobEntry)
-          .productR:
-            tryStartProcessing // In case, agentProcessCount gets below agentProcessLimit TODO Don't check too often
+          tryStartProcessing(jobEntry) *>
+          tryStartProcessing // In case, agentProcessCount gets below agentProcessLimit TODO Don't check too often
 
   def onOrderIsProcessable(order: Order[Order.State]): IO[Unit] =
-    IO.defer:
-      agentState()
-        .idToWorkflow.checked(order.workflowId)
-        .map(workflow => workflow -> workflow.instruction(order.position))
-        .match
-          case Left(problem) =>
-            logger.error(s"onOrderIsProcessable => $problem")
-            IO.unit
+    unlessDeferred(isStopping):
+      getAgentState.flatMap: agentState =>
+        agentState.idToWorkflow.checked(order.workflowId)
+          .map(workflow => workflow -> workflow.instruction(order.position))
+          .match
+            case Left(problem) =>
+              logger.error(s"onOrderIsProcessable => $problem")
+              IO.unit
 
-          case Right((workflow, execute: Execute)) =>
-            val checkedJobKey = execute match
-              case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
-              case o: Execute.Named => workflow.jobKey(order.position.branchPath, o.name) // defaultArguments are extracted later
-            checkedJobKey
-              .flatMap(jobToEntry.checked)
-              .onProblem: problem =>
-                logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem")
-              .fold(IO.unit): jobEntry =>
-                onOrderAvailableForJob(order.id, jobEntry)
+            case Right((workflow, execute: Execute)) =>
+              val checkedJobKey = execute match
+                case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
+                case o: Execute.Named => workflow.jobKey(order.position.branchPath, o.name) // defaultArguments are extracted later
+              checkedJobKey
+                .flatMap(jobToEntry.checked)
+                .onProblem: problem =>
+                  logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem")
+                .fold(IO.unit): jobEntry =>
+                  onOrderAvailableForJob(order.id, jobEntry)
 
-          case Right(_) => IO.unit
+            case Right(_) => IO.unit
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): IO[Unit] =
-    IO.defer:
-      synchronized:
-        jobEntry.enqueue(orderId).flatMap: enqueued =>
-          IO.whenA(enqueued):
-            tryStartProcessing(jobEntry)
+    jobEntry.enqueue(orderId).flatMap: enqueued =>
+      IO.whenA(enqueued):
+        tryStartProcessing(jobEntry)
 
   def enqueueProcessableOrder(order: Order[Order.IsFreshOrReady]): IO[Unit] =
-    IO.defer:
-      val jobEntry = orderToJobEntry(agentState(), order.workflowPosition).orThrow
-      jobEntry.enqueue(order.id) *>
-        tryStartProcessing(jobEntry)
+    unlessDeferred(isStopping):
+      getAgentState.flatMap: agentState =>
+        val jobEntry = orderToJobEntry(agentState, order.workflowPosition).orThrow
+        jobEntry.enqueue(order.id) *>
+          tryStartProcessing(jobEntry)
 
   private def orderToJobEntry(agentState: AgentState, workflowPosition: WorkflowPosition): Checked[JobEntry] =
     agentState.jobKey(workflowPosition).flatMap(jobToEntry.checked)
@@ -120,63 +128,52 @@ final class JobMotor(
         tryStartProcessing
 
   private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
+    import jobEntry.jobKey
     lock.lock:
-      logger.traceIO("tryStartProcessing", jobEntry.jobKey):
-        unlessDeferred(isStopping):
+      unlessDeferred(isStopping):
+        logger.traceIO("tryStartProcessing", jobKey):
           jobEntry.onAdmissionTimeInterval:
-            IO.defer:
-              jobToEntry.get(jobEntry.jobKey).fold(IO.unit): jobEntry =>
-                tryStartProcessing(jobEntry).onError: t =>
-                  IO(logger.error(s"tryStartProcessing onAdmissionTimeInterval: ${
-                    jobEntry.jobKey}: ${t.toStringWithCauses}", t))
-                .startAndForget // Avoid deadlock due to recursion ???
+            tryStartProcessing(jobEntry)
           .flatMap: isAdmitted =>
-            journal.aggregate.flatMap: agentState =>
-              fs2.Stream.evalSeq:
-                IO.defer:
-                  if jobEntry.isBelowProcessLimits then
-                    jobEntry.dequeueOrdersWhere(
-                      convert = orderId =>
-                        agentState.idToOrder.get(orderId).flatMap: order =>
-                          order.checkedState[Order.IsFreshOrReady] match
-                            case Left(problem) =>
-                              logger.error(s"dequeueOrdersWhere: $problem • $order")
-                              None
-                            case Right(order) => Some(order),
-                      predicate = order =>
-                        // Always check Order's existence.
-                        // Order may have been enqueued after we have read our AgentState.
-                        if !order.isProcessable then
-                          logger.error(s"startProcessing but Order is not processable: $order")
-                          false
-                        else
-                          // TODO OrderQueue should only contain immediately processable Orders
-                          order.forceJobAdmission || isAdmitted)
-                  else
-                    IO.pure(Nil)
-              .evalMap: order =>
-                jobEntry.incrementProcessCount *>
-                  // subagentKeeper.processOrder blocks until a Subagent becomes available
-                  subagentKeeper.processOrder(order, onSubagentEvents(order.id))
-                    .catchIntoChecked
-                    .handleProblemWith: problem =>
-                      IO(logger.error:
-                        s"startOrderProcessing(${jobEntry.jobKey}) ${order.id}: $problem • $order")
-                    .startAndForget
-              .compile.drain
+            whenDeferred(jobEntry.isBelowProcessLimits):
+              getAgentState.flatMap: agentState =>
+                fs2.Stream.evalSeq:
+                  jobEntry.dequeueOrdersWhere(
+                    convert = orderId =>
+                      // Always check Order's existence.
+                      // Order may have been enqueued after we have read our AgentState.
+                      agentState.idToOrder.get(orderId).flatMap: order =>
+                        order.checkedState[Order.IsFreshOrReady] match
+                          case Left(problem) =>
+                            logger.error(s"dequeueOrdersWhere: $problem • $order")
+                            None
+                          case Right(order) => Some(order),
+                    predicate = order =>
+                      if !order.isProcessable then
+                        logger.error(s"startProcessing but Order is not processable: $order")
+                        false
+                      else
+                        // TODO OrderQueue should only contain immediately processable Orders
+                        order.forceJobAdmission || isAdmitted)
+                .evalMap: order =>
+                  jobEntry.incrementProcessCount *>
+                    // subagentKeeper.processOrder blocks until a Subagent becomes available
+                    subagentKeeper.processOrder(order, onSubagentEvents(order.id))
+                      .catchIntoChecked
+                      .handleProblemWith: problem =>
+                        IO(logger.error:
+                          s"startOrderProcessing($jobKey) ${order.id}: $problem • $order")
+                      .startAndForget
+                .compile.drain
 
-  private val processCountLock = SimpleLock[IO]
-
-  private def agentProcessLimit(): Option[Int] =
-    agentState().keyToItem(AgentRef).get(agentPath) match
-      case None =>
-        logger.debug("❓  Missing own AgentRef — assuming processLimit = 0")
-        Some(0)
-      case Some(agentRef) =>
-        agentRef.processLimit
-
-  private def agentState(): AgentState =
-    journal.unsafeAggregate()
+  private def agentProcessLimit(): IO[Option[Int]] =
+    getAgentState.map: agentState =>
+      agentState.keyToItem(AgentRef).get(agentPath) match
+        case None =>
+          logger.debug("❓  Missing own AgentRef — assuming processLimit = 0")
+          Some(0)
+        case Some(agentRef) =>
+          agentRef.processLimit
 
 
   private final class JobEntry(val jobKey: JobKey, val workflowJob: WorkflowJob, zoneId: ZoneId)
@@ -238,9 +235,10 @@ final class JobMotor(
       lock.surround:
         admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
 
-    def isBelowProcessLimits =
-      processCount.get() < workflowJob.processLimit &&
-        agentProcessLimit().forall(agentProcessCount.get() < _)
+    def isBelowProcessLimits: IO[Boolean] =
+      agentProcessLimit().map: maybe =>
+        maybe.forall(agentProcessCount.get() < _) &&
+          processCount.get() < workflowJob.processLimit
 
     override def toString = s"JobEntry($jobKey)"
   end JobEntry

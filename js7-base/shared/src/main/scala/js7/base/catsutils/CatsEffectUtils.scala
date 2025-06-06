@@ -1,19 +1,28 @@
 package js7.base.catsutils
 
 import cats.effect.{IO, Outcome, Sync}
+import cats.syntax.flatMap.*
 import scala.concurrent.{CancellationException, Promise}
 
 object CatsEffectUtils:
 
   def whenDeferred[F[_]](condition: => Boolean)(body: => F[Unit])(using F: Sync[F]): F[Unit] =
-    F.defer:
-      if condition then
+    whenDeferred(F.delay(condition)):
+      body
+
+  def whenDeferred[F[_]](condition: F[Boolean])(body: => F[Unit])(using F: Sync[F]): F[Unit] =
+    condition.flatMap: condition =>
+      F.whenA(condition):
         body
-      else
-        F.unit
 
   def unlessDeferred[F[_]](condition: => Boolean)(body: => F[Unit])(using F: Sync[F]): F[Unit] =
-    whenDeferred(!condition)(body)
+    unlessDeferred(F.delay(condition)):
+      body
+
+  def unlessDeferred[F[_]](condition: F[Boolean])(body: => F[Unit])(using F: Sync[F]): F[Unit] =
+    condition.flatMap: condition =>
+      F.unlessA(condition):
+        body
 
   //def whenDeferred(condition: => Boolean)(body: => F[A])(using F: Sync[F], A: Monoid[A]): F[A] =
   //  F.defer:

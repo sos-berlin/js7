@@ -17,7 +17,7 @@ trait TestAlarmClock(start: Timestamp)(using ioRuntime: IORuntime) extends Alarm
     scheduler.lock(body)
 
   /** TestAlarmClock synchronizes time query and time change. */
-  override def lockIO[A](body: Timestamp => IO[A]): IO[A] =
+  override def lockIO[A](body: Timestamp => IO[A])(using sourcecode.Enclosing): IO[A] =
     scheduler.lockIO(body)
 
   /** Reset the wall clock but not the monotonic clock (move the clock hands).

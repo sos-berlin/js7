@@ -15,6 +15,7 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget}
+import js7.base.catsutils.CatsEffectUtils.whenDeferred
 import js7.base.catsutils.Environment.environment
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -88,7 +89,7 @@ extends Service.StoppableByRequest:
 
   private val journal = workingClusterNode.journal
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
-  private val jobMotor = JobMotor(agentPath, subagentKeeper, journal, onSubagentEvents,
+  private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
     isStopping = isStopping)
   private val agentProcessCount = Atomic(0)
   private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
@@ -140,18 +141,18 @@ extends Service.StoppableByRequest:
     val orders = agentState.idToOrder.values.view
     val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
     val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
-    processingOrders.foldMap: order =>
-      agentState.jobKey(order.workflowPosition).foldMap: jobKey =>
-        jobMotor.recoverProcessingOrder(jobKey, order)
-          .flatMapT: fiber =>
-            fiber.joinStd.flatMap: (_: OrderProcessed) =>
-              proceedWithOrders(order :: Nil)
-            .onError(t => IO:
-              logger.error(s"recoverOrderProcessing(${order.id}): ${t.toStringWithCauses}", t))
-            .startAndForget
-            .map(Right(_))
-          .handleProblemWith: problem =>
-            IO(logger.error(s"recoverOrderProcessing(${order.id}): $problem"))
+    // Continue already processing Orders
+    jobMotor.recoverProcessingOrders(processingOrders).map: checkedFibers =>
+      checkedFibers.map: (orderId, checkedFiber) =>
+        checkedFiber.traverse: fiber =>
+          fiber.joinStd.flatMap: (_: OrderProcessed) =>
+            proceedWithOrder(orderId)
+          .handleErrorWith: t =>
+            IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
+          .startAndForget
+          .map(Right(_))
+        .handleProblemWith: problem =>
+          IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
     .productR:
       proceedWithOrders(otherOrders)
 
@@ -187,22 +188,18 @@ extends Service.StoppableByRequest:
               if agentPath != this.agentPath then
                 IO.left(Problem(s"Wrong $agentPath"))
               else
-                agentState().idToWorkflow.get(order.workflowId) match
-                  case None =>
-                    IO.left(Problem.pure(s"Unknown ${order.workflowId}"))
-                  case Some(workflow) =>
+                persist: agentState =>
+                  agentState.idToWorkflow.checked(order.workflowId).flatMap: workflow =>
                     if !workflow.isDefinedAt(order.position) then
-                      IO.left(Problem.pure(s"Unknown Position ${order.workflowPosition}"))
-                    else if agentState().idToOrder.contains(order.id) then
-                      IO.left(AgentDuplicateOrder(order.id))
+                      Left(Problem.pure(s"Unknown Position ${order.workflowPosition}"))
+                    else if agentState.idToOrder.contains(order.id) then
+                      Left(AgentDuplicateOrder(order.id))
                     else if isStopping then
-                      IO.left(AgentIsShuttingDown)
+                      Left(AgentIsShuttingDown)
                     else
-                      /*workflowRegister.reuseMemory*/
-                      IO.pure(order.toOrderAttachedToAgent).flatMapT: event =>
-                        persist:
-                          order.id <-: event
-                        .rightAs(Response.Accepted)
+                      order.toOrderAttachedToAgent.map: event =>
+                        Some(order.id <-: event)
+                .rightAs(Response.Accepted)
 
       case DetachOrder(orderId) =>
         if isStopping then
@@ -262,10 +259,9 @@ extends Service.StoppableByRequest:
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        //val previousItem = agentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item))
           .flatMapT: _ =>
-            proceedWithItem(/*previousItem,*/ item)
+            proceedWithItem(item)
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
@@ -368,8 +364,7 @@ extends Service.StoppableByRequest:
           .rightAs(AgentCommand.Response.Accepted)
   end detachItem
 
-  private def proceedWithItem(/*previous: Option[InventoryItem],*/ item: InventoryItem)
-  : IO[Checked[Unit]] =
+  private def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
         //TODO val processLimitIncreased = previous
@@ -465,15 +460,18 @@ extends Service.StoppableByRequest:
                     Some(NodeId.primary)
                   case clusterState: ClusterState.HasNodes =>
                     (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
-                .fold(journal.persist(event).rightAs(())): activeNodeId =>
-                  workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
+                .match
+                  case None =>
+                    journal.persist(event).rightAs(())
+                  case Some(activeNodeId) =>
+                    workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */
-  private def demandedClusterNodeUris(state: AgentState): Option[Map[NodeId, Uri]] =
+  private def demandedClusterNodeUris(agentState: AgentState): Option[Map[NodeId, Uri]] =
     for
-      agentRef <- state.keyToItem(AgentRef).get(state.meta.agentPath)
+      agentRef <- agentState.keyToItem(AgentRef).get(agentState.meta.agentPath)
       if agentRef.directors.length == 2
-      subagentItems <- agentRef.directors.traverse(state.keyToItem(SubagentItem).get)
+      subagentItems <- agentRef.directors.traverse(agentState.keyToItem(SubagentItem).get)
       if subagentItems.length == 2
     yield
       Map(
@@ -481,7 +479,8 @@ extends Service.StoppableByRequest:
         NodeId.backup -> subagentItems(1).uri)
 
   def resetAllSubagents: IO[Unit] =
-    subagentKeeper.resetAllSubagents(except = agentState().meta.directors.toSet)
+    journal.aggregate.flatMap: agentState =>
+      subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 
   private def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[AgentState, E]]] =
     persist(EventCalc.pure(keyedEvent))
@@ -527,12 +526,8 @@ extends Service.StoppableByRequest:
   : IO[Unit] =
     events.foldMap:
       case OrderStarted => IO.unit
-
-      case _: OrderProcessingStarted =>
-        maybeKillOrder(orderId)
-
-      case event: OrderProcessed =>
-        jobMotor.onOrderProcessed(orderId)
+      case _: OrderProcessingStarted => maybeKillOrder(orderId)
+      case _: OrderProcessed => jobMotor.onOrderProcessed(orderId)
     .productR:
       proceedWithOrder(orderId)
 
@@ -541,53 +536,47 @@ extends Service.StoppableByRequest:
       proceedWithOrders(order :: Nil)
 
   private def proceedWithOrders(orders: Seq[Order[Order.State]]): IO[Unit] =
-    IO.unlessA(isStopping):
-      IO.defer:
-        IO.whenA(orders.nonEmpty && !isStopping):
-          clock.lockIO: now =>
-            val (delayOrders, immediateOrders) =
-              orders.map: order =>
-                order -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
-              .partition(_._2 > now)
-            delayOrders.foldMap: (order, delayUntil) =>
-              val orderId = order.id
-              orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
-                entry.schedule(delayUntil):
-                  // TODO Cancel this fiber in case of order cancellation ?
-                  proceedWithOrder(orderId) // Try again
-            .as(immediateOrders.map(_._1.id))
-          .flatMap: orderIds =>
-            // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
-            persist[OrderActorEvent | PlanFinishedEvent]: agentState =>
-              Right:
-                orderIds.flatMap: orderId =>
-                  val keyedEvents: Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
-                    OrderEventSource(agentState)(using InstructionExecutorService(clock))
-                      .nextEvents(orderId)
-                  keyedEvents
-            .map(_.orThrow) // TODO throws
-            .flatMap: persisted =>
-              orderIds.foldMap: orderId =>
-                persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
-                  IO.whenA(
-                    persisted.keyedEvents.isEmpty
-                      && persisted.aggregate.isOrderProcessable(orderId)
-                      && order.isAttached
-                      && !isStopping
-                  ):
-                    jobMotor.onOrderIsProcessable(order)
-            .flatMap: _ =>
-              journal.aggregate.flatMap: agentState =>
-                orderIds.flatMap(agentState.idToOrder.get).foldMap: order =>
-                  order.ifState[Order.IsFreshOrReady].map: order =>
-                    IO.whenA(
-                      order.isAttached
-                        && agentState.instruction(order.workflowPosition).isInstanceOf[Execute]
-                        && order.isProcessable
-                    ):
-                      jobMotor.enqueueProcessableOrder(order)
-                  .getOrElse:
-                    IO.unit
+    whenDeferred(orders.nonEmpty && !isStopping):
+      clock.lockIO: now =>
+        val (delayOrders, immediateOrders) =
+          orders.map: order =>
+            order -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
+          .partition(_._2 > now)
+        delayOrders.foldMap: (order, delayUntil) =>
+          val orderId = order.id
+          orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+            entry.schedule(delayUntil):
+              proceedWithOrder(orderId) // Try again after delay
+        .as(immediateOrders.map(_._1.id))
+      .flatMap: (orderIds: Seq[OrderId]/*IntelliJ*/) =>
+        // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
+        persist: agentState =>
+          Right:
+            orderIds.flatMap: orderId =>
+              OrderEventSource(agentState)(using InstructionExecutorService(clock))
+                .nextEvents(orderId)
+        .map(_.orThrow) // TODO throws
+        .flatMap: (persisted: Persisted[AgentState, Event]/*IntelliJ*/) =>
+          orderIds.foldMap: orderId =>
+            persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+              IO.whenA(
+                persisted.isEmpty
+                  && persisted.aggregate.isOrderProcessable(orderId)
+                  && order.isAttached
+              ):
+                jobMotor.onOrderIsProcessable(order)
+        .flatMap: _ =>
+          journal.aggregate.flatMap: agentState =>
+            orderIds.flatMap(agentState.idToOrder.get).foldMap: order =>
+              order.ifState[Order.IsFreshOrReady].map: order =>
+                IO.whenA(
+                  order.isAttached
+                    && agentState.instruction(order.workflowPosition).isInstanceOf[Execute]
+                    && order.isProcessable
+                ):
+                  jobMotor.enqueueProcessableOrder(order)
+              .getOrElse:
+                IO.unit
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
     _shutdown.set(Some(cmd)) *>
@@ -629,8 +618,7 @@ extends Service.StoppableByRequest:
 object AgentMotor:
   private val logger = Logger[this.type]
 
-  /** AgentMotor with SubagentKeeper (including local Subagent) and FileWatchManager.
-    */
+  /** AgentMotor with SubagentKeeper (including local Subagent) and FileWatchManager. */
   def resource(
     failedOverSubagentId: Option[SubagentId],
     forDirector: Subagent.ForDirector,

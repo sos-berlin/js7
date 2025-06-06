@@ -7,7 +7,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.TestScheduler.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.utils.{Atomic, UnsafeMutex}
+import js7.base.utils.{AsyncLock, Atomic}
 import scala.annotation.unused
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
@@ -18,7 +18,7 @@ import scala.util.{NotGiven, Random, boundary}
 private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
   extends Scheduler:
 
-  private val clockMutex = UnsafeMutex[IO]
+  private val clockLock = AsyncLock()
   private val queue = mutable.SortedSet.empty[Task]
   @volatile private var _state = State(0, start.toEpochMilli)
   private val nextId = Atomic(1L)
@@ -52,8 +52,8 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
     syncLockClock(body)
 
   /** TestAlarmClock synchronizes time query and time change. */
-  def lockIO[A](body: Timestamp => IO[A]): IO[A] =
-    clockMutex.lock:
+  def lockIO[A](body: Timestamp => IO[A])(using sourcecode.Enclosing): IO[A] =
+    clockLock.lock:
       IO.defer:
         body(now())
 
@@ -97,7 +97,7 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
     tasks.result()
 
   private def syncLockClock[A](body: => A): A =
-    clockMutex.lock(IO(body)).unsafeRunSync()
+    clockLock.lock(IO(body)).unsafeRunSync()
 
   private def logTasks(indent: Boolean = false): Unit =
     logger.whenTraceEnabled:
