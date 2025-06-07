@@ -55,7 +55,6 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderDe
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
 import js7.journal.Persisted
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
@@ -140,15 +139,14 @@ extends Service.StoppableByRequest:
     val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
     val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
     // Continue already processing Orders
-    jobMotor.recoverProcessingOrders(processingOrders).map: checkedFibers =>
-      checkedFibers.map: (orderId, checkedFiber) =>
+    jobMotor.recoverProcessingOrders(processingOrders).flatMap: checkedFibers =>
+      checkedFibers.foldMap: (orderId, checkedFiber) =>
         checkedFiber.traverse: fiber =>
           fiber.joinStd.flatMap: (_: OrderProcessed) =>
             proceedWithOrder(orderId)
           .handleErrorWith: t =>
             IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
           .startAndForget
-          .map(Right(_))
         .handleProblemWith: problem =>
           IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
     .productR:
@@ -536,16 +534,15 @@ extends Service.StoppableByRequest:
   private def proceedWithOrders(orders: Seq[Order[Order.State]]): IO[Unit] =
     whenDeferred(orders.nonEmpty && !isStopping):
       clock.lockIO: now =>
-        val (delayOrders, immediateOrders) =
+        val (immediateOrderIds, delayOrderIds) =
           orders.map: order =>
-            order -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
-          .partition(_._2 > now)
-        delayOrders.foldMap: (order, delayUntil) =>
-          val orderId = order.id
+            order.id -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
+          .partition(_._2 <= now)
+        delayOrderIds.foldMap: (orderId, delayUntil) =>
           orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
             entry.schedule(delayUntil):
               proceedWithOrder(orderId) // Try again after delay
-        .as(immediateOrders.map(_._1.id))
+        .as(immediateOrderIds.map(_._1))
       .flatMap: (orderIds: Seq[OrderId]/*IntelliJ*/) =>
         // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
         persist: agentState =>
@@ -554,27 +551,11 @@ extends Service.StoppableByRequest:
               OrderEventSource(agentState)(using InstructionExecutorService(clock))
                 .nextEvents(orderId)
         .map(_.orThrow) // TODO throws
-        .flatMap: (persisted: Persisted[AgentState, Event]/*IntelliJ*/) =>
+        .flatMap: persisted =>
           orderIds.foldMap: orderId =>
             persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
-              IO.whenA(
-                persisted.isEmpty
-                  && persisted.aggregate.isOrderProcessable(orderId)
-                  && order.isAttached
-              ):
+              IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
                 jobMotor.onOrderIsProcessable(order)
-        .flatMap: _ =>
-          journal.aggregate.flatMap: agentState =>
-            orderIds.flatMap(agentState.idToOrder.get).foldMap: order =>
-              order.ifState[Order.IsFreshOrReady].map: order =>
-                IO.whenA(
-                  order.isAttached
-                    && agentState.instruction(order.workflowPosition).isInstanceOf[Execute]
-                    && order.isProcessable
-                ):
-                  jobMotor.enqueueProcessableOrder(order)
-              .getOrElse:
-                IO.unit
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
     _shutdown.set(Some(cmd)) *>

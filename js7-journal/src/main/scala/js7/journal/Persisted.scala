@@ -21,6 +21,9 @@ final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
   def isEmpty: Boolean =
     stampedKeyedEvents.isEmpty
 
+  inline def nonEmpty: Boolean =
+    !isEmpty
+
   def checkedSingle: Checked[(Stamped[KeyedEvent[E]], S)] =
     if stampedKeyedEvents.sizeIs != 1 then
       Problem(s"Persisted.checkedSingle: Expected one event, got ${stampedKeyedEvents.size}")
