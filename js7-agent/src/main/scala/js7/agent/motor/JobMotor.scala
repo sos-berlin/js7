@@ -2,6 +2,7 @@ package js7.agent.motor
 
 import cats.effect.std.Dispatcher
 import cats.effect.{FiberIO, IO}
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.AgentState
@@ -61,15 +62,15 @@ final class JobMotor(
   : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
     getAgentState.flatMap: agentState =>
       orders.traverse: order =>
-        // Sequentially
+        // Sequentially due to JobEntry lock
         agentState.jobKey(order.workflowPosition)
           .flatMap(jobToEntry.checked)
           .traverse: jobEntry =>
             jobEntry.recoverProcessingOrder(order).as(jobEntry)
           .map(order -> _)
       .flatMap:
-        // TODO Could be concurrent
-        _.traverse: (order, checkedJobEntry) =>
+        // Concurrently
+        _.parTraverse: (order, checkedJobEntry) =>
           checkedJobEntry.flatTraverse: jobEntry =>
             subagentKeeper.recoverOrderProcessing(order, onSubagentEvents(order.id))
               .catchIntoChecked
@@ -102,21 +103,11 @@ final class JobMotor(
                 .onProblem: problem =>
                   logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem")
                 .fold(IO.unit): jobEntry =>
-                  onOrderAvailableForJob(order.id, jobEntry)
+                  jobEntry.enqueue(order.id).flatMap: enqueued =>
+                    IO.whenA(enqueued):
+                      tryStartProcessing(jobEntry)
 
             case Right(_) => IO.unit
-
-  private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): IO[Unit] =
-    jobEntry.enqueue(orderId).flatMap: enqueued =>
-      IO.whenA(enqueued):
-        tryStartProcessing(jobEntry)
-
-  def enqueueProcessableOrder(order: Order[Order.IsFreshOrReady]): IO[Unit] =
-    unlessDeferred(isStopping):
-      getAgentState.flatMap: agentState =>
-        val jobEntry = orderToJobEntry(agentState, order.workflowPosition).orThrow
-        jobEntry.enqueue(order.id) *>
-          tryStartProcessing(jobEntry)
 
   private def orderToJobEntry(agentState: AgentState, workflowPosition: WorkflowPosition): Checked[JobEntry] =
     agentState.jobKey(workflowPosition).flatMap(jobToEntry.checked)
