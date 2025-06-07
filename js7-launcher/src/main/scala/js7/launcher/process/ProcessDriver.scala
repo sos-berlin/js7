@@ -99,10 +99,8 @@ final class ProcessDriver(
                   maybeWindowsLogon)
           .flatMapT: processConfiguration =>
             startProcessLock.lock("startProcess"):
-              GlobalStartProcessLock
-                .lock(orderId.toString):
-                  PipedProcess.start(conf.commandLine, processConfiguration, stdObservers,
-                    orderId, conf.jobKey)
+              PipedProcess
+                .start(conf.commandLine, processConfiguration, stdObservers, orderId, conf.jobKey)
                 .flatTapT: pipedProcess =>
                   IO:
                     pipedProcessOnce := pipedProcess
@@ -144,9 +142,6 @@ final class ProcessDriver(
 
 object ProcessDriver:
   private val logger = Logger[this.type]
-
-  /** Linux may return a "busy" error when starting many processes at once. */
-  private val GlobalStartProcessLock = AsyncLock("Process start")
 
   private[process] final case class Conf(
     jobKey: JobKey,

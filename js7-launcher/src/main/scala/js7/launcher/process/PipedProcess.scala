@@ -183,7 +183,7 @@ object PipedProcess:
     IO.defer:
       val commandArgs = toShellCommandArguments(commandLine.file, commandLine.arguments.tail)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
-      startProcess(commandArgs, conf)
+      startProcess(commandArgs, conf, orderId)
         .flatMapT: process =>
           process.stdin.close() // Process gets an empty stdin
           val label = s"$orderId $process"
@@ -192,7 +192,7 @@ object PipedProcess:
               Right:
                 PipedProcess(conf, process, stdObservers, orderId, jobKey, killer, label)
 
-  private def startProcess(args: Seq[String], conf: ProcessConfiguration)
+  private def startProcess(args: Seq[String], conf: ProcessConfiguration, orderId: OrderId)
   : IO[Checked[Js7Process]] =
     conf.windowsLogon match
       case None =>
@@ -201,7 +201,7 @@ object PipedProcess:
 
         transferEnv(from = conf.additionalEnvironment, to = processBuilder.environment)
 
-        processBuilder.startRobustly()
+        processBuilder.startRobustly(label = orderId.toString)
           .map(o => Right(JavaProcess(o)))
 
       case Some(logon) =>
