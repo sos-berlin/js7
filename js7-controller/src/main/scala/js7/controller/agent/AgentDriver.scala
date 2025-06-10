@@ -327,7 +327,7 @@ extends Service.StoppableByRequest:
                   .enqueue(Queueable.ReleaseEventsQueueable(state.adoptedEventId)).void
                   .handleError: t =>
                     logger.error(t.toStringWithCauses, t)
-            .start.flatMap: fiber =>
+            .startAndLogError.flatMap: fiber =>
               IO:
                 state.releaseEventsCancelable = Some(fiber)
 

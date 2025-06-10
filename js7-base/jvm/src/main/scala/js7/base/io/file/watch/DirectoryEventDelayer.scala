@@ -10,6 +10,7 @@ import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
 import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndCatchError}
 import js7.base.catsutils.UnsafeMemoizable.{memoize, unsafeMemoize}
 import js7.base.io.file.watch
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
@@ -46,9 +47,8 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
   def apply(in: Stream[IO, DirectoryEvent]): Stream[IO, DirectoryEvent] =
     Stream
       .bracket(
-        acquire = run(in).start)(
-        release = _.joinWithUnit
-          .handleError(t => logger.error(s"💥 ${t.toStringWithCauses}")))
+        acquire = run(in).startAndCatchError)(
+        release = _.joinStd)
       .*>(feed.stream)
 
   private def run(in: Stream[IO, DirectoryEvent]): IO[Unit] =

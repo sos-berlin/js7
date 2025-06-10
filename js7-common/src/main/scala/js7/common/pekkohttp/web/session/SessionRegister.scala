@@ -213,7 +213,7 @@ extends Service.StoppableByRequest:
           .map: nonEternalExists =>
             IO.whenA(nonEternalExists):
               cleanUp.delayBy(cleanupInterval)
-                .start
+                .startAndLogError
                 .flatMap: fiber =>
                   setFiber(Some(fiber))
 

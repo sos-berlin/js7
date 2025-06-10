@@ -15,6 +15,7 @@ import js7.common.pekkohttp.web.PekkoWebServer
 import js7.subagent.Subagent
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.CatsEffectExtensions.startAndLogError
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
 import js7.base.utils.Nulls.nullToNone
 import scala.util.{Failure, Success, Try}
@@ -73,7 +74,7 @@ extends MainService, Service.StoppableByRequest:
   private def onStopRequested(stop: IO[Unit]): ResourceIO[Unit] =
     Resource
       .make(
-        acquire = untilStopRequested.*>(stop).start)(
+        acquire = (untilStopRequested *> stop).startAndLogError)(
         release = _.cancel)
       .map(_ => ())
 

@@ -1,5 +1,6 @@
 package js7.agent.motor
 
+import cats.NonEmptyTraverse.ops.toAllNonEmptyTraverseOps
 import cats.effect.std.Dispatcher
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO, Ref, Resource, ResourceIO}
@@ -13,8 +14,9 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, ResetSubagent, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget, startAndLogError}
 import js7.base.catsutils.CatsEffectUtils.whenDeferred
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.catsutils.Environment.environment
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -409,7 +411,7 @@ extends Service.StoppableByRequest:
           IO.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)
-              .start
+              .startAndLogError
       .flatMap(_.joinStd.timeoutTo(10.s/*???*/, IO.right(()) /*respond the command*/))
 
   private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
