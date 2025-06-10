@@ -44,6 +44,9 @@ object StartUp:
       CorrelId("CorrelId").bind:
         logger.debug("Correlation IDs are enabled")
 
+  def logStartUpLine(name: String): Unit =
+    Logger[this.type].info(startUpLine(name))
+
   def startUpLine(name: String): String =
     s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
        |${"━" * 80}""".stripMargin // Log a bar, in case we append to an existing log file

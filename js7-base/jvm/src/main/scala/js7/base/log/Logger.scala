@@ -48,7 +48,7 @@ object Logger extends AdHocLogger:
       Log4j.initialize(name)
     if !initLogged.getAndSet(true) then
       if !suppressInfo then
-        ScalaLogger[this.type].info(StartUp.startUpLine(name))
+        StartUp.logStartUpLine(name)
       Tests.log()
 
   def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
