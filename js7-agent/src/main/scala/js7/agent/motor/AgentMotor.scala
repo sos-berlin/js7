@@ -503,9 +503,9 @@ extends Service.StoppableByRequest:
         .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, OrderDetached) =>
-        orderToEntry.remove(orderId).flatMap(_.fold(IO.unit):
-          _.stop)
-          .as(Vector(orderId))
+        orderToEntry.remove(orderId).flatMapSome:
+          _.stop
+        .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, _) =>
         IO.pure(Vector(orderId))

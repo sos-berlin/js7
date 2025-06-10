@@ -120,14 +120,14 @@ final class JobMotor(
 
   private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
     import jobEntry.jobKey
-    lock.lock:
-      unlessDeferred(isStopping):
-        logger.traceIO("tryStartProcessing", jobKey):
-          jobEntry.onAdmissionTimeInterval:
-            tryStartProcessing(jobEntry)
-          .flatMap: isAdmitted =>
-            whenDeferred(jobEntry.isBelowProcessLimits):
-              getAgentState.flatMap: agentState =>
+    unlessDeferred(isStopping):
+      logger.traceIO("tryStartProcessing", jobKey):
+        jobEntry.onAdmissionTimeInterval:
+          tryStartProcessing(jobEntry)
+        .flatMap: isAdmitted =>
+          lock.lock:
+            getAgentState.flatMap: agentState =>
+              whenDeferred(jobEntry.isBelowProcessLimits(agentState)):
                 fs2.Stream.evalSeq:
                   jobEntry.dequeueOrdersWhere(
                     convert = orderId =>
@@ -157,14 +157,13 @@ final class JobMotor(
                       .startAndForget
                 .compile.drain
 
-  private def agentProcessLimit(): IO[Option[Int]] =
-    getAgentState.map: agentState =>
-      agentState.keyToItem(AgentRef).get(agentPath) match
-        case None =>
-          logger.debug("❓  Missing own AgentRef — assuming processLimit = 0")
-          Some(0)
-        case Some(agentRef) =>
-          agentRef.processLimit
+  private def agentProcessLimit(agentState: AgentState): Option[Int] =
+    agentState.keyToItem(AgentRef).get(agentPath) match
+      case None =>
+        logger.debug("❓  Missing own AgentRef — assuming processLimit = 0")
+        Some(0)
+      case Some(agentRef) =>
+        agentRef.processLimit
 
 
   private final class JobEntry(val jobKey: JobKey, val workflowJob: WorkflowJob, zoneId: ZoneId)
@@ -226,9 +225,9 @@ final class JobMotor(
       lock.surround:
         admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
 
-    def isBelowProcessLimits: IO[Boolean] =
-      agentProcessLimit().map: maybe =>
-        maybe.forall(agentProcessCount.get() < _) &&
+    def isBelowProcessLimits(agentState: AgentState): IO[Boolean] =
+      getAgentState.map: agentState =>
+        agentProcessLimit(agentState).forall(agentProcessCount.get() < _) &&
           processCount.get() < workflowJob.processLimit
 
     override def toString = s"JobEntry($jobKey)"
