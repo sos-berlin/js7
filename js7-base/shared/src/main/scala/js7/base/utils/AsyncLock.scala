@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.effect.Resource.ExitCase
 import cats.effect.std.Mutex
 import cats.effect.{IO, Resource, ResourceIO}
-import js7.base.catsutils.CatsEffectExtensions.defer
+import js7.base.catsutils.CatsEffectExtensions.{defer, startAndCatchError}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, LogLevel, Logger}
@@ -143,7 +143,7 @@ object AsyncLock:
         Resource
           .makeCase(
             acquire =
-              IO(queueLength += 1) *> logBeforeAcquire.start)(
+              IO(queueLength += 1) *> logBeforeAcquire.startAndCatchError)(
             release = (fiber, exitCase) =>
               IO(queueLength -= 1) *> fiber.cancel *> logRelease(exitCase))
           .map: fiber =>

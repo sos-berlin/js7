@@ -437,7 +437,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 // Completes only when not cancelled, and then it is a failure
                 fetchingAcksTerminatedUnexpectedlyPromise.complete(tried).void
           .void
-          .start
+          .startAndLogError
           .flatMap(fetchingAcks.set)
           .as(Completed)
 

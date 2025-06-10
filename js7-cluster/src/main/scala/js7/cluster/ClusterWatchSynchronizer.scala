@@ -238,7 +238,7 @@ private final class ClusterWatchSynchronizer(
               case Outcome.Succeeded(_) =>
                 stopping.tryGet.map: maybe =>
                   if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
-        .start
+        .startAndLogError
         .flatTap: fiber =>
           heartbeat
             .flatMap(_.tryOffer(fiber))

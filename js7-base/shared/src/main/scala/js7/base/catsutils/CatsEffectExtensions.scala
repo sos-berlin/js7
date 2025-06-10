@@ -4,12 +4,14 @@ import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
 import cats.syntax.functor.*
+import cats.syntax.flatMap.*
 import cats.{Defer, Functor}
 import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NonFatalInterruptedException
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -53,8 +55,35 @@ object CatsEffectExtensions:
         case _ => finalizer
 
     /** Extra name to detect unjoined fibers in code. */
-    def startAndForget: IO[Unit] =
-      io.start.void
+    def startAndForget(using enc: sourcecode.Enclosing): IO[Unit] =
+      startAndForget(s"${enc.value} startAndForget")
+
+    /** Extra name to detect unjoined fibers in code. */
+    def startAndForget(label: => String): IO[Unit] =
+      io.startAndCatchError.void
+
+    def startAndLogError(using enc: sourcecode.Enclosing): IO[FiberIO[A]] =
+      startAndLogError(s"${enc.value} startAndLogError")
+
+    /** Extra name to detect unjoined fibers in code. */
+    def startAndLogError(label: => String): IO[FiberIO[A]] =
+      io.handleErrorWith: t =>
+        logger.error(s"$label: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        IO.raiseError(t)
+      .start
+
+    def startAndCatchError(using enc: sourcecode.Enclosing): IO[FiberIO[Unit]] =
+      startAndCatchError(s"${enc.value} startAndCatchError")
+
+    /** Extra name to detect unjoined fibers in code. */
+    def startAndCatchError(label: => String): IO[FiberIO[Unit]] =
+      io.map:
+        case Left(problem: Problem) => logger.error(s"$label: $problem")
+        case _ =>
+      .handleError: t =>
+        logger.error(s"$label: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      .void
+      .start
 
     def cancelWhen(trigger: IO[Unit]): IO[A] =
       IO
@@ -179,9 +208,25 @@ object CatsEffectExtensions:
 
   extension[F[_], A](fiber: Fiber[F, Throwable, A])
     /** Like joinWithUnit but a canceled Fiber results in a Throwable. */
-    def joinStd(using F: MonadCancel[F, Throwable] & Defer[F])
-    : F[A] =
+    def joinStd(using F: MonadCancel[F, Throwable] & Defer[F]): F[A] =
       fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
+
+    def joinCatchError(label: => String)(using F: MonadCancel[F, Throwable] & Sync[F]): F[Unit] =
+      fiber.join.flatMap:
+        case Outcome.Succeeded(result) =>
+          result.flatMap:
+            case Left(problem: Problem) =>
+              F.delay(logger.error(problem.toString, problem.throwableOption.orNull))
+            case Left(t: Throwable) =>
+              F.delay(logger.error(s"$label: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            case _ =>
+              F.unit
+
+        case Outcome.Errored(t) =>
+          F.delay(logger.error(s"$label: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+
+        case Outcome.Canceled() =>
+          F.delay(logger.error(s"◼️ $label: Canceled"))
 
 
   extension [F[_], A](resource: Resource[F, Option[A]])

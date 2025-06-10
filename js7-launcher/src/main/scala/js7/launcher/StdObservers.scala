@@ -6,7 +6,7 @@ import fs2.concurrent.Channel
 import fs2.{Chunk, Pipe, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget, startAndLogError}
 import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromString}
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
@@ -56,7 +56,7 @@ final class StdObservers private(
   private def pumpChannelsToSinkResource: ResourceIO[Unit] =
     Resource
       .make(
-        acquire = pumpChannelsToSink.start)(
+        acquire = pumpChannelsToSink.startAndLogError)(
         release = fiber => closeChannels *> fiber.joinStd)
       .void
 
