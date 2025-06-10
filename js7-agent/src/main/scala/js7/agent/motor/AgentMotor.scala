@@ -535,6 +535,7 @@ extends Service.StoppableByRequest:
 
   private def proceedWithOrders(orders: Seq[Order[Order.State]]): IO[Unit] =
     whenDeferred(orders.nonEmpty && !isStopping):
+     logger.traceIO(s"### proceedWithOrders ${orders.map(_.id).mkString(" ")}"):
       clock.lockIO: now =>
         val (immediateOrderIds, delayOrderIds) =
           orders.map: order =>
