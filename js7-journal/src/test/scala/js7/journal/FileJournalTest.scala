@@ -58,7 +58,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
             .contentString
             .replaceAll(""""totalRunningTime":[0-9.]+,""", """"totalRunningTime":0,""")
           assert(normalizedJournalFileContent ==
-           s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
+           s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.prettyVersion}","buildId":"${BuildInfo.buildId}"}
               |"-------SNAPSHOT-------"
               |"-------END OF SNAPSHOT-------"
               |"-------EVENTS-------"
@@ -79,7 +79,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
             .contentString
             .replaceAll(""""totalRunningTime":[0-9.]+,""", """"totalRunningTime":0,""")
           assert(normalizedJournalFileContent ==
-            s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":1001,"generation":2,"totalEventCount":2,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.longVersion}","buildId":"${BuildInfo.buildId}"}
+            s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":1001,"generation":2,"totalEventCount":2,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.prettyVersion}","buildId":"${BuildInfo.buildId}"}
                |"-------SNAPSHOT-------"
                |{"TYPE":"TestAggregate","key":"A","string":"(FIRST)","a":"X","b":"X","c":"X","d":"X","e":"X","f":"X","g":"X","h":"X","i":"X","j":"X","k":"X","l":"X","m":"X","n":"X","o":"X","p":"X","q":"X","r":"X"}
                |"-------END OF SNAPSHOT-------"
