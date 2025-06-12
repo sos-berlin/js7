@@ -10,12 +10,11 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{AsyncLock, Atomic, CloseableIterator}
+import js7.base.utils.{AsyncLock, CloseableIterator}
 import js7.data.cluster.ClusterState
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.MemoryJournal.*

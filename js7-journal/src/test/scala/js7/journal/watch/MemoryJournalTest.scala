@@ -1,7 +1,7 @@
 package js7.journal.watch
 
-import cats.effect.{IO, ResourceIO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
 import cats.instances.try_.*
 import cats.instances.vector.*
 import cats.syntax.foldable.*
@@ -14,8 +14,8 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.time.{Stopwatch, WallClock}
 import js7.data.event.{Event, EventCalc, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
