@@ -227,6 +227,9 @@ extends Service.StoppableByRequest:
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     // TODO If stopEventFetcher would not send a Logout, it could run concurrently
     resetAgent(agentRunId)
+      .recoverFromProblem:
+        case problem @ AgentNotDedicatedProblem =>
+          logger.debug(s"resetAgent: $problem")
       .flatTapT(_ => stop.map(Right(_)))
 
   private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
