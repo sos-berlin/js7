@@ -7,8 +7,8 @@ import js7.base.log.Logger
 import js7.base.monixlike.SyncCancelable
 import js7.base.time.AlarmClock.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.LabeledRunnable
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.{AsyncLock, LabeledRunnable}
 import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.util.NotGiven
@@ -70,13 +70,10 @@ trait AlarmClock extends WallClock:
         val cancelable = schedule(onComplete(Right(())))
         Some(IO(cancelable.cancel()))
 
-  def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
-    body
+  def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A
 
   /** TestAlarmClock synchronizes time query and time change. */
-  def lockIO[A](body: Timestamp => IO[A]): IO[A] =
-    IO.defer:
-      body(now())
+  def lockIO[A](body: Timestamp => IO[A])(using sourcecode.Enclosing): IO[A]
 
 
 object AlarmClock:
@@ -99,9 +96,28 @@ object AlarmClock:
     SystemAlarmClock()
 
 
+  /** Use this or use TestAlarmClock. */
+  private[time] transparent trait NonTestLocking:
+    this: AlarmClock =>
+
+    private val clockLock = AsyncLock()
+
+    def lock[A](body: => A)(using @unused u: NotGiven[A <:< IO[?]]): A =
+      body
+
+    /** TestAlarmClock synchronizes time query and time change. */
+    def lockIO[A](body: Timestamp => IO[A])(using sourcecode.Enclosing): IO[A] =
+      // We lock as TestScheduler does, otherwise the behaviour would differ between testing and
+      // production code.
+      // If we use a lock when using TestScheduler, we should also use a lock in production.
+      clockLock.lock:
+        IO.defer:
+          body(now())
+
+
   private final class SystemAlarmClock()
     (using protected val scheduler: Scheduler)
-  extends SystemWallClock, Standard
+  extends SystemWallClock, NonTestLocking, Standard
 
 
   private[time] transparent trait Standard extends AlarmClock:
@@ -119,7 +135,8 @@ object AlarmClock:
       SyncCancelable:
         scheduler.sleep(delay max ZeroDuration, LabeledRunnable(label)(callback))
 
+
   private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
     (using protected val scheduler: Scheduler)
-  extends AlarmClock, ClockChecking:
+  extends AlarmClock, NonTestLocking, ClockChecking:
     def epochMilli() = scheduler.nowMillis()
