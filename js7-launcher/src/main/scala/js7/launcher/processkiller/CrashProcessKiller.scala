@@ -28,7 +28,7 @@ extends ProcessKiller[Pid]:
         sigtermMainProcessesAndSaveDescendants(alive) *>
           IO.defer:
             logger.info(s"Waiting for sigkillDelay=${sigkillDelay.pretty} ...")
-            sigtermDescendantsWatch.joinCurrent.timeoutTo(sigkillDelay, IO.unit)
+            sigtermDescendantsWatch.joinWithUnit.timeoutTo(sigkillDelay, IO.unit)
       .productR:
         sigkillWithDescendants(alive)
 

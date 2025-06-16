@@ -23,10 +23,10 @@ final class FiberVar[A]:
   def startFiber(io: IO[A]): IO[Unit] =
     cancelCurrent *> io.start.flatMap(set)
 
-  def joinCurrent: IO[Unit] =
+  def joinWithUnit: IO[Unit] =
     ref.flatMap(_.get).flatMap:
       case Canceled => IO.unit
-      case HasFiber(fiber) => fiber.join.void
+      case HasFiber(fiber) => fiber.joinWith(IO.unit.asInstanceOf[IO[A]]).void
 
   def cancelCurrent: IO[Unit] =
     set(canceledFiberIO)
