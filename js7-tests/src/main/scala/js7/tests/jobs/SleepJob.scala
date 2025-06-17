@@ -27,8 +27,10 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
 
 object SleepJob extends InternalJob.Companion[SleepJob]:
 
-  def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute =
+  def sleep(agentPath: AgentPath, duration: FiniteDuration, isNotRestartable: Boolean = false)
+  : Execute =
     execute(
       agentPath,
       arguments = Map(
-        "sleep" -> NumericConstant(duration.toBigDecimalSeconds)))
+        "sleep" -> NumericConstant(duration.toBigDecimalSeconds)),
+      isNotRestartable = isNotRestartable)

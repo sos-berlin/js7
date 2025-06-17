@@ -57,12 +57,11 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   /** Not synchronized with other updates! */
   final def removeConditional(predicate: ((K, V)) => Boolean)(using sourcecode.Enclosing)
   : IO[Map[K, V]] =
-    shortLock.lock(IO.defer {
-      val (removed, remaining) = _map.partition(predicate)
-      _map = remaining
-      onEntryRemoved()
-        .as(removed)
-    })
+    shortLock.lock:
+      IO.defer:
+        val (removed, remaining) = _map.partition(predicate)
+        _map = remaining
+        onEntryRemoved().as(removed)
 
   final def remove(key: K)(using sourcecode.Enclosing): IO[Option[V]] =
     lockKeeper.lock(key):
@@ -159,6 +158,9 @@ object AsyncMap:
 
   def stoppable[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial) with Stoppable
+
+  inline def apply[K: Tag, V: Tag] =
+    empty[K, V]
 
   def empty[K: Tag, V: Tag] =
     new AsyncMap(Map.empty[K, V])

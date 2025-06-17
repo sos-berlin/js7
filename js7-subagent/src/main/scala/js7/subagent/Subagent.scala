@@ -275,16 +275,12 @@ object Subagent:
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
 
-  //def blockingInternalJobEC(name: String, config: Config, virtual: Boolean)
-  //: ResourceIO[ExecutionContext] =
-  //  unlimitedExecutionContextResource[IO](
-  //    s"$name blocking-job", config, virtual = virtual)
-
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): ResourceIO[Path] =
     provideFile[IO](conf.workDirectory / "http-uri")
       .evalTap: file =>
         IO.blocking:
           for uri <- uri do file := s"$uri/subagent"
+
 
   final case class ForDirector(
     subagent: Subagent,
@@ -294,8 +290,10 @@ object Subagent:
     testEventBus: StandardEventBus[Any],
     actorSystem: ActorSystem)
 
+
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
+
 
   final case class TestWiring(
     testEventBus: StandardEventBus[Any] = StandardEventBus(),

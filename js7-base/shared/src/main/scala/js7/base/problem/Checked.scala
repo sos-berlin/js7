@@ -180,7 +180,7 @@ object Checked:
           f.lift(problem) match
             case None => Left(problem)
             case Some(b) => Right(b)
-        case Right(a) => Right(a)
+        case right => right
 
     def recoverFromProblemWith[B](f: PartialFunction[Problem, F[Checked[B]]])(using F: Monad[F])
     : F[Checked[A | B]] =
@@ -189,7 +189,7 @@ object Checked:
           f.lift(problem) match
             case None => F.pure(Left(problem))
             case Some(b) => b.widen[Checked[A | B]]
-        case Right(a) => F.pure(Right(a))
+        case right => F.pure(right)
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal:
     def traverseAndCombineProblems[B](f: A => Checked[B]): Checked[Seq[B]] =

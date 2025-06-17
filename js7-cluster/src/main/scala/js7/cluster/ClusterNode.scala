@@ -72,7 +72,7 @@ extends Service.StoppableByRequest:
   val currentState: IO[Checked[S]] =
     currentStateRef.get.flatten
 
-  /** None when stopped before activated. */
+  /** Returns Left when stopped before activated. */
   def untilActivated: IO[Either[ProgramTermination, WorkingClusterNode[S]]] =
     logger.traceIOWithResult("untilActivated"):
       workingNodeStarted.get.dematerialize
@@ -90,13 +90,18 @@ extends Service.StoppableByRequest:
         case ProblemException(prblm @ PassiveClusterNodeResetProblem) =>
           // untilWorkingNodeStarted has logged and handled PassiveClusterNodeResetProblem
           logger.debug(prblm.toString)
+      // TODO How to cancel while still waiting for appointment?
+      //  Test with PassiveLostControllerClusterTest.
+      //.background.surround:
+      //  untilStopRequested
+      // Following lines do not cancel untilWorkingNodeStarted:
       .start
       .flatMap: fiber =>
-        IO.race(shuttingDown.get, fiber.joinStd)
+        IO.race(untilStopRequested, fiber.joinStd)
       .*>(untilStopRequested)
       .guaranteeCaseLazy: outcome =>
         logger.debugIO("run guarantee", outcome):
-          onShutdown(ProgramTermination()/*???*/) *>
+          announceShutdown(ProgramTermination()/*???*/) *>
             IO.defer:
               (passiveOrWorkingNode.get(), outcome) match
                 case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
@@ -110,47 +115,48 @@ extends Service.StoppableByRequest:
 
   private def stopWorkingClusterNode: IO[Unit] =
     logger.traceIO:
-      workingNodeStarted.get
-        .timeoutTo(10.ms, IO.none) // Maybe unreliable ???
-        .flatMap:
-          case Success(Right(workingClusterNode)) =>
-            workingClusterNode.stop
-              .logWhenItTakesLonger("workingClusterNode.stop")
-          case _ => IO.unit
+      workingNodeStarted.tryGet.flatMap:
+        case Some(Success(Right(workingClusterNode))) =>
+          workingClusterNode.stop
+            .logWhenItTakesLonger("workingClusterNode.stop")
+        case _ => IO.unit
 
   private def untilWorkingNodeStarted: IO[Unit] =
-    logger.debugIO(untilRecovered
-      .flatMap(startWorkingNode)
-      .materialize
-      .flatTap(triedWorkingNode =>
-        workingNodeStarted
-          .complete(triedWorkingNode match {
-            case Failure(prblm @ ProblemException(PassiveClusterNodeResetProblem)) =>
-              logger.warn(s"Should restart after $prblm")
-              Success(Left(ProgramTermination(restart = true)))
-            case Failure(t) => Failure(t)
-            case Success(o) => Success(Right(o))
-          })
-          .attempt)
-      .dematerialize
-      .flatMap(workingNode =>
-        currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))))
+    logger.debugIO:
+      untilRecovered
+        .flatMap(startWorkingNode)
+        .materialize
+        .flatTap: triedWorkingNode =>
+          workingNodeStarted.complete:
+            triedWorkingNode match
+              case Failure(prblm @ ProblemException(PassiveClusterNodeResetProblem)) =>
+                logger.warn(s"Should restart after $prblm")
+                Success(Left(ProgramTermination(restart = true)))
+              case Failure(t) => Failure(t)
+              case Success(o) => Success(Right(o))
+        .dematerialize
+        .flatMap: workingNode =>
+          currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))
 
   private def untilRecovered: IO[Recovered[S]] =
-    logger.debugIO(prepared
-      .untilRecovered
-      .map(_.orThrowWithoutOurStackTrace)
-      .flatTap(recovered => IO.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId))(
-        new IllegalStateException("Controller has recovered from Journal but is not the " +
-          s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}"))))
+    logger.debugIO:
+      prepared.untilRecovered
+        .map(_.orThrowWithoutOurStackTrace)
+        .flatTap: recovered =>
+          IO.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId)):
+            new IllegalStateException("Controller has recovered from Journal but is not the " +
+              s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}")
 
-  def onShutdown(termination: ProgramTermination, dontNotifyActiveNode: Boolean = false): IO[Unit] =
+  /** In case we stick in ClusterWatchCounterPart. */
+  def announceShutdown(termination: ProgramTermination, dontNotifyActiveNode: Boolean = false)
+  : IO[Unit] =
     IO.defer:
-      logger.trace("onShutdown")
+      logger.traceIO("announceShutdown")
       if dontNotifyActiveNode then
         _dontNotifyActiveNodeAboutShutdown = true
-      shuttingDown.complete(()).attempt *>
-        workingNodeStarted.complete(Success(Left(termination))).attempt.void
+      shuttingDown.complete(()) *>
+        // if not yet started:
+        workingNodeStarted.complete(Success(Left(termination))).void
 
   private def startWorkingNode(recovered: Recovered[S]): IO[WorkingClusterNode[S]] =
     logger.traceIO:

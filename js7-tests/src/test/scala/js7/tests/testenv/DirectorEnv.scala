@@ -114,8 +114,10 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
 
   def testAgentResource: ResourceIO[TestAgent] =
     for
-      given IORuntime <- ioRuntimeResource
-      testAgent <- TestAgent.resource(agentConf)
+      ioRuntime <- ioRuntimeResource
+      testAgent <-
+        given IORuntime = ioRuntime
+        TestAgent.resource(agentConf).evalOn(ioRuntime.compute)
     yield
       testAgent
 

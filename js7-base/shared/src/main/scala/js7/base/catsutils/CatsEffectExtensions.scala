@@ -3,8 +3,8 @@ package js7.base.catsutils
 import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
-import cats.syntax.functor.*
 import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 import cats.{Defer, Functor}
 import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
@@ -264,5 +264,3 @@ object CatsEffectExtensions:
   extension(scheduler: Scheduler)
     def now(): SyncDeadline =
       SyncDeadline.fromNanos(scheduler.monotonicNanos())
-
-

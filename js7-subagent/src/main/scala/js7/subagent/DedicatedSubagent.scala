@@ -22,7 +22,6 @@ import js7.core.command.CommandMeta
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.EventCalc
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -81,36 +80,38 @@ extends Service.StoppableByRequest:
     signal: Option[ProcessSignal],
     dontWaitForDirector: Boolean = false)
   : IO[Unit] =
-    stoppingLock.lock(IO.defer:
-      _dontWaitForDirector |= dontWaitForDirector
-      val first = !shuttingDown.getAndSet(true)
-      IO.whenA(first):
+    stoppingLock.lock:
+      logger.debugIO:
         IO.defer:
-          val orderCount = orderIdToJobDriver.size
-          if orderCount > 0 then
-            logger.info(s"Stopping, waiting for $orderCount processes")
-          IO.both(
-              orderIdToJobDriver.stop,
-              signal.fold(IO.unit):
-                killAndStopAllJobs)
-            .*>(IO:
-              fileValueState.close())
-            .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
-            .*>(
-              if dontWaitForDirector then IO:
-                for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
-                  s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
-              else
-                awaitOrderAcknowledgements *>
-                  // Await process termination and DetachProcessedOrder commands
-                  orderToProcessing.whenStopped
-                    .logWhenItTakesLonger("Director-acknowledged Order processes"))
-            .*>(journal
-              // Maybe the director does not read this event due to immediate shutdown !!!
-              .persist(NoKey <-: SubagentShutdown)
-              .rightAs(())
-              .map(_.onProblemHandle: problem =>
-                logger.warn(s"SubagentShutdown: $problem"))))
+          _dontWaitForDirector |= dontWaitForDirector
+          val isShuttingDown = shuttingDown.getAndSet(true)
+          IO.unlessA(isShuttingDown):
+            IO.defer:
+              val orderCount = orderIdToJobDriver.size
+              if orderCount > 0 then logger.info(s"Stopping, waiting for $orderCount processes")
+              orderIdToJobDriver.stop
+                .both:
+                  signal.fold(IO.unit):
+                    killAndStopAllJobs
+                .productR:
+                  IO.blocking(fileValueState.close())
+                .productR:
+                  orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
+                .productR:
+                  if dontWaitForDirector then IO:
+                    for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
+                      s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
+                  else
+                    awaitOrderAcknowledgements *>
+                      // Await process termination and DetachProcessedOrder commands
+                      orderToProcessing.whenStopped
+                        .logWhenItTakesLonger("Director-acknowledged Order processes")
+                .productR:
+                  journal.persist:
+                    SubagentShutdown
+                  .handleProblem: problem =>
+                    logger.warn(s"SubagentShutdown: $problem")
+                .void
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
     val jobKeySet = jobKeys.toSet
@@ -119,8 +120,7 @@ extends Service.StoppableByRequest:
       .parUnorderedTraverse:
         _.stop(signal)
       .productR:
-        jobKeyToJobDriver.removeConditional:
-          case (jobKey, _) => jobKeySet(jobKey)
+        jobKeyToJobDriver.removeConditional((jobKey, _) => jobKeySet(jobKey))
       .void
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
@@ -209,7 +209,9 @@ extends Service.StoppableByRequest:
               logger.warn(s"  Existing order: ${order.id} ${processing.workflowPosition}")
               Left(problem)
             else
-              Right(processing) // Idempotency: Order process has already been started
+              // Operation is idempotent
+              logger.debug(s"startOrderProcess ${order.id}: process has already been started")
+              Right(processing)
 
         case None =>
           startOrderProcess2(order, executeDefaultArguments)

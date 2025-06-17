@@ -515,7 +515,7 @@ object ScalaUtils:
           .filter(_._2.isDefined)
           .mapValues(_.get)
 
-      /** concat reversly, left side has overrides right side. */
+      /** concat reversely, left side overrides right side. */
       def orElseMapView[V1 >: V](other: MapView[K, V1]): MapView[K, V1] =
         new MapView[K, V1]:
           def get(key: K) =
