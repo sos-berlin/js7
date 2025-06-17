@@ -90,7 +90,6 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),
-        SubagentCouplingFailed(Problem("decoupled")),
         SubagentReset,
         SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))/*time dependent?*/))
 

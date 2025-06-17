@@ -297,5 +297,11 @@ private trait SubagentEventListener:
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
     IO.defer:
       if _isHeartbeating.getAndSet(false) then logger.trace("_isHeartbeating := false")
-      IO.whenA(true || isCoupled):
-        emitSubagentCouplingFailed(problem)
+      // We don't bother a coupling problem when we no longer listen.
+      // And don't emit an event when shutting down (then we don't listen), because
+      // the journal may already be unusable.
+      if !isListening.get() then
+        IO(logger.debug(s"onSubagentDecoupled $problem"))
+      else
+        IO.whenA(true || isCoupled):
+          emitSubagentCouplingFailed(problem)

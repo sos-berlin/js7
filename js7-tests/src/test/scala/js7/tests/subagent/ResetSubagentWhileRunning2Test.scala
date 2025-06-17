@@ -2,7 +2,6 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -96,7 +95,6 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),
-        SubagentCouplingFailed(Problem("decoupled")),
         SubagentReset,
         SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))/*time dependent?*/))
 
