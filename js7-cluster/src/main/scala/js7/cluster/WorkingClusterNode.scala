@@ -8,6 +8,7 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.problem.Checked.RichCheckedF
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
 import js7.base.utils.{AsyncLock, SetOnce}
@@ -47,7 +48,6 @@ final class WorkingClusterNode[S <: ClusterableState[S]] private(
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode", ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeIO = IO { _activeClusterNode.checked }
-  private val currentClusterState = journal.clusterState
   private val appointNodesLock = AsyncLock()
 
   def start(clusterState: ClusterState, eventId: EventId): IO[Checked[Unit]] =
@@ -107,7 +107,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]] private(
   : IO[Checked[Unit]] =
     logger.debugIO:
       appointNodesLock.lock:
-        currentClusterState.flatMap:
+        journal.clusterState.flatMap:
           case ClusterState.Empty =>
             journal.persistKeyedEvents(Transaction):
               (extraEvent.toList :+ ClusterNodesAppointed(setting))
@@ -176,8 +176,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]] private(
 object WorkingClusterNode:
   private val logger = Logger[this.type]
 
-  private[cluster]
-  def resource[S <: ClusterableState[S]: ClusterableState.Companion: Tag](
+  private[cluster] def resource[S <: ClusterableState[S]: {ClusterableState.Companion, Tag}](
     recovered: Recovered[S],
     common: ClusterCommon,
     clusterConf: ClusterConf,
@@ -199,5 +198,11 @@ object WorkingClusterNode:
           w.start(recovered.clusterState, recovered.eventId).as(w)
         )(
         release = _.stop)
+      _ <- Resource.onFinalize:
+        journal.prepareForStopOfClusterNodeStop *>
+          workingClusterNode.shutDownThisNode
+            .handleProblem: problem =>
+              logger.warn(s"workingClusterNode.shutDownThisNode: $problem")
+            .void
     yield
       workingClusterNode

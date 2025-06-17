@@ -169,8 +169,8 @@ extends
   def deleteJournalWhenStopping: IO[Unit] =
     _deleteJournalWhenStopping.set(true)
 
-  def prepareForClusterNodeStop: IO[Unit] =
-    noMoreAcks("prepareForClusterNodeStop")
+  def prepareForStopOfClusterNodeStop: IO[Unit] =
+    noMoreAcks("prepareForStopOfClusterNodeStop")
 
   protected def noMoreAcks(reason: String): IO[Unit] =
     requireClusterAck.getAndUpdate(_ => false).map: wasAck =>
