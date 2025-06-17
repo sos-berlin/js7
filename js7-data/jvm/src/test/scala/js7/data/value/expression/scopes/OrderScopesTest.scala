@@ -7,7 +7,7 @@ import js7.base.system.OperatingSystem.PathEnvName
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -39,7 +39,7 @@ final class OrderScopesTest extends OurTestSuite:
     "if, prompt and fail instructions" in:
       val scope = orderScopes.pureOrderScope
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
-      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $myTimezone)") == Right(expectedSchedule))
       assert(scope.parseAndEval("tryCount") == Right(NumberValue(0)))
       assert(scope.parseAndEval("$js7TryCount") == Right(NumberValue(0)))
 
@@ -123,9 +123,9 @@ final class OrderScopesTest extends OurTestSuite:
       assert(variables.get("UNKNOWN") == Some(Left(Problem("No such named value: unknown"))))
       assert(variables.get("VARIABLE") == Some(Left(Problem("No such named value: orderArgument"))))
       assert(variables.get("SELF") == Some(Left(Problem("No such named value: SELF"))))
-      assert(variables.get("SCHEDULED") == Some(Right(StringValue("2021-06-17 14:00:00+0200"))))
+      assert(variables.get("SCHEDULED") == Some(Right(StringValue("2021-06-17 15:00:00+0300"))))
       assert(variables.get("NOW") == Some(Right(StringValue(
-        orderScopes.nowScope.now.format("yyyy-MM-dd HH:mm:ssZ", Some("Europe/Berlin")).orThrow))))
+        orderScopes.nowScope.now.format("yyyy-MM-dd HH:mm:ssZ", Some("Europe/Mariehamn")).orThrow))))
       assert(variables.get("orderArgument") == None)
       assert(variables.get("js7Label") == None)
       assert(variables.get("js7WorkflowPath") == None)
@@ -179,7 +179,7 @@ final class OrderScopesTest extends OurTestSuite:
             "f" -> StringValue("f from order"),
             "orderArgument" -> StringValue("ORDER-ARGUMENT"),
             "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
-            "timezone" -> StringValue("Europe/Berlin")))
+            "myTimezone" -> StringValue("Europe/Mariehamn")))
 
         "Order.v1CompatibleNamedValues" in:
           val v1NamedValues = order.v1CompatibleNamedValues(workflow)
@@ -193,7 +193,7 @@ final class OrderScopesTest extends OurTestSuite:
             "f" -> StringValue("f from position 1"),  // <-- Different to current version
             "orderArgument" -> StringValue("ORDER-ARGUMENT"),
             "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
-            "timezone" -> StringValue("Europe/Berlin")))
+            "myTimezone" -> StringValue("Europe/Mariehamn")))
 
         def check(name: String, expectedValue: String) =
           assert(nameToValue(name) == StringValue(expectedValue))
@@ -225,7 +225,7 @@ final class OrderScopesTest extends OurTestSuite:
         // Also for BlockingInternalJob.evalExpression and BlockingInternalJob.namedValue
 
         assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
-        assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+        assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $myTimezone)") == Right(expectedSchedule))
         assert(scope.parseAndEval("tryCount") == Right(NumberValue(0)))
         assert(scope.parseAndEval("$js7TryCount") == Right(NumberValue(0)))
 
@@ -264,7 +264,7 @@ final class OrderScopesTest extends OurTestSuite:
         nowScope = NowScope(ts"2021-06-21T12:33:44Z"))
 
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
-      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $myTimezone)") == Right(expectedSchedule))
       assert(scope.parseAndEval("tryCount") == Left(Problem("Unknown function: tryCount")))
       assert(scope.parseAndEval("$js7TryCount") == Left(Problem("No such named value: js7TryCount")))
 
@@ -281,9 +281,9 @@ final class OrderScopesTest extends OurTestSuite:
 
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") == Right(StringValue("ORDER")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SCHEDULED") == Right(
-        StringValue("2021-06-17 14:00:00+0200")))
+        StringValue("2021-06-17 15:00:00+0300")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:NOW") == Right(
-        StringValue("2021-06-21 14:33:44+0200")))
+        StringValue("2021-06-21 15:33:44+0300")))
 
       assert(scope.parseAndEval("JobResource:UNKNOWN:VARIABLE") ==
         Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
@@ -332,7 +332,7 @@ final class OrderScopesTest extends OurTestSuite:
       val n = sys.props.get("test.speed").fold(100)(_.toInt)
       val expressionsStrings = View("$orderArgument", "$js7Label", "$js7WorkflowPosition",
         "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:NOW",
-        "now($dateTimeFormat, $timezone)")
+        "now($dateTimeFormat, $myTimezone)")
       for exprString <- expressionsStrings do
         val expression = expr(exprString)
         logger.info(measureTime(n, exprString, warmUp = n) {
@@ -352,8 +352,8 @@ object OrderScopesTest:
       "A" -> expr("'AAA'"),
       "VARIABLE" -> expr("$orderArgument"),
       "ORDER-ID" -> expr("$js7OrderId"),
-      "SCHEDULED" -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
-      "NOW" -> expr("now(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
+      "SCHEDULED" -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Mariehamn')"),
+      "NOW" -> expr("now(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Mariehamn')"),
       "UNKNOWN" -> expr("$unknown"),
       "SELF" -> expr("$SELF")))
   private val simpleJobResource = JobResource(JobResourcePath("SIMPLE"),
@@ -379,7 +379,7 @@ object OrderScopesTest:
       OrderParameter.Optional("c1", StringValue, NamedValue("c")),
       OrderParameter("f", StringValue),
       OrderParameter("orderArgument", StringValue),
-      OrderParameter("timezone", StringValue),
+      OrderParameter("myTimezone", StringValue),
       OrderParameter("dateTimeFormat", StringValue))))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
@@ -392,10 +392,10 @@ object OrderScopesTest:
       "f" -> StringValue("f from order"),
       "orderArgument" -> StringValue("ORDER-ARGUMENT"),
       "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
-      "timezone" -> StringValue("Europe/Berlin")),
+      "myTimezone" -> StringValue("Europe/Mariehamn")),
     scheduledFor = Some(ts"2021-06-17T12:00:00Z"))
 
-  private val expectedSchedule = StringValue("2021-06-17 14:00")
+  private val expectedSchedule = StringValue("2021-06-17 15:00")
 
   private val order = Order(freshOrder.id, workflow.id /: Position(2), Order.Ready(),
     arguments = workflow.orderParameterList
