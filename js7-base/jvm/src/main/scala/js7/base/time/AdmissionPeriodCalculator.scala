@@ -102,6 +102,7 @@ object AdmissionPeriodCalculator:
     final def nextCalendarPeriodStart(local: LocalDateTime) =
       None
 
+
   private[time] abstract class DayPeriodCalculator
   extends AdmissionPeriodCalculator:
     /** The calendar period may be something like a whole day, week or month. */
@@ -138,6 +139,7 @@ object AdmissionPeriodCalculator:
     override def toString =
       admissionPeriod.toString
 
+
   private[time] final class WeekdayPeriodCalculator(
     val admissionPeriod: WeekdayPeriod,
     val dateOffset: JDuration)
@@ -167,6 +169,7 @@ object AdmissionPeriodCalculator:
     val thursday = 3 // 1970-01-01 was a thursday
     (secondsSinceLocalEpoch + thursday * DaySeconds) % WeekSeconds
 
+
   private[time] final class DailyPeriodCalculator(
     val admissionPeriod: DailyPeriod,
     val dateOffset: JDuration)
@@ -184,6 +187,7 @@ object AdmissionPeriodCalculator:
       LocalDateTime.of(
         local.toLocalDate,
         LocalTime.ofSecondOfDay(admissionPeriod.secondOfDay))
+
 
   private[time] final class MonthlyDatePeriodCalculator(
     val admissionPeriod: MonthlyDatePeriod,
@@ -208,6 +212,7 @@ object AdmissionPeriodCalculator:
   private def startOfMonth(local: LocalDateTime): LocalDateTime =
     LocalDateTime.of(local.toLocalDate.withDayOfMonth(1), MIDNIGHT)
 
+
   private[time] final class MonthlyLastDatePeriodCalculator(
     val admissionPeriod: MonthlyLastDatePeriod,
     val dateOffset: JDuration)
@@ -225,6 +230,7 @@ object AdmissionPeriodCalculator:
       startOfMonth(local)
         .plusMonths(1)
         .plusSeconds(admissionPeriod.lastSecondOfMonth)
+
 
   private[time] final class MonthlyWeekdayPeriodCalculator(
     val admissionPeriod: MonthlyWeekdayPeriod,
@@ -247,6 +253,7 @@ object AdmissionPeriodCalculator:
         admissionPeriod.secondOfWeeks
       LocalDateTime.ofEpochSecond(seconds, 0, NoOffset)
 
+
   private[time] final class MonthlyLastWeekdayPeriodCalculator(
     val admissionPeriod: MonthlyLastWeekdayPeriod,
     val dateOffset: JDuration)
@@ -268,6 +275,7 @@ object AdmissionPeriodCalculator:
         (admissionPeriod.shiftWeeks - shiftWeek) * WeekSeconds +
         admissionPeriod.secondOfWeek
       LocalDateTime.ofEpochSecond(second, 0, NoOffset)
+
 
   private[time] final class SpecificDatePeriodCalculator(
     val admissionPeriod: SpecificDatePeriod,

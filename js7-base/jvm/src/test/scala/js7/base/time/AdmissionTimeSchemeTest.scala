@@ -47,12 +47,12 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
 
   "findLocalInterval" - {
     "Empty" in:
-      implicit val admissionTimeScheme = AdmissionTimeScheme(Nil)
+      given AdmissionTimeScheme = AdmissionTimeScheme(Nil)
       assert(findLocalInterval("2021-08-23T06:00:00") == None)
 
     "WeekdayPeriod" - {
       "Simple" in:
-        implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+        given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h)))
 
@@ -69,7 +69,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
           Some(localInterval("2021-08-29T22:00", 1.h)))
 
       "WeekdayPeriod overlap from previous week" in:
-        implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+        given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 3.h)))
 
@@ -83,7 +83,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
     }
 
     "WeekdayPeriod and DailyPeriod" in:
-      implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+      given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
         WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h),
         DailyPeriod(LocalTime.of(12, 0), 1.h)))
@@ -112,7 +112,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
 
 object AdmissionTimeSchemeTest:
 
-  def findLocalInterval(dateTimeString: String)(implicit admissionTimeScheme: AdmissionTimeScheme)
+  def findLocalInterval(dateTimeString: String)(using admissionTimeScheme: AdmissionTimeScheme)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
       LocalDateTime.parse(dateTimeString),

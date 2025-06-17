@@ -21,10 +21,12 @@ sealed trait AdmissionPeriod:
 
   override def toString = s"${getClass.simpleScalaName}($pretty)"
 
+
 case object AlwaysPeriod extends AdmissionPeriod:
   def pretty = "always"
 
   override def toString = "Always"
+
 
 final case class DailyPeriod(secondOfDay: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
@@ -41,6 +43,7 @@ extends AdmissionPeriod:
 
   def pretty: String =
     "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
+
 object DailyPeriod:
   val always: DailyPeriod = DailyPeriod(0, 24.h)
 
@@ -48,6 +51,7 @@ object DailyPeriod:
   def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
     new DailyPeriod((localTime.toSecondOfDay), duration)
       .checked.orThrow
+
 
 /** Weekly admission time. */
 final case class WeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
@@ -71,11 +75,13 @@ extends AdmissionPeriod:
 
   def pretty: String =
     "weekly at " + dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
+
 object WeekdayPeriod:
   @TestOnly
   def apply(weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration): WeekdayPeriod =
     new WeekdayPeriod(weekdayToSeconds(weekday) + localTime.toSecondOfDay, duration)
       .checked.orThrow
+
 
 final case class MonthlyDatePeriod(secondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
@@ -96,11 +102,13 @@ extends AdmissionPeriod:
     ordinalToString(dayOfMonth) + " of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
+
 object MonthlyDatePeriod:
   @TestOnly
   def apply(dayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration): MonthlyDatePeriod =
     apply((dayOfMonth - 1) * DaySeconds + timeOfDate.toSecondOfDay, duration)
       .checked.orThrow
+
 
 /** Monthly admission at a specific last day of month.
  * @param lastSecondOfMonth for example, -3600 for the last day at 23:00. */
@@ -126,12 +134,14 @@ extends AdmissionPeriod:
     ) + "last day of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
+
 object MonthlyLastDatePeriod:
   @TestOnly
   def apply(lastDayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration)
   : MonthlyLastDatePeriod =
     apply((lastDayOfMonth + 1) * DaySeconds - (DaySeconds - timeOfDate.toSecondOfDay), duration)
       .checked.orThrow
+
 
 /** Monthly admission at specific weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
@@ -159,6 +169,7 @@ extends AdmissionPeriod:
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
+
 object MonthlyWeekdayPeriod:
   @TestOnly
   def apply(number: Int, weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration)
@@ -167,6 +178,7 @@ object MonthlyWeekdayPeriod:
       (number - 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
       duration
     ).checked.orThrow
+
 
 /** Monthly admission at specific last weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
@@ -201,6 +213,7 @@ extends AdmissionPeriod:
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
+
 object MonthlyLastWeekdayPeriod:
   @TestOnly
   def apply(
@@ -214,11 +227,13 @@ object MonthlyLastWeekdayPeriod:
       duration
     ).checked.orThrow
 
+
 final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
 extends AdmissionPeriod:
   override def pretty: String =
     val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
     s"$ts, ${duration.pretty}"
+
 object SpecificDatePeriod:
   @TestOnly
   def apply(localDateTime: LocalDateTime, duration: FiniteDuration): SpecificDatePeriod =
