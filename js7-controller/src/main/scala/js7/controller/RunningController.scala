@@ -424,7 +424,7 @@ object RunningController:
           if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
             IO.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else
-            clusterNode.onShutdown(
+            clusterNode.announceShutdown(
               ProgramTermination(restart = command.restart),
               dontNotifyActiveNode = command.dontNotifyActiveNode && clusterNode.isPassive
             ) >>

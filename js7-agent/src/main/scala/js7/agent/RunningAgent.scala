@@ -342,7 +342,7 @@ object RunningAgent:
               //⚒️  clusterNode.dontNotifyActiveNodeAboutShutdown()
               //⚒️}
               clusterNode
-                .onShutdown(DirectorTermination(
+                .announceShutdown(DirectorTermination(
                   restartJvm = cmd.restart,
                   restartDirector = cmd.restartDirector)
                 ) >>
