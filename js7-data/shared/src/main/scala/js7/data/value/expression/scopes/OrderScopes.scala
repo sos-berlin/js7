@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
 import scala.collection.MapView
-
+import scala.collection.immutable.Map.Map1
 /** Provide some Scopes for an Order in any state. */
 trait OrderScopes:
 
@@ -53,6 +53,9 @@ trait OrderScopes:
 
       case "workflowPosition" => Right(StringValue:
         order.workflowPosition.toString)
+
+      case "workflow" => Right(ObjectValue(Map1(
+        "timezone", StringValue(workflow.timeZone.string))))
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */

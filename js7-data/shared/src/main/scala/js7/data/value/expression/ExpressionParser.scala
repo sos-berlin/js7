@@ -23,7 +23,7 @@ object ExpressionParser:
     "matches", "missing", "then", "true", "variable")
 
   val knownSymbols = Set("controllerId", "job", "maxTries", "label", "orderId",
-    "timedOut", "tryCount", "workflowPath", "workflowPosition")
+    "timedOut", "tryCount", "workflow", "workflowPath", "workflowPosition")
 
   //private val knownFunctions = Set(
   //  "env", "impure", "jobResourceVariable", "jobResourceVariables",

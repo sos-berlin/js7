@@ -53,6 +53,7 @@ final class OrderScopesTest extends OurTestSuite:
       assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
       assert(scope.parseAndEval("label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
+      assert(scope.parseAndEval("workflow.timezone") == Right(StringValue("Europe/Mariehamn")))
 
       assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
 
@@ -380,7 +381,8 @@ object OrderScopesTest:
       OrderParameter("f", StringValue),
       OrderParameter("orderArgument", StringValue),
       OrderParameter("myTimezone", StringValue),
-      OrderParameter("dateTimeFormat", StringValue))))
+      OrderParameter("dateTimeFormat", StringValue))),
+    timeZone = Timezone("Europe/Mariehamn"))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(
