@@ -12,6 +12,8 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.stream.Numbered
+import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.core.command.CommandMeta
@@ -24,7 +26,8 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
-import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
+import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent, SubagentRunId}
+import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.{CommitOptions, Journal}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.priority.ServerMeteringLiveScope
@@ -41,6 +44,7 @@ private final class LocalSubagentDriver private(
 extends SubagentDriver, Service.StoppableByRequest:
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
+  private val whenSubagentShutdown = Deferred.unsafe[IO, Unit]
   // isDedicated when this Director gets activated after fail-over.
   private val wasRemote = subagent.isDedicated
   protected val api = new LocalSubagentApi(subagent)
@@ -54,8 +58,8 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   protected def start =
     dedicate.map(_.orThrow) *>
-      startService(
-        untilStopRequested)
+      startService:
+        untilStopRequested
 
   private def dedicate: IO[Checked[Unit]] =
     logger.debugIO:
@@ -79,34 +83,32 @@ extends SubagentDriver, Service.StoppableByRequest:
       .rightAs(())
 
   def startObserving: IO[Unit] =
-    observe
-      .handleErrorWith(t => IO:
-        logger.error(s"startObserving (in background) => ${t.toStringWithCauses}"))
-      .startAndForget
+    observe.startAndForget
 
   // TODO Similar to SubagentEventListener
   private def observe: IO[Unit] =
     logger.debugIO:
       journal.aggregate
         .map(_.idToSubagentItemState(subagentId).eventId)
-        .flatMap(observeAfter)
+        .flatMap: eventId =>
+          observeAfter(eventId).completedL
 
   // TODO Similar to SubagentEventListener
-  private def observeAfter(eventId: EventId): IO[Unit] =
-    subagent.journal.eventWatch
-      .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
-      // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
-      .evalMap(handleEvent)
-      .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
-      .evalMap: chunk =>
-        val keyedEvents = chunk.toVector.flatMap(_._1)
-        val followUpAll = chunk.traverse(_._2).void
-        IO
-          .whenA(keyedEvents.nonEmpty):
-            keyedEvents
-              .traverse:
-                case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
-                  // After an OrderProcessed event an DetachProcessedOrder must be sent,
+  private def observeAfter(eventId: EventId): fs2.Stream[IO, Unit] =
+    logger.debugStream("observeAfter", eventId):
+      subagent.journal.eventWatch
+        .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
+        // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
+        .evalMap(handleEvent)
+        .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
+        .evalMap: chunk =>
+          val stampedEvents = chunk.toVector.flatMap(_._1)
+          val followUpAll = chunk.foldMap(_._2)
+          IO.whenA(stampedEvents.nonEmpty):
+            stampedEvents.traverse: stamped =>
+              stamped.value match
+                case KeyedEvent(orderId: OrderId, _: OrderProcessed) =>
+                  // After an OrderProcessed event, a DetachProcessedOrder must be sent,
                   // to terminate StartOrderProcess command idempotency detection and
                   // allow a new StartOrderProcess command for a next process.
                   subagent.commandExecutor
@@ -115,21 +117,23 @@ extends SubagentDriver, Service.StoppableByRequest:
                       CommandMeta.System)
                     .orThrow
                     .void
+                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown) =>
+                  whenSubagentShutdown.complete(()).void
                 case _ => IO.unit
-              .flatMap: _ =>
-                val lastEventId = keyedEvents.last.eventId
-                // TODO Save Stamped timestamp
-                val options = CommitOptions(
-                  transaction = true,
-                  alreadyDelayed = subagentConf.eventBufferDelay)
-                journal.persistKeyedEvents(options):
-                  keyedEvents.map(_.value)
-                    :+ (subagentId <-: SubagentEventsObserved(lastEventId))
-                .map(_.orThrow /*???*/)
-                .*>(releaseEvents(lastEventId))
-          .*>(followUpAll)
-      .takeUntilEval(untilStopRequested)
-      .completedL
+            .flatMap: _ =>
+              val lastEventId = stampedEvents.last.eventId
+              // TODO Save Stamped timestamp
+              val options = CommitOptions(
+                transaction = true,
+                alreadyDelayed = subagentConf.eventBufferDelay)
+              journal.persistKeyedEvents(options):
+                stampedEvents.map(_.value)
+                  :+ (subagentId <-: SubagentEventsObserved(lastEventId))
+              .map(_.orThrow /*???*/)
+              .*>(releaseEvents(lastEventId))
+          *>
+            followUpAll
+        .takeUntilEval(untilStopRequested)
 
   /** Returns optionally the event and a follow-up io. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
@@ -155,8 +159,9 @@ extends SubagentDriver, Service.StoppableByRequest:
             IO.pure(None -> IO.unit)
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-        // Ignore this, should not happen
-        IO.pure(None -> IO.unit)
+        IO.pure:
+          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdown))
+            -> IO.unit
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
         logger.debug(event.toShortString)
@@ -186,9 +191,9 @@ extends SubagentDriver, Service.StoppableByRequest:
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceIO("recoverOrderProcessing", order.id):
-      if wasRemote then
-        requireNotStopping.flatMapT: _ =>
-          startOrderProcessing(order) // TODO startOrderProcessing again ?
+      if wasRemote /*&& false ???*/ then
+        // The Order may have not yet been started (only OrderProcessingStarted emitted)
+        startOrderProcessing(order) // idempotent operation
       else
         emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)
@@ -203,6 +208,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
     signableItemsForOrderProcessing(order.workflowPosition)
+      // TODO Do not attach already attached Items
       //.map(_.map(_.filterNot(signed =>
       //  alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
       .flatMapT(_
@@ -216,51 +222,60 @@ extends SubagentDriver, Service.StoppableByRequest:
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred
       .insert(order.id, Deferred.unsafe)
-      .flatMap:
-        case Left(problem) => IO.left(problem)
-        case Right(deferred) =>
-          orderToExecuteDefaultArguments(order)
-            .flatMapT:
-              subagent.startOrderProcess(order, _)
-            .materializeIntoChecked
-            .flatMap:
-              case Left(problem) =>
-                orderToDeferred
-                  .remove(order.id)
-                  .flatMap:
-                    case None =>
-                      // Deferred has been removed
-                      if problem != CommandDispatcher.StoppedProblem then
-                        // onSubagentDied has stopped all queued StartOrderProcess commands
-                        logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
-                      IO.right(())
+      .flatMapT: deferred =>
+        orderToExecuteDefaultArguments(order)
+          .flatMapT:
+            subagent.startOrderProcess(order, _)
+          .materializeIntoChecked
+          .flatMap:
+            case Left(problem) =>
+              orderToDeferred
+                .remove(order.id)
+                .flatMap:
+                  case None =>
+                    // Deferred has been removed
+                    if problem != CommandDispatcher.StoppedProblem then
+                      // onSubagentDied has stopped all queued StartOrderProcess commands
+                      logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
+                    IO.right(())
 
-                    case Some(deferred_) =>
-                      assert(deferred_ eq deferred)
+                  case Some(deferred_) =>
+                    assert(deferred_ eq deferred)
 
-                      val orderProcessed =
-                        problem match
-                          case SubagentIsShuttingDownProblem =>
-                            OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
-                          case _ =>
-                            OrderProcessed(OrderOutcome.Disrupted(problem))
+                    val orderProcessed =
+                      problem match
+                        case SubagentIsShuttingDownProblem =>
+                          OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
+                        case _ =>
+                          OrderProcessed(OrderOutcome.Disrupted(problem))
 
-                      if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed]
-                      then
-                        IO(logger.warn:
-                          s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"
-                        ).start
-                      else
-                        journal
-                          .persist(order.id <-: orderProcessed)
-                          .orThrow.start
+                    if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed]
+                    then
+                      IO(logger.warn:
+                        s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"
+                      ).start
+                    else
+                      journal
+                        .persist(order.id <-: orderProcessed)
+                        .orThrow.start
 
-              case Right(_: FiberIO[OrderProcessed]) =>
-                IO.unit
-            // Now wait for OrderProcessed event fulfilling Deferred
-            .*>(deferred.get)
-            .start
-            .map(Right(_))
+            case Right(_: FiberIO[OrderProcessed]) =>
+              IO.unit
+          // Now wait for OrderProcessed event fulfilling Deferred
+          .productR:
+            deferred.get.start
+          .map(Right(_))
+
+  def shutdownSubagent(
+    processSignal: Option[ProcessSignal] = None,
+    dontWaitForDirector: Boolean = false)
+  : IO[ProgramTermination] =
+    subagent.shutdown(processSignal, dontWaitForDirector = dontWaitForDirector) <*
+      waitForSubagentShutDownEvent
+
+  private def waitForSubagentShutDownEvent: IO[Unit] =
+    logger.debugIO:
+      whenSubagentShutdown.get.logWhenMethodTakesLonger
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     subagent.killProcess(orderId, signal)
@@ -278,6 +293,9 @@ extends SubagentDriver, Service.StoppableByRequest:
             .getOrElse(Problem.pure("decoupled"))
           (!subagentItemState.problem.contains(problem)).thenList:
             subagentId <-: SubagentCouplingFailed(problem))
+      .recoverFromProblem:
+        case JournalKilledProblem =>
+          logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
       .map(_.orThrow)
       .void
       .onError: t =>
