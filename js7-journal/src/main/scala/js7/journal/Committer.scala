@@ -8,7 +8,7 @@ import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
-import js7.base.catsutils.CatsEffectUtils.outcomeToEither
+import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -187,7 +187,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                 } for acknowledgement from passive cluster node of events until ${
                 eventId}$event, last acknowledged: ${EventId.toString(lastAck)}")
         .productL:
-          IO.whenA(sym.warnLogged):
+          whenDeferred(sym.warnLogged):
             IO:
               logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
                 since.elapsed.pretty}")

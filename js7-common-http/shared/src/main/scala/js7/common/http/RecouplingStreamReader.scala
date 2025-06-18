@@ -44,7 +44,7 @@ abstract class RecouplingStreamReader[
     inUse.get.flatMap: inUse =>
       IO:
         var logged = false
-        lazy val msg = s"$api: coupling failed: $problem"
+        lazy val msg = s"$api reports: $problem"
         if inUse && !stopRequested && !coupledApiVar.isStopped then
           sym.onWarn()
           logger.warn(s"$sym $msg")
