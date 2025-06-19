@@ -40,6 +40,7 @@ object AgentCommand extends CommonCommand.Companion:
     case object Accepted extends Response:
       implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
 
+
   final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
   extends AgentCommand, CommonBatch, Big:
     type Response = Batch.Response
@@ -50,8 +51,10 @@ object AgentCommand extends CommonCommand.Companion:
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
 
+
   final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends OrderCommand:
     type Response = Response.Accepted
+
 
   final case class EmergencyStop(restart: Boolean = false) extends AgentCommand:
     /** The JVM is halted before responding. */
@@ -66,6 +69,7 @@ object AgentCommand extends CommonCommand.Companion:
         restart <- c.getOrElse[Boolean]("restart")(false)
       yield EmergencyStop(restart)
 
+
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
     * JS7 may delete these events to reduce the journal,
     * keeping all events after `untilEventId`.
@@ -73,8 +77,10 @@ object AgentCommand extends CommonCommand.Companion:
   final case class ReleaseEvents(untilEventId: EventId) extends OrderCommand:
     type Response = Response.Accepted
 
+
   case object NoOperation extends AgentCommand:
     type Response = Response.Accepted
+
 
   /** Registers the Controller identified by current User as a new Controller and couples it.
     * The Agent starts as a new Agent, dedicated to the Controller.
@@ -87,6 +93,7 @@ object AgentCommand extends CommonCommand.Companion:
     agentPath: AgentPath)
   extends AgentCommand:
     type Response = DedicateAgentDirector.Response
+
   object DedicateAgentDirector:
     /**
       * @param agentRunId Use the value for `CoupleController`. */
@@ -104,6 +111,7 @@ object AgentCommand extends CommonCommand.Companion:
         agentPath <- c.get[AgentPath]("agentPath")
       yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
 
+
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `DedicateAgentDirector`. */
   final case class CoupleController(
@@ -118,16 +126,22 @@ object AgentCommand extends CommonCommand.Companion:
     extends AgentCommand.Response, Big:
       override def toString = s"Response(${orderIds.size} Orders attached)"
 
+
   final case class Reset(agentRunId: Option[AgentRunId])
   extends AgentCommand
+
   object Reset:
     type Response = AgentCommand.Response
 
+
   type TakeSnapshot = TakeSnapshot.type
+
   case object TakeSnapshot extends AgentCommand:
     type Response = Response.Accepted
 
+
   sealed trait ShutdownOrAbort extends AgentCommand
+
 
   /**
     * @param processSignal Whether to kill the local Subagent's processes.
@@ -168,7 +182,9 @@ object AgentCommand extends CommonCommand.Companion:
     implicit val jsonCodec: Codec.AsObject[ShutDown] =
       deriveConfiguredCodec[ShutDown]
 
+
   sealed trait OrderCommand extends AgentCommand
+
 
   final case class AttachItem(item: UnsignedItem)
   extends AgentCommand:
@@ -191,11 +207,14 @@ object AgentCommand extends CommonCommand.Companion:
     : Decoder[AttachSignedItem] =
       c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
 
+
   final case class DetachItem(key: InventoryItemKey)
   extends AgentCommand:
     type Response = Response.Accepted
 
+
   sealed trait AttachOrDetachOrder extends OrderCommand
+
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady])
   extends AttachOrDetachOrder, Big:
@@ -207,22 +226,28 @@ object AgentCommand extends CommonCommand.Companion:
     override def toShortString: String =
       s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
         s"${order.state.getClass.simpleScalaName}))"
+
   object AttachOrder:
     def apply(order: Order[Order.IsFreshOrReady], agentPath: AgentPath) =
       new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentPath))))
+
 
   final case class DetachOrder(orderId: OrderId)
   extends AttachOrDetachOrder:
     type Response = Response.Accepted
 
+
   final case class ResetSubagent(subagentId: SubagentId, force: Boolean)
   extends AgentCommand:
     type Response = Response.Accepted
 
+
   type ClusterSwitchOver = ClusterSwitchOver.type
+
   case object ClusterSwitchOver
     extends AgentCommand:
     type Response = Response.Accepted
+
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
     import AgentState.{implicitItemContainer, unsignedItemJsonCodec}
@@ -246,7 +271,7 @@ object AgentCommand extends CommonCommand.Companion:
       Subtype(deriveCodec[ResetSubagent]),
       Subtype(ClusterSwitchOver))
 
-  implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
+  given TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
       Subtype.named(deriveCodec[CoupleController.Response], "CoupleController.Response"),
       Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
