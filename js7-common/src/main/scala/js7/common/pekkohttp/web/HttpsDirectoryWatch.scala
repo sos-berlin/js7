@@ -6,7 +6,7 @@ import java.nio.file.Path
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.io.file.watch.{DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
+import js7.base.monixlike.MonixLikeExtensions.onErrorTap
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.web.HttpsDirectoryWatch.*
@@ -42,7 +42,7 @@ extends Service.StoppableByRequest:
   : IO[Unit] =
     DirectoryStateJvm.readDirectory(directory, files).flatMap: directoryState =>
       DirectoryWatch.stream(directory, directoryState, settings, files)
-        .takeUntilEval(untilStopRequested)
+        .interruptWhenF(untilStopRequested)
         .debounce(settings.directorySilence) // Löscht DirectoryEvents! Sie werden nicht gebraucht
         .tapEachChunk(events => logger.debug(s"HTTPS keys or certificates change signaled: ${
           events.toArraySeq.distinct.mkString(", ")}"))

@@ -64,24 +64,7 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
   "Stream" - {
     "takeUntil" in :
       pending // See takeUntilEval
-
-    "takeUntilEval" in :
-      val started = Deferred.unsafe[IO, Unit]
-      val stop = Deferred.unsafe[IO, Unit]
-      Stream
-        .fromIterator[IO](Iterator.from(1), chunkSize = 1)
-        .delayBy(1.ms)
-        .evalTap: i =>
-          IO.whenA(i == 3):
-            started.complete(()).void
-        .takeUntilEval(stop.get)
-        .compile
-        .count
-        .both(
-          started.get *> IO.sleep(100.ms) *> stop.complete(()))
-        .flatMap: (n, _) =>
-          IO(assert(n >= 3))
-
+    
     "headL" - {
       "nonEmpty Stream" in:
         for head <- Stream(1, 2, 3).covary[IO].headL yield

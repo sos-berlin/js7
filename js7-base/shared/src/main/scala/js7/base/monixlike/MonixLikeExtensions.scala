@@ -8,7 +8,7 @@ import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.Stream
 import js7.base.catsutils.CatsExtensions.*
-import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.concurrent.Future
@@ -185,11 +185,6 @@ object MonixLikeExtensions:
     @deprecated("Check this call!")
     inline def doAfterSubscribe(afterSubscribe: F[Unit]): Stream[F, A] =
       stream.onStart(afterSubscribe)
-
-    def takeUntilEval[F2[x] >: F[x]](haltOnCompletion: F2[Unit])
-      (using ApplicativeError[F2, Throwable])
-    : Stream[F2, A] =
-      stream.interruptWhenF(haltOnCompletion)
 
     def takeUntil[X](other: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
       stream.interruptWhen(other.as(true))

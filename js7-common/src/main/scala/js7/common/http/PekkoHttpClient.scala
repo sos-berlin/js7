@@ -19,7 +19,7 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
+import js7.base.monixlike.MonixLikeExtensions.onErrorTap
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -229,7 +229,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       chunks
         .map(Chunk(_))
         .append[IO, ChunkStreamPart](Stream.emit(LastChunk))
-        .takeUntilEval(stop.get)
+        .interruptWhenF(stop.get)
         .onFinalize:
           stopped.complete(()).void
         .toPekkoSourceResource

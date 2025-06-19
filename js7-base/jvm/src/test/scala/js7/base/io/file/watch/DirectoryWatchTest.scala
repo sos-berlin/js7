@@ -14,7 +14,6 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.io.file.watch.DirectoryWatchTest.*
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
@@ -91,7 +90,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
         DirectoryWatch
           .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
           .onStart(started.complete(()).void)
-          .takeUntilEval(stop.get)
+          .interruptWhenF(stop.get)
           .chunks
           .foreach(chunk => IO:
             buffer :+= chunk.to(Set))
@@ -116,7 +115,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
         DirectoryWatch
           .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
           .onStart(started.complete(()).void)
-          .takeUntilEval(stop.get)
+          .interruptWhenF(stop.get)
           .chunks
           .foreach(chunk => IO:
             buffer ++= chunk.to(Seq))
