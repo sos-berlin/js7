@@ -92,17 +92,17 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         .flatMap: initialClusterState =>
           // ClusterState may have changed to PassiveLost but here we look at initialClusterState
           assertThat(initialClusterState.activeId == ownId)
-          clusterStateLock.lock(IO
-            .parMap2(
-              // .start requires a locked clusterStateLock!
-              IO.defer:
-                clusterWatchSynchronizerOnce :=
-                  common.initialClusterWatchSynchronizer(initialClusterState)
-                // clusterStateLock must be locked:
-                clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId),
+          clusterStateLock.lock:
+            // .start requires a locked clusterStateLock!
+            IO.defer:
+              clusterWatchSynchronizerOnce :=
+                common.initialClusterWatchSynchronizer(initialClusterState)
+              // clusterStateLock must be locked:
+              clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
+            .both:
               awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
-            )(_ |+| _)
-            .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
+            .map(_ |+| _)
+            .flatMapT(_ => proceed(initialClusterState).as(Checked.unit))
 
   private def awaitAcknowledgmentIfCoupled(initialClusterState: HasNodes, eventId: EventId)
   : IO[Checked[Completed]] =

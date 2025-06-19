@@ -166,28 +166,11 @@ object MonixLikeExtensions:
 
 
   extension (x: IO.type)
-    def parMap2[A, B, C](a: IO[A], b: IO[B])(f: (A, B) => C): IO[C] =
-      IO.both(a, b).map((a, b) => f(a, b))
-
-    def parZip2[A, B](a: IO[A], b: IO[B]): IO[(A, B)] =
-      IO.both(a, b)
-
     def deferFuture[A](future: => Future[A]): IO[A] =
       IO.fromFuture(IO(future))
 
 
   extension [F[_], A](stream: Stream[F, A])
-
-    @deprecated("Use onStart")
-    inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
-      stream.onStart(onSubscribe)
-
-    @deprecated("Check this call!")
-    inline def doAfterSubscribe(afterSubscribe: F[Unit]): Stream[F, A] =
-      stream.onStart(afterSubscribe)
-
-    def takeUntil[X](other: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
-      stream.interruptWhen(other.as(true))
 
     def headL(using fs2.Compiler[F, F], Functor[F]): F[A] =
       stream.head.compile.last

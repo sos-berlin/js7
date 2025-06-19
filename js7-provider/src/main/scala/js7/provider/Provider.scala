@@ -15,7 +15,6 @@ import js7.base.crypt.generic.SignatureServices
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.parZip2
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
@@ -108,10 +107,12 @@ extends Observing, MainService, Service.StoppableByRequest:
   private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
   : IO[Checked[InventoryItemDiff_]] =
     for
-      (checkedLocalItemSeq, controllerItems) <- IO.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
+      (checkedLocalItemSeq, controllerItems) <- IO.both(
+        readLocalItems(localEntries.map(_.file)),
+        fetchControllerItems)
     yield
-      checkedLocalItemSeq.map(
-        InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
+      checkedLocalItemSeq.map:
+        InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true)
 
   private def readLocalItems(files: Seq[Path]): IO[Checked[Seq[InventoryItem]]] =
     IO(typedSourceReader.readItems(files))

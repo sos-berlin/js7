@@ -13,7 +13,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{Log4j, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{parZip2, scheduleAtFixedRate}
+import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRate
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.CatsBlocking.syntax.*
@@ -105,15 +105,13 @@ object TestControllerAgent extends OurApp:
 
         directoryProvider.runAgents() { agents =>
           directoryProvider.runController() { controller =>
-            JavaShutdownHook.add("TestControllerAgent") {
+            JavaShutdownHook.add("TestControllerAgent"):
               print('\n')
-              IO
-                .parZip2(
-                  controller.stop,
-                  agents.parTraverse(_.terminate(processSignal = Some(SIGTERM))))
-                .awaitInfinite
+              controller.stop.both:
+                agents.parTraverse(_.terminate(processSignal = Some(SIGTERM)))
+              .awaitInfinite
               Log4j.shutdown()
-            } .closeWithCloser
+            .closeWithCloser
 
             val startTime = Timestamp.now
             runtime.scheduler.scheduleAtFixedRate(0.s, conf.period):
