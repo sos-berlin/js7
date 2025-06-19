@@ -9,6 +9,7 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.auth.{Admission, UserId}
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.eventbus.EventPublisher
@@ -125,7 +126,7 @@ extends Service.StoppableByRequest:
     logger.debugIO:
       untilRecovered
         .flatMap(startWorkingNode)
-        .materialize
+        .tryIt
         .flatTap: triedWorkingNode =>
           workingNodeStarted.complete:
             triedWorkingNode match
@@ -134,7 +135,7 @@ extends Service.StoppableByRequest:
                 Success(Left(ProgramTermination(restart = true)))
               case Failure(t) => Failure(t)
               case Success(o) => Success(Right(o))
-        .dematerialize
+        .untry
         .flatMap: workingNode =>
           currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))
 

@@ -6,11 +6,12 @@ import com.softwaremill.tagging.@@
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor.*
 import js7.base.catsutils.CatsEffectExtensions.materializeIntoChecked
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{foreach, materialize}
+import js7.base.monixlike.MonixLikeExtensions.foreach
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
@@ -122,7 +123,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
                   .processOrder(
                     order.checkedState[Order.IsFreshOrReady].orThrow,
                     events => self ! Internal.UpdateEvents(events, orderCorrelId))
-                  .materialize
+                  .tryIt
                   .map:
                     case Failure(t) =>
                       logger.error(s"startOrderProcessing => ${t.toStringWithCauses}") // OrderFailed ???

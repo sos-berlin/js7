@@ -2,7 +2,7 @@ package js7.launcher.forjava.internal
 
 import cats.effect.IO
 import java.util.concurrent.CompletionStage
-import js7.base.monixlike.MonixLikeExtensions.materialize
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.data.order.OrderOutcome
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOutcome
@@ -16,9 +16,10 @@ extends JavaWrapper:
 
 
 object JOrderProcess:
+
   def of(outcome: CompletionStage[JOutcome.Completed]): JOrderProcess =
     JOrderProcess(OrderProcess(
       IO.fromFuture(IO.pure(outcome.asScala))
         .map(_.asScala)
-        .materialize
+        .tryIt
         .map(OrderOutcome.Completed.fromTry)))

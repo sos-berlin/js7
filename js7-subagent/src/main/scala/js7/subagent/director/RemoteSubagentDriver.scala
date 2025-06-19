@@ -4,14 +4,14 @@ import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsExtensions.traverseCombine
+import js7.base.catsutils.CatsExtensions.{traverseCombine, tryIt}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{materialize, onErrorRestartLoop}
+import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop}
 import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -448,7 +448,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                   IO.right(())
                 else
                   postQueuedCommand2(numberedCommand)
-            .materialize
+            .tryIt
             .flatMap:
               case Failure(throwable) =>
                 retryAfterError(Problem.reverseThrowable(throwable))

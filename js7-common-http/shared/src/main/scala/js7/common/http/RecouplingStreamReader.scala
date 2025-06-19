@@ -5,12 +5,12 @@ import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
@@ -179,7 +179,7 @@ abstract class RecouplingStreamReader[
             coupleIfNeeded(after = after)
               .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
                 getStreamX(after = after)
-                  .materialize.map(Checked.flattenTryChecked)
+                  .tryIt.map(Checked.flattenTryChecked)
                   .flatMap:
                     case Left(problem) =>
                       if isStopped then

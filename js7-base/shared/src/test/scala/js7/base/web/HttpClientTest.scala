@@ -2,7 +2,7 @@ package js7.base.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.materialize
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.web.HttpClient.liftProblem
@@ -39,7 +39,7 @@ final class HttpClientTest extends OurAsyncTestSuite:
       assert(checkedProblem == Left(problem))
 
   "liftProblem HttpException without Problem" in:
-    for tried <- liftProblem(IO.raiseError[Int](withoutProblem)).materialize yield
+    for tried <- liftProblem(IO.raiseError[Int](withoutProblem)).tryIt yield
       assert(tried == Success(Left(Problem(withoutProblem.getMessage))))
 
   "liftProblem with HttpException without Problem but getMessage is null" in:
@@ -49,7 +49,7 @@ final class HttpClientTest extends OurAsyncTestSuite:
       val problem = None
       override def getMessage = null/*default when no message is given*/
 
-    for tried <- liftProblem(IO.raiseError[Int](exception)).materialize yield
+    for tried <- liftProblem(IO.raiseError[Int](exception)).tryIt yield
       assert(tried == Failure(exception))
 
   "liftProblem and failureToChecked save HTTP status code of the withoutProblem Exception" in:
@@ -57,10 +57,10 @@ final class HttpClientTest extends OurAsyncTestSuite:
     assert(problem.httpStatusCode == 503)
     assert(problem.toString == "WITHOUT PROBLEM")
 
-    for case Success(Left(problem)) <- liftProblem(IO.raiseError[Int](withoutProblem)).materialize.unsafeToFuture() yield
+    for case Success(Left(problem)) <- liftProblem(IO.raiseError[Int](withoutProblem)).tryIt.unsafeToFuture() yield
       assert(problem.httpStatusCode == 503)
 
   "liftProblem with unknown Exception" in:
     val other = new Exception("OTHER")
-    for tried <- liftProblem(IO.raiseError[Int](other)).materialize.unsafeToFuture() yield
+    for tried <- liftProblem(IO.raiseError[Int](other)).tryIt.unsafeToFuture() yield
       assert(tried == Failure(other))

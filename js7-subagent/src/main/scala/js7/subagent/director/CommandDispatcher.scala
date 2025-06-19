@@ -3,10 +3,11 @@ package js7.subagent.director
 import cats.effect.{FiberIO, IO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{completedL, materialize}
+import js7.base.monixlike.MonixLikeExtensions.completedL
 import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, StreamNumberedQueue}
@@ -99,7 +100,7 @@ private trait CommandDispatcher:
           .evalMap(numbered =>
             numbered.value.correlId.bind(
               executeCommandNow(subagentRunId, numbered)
-                .materialize
+                .tryIt
                 .flatTap(_ => queue
                   .release(numbered.number)
                   .map(_.orThrow)

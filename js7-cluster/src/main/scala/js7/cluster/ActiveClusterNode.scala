@@ -12,7 +12,6 @@ import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onlyNewest}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -492,7 +491,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
         case o =>
           IO.pure(o)
-      .materialize.flatTap(tried => IO { tried match
+      .tryIt.flatTap(tried => IO { tried match
         case Success(Right(Completed)) =>
           if !stopAcknowledgingRequested && !stopRequested then
             logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
@@ -518,7 +517,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}",
             t)
       })
-      .dematerialize
+      .untry
       .guarantee(IO:
         logger.debug("isFetchingAcks := false")
         isFetchingAcks := false)

@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.materialize
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
@@ -106,14 +106,13 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         earlyCrashingUpdateChecked -> "early"))
         name in:
           asyncMap.updateChecked(0)(upd)
-            .materialize
+            .tryIt
             .map:
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
-            .flatTap(_ => IO {
+            .flatTap(_ => IO:
               // assert that the lock is released
-              assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
-            })
+              assert(asyncMap.get(0) == Some("FIRST-UPDATED")))
     }
   }
 
@@ -150,14 +149,13 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         earlyCrashingUpdateChecked -> "early"))
         name in:
           asyncMap.updateCheckedWithResult(0, upd)
-            .materialize
+            .tryIt
             .map:
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
-            .flatTap(_ => IO {
+            .flatTap(_ => IO:
               // assert that the lock is released
-              assert(asyncMap.get(0) == Some("ZERO"))
-            })
+              assert(asyncMap.get(0) == Some("ZERO")))
 
     //???
     }
@@ -267,7 +265,7 @@ final class AsyncMapTest extends OurAsyncTestSuite:
           })
           _ <- IO(assert(asyncMap.get(1) == Some("EINS*")))
 
-          tried <- asyncMap.getOrElseUpdate(2, IO("ZWEI")).materialize
+          tried <- asyncMap.getOrElseUpdate(2, IO("ZWEI")).tryIt
           _ <- IO(assert(tried.isFailure))
 
           _ <- asyncMap.remove(1)

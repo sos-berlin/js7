@@ -14,6 +14,7 @@ import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
 import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
+import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.SyncDeadline
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
@@ -21,7 +22,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger.ops.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates}
+import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRates
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -277,7 +278,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       unstashAll()
       clusterNode.beforeJournalingStarts
         .map(_.orThrow)
-        .materialize
+        .tryIt
         .map(Internal.Activated.apply)
         .unsafeToFuture()
         .pipeTo(self)
@@ -1400,13 +1401,13 @@ extends Stash, JournalingActor[ControllerState, Event]:
       } .bracketCase { so =>
           switchover = Some(so)
           so.start()
-            .materialize.flatTap {
+            .tryIt.flatTap {
               case Success(Right(_)) =>
                 context.stop(self)
                 IO.unit  // this.switchover is left for postStop
               case _ => IO:
                 switchover = None  // Asynchronous!
-            }.dematerialize
+            }.untry
         } ((so, exitCase) =>
           IO {
             logger.debug(s"SwitchOver => $exitCase")

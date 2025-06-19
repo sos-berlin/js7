@@ -1,14 +1,13 @@
 package js7.base.monixlike
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Concurrent, GenSpawn, IO}
+import cats.effect.{GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.Stream
 import js7.base.catsutils.CatsExtensions.*
-import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.concurrent.Future

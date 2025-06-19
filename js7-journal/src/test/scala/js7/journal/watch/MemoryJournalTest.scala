@@ -6,8 +6,9 @@ import cats.instances.try_.*
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.{materialize, unsafeToCancelableFuture}
+import js7.base.monixlike.MonixLikeExtensions.{unsafeToCancelableFuture}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
@@ -141,7 +142,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
           .stream:
             EventRequest.singleClass[TestEvent](after = 1001, timeout = Some(0.s))
           .compile.toList
-          .materialize
+          .tryIt
           .await(99.s)
           .failed
           .exists(_.isInstanceOf[TornException]))

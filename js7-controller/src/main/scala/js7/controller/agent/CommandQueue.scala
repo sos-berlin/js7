@@ -4,8 +4,8 @@ import cats.effect.{Deferred, IO}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
-import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
@@ -170,7 +170,7 @@ private[agent] abstract class CommandQueue(
       executeCommand(Batch(subcmds))
         .map(_.map(response =>
           for (i, r) <- queuable zip response.responses yield QueueableResponse(i, r)))
-        .materialize
+        .tryIt
         .flatMap:
           case Success(Right(queueableResponses)) =>
             logger.debug(s"✔︎ sendNow queueables=${queuable.map(_.toShortString)}")

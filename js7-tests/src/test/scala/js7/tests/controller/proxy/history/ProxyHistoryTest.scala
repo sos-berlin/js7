@@ -3,6 +3,7 @@ package js7.tests.controller.proxy.history
 import cats.effect.IO
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils
@@ -10,7 +11,7 @@ import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.{completedL, headL, materialize}
+import js7.base.monixlike.MonixLikeExtensions.{completedL, headL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.test.OurTestSuite
@@ -204,7 +205,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
           .eventAndStateStream(fromEventId = Some(EventId.BeforeFirst))
           .take(1)
           .completedL
-          .materialize
+          .tryIt
           .await(99.s)
           .failed.get.asInstanceOf[ProblemException]
           .problem

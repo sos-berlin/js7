@@ -14,12 +14,13 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, materializeIntoChecked, right}
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize}
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach}
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem, WrappedException}
@@ -237,10 +238,9 @@ extends JournalingActor[AgentState, Event], Stash:
           subagentKeeper.recoverSubagentBundles(
             recoveredAgentState.pathToUnsignedSimple(SubagentBundle).values.toVector))
         .map(_.orThrow)
-        .materialize
-        .foreach { tried =>
+        .tryIt
+        .foreach: tried =>
           self.forward(Internal.SubagentKeeperInitialized(recoveredAgentState, tried))
-        }
 
     case _ => stash()
 

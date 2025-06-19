@@ -1,6 +1,6 @@
 package js7.base.monixlike
 
-import cats.effect.{Deferred, IO}
+import cats.effect.IO
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.log.Logger

@@ -4,8 +4,8 @@ import cats.effect.IO
 import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.SessionToken
+import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.data.ByteArray
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Missing
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -69,9 +69,9 @@ object HttpClient:
 
   /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](io: IO[A]): IO[Checked[A]] =
-    io.materialize
+    io.tryIt
       .map(failureToChecked)
-      .dematerialize
+      .untry
 
   def failureToChecked[A](tried: Try[A]): Try[Checked[A]] =
     tried match
