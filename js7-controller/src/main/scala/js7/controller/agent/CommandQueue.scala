@@ -12,7 +12,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
-import js7.controller.agent.AgentDriver.Queueable.MarkOrder
+import js7.controller.agent.AgentDriver.Queueable.{AttachOrder, DetachOrder, MarkOrder}
 import js7.controller.agent.CommandQueue.*
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
@@ -54,7 +54,9 @@ private[agent] abstract class CommandQueue(
 
     def enqueue(queueable: Queueable): Unit =
       queueable match
-        case o: Queueable.DetachOrder => detachQueue += o
+        case detachOrder: Queueable.DetachOrder =>
+          removeStillQueuedAttachOrderCommand(detachOrder)
+          detachQueue += detachOrder
 
         case attach: Queueable.AttachUnsignedItem =>
           val duplicates = queue.collect:
@@ -67,6 +69,19 @@ private[agent] abstract class CommandQueue(
         case o =>
           queue += o
           queueSet += o
+
+    private def removeStillQueuedAttachOrderCommand(detachOrder: DetachOrder): Unit =
+      // In case we didn't receive a proper response from the Agent
+      def isCorrespondingAttachOrder(queueable: Queueable) =
+        queueable match
+          case Queueable.AttachOrder(order, _) =>
+            order.id == detachOrder.orderId
+          case _ => false
+
+      queue.removeFirst(isCorrespondingAttachOrder).foreach: attachOrder =>
+        logger.debug:
+          s"⚠️  DetachOrder(${detachOrder.orderId}) removes corresponding AttachOrder from queue, because it obviously has been executed by the Agent: $attachOrder"
+        queueSet -= attachOrder
 
     def dequeueAll(what: Set[Queueable]): Unit =
       queue.dequeueAll(what)
