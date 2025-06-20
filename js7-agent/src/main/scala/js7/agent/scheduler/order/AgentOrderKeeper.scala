@@ -32,6 +32,7 @@ import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.base.utils.{DuplicateKeyException, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.Pekkos.{encodeAsActorName, uniqueActorName}
@@ -636,6 +637,11 @@ extends JournalingActor[AgentState, Event], Stash:
                   else
                     attachOrder(/*workflowRegister.reuseMemory*/(order))
                       .map((_: Completed) => Right(Response.Accepted))
+                      .flatTap: _ =>
+                        // See AttachOrderToAgentTest
+                        IO.whenA(isTest && order.id.string == "AttachOrderToAgentTest"):
+                          IO.sleep(100.s)
+                        .unsafeToFuture()
 
     case DetachOrder(orderId) =>
       if shuttingDown then
@@ -975,6 +981,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
 object AgentOrderKeeper:
   private val logger = Logger[this.type]
+  val TestAttachOrderToAgentResponseTimeout = 100.ms
 
   sealed trait Input
   object Input:
