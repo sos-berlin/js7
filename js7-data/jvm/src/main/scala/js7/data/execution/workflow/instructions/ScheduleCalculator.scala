@@ -56,7 +56,7 @@ extends ScheduleSimulator:
           case None => Do.EndCycling
           case Some(cs) => Do.ChangeCycleState(cs)
 
-  /** @return next (schemeIndex, periodIndex, next: Timestamp, tickingSkipped: FiniteDuration).
+  /** @return next (schemeIndex, periodIndex, next: Timestamp).
     */
   private def nextCycle(now: Timestamp, cycleState: CycleState): Option[(Int, Int, Timestamp)] =
     schedule.schemes.view.zipWithIndex

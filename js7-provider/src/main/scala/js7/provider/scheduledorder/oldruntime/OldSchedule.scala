@@ -2,11 +2,12 @@ package js7.provider.scheduledorder.oldruntime
 
 import java.time.*
 import java.util.NoSuchElementException
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.*
 import js7.provider.scheduledorder.oldruntime.OldSchedule.*
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.unsafeNulls
+import scala.math.Ordering.Implicits.*
 
 final case class OldSchedule(
   timeZone: ZoneId,

@@ -6,7 +6,7 @@ import cats.syntax.traverse.*
 import java.time.LocalDate
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
-import js7.base.time.JavaTime.JavaTimeZone
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent

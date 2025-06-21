@@ -38,8 +38,7 @@ object AdmissionTimeSchemeForJavaTime:
     def findTimeInterval(from: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
     : Option[TimeInterval] =
       findLocalIntervals(from.toLocalDateTime(using zone), dateOffset)
-        .map(_._2)
-        .map(_.toTimeInterval(zone))
+        .map(_._2.toTimeInterval(zone))
         .filterNot(_.endsBefore(from))
         .headOption
 

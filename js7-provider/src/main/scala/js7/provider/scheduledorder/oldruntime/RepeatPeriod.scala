@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import js7.base.time.JavaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.provider.scheduledorder.oldruntime.RepeatPeriod.*
+import scala.math.Ordering.Implicits.*
 
 final case class RepeatPeriod(
   begin: LocalTime, // = StartOfDay,

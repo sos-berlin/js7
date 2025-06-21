@@ -9,7 +9,7 @@ import java.util.Locale.ROOT
 import java.util.regex.PatternSyntaxException
 import js7.base.problem.Checked.{CheckedOption, catchExpected}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTime.JavaTimeZone
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timezone}
@@ -87,7 +87,7 @@ object CalendarExecutor:
 
   private final case class Weekly(protected val formatter_ : DateTimeFormatter)
   extends Period:
-    val normalDuration = 7 * 24.h
+    val normalDuration = 24.h * 7
     val query = DateOfWeekBasedYearQuery
     def next(zoned: ZonedDateTime) = zoned.plusDays(7)
 

@@ -18,10 +18,11 @@ object DelayIterators:
   def fromConfig(config: Config, key: String)(using Scheduler): Checked[DelayIterator] =
     Checked
       .fromTry(Try(config.getDuration(key).toScala :: Nil))
-      .orElse(catchExpected[ConfigException](
-        config.getDurationList(key).asScala.view.map(_.toScala).toVector))
-      .flatMap(durations =>
+      .orElse:
+        catchExpected[ConfigException]:
+          config.getDurationList(key).asScala.view.map(_.toScala).toVector
+      .flatMap: durations =>
         if durations.isEmpty then
           Left(Problem(s"Setting '$key' must not be empty"))
         else
-          Right(new DelayIterator(durations)))
+          Right(new DelayIterator(durations))

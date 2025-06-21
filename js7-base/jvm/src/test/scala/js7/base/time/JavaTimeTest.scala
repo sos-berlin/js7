@@ -3,10 +3,12 @@ package js7.base.time
 import cats.syntax.show.*
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.*
+import js7.base.time.JavaTime.{bigDecimalToDuration, given_Show_Date}
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.TimestampForTests.ts
 import org.scalatest.matchers.should.Matchers.*
+import scala.math.Ordering.Implicits.*
 
 final class JavaTimeTest extends OurTestSuite:
 
@@ -76,10 +78,10 @@ final class JavaTimeTest extends OurTestSuite:
       (10.s / 2.5).toMillis shouldEqual 4000
 
     "Int * Duration" in:
-      (3 * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
+      (7.s * 3: Duration).toMillis shouldEqual (3 * 7*1000)
 
     "Long * Duration" in:
-      (3L * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
+      (7.s * 3L: Duration).toMillis shouldEqual (3 * 7*1000)
 
     "min" in:
       assert(1.s.min(2.s) == 1.s)

@@ -2,9 +2,10 @@ package js7.base.time
 
 import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
+import scala.math.Ordered.orderingToOrdered
 
 sealed trait LocalInterval extends Ordered[LocalInterval]:
 

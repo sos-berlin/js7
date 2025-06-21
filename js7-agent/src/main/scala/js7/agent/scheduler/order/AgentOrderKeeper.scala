@@ -25,7 +25,7 @@ import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem, WrappedException}
 import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.CatsUtils.pureFiberIO

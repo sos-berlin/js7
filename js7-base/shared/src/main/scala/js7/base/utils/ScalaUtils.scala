@@ -467,7 +467,7 @@ object ScalaUtils:
             })
 
       // About twice as fast
-      def mergeOrderedOptimizedBy[B: Ordering](f: A => B): MergeOrderedIterator[A, B] =
+      def mergeOrderedOptimizedBy[B: Ordering](f: A => B): scala.collection.BufferedIterator[A] =
         new MergeOrderedIterator(iterables, f)
 
 
@@ -578,7 +578,7 @@ object ScalaUtils:
               .filter { case (k, _) => !right.contains(k) }
               .concat(right.iterator)
 
-    final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](
+    private[utils] final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](
       iterables: IterableOnce[IterableOnce[A]],
       f: A => B)
     extends collection.BufferedIterator[A]:

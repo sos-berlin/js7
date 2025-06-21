@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTime.JavaTimeZone
+import js7.base.time.JavaTime.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.calendar.{Calendar, CalendarExecutor, CalendarPath}
 import js7.data.event.{EventCalc, TimeCtx}

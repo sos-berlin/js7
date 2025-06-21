@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import js7.base.time.JavaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.provider.scheduledorder.oldruntime.SingleStartPeriod.*
+import scala.math.Ordering.Implicits.*
 
 /**
   * @author Joacim Zschimmer

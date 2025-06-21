@@ -4,13 +4,14 @@ import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset, Duration as JDuration}
 import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
+import scala.math.Ordered.orderingToOrdered
 
 sealed trait AdmissionPeriodCalculator:
   def admissionPeriod: AdmissionPeriod
@@ -24,13 +25,10 @@ sealed trait AdmissionPeriodCalculator:
 
   def toLocalInterval(local: LocalDateTime): Option[LocalInterval]
 
-  protected def calendarPeriodStartWithoutDateOffset(local: LocalDateTime): LocalDateTime
-
   def nextCalendarPeriodStart(local: LocalDateTime): Option[LocalDateTime]
 
   @TestOnly
-  final def findLocalIntervals(from: LocalDateTime, until: LocalDateTime)
-  : View[LocalInterval] =
+  final def findLocalIntervals(from: LocalDateTime, until: LocalDateTime): View[LocalInterval] =
     findLocalIntervals(from)
       .takeWhile(_.startsBefore(until))
       .filterNot(_.endsBefore(from))
@@ -38,16 +36,16 @@ sealed trait AdmissionPeriodCalculator:
   /** Returns an eternal sequence. */
   final def findLocalIntervals(from: LocalDateTime): View[LocalInterval] =
     val first = toLocalInterval(from)
-    View
-      .from(first)
-      .concat(
-        View.unfold(from)(local =>
+    View.from(first)
+      .concat:
+        View.unfold(from): local =>
           for
             next <- nextCalendarPeriodStart(local) if local < next
-            localInterval <- toLocalInterval(next) //if !first.contains(localInterval)
-          yield localInterval -> next)
-          // first may be duplicate with the first LocalInterval of the tail
-          .dropWhile(first contains _))
+            localInterval <- toLocalInterval(next)
+          yield
+            localInterval -> next
+        // first may be duplicate with the first LocalInterval of the tail
+        .dropWhile(first contains _)
 
 
 object AdmissionPeriodCalculator:
@@ -103,13 +101,15 @@ object AdmissionPeriodCalculator:
       None
 
 
-  private[time] abstract class DayPeriodCalculator
+  private[time] trait DayPeriodCalculator
   extends AdmissionPeriodCalculator:
+    protected def calendarPeriodStartWithoutDateOffset(local: LocalDateTime): LocalDateTime
+
     /** The calendar period may be something like a whole day, week or month. */
     private[time] final def calendarPeriodStart(local: LocalDateTime): LocalDateTime =
       calendarPeriodStartWithoutDateOffset(local.minus(dateOffset)).plus(dateOffset)
 
-    @TestOnly // Not used
+    @TestOnly
     private[time] final def hasAdmissionPeriodForDay(localDate: LocalDate) =
       val startOfDay = LocalDateTime.of(localDate, MIDNIGHT)
       val endOfDay = startOfDay.plusDays(1)
@@ -209,9 +209,6 @@ object AdmissionPeriodCalculator:
       else
         endOfMonth(local).plusSeconds(admissionPeriod.secondOfDay)
 
-  private def startOfMonth(local: LocalDateTime): LocalDateTime =
-    LocalDateTime.of(local.toLocalDate.withDayOfMonth(1), MIDNIGHT)
-
 
   private[time] final class MonthlyLastDatePeriodCalculator(
     val admissionPeriod: MonthlyLastDatePeriod,
@@ -248,7 +245,11 @@ object AdmissionPeriodCalculator:
     private[time] def admissionPeriodStart(local: LocalDateTime): LocalDateTime =
       val startOfMonthSeconds = startOfMonth(local).toEpochSecond(NoOffset)
       val startOfMonthSinceMonday = sinceStartOfWeek(startOfMonthSeconds)
-      val shiftWeek = if startOfMonthSinceMonday / DaySeconds > admissionPeriod.dayOfWeek then WeekSeconds else 0
+      val shiftWeek =
+        if startOfMonthSinceMonday / DaySeconds > admissionPeriod.dayOfWeek then
+          WeekSeconds
+        else
+          0
       val seconds = startOfMonthSeconds - startOfMonthSinceMonday + shiftWeek +
         admissionPeriod.secondOfWeeks
       LocalDateTime.ofEpochSecond(seconds, 0, NoOffset)
@@ -296,6 +297,10 @@ object AdmissionPeriodCalculator:
 
     private[time] def admissionPeriodStart(local: LocalDateTime) =
       localDateTime
+
+
+  private def startOfMonth(local: LocalDateTime): LocalDateTime =
+    LocalDateTime.of(local.toLocalDate.withDayOfMonth(1), MIDNIGHT)
 
   private def endOfMonth(local: LocalDateTime): LocalDateTime =
     LocalDateTime.of(

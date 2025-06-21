@@ -584,7 +584,7 @@ final class ScalaUtilsTest extends OurTestSuite:
         assert(seqs.mergeOrderedOptimizedBy(identity).toSeq == Seq(1, 2, 3))
 
         val iterator = seqs.mergeOrderedOptimizedBy(identity).buffered
-        assert(iterator.isInstanceOf[MergeOrderedIterator[Int, Int]])
+        assert(iterator.isInstanceOf[MergeOrderedIterator[Int, Int] @unchecked])
         assert(iterator.hasNext)
         assert(iterator.hasNext)
         assert(iterator.next() == 1)
