@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.AgentDriver.Queueable.{AttachOrder, DetachOrder, MarkOrder}
 import js7.controller.agent.CommandQueue.*
@@ -55,7 +55,7 @@ private[agent] abstract class CommandQueue(
     def enqueue(queueable: Queueable): Unit =
       queueable match
         case detachOrder: Queueable.DetachOrder =>
-          removeStillQueuedAttachOrderCommand(detachOrder)
+          removeStillQueuedCommandsWhenDetachingTheOrder(detachOrder)
           detachQueue += detachOrder
 
         case attach: Queueable.AttachUnsignedItem =>
@@ -70,18 +70,22 @@ private[agent] abstract class CommandQueue(
           queue += o
           queueSet += o
 
-    private def removeStillQueuedAttachOrderCommand(detachOrder: DetachOrder): Unit =
+    private def removeStillQueuedCommandsWhenDetachingTheOrder(detachOrder: DetachOrder): Unit =
       // In case we didn't receive a proper response from the Agent
-      def isCorrespondingAttachOrder(queueable: Queueable) =
+      def isCorrespondingCommand(queueable: Queueable) =
         queueable match
           case Queueable.AttachOrder(order, _) =>
             order.id == detachOrder.orderId
+          case Queueable.MarkOrder(orderId, _) =>
+            orderId == detachOrder.orderId
           case _ => false
 
-      queue.removeFirst(isCorrespondingAttachOrder).foreach: attachOrder =>
+      queue.removeFirst(isCorrespondingCommand).foreach: queueable =>
         logger.debug:
-          s"⚠️  DetachOrder(${detachOrder.orderId}) removes corresponding AttachOrder from queue, because it obviously has been executed by the Agent: $attachOrder"
-        queueSet -= attachOrder
+          s"⚠️  DetachOrder(${detachOrder.orderId}) removes corresponding ${
+            queueable.getClass.simpleScalaName
+          } from queue, because it obviously has been executed by the Agent: $queueable"
+        queueSet -= queueable
 
     def dequeueAll(what: Set[Queueable]): Unit =
       queue.dequeueAll(what)
