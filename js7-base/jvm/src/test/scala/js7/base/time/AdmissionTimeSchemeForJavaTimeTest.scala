@@ -48,11 +48,7 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
     assert(scheme.findLocalInterval(local("2023-07-04T06:00"), dateOffset) ==
       Some(LocalInterval(local("2023-07-04T18:00"), 2.h)))
 
-    def localIntervals(from: LocalDateTime, until: LocalDateTime): Seq[(Int, LocalInterval)] =
-      scheme.findLocalIntervals(from, dateOffset)
-        .takeWhile(_._2.startsBefore(until))
-        .filterNot(_._2.endsBefore(from))
-        .toSeq
+    given AdmissionTimeScheme = scheme
 
     assert(localIntervals(local("2023-07-01T00:00"), until = local("2023-08-01T00:00")) == Seq(
       0 -> LocalInterval(local("2023-07-01T02:00"), 4.h), // saturday
@@ -100,6 +96,33 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
       0 -> LocalInterval(local("2023-07-31T02:00"), 4.h), // monday
       4 -> LocalInterval(local("2023-07-31T21:00"), 3.h)))
+
+  "Periods that start between midnight and dateOffset" - {
+    assert(dateOffset == 5.h)
+
+    "DailyPeriod" in:
+      given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+        DailyPeriod(LocalTime.of(2, 0), 4.h)))
+      assert(localIntervals(local("2025-06-01T00:00"), until = local("2025-06-03T00:00")) == Seq(
+        0 -> LocalInterval(local("2025-06-01T02:00"), 4.h),
+        0 -> LocalInterval(local("2025-06-02T02:00"), 4.h)))
+
+    "WeekdayPeriod" in:
+      given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+        WeekdayPeriod(MONDAY, LocalTime.of(2, 0), 4.h)))
+      assert(localIntervals(local("2025-06-01T00:00"), until = local("2025-06-10T00:00")) == Seq(
+        // Monday means real Monday, dateOffset doesn't count !!!
+        0 -> LocalInterval(local("2025-06-02T02:00"), 4.h),  // 2025-06-02 is a Monday
+        0 -> LocalInterval(local("2025-06-09T02:00"), 4.h)))
+  }
+
+  private def localIntervals(from: LocalDateTime, until: LocalDateTime)
+    (using scheme: AdmissionTimeScheme)
+  : Seq[(Int, LocalInterval)] =
+    scheme.findLocalIntervals(from, dateOffset)
+      .takeWhile(_._2.startsBefore(until))
+      .filterNot(_._2.endsBefore(from))
+      .toSeq
 
   "findTimeInterval" in:
     assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", zone, dateOffset) ==
