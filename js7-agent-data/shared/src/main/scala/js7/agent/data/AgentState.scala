@@ -29,7 +29,7 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
-import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
+import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
@@ -257,7 +257,7 @@ extends SignedItemContainer,
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match
-          case SubagentShutdown if !keyToUnsignedItemState_.contains(subagentId) =>
+          case SubagentShutdown | SubagentShutdownV7 if !keyToUnsignedItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 

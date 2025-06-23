@@ -117,7 +117,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                       CommandMeta.System)
                     .orThrow
                     .void
-                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown) =>
+                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown | SubagentItemStateEvent.SubagentShutdownV7) =>
                   whenSubagentShutdown.complete(()).void
                 case _ => IO.unit
             .flatMap: _ =>

@@ -78,12 +78,20 @@ final class SubagentItemStateEventTest extends OurTestSuite:
           "TYPE": "SubagentRestarted"
         }""")
 
+    "SubagentShutdownV7" in:
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentShutdownV7,
+        json"""{
+          "Key": "SUBAGENT",
+          "TYPE": "SubagentShutdown"
+        }""")
+
     "SubagentShutdown" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentShutdown,
         json"""{
           "Key": "SUBAGENT",
-          "TYPE": "SubagentShutdown"
+          "TYPE": "SubagentShutdown2"
         }""")
 
     "SubagentResetStarted" in:

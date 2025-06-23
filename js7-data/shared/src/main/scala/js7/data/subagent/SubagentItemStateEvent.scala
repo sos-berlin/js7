@@ -54,6 +54,9 @@ object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, Subagent
   case object SubagentRestarted
   extends SubagentDied
 
+  case object SubagentShutdownV7 // COMPATIBLE with v2.7, don't use this
+  extends SubagentDied
+
   type SubagentShutdown = SubagentShutdown.type
   case object SubagentShutdown
   extends SubagentDied
@@ -67,4 +70,5 @@ object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, Subagent
     Subtype(deriveCodec[SubagentResetStarted]),
     Subtype(SubagentReset),
     Subtype(SubagentRestarted),
-    Subtype(SubagentShutdown))
+    Subtype.renamedSingleton(SubagentShutdownV7, "SubagentShutdown"),
+    Subtype.renamedSingleton(SubagentShutdown, "SubagentShutdown2"))

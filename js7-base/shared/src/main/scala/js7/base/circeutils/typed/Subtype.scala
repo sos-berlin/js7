@@ -76,8 +76,17 @@ object Subtype:
     * Usage: Subtype(A)
     */
   def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil): Subtype[A] =
+    renamedSingleton(singleton, typeName[A], aliases)
+
+  /**
+    * Singleton is serialized as empty JSON object; Simple class name (without trailing $) is type name.
+    * <p>
+    * Usage: Subtype(A)
+    */
+  def renamedSingleton[A: ClassTag](singleton: A, name: String, aliases: Seq[String] = Nil)
+  : Subtype[A] =
     val codec = singletonCodec(singleton)
-    make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName[A], codec, codec, aliases = aliases)
+    make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), name, codec, codec, aliases = aliases)
 
   /**
     * Use implicit Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.

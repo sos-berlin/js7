@@ -12,7 +12,7 @@ import js7.data.event.{EventDriven, EventId}
 import js7.data.item.{PathRev, UnsignedSimpleItemState}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemState.logger
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown, SubagentShutdownV7}
 
 final case class SubagentItemState(
   subagentItem: SubagentItem,
@@ -79,10 +79,17 @@ extends
           eventId = EventId.BeforeFirst,
           problem = None))
 
+      case SubagentShutdownV7 =>
+        Right(copy(
+          couplingState = Reset.shutdown,
+          subagentRunId = None,
+          eventId = EventId.BeforeFirst,
+          problem = None))
+
       case SubagentShutdown =>
         Right(copy(
           couplingState = Reset.shutdown,
-          //subagentRunId = None,  (this would confuse the client)
+          subagentRunId = None,
           eventId = EventId.BeforeFirst,
           problem = None))
 
