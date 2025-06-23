@@ -49,10 +49,10 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       Some(LocalInterval(local("2023-07-04T18:00"), 2.h)))
 
     def localIntervals(from: LocalDateTime, until: LocalDateTime): Seq[(Int, LocalInterval)] =
-        scheme.findLocalIntervals(from, dateOffset)
-          .takeWhile(_._2.startsBefore(until))
-          .filterNot(_._2.endsBefore(from))
-          .toSeq
+      scheme.findLocalIntervals(from, dateOffset)
+        .takeWhile(_._2.startsBefore(until))
+        .filterNot(_._2.endsBefore(from))
+        .toSeq
 
     assert(localIntervals(local("2023-07-01T00:00"), until = local("2023-08-01T00:00")) == Seq(
       0 -> LocalInterval(local("2023-07-01T09:00"), 2.h), // saturday
@@ -118,50 +118,50 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       until = ts"2023-08-01T00:00:00Z",
       zone, dateOffset)
     assert(timeIntervals.toSeq == Seq(
-       0 -> TimeInterval(ts"2023-07-01T06:00:00Z", 2.h), // saturday
-       0 -> TimeInterval(ts"2023-07-02T06:00:00Z", 2.h), // sunday
+      0 -> TimeInterval(ts"2023-07-01T06:00:00Z", 2.h), // saturday
+      0 -> TimeInterval(ts"2023-07-02T06:00:00Z", 2.h), // sunday
 
-       5 -> TimeInterval(ts"2023-07-02T21:00:00Z", 1.h), // monday
-       0 -> TimeInterval(ts"2023-07-03T06:00:00Z", 2.h),
-       0 -> TimeInterval(ts"2023-07-04T06:00:00Z", 2.h), // tuesday
-       1 -> TimeInterval(ts"2023-07-04T15:00:00Z", 2.h),
-       0 -> TimeInterval(ts"2023-07-05T06:00:00Z", 2.h), // wednesday
-       0 -> TimeInterval(ts"2023-07-06T06:00:00Z", 2.h), // thursday
-       6 -> TimeInterval(ts"2023-07-06T09:00:00Z", 1.s),
-       0 -> TimeInterval(ts"2023-07-07T06:00:00Z", 2.h), // friday
-       0 -> TimeInterval(ts"2023-07-08T06:00:00Z", 2.h), // saturday
-       0 -> TimeInterval(ts"2023-07-09T06:00:00Z", 2.h), // sunday
+      5 -> TimeInterval(ts"2023-07-02T21:00:00Z", 1.h), // monday
+      0 -> TimeInterval(ts"2023-07-03T06:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-04T06:00:00Z", 2.h), // tuesday
+      1 -> TimeInterval(ts"2023-07-04T15:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-05T06:00:00Z", 2.h), // wednesday
+      0 -> TimeInterval(ts"2023-07-06T06:00:00Z", 2.h), // thursday
+      6 -> TimeInterval(ts"2023-07-06T09:00:00Z", 1.s),
+      0 -> TimeInterval(ts"2023-07-07T06:00:00Z", 2.h), // friday
+      0 -> TimeInterval(ts"2023-07-08T06:00:00Z", 2.h), // saturday
+      0 -> TimeInterval(ts"2023-07-09T06:00:00Z", 2.h), // sunday
 
-       0 -> TimeInterval(ts"2023-07-10T06:00:00Z", 2.h), // monday
-       2 -> TimeInterval(ts"2023-07-10T16:00:00Z", 2.h),
-       0 -> TimeInterval(ts"2023-07-11T06:00:00Z", 2.h), // tuesday
-       1 -> TimeInterval(ts"2023-07-11T15:00:00Z", 2.h),
-       0 -> TimeInterval(ts"2023-07-12T06:00:00Z", 2.h), // wednesday
-       0 -> TimeInterval(ts"2023-07-13T06:00:00Z", 2.h), // thursday
-       0 -> TimeInterval(Timestamp("2023-07-14T06:00:00Z"), 2.h), // friday
-       0 -> TimeInterval(Timestamp("2023-07-15T06:00:00Z"), 2.h), // saturday
-       0 -> TimeInterval(Timestamp("2023-07-16T06:00:00Z"), 2.h), // sunday
+      0 -> TimeInterval(ts"2023-07-10T06:00:00Z", 2.h), // monday
+      2 -> TimeInterval(ts"2023-07-10T16:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-11T06:00:00Z", 2.h), // tuesday
+      1 -> TimeInterval(ts"2023-07-11T15:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-12T06:00:00Z", 2.h), // wednesday
+      0 -> TimeInterval(ts"2023-07-13T06:00:00Z", 2.h), // thursday
+      0 -> TimeInterval(ts"2023-07-14T06:00:00Z", 2.h), // friday
+      0 -> TimeInterval(ts"2023-07-15T06:00:00Z", 2.h), // saturday
+      0 -> TimeInterval(ts"2023-07-16T06:00:00Z", 2.h), // sunday
 
-       0 -> TimeInterval(Timestamp("2023-07-17T06:00:00Z"), 2.h), // monday
-       0 -> TimeInterval(Timestamp("2023-07-18T06:00:00Z"), 2.h), // tuesday
-       1 -> TimeInterval(Timestamp("2023-07-18T15:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-19T06:00:00Z"), 2.h), // wednesday
-       0 -> TimeInterval(Timestamp("2023-07-20T06:00:00Z"), 2.h), // thursday
-       0 -> TimeInterval(Timestamp("2023-07-21T06:00:00Z"), 2.h), // friday
-       3 -> TimeInterval(Timestamp("2023-07-21T17:00:00Z"), 1.h),
-       0 -> TimeInterval(Timestamp("2023-07-22T06:00:00Z"), 2.h), // saturday
-       0 -> TimeInterval(Timestamp("2023-07-23T06:00:00Z"), 2.h), // sunday
+      0 -> TimeInterval(ts"2023-07-17T06:00:00Z", 2.h), // monday
+      0 -> TimeInterval(ts"2023-07-18T06:00:00Z", 2.h), // tuesday
+      1 -> TimeInterval(ts"2023-07-18T15:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-19T06:00:00Z", 2.h), // wednesday
+      0 -> TimeInterval(ts"2023-07-20T06:00:00Z", 2.h), // thursday
+      0 -> TimeInterval(ts"2023-07-21T06:00:00Z", 2.h), // friday
+      3 -> TimeInterval(ts"2023-07-21T17:00:00Z", 1.h),
+      0 -> TimeInterval(ts"2023-07-22T06:00:00Z", 2.h), // saturday
+      0 -> TimeInterval(ts"2023-07-23T06:00:00Z", 2.h), // sunday
 
-       0 -> TimeInterval(Timestamp("2023-07-24T06:00:00Z"), 2.h), // monday
-       0 -> TimeInterval(Timestamp("2023-07-25T06:00:00Z"), 2.h), // tuesday
-       1 -> TimeInterval(Timestamp("2023-07-25T15:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-26T06:00:00Z"), 2.h), // wednesday
-       0 -> TimeInterval(Timestamp("2023-07-27T06:00:00Z"), 2.h), // thursday
-       0 -> TimeInterval(Timestamp("2023-07-28T06:00:00Z"), 2.h), // friday
-       0 -> TimeInterval(Timestamp("2023-07-29T06:00:00Z"), 2.h), // saturday
-       0 -> TimeInterval(Timestamp("2023-07-30T06:00:00Z"), 2.h), // sunday
+      0 -> TimeInterval(ts"2023-07-24T06:00:00Z", 2.h), // monday
+      0 -> TimeInterval(ts"2023-07-25T06:00:00Z", 2.h), // tuesday
+      1 -> TimeInterval(ts"2023-07-25T15:00:00Z", 2.h),
+      0 -> TimeInterval(ts"2023-07-26T06:00:00Z", 2.h), // wednesday
+      0 -> TimeInterval(ts"2023-07-27T06:00:00Z", 2.h), // thursday
+      0 -> TimeInterval(ts"2023-07-28T06:00:00Z", 2.h), // friday
+      0 -> TimeInterval(ts"2023-07-29T06:00:00Z", 2.h), // saturday
+      0 -> TimeInterval(ts"2023-07-30T06:00:00Z", 2.h), // sunday
 
-       0 -> TimeInterval(Timestamp("2023-07-31T06:00:00Z"), 2.h), // monday
-       4 -> TimeInterval(Timestamp("2023-07-31T18:00:00Z"), 3.h)))
+      0 -> TimeInterval(ts"2023-07-31T06:00:00Z", 2.h), // monday
+      4 -> TimeInterval(ts"2023-07-31T18:00:00Z", 3.h)))
 
   private def local(string: String) = LocalDateTime.parse(string)
