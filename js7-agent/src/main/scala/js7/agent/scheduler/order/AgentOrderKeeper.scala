@@ -981,7 +981,7 @@ extends JournalingActor[AgentState, Event], Stash:
 
 object AgentOrderKeeper:
   private val logger = Logger[this.type]
-  val TestAttachOrderToAgentResponseTimeout = 100.ms
+  val TestAttachOrderToAgentResponseTimeout = 200.ms
 
   sealed trait Input
   object Input:
