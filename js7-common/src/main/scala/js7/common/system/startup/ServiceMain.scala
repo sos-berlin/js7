@@ -24,9 +24,6 @@ object ServiceMain:
   private lazy val logger = Logger[this.type]
   private val runningSince: Deadline = Deadline.now
 
-  // Run initialization code above.
-  def initialize(): Unit = ()
-
   /** Returns the return code. */
   def runAsMain[Cnf <: BasicConfiguration, Svc <: MainService](
     args: Seq[String],
@@ -38,37 +35,36 @@ object ServiceMain:
     (toServiceResource: Cnf => ResourceIO[Svc],
     use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
-    IO
-      .defer:
-        printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-        StartUp.initializeMain()
+    IO.defer:
+      printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+      StartUp.initializeMain()
 
-        JavaMainLockfileSupport
-          .runMain(args.toVector, useLockFile = useLockFile): commandLineArguments =>
-            IO.defer:
-              lazy val conf: Cnf =
-                try
-                  val conf = argsToConf(commandLineArguments)
-                  commandLineArguments.requireNoMoreArguments() // throws
-                  conf
-                catch case NonFatal(t) =>
-                  // We have to log the error ourselves, like a Service
-                  logger.error(t.toStringWithCauses)
-                  throw t
-              logging.logFirstLines(commandLineArguments, conf)
-              logging.run(toServiceResource(conf)):
-                use(conf, _)
-          .attempt.map:
-            case Left(throwable) =>
-              logger.debug(s"Already logged: ❓${throwable.toStringWithCauses}")
-              ExitCode.Error // Service has already logged an error
-            case Right(termination) =>
-              if !suppressTerminationLogging then
-                logging.logTermination(name, termination)
-              termination.toExitCode
-      .guarantee:
-        IO.unlessA(suppressLogShutdown)(IO:
-          Logger.shutdown(suppressLogging = suppressTerminationLogging))
+      JavaMainLockfileSupport
+        .runMain(args.toVector, useLockFile = useLockFile): commandLineArguments =>
+          IO.defer:
+            lazy val conf: Cnf =
+              try
+                val conf = argsToConf(commandLineArguments)
+                commandLineArguments.requireNoMoreArguments() // throws
+                conf
+              catch case NonFatal(t) =>
+                // We have to log the error ourselves, like a Service
+                logger.error(t.toStringWithCauses)
+                throw t
+            logging.logFirstLines(commandLineArguments, conf)
+            logging.run(toServiceResource(conf)):
+              use(conf, _)
+        .attempt.map:
+          case Left(throwable) =>
+            logger.debug(s"Already logged: ❓${throwable.toStringWithCauses}")
+            ExitCode.Error // Service has already logged an error
+          case Right(termination) =>
+            if !suppressTerminationLogging then
+              logging.logTermination(name, termination)
+            termination.toExitCode
+    .guarantee:
+      IO.unlessA(suppressLogShutdown)(IO:
+        Logger.shutdown(suppressLogging = suppressTerminationLogging))
 
   def blockingRun[Svc <: MainService](
     timeout: Duration = Duration.Inf)

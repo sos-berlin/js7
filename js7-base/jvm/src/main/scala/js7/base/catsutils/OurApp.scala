@@ -17,4 +17,5 @@ trait OurApp extends IOAppWithCpuStarvationCheck:
     Logger.initialize(productName)
     OurIORuntime.commonIORuntime
 
-  override protected def blockedThreadDetectionEnabled = isStrict
+  override protected def blockedThreadDetectionEnabled =
+    super.blockedThreadDetectionEnabled || isStrict

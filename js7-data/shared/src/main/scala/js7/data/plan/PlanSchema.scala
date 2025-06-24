@@ -96,7 +96,7 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
       unknownPlanIsOpenFunction = exprFun"week => $$week >= $$openingWeek",
       Map("openingWeek" -> StringValue.empty))
 
-  private val meterUnknownPlanIsOpenFunction = CallMeter("PlanSchmea.unknownPlanIsOpenFunction")
+  private val meterUnknownPlanIsOpenFunction = CallMeter("PlanSchema.unknownPlanIsOpenFunction")
 
   override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
 
