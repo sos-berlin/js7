@@ -45,10 +45,6 @@ object CatsEffectExtensions:
     def catchAsChecked: IO[Checked[A]] =
       io.attempt.map(Checked.fromThrowableEither)
 
-    @deprecated("Use guaranteeExceptWhenSucceeded")
-    def guaranteeExceptWhenCompleted(finalizer: IO[Unit]): IO[A] =
-      guaranteeExceptWhenSucceeded(finalizer)
-
     def guaranteeExceptWhenSucceeded(finalizer: IO[Unit]): IO[A] =
       io.guaranteeCase:
         case Outcome.Succeeded(_) => IO.unit
@@ -60,7 +56,7 @@ object CatsEffectExtensions:
 
     /** Extra name to detect unjoined fibers in code. */
     def startAndForget(label: => String): IO[Unit] =
-      io.startAndCatchError.void
+      startAndCatchError(label).void
 
     def startAndLogError(using enc: sourcecode.Enclosing): IO[FiberIO[A]] =
       startAndLogError(s"${enc.value} startAndLogError")

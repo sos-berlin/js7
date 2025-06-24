@@ -35,7 +35,7 @@ object SubagentWebServer:
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 
-        lazy val webServerRoute =
+        val webServerRoute =
           memoize:
             subagent.map: subagent =>
               new SubagentRoute(
