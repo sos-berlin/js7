@@ -81,9 +81,9 @@ object ReactorConvertersTest:
     val stream: Stream[IO, Int] = Stream
       .bracket(
         acquire = IO:
-          acquired += 1)(
+          acquired.incrementAndGet())(
         release = _ => IO:
-          released += 1)
+          released.incrementAndGet())
       .flatMap: i =>
         assert(i == 1 && acquired.get == 1 && released.get == 0)
         Stream(i, 2, 3)

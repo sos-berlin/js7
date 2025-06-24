@@ -21,8 +21,10 @@ final class AtomicTest extends OurTestSuite:
     assert(a.get() == 3)
     a := 4
     assert(a.get() == 4)
-    assert((a += 1) == 5)
-    assert((a -= 2) == 3)
+    a += 1
+    assert(a.get() == 5)
+    a -= 2
+    assert(a.get() == 3)
 
   "AtomicLong" in:
     val a: AtomicLong = Atomic(1L)
@@ -31,8 +33,10 @@ final class AtomicTest extends OurTestSuite:
     assert(a.get() == 3L)
     a := 4L
     assert(a.get() == 4L)
-    assert((a += 1L) == 5L)
-    assert((a -= 2L) == 3L)
+    a += 1L
+    assert(a.get() == 5L)
+    a -= 2L
+    assert(a.get() == 3L)
 
   "AtomicReference" in:
     val a: AtomicReference[String] = Atomic("1")

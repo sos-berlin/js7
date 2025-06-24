@@ -31,29 +31,29 @@ object Atomic:
 
   object extensions:
     extension(o: AtomicBoolean)
-      def :=(a: Boolean): Unit =
+      inline def :=(a: Boolean): Unit =
         o.set(a)
 
     extension(o: AtomicInteger)
-      def :=(a: Int): Unit =
+      inline def :=(a: Int): Unit =
         o.set(a)
 
-      def +=(a: Int): Int =
-        o.addAndGet(a)
+      inline def +=(a: Int): Unit =
+        o.getAndAdd(a)
 
-      def -=(a: Int): Int =
-        o.addAndGet(-a)
+      inline def -=(a: Int): Unit =
+        o.getAndAdd(-a)
 
     extension(o: AtomicLong)
-      def :=(a: Long): Unit =
+      inline def :=(a: Long): Unit =
         o.set(a)
 
-      def +=(a: Long): Long =
-        o.addAndGet(a)
+      inline def +=(a: Long): Unit =
+        o.getAndAdd(a)
 
-      def -=(a: Long): Long =
-      o.addAndGet(-a)
+      inline def -=(a: Long): Unit =
+        o.getAndAdd(-a)
 
     extension[A](o: AtomicReference[A])
-      def :=(a: A): Unit =
+      inline def :=(a: A): Unit =
         o.set(a)
