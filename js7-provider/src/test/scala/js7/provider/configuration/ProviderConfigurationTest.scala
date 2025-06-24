@@ -21,6 +21,7 @@ final class ProviderConfigurationTest extends OurTestSuite:
       assert(CommandLineArguments
         .parse(Seq(
           s"--config-directory=$dir",
+          s"--data-directory=$dir",
           "--controller-uri=https://example.com")
         )(ProviderConfiguration.fromCommandLine(_))
         .copy(config = ConfigFactory.empty)
@@ -33,7 +34,8 @@ final class ProviderConfigurationTest extends OurTestSuite:
       assert(
         CommandLineArguments
           .parse(Seq(
-            s"--config-directory=$dir")
+            s"--config-directory=$dir",
+            s"--data-directory=$dir")
           )(ProviderConfiguration.fromCommandLine(_))
           .copy(config = ConfigFactory.empty)
           == ProviderConfiguration(dir, Uri("https://example.com"), HttpsConfig.empty))

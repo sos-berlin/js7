@@ -32,6 +32,7 @@ private object ProxyMainConf:
 
   def fromCommandLine(args: CommandLineArguments): ProxyMainConf =
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
+    val unusedDataDir = args.as[Path]("--data-directory=").toAbsolutePath
     val clusterWatchId = args.optionAs[ClusterWatchId]("--cluster-watch-id=")
 
     val config = ConfigFactory.parseMap(Map(

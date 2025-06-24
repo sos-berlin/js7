@@ -38,6 +38,7 @@ object ProviderConfiguration:
   def fromCommandLine(a: CommandLineArguments, addConfig: Config = ConfigFactory.empty)
   : ProviderConfiguration =
     val configDir = a.as[Path]("--config-directory=").toAbsolutePath
+    a.as[Path]("--data-directory=").toAbsolutePath // not used
     val config = ConfigFactory.parseMap(Map(
       "js7.config-directory" -> configDir.toString
     ).asJava)

@@ -52,7 +52,8 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterFor
 
           val args = List(
             "--cluster-watch-id=MY-CLUSTER-WATCH",
-            "--config-directory=" + dir)
+            "--config-directory=" + dir,
+            "--data-directory=" + dir)
 
           ClusterWatchMain.runAsTest(args): service =>
             IO.race(

@@ -28,6 +28,7 @@ extends BasicConfiguration:
 object ClusterWatchConf:
   def fromCommandLine(args: CommandLineArguments): ClusterWatchConf =
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
+    args.as[Path]("--data-directory=").toAbsolutePath // not used
     val clusterWatchId = args.as[ClusterWatchId]("--cluster-watch-id=")
 
     val config = ConfigFactory.parseMap(Map(

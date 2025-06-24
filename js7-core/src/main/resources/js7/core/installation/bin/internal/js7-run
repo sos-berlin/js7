@@ -106,6 +106,7 @@ if [ -f "$config/log4j2.xml" ]; then :
 fi
 
 appOptions+=("--config-directory=$config")
+appOptions+=("--data-directory=$data")
 
 execute=(
   "$java"
@@ -133,3 +134,5 @@ wait $pid || log "JS7 $camelName exited with exit code $?"
 trap - SIGTERM SIGINT
 
 log "JS7 $camelName has been shut down"
+
+data

@@ -64,6 +64,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       .parse(
         Seq(
           "--config-directory=" + providerDirectory / "config",
+          "--data-directory=" + providerDirectory / "data", // not used
           "--controller-uri=" + controller.localUri))(
         ProviderConfiguration.fromCommandLine(_, testConfig))
       .copy(testSuppressStart = true)

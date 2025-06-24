@@ -51,7 +51,8 @@ final class ProxyTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:
 
           val args = List(
             "--cluster-watch-id=MY-CLUSTER-WATCH",  // Run ClusterWatch, too
-            "--config-directory=" + dir)
+            "--config-directory=" + dir,
+            "--data-directory=" + dir)
 
           Proxy.runAsTest(args): service =>
             IO.race(stopProxy.get, service.untilStopped)
