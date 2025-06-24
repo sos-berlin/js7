@@ -23,7 +23,9 @@ private final case class ProxyMainConf(
   proxyConf: ProxyConf,
   clusterWatchId: Option[ClusterWatchId],
   config: Config)
-extends BasicConfiguration
+extends BasicConfiguration:
+
+  def name = "Proxy"
 
 
 private object ProxyMainConf:

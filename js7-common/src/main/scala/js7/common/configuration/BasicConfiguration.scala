@@ -9,6 +9,8 @@ trait BasicConfiguration:
 
   def config: Config
 
+  def name: String
+
   def maybeConfigDirectory: Option[Path] =
     None
 
@@ -34,6 +36,8 @@ object BasicConfiguration:
   type Empty = Empty.type
   object Empty extends BasicConfiguration with Companion[Empty]:
     val config = ConfigFactory.empty()
+
+    def name = "Unnamed"
 
     def fromCommandLine(args: CommandLineArguments): Empty =
       args.requireNoMoreArguments()

@@ -23,6 +23,8 @@ private final case class FeedConf(
 extends BasicConfiguration:
   val config = ConfigFactory.empty
 
+  def name = "Feed"
+
 
 private object FeedConf:
 

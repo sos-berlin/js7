@@ -65,7 +65,8 @@ final class CommonConfigurationTest extends OurTestSuite:
 
 private object CommonConfigurationTest:
   private case class TestConf(configDirectory: Path, dataDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
-  extends CommonConfiguration
+  extends CommonConfiguration:
+    def name = "CommonConfigurationTest"
 
   private def conf(args: String*): TestConf =
     val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(

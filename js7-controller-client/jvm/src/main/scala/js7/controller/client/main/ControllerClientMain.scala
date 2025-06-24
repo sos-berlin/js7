@@ -53,6 +53,7 @@ object ControllerClientMain extends ServiceApp:
   case object StdinCommand extends Operation
   final case class Get(uri: String) extends Operation
 
+
   final case class Conf(
     controllerUri: Uri,
     override val maybeConfigDirectory: Option[Path],
@@ -60,6 +61,8 @@ object ControllerClientMain extends ServiceApp:
     operations: Seq[Operation])
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
+
+    def name = "ControllerClient"
 
   object Conf:
     def args(args: String*): Conf =

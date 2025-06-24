@@ -74,12 +74,15 @@ object CrashPidFileKiller extends ServiceApp:
       case Right(o) =>
         Stream.emit(o)
 
+
   final case class Conf(
     override val maybeDataDirectory: Option[Path] = None,
     dontExecute: Boolean = false,
     sigkillDelay: FiniteDuration = ZeroDuration)
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
+
+    def name = "CrashPidFileKiller"
 
   object Conf:
     val Default: Conf = Conf()

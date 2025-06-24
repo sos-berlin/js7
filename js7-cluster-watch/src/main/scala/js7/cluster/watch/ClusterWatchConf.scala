@@ -21,7 +21,8 @@ final case class ClusterWatchConf(
   clusterNodeAdmissions: Nel[Admission],
   httpsConfig: HttpsConfig,
   config: Config)
-extends BasicConfiguration
+extends BasicConfiguration:
+  val name = "ClusterWatch"
 
 
 object ClusterWatchConf:

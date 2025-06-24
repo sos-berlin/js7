@@ -48,6 +48,8 @@ object TestRecovery extends ServiceApp:
 
 
   private final case class Conf(journalFile: Path) extends BasicConfiguration:
+    val name = "Test"
+
     def config = ConfigFactory.empty()
 
   private object Conf:

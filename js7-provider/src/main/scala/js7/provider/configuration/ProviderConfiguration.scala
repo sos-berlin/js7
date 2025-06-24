@@ -23,6 +23,7 @@ final case class ProviderConfiguration(
   testSuppressStart: Boolean = false,
   config: Config = ConfigFactory.empty)
 extends BasicConfiguration:
+  val name = "Provider"
 
   val liveDirectory: Path = configDirectory / "live"
   val orderGeneratorsDirectory: Path = configDirectory / "order-generators"

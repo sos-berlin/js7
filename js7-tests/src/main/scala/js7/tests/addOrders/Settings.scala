@@ -16,6 +16,8 @@ private final case class Settings(
 extends BasicConfiguration:
   val config = ConfigFactory.empty
 
+  def name = "TestAddOrders"
+
 
 private object Settings:
   private val defaultUserAndPassword = UserAndPassword(UserId("demo"), SecretString("demo"))
