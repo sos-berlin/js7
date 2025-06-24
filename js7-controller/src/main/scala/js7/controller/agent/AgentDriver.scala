@@ -280,16 +280,21 @@ extends Service.StoppableByRequest:
   def reset(force: Boolean): IO[Checked[Unit]] =
     if force then
       resetAgent(None)
+        .map(Right(_))
     else
       maybeAgentRunId.flatMap:
         case None => IO.left(AgentNotDedicatedProblem /*Nothing to reset*/)
-        case Some(agentRunId) => resetAgent(Some(agentRunId))
+        case Some(agentRunId) =>
+          resetAgent(Some(agentRunId))
+            .map(Right(_))
 
-  private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
-    logger.traceIO(
-      directorDriverAllocated.value
-        .flatMap(_.resetAgentAndStop(agentRunId)) // Stops the directorDriver, too
-        .flatTapT(_ => stop.map(Right(_))))
+  private def resetAgent(agentRunId: Option[AgentRunId]): IO[Unit] =
+    logger.traceIO:
+      directorDriverAllocated.get
+        .flatMap(_.fold(IO.unit):
+          _.resetAgentAndStop(agentRunId)) // Stops the directorDriver, too
+        .productR:
+          stop
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
     assertThat(stampedEvents.nonEmpty)

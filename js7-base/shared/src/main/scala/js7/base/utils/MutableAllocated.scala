@@ -26,11 +26,13 @@ final class MutableAllocated[A](logMinor: Boolean = false)
 
   def checked: IO[Checked[A]] =
     allocatedVar.value.map:
-      case `empty` =>
-        Left(Problem(s"$toString has not been allocated"))
+      case `empty` => Left(Problem(s"$toString has not been allocated"))
+      case allocated => Right(allocated.allocatedThing)
 
-      case allocated =>
-        Right(allocated.allocatedThing)
+  def get: IO[Option[A]] =
+    allocatedVar.value.map:
+      case `empty` => None
+      case allocated => Some(allocated.allocatedThing)
 
   def acquire(resource: ResourceIO[A]): IO[A] =
     logger.traceIO(s"$toString acquire"):
