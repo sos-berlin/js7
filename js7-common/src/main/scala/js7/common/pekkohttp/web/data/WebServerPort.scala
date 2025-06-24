@@ -19,6 +19,10 @@ sealed trait WebServerPort:
 
 
 object WebServerPort:
+
+  def httpAtAllInterfaces(port: Int): Http =
+    Http(new InetSocketAddress("0.0.0.0", port))
+
   def localhost(port: Int): Http =
     Http(new InetSocketAddress("127.0.0.1", port))
 

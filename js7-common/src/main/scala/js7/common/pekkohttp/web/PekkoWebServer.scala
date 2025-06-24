@@ -21,8 +21,10 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, DelayConf}
 import js7.base.web.Uri
+import js7.common.configuration.{BasicConfiguration, CommonConfiguration}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.PekkoWebServer.*
+import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.apache.pekko.actor.ActorSystem
@@ -191,6 +193,17 @@ object PekkoWebServer:
       config,
       _ => BoundRoute.simple(route))
 
+  def simple(conf: CommonConfiguration)(route: RouteBinding => Route)
+    (using actorSystem: ActorSystem,
+      testEventBus: StandardEventBus[Any] = new StandardEventBus)
+  : ResourceIO[PekkoWebServer] =
+    resource(
+      conf.webServerBindings,
+      conf.config,
+      routeBinding =>
+        PekkoWebServer.BoundRoute.simple(conf):
+          route(routeBinding))
+
   def resource(
     webServerBindings: Seq[WebServerBinding],
     config: Config,
@@ -246,12 +259,23 @@ object PekkoWebServer:
     def startupSecurityHint(scheme: WebServerBinding.Scheme): String
 
   object BoundRoute:
+    def simple(conf: BasicConfiguration)(route: Route): BoundRoute =
+      new ByConf(conf, route)
+
+    private final class ByConf(conf: BasicConfiguration, route: Route) extends BoundRoute:
+      val serviceName = conf.name
+      val webServerRoute: IO[Route] = IO.pure(route)
+
+      private val gateKeeperConf = GateKeeper.Configuration.fromConfig(conf.config)
+
+      def startupSecurityHint(scheme: WebServerBinding.Scheme) =
+        gateKeeperConf.secureStateString(scheme)
+
+
     def simple(route: Route): BoundRoute =
-      new Simple(route)
+      new Simple(route, serviceName = "")
 
-    final class Simple(route: Route) extends BoundRoute:
-      val serviceName = ""
-
+    private final class Simple(route: Route, val serviceName: String) extends BoundRoute:
       val webServerRoute: IO[Route] = IO.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""

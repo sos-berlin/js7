@@ -287,7 +287,8 @@ object GateKeeper:
   object Configuration:
     def fromConfig[U <: User](
       config: Config,
-      toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
+      toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U =
+        SimpleUser.apply,
       permissions: Iterable[Permission] = Nil)
     : Configuration[U] =
       val idToUser = IdToUser.fromConfig(config, toUser, Permission.toStringToPermission(permissions))
