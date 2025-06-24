@@ -26,8 +26,8 @@ final class CallMeterTest extends OurAsyncTestSuite:
           i -= 1
 
     assert(meterConstant.count == n)
-    assert(meterConstant.duration > 0.s)
-    CallMeter.logAndResetAll()
+    assert(meterConstant.measurement().duration > 0.s)
+    CallMeter.logAll()
     succeed
 
   "IO" in:
@@ -40,8 +40,8 @@ final class CallMeterTest extends OurAsyncTestSuite:
     .productR:
       IO:
         assert(meterIO.count == n)
-        assert(meterIO.duration > 1.µs * n)
-        CallMeter.logAndResetAll()
+        assert(meterIO.measurement().duration > 1.µs * n)
+        CallMeter.logAll()
         succeed
 
   "nanoTime duration only" in:
@@ -51,7 +51,7 @@ final class CallMeterTest extends OurAsyncTestSuite:
       meterNanoTime:
         System.nanoTime()
       i -= 1
-    CallMeter.logAndResetAll()
+    CallMeter.logAll()
 
     i = n
     val t = System.nanoTime()

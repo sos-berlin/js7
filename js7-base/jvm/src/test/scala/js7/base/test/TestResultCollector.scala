@@ -33,7 +33,7 @@ private object TestResultCollector:
 
   sys.runtime.addShutdownHook:
     newMaybeVirtualThread("TestResultCollector-shutdown-hook"):
-      CallMeter.logAndResetAll()
+      CallMeter.logAll()
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
       if sys.props.asSwitch("js7.dumpHeap") then dumpJavaHeap()

@@ -3,7 +3,7 @@ package js7.common.system.startup
 import cats.effect.{ExitCode, IO, ResourceIO}
 import cats.syntax.apply.*
 import js7.base.catsutils.OurApp
-import js7.base.metering.CallMeter
+import js7.base.metering.CallMeterLoggingService
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -37,7 +37,7 @@ trait ServiceApp extends OurApp:
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
       cnf =>
-        CallMeter.loggingService(cnf.config) *>
+        CallMeterLoggingService.resource(cnf.config) *>
           program(cnf),
       use)
 
@@ -56,7 +56,6 @@ trait ServiceApp extends OurApp:
     ): conf =>
       Service.resource:
         Service.simple(program(conf))
-
 
   protected final def programAsService(program: IO[ExitCode | Unit])
   : ResourceIO[SimpleMainService] =
