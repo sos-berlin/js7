@@ -137,6 +137,7 @@ object CatsEffectExtensions:
   private val trueIO = IO.pure(true)
   private val falseIO = IO.pure(false)
   private val completedIO = IO.pure(Completed)
+  private val rightUnitIO = IO.pure(Right(()))
 
   extension(x: IO.type)
     def blockingOn[A](executionContext: ExecutionContext)(body: => A): IO[A] =
@@ -155,6 +156,9 @@ object CatsEffectExtensions:
 
     def right[R](value: R): IO[Either[Nothing, R]] =
       IO.pure(Right(value))
+
+    def right(value: Unit): IO[Either[Nothing, Unit]] =
+      rightUnitIO
 
     inline def True: IO[Boolean] =
       trueIO
