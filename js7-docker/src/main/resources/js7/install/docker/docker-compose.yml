@@ -243,3 +243,17 @@ services:
       - ./volumes/prometheus/data:/prometheus:delegates
     ports:
       - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    hostname: grafana
+    user: 1000:1000 # The volumes/grafana directory will be accessed with this UID:GID
+    ports:
+      - "0.0.0.0:3000:3000" # Publicly accessible !!!
+    #environment:
+    #  - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./volumes/grafana/:/var/lib/grafana
+    restart: unless-stopped

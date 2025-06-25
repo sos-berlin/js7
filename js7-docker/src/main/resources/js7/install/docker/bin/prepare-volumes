@@ -11,6 +11,7 @@ mkdir -p volumes/{subagent-1a,subagent-1b,subagent-1c,subagent-2a}/config/execut
 mkdir -p -m 700 volumes/prometheus/config/private
 mkdir -p -m 700 volumes/prometheus/etc/prometheus
 mkdir -p -m 700 volumes/prometheus/data
+mkdir -p -m 700 volumes/grafana
 
 cp -Rrnv build/volumes/* volumes || true
 ( umask go-rwx
