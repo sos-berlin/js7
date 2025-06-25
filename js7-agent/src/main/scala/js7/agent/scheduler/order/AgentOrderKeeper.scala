@@ -804,8 +804,8 @@ extends JournalingActor[AgentState, Event], Stash:
         val oes = new OrderEventSource(agentState)
         if order != agentState.idToOrder(order.id) then
           // FIXME order should be equal !
-          logger.debug(s"❌ ERROR order    =$order")
-          logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
+          logger.debug(s"❓ inconsistency: order    =$order")
+          logger.debug(s"❓ inconsistency: idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
 
         val keyedEvents: Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
