@@ -141,6 +141,7 @@ object StreamExtensions:
      */
     def chunkWithin(chunkSize: Int, timeout: FiniteDuration)(using F: Temporal[F])
     : Stream[F, Chunk[O]] =
+      // TODO Do not tick when idling, with small timeout the cpu is more used
       stream.pull
         .timed: timedPull =>
           def go(timedPull: Pull.Timed[F, O], queue: Chunk[O], queueSize: Int)

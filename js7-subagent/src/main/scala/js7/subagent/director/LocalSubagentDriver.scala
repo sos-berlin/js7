@@ -101,7 +101,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
         .evalMap(handleEvent)
-        .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
+        .groupWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
         .evalMap: chunk =>
           val stampedEvents = chunk.toVector.flatMap(_._1)
           val followUpAll = chunk.foldMap(_._2)
