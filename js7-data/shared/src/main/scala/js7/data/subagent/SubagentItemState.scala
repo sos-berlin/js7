@@ -89,7 +89,6 @@ extends
       case SubagentShutdown =>
         Right(copy(
           couplingState = Reset.shutdown,
-          subagentRunId = None,
           eventId = EventId.BeforeFirst,
           problem = None))
 
