@@ -130,6 +130,7 @@ extendedKeyUsage = clientAuth
     generateCertificate --dns --host=js7-subagent-1c --cn="JS7 Example subagent-1c"
     generateCertificate --dns --host=js7-subagent-2a --cn="JS7 Example subagent-2a"
     generateCertificate --dns --host=js7-provider --cn="JS7 Example Provider"
+    generateCertificate --dns --host=prometheus --cn="JS7 Example Prometheus"
   fi
   if [ -n "$client" ]; then
     generateCertificate --host="$client" --cn="$client"
@@ -137,7 +138,9 @@ extendedKeyUsage = clientAuth
 )
 
 if $install; then
-  for host in controller backup-controller proxy proxy-b cluster-watch cluster-watch-b provider subagent-1a subagent-1b subagent-1c subagent-2a; do
+  for host in controller backup-controller proxy proxy-b cluster-watch cluster-watch-b provider \
+              subagent-1a subagent-1b subagent-1c subagent-2a
+  do
     dir="volumes/$host/config/private"
     echo "$dir/https-keystore.p12"
     [ -d "$dir" ] || mkdir "$dir"
@@ -145,4 +148,6 @@ if $install; then
     cp -p "https/js7-$host.p12" "$dir/https-keystore.p12"
     cp -p "https/CA.crt" "$dir/"
   done
+
+  cp -p https/{CA.crt,prometheus.crt,prometheus.key} volumes/prometheus/config/private/
 fi

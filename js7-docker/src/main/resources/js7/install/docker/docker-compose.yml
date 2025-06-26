@@ -231,3 +231,15 @@ services:
       - ./volumes/subagent-2a/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    hostname: prometheus
+    user: 1000:1000 # The volumes/prometheus directory will be accessed with this UID:GID
+    volumes:
+      - ./volumes/prometheus/config/private:/var/opt/prometheus/private:ro
+      - ./volumes/prometheus/etc:/etc/prometheus:ro
+      - ./volumes/prometheus/data:/prometheus:delegates
+    ports:
+      - "127.0.0.1:9090:9090"
