@@ -3,7 +3,7 @@ package js7.subagent.director
 import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.fs2utils.StreamExtensions.{chunkWithin, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
