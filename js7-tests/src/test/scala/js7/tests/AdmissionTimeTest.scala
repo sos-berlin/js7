@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted}
+import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderObstacle.waitingForAdmmission
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
@@ -89,6 +89,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
+      execCmd:
+        CancelOrders(orderId :: Nil)
+      controller.awaitNextKey[OrderCancelled](orderId)
 
     "Start order with permission in daylight saving time gap" in:
       // Admission is shifted to the next valid local time
@@ -121,6 +124,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-04-04T03:00")))))
+      execCmd:
+        CancelOrders(orderId :: Nil)
+      controller.awaitNextKey[OrderCancelled](orderId)
   }
 
   "Monday after end of daylight saving time" in:
@@ -162,6 +168,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     clock := tooLate  // To late
     awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
+    execCmd:
+      CancelOrders(orderId :: Nil)
+    controller.awaitNextKey[OrderCancelled](orderId)
 
   "forceJobAdmission in AddOrder command" in:
     // Test only inheritance to forked child orders
@@ -198,6 +207,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
 
       assert(orderToObstacles(forkedaOrderId) ==
         Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+      execCmd:
+        CancelOrders(Seq(aOrderId, forkedaOrderId))
+      controller.awaitKey[OrderFailed](aOrderId)  // Failed because child order cancelled
     }
 
   "forceJobAdmission in AddOrder instruction" in:
@@ -214,7 +226,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
-      execCmd(CancelOrders(Seq(orderId)))
+      execCmd:
+        CancelOrders(Seq(orderId))
+      controller.awaitNextKey[OrderCancelled](orderId)
     }
 
     val startingWorkflow2 = Workflow(WorkflowPath("forceJobAdmission-2"), Seq(
