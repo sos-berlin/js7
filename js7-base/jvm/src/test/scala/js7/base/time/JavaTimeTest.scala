@@ -164,19 +164,39 @@ final class JavaTimeTest extends OurTestSuite:
   }
 
   "LocalDateTime" - {
+    def local(local: String) = LocalDateTime.parse(local)
+
     "compare" in:
-      val a = LocalDateTime.of(2016, 1, 1, 12, 0, 0)
-      val b = LocalDateTime.of(2016, 1, 1, 12, 0, 1)
+      val a = local("2016-01-01T12:00")
+      val b = local("2016-01-01T12:00:01")
       assert(a < b)
       assert(a <= b)
       assert(!(a >= b))
       assert(!(a > b))
-      assert(a.compareTo(LocalDateTime.of(2016, 1, 1, 12, 0, 0)) == 0)
+      assert(a.compareTo(local("2016-01-01T12:00")) == 0)
 
     "toInstant" in:
-      val timeZone = ZoneId.of("Europe/Helsinki")
-      assert(LocalDateTime.of(2016, 1, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-01-01T10:00:00Z"))
-      assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
+      val zoneId = ZoneId.of("Europe/Helsinki")
+      assert(local("2016-01-01T12:00").toInstant(zoneId) == Instant.parse("2016-01-01T10:00:00Z"))
+      assert(local("2016-07-01T12:00").toInstant(zoneId) == Instant.parse("2016-07-01T09:00:00Z"))
+
+    "normalize" in:
+      given zoneId: ZoneId = ZoneId.of("Europe/Helsinki")
+      // Begin of daylight-saving time
+      assert(local("2021-03-28T02:59").normalize == local("2021-03-28T02:59"))
+      assert(local("2021-03-28T03:00").normalize == local("2021-03-28T04:00"))
+      assert(local("2021-03-28T03:30").normalize == local("2021-03-28T04:30"))
+      assert(local("2021-03-28T04:00").normalize == local("2021-03-28T04:00"))
+      assert(local("2021-03-28T04:01").normalize == local("2021-03-28T04:01"))
+
+      // End of daylight-saving time
+      assert:
+        local("2021-10-31T04:00").toInstant(zoneId) - local("2021-10-31T03:00").toInstant(zoneId) == 2.h
+      assert:
+        local("2021-10-31T04:00").toInstant(zoneId) - local("2021-10-31T03:59").toInstant(zoneId) == 1.h + 60.s
+      assert(local("2021-10-31T02:00").normalize == local("2021-10-31T02:00"))
+      assert(local("2021-10-31T03:00").normalize == local("2021-10-31T03:00"))
+      assert(local("2021-10-31T04:00").normalize == local("2021-10-31T04:00"))
   }
 
   "java.util.Date.show" in:

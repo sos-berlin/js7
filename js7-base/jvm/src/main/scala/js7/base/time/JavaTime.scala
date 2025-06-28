@@ -115,8 +115,11 @@ object JavaTime:
       def -(o: FiniteDuration): LocalDateTime =
         localDateTime.minusNanos(o.toNanos)
 
-      def toInstant(zone: ZoneId): Instant =
-        ZonedDateTime.of(localDateTime, zone).toInstant
+      def toInstant(zoneId: ZoneId): Instant =
+        ZonedDateTime.of(localDateTime, zoneId).toInstant
+
+      def normalize(using zoneId: ZoneId): LocalDateTime =
+        LocalDateTime.ofInstant(localDateTime.toInstant(zoneId), zoneId)
 
 
     extension(timeZone: Timezone)
