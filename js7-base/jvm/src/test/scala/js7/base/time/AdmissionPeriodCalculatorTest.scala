@@ -2,7 +2,7 @@ package js7.base.time
 
 import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime.MIDNIGHT
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionPeriod.WeekSeconds
 import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, SpecificDatePeriodCalculator, WeekdayPeriodCalculator, startOfWeek}
@@ -10,6 +10,8 @@ import js7.base.time.ScalaTime.*
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
 
 final class AdmissionPeriodCalculatorTest extends OurTestSuite:
+
+  private given ZoneId = ZoneId.of("Europe/Mariehamn")
 
   "startOfWeek" in:
     //assert(sinceStartOfWeek(localDT("2022-06-01T00:00")) == localDT("2022-05-30T00:00").toEpochSecond(NoOffset))

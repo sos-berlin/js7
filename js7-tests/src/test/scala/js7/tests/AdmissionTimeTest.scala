@@ -42,7 +42,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
-  private implicit val timeZone: ZoneId = AdmissionTimeTest.timeZone
+  private implicit val zoneId: ZoneId = AdmissionTimeTest.timeZone
   private implicit lazy val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
@@ -95,7 +95,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     "Start order with permission in daylight saving time gap" in:
       // Admission is shifted to the next valid local time
-      assert(local("2021-03-28T04:00") - local("2021-03-28T02:59") == 1.minute)
+      assert(local("2021-03-28T03:00") == local("2021-03-28T04:00"))
       clock := local("2021-03-28T02:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔹")
@@ -149,7 +149,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   "Late start" in:
     val tooEarly = local("2021-11-08T07:59")
-    assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, timeZone, dateOffset = 0.s))
+    assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, dateOffset = 0.s))
     clock := tooEarly
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("♠️")
@@ -161,10 +161,10 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     // Let the clock skip the permission interval until it is too late.
     // This may happen due to any delay, for example due to other other orders in the job.
     assert(mondayAdmissionTimeScheme
-      .isPermitted(local("2021-11-08T08:00"), timeZone, dateOffset = 0.s))
+      .isPermitted(local("2021-11-08T08:00"), dateOffset = 0.s))
 
     val tooLate = local("2021-11-08T10:00")
-    assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, timeZone, dateOffset = 0.s))
+    assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, dateOffset = 0.s))
     clock := tooLate  // To late
     awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
@@ -180,7 +180,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
           "FORKED" -> Workflow.of(
             Execute(WorkflowJob(agentPath, EmptyJob.executable(),
               admissionTimeScheme = Some(sundayAdmissionTimeScheme))))))),
-      timeZone = Timezone(timeZone.getId))
+      timeZone = Timezone(zoneId.getId))
 
     withItem(workflow) { workflow =>
       clock := local("2023-06-21T00:00")

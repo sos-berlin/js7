@@ -19,6 +19,8 @@ final class ScheduleCalculator private(
   schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean)
 extends ScheduleSimulator:
 
+  private given ZoneId = zone
+
   /** Call this when cycling starts and after a cycle has finished.
     * @return The next CycleState or None when cycling ends
     */
@@ -49,7 +51,7 @@ extends ScheduleSimulator:
 
       if now < next then
         Do.KeepWaiting
-      else if scheme.admissionTimeScheme.isPermitted(now, zone, dateOffset) then
+      else if scheme.admissionTimeScheme.isPermitted(now, dateOffset) then
         Do.StartCycle(skipped.isPositive ? skipped)
       else
         nextCycleState(cycleState, now) match
@@ -62,7 +64,7 @@ extends ScheduleSimulator:
     schedule.schemes.view.zipWithIndex
       .flatMap: (scheme, schemeIndex) =>
         scheme.admissionTimeScheme
-          .findTimeIntervals(now, until = cycleState.end, zone, dateOffset)
+          .findTimeIntervals(now, until = cycleState.end, dateOffset)
           // For each current or next (periodIndex, TimeInterval) in Schemes
           .flatMap: (periodIndex, interval) =>
             val lastScheduledCycleStart = cycleState.next max interval.start
@@ -98,7 +100,7 @@ extends ScheduleSimulator:
     import periodic.{offsets, period}
     val scheduleMillis = offsets.view.map(_.toMillis)
     val p = period.toMillis
-    val localMilli = last.toZonedDateTime(using zone).toLocalDateTime.toInstant(UTC).toEpochMilli
+    val localMilli = last.toZonedDateTime.toLocalDateTime.toInstant(UTC).toEpochMilli
     val localPeriodStart = localMilli / p * p
     val localMilliOfPeriod = localMilli % p
 

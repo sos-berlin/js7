@@ -4,22 +4,24 @@ import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
 
 sealed trait LocalInterval extends Ordered[LocalInterval]:
 
-  def contains(local: LocalDateTime): Boolean
+  def contains(normalizedLocal: LocalDateTime)(using ZoneId): Boolean
 
-  def contains(start: LocalDateTime, end: LocalDateTime): Boolean
+  @TestOnly
+  def contains(normalizedStart: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean
 
   /** x <= start. */
-  def startsBefore(local: LocalDateTime): Boolean
+  def startsBefore(normalizedLocal: LocalDateTime)(using ZoneId): Boolean
 
   /** x <= end. */
-  def endsBefore(local: LocalDateTime): Boolean
+  def endsBefore(normalizedlocal: LocalDateTime)(using ZoneId): Boolean
 
-  def toTimeInterval(zone: ZoneId): TimeInterval
+  def toTimeInterval(using ZoneId): TimeInterval
 
 
 object LocalInterval:
@@ -30,24 +32,30 @@ object LocalInterval:
 
   final case class Standard(start: LocalDateTime, duration: FiniteDuration)
   extends js7.base.time.LocalInterval:
-    def contains(local: LocalDateTime): Boolean =
-      !start.isAfter(local) && end.isAfter(local)
+    def contains(local: LocalDateTime)(using ZoneId): Boolean =
+      // local should already be normalized, just to be sure:
+      val normalizedLocal = local.normalize
+      val normalizedStart = start.normalize
+      !normalizedStart.isAfter(normalizedLocal)
+        && (normalizedStart + duration).isAfter(normalizedLocal)
 
-    def contains(start: LocalDateTime, end: LocalDateTime): Boolean =
-      this.start < end && start < this.end
+    def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean =
+      // start and end should already be normalized, just to be sure:
+      val normalizedStart = start.normalize
+      val normalizedEnd = end.normalize
+      val normalizedThisStart = this.start.normalize
+      normalizedThisStart < normalizedEnd
+        && normalizedStart < (normalizedThisStart + duration)
 
-    def startsBefore(local: LocalDateTime): Boolean =
-      start <= local
+    def startsBefore(normalizedLocal: LocalDateTime)(using ZoneId): Boolean =
+      start.normalize <= normalizedLocal
 
-    def endsBefore(local: LocalDateTime): Boolean =
-      end <= local
+    def endsBefore(local: LocalDateTime)(using ZoneId): Boolean =
+      start.normalize + duration <= local
 
-    def end: LocalDateTime =
-      start + duration
-
-    def toTimeInterval(zone: ZoneId): TimeInterval =
+    def toTimeInterval(using zoneId: ZoneId): TimeInterval =
       TimeInterval(
-        JavaTimestamp.ofZoned(ZonedDateTime.of(start, zone)),
+        JavaTimestamp.ofZoned(ZonedDateTime.of(start, zoneId)),
         duration)
 
     def compare(o: LocalInterval): Int =
@@ -59,19 +67,19 @@ object LocalInterval:
     override def toString = s"LocalInterval($start, ${duration.pretty})"
 
   object Never extends LocalInterval:
-    def contains(local: LocalDateTime) =
+    def contains(local: LocalDateTime)(using ZoneId) =
       false
 
-    def contains(start: LocalDateTime, end: LocalDateTime) =
+    def contains(normalizedStart: LocalDateTime, normalizedEnd: LocalDateTime)(using ZoneId) =
       false
 
-    def startsBefore(local: LocalDateTime) =
+    def startsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       false
 
-    def endsBefore(local: LocalDateTime) =
+    def endsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       true
 
-    def toTimeInterval(zone: ZoneId): TimeInterval =
+    def toTimeInterval(using ZoneId): TimeInterval =
       TimeInterval.Never
 
     def compare(o: LocalInterval): Int =
@@ -82,19 +90,19 @@ object LocalInterval:
     override def toString = "Never"
 
   object Always extends LocalInterval:
-    def contains(local: LocalDateTime) =
+    def contains(normalizedLocal: LocalDateTime)(using ZoneId) =
       true
 
-    def contains(start: LocalDateTime, end: LocalDateTime) =
+    def contains(normalizedStart: LocalDateTime, normalizedEnd: LocalDateTime)(using ZoneId) =
       true
 
-    def startsBefore(local: LocalDateTime) =
+    def startsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       true
 
-    def endsBefore(local: LocalDateTime) =
+    def endsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       false
 
-    def toTimeInterval(zone: ZoneId): TimeInterval =
+    def toTimeInterval(using ZoneId): TimeInterval =
       TimeInterval.Always
 
     def compare(o: LocalInterval): Int =

@@ -13,6 +13,8 @@ final class ExecuteAdmissionTimeSwitch(
   zone: ZoneId,
   onSwitch: Option[TimeInterval] => Unit):
 
+  private given ZoneId = zone
+
   @volatile private var _nextTime: Option[Timestamp] = None
   private val _timer = SerialSyncCancelable()
 
@@ -29,7 +31,7 @@ final class ExecuteAdmissionTimeSwitch(
   def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): Boolean =
     clock.lock:
       val now = clock.now()
-      admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
+      admissionTimeScheme.findTimeInterval(now, dateOffset = ExecuteExecutor.noDateOffset)
       match
         case None =>
           _timer.cancel()
@@ -44,5 +46,4 @@ final class ExecuteAdmissionTimeSwitch(
               _timer := clock.scheduleAt(interval.start):
                 _nextTime = None
                 onAdmissionStart
-
           interval.contains(now) // Has admission now?

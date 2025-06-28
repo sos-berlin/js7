@@ -1,7 +1,7 @@
 package js7.base.time
 
 import java.time.DayOfWeek.{SUNDAY, TUESDAY}
-import java.time.{LocalDateTime, LocalTime}
+import java.time.{LocalDateTime, LocalTime, ZoneId}
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
@@ -11,6 +11,8 @@ import js7.tester.CirceJsonTester.*
 import scala.concurrent.duration.FiniteDuration
 
 final class AdmissionTimeSchemeTest extends OurTestSuite:
+
+  private given ZoneId = ZoneId.of("Europe/Mariehamn")
 
   "JSON" in:
     testJson(
@@ -113,6 +115,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
 object AdmissionTimeSchemeTest:
 
   def findLocalInterval(dateTimeString: String)(using admissionTimeScheme: AdmissionTimeScheme)
+    (using ZoneId)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
       LocalDateTime.parse(dateTimeString),

@@ -9,7 +9,7 @@ import js7.base.time.TimestampForTests.ts
 
 final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
-  private val zone = ZoneId.of("Europe/Mariehamn")
+  private given ZoneId = ZoneId.of("Europe/Mariehamn")
   private val dateOffset = 5.h
 
   private val scheme = AdmissionTimeScheme(Seq(
@@ -29,13 +29,13 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
     assert(!scheme.hasAdmissionPeriodStartForDay(LocalDate.parse("2023-07-06"), dateOffset))
 
   "isPermitted" in:
-    assert(!scheme.isPermitted(ts"2023-07-03T22:59:59Z", zone, dateOffset))
-    assert(scheme.isPermitted(ts"2023-07-03T23:00:00Z", zone, dateOffset)) // DailyPeriod(LocalTime.of(2, 0), 2.h),
-    assert(scheme.isPermitted(ts"2023-07-04T02:59:59Z", zone, dateOffset))
-    assert(!scheme.isPermitted(ts"2023-07-04T03:00:00Z", zone, dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-03T22:59:59Z", dateOffset))
+    assert(scheme.isPermitted(ts"2023-07-03T23:00:00Z", dateOffset)) // DailyPeriod(LocalTime.of(2, 0), 2.h),
+    assert(scheme.isPermitted(ts"2023-07-04T02:59:59Z", dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-04T03:00:00Z", dateOffset))
 
-    assert(!scheme.isPermitted(ts"2023-07-04T14:59:59Z", zone, dateOffset))
-    assert(scheme.isPermitted(ts"2023-07-04T15:00:00Z", zone, dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-04T14:59:59Z", dateOffset))
+    assert(scheme.isPermitted(ts"2023-07-04T15:00:00Z", dateOffset))
 
   "findLocalInterval" in:
     assert(scheme.findLocalInterval(local("2023-07-04T00:00"), dateOffset) ==
@@ -125,21 +125,21 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       .toSeq
 
   "findTimeInterval" in:
-    assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", zone, dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", dateOffset) ==
       Some(TimeInterval(ts"2023-07-03T23:00:00Z", 4.h))) // DailyPeriod(LocalTime.of(2, 0), 2.h),
-    assert(scheme.findTimeInterval(ts"2023-07-04T23:00:00Z", zone, dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T23:00:00Z", dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T23:00:00Z", 4.h)))
-    assert(scheme.findTimeInterval(ts"2023-07-04T22:59:59Z", zone, dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T22:59:59Z", dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T23:00:00Z", 4.h)))
 
-    assert(scheme.findTimeInterval(ts"2023-07-04T08:00:00Z", zone, dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T08:00:00Z", dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T15:00:00Z", 2.h)))
 
   "findTimeIntervals" in:
     val timeIntervals = scheme.findTimeIntervals(
       from = ts"2023-07-01T00:00:00Z",
       until = ts"2023-08-01T00:00:00Z",
-      zone, dateOffset)
+      dateOffset)
     assert(timeIntervals.toSeq == Seq(
       0 -> TimeInterval(ts"2023-06-30T23:00:00Z", 4.h), // saturday (dateOffset = 5h!)
       0 -> TimeInterval(ts"2023-07-01T23:00:00Z", 4.h), // sunday

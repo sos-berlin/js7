@@ -18,6 +18,9 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
   def companion: Timestamp.Companion =
     JavaTimestamp
 
+  def toTimestamp: Timestamp =
+    Timestamp.ofEpochMilli(toEpochMilli)
+
   /** Returns an ISO-8601 string with milliseconds.
     * For example "2017-12-04T11:22:33.456Z".
     */

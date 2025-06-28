@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import cats.instances.either.*
 import cats.instances.option.*
 import cats.syntax.traverse.*
-import java.time.LocalDate
+import java.time.{LocalDate, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTime.extensions.*
@@ -30,8 +30,11 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
     order.ifState[IsFreshOrReady].map: order =>
-      state.workflowJob(order.workflowPosition).flatMap: job =>
-        skippedReason(order, job).map: reason =>
+      for
+        workflow <- state.idToWorkflow.checked(order.workflowId)
+        given ZoneId <- workflow.timeZone.toZoneId
+        job <- state.workflowJob(order.workflowPosition)
+        events <- skippedReason(order, job).map: reason =>
           // If order should start, change nextMove function, too!
           //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
           Right:
@@ -48,6 +51,8 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
                     case Left(problem) =>
                       (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
                         :: Nil
+      yield
+        events
     .orElse:
       order.ifState[Processed].map: order =>
         val event = order.lastOutcome match
@@ -84,7 +89,11 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
     yield ()
 
   def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
-    for job <- state.workflowJob(order.workflowPosition) yield
+    for
+      workflow <- state.idToWorkflow.checked(order.workflowId)
+      given ZoneId <- workflow.timeZone.toZoneId
+      job <- state.workflowJob(order.workflowPosition)
+    yield
       for reason <- skippedReason(order, job) yield
         OrderMoved(order.position.increment, Some(reason))
 
@@ -94,7 +103,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   : Checked[Set[OrderObstacle]] =
     for
       workflow <- calculator.stateView.idToWorkflow.checked(order.workflowId)
-      zone <- workflow.timeZone.toZoneId
+      given ZoneId <- workflow.timeZone.toZoneId
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
     yield
@@ -102,7 +111,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job).isDefined)
           .flatMap(_
-            .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
+            .findTimeInterval(clock.now(), dateOffset = noDateOffset))
           .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
@@ -111,7 +120,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       else
         Set.empty
 
-  private def skippedReason(order: Order[Order.State], job: WorkflowJob)
+  private def skippedReason(order: Order[Order.State], job: WorkflowJob)(using zoneId: ZoneId)
   : Option[OrderMoved.Reason] =
     isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
       OrderMoved.NoAdmissionPeriodStart
@@ -119,6 +128,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   private def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
     order: Order[Order.State],
     job: WorkflowJob)
+    (using ZoneId)
   : Boolean =
     !order.forceJobAdmission &&
       job.skipIfNoAdmissionStartForOrderDay &&

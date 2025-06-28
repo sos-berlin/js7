@@ -12,46 +12,51 @@ object AdmissionTimeSchemeForJavaTime:
 
   implicit final class RichAdmissionTimeScheme(private val admissionTimeScheme: AdmissionTimeScheme)
   extends AnyVal:
-    def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =
+    def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration)
+      (using ZoneId)
+    : Boolean =
       admissionTimeScheme.periods
         .view
         .map(AdmissionPeriodCalculator(_, dateOffset))
         .exists(_.hasAdmissionPeriodStartForDay(localDate))
 
-    def isPermitted(timestamp: Timestamp, zone: ZoneId, dateOffset: FiniteDuration): Boolean =
-      findTimeInterval(timestamp, zone, dateOffset)
+    def isPermitted(timestamp: Timestamp, dateOffset: FiniteDuration)(using ZoneId): Boolean =
+      findTimeInterval(timestamp, dateOffset = dateOffset)
         .exists(_.contains(timestamp))
 
     /** Find current and next TimeIntervals until `until` for admission.
      * Shifts the interval when daylight saving time skips an hour. */
     def findTimeIntervals(
-      from: Timestamp, until: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
+      from: Timestamp, until: Timestamp, dateOffset: FiniteDuration)(using ZoneId)
     : View[(Int, TimeInterval)] =
-      findLocalIntervals(from.toLocalDateTime(using zone), dateOffset)
+      val localFrom = from.toLocalDateTime
+      findLocalIntervals(localFrom, dateOffset)
         .map: (periodIndex, localInterval) =>
-          periodIndex -> localInterval.toTimeInterval(zone)
-        .takeWhile(_._2.startsBefore(until))
+          periodIndex -> localInterval.toTimeInterval
+        .takeWhile(_._2.startsBefore(until)) // <-- delete FIXME
         .filterNot(_._2.endsBefore(from))
 
-    /** Find a current or next TimeInterval for admission.
+  /** Find a current or next TimeInterval for admission.
      * Shifts the interval when daylight saving time skips an hour. */
-    def findTimeInterval(from: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
+    def findTimeInterval(from: Timestamp, dateOffset: FiniteDuration)(using ZoneId)
     : Option[TimeInterval] =
-      findLocalIntervals(from.toLocalDateTime(using zone), dateOffset)
-        .map(_._2.toTimeInterval(zone))
+      findLocalIntervals(from.toLocalDateTime, dateOffset)
+        .map(_._2.toTimeInterval)
         .filterNot(_.endsBefore(from))
         .headOption
 
     /** Calculates end time with local time, yielding an hour more or less when dst shifts. */
     @TestOnly
-    def findLocalInterval(from: LocalDateTime, dateOffset: FiniteDuration): Option[LocalInterval] =
+    def findLocalInterval(from: LocalDateTime, dateOffset: FiniteDuration)(using ZoneId)
+    : Option[LocalInterval] =
       findLocalIntervals(from, dateOffset)
         .map(_._2)
         .filterNot(_.endsBefore(from))
         .headOption
 
     /** Return View[(period index, LocalInterval)]). */
-    private[time] def findLocalIntervals(local: LocalDateTime, dateOffset: FiniteDuration)
+    private[time] def findLocalIntervals(
+      local: LocalDateTime, dateOffset: FiniteDuration)(using ZoneId)
     : View[(Int, LocalInterval)] =
       View.fromIteratorProvider(() => admissionTimeScheme.periods
         .zipWithIndex

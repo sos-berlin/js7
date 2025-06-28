@@ -2,7 +2,6 @@ package js7.base.time
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import scala.annotation.targetName
 
 final case class AdmissionTimeScheme(periods: Seq[AdmissionPeriod])
 
