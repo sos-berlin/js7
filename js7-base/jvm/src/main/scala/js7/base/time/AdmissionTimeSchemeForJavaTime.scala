@@ -15,10 +15,14 @@ object AdmissionTimeSchemeForJavaTime:
     def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration)
       (using ZoneId)
     : Boolean =
-      admissionTimeScheme.periods
+      admissionTimeScheme.restrictedSchemes
         .view
-        .map(AdmissionPeriodCalculator(_, dateOffset))
-        .exists(_.hasAdmissionPeriodStartForDay(localDate))
+        .flatMap: restrictedScheme =>
+          restrictedScheme.periods.map(restrictedScheme.restriction -> _)
+        .map: (restriction, period) =>
+          AdmissionPeriodCalculator(period, dateOffset)
+        .exists:
+          _.hasAdmissionPeriodStartForDay(localDate)
 
     def isPermitted(timestamp: Timestamp, dateOffset: FiniteDuration)(using ZoneId): Boolean =
       findTimeInterval(timestamp, dateOffset = dateOffset)
@@ -58,8 +62,13 @@ object AdmissionTimeSchemeForJavaTime:
     private[time] def findLocalIntervals(
       local: LocalDateTime, dateOffset: FiniteDuration)(using ZoneId)
     : View[(Int, LocalInterval)] =
-      View.fromIteratorProvider(() => admissionTimeScheme.periods
-        .zipWithIndex
-        .map: (period, i) =>
-          AdmissionPeriodCalculator(period, dateOffset).findLocalIntervals(local).map(i -> _)
-        .mergeOrderedBy(_._2))
+      View.fromIteratorProvider: () =>
+        admissionTimeScheme.restrictedSchemes.view
+          .flatMap: restrictedScheme =>
+            restrictedScheme.periods.map(restrictedScheme.restriction -> _)
+          .zipWithIndex
+          .map:
+            case ((restriction, period), i) =>
+              AdmissionPeriodCalculator(period, dateOffset)
+                .findLocalIntervals(local, restriction).map(i -> _)
+          .mergeOrderedBy(_._2)

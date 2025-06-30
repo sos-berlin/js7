@@ -1,7 +1,7 @@
 package js7.base.time
 
 import cats.Eq
-import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.{LocalDateTime, ZoneId, ZonedDateTime, Duration as JDuration}
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import org.jetbrains.annotations.TestOnly
@@ -21,6 +21,8 @@ sealed trait LocalInterval extends Ordered[LocalInterval]:
   /** x <= end. */
   def endsBefore(normalizedlocal: LocalDateTime)(using ZoneId): Boolean
 
+  def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean
+
   def toTimeInterval(using ZoneId): TimeInterval
 
 
@@ -29,6 +31,7 @@ object LocalInterval:
 
   def apply(start: LocalDateTime, duration: FiniteDuration): LocalInterval =
     Standard(start, duration)
+
 
   final case class Standard(start: LocalDateTime, duration: FiniteDuration)
   extends js7.base.time.LocalInterval:
@@ -53,6 +56,9 @@ object LocalInterval:
     def endsBefore(local: LocalDateTime)(using ZoneId): Boolean =
       start.normalize + duration <= local
 
+    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
+      restriction.isUnrestricted(start, dateOffset)
+
     def toTimeInterval(using zoneId: ZoneId): TimeInterval =
       TimeInterval(
         JavaTimestamp.ofZoned(ZonedDateTime.of(start, zoneId)),
@@ -65,6 +71,7 @@ object LocalInterval:
         case o: Standard => start.compare(o.start)
 
     override def toString = s"LocalInterval($start, ${duration.pretty})"
+
 
   object Never extends LocalInterval:
     def contains(local: LocalDateTime)(using ZoneId) =
@@ -79,6 +86,9 @@ object LocalInterval:
     def endsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       true
 
+    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
+      false
+
     def toTimeInterval(using ZoneId): TimeInterval =
       TimeInterval.Never
 
@@ -88,6 +98,7 @@ object LocalInterval:
         case _ => +1  // Never > Always, Never > Standard
 
     override def toString = "Never"
+
 
   object Always extends LocalInterval:
     def contains(normalizedLocal: LocalDateTime)(using ZoneId) =
@@ -101,6 +112,9 @@ object LocalInterval:
 
     def endsBefore(normalizedLocal: LocalDateTime)(using ZoneId) =
       false
+
+    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
+      true // Restriction is not checked, because Always has no start !!!
 
     def toTimeInterval(using ZoneId): TimeInterval =
       TimeInterval.Always

@@ -5,6 +5,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.SchemeRestriction.MonthRestriction
 import js7.base.time.TimestampForTests.ts
 
 final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
@@ -13,13 +14,21 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
   private val dateOffset = 5.h
 
   private val scheme = AdmissionTimeScheme(Seq(
-    /*0*/DailyPeriod(LocalTime.of(2, 0), 4.h), // Due to dateOffset = 5h, period starts the day before
-    /*1*/WeekdayPeriod(TUESDAY, LocalTime.of(18, 0), 2.h),
-    /*2*/MonthlyWeekdayPeriod(2, MONDAY, LocalTime.of(19, 0), 2.h),
-    /*3*/MonthlyLastWeekdayPeriod(-2, FRIDAY, LocalTime.of(20, 0), 1.h),
-    /*4*/MonthlyLastDatePeriod(-1, LocalTime.of(21, 0), 3.h),
-    /*5*/MonthlyDatePeriod(3, LocalTime.of(0, 0), 1.h),
-    /*6*/SpecificDatePeriod(LocalDateTime.parse("2023-07-06T12:00"), 1.s)))
+    RestrictedScheme(
+      Seq(
+        /*0*/DailyPeriod(LocalTime.of(2, 0), 4.h), // Before dateOffset
+        /*1*/WeekdayPeriod(TUESDAY, LocalTime.of(18, 0), 2.h),
+        /*2*/MonthlyWeekdayPeriod(2, MONDAY, LocalTime.of(19, 0), 2.h),
+        /*3*/MonthlyLastWeekdayPeriod(-2, FRIDAY, LocalTime.of(20, 0), 1.h),
+        /*4*/MonthlyLastDatePeriod(-1, LocalTime.of(21, 0), 3.h),
+        /*5*/MonthlyDatePeriod(3, LocalTime.of(0, 0), 1.h),
+        /*6*/SpecificDatePeriod(LocalDateTime.parse("2023-07-06T12:00"), 1.s))/*May and July*/,
+      MonthRestriction(5, 7)),
+    RestrictedScheme(
+      Seq(
+        /*7*/MonthlyDatePeriod(1, LocalTime.of(1, 0), 22.h),
+        /*8*/MonthlyDatePeriod(1, LocalTime.of(21, 0), 3.h)),
+      MonthRestriction(2)/*February*/)))
 
   "hasAdmissionPeriodStartForDay" in:
     val scheme = AdmissionTimeScheme(Seq(
@@ -50,7 +59,8 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
     given AdmissionTimeScheme = scheme
 
-    assert(localIntervals(local("2023-07-01T00:00"), until = local("2023-08-01T00:00")) == Seq(
+    assert(localIntervals(local("2023-07-01T00:00"), until = local("2024-04-01T00:00")) == Seq(
+      // May and July restriction //
       0 -> LocalInterval(local("2023-07-01T02:00"), 4.h), // saturday
       0 -> LocalInterval(local("2023-07-02T02:00"), 4.h), // sunday
 
@@ -95,7 +105,77 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       0 -> LocalInterval(local("2023-07-30T02:00"), 4.h), // sunday
 
       0 -> LocalInterval(local("2023-07-31T02:00"), 4.h), // monday
-      4 -> LocalInterval(local("2023-07-31T21:00"), 3.h)))
+      4 -> LocalInterval(local("2023-07-31T21:00"), 3.h),
+
+      // February restriction //
+      7 -> LocalInterval(local("2024-02-01T01:00"), 22.h),
+      8 -> LocalInterval(local("2024-02-01T21:00"), 3.h)))
+
+  "findLocalInterval, 29th of a month with February restriction" in:
+    given AdmissionTimeScheme = AdmissionTimeScheme(Seq(
+      RestrictedScheme(
+        Seq(
+          MonthlyDatePeriod(29, LocalTime.of(2, 0), 6.h), // Before dateOffset
+          MonthlyDatePeriod(29, LocalTime.of(12, 0), 1.h),
+          MonthlyLastWeekdayPeriod(-1, MONDAY, LocalTime.of(1, 0), 1.h)), // Before dateOffset
+        MonthRestriction(2)/*February*/)))
+
+    assert(localIntervals(local("2023-01-01T00:00"), until = local("2034-01-01T00:00")) ==
+      Seq(
+        // 2023
+        2 -> LocalInterval(local("2023-02-27T01:00"), 1.h),
+        0 -> LocalInterval(local("2023-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2023-02-28T12:00"), 1.h),
+
+        // 2024 leap year
+        2 -> LocalInterval(local("2024-02-26T01:00"), 1.h),
+        0 -> LocalInterval(local("2024-02-29T02:00"), 6.h),
+        1 -> LocalInterval(local("2024-02-29T12:00"), 1.h),
+
+        // 2025
+        2 -> LocalInterval(local("2025-02-24T01:00"), 1.h),
+        0 -> LocalInterval(local("2025-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2025-02-28T12:00"), 1.h),
+
+        // 2026
+        2 -> LocalInterval(local("2026-02-23T01:00"), 1.h),
+        0 -> LocalInterval(local("2026-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2026-02-28T12:00"), 1.h),
+
+        // 2027
+        2 -> LocalInterval(local("2027-02-22T01:00"), 1.h),
+        0 -> LocalInterval(local("2027-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2027-02-28T12:00"), 1.h),
+
+        // 2028 leap year
+        2 -> LocalInterval(local("2028-02-28T01:00"), 1.h),
+        0 -> LocalInterval(local("2028-02-29T02:00"), 6.h),
+        1 -> LocalInterval(local("2028-02-29T12:00"), 1.h),
+
+        // 2029
+        2 -> LocalInterval(local("2029-02-26T01:00"), 1.h),
+        0 -> LocalInterval(local("2029-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2029-02-28T12:00"), 1.h),
+
+        // 2030
+        2 -> LocalInterval(local("2030-02-25T01:00"), 1.h),
+        0 -> LocalInterval(local("2030-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2030-02-28T12:00"), 1.h),
+
+        // 2031
+        2 -> LocalInterval(local("2031-02-24T01:00"), 1.h),
+        0 -> LocalInterval(local("2031-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2031-02-28T12:00"), 1.h),
+
+        // 2032 leap year
+        2 -> LocalInterval(local("2032-02-23T01:00"), 1.h),
+        0 -> LocalInterval(local("2032-02-29T02:00"), 6.h),
+        1 -> LocalInterval(local("2032-02-29T12:00"), 1.h),
+
+        // 2033
+        2 -> LocalInterval(local("2033-02-28T01:00"), 1.h),
+        0 -> LocalInterval(local("2033-02-28T02:00"), 6.h),
+        1 -> LocalInterval(local("2033-02-28T12:00"), 1.h)))
 
   "Periods that start between midnight and dateOffset" - {
     assert(dateOffset == 5.h)
@@ -138,10 +218,11 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
   "findTimeIntervals" in:
     val timeIntervals = scheme.findTimeIntervals(
       from = ts"2023-07-01T00:00:00Z",
-      until = ts"2023-08-01T00:00:00Z",
+      until = ts"2024-04-01T00:00:00Z",
       dateOffset)
     assert(timeIntervals.toSeq == Seq(
-      0 -> TimeInterval(ts"2023-06-30T23:00:00Z", 4.h), // saturday (dateOffset = 5h!)
+      // May and July restriction
+      0 -> TimeInterval(ts"2023-06-30T23:00:00Z", 4.h), // saturday (day before, due to time zone)
       0 -> TimeInterval(ts"2023-07-01T23:00:00Z", 4.h), // sunday
 
       5 -> TimeInterval(ts"2023-07-02T21:00:00Z", 1.h), // monday
@@ -186,6 +267,9 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
       0 -> TimeInterval(ts"2023-07-30T23:00:00Z", 4.h), // monday
       4 -> TimeInterval(ts"2023-07-31T18:00:00Z", 3.h),
-      0 -> TimeInterval(ts"2023-07-31T23:00:00Z", 4.h)))
+
+      // February restriction //
+      7 -> TimeInterval(ts"2024-01-31T23:00:00Z", 22.h), // February due to time zone
+      8 -> TimeInterval(ts"2024-02-01T19:00:00Z", 3.h)))
 
   private def local(string: String) = LocalDateTime.parse(string)

@@ -3,9 +3,12 @@ package js7.base.time
 import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId, ZoneOffset, Duration as JDuration}
+import js7.base.log.Logger
 import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
+import js7.base.time.AdmissionPeriodCalculator.*
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.SchemeRestriction.Unrestricted
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
@@ -28,31 +31,54 @@ sealed trait AdmissionPeriodCalculator:
   def nextCalendarPeriodStart(local: LocalDateTime): Option[LocalDateTime]
 
   @TestOnly
-  final def findLocalIntervals(from: LocalDateTime, until: LocalDateTime)
+  final def findLocalIntervals(
+    from: LocalDateTime,
+    until: LocalDateTime,
+    restriction: SchemeRestriction = Unrestricted)
     (using ZoneId)
   : View[LocalInterval] =
-    findLocalIntervals(from)
+    findLocalIntervals(from, restriction)
       .takeWhile(_.startsBefore(until))
       .filterNot(_.endsBefore(from))
 
   /** Returns an eternal sequence. */
-  final def findLocalIntervals(from: LocalDateTime)(using ZoneId): View[LocalInterval] =
-    val first = toLocalInterval(from)
-    View.from(first)
-      .concat:
-        View.unfold(from): local =>
-          for
-            next <- nextCalendarPeriodStart(local) if local < next
-            localInterval <- toLocalInterval(next)
-          yield
-            localInterval -> next
+  final def findLocalIntervals(from: LocalDateTime, restriction: SchemeRestriction)
+    (using ZoneId)
+  : View[LocalInterval] =
+    val giveUp = from.plusYears(GiveUpAfterYears)
+    restriction.skipRestriction(from, dateOffset = dateOffset).fold(View.empty): from =>
+      val first = toLocalInterval(from)
+      View.from(first) ++
+        View.unfold((from, 1)): (local, i) =>
+          // Due to isUnrestrictedStart filtering, we may loop forever.
+          // To avoid this, we stop when some limits are reached.
+          if i > MaxTries then
+            logger.debug(s"⚠️  findLocalIntervals($from): Giving up after $MaxTries loops: $local")
+            None
+          else if local >= giveUp then
+            logger.debug:
+              s"⚠️  findLocalIntervals($from): Giving up after $GiveUpAfterYears years: $local"
+            None
+          else
+            for
+              //local <- restriction.skipRestriction(local, dateOffset = dateOffset)
+              next <- nextCalendarPeriodStart(local) if local < next
+              next <- restriction.skipRestriction(next, dateOffset = dateOffset)
+              localInterval <- toLocalInterval(next)
+            yield
+              localInterval -> (next, i + 1)
+        .filter(_.isUnrestrictedStart(restriction, dateOffset = dateOffset))
         // first may be duplicate with the first LocalInterval of the tail
         .dropWhile(first contains _)
 
 
 object AdmissionPeriodCalculator:
+  private val logger = Logger[this.type]
+
   private[time] val NoOffset = ZoneOffset.ofTotalSeconds(0)
   private val JEpsilon = FiniteDuration.Epsilon.toJava
+  private val MaxTries = 1000
+  private val GiveUpAfterYears = 33 //FIXME
 
   def apply(admissionPeriod: AdmissionPeriod, dateOffset: FiniteDuration)
   : AdmissionPeriodCalculator =

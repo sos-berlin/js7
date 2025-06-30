@@ -215,6 +215,7 @@ extends AdmissionPeriod:
       duration.pretty
 
 object MonthlyLastWeekdayPeriod:
+  /** @param week -1...-5 */
   @TestOnly
   def apply(
     week: Int,

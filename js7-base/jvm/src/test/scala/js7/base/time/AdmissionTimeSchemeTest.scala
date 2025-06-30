@@ -7,6 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.AdmissionTimeSchemeTest.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.SchemeRestriction.MonthRestriction
 import js7.tester.CirceJsonTester.*
 import scala.concurrent.duration.FiniteDuration
 
@@ -15,6 +16,38 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
   private given ZoneId = ZoneId.of("Europe/Mariehamn")
 
   "JSON" in:
+    testJson(
+      AdmissionTimeScheme(Seq(
+        RestrictedScheme(
+          Seq(
+            WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
+            DailyPeriod(LocalTime.of(12, 0), 1.h),
+            AlwaysPeriod),
+          MonthRestriction(Set(1, 12))))),
+      json"""{
+        "restrictedSchemes": [
+          {
+            "periods": [
+              {
+                "TYPE": "WeekdayPeriod",
+                "secondOfWeek": 115200,
+                "duration": 7200
+              }, {
+                "TYPE": "DailyPeriod",
+                "secondOfDay": 43200,
+                "duration": 3600
+              }, {
+                "TYPE": "AlwaysPeriod"
+              }
+            ],
+            "restriction": {
+               "TYPE": "MonthRestriction",
+               "months": [1, 12]
+            }
+          }
+        ]
+      }""")
+
     testJson(
       AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
@@ -49,7 +82,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
 
   "findLocalInterval" - {
     "Empty" in:
-      given AdmissionTimeScheme = AdmissionTimeScheme(Nil)
+      given AdmissionTimeScheme = AdmissionTimeScheme.never
       assert(findLocalInterval("2021-08-23T06:00:00") == None)
 
     "WeekdayPeriod" - {
