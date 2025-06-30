@@ -6,10 +6,12 @@ import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /** Mutable state for calculating the current or next admission time. */
 final class ExecuteAdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
+  findTimeIntervalLimit: FiniteDuration,
   zone: ZoneId,
   onSwitch: Option[TimeInterval] => Unit):
 
@@ -31,7 +33,8 @@ final class ExecuteAdmissionTimeSwitch(
   def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): Boolean =
     clock.lock:
       val now = clock.now()
-      admissionTimeScheme.findTimeInterval(now, dateOffset = ExecuteExecutor.noDateOffset)
+      admissionTimeScheme.findTimeInterval(
+        now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
       match
         case None =>
           _timer.cancel()

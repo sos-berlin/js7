@@ -39,6 +39,7 @@ final class AgentConfigurationTest extends OurTestSuite:
           name = "js7")
         AgentConfiguration(
           subagentConf,
+          findTimeIntervalLimit = 3653.days,
           pekkoAskTimeout = 1.hour,
           clusterConf = {
             val clusterConf = ClusterConf

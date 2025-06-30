@@ -22,12 +22,14 @@ import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import js7.subagent.director.RemoteSubagentDriver
 import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /**
  * @author Joacim Zschimmer
  */
 final case class AgentConfiguration(
   subagentConf: SubagentConf,
+  findTimeIntervalLimit: FiniteDuration,
   pekkoAskTimeout: Timeout,
   clusterConf: ClusterConf,
   name: String)
@@ -116,6 +118,7 @@ object AgentConfiguration:
     import subagentConf.config
     new AgentConfiguration(
       subagentConf,
+      findTimeIntervalLimit = config.getDuration("js7.findTimeIntervalLimit").toFiniteDuration,
       pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name)

@@ -733,7 +733,7 @@ extends JournalingActor[AgentState, Event], Stash:
   private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
     for (jobKey, job) <- workflow.keyToJob do
       if job.agentPath == ownAgentPath then
-        jobRegister.insert(jobKey, new JobEntry(jobKey, job, zone))
+        jobRegister.insert(jobKey, new JobEntry(jobKey, job, zone, conf.findTimeIntervalLimit))
 
   private def attachOrder(order: Order[Order.IsFreshOrReady]): Future[Completed] =
     val actor = newOrderActor(order.id)
@@ -1006,11 +1006,13 @@ object AgentOrderKeeper:
   private final class JobEntry(
     val jobKey: JobKey,
     val workflowJob: WorkflowJob,
-    zone: ZoneId):
+    zone: ZoneId,
+    findTimeIntervalLimit: FiniteDuration):
 
     val queue = new OrderQueue
     private val admissionTimeIntervalSwitch = new ExecuteAdmissionTimeSwitch(
       workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
+      findTimeIntervalLimit = findTimeIntervalLimit,
       zone,
       onSwitch = to =>
         if !to.contains(TimeInterval.Always) then

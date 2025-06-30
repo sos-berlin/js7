@@ -7,6 +7,7 @@ import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.SchemeRestriction.MonthRestriction
 import js7.base.time.TimestampForTests.ts
+import scala.concurrent.duration.*
 
 final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
@@ -47,14 +48,15 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
     assert(scheme.isPermitted(ts"2023-07-04T15:00:00Z", dateOffset))
 
   "findLocalInterval" in:
-    assert(scheme.findLocalInterval(local("2023-07-04T00:00"), dateOffset) ==
+    val until = local("2100-01-01T00:00")
+    assert(scheme.findLocalInterval(local("2023-07-04T00:00"), until, dateOffset) ==
       Some(LocalInterval(local("2023-07-04T02:00"), 4.h)))
-    assert(scheme.findLocalInterval(local("2023-07-04T02:00"), dateOffset) ==
+    assert(scheme.findLocalInterval(local("2023-07-04T02:00"), until, dateOffset) ==
       Some(LocalInterval(local("2023-07-04T02:00"), 4.h)))
-    assert(scheme.findLocalInterval(local("2023-07-04T03:59"), dateOffset) ==
+    assert(scheme.findLocalInterval(local("2023-07-04T03:59"), until, dateOffset) ==
       Some(LocalInterval(local("2023-07-04T02:00"), 4.h)))
 
-    assert(scheme.findLocalInterval(local("2023-07-04T06:00"), dateOffset) ==
+    assert(scheme.findLocalInterval(local("2023-07-04T06:00"), until, dateOffset) ==
       Some(LocalInterval(local("2023-07-04T18:00"), 2.h)))
 
     given AdmissionTimeScheme = scheme
@@ -199,20 +201,19 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
   private def localIntervals(from: LocalDateTime, until: LocalDateTime)
     (using scheme: AdmissionTimeScheme)
   : Seq[(Int, LocalInterval)] =
-    scheme.findLocalIntervals(from, dateOffset)
-      .takeWhile(_._2.startsBefore(until))
-      .filterNot(_._2.endsBefore(from))
+    scheme.findLocalIntervals(from, until, dateOffset)
+      //??? .takeWhile(_._2.startsBefore(until))
       .toSeq
 
   "findTimeInterval" in:
-    assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", 99999.days, dateOffset) ==
       Some(TimeInterval(ts"2023-07-03T23:00:00Z", 4.h))) // DailyPeriod(LocalTime.of(2, 0), 2.h),
-    assert(scheme.findTimeInterval(ts"2023-07-04T23:00:00Z", dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T23:00:00Z", 99999.days, dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T23:00:00Z", 4.h)))
-    assert(scheme.findTimeInterval(ts"2023-07-04T22:59:59Z", dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T22:59:59Z", 99999.days, dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T23:00:00Z", 4.h)))
 
-    assert(scheme.findTimeInterval(ts"2023-07-04T08:00:00Z", dateOffset) ==
+    assert(scheme.findTimeInterval(ts"2023-07-04T08:00:00Z", 99999.days, dateOffset) ==
       Some(TimeInterval(ts"2023-07-04T15:00:00Z", 2.h)))
 
   "findTimeIntervals" in:

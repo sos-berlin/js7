@@ -30,10 +30,12 @@ final class LocalIntervalTest extends OurTestSuite:
   "Daylight-saving time" - {
     def localTS(local: String) = JavaTimestamp.local(local).toTimestamp
 
+    // LocalInterval#duration is the real duration.
+    // Even when DST shifts, the duration is the same.
+    // In spring, it is not shortened. In autumn, it is not extended.
+
     "Begin" - {
-      // LocalInterval#duration is the real duration.
-      // Even when DST shifts, the duration is the same.
-      // In spring, it is not shortened. In autumn, it is not extended.
+      // Local time skips from 03:00 to 04:00
       val localInterval = LocalInterval(local("2021-03-28T03:00"), 1.h)
 
       "Conversions" in:
@@ -46,8 +48,10 @@ final class LocalIntervalTest extends OurTestSuite:
         assert(localTS("2021-03-28T03:00") == localTS("2021-03-28T04:00"))
 
       "startsBefore" in:
-        assert(!localInterval.startsBefore(local("2021-03-28T03:00")))
-        assert(!localInterval.startsBefore(local("2021-03-28T03:59")))
+        assert(!localInterval.startsBefore(local("2021-03-28T02:00")))
+        assert(!localInterval.startsBefore(local("2021-03-28T02:59")))
+        assert(localInterval.startsBefore(local("2021-03-28T03:00")))
+        assert(localInterval.startsBefore(local("2021-03-28T03:59")))
         assert(localInterval.startsBefore(local("2021-03-28T04:00")))
 
         assert(!localInterval.startsBefore(ts"2021-03-28T00:59:59Z".toLocalDateTime))
@@ -81,6 +85,8 @@ final class LocalIntervalTest extends OurTestSuite:
     }
 
     "End" - {
+      // The hour between local 03:00 and 04:00 is repeated.
+      // In JS7, the time between 03:00 and 04:00 means the second hour.
       val localInterval = LocalInterval(local("2021-10-31T03:00"), 1.h)
 
       "Conversions" in:

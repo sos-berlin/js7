@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import ExecuteExecutor.*
 import cats.instances.either.*
 import cats.instances.option.*
 import cats.syntax.traverse.*
@@ -20,6 +21,7 @@ import js7.data.state.StateView
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
 private[execution] final class ExecuteExecutor(protected val service: InstructionExecutorService)
@@ -111,7 +113,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job).isDefined)
           .flatMap(_
-            .findTimeInterval(clock.now(), dateOffset = noDateOffset))
+            .findTimeInterval(clock.now(), limit = FindTimeIntervalLimit, dateOffset = noDateOffset))
           .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
@@ -143,6 +145,7 @@ object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
+  private val FindTimeIntervalLimit = 365.days
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
     orderId.string match

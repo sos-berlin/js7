@@ -22,54 +22,36 @@ sealed trait AdmissionPeriodCalculator:
   def dateOffset: JDuration
 
   @TestOnly // Not used
-  private[time] def hasAdmissionPeriodForDay(localDate: LocalDate)(using zoneId: ZoneId): Boolean
+  private[time] def hasAdmissionPeriodForDay(localDate: LocalDate)(using ZoneId): Boolean
 
-  def hasAdmissionPeriodStartForDay(localDate: LocalDate)(using zoneId: ZoneId): Boolean
+  def hasAdmissionPeriodStartForDay(localDate: LocalDate)(using ZoneId): Boolean
 
-  def toLocalInterval(local: LocalDateTime)(using zoneId: ZoneId): Option[LocalInterval]
+  def toLocalInterval(local: LocalDateTime)(using ZoneId): Option[LocalInterval]
 
   def nextCalendarPeriodStart(local: LocalDateTime): Option[LocalDateTime]
 
-  @TestOnly
   final def findLocalIntervals(
-    from: LocalDateTime,
-    until: LocalDateTime,
-    restriction: SchemeRestriction = Unrestricted)
+    from: LocalDateTime, until: LocalDateTime, restriction: SchemeRestriction = Unrestricted)
     (using ZoneId)
   : View[LocalInterval] =
-    findLocalIntervals(from, restriction)
-      .takeWhile(_.startsBefore(until))
-      .filterNot(_.endsBefore(from))
-
-  /** Returns an eternal sequence. */
-  final def findLocalIntervals(from: LocalDateTime, restriction: SchemeRestriction)
-    (using ZoneId)
-  : View[LocalInterval] =
-    val giveUp = from.plusYears(GiveUpAfterYears)
     restriction.skipRestriction(from, dateOffset = dateOffset).fold(View.empty): from =>
       val first = toLocalInterval(from)
       View.from(first) ++
-        View.unfold((from, 1)): (local, i) =>
-          // Due to isUnrestrictedStart filtering, we may loop forever.
-          // To avoid this, we stop when some limits are reached.
-          if i > MaxTries then
-            logger.debug(s"⚠️  findLocalIntervals($from): Giving up after $MaxTries loops: $local")
-            None
-          else if local >= giveUp then
-            logger.debug:
-              s"⚠️  findLocalIntervals($from): Giving up after $GiveUpAfterYears years: $local"
-            None
-          else
-            for
-              //local <- restriction.skipRestriction(local, dateOffset = dateOffset)
-              next <- nextCalendarPeriodStart(local) if local < next
-              next <- restriction.skipRestriction(next, dateOffset = dateOffset)
-              localInterval <- toLocalInterval(next)
-            yield
-              localInterval -> (next, i + 1)
-        .filter(_.isUnrestrictedStart(restriction, dateOffset = dateOffset))
+        View.unfold(from): local =>
+          for
+            next <- nextCalendarPeriodStart(local) if local < next
+            next <- restriction.skipRestriction(next, dateOffset = dateOffset)
+            localInterval <- toLocalInterval(next)
+          yield
+            localInterval -> next
+        .takeWhile:
+          _.startsBefore(until)
+        .filter:
+          _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
         // first may be duplicate with the first LocalInterval of the tail
         .dropWhile(first contains _)
+    .filterNot:
+      _.endsBefore(from)
 
 
 object AdmissionPeriodCalculator:
@@ -77,8 +59,6 @@ object AdmissionPeriodCalculator:
 
   private[time] val NoOffset = ZoneOffset.ofTotalSeconds(0)
   private val JEpsilon = FiniteDuration.Epsilon.toJava
-  private val MaxTries = 1000
-  private val GiveUpAfterYears = 33 //FIXME
 
   def apply(admissionPeriod: AdmissionPeriod, dateOffset: FiniteDuration)
   : AdmissionPeriodCalculator =
@@ -146,10 +126,11 @@ object AdmissionPeriodCalculator:
     final def hasAdmissionPeriodStartForDay(localDate: LocalDate)(using ZoneId) =
       localDate == admissionPeriodStart(LocalDateTime.of(localDate, MIDNIGHT)).toLocalDate
 
-    final def toLocalInterval(normalizedLocal: LocalDateTime)(using ZoneId) =
-      Some(toLocalInterval0(normalizedLocal))
+    final def toLocalInterval(local: LocalDateTime)(using ZoneId) =
+      Some(toLocalInterval0(local))
 
-    private def toLocalInterval0(normalizedLocal: LocalDateTime)(using ZoneId) =
+    private def toLocalInterval0(local: LocalDateTime)(using ZoneId) =
+      val normalizedLocal = local//.normalize
       val lastInterval = toLocalInterval1(calendarPeriodStart(normalizedLocal) - JEpsilon)
       if lastInterval.contains(normalizedLocal) then
         lastInterval

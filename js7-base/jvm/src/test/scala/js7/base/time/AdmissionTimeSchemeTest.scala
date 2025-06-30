@@ -152,6 +152,7 @@ object AdmissionTimeSchemeTest:
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
       LocalDateTime.parse(dateTimeString),
+      until = LocalDateTime.parse("2100-01-01T00:00"),
       dateOffset = 0.s)
 
   def localInterval(dateTimeString: String, duration: FiniteDuration): LocalInterval =
