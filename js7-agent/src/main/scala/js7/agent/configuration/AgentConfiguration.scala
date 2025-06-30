@@ -22,7 +22,7 @@ import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import js7.subagent.director.RemoteSubagentDriver
 import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * @author Joacim Zschimmer

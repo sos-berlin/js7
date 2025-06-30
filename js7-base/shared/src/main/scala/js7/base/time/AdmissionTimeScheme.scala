@@ -1,8 +1,8 @@
 package js7.base.time
 
-import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.time.SchemeRestriction.Unrestricted
 import scala.annotation.targetName
 
