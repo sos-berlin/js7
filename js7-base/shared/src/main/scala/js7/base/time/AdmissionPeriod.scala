@@ -8,7 +8,6 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AdmissionPeriod.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.ordinalToString
 import js7.base.utils.ScalaUtils.syntax.*
@@ -28,16 +27,13 @@ case object AlwaysPeriod extends AdmissionPeriod:
   override def toString = "Always"
 
 
-final case class DailyPeriod(secondOfDay: Int, duration: FiniteDuration)
+final case class DailyPeriod private(secondOfDay: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
-  assertThat(secondOfDay >= 0 && secondOfDay <= DaySeconds)
-  assert(duration <= DayDuration)
-
   def checked: Checked[DailyPeriod] =
     if secondOfDay < 0 || secondOfDay >= DaySeconds then
       Left(Problem(s"Invalid daytime number: $toString"))
     else if !duration.isPositive || duration > DayDuration then
-      Left(Problem(s"Duration must be positive: $toString"))
+      Left(Problem(s"Duration must be positive and not longer than 24 hours: $toString"))
     else
       Right(this)
 
@@ -45,16 +41,25 @@ extends AdmissionPeriod:
     "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 
 object DailyPeriod:
-  val always: DailyPeriod = DailyPeriod(0, 24.h)
+  val always: DailyPeriod = DailyPeriod(0, 24.h).checked.orThrow
+
+  @TestOnly
+  def apply(secondOfDay: Int, duration: FiniteDuration): DailyPeriod =
+    new DailyPeriod(secondOfDay, duration)
+      .checked.orThrow
 
   @TestOnly
   def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
     new DailyPeriod((localTime.toSecondOfDay), duration)
       .checked.orThrow
 
+  def checked(localTime: LocalTime, duration: FiniteDuration): Checked[DailyPeriod] =
+    new DailyPeriod((localTime.toSecondOfDay), duration)
+      .checked
+
 
 /** Weekly admission time. */
-final case class WeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
+final case class WeekdayPeriod private(secondOfWeek: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeek < 0 || secondOfWeek >= WeekSeconds then
@@ -78,12 +83,17 @@ extends AdmissionPeriod:
 
 object WeekdayPeriod:
   @TestOnly
+  def apply(secondOfWeek: Int, duration: FiniteDuration): WeekdayPeriod =
+    new WeekdayPeriod(secondOfWeek, duration)
+      .checked.orThrow
+
+  @TestOnly
   def apply(weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration): WeekdayPeriod =
     new WeekdayPeriod(weekdayToSeconds(weekday) + localTime.toSecondOfDay, duration)
       .checked.orThrow
 
 
-final case class MonthlyDatePeriod(secondOfMonth: Int, duration: FiniteDuration)
+final case class MonthlyDatePeriod private(secondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds then
@@ -105,6 +115,11 @@ extends AdmissionPeriod:
 
 object MonthlyDatePeriod:
   @TestOnly
+  def apply(secondOfMonth: Int, duration: FiniteDuration): MonthlyDatePeriod =
+    new MonthlyDatePeriod(secondOfMonth, duration)
+      .checked.orThrow
+
+  @TestOnly
   def apply(dayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration): MonthlyDatePeriod =
     apply((dayOfMonth - 1) * DaySeconds + timeOfDate.toSecondOfDay, duration)
       .checked.orThrow
@@ -112,7 +127,7 @@ object MonthlyDatePeriod:
 
 /** Monthly admission at a specific last day of month.
  * @param lastSecondOfMonth for example, -3600 for the last day at 23:00. */
-final case class MonthlyLastDatePeriod(lastSecondOfMonth: Int, duration: FiniteDuration)
+final case class MonthlyLastDatePeriod private(lastSecondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0 then
@@ -137,6 +152,11 @@ extends AdmissionPeriod:
 
 object MonthlyLastDatePeriod:
   @TestOnly
+  def apply(lastSecondOfMonth: Int, duration: FiniteDuration): MonthlyLastDatePeriod =
+    new MonthlyLastDatePeriod(lastSecondOfMonth, duration)
+      .checked.orThrow
+
+  @TestOnly
   def apply(lastDayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration)
   : MonthlyLastDatePeriod =
     apply((lastDayOfMonth + 1) * DaySeconds - (DaySeconds - timeOfDate.toSecondOfDay), duration)
@@ -145,7 +165,7 @@ object MonthlyLastDatePeriod:
 
 /** Monthly admission at specific weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
-final case class MonthlyWeekdayPeriod(secondOfWeeks: Int, duration: FiniteDuration)
+final case class MonthlyWeekdayPeriod private(secondOfWeeks: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeeks < 0 || secondOfWeeks >= 4*WeekSeconds then
@@ -172,6 +192,11 @@ extends AdmissionPeriod:
 
 object MonthlyWeekdayPeriod:
   @TestOnly
+  def apply(secondOfWeeks: Int, duration: FiniteDuration): MonthlyWeekdayPeriod =
+    new MonthlyWeekdayPeriod(secondOfWeeks, duration)
+      .checked.orThrow
+
+  @TestOnly
   def apply(number: Int, weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration)
   : MonthlyWeekdayPeriod =
     apply(
@@ -182,9 +207,7 @@ object MonthlyWeekdayPeriod:
 
 /** Monthly admission at specific last weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
-final case class MonthlyLastWeekdayPeriod(
-  secondOfWeeks: Int,
-  duration: FiniteDuration)
+final case class MonthlyLastWeekdayPeriod private(secondOfWeeks: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeeks <= -4*WeekSeconds || secondOfWeeks >= 0 then
@@ -215,6 +238,11 @@ extends AdmissionPeriod:
       duration.pretty
 
 object MonthlyLastWeekdayPeriod:
+  @TestOnly
+  def apply(secondOfWeeks: Int, duration: FiniteDuration): MonthlyLastWeekdayPeriod =
+    new MonthlyLastWeekdayPeriod(secondOfWeeks, duration)
+      .checked.orThrow
+
   /** @param week -1...-5 */
   @TestOnly
   def apply(

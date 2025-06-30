@@ -3,10 +3,12 @@ package js7.base.time
 import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime.MIDNIGHT
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionPeriod.WeekSeconds
 import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, SpecificDatePeriodCalculator, WeekdayPeriodCalculator, startOfWeek}
 import js7.base.time.ScalaTime.*
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
 
 final class AdmissionPeriodCalculatorTest extends OurTestSuite:
@@ -239,8 +241,14 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite:
         assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-10-01")))
         assert(calculator.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-10-01")))
 
-        val empty = DailyPeriod(1, 0.s).checked
-        assert(empty.isLeft)
+        assert(DailyPeriod.checked(LocalTime.parse("12:00"), 0.s) ==
+          Left(Problem("Duration must be positive and not longer than 24 hours: DailyPeriod(daily at 12:00, 0s)")))
+
+        assert(DailyPeriod.checked(LocalTime.parse("12:00"), 24.h + FiniteDuration.Epsilon) ==
+          Left(Problem("Duration must be positive and not longer than 24 hours: DailyPeriod(daily at 12:00, 24h)")))
+
+        assert(DailyPeriod.checked(LocalTime.parse("12:00"), 1.ms).isRight)
+        assert(DailyPeriod.checked(LocalTime.parse("12:00"), 24.h).isRight)
 
       "period starts at midnight" in:
         val dailyPeriod = AdmissionPeriodCalculator(DailyPeriod(MIDNIGHT, 1.h), dateOffset = 0.s)
