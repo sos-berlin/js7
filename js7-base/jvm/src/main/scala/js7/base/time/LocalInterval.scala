@@ -15,11 +15,11 @@ sealed trait LocalInterval extends Ordered[LocalInterval]:
   @TestOnly
   def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean
 
-  /** x <= start. */
+  /** _ < start */
   def startsBefore(local: LocalDateTime)(using ZoneId): Boolean
 
-  /** x <= end. */
-  def endsBefore(local: LocalDateTime)(using ZoneId): Boolean
+  /** end < _ */
+  def endsAfter(local: LocalDateTime)(using ZoneId): Boolean
 
   def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean
 
@@ -51,10 +51,10 @@ object LocalInterval:
         && normalizedStart < (normalizedThisStart + duration)
 
     def startsBefore(local: LocalDateTime)(using ZoneId): Boolean =
-      start.normalize <= local.normalize
+      start.normalize < local.normalize
 
-    def endsBefore(local: LocalDateTime)(using ZoneId): Boolean =
-      start.normalize + duration <= local.normalize
+    def endsAfter(local: LocalDateTime)(using ZoneId): Boolean =
+      local.normalize < start.normalize + duration
 
     def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
       restriction.isUnrestricted(start, dateOffset)
@@ -83,8 +83,8 @@ object LocalInterval:
     def startsBefore(local: LocalDateTime)(using ZoneId) =
       false
 
-    def endsBefore(local: LocalDateTime)(using ZoneId) =
-      true
+    def endsAfter(local: LocalDateTime)(using ZoneId) =
+      false
 
     def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
       false
@@ -110,8 +110,8 @@ object LocalInterval:
     def startsBefore(local: LocalDateTime)(using ZoneId) =
       true
 
-    def endsBefore(local: LocalDateTime)(using ZoneId) =
-      false
+    def endsAfter(local: LocalDateTime)(using ZoneId) =
+      true
 
     def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
       true // Restriction is not checked, because Always has no start !!!

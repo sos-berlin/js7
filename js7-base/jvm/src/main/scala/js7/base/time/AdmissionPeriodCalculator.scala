@@ -34,24 +34,25 @@ sealed trait AdmissionPeriodCalculator:
     from: LocalDateTime, until: LocalDateTime, restriction: SchemeRestriction = Unrestricted)
     (using ZoneId)
   : View[LocalInterval] =
-    restriction.skipRestriction(from, dateOffset = dateOffset).fold(View.empty): from =>
-      val first = toLocalInterval(from)
-      View.from(first) ++
-        View.unfold(from): local =>
-          for
-            next <- nextCalendarPeriodStart(local) if local < next
-            next <- restriction.skipRestriction(next, dateOffset = dateOffset)
-            localInterval <- toLocalInterval(next)
-          yield
-            localInterval -> next
-        .takeWhile:
-          _.startsBefore(until)
-        .filter:
-          _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
-        // first may be duplicate with the first LocalInterval of the tail
-        .dropWhile(first contains _)
-    .filterNot:
-      _.endsBefore(from)
+    restriction.skipRestriction(from, dateOffset = dateOffset)
+      .fold(View.empty[LocalInterval]): from =>
+        val first = toLocalInterval(from)
+        View.from(first) ++
+          View.unfold(from): local =>
+            for
+              next <- nextCalendarPeriodStart(local) if local < next
+              next <- restriction.skipRestriction(next, dateOffset = dateOffset)
+              localInterval <- toLocalInterval(next)
+            yield
+              localInterval -> next
+          .takeWhile:
+            _.startsBefore(until)
+          .filter:
+            _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
+          // first may be duplicate with the first LocalInterval of the tail
+          .dropWhile(first contains _)
+      .filter:
+        _.endsAfter(from)
 
 
 object AdmissionPeriodCalculator:
