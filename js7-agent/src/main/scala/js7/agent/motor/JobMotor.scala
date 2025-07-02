@@ -15,7 +15,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, NonEmptyTimeInterval, TimeInterval}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, DuplicateKeyException}
@@ -121,13 +121,22 @@ final class JobMotor(
       jobToEntry.toMap.values.foldMap:
         tryStartProcessing
 
+  //private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
+  //  tryStartProcessing(jobEntry,               maybeTimeInterval match
+  //                  case Some(o: TimeInterval.Standard) => Some(o.end)
+  //                  case Some(TimeInterval.Always) | None/*impossible*/ => None)
+
   private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
     import jobEntry.jobKey
     unlessDeferred(isStopping):
       logger.traceIO("tryStartProcessing", jobKey):
         jobEntry.onAdmissionTimeInterval:
           tryStartProcessing(jobEntry)
-        .flatMap: isAdmitted =>
+        .flatMap: maybeTimeInterval =>
+          val endOfAdmissionPeriod = maybeTimeInterval match
+            case Some(o: TimeInterval.Standard) => Some(o.end)
+            case Some(TimeInterval.Always) => None
+            case None => None /*impossible*/
           lock.lock:
             getAgentState.flatMap: agentState =>
               whenDeferred(jobEntry.isBelowProcessLimits(agentState)):
@@ -148,11 +157,11 @@ final class JobMotor(
                         false
                       else
                         // TODO OrderQueue should only contain immediately processable Orders
-                        order.forceJobAdmission || isAdmitted)
+                        order.forceJobAdmission || maybeTimeInterval.isDefined)
                 .evalMap: order =>
                   jobEntry.incrementProcessCount *>
                     // subagentKeeper.processOrder blocks until a Subagent becomes available
-                    subagentKeeper.processOrder(order, onSubagentEvents(order.id))
+                    subagentKeeper.processOrder(order, endOfAdmissionPeriod, onSubagentEvents(order.id))
                       .catchIntoChecked
                       .handleProblemWith: problem =>
                         IO(logger.error:
@@ -226,7 +235,8 @@ final class JobMotor(
             jobMotor.agentProcessCount -= 1
             true
 
-    def onAdmissionTimeInterval(onPermissionGranted: IO[Unit])(using AlarmClock): IO[Boolean] =
+    def onAdmissionTimeInterval(onPermissionGranted: IO[Unit])(using AlarmClock)
+    : IO[Option[NonEmptyTimeInterval]] =
       lock.surround:
         admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
 

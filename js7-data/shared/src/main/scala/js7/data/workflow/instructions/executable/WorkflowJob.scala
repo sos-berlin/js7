@@ -31,6 +31,7 @@ final case class WorkflowJob(
   processLimit: Int,
   sigkillDelay: Option[FiniteDuration],
   timeout: Option[FiniteDuration],
+  killAtEndOfAdmissionPeriod: Boolean = false,
   failOnErrWritten: Boolean,
   admissionTimeScheme: Option[AdmissionTimeScheme],
   skipIfNoAdmissionStartForOrderDay: Boolean,
@@ -67,13 +68,16 @@ object WorkflowJob:
     processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
+    killAtEndOfAdmissionPeriod: Boolean = false,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
     skipIfNoAdmissionStartForOrderDay: Boolean = false,
     isNotRestartable: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, subagentBundleId, jobResourcePaths,
-      processLimit, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
+      processLimit, sigkillDelay, timeout,
+      killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod,
+      failOnErrWritten = failOnErrWritten,
       admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable
     ).orThrow
 
@@ -86,6 +90,7 @@ object WorkflowJob:
     processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
+    killAtEndOfAdmissionPeriod: Boolean = false,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
     skipIfNoAdmissionStartForOrderDay: Boolean = false,
@@ -94,7 +99,9 @@ object WorkflowJob:
     for _ <- jobResourcePaths.checkUniqueness yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, subagentBundleId, jobResourcePaths,
-        processLimit, sigkillDelay, timeout, failOnErrWritten,
+        processLimit, sigkillDelay, timeout,
+        killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod,
+        failOnErrWritten = failOnErrWritten,
         admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable)
 
   final case class Name private(string: String) extends GenericString
@@ -115,6 +122,7 @@ object WorkflowJob:
       "processLimit" -> workflowJob.processLimit.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "timeout" -> workflowJob.timeout.asJson,
+      "killAtEndOfAdmissionPeriod" -> (workflowJob.killAtEndOfAdmissionPeriod ? true).asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
       "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson,
       "skipIfNoAdmissionStartForOrderDay" -> workflowJob.skipIfNoAdmissionStartForOrderDay.?.asJson,
@@ -143,6 +151,7 @@ object WorkflowJob:
         .fold(c.getOrElse[Int]("parallelism")(DefaultProcessLimit))(Right(_))
       sigkillDelay <- c.get[Option[FiniteDuration]]("sigkillDelay")
       timeout <- c.get[Option[FiniteDuration]]("timeout")
+      killAtEndOfAdmissionPeriod <- c.getOrElse[Boolean]("killAtEndOfAdmissionPeriod")(false)
       failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
       admissionTimeScheme <- c.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
       skipIfNoAdmissionStartForOrderDay <-
@@ -152,7 +161,10 @@ object WorkflowJob:
             c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
       isNotRestartable <- c.getOrElse[Boolean]("isNotRestartable")(false)
       job <- checked(agentPath, executable, arguments, subagentBundleId, jobResourcePaths,
-        maybeProcessLimit, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
+        maybeProcessLimit, sigkillDelay, timeout,
+        killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod,
+        failOnErrWritten = failOnErrWritten,
+        admissionTimeScheme,
         skipIfNoAdmissionStartForOrderDay, isNotRestartable
       ).toDecoderResult(c.history)
     yield

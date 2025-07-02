@@ -14,6 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import scala.concurrent.duration.*
@@ -33,13 +34,13 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
         switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
         assert(switch.nextTime == None)
 
-        var isEnterable = switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
-        assert(isEnterable)
+        var timeInterval = switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
+        assert(timeInterval.isDefined)
         assert(switch.nextTime == None)
 
         clock += 99*365*24.h
-        isEnterable = switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
-        assert(isEnterable)
+        timeInterval = switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
+        assert(timeInterval.isDefined)
 
   "UTC" in:
     check(ZoneId.of("UTC"))
@@ -168,11 +169,11 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
       val was = admissionStarts
       val sw = switched.fold(_switched)(Some(_))
       clock := now
-      val isAdmitted_ =
-        switch.updateAndCheck:
-          IO:
-            admissionStarts += 1
-        .await(99.s)
-      awaitAndAssert(1.s)(_switched == sw &&
-        isAdmitted_ == isAdmitted &&
+      val isAdmitted_ = switch.updateAndCheck:
+        IO:
+          admissionStarts += 1
+      .await(99.s)
+
+      awaitAndAssert(_switched == sw &&
+        isAdmitted_.isDefined == isAdmitted &&
         admissionStarts == was + admissionStarted.toInt)

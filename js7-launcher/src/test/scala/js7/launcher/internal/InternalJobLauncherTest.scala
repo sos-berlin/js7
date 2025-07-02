@@ -67,6 +67,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
                 executeArguments = Map.empty,
                 jobArguments = Map("ARG" -> NumericConstant(1)),
                 ControllerId("CONTROLLER"),
+                endOfAdmissionPeriod = None,
                 testSink.stdObservers,
                 fileValueScope = Scope.empty)
             .map(_.orThrow)

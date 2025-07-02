@@ -22,7 +22,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
-import js7.base.time.AlarmClock
+import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
@@ -185,10 +185,11 @@ extends MainService, Service.StoppableByRequest:
 
   def startOrderProcess(
     order: Order[Order.Processing],
-    executeDefaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO(checkedDedicatedSubagent)
-      .flatMapT(_.startOrderProcess(order, executeDefaultArguments))
+      .flatMapT(_.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Checked[Unit]] =
     subagent.checkedDedicatedSubagent.traverse:

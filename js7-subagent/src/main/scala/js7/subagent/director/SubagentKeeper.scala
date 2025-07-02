@@ -21,7 +21,7 @@ import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
-import js7.base.time.{DelayIterator, DelayIterators}
+import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -132,6 +132,7 @@ extends Service.StoppableByRequest:
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
+    endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
   : IO[Checked[Unit]] =
     val orderId = order.id
@@ -154,10 +155,11 @@ extends Service.StoppableByRequest:
         IO.right(())
 
       case Right(Some(selectedDriver)) =>
-        processOrderAndForwardEvents(orderId, onEvents, selectedDriver)
+        processOrderAndForwardEvents(orderId, endOfAdmissionPeriod, onEvents, selectedDriver)
 
   private def processOrderAndForwardEvents(
     orderId: OrderId,
+    endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
   : IO[Checked[Unit]] =
@@ -178,15 +180,15 @@ extends Service.StoppableByRequest:
       IO.pure:
         persisted.aggregate.idToOrder.checked(orderId)
           .flatMap(_.checkedState[Order.Processing])
-    .flatMapT: order =>
-      forProcessingOrder(orderId, subagentDriver, onEvents):
-        subagentDriver.startOrderProcessing(order)
+      .flatMapT: order =>
+        forProcessingOrder(orderId, subagentDriver, onEvents):
+          subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
+      .handleErrorWith(t => IO:
+        logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
+          t.nullIfNoStackTrace)
+        Left(Problem.fromThrowable(t)))
       .containsType[Checked[FiberIO[OrderProcessed]]]
-    .handleErrorWith(t => IO:
-      logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
-        t.nullIfNoStackTrace)
-      Left(Problem.fromThrowable(t)))
-    .rightAs(())
+      .rightAs(())
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],

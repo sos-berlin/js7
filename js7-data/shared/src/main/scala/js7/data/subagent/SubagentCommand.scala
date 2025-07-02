@@ -9,6 +9,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
@@ -108,7 +109,8 @@ object SubagentCommand extends CommonCommand.Companion:
 
   final case class StartOrderProcess(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
+    defaultArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp] = None)
   extends OrderCommand:
     type Response = Accepted
 

@@ -10,6 +10,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -84,6 +85,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
   def runOrderProcess(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp],
     stdObservers: StdObservers)
   : IO[OrderOutcome] =
     val forOrder = new JobDriverForOrder(order.id, params)
@@ -95,7 +97,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
           IO.pure(OrderOutcome.Disrupted(problem))
 
         case Right(jobLauncher: JobLauncher) =>
-          forOrder.processOrder(order, executeArguments, stdObservers, jobLauncher)
+          forOrder.processOrder(order, executeArguments, endOfAdmissionPeriod, stdObservers, jobLauncher)
             .guarantee:
               removeOrderEntry(forOrder)
 

@@ -4,7 +4,7 @@ import cats.effect.std.Dispatcher
 import cats.effect.{IO, Ref}
 import java.time.ZoneId
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, NonEmptyTimeInterval, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -32,15 +32,15 @@ final class ExecuteAdmissionTimeSwitch(
 
   /** Update the state with the current or next admission time and set a _fiber.
    * @return true iff an AdmissionTimeInterval is effective now. */
-  def updateAndCheck(onAdmissionStart: IO[Unit])(using clock: AlarmClock): IO[Boolean] =
-    IO.defer:
-      val now = clock.now()
+  def updateAndCheck(onAdmissionStart: IO[Unit])(using clock: AlarmClock)
+  : IO[Option[NonEmptyTimeInterval]] =
+    clock.lockIO: now =>
       admissionTimeScheme.findTimeInterval(
         now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
       match
         case None =>
           cancelSchedule.getAndSet(IO.unit).flatten
-            .as(false) // No admission now or in the future
+            .as(None) // No admission now or in the future
 
         case Some(interval) =>
           IO.unlessA(_nextTime.contains(interval.start)):
@@ -55,4 +55,9 @@ final class ExecuteAdmissionTimeSwitch(
                 .flatMap: cancel =>
                   cancelSchedule.getAndSet(cancel).flatten
           .as:
-            interval.contains(now) // Has admission now?
+            // Has admission now?
+            interval.contains(now) ? interval.match
+              case o: TimeInterval.Standard => o
+              case o: TimeInterval.Always => o
+              case o: TimeInterval.Never =>
+                throw new AssertionError(s"NonEmptyTimeInterval expected: $o")

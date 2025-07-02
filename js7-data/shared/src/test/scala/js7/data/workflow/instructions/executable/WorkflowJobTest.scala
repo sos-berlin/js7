@@ -66,6 +66,7 @@ final class WorkflowJobTest extends OurTestSuite:
           processLimit = 3,
           Some(10.s),
           Some(60.s),
+          killAtEndOfAdmissionPeriod = true,
           failOnErrWritten = true,
           Some(AdmissionTimeScheme(Seq(
             WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
@@ -91,6 +92,7 @@ final class WorkflowJobTest extends OurTestSuite:
           "processLimit": 3,
           "sigkillDelay": 10,
           "timeout": 60,
+          "killAtEndOfAdmissionPeriod": true,
           "failOnErrWritten": true,
           "admissionTimeScheme": {
             "periods": [

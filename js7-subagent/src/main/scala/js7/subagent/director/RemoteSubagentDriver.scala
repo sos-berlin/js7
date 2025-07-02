@@ -11,13 +11,14 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop}
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, DelayConf, SetOnce}
@@ -289,9 +290,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(Right(_))
       else
         requireNotStopping.flatMapT(_ =>
-          startOrderProcessing(order))
+          startOrderProcessing(order, endOfAdmissionPeriod = ???))
 
-  def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
+  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping.flatMapT: _ =>
         startProcessingOrder2(order)

@@ -12,6 +12,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.stream.Numbered
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
@@ -194,18 +195,19 @@ extends SubagentDriver, Service.StoppableByRequest:
     logger.traceIO("recoverOrderProcessing", order.id):
       if wasRemote /*&& false ???*/ then
         // The Order may have not yet been started (only OrderProcessingStarted emitted)
-        startOrderProcessing(order) // idempotent operation
+        startOrderProcessing(order, endOfAdmissionPeriod = ???) // idempotent operation
       else
         emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)
           .start
           .map(Right(_))
 
-  def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
+  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping
         .flatMapT(_ => attachItemsForOrder(order))
-        .flatMapT(_ => startProcessingOrder2(order))
+        .flatMapT(_ => startProcessingOrder2(order, endOfAdmissionPeriod))
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
     signableItemsForOrderProcessing(order.workflowPosition)
@@ -219,14 +221,14 @@ extends SubagentDriver, Service.StoppableByRequest:
             CommandMeta.System))
         .map(_.map(_.rightAs(())).combineAll))
 
-  private def startProcessingOrder2(order: Order[Order.Processing])
+  private def startProcessingOrder2(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred
       .insert(order.id, Deferred.unsafe)
       .flatMapT: deferred =>
         orderToExecuteDefaultArguments(order)
           .flatMapT:
-            subagent.startOrderProcess(order, _)
+            subagent.startOrderProcess(order, _, endOfAdmissionPeriod)
           .materializeIntoChecked
           .flatMap:
             case Left(problem) =>

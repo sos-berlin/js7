@@ -15,6 +15,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
@@ -194,7 +195,8 @@ extends Service.StoppableByRequest:
 
   def startOrderProcess(
     order: Order[Order.Processing],
-    executeDefaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO.defer:
       _isUsed = true
@@ -214,7 +216,7 @@ extends Service.StoppableByRequest:
               Right(processing)
 
         case None =>
-          startOrderProcess2(order, executeDefaultArguments)
+          startOrderProcess2(order, executeDefaultArguments, endOfAdmissionPeriod)
             .guaranteeCase:
               case Outcome.Succeeded(_) =>
                 IO.whenA(_dontWaitForDirector):
@@ -230,9 +232,10 @@ extends Service.StoppableByRequest:
 
   private def startOrderProcess2(
     order: Order[Order.Processing],
-    executeDefaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[FiberIO[OrderProcessed]] =
-    startOrderProcess3(order, executeDefaultArguments)
+    startOrderProcess3(order, executeDefaultArguments, endOfAdmissionPeriod)
       .flatMap(_
         .joinStd
         .handleError(OrderOutcome.Failed.fromThrowable)
@@ -250,7 +253,8 @@ extends Service.StoppableByRequest:
 
   private def startOrderProcess3(
     order: Order[Order.Processing],
-    executeDefaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[FiberIO[OrderOutcome]] =
     jobDriver(order.workflowPosition).flatMap:
       case Left(problem) =>
@@ -265,7 +269,7 @@ extends Service.StoppableByRequest:
               .allocated)
           .flatMap: (stdObservers, releaseStdObservers) =>
             jobDriver
-              .runOrderProcess(order, executeDefaultArguments, stdObservers)
+              .runOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod, stdObservers)
               .guarantee(releaseStdObservers)
               .guarantee(releaseAssignment)
               .start

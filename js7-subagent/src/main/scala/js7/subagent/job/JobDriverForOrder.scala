@@ -5,12 +5,14 @@ import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.Environment.environment
 import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
+import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -36,10 +38,11 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
   def processOrder(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp],
     stdObservers: StdObservers,
     jobLauncher: JobLauncher)
   : IO[OrderOutcome] =
-    IO(processOrderResource(order, executeArguments, stdObservers))
+    IO(processOrderResource(order, executeArguments, endOfAdmissionPeriod, stdObservers))
       .flatMapT(_.use: processOrder_ =>
         processOrder2(jobLauncher, processOrder_))
       .catchIntoChecked
@@ -50,6 +53,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
   private def processOrderResource(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
+    endOfAdmissionPeriod: Option[Timestamp],
     stdObservers: StdObservers)
   : Checked[ResourceIO[ProcessOrder]] =
     checkedJobLauncher
@@ -61,7 +65,9 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
           order, workflow, jobKey, workflowJob, jobResources,
           executeArguments,
           workflowJob.defaultArguments,
-          jobConf.controllerId, stdObservers,
+          jobConf.controllerId,
+          endOfAdmissionPeriod,
+          stdObservers,
           fileValueState)
 
   private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder)
@@ -83,18 +89,23 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
         case Left(problem) =>
           IO.left(problem)
         case Right(orderProcess) =>
-          IO.defer:
-            orderProcess.start(processOrder.order.id, jobKey)
-          .flatMap: fiber =>
-            SyncDeadline.usingNow: now ?=>
-              runningSince = now
-            .*>(scheduleTimeoutCancellation)
-            .flatMap: timeoutFiber =>
-              fiber.joinStd.map(modifyOutcome).mapOrKeep:
-                case outcome: OrderOutcome.IsSucceeded =>
-                  readErrorLine(processOrder).getOrElse(outcome)
-              .guarantee(timeoutFiber.cancel)
-              .guarantee(sigkillFiber.cancel)
+          locally:
+            for
+              fiber <- orderProcess.start(processOrder.order.id, jobKey)
+              _ <- SyncDeadline.usingNow: now ?=>
+                runningSince = now
+              timeoutFiber <- scheduleTimeoutCancellation
+              periodEndFiber <- processOrder.endOfAdmissionPeriod.fold(IO.unit.start):
+                scheduleTimeoutCancellationAt
+              orderOutcome <-
+                fiber.joinStd.map(modifyOutcome).mapOrKeep:
+                  case outcome: OrderOutcome.IsSucceeded =>
+                    readErrorLine(processOrder).getOrElse(outcome)
+                .guarantee(timeoutFiber.cancel)
+                .guarantee(periodEndFiber.cancel)
+                .guarantee(sigkillFiber.cancel)
+            yield
+              orderOutcome
           .handleError: t =>
             logger.error(s"${t.toStringWithCauses}", t.nullIfNoStackTrace)
             OrderOutcome.Failed.fromThrowable(t)
@@ -133,6 +144,23 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
                 logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
               .startAndForget
       .start
+
+  private def scheduleTimeoutCancellationAt(ts: Timestamp): IO[FiberIO[Unit]] =
+    environment[AlarmClock].flatMap: alarmClock =>
+      alarmClock.sleepUntil(ts, label = orderId.toString)
+    .productR:
+      SyncDeadline.usingNow:
+        timedOut = true
+        // TODO Weitere Öffnungszeiten können sich anschließen, auch überlappend!
+        logger.warn:
+          s"$orderId OrderProcess has reached the end of admission period after and will be killed now"
+    .productR:
+      // TODO Es darf nur einen geben:
+      killWithSigkillDelay(SIGTERM)
+        .handleError: t =>
+          logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
+        .startAndForget
+    .start
 
   def killWithSigkillDelay(signal_ : ProcessSignal): IO[Unit] =
     IO.defer:

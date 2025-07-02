@@ -7,6 +7,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StandardMapView
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -39,7 +40,8 @@ trait SubagentDriver:
 
   protected val journal: Journal[? <: SubagentDirectorState[?]]
 
-  def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]
+  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  : IO[Checked[FiberIO[OrderProcessed]]]
 
   def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]
 

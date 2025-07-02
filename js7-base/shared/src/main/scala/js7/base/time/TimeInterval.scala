@@ -18,6 +18,8 @@ sealed trait TimeInterval:
   def endsBefore(timestamp: Timestamp): Boolean
 
 
+type NonEmptyTimeInterval = TimeInterval.Standard | TimeInterval.Always
+
 object TimeInterval:
   val never: TimeInterval = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
   val alwaysSinceEpoch: TimeInterval = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
@@ -27,6 +29,7 @@ object TimeInterval:
 
   implicit def fromStartAndEnd(interval: (Timestamp, Timestamp)): TimeInterval =
     TimeInterval(interval._1, interval._2 - interval._1)
+
 
   final case class Standard(start: Timestamp, duration: FiniteDuration)
   extends TimeInterval:
@@ -45,6 +48,7 @@ object TimeInterval:
 
     override def toString = s"TimeInterval($start, ${duration.pretty})"
 
+  type Never = Never.type
   object Never extends TimeInterval:
     val start: Timestamp = Timestamp.Epoch
     val end: Timestamp = Timestamp.Epoch
@@ -61,6 +65,7 @@ object TimeInterval:
 
     override def toString = "Never"
 
+  type Always = Always.type
   object Always extends TimeInterval:
     val start: Timestamp = Timestamp.Epoch
     val end: Timestamp = Timestamp.MaxValue

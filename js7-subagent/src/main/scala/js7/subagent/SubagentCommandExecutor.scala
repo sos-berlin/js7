@@ -33,8 +33,8 @@ private[subagent] final class SubagentCommandExecutor(
       val since = now
       command
         .match
-          case StartOrderProcess(order, executeDefaultArguments) =>
-            subagent.startOrderProcess(order, executeDefaultArguments)
+          case StartOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod) =>
+            subagent.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod)
               .rightAs(SubagentCommand.Accepted)
 
           //case AttachItem(item) =>

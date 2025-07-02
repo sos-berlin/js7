@@ -5,6 +5,7 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Base64UUID
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.{ControllerId, ControllerState}
@@ -120,12 +121,10 @@ final class SubagentCommandTest extends OurTestSuite:
             OrderId("ORDER"),
             (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
             Order.Processing(SubagentId("SUBAGENT"))),
-          Map("expr" -> expr("'EXPR'"))),
+          Map("expr" -> expr("'EXPR'")),
+          Some(ts"2025-07-01T17:00:00Z")),
         json"""{
           "TYPE": "StartOrderProcess",
-          "defaultArguments": {
-            "expr": "'EXPR'"
-          },
           "order": {
             "id": "ORDER",
             "state": {
@@ -139,7 +138,11 @@ final class SubagentCommandTest extends OurTestSuite:
               },
               "position": [ 0 ]
             }
-          }
+          },
+          "defaultArguments": {
+            "expr": "'EXPR'"
+          },
+          "endOfAdmissionPeriod": 1751389200000
         }""")
 
       // COMPATIBLE WITH v2.3.0: no correlId

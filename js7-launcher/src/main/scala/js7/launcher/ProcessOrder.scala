@@ -4,6 +4,7 @@ import cats.effect.ResourceIO
 import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}
@@ -26,6 +27,7 @@ final case class ProcessOrder(
   executeArguments: Map[String, Expression],
   jobArguments: Map[String, Expression],
   controllerId: ControllerId,
+  endOfAdmissionPeriod: Option[Timestamp],
   stdObservers: StdObservers,
   fileValueScope: Scope)
 extends ProcessingOrderScopes:
@@ -67,14 +69,16 @@ object ProcessOrder:
     executeArguments: Map[String, Expression],
     jobArguments: Map[String, Expression],
     controllerId: ControllerId,
+    endOfAdmissionPeriod: Option[Timestamp],
     stdObservers: StdObservers,
     fileValueState: FileValueState)
   : ResourceIO[ProcessOrder] =
     for fileValueScope <- FileValueScope.resource(fileValueState) yield
       ProcessOrder(
         order, workflow, jobKey, workflowJob, jobResources,
-        executeArguments, jobArguments, controllerId, stdObservers,
-        fileValueScope)
+        executeArguments, jobArguments, controllerId,
+        endOfAdmissionPeriod = endOfAdmissionPeriod,
+        stdObservers, fileValueScope)
 
   def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
   : Checked[Map[String, Option[String]]] =

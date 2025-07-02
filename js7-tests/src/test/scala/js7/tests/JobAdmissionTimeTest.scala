@@ -13,8 +13,9 @@ import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timezone, WeekdayPeri
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted}
+import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.OrderObstacle.waitingForAdmmission
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
@@ -23,12 +24,12 @@ import js7.data.workflow.instructions.{AddOrder, Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.AdmissionTimeTest.*
+import js7.tests.JobAdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.duration.*
 
-final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
+final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -42,7 +43,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
-  private implicit val zoneId: ZoneId = AdmissionTimeTest.timeZone
+  private implicit val zoneId: ZoneId = JobAdmissionTimeTest.timeZone
   private implicit lazy val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
@@ -243,7 +244,39 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
 
-object AdmissionTimeTest:
+  "killAtEndOfAdmissionPeriod" in:
+    controller.resetLastWatchedEventId()
+    val workflow = Workflow.of:
+      Execute(WorkflowJob(agentPath,
+        ShellScriptExecutable(
+        """#!/usr/bin/env bash
+          |set -euo pipefail
+          |echo Hej!
+          |while true; do :
+          |  sleep 0.1
+          |done
+          |exit 1
+          |""".stripMargin),
+        admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
+            WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))),
+        killAtEndOfAdmissionPeriod = true))
+    withItem(workflow): workflow =>
+      clock := local("2025-06-30T00:00")
+      val orderId = OrderId("killAtEndOfAdmissionPeriod")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path))
+        .await(99.s).orThrow
+      controller.awaitNextKey[OrderAttached](orderId)
+      assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T11:00")))))
+
+      clock := local("2025-06-30T12:00")
+      controller.awaitNextKey[OrderProcessingStarted](orderId)
+      controller.awaitNextKey[OrderStdoutWritten](orderId)
+
+      clock := local("2025-06-30T13:00")
+      controller.awaitNextKey[OrderFailed](orderId)
+
+
+object JobAdmissionTimeTest:
 
   private val agentPath = AgentPath("AGENT")
   private val timeZone = ZoneId.of("Europe/Mariehamn")
