@@ -200,9 +200,10 @@ extends
       val externalOrderKey = path / externalOrderName
       externalToState.get(externalOrderName).toList.flatMap: appearedOrHasOrder =>
         val Appeared(arguments, legacyOrderId) = appearedOrHasOrder: @unchecked
-        item.externalToOrderAndPlanId(externalOrderName, legacyOrderId, Timestamp.now)
-          .flatMap: (orderId, planId) =>
-            val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments, planId)
+        item.externalToOrderAndPlanIdAndPriority(externalOrderName, legacyOrderId, Timestamp.now)
+          .flatMap: (orderId, planId, priority) =>
+            val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments, planId,
+              priority = priority)
             toOrderAdded(freshOrder, Some(externalOrderKey))
               .map(freshOrder.id -> _)
         match

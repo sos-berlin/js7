@@ -48,9 +48,9 @@ final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
     StringConstant(sourceDirectory.toString))
 
   private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
-    val (orderId, planId) =
-      fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
-    assert(planId == PlanId.Global)
+    val (orderId, planId, priority) =
+      fileWatch.externalToOrderAndPlanIdAndPriority(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global && priority == 0)
     orderId
 
   "Start with a file" in:

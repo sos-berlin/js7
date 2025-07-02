@@ -22,8 +22,8 @@ trait OrderWatch extends UnsignedSimpleItem:
 
   val workflowPath: WorkflowPath
 
-  def externalToOrderAndPlanId(externalOrderName: ExternalOrderName, legacyOrderId: Option[OrderId], now: Timestamp)
-  : Checked[(OrderId, PlanId)]
+  def externalToOrderAndPlanIdAndPriority(externalOrderName: ExternalOrderName, legacyOrderId: Option[OrderId], now: Timestamp)
+  : Checked[(OrderId, PlanId, /*priority=*/BigDecimal)]
 
   override def dedicatedAgentPath: Option[AgentPath] =
     Some(agentPath)

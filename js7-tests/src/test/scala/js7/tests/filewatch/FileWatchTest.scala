@@ -32,11 +32,11 @@ import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.HasOrder
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.PlanId
+import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.value.expression.scopes.EnvScope
+import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.filewatch.FileWatchTest.*
@@ -76,16 +76,18 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     aAgentPath,
-    expr(s"${StringConstant.quote(watchPrefix)} ++ env('$envName')"))
+    ExpressionParser.expr(s"${StringConstant.quote(watchPrefix)} ++ env('$envName')"))
 
   private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
-    val (orderId, planId) = fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
-    assert(planId == PlanId.Global)
+    val (orderId, planId, priority) =
+      fileWatch.externalToOrderAndPlanIdAndPriority(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global && priority == 0)
     orderId
 
   private def waitingFileToOrderId(externalOrderName: ExternalOrderName): OrderId =
-    val (orderId, planId) =     waitingFileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
-    assert(planId == PlanId.Global)
+    val (orderId, planId, priority) =
+      waitingFileWatch.externalToOrderAndPlanIdAndPriority(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global && priority == 0)
     orderId
 
   private lazy val waitingWatchDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files-waiting"
@@ -107,6 +109,33 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   "referencedItemPaths" in:
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
 
+  "orderExpr" - {
+    def evalOrderExpr(expr: Expression): (OrderId, PlanId, BigDecimal) =
+      FileWatch(
+        OrderWatchPath("ORDER-WATCH"),
+        waitingWorkflow.path,
+        aAgentPath,
+        StringConstant("DIRECTORY"),
+        orderExpr = Some(expr)
+      ).externalToOrderAndPlanIdAndPriority(ExternalOrderName("1"), None, Timestamp.now)
+        .orThrow
+
+    "OrderId" in:
+      val (orderId, planId, priority) = evalOrderExpr:
+        expr"""{ orderId: "ORDER" }"""
+      assert(orderId == OrderId("ORDER") && planId == PlanId.Global && priority == 0)
+
+    "OrderId, PlanId" in:
+      val (orderId, planId, priority) = evalOrderExpr:
+        expr"""{ orderId: "ORDER", planId: [ "DailyPlan", "2025-07-01" ] }"""
+      assert(orderId == OrderId("ORDER") && planId == PlanSchemaId("DailyPlan") / "2025-07-01" && priority == 0)
+
+    "OrderId, PlanId, priority" in:
+      val (orderId, planId, priority) = evalOrderExpr:
+        expr"""{ orderId: "ORDER", planId: [ "DailyPlan", "2025-07-01" ], priority: 1}"""
+      assert(orderId == OrderId("ORDER") && planId == PlanSchemaId("DailyPlan") / "2025-07-01" && priority == 1)
+  }
+
   "Start with existing file; check Workflow's Order declarations" in:
     // Create FileWatch and test with an already waiting Order
     val myDirectory = Paths.get(watchPrefix + "existing")
@@ -118,12 +147,15 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       OrderWatchPath("EXISTING"),
       waitingWorkflow.path,
       aAgentPath,
-      StringConstant(myDirectory.toString))
+      StringConstant(myDirectory.toString),
+      orderExpr = Some(expr"""{ orderId: "EXISTING", priority: 7 }"""))
     updateItems(myFileWatch)
 
-    val (orderId, PlanId.Global) =
-      myFileWatch.externalToOrderAndPlanId(ExternalOrderName("1"), None, Timestamp.now).orThrow: @unchecked
+    val (orderId, planId, priority) =
+      myFileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("1"), None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global && priority == 7)
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    assert(controllerState.idToOrder(orderId).priority == 7)
     assert(controllerState.idToOrder(orderId).namedValues(waitingWorkflow).toMap == Map(
       "file" -> StringValue(file.toString),
       "DEFAULT" -> StringValue("DEFAULT-VALUE")))
@@ -267,7 +299,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         /// Change directory ///
         val changedFileWatch = waitingFileWatch.copy(
-          directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
+          directoryExpr = ExpressionParser.expr(StringConstant.quote(newDirectory.toString)))
         controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
         eventWatch.await[ItemAttached](after = eventId)
 
@@ -350,7 +382,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         /// Change directory ///
         val changedFileWatch = waitingFileWatch.copy(
-          directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
+          directoryExpr = ExpressionParser.expr(StringConstant.quote(newDirectory.toString)))
         controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
         eventWatch.await[ItemAttached](after = eventId)
 

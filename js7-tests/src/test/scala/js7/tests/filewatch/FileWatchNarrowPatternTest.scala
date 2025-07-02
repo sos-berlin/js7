@@ -45,9 +45,9 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
     StringConstant(sourceDirectory.toString))
 
   private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
-    val (orderId, planId) =
-      fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
-    assert(planId == PlanId.Global)
+    val (orderId, planId,  priority) =
+      fileWatch.externalToOrderAndPlanIdAndPriority(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global && priority == 0)
     orderId
 
   private val aFile = sourceDirectory / "A"

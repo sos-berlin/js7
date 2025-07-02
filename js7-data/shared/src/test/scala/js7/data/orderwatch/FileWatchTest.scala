@@ -86,7 +86,7 @@ final class FileWatchTest extends OurTestSuite:
         }""")
   }
 
-  "externalToOrderAndPlanId" in:
+  "externalToOrderAndPlanIdAndPriority" in:
     val fileWatch = FileWatch(
       OrderWatchPath("FILE-WATCH"),
       WorkflowPath("WORKFLOW"),
@@ -96,17 +96,34 @@ final class FileWatchTest extends OurTestSuite:
       orderExpr = Some:
         expr"""{
           orderId: "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1",
-          planId: [ "DailyPlan", now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ]
+          planId: [ "DailyPlan", now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ],
+          priority: 777
         }""")
 
     val timestamp = ts"2025-03-05T12:00:00Z"
-    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("X"), None, timestamp) ==
+    assert(fileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("X"), None, timestamp) ==
       Left(FileWatchPatternDoesntMatchProblem(fileWatch.path / ExternalOrderName("X"))))
 
-    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
-      Right(OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER") -> PlanSchemaId("DailyPlan") / "2025-03-05"))
+    assert(fileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
+      Right((OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER"), PlanSchemaId("DailyPlan") / "2025-03-05", 777)))
 
-  "externalToOrderAndPlanId <v2.7.4" in:
+  "externalToOrderAndPlanIdAndPriority, orderId only" in:
+    val fileWatch = FileWatch(
+      OrderWatchPath("FILE-WATCH"),
+      WorkflowPath("WORKFLOW"),
+      AgentPath("AGENT"),
+      expr"'DIRECTORY'",
+      Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
+      orderExpr = Some:
+        expr"""{
+          orderId: "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1"
+        }""")
+
+    val timestamp = ts"2025-03-05T12:00:00Z"
+    assert(fileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
+      Right((OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER"), PlanId.Global, 0)))
+
+  "externalToOrderAndPlanIdAndPriority <v2.7.4" in:
     // COMPATIBLE with v2.7.3
     val fileWatch = FileWatch(
       OrderWatchPath("FILE-WATCH"),
@@ -118,8 +135,8 @@ final class FileWatchTest extends OurTestSuite:
         expr""" "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1" """)
 
     val timestamp = ts"2025-03-05T12:00:00Z"
-    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("X"), None, timestamp) ==
+    assert(fileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("X"), None, timestamp) ==
       Left(FileWatchPatternDoesntMatchProblem(fileWatch.path / ExternalOrderName("X"))))
 
-    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
-      Right(OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER") -> PlanId.Global))
+    assert(fileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
+      Right((OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER"), PlanId.Global, 0)))

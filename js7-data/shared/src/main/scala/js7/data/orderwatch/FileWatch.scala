@@ -1,6 +1,7 @@
 package js7.data.orderwatch
 
 import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder, DecodingFailure}
 import java.util.regex.{Matcher, Pattern}
@@ -12,6 +13,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItemPath, ItemRevision}
+import js7.data.order.Order.DefaultPriority
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.*
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
@@ -47,11 +49,12 @@ extends OrderWatch:
   override val referencedItemPaths: View[InventoryItemPath] =
     View(agentPath, workflowPath)
 
-  def externalToOrderAndPlanId(
+  /** @return (OrderId, PlanId, priority) */
+  def externalToOrderAndPlanIdAndPriority(
     externalOrderName: ExternalOrderName,
     legacyOrderId: Option[OrderId],
     now: Timestamp)
-  : Checked[(OrderId, PlanId)] =
+  : Checked[(OrderId, PlanId, BigDecimal)] =
     val relativePath = externalOrderName.string
     val matcher = matchFilename(relativePath)
     if !matcher.matches() then
@@ -75,17 +78,20 @@ extends OrderWatch:
                     yield
                       planSchemaId / planKey
                   case _ => Left(Problem("planId must be a list of two strings"))
+              priority <- obj.nameToValue.get("priority").traverse(_.asNumber)
             yield
-              orderId -> planId
+              (orderId, planId, priority getOrElse DefaultPriority)
 
         case (None, Some(legacyOrderIdExpr)) =>
-          legacyOrderId.map(orderId => Checked(orderId -> PlanId.Global)).getOrElse:
+          legacyOrderId.map: orderId =>
+            Checked((orderId, PlanId.Global, DefaultPriority))
+          .getOrElse:
             legacyOrderIdExpr.evalAsString(using scope)
               .flatMap(OrderId.checked)
-              .map(_ -> PlanId.Global)
+              .map((_, PlanId.Global, DefaultPriority))
 
         case (None, None) =>
-          checkedDefaultOrderId.map(_ -> PlanId.Global)
+          checkedDefaultOrderId.map((_, PlanId.Global, DefaultPriority))
 
         case _ => Left(Problem("orderExpr cannot be combined with legacy orderIdExpression"))
 
