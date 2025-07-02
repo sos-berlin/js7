@@ -67,7 +67,8 @@ trait OrderScopes:
         case "js7Label" => symbolScope.symbol("label").get
         case "js7WorkflowPosition" => symbolScope.symbol("workflowPosition").get
         case "js7TryCount" => symbolScope.symbol("tryCount").get
-        case "js7MaxTries" => symbolScope.symbol("maxTries").get,
+        case "js7MaxTries" => symbolScope.symbol("maxTries").get
+        case "js7WorkflowTimezone" => Right(StringValue(workflow.timeZone.string)),
       EnvScope)
 
   /** For `Order[Order.State]`. */

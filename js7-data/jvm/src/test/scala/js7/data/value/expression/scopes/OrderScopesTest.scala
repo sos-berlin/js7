@@ -54,6 +54,7 @@ final class OrderScopesTest extends OurTestSuite:
       assert(scope.parseAndEval("label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("workflow.timezone") == Right(StringValue("Europe/Mariehamn")))
+      assert(scope.parseAndEval("$js7WorkflowTimezone") == Right(StringValue("Europe/Mariehamn")))
 
       assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
 
