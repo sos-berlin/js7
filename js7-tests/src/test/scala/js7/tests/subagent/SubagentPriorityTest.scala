@@ -99,7 +99,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester:
     // bSubagentId has the highest testMeteringValue
     assert:
       events.collectFirst:
-        case OrderProcessingStarted(Some(subagentId), Some(_), false) => subagentId
+        case OrderProcessingStarted(Some(subagentId), Some(_), false, None) => subagentId
       == Some(bSubagentId)
 
     eventWatch.await[OrderTerminated](_.key == orderId)

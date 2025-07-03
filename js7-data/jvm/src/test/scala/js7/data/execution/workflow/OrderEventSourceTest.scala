@@ -1521,7 +1521,7 @@ object OrderEventSourceTest:
     private def processEvent(keyedEvent: KeyedEvent[OrderEvent | PlanFinishedEvent])
     : Unit =
       keyedEvent match
-        case KeyedEvent(orderId: OrderId, OrderProcessingStarted(_, _, _)) =>
+        case KeyedEvent(orderId: OrderId, OrderProcessingStarted(_, _, _, _)) =>
           inProcess += orderId
 
         case KeyedEvent(orderId: OrderId, _: OrderProcessed) =>

@@ -177,7 +177,7 @@ final class OrderTest extends OurTestSuite:
           Order(
             OrderId("ID"),
             WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
-            Processing(subagentId)),
+            Processing(subagentId, endOfAdmissionPeriod = Some(ts"2025-07-03T12:00:00Z"))),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -189,7 +189,8 @@ final class OrderTest extends OurTestSuite:
             },
             "state": {
               "TYPE": "Processing",
-              "subagentId": "SUBAGENT"
+              "subagentId": "SUBAGENT",
+              "endOfAdmissionPeriod": 1751544000000
             }
           }""")
 

@@ -290,7 +290,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(Right(_))
       else
         requireNotStopping.flatMapT(_ =>
-          startOrderProcessing(order, endOfAdmissionPeriod = ???))
+          startOrderProcessing(order, endOfAdmissionPeriod = order.state.endOfAdmissionPeriod))
 
   def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =

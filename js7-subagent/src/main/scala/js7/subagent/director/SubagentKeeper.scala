@@ -172,7 +172,8 @@ extends Service.StoppableByRequest:
             OrderProcessingStarted(
               Some(subagentDriver.subagentId),
               selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
-              stick = stick) ::
+              stick = stick,
+              endOfAdmissionPeriod = endOfAdmissionPeriod) ::
             Nil
         events.map(orderId <-: _)
     .flatTapT(onPersisted(orderId, onEvents))

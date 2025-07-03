@@ -131,11 +131,11 @@ extends
         check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(state = Ready()))
 
-      case OrderProcessingStarted(subagentId, subagentBundleId, stick) =>
+      case OrderProcessingStarted(subagentId, subagentBundleId, stick, endOfAdmissionPeriod) =>
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
           && (!stick || stickySubagents.nonEmpty),
           copy(
-            state = Processing(subagentId, subagentBundleId),
+            state = Processing(subagentId, subagentBundleId, endOfAdmissionPeriod),
             stickySubagents =
               if stick then
                 stickySubagents.head.copy(stuckSubagentId = subagentId) :: stickySubagents.tail
@@ -1300,17 +1300,22 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
   final case class Processing(
     subagentId: Option[SubagentId],
-    subagentBundleId: Option[SubagentBundleId])
+    subagentBundleId: Option[SubagentBundleId],
+    endOfAdmissionPeriod: Option[Timestamp])
   extends IsStarted, IsNotDetachable, IsTransferableOnlyIfInstructionUnchanged:
     override def toString = s"Processing(${subagentId getOrElse
         "legacy local Subagent"}${subagentBundleId.fold("")(o => s" $o")})"
 
   object Processing:
-    def legacy: Processing = new Processing(None, None)
+    def legacy: Processing = new Processing(None, None, None)
 
     // Since v2.3
-    def apply(subagentId: SubagentId, bundleId: Option[SubagentBundleId] = None): Processing =
-      Processing(Some(subagentId), bundleId)
+    def apply(
+      subagentId: SubagentId,
+      bundleId: Option[SubagentBundleId] = None,
+      endOfAdmissionPeriod: Option[Timestamp] = None)
+    : Processing =
+      new Processing(Some(subagentId), bundleId, endOfAdmissionPeriod)
 
 
   type Processed = Processed.type

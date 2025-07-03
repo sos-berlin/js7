@@ -195,7 +195,8 @@ extends SubagentDriver, Service.StoppableByRequest:
     logger.traceIO("recoverOrderProcessing", order.id):
       if wasRemote /*&& false ???*/ then
         // The Order may have not yet been started (only OrderProcessingStarted emitted)
-        startOrderProcessing(order, endOfAdmissionPeriod = ???) // idempotent operation
+        // idempotent operation:
+        startOrderProcessing(order, endOfAdmissionPeriod = order.state.endOfAdmissionPeriod)
       else
         emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)

@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.DayOfWeek.{FRIDAY, MONDAY, TUESDAY}
+import java.time.DayOfWeek.{FRIDAY, MONDAY, TUESDAY, WEDNESDAY}
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*

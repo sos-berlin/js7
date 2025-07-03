@@ -251,7 +251,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderProcessingStarted(
     subagentId: Option[SubagentId],
     subagentBundleId: Option[SubagentBundleId] = None,
-    stick: Boolean = false)
+    stick: Boolean = false,
+    endOfAdmissionPeriod: Option[Timestamp] = None)
   extends OrderCoreEvent:
     override def toString =
       s"OrderProcessingStarted(${Array(subagentId, subagentBundleId, stick ? "stick").flatten.mkString(" ")})"
@@ -265,8 +266,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     // Since v2.3
     @TestOnly
-    def apply(subagentId: SubagentId, stick: Boolean): OrderProcessingStarted =
-      new OrderProcessingStarted(Some(subagentId), None, stick)
+    def apply(subagentId: SubagentId, stick: Boolean, endOfAdmissionPeriod: Option[Timestamp])
+    : OrderProcessingStarted =
+      new OrderProcessingStarted(Some(subagentId), None, stick, endOfAdmissionPeriod)
 
 
   sealed trait OrderStdWritten extends OrderEvent:
