@@ -273,4 +273,24 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       7 -> TimeInterval(ts"2024-01-31T23:00:00Z", 22.h), // February due to time zone
       8 -> TimeInterval(ts"2024-02-01T19:00:00Z", 3.h)))
 
+  "findLongTimeInterval" in :
+    assert(AdmissionTimeScheme.never
+      .findLongTimeInterval(ts"2025-07-02T00:00:00Z", 1.s, dateOffset = 0.h) == None)
+    assert(AdmissionTimeScheme.always
+      .findLongTimeInterval(ts"2025-07-02T00:00:00Z", 1.s, dateOffset = 0.h)
+      == Some(TimeInterval.Always))
+
+    val scheme = AdmissionTimeScheme(Seq(
+      DailyPeriod(LocalTime.of(2, 0), 2.h), // Before dateOffset
+      WeekdayPeriod(WEDNESDAY, LocalTime.of(4, 0), 3.h),  // Follows seamlessly, until 7:00
+      MonthlyWeekdayPeriod(1, WEDNESDAY, LocalTime.of(6, 0), 6.h))) // Overlaps, until 12:00
+
+    // Last TimeInterval only:
+    assert(scheme.findLongTimeInterval(ts"2025-07-02T04:00:00Z", 99999.days, dateOffset = 0.h) ==
+      Some(TimeInterval(ts"2025-07-02T03:00:00Z", 6.h)))
+
+    // Three TimeIntervals are merged
+    assert(scheme.findLongTimeInterval(ts"2025-07-01T23:00:00Z", 99999.days, dateOffset = 0.h) ==
+      Some(TimeInterval(ts"2025-07-01T23:00:00Z", 10.h)))
+
   private def local(string: String) = LocalDateTime.parse(string)

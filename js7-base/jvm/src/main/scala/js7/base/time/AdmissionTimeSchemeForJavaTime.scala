@@ -7,6 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
+import scala.util.boundary
 
 /** Adaptor AdmissionTimeScheme to Java Time.*/
 object AdmissionTimeSchemeForJavaTime:
@@ -47,6 +48,22 @@ object AdmissionTimeSchemeForJavaTime:
         .map(_._2.toTimeInterval)
         .filterNot(_.endsBefore(from))
         .headOption
+
+    /** Like findTimeInterval, but combines seamless following or overlapping TimeIntervals. */
+    def findLongTimeInterval(
+      from: Timestamp, limit: FiniteDuration, dateOffset: FiniteDuration)(using ZoneId)
+    : Option[TimeInterval] =
+      val timeIntervals = findTimeIntervals(from, from + limit, dateOffset).map(_._2)
+      val it = timeIntervals.iterator
+      it.hasNext.thenSome:
+        var result = it.next()
+        boundary:
+          while it.hasNext do
+            val b = it.next()
+            result.combine(b) match
+              case Some(combined) => result = combined
+              case None => boundary.break()
+        result
 
     /** Calculates end time with local time, yielding an hour more or less when dst shifts. */
     @TestOnly

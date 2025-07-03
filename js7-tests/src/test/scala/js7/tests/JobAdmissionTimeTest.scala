@@ -1,7 +1,7 @@
 package js7.tests
 
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
-import java.time.{LocalTime, ZoneId}
+import java.time.{LocalDateTime, LocalTime, ZoneId}
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, SpecificDatePeriod, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -43,8 +43,8 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
-  private implicit val zoneId: ZoneId = JobAdmissionTimeTest.timeZone
-  private implicit lazy val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
+  private given zoneId: ZoneId = JobAdmissionTimeTest.zoneId
+  private given clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
     alarmClock = Some(clock))
@@ -244,42 +244,86 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
 
-  "killAtEndOfAdmissionPeriod" in:
-    controller.resetLastWatchedEventId()
-    val workflow = Workflow.of:
-      Execute(WorkflowJob(agentPath,
-        ShellScriptExecutable(
-        """#!/usr/bin/env bash
-          |set -euo pipefail
-          |echo Hej!
-          |while true; do :
-          |  sleep 0.1
-          |done
-          |exit 1
-          |""".stripMargin),
-        admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
-            WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))),
-        killAtEndOfAdmissionPeriod = true))
-    withItem(workflow): workflow =>
-      clock := local("2025-06-30T00:00")
-      val orderId = OrderId("killAtEndOfAdmissionPeriod")
-      controller.api.addOrder(FreshOrder(orderId, workflow.path))
-        .await(99.s).orThrow
-      controller.awaitNextKey[OrderAttached](orderId)
-      assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T11:00")))))
+  "killAtEndOfAdmissionPeriod" - {
+    "single AdmissionPeriod" in:
+      controller.resetLastWatchedEventId()
+      val workflow = Workflow(
+        WorkflowPath("killAtEndOfAdmissionPeriod"),
+        Seq:
+          Execute(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+            s"""#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo Hej!
+              |while true; do :
+              |  sleep 0.1
+              |done
+              |exit 1
+              |""".stripMargin),
+            admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
+              WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))),
+            killAtEndOfAdmissionPeriod = true)),
+        timeZone = Timezone(zoneId.getId))
+      withItem(workflow): workflow =>
+        clock := local("2025-06-30T00:00")
+        val orderId = OrderId("killAtEndOfAdmissionPeriod-1")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path))
+          .await(99.s).orThrow
+        controller.awaitNextKey[OrderAttached](orderId)
+        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T08:00")))))
 
-      clock := local("2025-06-30T12:00")
-      controller.awaitNextKey[OrderProcessingStarted](orderId)
-      controller.awaitNextKey[OrderStdoutWritten](orderId)
+        clock := local("2025-06-30T09:00")
+        controller.awaitNextKey[OrderProcessingStarted](orderId)
+        controller.awaitNextKey[OrderStdoutWritten](orderId)
 
-      clock := local("2025-06-30T13:00")
-      controller.awaitNextKey[OrderFailed](orderId)
+        clock := local("2025-06-30T10:00")
+        assert(controllerState.idToOrder(orderId).isState[Order.Processing])
+        controller.awaitNextKey[OrderFailed](orderId)
 
+    "Two periods without a gap" in:
+      val delay = 100.ms
+      controller.resetLastWatchedEventId()
+      val workflow = Workflow(
+        WorkflowPath("killAtEndOfAdmissionPeriod"),
+        Seq:
+          Execute(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+            s"""#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo Hej!
+              |while true; do :
+              |  sleep ${delay.toBigDecimalSeconds}
+              |done
+              |exit 1
+              |""".stripMargin),
+            admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
+              WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h),
+              SpecificDatePeriod(LocalDateTime.parse("2025-06-30T10:00"), 30.minutes)))),
+            killAtEndOfAdmissionPeriod = true)),
+        timeZone = Timezone(zoneId.getId))
+      withItem(workflow): workflow =>
+        clock := local("2025-06-30T00:00")
+        val orderId = OrderId("killAtEndOfAdmissionPeriod-2")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        controller.awaitNextKey[OrderAttached](orderId)
+        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T08:00")))))
+
+        clock := local("2025-06-30T09:00")
+        controller.awaitNextKey[OrderProcessingStarted](orderId)
+        controller.awaitNextKey[OrderStdoutWritten](orderId)
+
+        clock := local("2025-06-30T10:00")
+        sleep(2 * delay) // Time-dependent !!!
+        assert(controllerState.idToOrder(orderId).state.isInstanceOf[Order.Processing])
+
+        clock := local("2025-06-30T10:30")
+        controller.awaitNextKey[OrderFailed](orderId)
+  }
 
 object JobAdmissionTimeTest:
 
   private val agentPath = AgentPath("AGENT")
-  private val timeZone = ZoneId.of("Europe/Mariehamn")
+  private val zoneId = ZoneId.of("Europe/Mariehamn")
 
   private val mondayAdmissionTimeScheme = AdmissionTimeScheme(Seq(
     WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))
@@ -288,7 +332,7 @@ object JobAdmissionTimeTest:
     Seq(
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(mondayAdmissionTimeScheme)))),
-    timeZone = Timezone(timeZone.getId))
+    timeZone = Timezone(zoneId.getId))
 
   private val sundayAdmissionTimeScheme = AdmissionTimeScheme(Seq(
     WeekdayPeriod(SUNDAY, LocalTime.of(3, 0), 1.h) /*dst gap*/))
@@ -297,4 +341,4 @@ object JobAdmissionTimeTest:
     Seq(
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(sundayAdmissionTimeScheme)))),
-    timeZone = Timezone(timeZone.getId))
+    timeZone = Timezone(zoneId.getId))

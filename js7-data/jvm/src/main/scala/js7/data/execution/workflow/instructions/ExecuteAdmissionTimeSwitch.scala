@@ -35,7 +35,7 @@ final class ExecuteAdmissionTimeSwitch(
   def updateAndCheck(onAdmissionStart: IO[Unit])(using clock: AlarmClock)
   : IO[Option[NonEmptyTimeInterval]] =
     clock.lockIO: now =>
-      admissionTimeScheme.findTimeInterval(
+      admissionTimeScheme.findLongTimeInterval(
         now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
       match
         case None =>

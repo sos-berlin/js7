@@ -55,7 +55,6 @@ object SchemeRestriction:
 
 
   // MonthRestriction //
-
   /** Admission at specific months.
     *
     * Only the month of localInterval.start is checked
