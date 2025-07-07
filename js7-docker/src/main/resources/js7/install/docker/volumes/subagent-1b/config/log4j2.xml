@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration monitorInterval="10" shutdownHook="disable">
+  <loggers>
+    <logger level="trace" name="js7">
+      <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
+    </logger>
+  </loggers>
+</configuration>
