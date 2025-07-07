@@ -4,7 +4,6 @@ import cats.effect.{Deferred, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -38,7 +37,7 @@ final class AsyncLockTest extends OurAsyncTestSuite:
   private def addTests(n: Int, suppressLog: Boolean): Unit =
     "AsyncLock, concurrent" in:
       var retryCount = 0
-      val lock = AsyncLock("TEST", /*logWorryDurations = Nil, */suppressLog = suppressLog, logMinor = true)
+      val lock = AsyncLock("TEST", suppressLog = suppressLog, logMinor = true)
       doTest(lock.lock(_))
         .map(o => assert(o == Vector.fill(n)(initial)))
         // High probability to fail once
@@ -55,24 +54,23 @@ final class AsyncLockTest extends OurAsyncTestSuite:
       else
         val maxTries = 100
         val expected = Vector.fill(n)(initial)
-        0.tailRecM(i =>
-          doTest(identity).flatMap(result =>
+        0.tailRecM: i =>
+          doTest(identity).map: result =>
             if i < maxTries && result == expected then
               logger.warn("Retry because IOs did not run concurrently")
-              IO.left(i + 1)
+              Left(i + 1)
             else
-              IO.right(assert(result != expected))))
+              Right(assert(result != expected))
 
     "AsyncLock, not concurrent" in:
-      val lock = AsyncLock("TEST", /*logWorryDurations = Nil, */suppressLog = suppressLog, logMinor = true)
+      val lock = AsyncLock("TEST", suppressLog = suppressLog, logMinor = true)
       Stream.emits(1 to n)
         .evalMap(_ => lock.lock(IO.unit))
         .compile
         .drain
-        .timed.map { case (duration, ()) =>
+        .timed.map: (duration, _: Unit) =>
           logger.info(itemsPerSecondString(duration, n))
           succeed
-        }
 
     def doTest(lock: IO[Int] => IO[Int]): IO[Seq[Int]] =
       val guardedVariable = Atomic(initial)
@@ -86,8 +84,9 @@ final class AsyncLockTest extends OurAsyncTestSuite:
                 idleNanos(idleDuration)
                 guardedVariable += 1
                 found
-              .flatTap(_ => IO.whenA(Random.nextBoolean()):
-                IO.cede)
+              .flatTap: _ =>
+                IO.whenA(Random.nextBoolean()):
+                  IO.cede
               .flatMap: found =>
                 IO:
                   guardedVariable := initial
@@ -104,7 +103,7 @@ final class AsyncLockTest extends OurAsyncTestSuite:
       while System.nanoTime() - t < nanos do {}
 
   "Cancellation releases lock only after IO has been canceled" in:
-    val lock = AsyncLock("CANCEL-BODY", logWorryDurations = Nil)
+    val lock = AsyncLock("CANCEL-BODY"/*, logWorryDurations = Nil*/)
     val ioStarted = Deferred.unsafe[IO, Unit]
     @volatile var isCompleted = false
 
@@ -143,12 +142,12 @@ final class AsyncLockTest extends OurAsyncTestSuite:
   //  yield succeed
 
   "Lock acquisition is cancelable" - {
-    //"suppressLog=false" in:
-    //  runMyTest(AsyncLock.WithLogging("CANCEL-ACQUIRE", suppressLog = false))
-    //
-    "suppressLog=true" in:
+    //"suppressLog=true" in:
+    //  runMyTest(AsyncLock.supressLog)
+
+    "WithLogging" in:
       runMyTest:
-        AsyncLock.WithLogging("CANCEL-ACQUIRE", logWorryDurations = Nil, logMinor = true)
+        AsyncLock.WithLogging("CANCEL-ACQUIRE", logWorryDurations = Worry.Default.durations, logMinor = true)
 
     def runMyTest(lock: AsyncLock.WithLogging): IO[Assertion] =
       Deferred[IO, Unit]
@@ -160,8 +159,8 @@ final class AsyncLockTest extends OurAsyncTestSuite:
                 *> IO.defer(IO.sleep((2 << Random.nextInt(14)).µs))
                 *> IO(assert(lock.isLocked)))
             .void
-            .*>(IO(assert(!lock.isLocked)))
-            .*>(lock.lock(IO.unit))
+            *> IO(assert(!lock.isLocked))
+            *> lock.lock(IO.unit)
         .replicateA_(if isIntelliJIdea then 1000 else 100)
         .as(succeed)
   }
@@ -170,17 +169,16 @@ final class AsyncLockTest extends OurAsyncTestSuite:
     "Without logging" in:
       runMyTest(AsyncLock.dontLog())
 
-    //"With logging" in:
-    //  runMyTest(AsyncLock())
+    "With logging" in:
+      runMyTest(AsyncLock())
 
     def runMyTest(lock: AsyncLock): IO[Assertion] =
-      // Try -Dtest.speed=200000, it starts to get very slow with 400000
       sys.props.get("test.speed").map(_.toInt).fold(IO(pending)): n =>
         val since = Deadline.now
         Vector.fill(n)(()).parTraverse: _ =>
           lock.lock(IO.unit)
         .flatTap: _ =>
-          IO(logger.info(itemsPerSecondString(since.elapsed, n, "locks")))
+          IO(logger.info(itemsPerSecondString(since.elapsed, n, "acquisitions")))
         .as(succeed)
   }
 

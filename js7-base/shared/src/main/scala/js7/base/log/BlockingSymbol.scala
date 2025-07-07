@@ -26,7 +26,10 @@ final class BlockingSymbol:
     _warnLogged = true
 
   def escalate(): Unit =
-    if _index < 3 then
+    escalateUpTo(3)
+
+  def escalateUpTo(limit: Int): Unit =
+    if _index < limit then
       _index += 1
 
   def warnLogged: Boolean =
