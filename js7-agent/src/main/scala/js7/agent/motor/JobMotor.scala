@@ -94,7 +94,7 @@ final class JobMotor(
           .map(workflow => workflow -> workflow.instruction(order.position))
           .match
             case Left(problem) =>
-              logger.error(s"onOrderIsProcessable => $problem")
+              logger.error(s"onOrderIsProcessable(${order.id}) => $problem")
               IO.unit
 
             case Right((workflow, execute: Execute)) =>
@@ -133,10 +133,6 @@ final class JobMotor(
         jobEntry.onAdmissionTimeInterval:
           tryStartProcessing(jobEntry)
         .flatMap: maybeTimeInterval =>
-          val endOfAdmissionPeriod = maybeTimeInterval match
-            case Some(o: TimeInterval.Standard) => Some(o.end)
-            case Some(TimeInterval.Always) => None
-            case None => None /*impossible*/
           lock.lock:
             getAgentState.flatMap: agentState =>
               whenDeferred(jobEntry.isBelowProcessLimits(agentState)):
@@ -159,8 +155,12 @@ final class JobMotor(
                         // TODO OrderQueue should only contain immediately processable Orders
                         order.forceJobAdmission || maybeTimeInterval.isDefined)
                 .evalMap: order =>
-                  jobEntry.incrementProcessCount *>
+                  jobEntry.incrementProcessCount.productR:
                     // subagentKeeper.processOrder blocks until a Subagent becomes available
+                    val endOfAdmissionPeriod = maybeTimeInterval match
+                      case Some(o: TimeInterval.Standard) => Some(o.end)
+                      case Some(TimeInterval.Always) => None
+                      case None => None /*impossible*/
                     subagentKeeper.processOrder(order, endOfAdmissionPeriod, onSubagentEvents(order.id))
                       .catchIntoChecked
                       .handleProblemWith: problem =>

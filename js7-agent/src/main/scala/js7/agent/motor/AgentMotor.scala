@@ -488,7 +488,9 @@ extends Service.StoppableByRequest:
 
   private def persist[E <: Event](eventCalc: EventCalc[AgentState, E, TimeCtx])
   : IO[Checked[Persisted[AgentState, E]]] =
-    journal.persist(eventCalc).flatTapT(onPersisted)
+    journal.persist(eventCalc)
+      .flatTapT:
+        onPersisted
 
   private def onPersisted(persisted: Persisted[AgentState, Event]): IO[Right[Problem, Unit]] =
     onPersisted2(persisted).map(Right(_))
