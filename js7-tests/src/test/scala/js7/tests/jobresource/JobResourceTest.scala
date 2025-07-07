@@ -33,8 +33,8 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.ValueType.UnknownNameInExpressionProblem
-import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{NamedValue, StringConstant, expr}
+import js7.data.value.expression.ExpressionParser.parseExpr
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -181,7 +181,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
           agentPath,
           ShellScriptExecutable(":",
             env = Map(
-              "aJobResourceVariable" -> expr("JobResource:UNKNOWN:a")))))))
+              "aJobResourceVariable" -> expr"JobResource:UNKNOWN:a"))))))
     assert(controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
 
@@ -216,7 +216,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
               if isWindows then s"@echo off\r\necho $existingName=/%$existingName%/\r\n"
               else s"echo $existingName=/$$$existingName/",
               env = Map(
-                existingName -> expr(exprString)))))))
+                existingName -> parseExpr(exprString)))))))
       controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
         .await(99.s).orThrow
       workflow
@@ -280,9 +280,9 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     val myJobResource = JobResource(
       JobResourcePath("JOB-RESOURCE-FILE"),
       variables = Map(
-        "file" -> expr(s"""toFile(${StringConstant.quote(resourceContent)}, "*.tmp")""")),
+        "file" -> parseExpr(s"""toFile(${StringConstant.quote(resourceContent)}, "*.tmp")""")),
       env = Map(
-        "FROMRESOURCE" -> expr("$file")))
+        "FROMRESOURCE" -> parseExpr("$file")))
 
     val versionId = VersionId("toFile")
     val myWorkflow = Workflow(
@@ -307,7 +307,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
                  |cat "$FROMEXECUTABLE"
                  |""".stripMargin,
             env = Map(
-              "FROMEXECUTABLE" -> expr(s"""toFile(${StringConstant.quote(executableContent)}, "*.tmp")"""))),
+              "FROMEXECUTABLE" -> parseExpr(s"""toFile(${StringConstant.quote(executableContent)}, "*.tmp")"""))),
           jobResourcePaths = Seq(myJobResource.path)))))
 
     controller.api.updateSignedItems(Seq(sign(myJobResource), sign(myWorkflow)), Some(versionId))
@@ -354,7 +354,7 @@ object JobResourceTest:
     JobResourcePath("JOB-RESOURCE-B"),
     env = Map(
       "B" -> StringConstant("IGNORED IN FAVOR OF JOB-RESOURCE-A"),
-      "E" -> expr(""""E=$E"""")))
+      "E" -> parseExpr(""""E=$E"""")))
 
   private val jobName = WorkflowJob.Name("TEST-JOB")
   private val workflow = Workflow(
@@ -385,16 +385,16 @@ object JobResourceTest:
               |echo aJobResourceVariable=/$aJobResourceVariable/
               |""".stripMargin,
           env = Map(
-            "D" -> expr("'D of JOB ENV'"),
-            "E" -> expr("'E of JOB ENV'"),
-            "aJobResourceVariable" -> expr("JobResource:JOB-RESOURCE-A:a"))),
+            "D" -> expr"'D of JOB ENV'",
+            "E" -> expr"'E of JOB ENV'",
+            "aJobResourceVariable" -> expr"JobResource:JOB-RESOURCE-A:a")),
         defaultArguments = Map("A" -> StringConstant("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
   private val envJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-ENV"),
     env = Map(
-      "ORIGINAL_PATH" -> expr(s"env('$PathEnvName')")))
+      "ORIGINAL_PATH" -> parseExpr(s"env('$PathEnvName')")))
 
   private val envWorkflow = Workflow(
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
@@ -416,26 +416,26 @@ object JobResourceTest:
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SOS"),
     env = Map(
-      "JS7_ORDER_ID"          -> expr("orderId"),
-      "JS7_WORKFLOW_NAME"     -> expr("workflowPath"),
-      "JS7_WORKFLOW_POSITION" -> expr("workflowPosition"),
-      "JS7_LABEL"             -> expr("label"),
-      "JS7_JOB_NAME"          -> expr("$js7JobName"),
-      "JS7_CONTROLLER_ID"     -> expr("controllerId"),
-      "JS7_SCHEDULED_DATE"    -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
-      "JS7_SCHEDULED_YEAR"    -> expr("scheduledOrEmpty(format='yyyy')"),
-      "JS7_SCHEDULED_MONTH"   -> expr("scheduledOrEmpty(format='MM')"),
-      "JS7_SCHEDULED_DAY"     -> expr("scheduledOrEmpty(format='dd')"),
-      "JS7_SCHEDULED_HOUR"    -> expr("scheduledOrEmpty(format='HH')"),
-      "JS7_SCHEDULED_MINUTE"  -> expr("scheduledOrEmpty(format='mm')"),
-      "JS7_SCHEDULED_SECOND"  -> expr("scheduledOrEmpty(format='ss')"),
-      "JS7_JOBSTART_DATE"     -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
-      "JS7_JOBSTART_DAY"      -> expr("now(format='dd')"),
-      "JS7_JOBSTART_YEAR"     -> expr("now(format='yyyy')"),
-      "JS7_JOBSTART_MONTH"    -> expr("now(format='MM')"),
-      "JS7_JOBSTART_HOUR"     -> expr("now(format='HH')"),
-      "JS7_JOBSTART_MINUTE"   -> expr("now(format='mm')"),
-      "JS7_JOBSTART_SECOND"   -> expr("now(format='ss')")))
+      "JS7_ORDER_ID"          -> expr"orderId",
+      "JS7_WORKFLOW_NAME"     -> expr"workflowPath",
+      "JS7_WORKFLOW_POSITION" -> expr"workflowPosition",
+      "JS7_LABEL"             -> expr"label",
+      "JS7_JOB_NAME"          -> expr"$$js7JobName",
+      "JS7_CONTROLLER_ID"     -> expr"controllerId",
+      "JS7_SCHEDULED_DATE"    -> expr"scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')",
+      "JS7_SCHEDULED_YEAR"    -> expr"scheduledOrEmpty(format='yyyy')",
+      "JS7_SCHEDULED_MONTH"   -> expr"scheduledOrEmpty(format='MM')",
+      "JS7_SCHEDULED_DAY"     -> expr"scheduledOrEmpty(format='dd')",
+      "JS7_SCHEDULED_HOUR"    -> expr"scheduledOrEmpty(format='HH')",
+      "JS7_SCHEDULED_MINUTE"  -> expr"scheduledOrEmpty(format='mm')",
+      "JS7_SCHEDULED_SECOND"  -> expr"scheduledOrEmpty(format='ss')",
+      "JS7_JOBSTART_DATE"     -> expr"now(format='yyyy-MM-dd HH:mm:ssZ')",
+      "JS7_JOBSTART_DAY"      -> expr"now(format='dd')",
+      "JS7_JOBSTART_YEAR"     -> expr"now(format='yyyy')",
+      "JS7_JOBSTART_MONTH"    -> expr"now(format='MM')",
+      "JS7_JOBSTART_HOUR"     -> expr"now(format='HH')",
+      "JS7_JOBSTART_MINUTE"   -> expr"now(format='mm')",
+      "JS7_JOBSTART_SECOND"   -> expr"now(format='ss')"))
   logger.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow =

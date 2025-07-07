@@ -31,8 +31,13 @@ object ExpressionParser:
   //  "scheduledOrEmpty", "stripMargin", "subagentIds",
   //  "toBoolean", "toNumber", "toFile")
 
+  // LEGACY
   @TestOnly
   def expr(expressionString: String): Expression =
+    parseExpr(expressionString)
+
+  @TestOnly
+  def parseExpr(expressionString: String): Expression =
     parseExpression(expressionString).orThrow
 
   def parseExpression(string: String): Checked[Expression] =
