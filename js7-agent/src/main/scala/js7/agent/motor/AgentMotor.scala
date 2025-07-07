@@ -97,7 +97,7 @@ extends Service.StoppableByRequest:
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
-      recoverJobEntries(agentState) *>
+      recoverWorkflowsForJobMotor(agentState) *>
         journal.persist:
           AgentReady(
             ZoneId.systemDefault.getId,
@@ -131,9 +131,9 @@ extends Service.StoppableByRequest:
         //subagentKeeper.kill *>
         stop *> subagentKeeper.kill *> journal.kill
 
-  private def recoverJobEntries(agentState: AgentState): IO[Unit] =
+  private def recoverWorkflowsForJobMotor(agentState: AgentState): IO[Unit] =
     agentState.idToWorkflow.values.foldMap:
-      jobMotor.createJobEntries
+      jobMotor.attachWorkflow
 
   private def recoverOrders(agentState: AgentState): IO[Unit] =
     val orders = agentState.idToOrder.values.view
@@ -302,7 +302,7 @@ extends Service.StoppableByRequest:
         .flatMapT: persisted =>
           persisted.keyedEvents.foldMap:
             case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
-              jobMotor.createJobEntries(persisted.aggregate.idToWorkflow(workflow.id))
+              jobMotor.attachWorkflow(persisted.aggregate.idToWorkflow(workflow.id))
             case _ => IO.unit
           .map(Right(_))
         .rightAs(AgentCommand.Response.Accepted)
@@ -315,7 +315,7 @@ extends Service.StoppableByRequest:
       .ifPersisted: persisted =>
         persisted.keyedEvents.foldMap:
           case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
-            jobMotor.deleteEntriesForWorkflow(workflowId)
+            jobMotor.detachWorkflow(workflowId)
           case _ => IO.unit
 
     def ifItemKeyExists[E <: InventoryItemEvent](agentState: AgentState)(event: => E) =

@@ -49,13 +49,13 @@ final class JobMotor(
   def stop: IO[Unit] =
     jobToEntry.toMap.values.foldMap(_.stop)
 
-  def createJobEntries(workflow: Workflow): IO[Unit] =
+  def attachWorkflow(workflow: Workflow): IO[Unit] =
     val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
     workflow.keyToJob.filter(_._2.agentPath == agentPath).foldMap: (jobKey, job) =>
       jobToEntry.insert(jobKey, JobEntry(jobKey, job, zoneId, agentConf.findTimeIntervalLimit))
         .map(_.orThrow)
 
-  def deleteEntriesForWorkflow(workflowId: WorkflowId): IO[Unit] =
+  def detachWorkflow(workflowId: WorkflowId): IO[Unit] =
     IO.defer:
       jobToEntry.removeConditional: (jobKey, _) =>
         jobKey.workflowId == workflowId
@@ -120,11 +120,6 @@ final class JobMotor(
       // TODO Respect Order's priority
       jobToEntry.toMap.values.foldMap:
         tryStartProcessing
-
-  //private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
-  //  tryStartProcessing(jobEntry,               maybeTimeInterval match
-  //                  case Some(o: TimeInterval.Standard) => Some(o.end)
-  //                  case Some(TimeInterval.Always) | None/*impossible*/ => None)
 
   private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
     import jobEntry.jobKey
