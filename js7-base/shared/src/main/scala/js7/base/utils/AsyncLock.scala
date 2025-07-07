@@ -87,7 +87,7 @@ object AsyncLock:
       Resource.defer:
         val since = Deadline.now
 
-        val nr = waitCounter += 1
+        val nr = waitCounter.incrementAndGet()
         lazy val nrString = s"†$nr"
         lazy val acquirer_ = acquirer
         val sym = new BlockingSymbol

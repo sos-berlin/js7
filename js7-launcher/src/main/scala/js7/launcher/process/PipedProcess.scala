@@ -248,7 +248,7 @@ object PipedProcess:
                   s"🟣 $orderId $jobKey: ignored stdout and stderr have finally ended after ${
                     since.elapsed.pretty}${(n.get > 1) ?? s" (n=$n)"}")
             .guarantee:
-              IO(n -= 1).void,
+              IO(n -= 1),
           IO.defer:
             IO.sleep(timeout) *> IO:
               // Order has proceeded by now
