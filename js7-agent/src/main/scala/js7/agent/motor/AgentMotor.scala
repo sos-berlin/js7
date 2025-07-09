@@ -5,63 +5,47 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
-import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, ReleaseEvents, ResetSubagent, Response}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, MarkOrder, ReleaseEvents, ResetSubagent}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget, startAndLogError}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.whenDeferred
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.catsutils.Environment.environment
-import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.{Ops, RichCheckedF}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
-import js7.base.time.JavaTime.extensions.toZoneId
-import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
-import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.calendar.Calendar
-import js7.data.cluster.ClusterState
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, EventId, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
-import js7.data.job.JobResource
-import js7.data.node.NodeId
+import js7.data.item.InventoryItem
 import js7.data.order.OrderEvent.{OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
-import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
-import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
+import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem}
+import js7.data.workflow.{Workflow, WorkflowPathControl}
 import js7.journal.Persisted
-import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import org.apache.pekko.actor.ActorSystem
-import scala.concurrent.duration.Deadline.now
 
 /** The dedicated Director.
   *
@@ -89,6 +73,8 @@ extends Service.StoppableByRequest:
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
   private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
     isStopping = isStopping, conf)
+  private val itemCommandExecutor = ItemCommandExecutor(forDirector, agentPath, subagentKeeper,
+    fileWatchManager, workingClusterNode, conf, jobMotor, journal, proceedWithItem)
   private val agentProcessCount = Atomic(0)
   private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
   private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)
@@ -160,147 +146,14 @@ extends Service.StoppableByRequest:
           agentCommandToEventCalc.commandToEventCalc(cmd)
         .rightAs(AgentCommand.Response.Accepted)
 
-      case AttachItem(item) =>
-        attachUnsignedItem(item)
-
-      case AttachSignedItem(signed) =>
-        attachSignedItem(signed)
-
-      case DetachItem(itemKey) =>
-        detachItem(itemKey)
+      case cmd: AgentCommand.ItemCommand  =>
+        itemCommandExecutor.executeItemCommand(cmd)
 
       case ResetSubagent(subagentId, force) =>
         subagentKeeper.startResetSubagent(subagentId, force)
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ => IO.left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}"))
-
-  private def attachUnsignedItem(item: UnsignedItem): IO[Checked[Response.Accepted]] =
-    item match
-      case agentRef: AgentRef =>
-        if agentRef.path != agentPath then
-          IO.left(Problem(s"Alien AgentRef(${agentRef.path})"))
-        else
-          changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(agentRef))
-            .rightAs(AgentCommand.Response.Accepted)
-
-      case item: SubagentItem =>
-        changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(item))
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case fileWatch: FileWatch =>
-        if !conf.subagentConf.scriptInjectionAllowed then
-          IO.left(SignedInjectionNotAllowed)
-        else
-          fileWatchManager.update(fileWatch)
-            .map(_.rightAs(AgentCommand.Response.Accepted))
-
-      case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
-                   _: WorkflowPathControl | _: WorkflowControl) =>
-        persist(ItemAttachedToMe(item))
-          .flatMapT: _ =>
-            proceedWithItem(item)
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case _ =>
-        IO.left(Problem.pure(s"AgentCommand.AttachItem(${item.key}) for unknown InventoryItem"))
-
-  private def attachSignedItem(signed: Signed[SignableItem]): IO[Checked[Response.Accepted]] =
-    forDirector.signatureVerifier.verify(signed.signedString) match
-      case Left(problem) =>
-        logger.warn(s"${signed.value.key} could not be verified: $problem")
-        IO.left(problem)
-      case Right(signerIds) =>
-        logger.info(Logger.SignatureVerified,
-          s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
-        persist: agentState =>
-          signed.value match
-            case workflow: Workflow =>
-              agentState.idToWorkflow.get(workflow.id) match
-                case None =>
-                  // IMPORTANT: Check ZoneId to allow problem-free access after being persisted
-                  workflow.timeZone.toZoneId.map: _ =>
-                    SignedItemAttachedToMe(signed) :: Nil
-
-                case Some(registeredWorkflow) =>
-                  if workflow.withoutSource.reduceForAgent(agentPath) !=
-                    registeredWorkflow.withoutSource
-                  then
-                    logger.warn(s"AttachSignedItem: Different duplicate ${workflow.id}:")
-                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson.toPrettyString}")
-                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson.toPrettyString}")
-                    Left(Problem.pure(s"Different duplicate ${workflow.id}"))
-                  else
-                    Right(Nil)
-
-            case _: JobResource =>
-              Right:
-                SignedItemAttachedToMe(signed) :: Nil
-
-            case _ =>
-              Left(Problem.pure:
-                s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")
-        .flatMapT: persisted =>
-          persisted.keyedEvents.foldMap:
-            case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
-              jobMotor.attachWorkflow(persisted.aggregate.idToWorkflow(workflow.id))
-            case _ => IO.unit
-          .map(Right(_))
-        .rightAs(AgentCommand.Response.Accepted)
-
-  private def detachItem(itemKey: InventoryItemKey): IO[Checked[AgentCommand.Response]] =
-    def persistItemDetachedIfExists =
-      persist: agentState =>
-        ifItemKeyExists(agentState):
-          ItemDetached(itemKey, agentPath)
-      .ifPersisted: persisted =>
-        persisted.keyedEvents.foldMap:
-          case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
-            jobMotor.detachWorkflow(workflowId)
-          case _ => IO.unit
-
-    def ifItemKeyExists[E <: InventoryItemEvent](agentState: AgentState)(event: => E) =
-      if !agentState.keyToItem.contains(itemKey) then
-        logger.warn(s"DetachItem($itemKey) but item is unknown")
-        Right(Nil)
-      else
-        Right((NoKey <-: event) :: Nil)
-
-    itemKey match
-      case path: OrderWatchPath =>
-        fileWatchManager.remove(path)
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case subagentId: SubagentId =>
-        journal.persist: agentState =>
-          ifItemKeyExists(agentState):
-            ItemDetachingFromMe(subagentId)
-        .ifPersisted: _ =>
-          subagentKeeper.removeSubagent(subagentId)
-            .handleError[Unit]: t =>
-              logger.error(s"removeSubagent($subagentId) => $t")
-            .startAndForget // May take a short time
-            // SubagentKeeper will eventually emit ItemDetached event
-        .rightAs(AgentCommand.Response.Accepted)
-
-      case bundleId: SubagentBundleId =>
-        persistItemDetachedIfExists.ifPersisted: _ =>
-          subagentKeeper.removeSubagentBundle(bundleId)
-        .rightAs(AgentCommand.Response.Accepted)
-
-      case WorkflowId.as(workflowId) =>
-        persistItemDetachedIfExists.ifPersisted: persisted =>
-          persisted.originalAggregate.idToWorkflow.get(workflowId).fold(IO.unit): workflow =>
-            subagentKeeper
-              .stopJobs(workflow.keyToJob.keys, SIGKILL /*just in case*/)
-              .handleError: t =>
-                logger.error(s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t)
-        .rightAs(AgentCommand.Response.Accepted)
-
-      case _ =>
-        persistItemDetachedIfExists
-          .rightAs(AgentCommand.Response.Accepted)
-  end detachItem
 
   private def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
@@ -342,85 +195,13 @@ extends Service.StoppableByRequest:
   private val changeSubagentAndClusterNodeAndProceedFiber =
     AsyncVariable(pureFiberIO(Checked.unit))
 
-  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): IO[Checked[Unit]] =
-    // TODO Behaviour could be improved
-    changeSubagentAndClusterNodeAndProceedFiber
-      .update: fiber =>
-        changeSubagentAndClusterNodeAndProceedFiberStop = true
-        fiber.joinStd *>
-          IO.defer:
-            changeSubagentAndClusterNodeAndProceedFiberStop = false
-            tryForeverChangeSubagentAndClusterNodeAndProceed(event)
-              .startAndLogError
-      .flatMap(_.joinStd.timeoutTo(10.s/*???*/, IO.right(()) /*respond the command*/))
-
-  private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
-  : IO[Checked[Unit]] =
-    IO.defer:
-      import event.item
-      val label = s"${event.getClass.simpleScalaName}(${item.key})"
-      val since = now
-      val delays = Iterator(1.s, 3.s, 6.s, 10.s).continueWithLast
-      val sym = new BlockingSymbol
-      ().tailRecM: _ =>
-        changeSubagentAndClusterNode(event)
-          .flatMapT:_ =>
-            proceedWithItem(item)
-          .uncancelable // Only the loop should be cancelable, but not the inner operations
-          .flatMap:
-            case Left(problem @ PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem) =>
-              sym.onWarn()
-              logger.warn(s"$sym $label => $problem — trying since ${since.elapsed.pretty} ...")
-              IO.sleep(delays.next()).as(Left(())/*repeat*/)
-
-            case checked =>
-              IO:
-                if sym.used then checked match
-                  case Left(problem) => logger.error(s"🔥 $label: $problem")
-                  case Right(()) => logger.info(s"🟢 $label: Cluster setting has been changed")
-                Right(checked)
-
-  /** Emits the event, and ClusterSettingUpdated if needed, in separate transaction. */
-  private def changeSubagentAndClusterNode(event: ItemAttachedToMe): IO[Checked[Unit]] =
-    logger.debugIO:
-      journal.aggregate.flatMap: agentState =>
-        if !agentState.isDedicated then
-          journal.persist(event).rightAs(())
-        else
-          IO.pure(agentState.applyKeyedEvent(event)).flatMapT: nextAgentState =>
-            demandedClusterNodeUris(nextAgentState) match
-              case None =>
-                journal.persist(event).rightAs(())
-
-              case Some(idToUri) =>
-                agentState.clusterState.match
-                  case ClusterState.Empty =>
-                    Some(NodeId.primary)
-                  case clusterState: ClusterState.HasNodes =>
-                    (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
-                .match
-                  case None =>
-                    journal.persist(event).rightAs(())
-                  case Some(activeNodeId) =>
-                    workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
-
-  /** Returns Some when AgentRef and the Director's SubagentIds are available. */
-  private def demandedClusterNodeUris(agentState: AgentState): Option[Map[NodeId, Uri]] =
-    for
-      agentRef <- agentState.keyToItem(AgentRef).get(agentState.meta.agentPath)
-      if agentRef.directors.length == 2
-      subagentItems <- agentRef.directors.traverse(agentState.keyToItem(SubagentItem).get)
-      if subagentItems.length == 2
-    yield
-      Map(
-        NodeId.primary -> subagentItems(0).uri,
-        NodeId.backup -> subagentItems(1).uri)
 
   def resetAllSubagents: IO[Unit] =
     journal.aggregate.flatMap: agentState =>
       subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 
-  private def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[AgentState, E]]] =
+  private def persist[E <: Event](keyedEvent: KeyedEvent[E])
+  : IO[Checked[Persisted[AgentState, E]]] =
     persist(EventCalc.pure(keyedEvent))
 
   private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])

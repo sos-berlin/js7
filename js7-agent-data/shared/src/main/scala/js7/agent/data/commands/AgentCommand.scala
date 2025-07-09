@@ -184,17 +184,18 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   sealed trait OrderCommand extends AgentCommand
+  sealed trait ItemCommand extends AgentCommand
 
 
   final case class AttachItem(item: UnsignedItem)
-  extends AgentCommand:
+  extends ItemCommand:
     type Response = Response.Accepted
 
     override def toShortString =
       s"AttachItem(${item.key}${item.itemRevision.fold("")(o => "~" + o.number)})"
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
-  extends AgentCommand:
+  extends ItemCommand:
     type Response = Response.Accepted
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
     override def toString: String = toShortString
@@ -209,7 +210,7 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   final case class DetachItem(key: InventoryItemKey)
-  extends AgentCommand:
+  extends ItemCommand:
     type Response = Response.Accepted
 
 
