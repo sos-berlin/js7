@@ -1,13 +1,14 @@
 package js7.data.command
 
 import js7.base.problem.{Checked, Problem}
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.EventCalc.OpaqueEventColl
 import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState, KeyedEvent}
 import scala.reflect.ClassTag
 
-trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx]:
+trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](using src: ScalaSourceLocation):
 
   private type CommandEventConverter[Cmd <: CommonCommand] =
     CommandToEventCalc.Companion[S, E, Ctx]#CommandEventConverter[Cmd]
@@ -21,7 +22,7 @@ trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx]:
     cmdClassToExecutor.get(cmd.getClass) match
       case None =>
         EventCalc.problem:
-          Problem(s"${cmd.getClass.scalaName} is not a registered command")
+          Problem(s"${cmd.getClass.scalaName} is not a registered command ($src)")
       case Some(cmdToEventCalc) =>
         cmdToEventCalc.toEventCalc(cmd.asInstanceOf[cmdToEventCalc.Command])
 

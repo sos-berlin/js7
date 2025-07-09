@@ -7,10 +7,11 @@ import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
+import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, ResetSubagent, Response}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, ReleaseEvents, ResetSubagent, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, left, right, startAndForget, startAndLogError}
@@ -35,9 +36,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
-import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem
-import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.calendar.Calendar
 import js7.data.cluster.ClusterState
@@ -52,7 +51,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachi
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.job.JobResource
 import js7.data.node.NodeId
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
@@ -85,6 +84,7 @@ final class AgentMotor private(
     dispatcher: Dispatcher[IO])
 extends Service.StoppableByRequest:
 
+  private val agentCommandToEventCalc = AgentCommandToEventCalc(conf)
   private val journal = workingClusterNode.journal
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
   private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
@@ -155,8 +155,10 @@ extends Service.StoppableByRequest:
 
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
-      case cmd: OrderCommand =>
-        executeOrderCommand(cmd)
+      case _: AttachOrder | _: DetachOrder | _: MarkOrder | _: ReleaseEvents =>
+        persist:
+          agentCommandToEventCalc.commandToEventCalc(cmd)
+        .rightAs(AgentCommand.Response.Accepted)
 
       case AttachItem(item) =>
         attachUnsignedItem(item)
@@ -172,67 +174,6 @@ extends Service.StoppableByRequest:
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ => IO.left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}"))
-
-  private def executeOrderCommand(cmd: OrderCommand): IO[Checked[AgentCommand.Response]] =
-    cmd match
-      case AttachOrder(order) =>
-        if isStopping then
-          IO.pure(Left(AgentIsShuttingDown))
-        else
-          order.attached match
-            case Left(problem) => IO.left(problem)
-            case Right(agentPath) =>
-              if agentPath != this.agentPath then
-                IO.left(Problem(s"Wrong $agentPath"))
-              else
-                persist: agentState =>
-                  agentState.idToWorkflow.checked(order.workflowId).flatMap: workflow =>
-                    if !workflow.isDefinedAt(order.position) then
-                      Left(Problem.pure(s"Unknown Position ${order.workflowPosition}"))
-                    else if agentState.idToOrder.contains(order.id) then
-                      Left(AgentDuplicateOrder(order.id))
-                    else if isStopping then
-                      Left(AgentIsShuttingDown)
-                    else
-                      order.toOrderAttachedToAgent.map: event =>
-                        Some(order.id <-: event)
-                .rightAs(Response.Accepted)
-
-      case DetachOrder(orderId) =>
-        if isStopping then
-          IO.pure(Left(AgentIsShuttingDown))
-        else
-          persist: agentState =>
-            agentState.idToOrder.get(orderId).fold(Right(Nil)): order =>
-              order.detaching.map: _ =>
-                (orderId <-: OrderDetached) :: Nil
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case MarkOrder(orderId, mark) =>
-        persist: agentState =>
-          agentState.idToOrder.checked(orderId).flatMap: order =>
-            if order.isDetaching then
-              Right(Nil)
-            else
-              OrderEventSource(agentState)(using InstructionExecutorService(clock))
-                .markOrder(orderId, mark).map: events =>
-                  events.map(orderId <-: _)
-        .rightAs(AgentCommand.Response.Accepted)
-
-      case ReleaseEvents(after) =>
-        if isStopping then
-          IO.pure(Left(AgentIsShuttingDown))
-        else
-          val userId = controllerId.toUserId
-          persist: agentState =>
-            val current = agentState.journalState.userIdToReleasedEventId(userId) // Must contain userId
-            if after < current then
-              Left(ReverseReleaseEventsProblem(
-                requestedUntilEventId = after, currentUntilEventId = current))
-            else
-              Right:
-                (NoKey <-: JournalEventsReleased(userId, after)) :: Nil
-          .rightAs(AgentCommand.Response.Accepted)
 
   private def attachUnsignedItem(item: UnsignedItem): IO[Checked[Response.Accepted]] =
     item match
