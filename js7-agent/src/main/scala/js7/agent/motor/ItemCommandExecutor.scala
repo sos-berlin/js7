@@ -27,10 +27,10 @@ import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProble
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.calendar.Calendar
 import js7.data.cluster.ClusterState
-import js7.data.event.KeyedEvent
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventCalc, KeyedEvent, TimeCtx}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.job.JobResource
 import js7.data.node.NodeId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -49,9 +49,8 @@ private final class ItemCommandExecutor(
   fileWatchManager: FileWatchManager,
   workingClusterNode: WorkingClusterNode[AgentState],
   conf: AgentConfiguration,
-  jobMotor: JobMotor,
-  journal: FileJournal[AgentState],
-  proceedWithItem: InventoryItem => IO[Checked[Unit]]):
+  orderMotor: OrderMotor,
+  journal: FileJournal[AgentState]):
 
   @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
   private val changeSubagentAndClusterNodeAndProceedFiber =
@@ -90,9 +89,7 @@ private final class ItemCommandExecutor(
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        journal.persist(ItemAttachedToMe(item))
-          .flatMapT: _ =>
-            proceedWithItem(item)
+        persist(ItemAttachedToMe(item))
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
@@ -106,7 +103,7 @@ private final class ItemCommandExecutor(
       case Right(signerIds) =>
         logger.info(Logger.SignatureVerified,
           s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
-        journal.persist: agentState =>
+        persist: agentState =>
           signed.value match
             case workflow: Workflow =>
               agentState.idToWorkflow.get(workflow.id) match
@@ -133,24 +130,13 @@ private final class ItemCommandExecutor(
             case _ =>
               Left(Problem.pure:
                 s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")
-        .flatMapT: persisted =>
-          persisted.keyedEvents.foldMap:
-            case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
-              jobMotor.attachWorkflow(persisted.aggregate.idToWorkflow(workflow.id))
-            case _ => IO.unit
-          .map(Right(_))
         .rightAs(AgentCommand.Response.Accepted)
 
   private def detachItem(itemKey: InventoryItemKey): IO[Checked[AgentCommand.Response]] =
     def persistItemDetachedIfExists =
-      journal.persist: agentState =>
+      persist: agentState =>
         ifItemKeyExists(agentState):
           ItemDetached(itemKey, agentPath)
-      .ifPersisted: persisted =>
-        persisted.keyedEvents.foldMap:
-          case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
-            jobMotor.detachWorkflow(workflowId)
-          case _ => IO.unit
 
     def ifItemKeyExists[E <: InventoryItemEvent](agentState: AgentState)(event: => E) =
       Right:
@@ -219,7 +205,7 @@ private final class ItemCommandExecutor(
       ().tailRecM: _ =>
         changeSubagentAndClusterNode(event)
           .flatMapT: _ =>
-            proceedWithItem(item)
+            orderMotor.proceedWithItem(item)
           .uncancelable // Only the loop should be cancelable, but not the inner operations
           .flatMap:
             case Left(problem @ PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem) =>
@@ -269,6 +255,27 @@ private final class ItemCommandExecutor(
       Map(
         NodeId.primary -> subagentItems(0).uri,
         NodeId.backup -> subagentItems(1).uri)
+
+  private def persist[E <: Event](keyedEvent: KeyedEvent[E])
+  : IO[Checked[Persisted[AgentState, E]]] =
+    journal.persist(keyedEvent)
+      .flatTapT(onPersisted)
+
+  private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
+  : IO[Checked[Persisted[AgentState, E]]] =
+    journal.persist(EventCalc.checked[AgentState, E, TimeCtx](toEvents(_)))
+      .flatTapT(onPersisted)
+
+  private def persist[E <: Event](eventCalc: EventCalc[AgentState, E, TimeCtx])
+  : IO[Checked[Persisted[AgentState, E]]] =
+    journal.persist(eventCalc)
+      .flatTapT(onPersisted)
+
+  private def onPersisted[E <: Event](persisted: Persisted[AgentState, Event]): IO[Checked[Unit]] =
+    if persisted.isEmpty then
+      IO.right(())
+    else
+      orderMotor.onItemEventPersisted(persisted)
 
 
 object ItemCommandExecutor:
