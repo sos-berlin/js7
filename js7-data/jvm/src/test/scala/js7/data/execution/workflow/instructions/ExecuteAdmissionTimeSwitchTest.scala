@@ -11,6 +11,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.tester.ScalaTestUtils.awaitAndAssert
+import org.scalatest.Assertion
 import scala.concurrent.duration.*
 
 final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
