@@ -88,8 +88,8 @@ final class FileWatchManager(
 
             case None =>
               (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
-    .flatMapT: persisted =>
-      startWatching(persisted.aggregate.keyTo(FileWatchState)(fileWatch.path))
+      .flatMapT: persisted =>
+        startWatching(persisted.aggregate.keyTo(FileWatchState)(fileWatch.path))
 
   def remove(fileWatchPath: OrderWatchPath): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath):
