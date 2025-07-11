@@ -32,7 +32,7 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
   private def logAndStartNewDiff(): Unit =
     if logger.isTraceEnabled then
-      CallMeter.callMeters.filter(_.count > 0).map: callMeter =>
+      CallMeter.callMeters.filter(_.total > 0).map: callMeter =>
         val m = callMeter.measurement()
         val diff = lastMeasurements.get(callMeter.name).fold(m)(m.diff)
         lastMeasurements(callMeter.name) = m

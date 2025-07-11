@@ -25,7 +25,7 @@ final class CallMeterTest extends OurAsyncTestSuite:
         meterDecrement:
           i -= 1
 
-    assert(meterConstant.count == n)
+    assert(meterConstant.total == n)
     assert(meterConstant.measurement().duration > 0.s)
     CallMeter.logAll()
     succeed
@@ -39,7 +39,7 @@ final class CallMeterTest extends OurAsyncTestSuite:
           Thread.sleep(0, 1000) // 1µs
     .productR:
       IO:
-        assert(meterIO.count == n)
+        assert(meterIO.measurement().total == n)
         assert(meterIO.measurement().duration > 1.µs * n)
         CallMeter.logAll()
         succeed

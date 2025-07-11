@@ -3,8 +3,8 @@ package js7.base.metering
 import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.metering.CallMeter.*
 import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.quoted.{Expr, Quotes, Type}
@@ -14,56 +14,65 @@ import sourcecode.Enclosing
 final class CallMeter private(val name: String):
 
   private val _sinceNano = System.nanoTime()
-  // We don't synchronize _count and _nanos, to be a little faster.
+  // We don't synchronize _total and _nanos, to be a little faster.
   // With big numbers, the error gets small.
   // With small numbers, concurrent access should occur seldom.
-  private val _count = Atomic(0L)
+  private val _active = Atomic(0)
+  private val _total = Atomic(0L)
   private val _nanos = Atomic(0L)
-
-  register(this) // Never unregister
 
   inline def apply[T](inline body: => T): T =
     ${ CallMeterMacros.applyMacro[T]('this, 'body) }
 
   private[metering] def meterCall[A](body: => A): A =
-    val t = System.nanoTime()
+    _active += 1
+    val t = startMetering()
     try
       body
     finally
-      addNanosInline(System.nanoTime() - t)
+      stopMetering(t)
 
   private[metering] def meterIO[A](io: IO[A]): IO[A] =
     IO.defer:
-      val t = System.nanoTime()
+      val t = startMetering()
       io.guarantee:
         IO:
-          addNanos(System.nanoTime() - t)
+          stopMetering(t)
 
   //private[metering] def meterSync[F[_], A](Fa: F[A])(using F: Sync[F]): F[A] =
   //  F.defer:
-  //    val t = System.nanoTime()
+  //    val t = startMetering()
   //    Fa.guarantee:
   //      F.delay:
-  //        addNanos(t)
+  //        stopMetering(t)
 
   //def addMeasurement(startedAt: Deadline): Unit =
   //  addNanos(startedAt.elapsed.toNanos)
+
+  private def startMetering(): Long =
+    _active += 1
+    System.nanoTime()
+
+  private def stopMetering(started: Long): Unit =
+    addNanos(System.nanoTime() - started)
+    _active -= 1
 
   def addNanos(nanos: Long): Unit =
     addNanosInline(nanos)
 
   private inline def addNanosInline(inline nanos: Long): Unit =
-    _count.getAndIncrement()
+    _total.getAndIncrement()
     _nanos.getAndAdd(nanos)
 
   def measurement(): Measurement =
     Measurement(this,
-      elapsedNanos = System.nanoTime() - _sinceNano,
-      count = count,
-      countedNanos = _nanos.get())
+      total = total,
+      active = _active.get(),
+      meteredNanos = _nanos.get(),
+      elapsedNanos = System.nanoTime() - _sinceNano)
 
-  def count: Long =
-    _count.get()
+  def total: Long =
+    _total.get()
 
   override def toString = s"CallMeter(${measurement().asString})"
 
@@ -91,7 +100,7 @@ object CallMeter:
     if logger.isTraceEnabled then
       _callMeters.get().iterator
         .map(_.measurement())
-        .filter(_.count > 0)
+        .filter(_.total > 0)
         .foreachWithBracket(Square): (callMeter, bracket) =>
           logger.trace(s"$bracket ${callMeter.asString}")
 
