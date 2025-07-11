@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import cats.effect.Sync
+import cats.effect.kernel.Resource
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 
 type Atomic[A] = A match
@@ -30,30 +32,45 @@ object Atomic:
   //    case _: AnyRef => new AtomicReference(initial)
 
   object extensions:
-    extension(o: AtomicBoolean)
+    extension(atomic: AtomicBoolean)
       inline def :=(a: Boolean): Unit =
-        o.set(a)
+        atomic.set(a)
 
-    extension(o: AtomicInteger)
+
+    extension(atomic: AtomicInteger)
       inline def :=(a: Int): Unit =
-        o.set(a)
+        atomic.set(a)
 
       inline def +=(a: Int): Unit =
-        o.getAndAdd(a)
+        atomic.getAndAdd(a)
 
       inline def -=(a: Int): Unit =
-        o.getAndAdd(-a)
+        atomic.getAndAdd(-a)
 
-    extension(o: AtomicLong)
+      /** Count current Resource usage. */
+      def gauge[F[_]: Sync as F]: Resource[F, Unit] =
+        Resource.make(
+          acquire = F.delay(atomic += 1))(
+          release = _ => F.delay(atomic -= 1))
+
+
+    extension(atomic: AtomicLong)
       inline def :=(a: Long): Unit =
-        o.set(a)
+        atomic.set(a)
 
       inline def +=(a: Long): Unit =
-        o.getAndAdd(a)
+        atomic.getAndAdd(a)
 
       inline def -=(a: Long): Unit =
-        o.getAndAdd(-a)
+        atomic.getAndAdd(-a)
 
-    extension[A](o: AtomicReference[A])
+      /** Count current Resource usage. */
+      def gauge[F[_]: Sync as F]: Resource[F, Unit] =
+        Resource.make(
+          acquire = F.delay(atomic += 1))(
+          release = _ => F.delay(atomic -= 1))
+
+
+    extension[A](atomic: AtomicReference[A])
       inline def :=(a: A): Unit =
-        o.set(a)
+        atomic.set(a)
