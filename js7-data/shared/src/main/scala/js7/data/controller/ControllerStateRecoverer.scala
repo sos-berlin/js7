@@ -11,7 +11,8 @@ import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.board.{BoardPath, BoardState, Notice, NoticePlace}
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
+import js7.data.event.EventCounter.EventCount
+import js7.data.event.{EventCounter, JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -26,7 +27,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
-final class ControllerStateRecoverer
+private final class ControllerStateRecoverer
 extends
   SnapshotableStateRecoverer[ControllerState],
   StandardsRecoverer,
@@ -45,6 +46,7 @@ extends
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
   private val _noticeSnapshots = mutable.Buffer.empty[Notice | NoticePlace.Snapshot]
   private val _noticeConsumptionSnapshots = mutable.Buffer.empty[NoticeConsumptionSnapshot]
+  private val eventCounter = EventCounter.Builder()
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
@@ -149,6 +151,9 @@ extends
       val planSchemaState = _keyToUnsignedItemState(snapshot.id).asInstanceOf[PlanSchemaState]
       _keyToUnsignedItemState(snapshot.id) = planSchemaState.recover(snapshot)
 
+    case o: EventCount =>
+      eventCounter.put(o.eventName, o.count)
+
     case o: ControllerMetaState =>
       controllerMetaState = o
 
@@ -171,7 +176,8 @@ extends
       pathToSignedSimpleItem.toMap,
       agentAttachments,
       deletionMarkedItems.toSet,
-      _idToOrder.toMap
+      _idToOrder.toMap,
+      eventCounter.result()
     ).finish.orThrow
 
   // NoticeSnapshots can only be added after idToOrder has been filled.

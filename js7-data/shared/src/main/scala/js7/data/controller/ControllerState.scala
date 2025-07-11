@@ -27,10 +27,11 @@ import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
 import js7.data.controller.ControllerState.{DummyClusterNodeName, WorkflowToOrders, logger}
+import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventCounter, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -69,6 +70,7 @@ final case class ControllerState(
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
+  eventCounter: EventCounter = EventCounter.empty,
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
   SignedItemContainer,
@@ -117,6 +119,8 @@ extends
       .pipeIf(workflowToOrders.nonEmpty):
         _.append:
           workflowToOrders.toStringStream
+      .append:
+        eventCounter.toStringStream
 
   def isAgent = false
 
@@ -146,7 +150,8 @@ extends
     pathToSignedSimpleItem.size +
     agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
-    idToOrder.size
+    idToOrder.size +
+    eventCounter.estimatedSnapshotSize
 
   def toSnapshotStream: Stream[fs2.Pure, Any] =
     Stream(
@@ -167,7 +172,8 @@ extends
       Stream.iterable(repo.toEvents),
       agentAttachments.toSnapshotStream,
       Stream.iterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
-      Stream.iterable(idToOrder.values)
+      Stream.iterable(idToOrder.values),
+      eventCounter.toSnapshotStream
     ).flatten
 
   def withEventId(eventId: EventId): ControllerState =
@@ -180,256 +186,259 @@ extends
     keyToUnsignedItemState_.checked(path).asInstanceOf[Checked[BoardState]]
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
-   keyedEvent match
-    case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
-      Right(copy(controllerMetaState = controllerMetaState.copy(
-        controllerId = controllerId,
-        initiallyStartedAt = intiallyStartedAt)))
+    keyedEvent.match
+      case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
+        Right(copy(controllerMetaState = controllerMetaState.copy(
+          controllerId = controllerId,
+          initiallyStartedAt = intiallyStartedAt)))
 
-    case KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady) =>
-      Right(copy(controllerMetaState = controllerMetaState.copy(
-        timezone = event.timezone)))
+      case KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady) =>
+        Right(copy(controllerMetaState = controllerMetaState.copy(
+          timezone = event.timezone)))
 
-    case KeyedEvent(_: NoKey, _: ControllerEvent.ControllerShutDown) =>
-      Right(this)
+      case KeyedEvent(_: NoKey, _: ControllerEvent.ControllerShutDown) =>
+        Right(this)
 
-    case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
-      Right(this)
+      case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
+        Right(this)
 
-    case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-      event match
-        case event: UnsignedSimpleItemEvent =>
-          event match
-            case UnsignedSimpleItemAdded(item) =>
-              item match
-                case addedAgentRef: AgentRef =>
-                  addedAgentRef
-                    .convertFromV2_1
-                    .flatMap: (agentRef, maybeSubagentItem) =>
-                      for
-                        pathToItemState <-
-                          keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
-                        pathToItemState <-
-                          maybeSubagentItem match
-                            case None => Right(pathToItemState)
-                            case Some(subagentItem) => pathToItemState
-                              .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
-                      yield copy(
-                        keyToUnsignedItemState_ = pathToItemState)
+      case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
+        event match
+          case event: UnsignedSimpleItemEvent =>
+            event match
+              case UnsignedSimpleItemAdded(item) =>
+                item match
+                  case addedAgentRef: AgentRef =>
+                    addedAgentRef
+                      .convertFromV2_1
+                      .flatMap: (agentRef, maybeSubagentItem) =>
+                        for
+                          pathToItemState <-
+                            keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
+                          pathToItemState <-
+                            maybeSubagentItem match
+                              case None => Right(pathToItemState)
+                              case Some(subagentItem) => pathToItemState
+                                .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+                        yield copy(
+                          keyToUnsignedItemState_ = pathToItemState)
 
-                case orderWatch: OrderWatch =>
-                  ow.addOrderWatch(orderWatch.toInitialItemState)
+                  case orderWatch: OrderWatch =>
+                    ow.addOrderWatch(orderWatch.toInitialItemState)
 
-                case item: UnsignedSimpleItem =>
-                  if item.path == PlanSchemaId.Global then
-                    Left(Problem("The Global PlanSchema is predefined and cannot be added"))
-                  else
-                    for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
-                      copy(keyToUnsignedItemState_ = o)
+                  case item: UnsignedSimpleItem =>
+                    if item.path == PlanSchemaId.Global then
+                      Left(Problem("The Global PlanSchema is predefined and cannot be added"))
+                    else
+                      for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
+                        copy(keyToUnsignedItemState_ = o)
 
-            case UnsignedSimpleItemChanged(item) =>
-              item match
-                case changedAgentRef: AgentRef =>
-                  changedAgentRef
-                    .convertFromV2_1
-                    .flatMap: (agentRef, maybeSubagentItem) =>
-                      def checkIsExtending(a: AgentRef, b: AgentRef) =
-                        (a.directors == b.directors
-                          || a.directors.length == 1 && b.directors.length == 2
-                          && a.directors.head == b.directors.head
-                        ) !! Problem.pure("Agent Directors cannot not be changed")
+              case UnsignedSimpleItemChanged(item) =>
+                item match
+                  case changedAgentRef: AgentRef =>
+                    changedAgentRef
+                      .convertFromV2_1
+                      .flatMap: (agentRef, maybeSubagentItem) =>
+                        def checkIsExtending(a: AgentRef, b: AgentRef) =
+                          (a.directors == b.directors
+                            || a.directors.length == 1 && b.directors.length == 2
+                            && a.directors.head == b.directors.head
+                          ) !! Problem.pure("Agent Directors cannot not be changed")
 
-                      for
-                        agentRefState <- keyTo(AgentRefState).checked(agentRef.path)
-                        _ <- checkIsExtending(agentRefState.agentRef, agentRef)
-                        updatedAgentRef <- agentRefState.updateItem(agentRef)
-                      yield
-                        copy(
-                          keyToUnsignedItemState_ = keyToUnsignedItemState_
-                            .updated(agentRef.path, updatedAgentRef)
-                            .pipeMaybe(maybeSubagentItem): (pathToItemState, changedSubagentItem) =>
-                              // COMPATIBLE with v2.2.2
-                              keyTo(SubagentItemState)
-                                .get(changedSubagentItem.id)
-                                .fold(pathToItemState): subagentItemState =>
-                                  pathToItemState.updated(changedSubagentItem.id,
-                                    subagentItemState.copy(
-                                      subagentItem = subagentItemState.item
-                                        .updateUri(changedSubagentItem.uri))))
+                        for
+                          agentRefState <- keyTo(AgentRefState).checked(agentRef.path)
+                          _ <- checkIsExtending(agentRefState.agentRef, agentRef)
+                          updatedAgentRef <- agentRefState.updateItem(agentRef)
+                        yield
+                          copy(
+                            keyToUnsignedItemState_ = keyToUnsignedItemState_
+                              .updated(agentRef.path, updatedAgentRef)
+                              .pipeMaybe(maybeSubagentItem): (pathToItemState, changedSubagentItem) =>
+                                // COMPATIBLE with v2.2.2
+                                keyTo(SubagentItemState)
+                                  .get(changedSubagentItem.id)
+                                  .fold(pathToItemState): subagentItemState =>
+                                    pathToItemState.updated(changedSubagentItem.id,
+                                      subagentItemState.copy(
+                                        subagentItem = subagentItemState.item
+                                          .updateUri(changedSubagentItem.uri))))
 
-                case orderWatch: OrderWatch =>
-                  ow.changeOrderWatch(orderWatch)
+                  case orderWatch: OrderWatch =>
+                    ow.changeOrderWatch(orderWatch)
 
-                case item: UnsignedSimpleItem =>
-                  for
-                    _ <- checkChangedItem(item)
-                    itemState <- keyToUnsignedItemState_.checked(item.path)
-                    updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
-                  yield
-                    copy(
+                  case item: UnsignedSimpleItem =>
+                    for
+                      _ <- checkChangedItem(item)
+                      itemState <- keyToUnsignedItemState_.checked(item.path)
+                      updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
+                    yield
+                      copy(
+                        keyToUnsignedItemState_ =
+                          keyToUnsignedItemState_.updated(item.path, updated))
+
+          case event: SignedItemEvent =>
+            event match
+              case SignedItemAdded(Signed(item, signedString)) =>
+                item match
+                  case jobResource: JobResource =>
+                    pathToSignedSimpleItem
+                      .insert(jobResource.path -> Signed(jobResource, signedString))
+                      .map(o => copy(pathToSignedSimpleItem = o))
+
+              case SignedItemChanged(Signed(item, signedString)) =>
+                item match
+                  case jobResource: JobResource =>
+                    Right(copy(
+                      pathToSignedSimpleItem = pathToSignedSimpleItem +
+                        (jobResource.path -> Signed(jobResource, signedString))))
+
+          case event: UnsignedItemEvent =>
+            event match
+              case UnsignedItemAdded(item: VersionedControl) =>
+                keyToUnsignedItemState_
+                  .insert(item.key, item.toInitialItemState)
+                  .map(o => copy(keyToUnsignedItemState_ = o))
+
+              case UnsignedItemChanged(item: VersionedControl) =>
+                Right(copy(
+                  keyToUnsignedItemState_ = keyToUnsignedItemState_
+                    .updated(item.key, item.toInitialItemState)))
+
+          case event: BasicItemEvent.ForClient =>
+            event match
+              case event: ItemAttachedStateEvent =>
+                agentAttachments.applyEvent(event).map: o =>
+                  copy(agentAttachments = o)
+
+              case ItemDeletionMarked(itemKey) =>
+                Right(copy(
+                  deletionMarkedItems = deletionMarkedItems + itemKey))
+
+              case event @ ItemDeleted(itemKey) =>
+                val updated = copy(
+                  deletionMarkedItems = deletionMarkedItems - itemKey,
+                  agentAttachments = agentAttachments.applyItemDeleted(event))
+
+                itemKey match
+                  case WorkflowId.as(workflowId) =>
+                    repo.deleteItem(workflowId).map: repo =>
+                      updated.copy(
+                        repo = repo)
+
+                  case path: OrderWatchPath =>
+                    updated.ow.removeOrderWatch(path)
+
+                  case jobResourcePath: JobResourcePath =>
+                    Right(updated.copy(
+                      pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
+
+                  case boardPath: BoardPath =>
+                    Right(updated.copy(
                       keyToUnsignedItemState_ =
-                        keyToUnsignedItemState_.updated(item.path, updated))
+                        (updated.keyToUnsignedItemState_ - boardPath) ++
+                          removeBoardInPlanSchemaStates(boardPath).toKeyedMap(_.id)))
 
-        case event: SignedItemEvent =>
-          event match
-            case SignedItemAdded(Signed(item, signedString)) =>
-              item match
-                case jobResource: JobResource =>
-                  pathToSignedSimpleItem
-                    .insert(jobResource.path -> Signed(jobResource, signedString))
-                    .map(o => copy(pathToSignedSimpleItem = o))
+                  case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
+                              _: LockPath |
+                              _: CalendarPath | _: BoardPath |
+                              _: WorkflowPathControlPath | WorkflowControlId.as(_)) =>
+                    Right(updated.copy(
+                      keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
 
-            case SignedItemChanged(Signed(item, signedString)) =>
-              item match
-                case jobResource: JobResource =>
-                  Right(copy(
-                    pathToSignedSimpleItem = pathToSignedSimpleItem +
-                      (jobResource.path -> Signed(jobResource, signedString))))
+                  case key: PlanSchemaId =>
+                    update(removeUnsignedSimpleItems = key :: Nil)
 
-        case event: UnsignedItemEvent =>
-          event match
-            case UnsignedItemAdded(item: VersionedControl) =>
-              keyToUnsignedItemState_
-                .insert(item.key, item.toInitialItemState)
-                .map(o => copy(keyToUnsignedItemState_ = o))
+                  case _ =>
+                    Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
 
-            case UnsignedItemChanged(item: VersionedControl) =>
-              Right(copy(
-                keyToUnsignedItemState_ = keyToUnsignedItemState_
-                  .updated(item.key, item.toInitialItemState)))
+      case KeyedEvent(_: NoKey, event: VersionedEvent) =>
+        repo.applyEvent(event).map: o =>
+          copy(repo = o)
 
-        case event: BasicItemEvent.ForClient =>
-          event match
-            case event: ItemAttachedStateEvent =>
-              agentAttachments.applyEvent(event).map: o =>
-                copy(agentAttachments = o)
-
-            case ItemDeletionMarked(itemKey) =>
-              Right(copy(
-                deletionMarkedItems = deletionMarkedItems + itemKey))
-
-            case event @ ItemDeleted(itemKey) =>
-              val updated = copy(
-                deletionMarkedItems = deletionMarkedItems - itemKey,
-                agentAttachments = agentAttachments.applyItemDeleted(event))
-
-              itemKey match
-                case WorkflowId.as(workflowId) =>
-                  repo.deleteItem(workflowId).map: repo =>
-                    updated.copy(
-                      repo = repo)
-
-                case path: OrderWatchPath =>
-                  updated.ow.removeOrderWatch(path)
-
-                case jobResourcePath: JobResourcePath =>
-                  Right(updated.copy(
-                    pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
-
-                case boardPath: BoardPath =>
-                  Right(updated.copy(
-                    keyToUnsignedItemState_ =
-                      (updated.keyToUnsignedItemState_ - boardPath) ++
-                        removeBoardInPlanSchemaStates(boardPath).toKeyedMap(_.id)))
-
-                case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
-                            _: LockPath |
-                            _: CalendarPath | _: BoardPath |
-                            _: WorkflowPathControlPath | WorkflowControlId.as(_)) =>
-                  Right(updated.copy(
-                    keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
-
-                case key: PlanSchemaId =>
-                  update(removeUnsignedSimpleItems = key :: Nil)
-
-                case _ =>
-                  Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
-
-    case KeyedEvent(_: NoKey, event: VersionedEvent) =>
-      repo.applyEvent(event).map: o =>
-        copy(repo = o)
-
-    case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
-      for
-        agentRefState <- keyTo(AgentRefState).checked(agentPath)
-        agentRefState <- agentRefState.applyEvent(event)
-      yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
-
-    case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-      applyOrderEvent(orderId, event)
-
-    case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
-      updatePlannedBoard(noticePosted.planId / boardPath):
-        _.addNotice(noticePosted.toNotice(boardPath))
-      .map: planSchemaState =>
-        copy(
-          keyToUnsignedItemState_ = keyToUnsignedItemState_
-            .updated(planSchemaState.id, planSchemaState))
-
-    case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
-      updatePlannedBoard(plannedNoticeKey.planId / boardPath):
-        _.removeNotice(plannedNoticeKey.noticeKey)
-      .map: planSchemaState =>
-        copy(
-          keyToUnsignedItemState_ = keyToUnsignedItemState_
-            .updated(planSchemaState.id, planSchemaState))
-
-    case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
-      import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
-      if toPlannedNoticeKey.planId == fromPlannedNoticeKey.planId then
-        Left(Problem(s"$keyedEvent: PlanIds must be different"))
-      else
+      case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
         for
-          fromPlannedBoard <- maybePlannedBoard(fromPlannedNoticeKey.planId / boardPath).toRight:
-            Problem(s"${fromPlannedNoticeKey.planId / boardPath} does not exist")
-          noticePlace <- fromPlannedBoard.toNoticePlace.checked(fromPlannedNoticeKey.noticeKey)
-          from <- updatePlannedBoard(fromPlannedNoticeKey.planId / boardPath):
-            _.moveFromNoticePlace(fromPlannedNoticeKey.noticeKey)
-          to <- updatePlannedBoard(toPlannedNoticeKey.planId / boardPath):
-            _.moveToNoticePlace(toPlannedNoticeKey.noticeKey, noticePlace, endOfLife)
-        yield
+          agentRefState <- keyTo(AgentRefState).checked(agentPath)
+          agentRefState <- agentRefState.applyEvent(event)
+        yield copy(
+          keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
+
+      case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+        applyOrderEvent(orderId, event)
+
+      case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
+        updatePlannedBoard(noticePosted.planId / boardPath):
+          _.addNotice(noticePosted.toNotice(boardPath))
+        .map: planSchemaState =>
           copy(
-            keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
-              View(from, to).map(o => o.path -> o))
+            keyToUnsignedItemState_ = keyToUnsignedItemState_
+              .updated(planSchemaState.id, planSchemaState))
 
-    case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-      ow.onOrderWatchEvent(orderWatchPath <-: event)
+      case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
+        updatePlannedBoard(plannedNoticeKey.planId / boardPath):
+          _.removeNotice(plannedNoticeKey.noticeKey)
+        .map: planSchemaState =>
+          copy(
+            keyToUnsignedItemState_ = keyToUnsignedItemState_
+              .updated(planSchemaState.id, planSchemaState))
 
-    case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
-      event match
-        case SubagentShutdown | SubagentShutdownV7 if !keyToUnsignedItemState_.contains(subagentId) =>
-          // May arrive when SubagentItem has been deleted
-          Right(this)
-
-        case _ =>
+      case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
+        import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
+        if toPlannedNoticeKey.planId == fromPlannedNoticeKey.planId then
+          Left(Problem(s"$keyedEvent: PlanIds must be different"))
+        else
           for
-            o <- keyTo(SubagentItemState).checked(subagentId)
-            o <- o.applyEvent(event)
-          yield copy(
-            keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
+            fromPlannedBoard <- maybePlannedBoard(fromPlannedNoticeKey.planId / boardPath).toRight:
+              Problem(s"${fromPlannedNoticeKey.planId / boardPath} does not exist")
+            noticePlace <- fromPlannedBoard.toNoticePlace.checked(fromPlannedNoticeKey.noticeKey)
+            from <- updatePlannedBoard(fromPlannedNoticeKey.planId / boardPath):
+              _.moveFromNoticePlace(fromPlannedNoticeKey.noticeKey)
+            to <- updatePlannedBoard(toPlannedNoticeKey.planId / boardPath):
+              _.moveToNoticePlace(toPlannedNoticeKey.noticeKey, noticePlace, endOfLife)
+          yield
+            copy(
+              keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
+                View(from, to).map(o => o.path -> o))
 
-    case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaEvent) =>
-      for
-        planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
-        planSchemaState <- planSchemaState.applyEvent(event)
-      yield
-        copy(keyToUnsignedItemState_ =
-          keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+      case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
+        ow.onOrderWatchEvent(orderWatchPath <-: event)
 
-    case KeyedEvent(planId: PlanId, event: PlanEvent) =>
-      import planId.{planKey, planSchemaId}
-      for
-        planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
-        planSchemaState <- planSchemaState.applyPlanEvent(planKey, event)
-      yield
-        copy(keyToUnsignedItemState_ =
-          keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+      case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
+        event match
+          case SubagentShutdown | SubagentShutdownV7 if !keyToUnsignedItemState_.contains(subagentId) =>
+            // May arrive when SubagentItem has been deleted
+            Right(this)
 
-    case KeyedEvent(_, ControllerTestEvent) =>
-      Right(this)
+          case _ =>
+            for
+              o <- keyTo(SubagentItemState).checked(subagentId)
+              o <- o.applyEvent(event)
+            yield copy(
+              keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
 
-    case _ => applyStandardEvent(keyedEvent)
+      case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaEvent) =>
+        for
+          planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+          planSchemaState <- planSchemaState.applyEvent(event)
+        yield
+          copy(keyToUnsignedItemState_ =
+            keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+
+      case KeyedEvent(planId: PlanId, event: PlanEvent) =>
+        import planId.{planKey, planSchemaId}
+        for
+          planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+          planSchemaState <- planSchemaState.applyPlanEvent(planKey, event)
+        yield
+          copy(keyToUnsignedItemState_ =
+            keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+
+      case KeyedEvent(_, ControllerTestEvent) =>
+        Right(this)
+
+      case _ => applyStandardEvent(keyedEvent)
+    .map: controllerState =>
+      controllerState.copy(eventCounter =
+        controllerState.eventCounter.applyKeyedEvent(keyedEvent))
 
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
   : Checked[ControllerState] =
@@ -951,6 +960,7 @@ extends
     ClientAttachments.empty,
     Set.empty,
     Map.empty,
+    EventCounter.empty,
     WorkflowToOrders(Map.empty))
 
   val empty: ControllerState =
@@ -991,7 +1001,8 @@ extends
       Subtype[OrderWatchState.Snapshot],
       Subtype[Order[Order.State]],
       WorkflowPathControl.subtype,
-      WorkflowControl.subtype)
+      WorkflowControl.subtype,
+      EventCount.subtype)
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec/*.named("ControllerState.keyedEventJsonCodec"*/(

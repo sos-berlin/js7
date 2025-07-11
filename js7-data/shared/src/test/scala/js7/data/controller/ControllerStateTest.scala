@@ -20,7 +20,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest.*
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventId, JournalState, SnapshotableState}
+import js7.data.event.{EventCounter, EventId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.Attachable
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -409,7 +409,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     "AgentRefState snapshot object" in:
       val recoverer = ControllerState.newRecoverer()
       recoverer.addSnapshotObject(AgentRefState(agentRef))
-      assert(recoverer.result() == cs.withEventId(0))
+      assert(recoverer.result() == cs.withEventId(0).copy(eventCounter = EventCounter.empty))
 
     "UnsignedSimpleItemChanged" in:
       val changedUri = Uri("https://example.com")
