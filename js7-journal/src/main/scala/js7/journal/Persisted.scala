@@ -6,6 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.event.{Event, EventDrivenState, KeyedEvent, Stamped}
 import scala.collection.SeqView
+
 /** Persisted events.
   * @param originalAggregate The aggregate before the events have been applied.
   * @param stampedKeyedEvents
@@ -52,3 +53,12 @@ object Persisted:
       io.flatMapT: persisted =>
         persisted.ifNonEmpty:
           body(persisted)
+
+    def ifPersistedIs[U <: Unit](predicate: Persisted[S, E] => Boolean)
+      (body: Persisted[S, E] => IO[Checked[Unit]])
+    : IO[Checked[Unit]] =
+      io.flatMapT: persisted =>
+        if predicate(persisted) then
+          body(persisted)
+        else
+          IO.right(())
