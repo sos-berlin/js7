@@ -38,6 +38,7 @@ object ScalaUtils:
   private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
   private lazy val makeUniqueMeter = CallMeter("makeUnique")
   private lazy val logger = Logger[this.type]
+  private var simpleScalaClassNameCache = Map.empty[Class[?], String]
 
   //given iterableMonoid: Foldable[Iterable] =
   //  new Foldable[Iterable]:
@@ -185,7 +186,14 @@ object ScalaUtils:
     implicit final class RichJavaClass[A](private val underlying: Class[A]):
       def scalaName: String = underlying.getName stripSuffix "$"
 
+      /** Simple name without companion object's '$'.
+        * <p>
+        * Calculated values are cached. */
       def simpleScalaName: String = simpleName stripSuffix "$"
+        simpleScalaClassNameCache.getOrElse(underlying, (_: Class[?]) =>
+          val name = underlying.getName stripSuffix "$"
+          simpleScalaClassNameCache = simpleScalaClassNameCache.updated(underlying, name)
+          name)
 
       /** Like getSimpleName, but even simpler. */
       def simpleName: String =
