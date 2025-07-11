@@ -95,7 +95,7 @@ extends SignedItemContainer,
 
   def toSnapshotStream: Stream[fs2.Pure, Any] = Stream(
     standards.toSnapshotStream,
-    Stream.iterable(meta != AgentMetaState.empty thenList meta),
+    Stream.iterable(!meta.isEmpty thenList meta),
     Stream.iterable(keyToItem(AgentRef).values),
     Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
     Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
@@ -394,12 +394,17 @@ extends
     AgentRef, SubagentItem, SubagentBundle,
     FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl)
 
+
   final case class AgentMetaState(
     directors: Seq[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId,
     controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/):
+
+    def isEmpty: Boolean =
+      this == AgentMetaState.empty
+
     def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
       if directors.sizeIs < 2 then
         Left(Problem("Agent has not enough directors to be a cluster"))
@@ -408,6 +413,7 @@ extends
           case NodeId.primary => Right(directors(0))
           case NodeId.backup => Right(directors(1))
           case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
+
   object AgentMetaState:
     val empty: AgentMetaState =
       AgentMetaState(
@@ -428,6 +434,7 @@ extends
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
       yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
+
 
   val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
