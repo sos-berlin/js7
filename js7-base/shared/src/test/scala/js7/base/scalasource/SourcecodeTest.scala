@@ -1,4 +1,4 @@
-package js7.base.utils
+package js7.base.scalasource
 
 import java.nio.file.Paths
 import js7.base.test.OurTestSuite
@@ -10,20 +10,20 @@ final class SourcecodeTest extends OurTestSuite:
   private val name = implicitly[sourcecode.Name].value
 
   "sourcecode.Enclosing" in:
-    assert(enclosing == "js7.base.utils.SourcecodeTest#enclosing")
+    assert(enclosing == "js7.base.scalasource.SourcecodeTest#enclosing")
 
   "sourcecode.Fullname" in:
-    assert(fullName == "js7.base.utils.SourcecodeTest.fullName")
+    assert(fullName == "js7.base.scalasource.SourcecodeTest.fullName")
 
   "sourcecode.Name" in:
     assert(name == "name")
 
   "sourcecode.Pkg" in:
-    assert(implicitly[sourcecode.Pkg].value == "js7.base.utils")
+    assert(implicitly[sourcecode.Pkg].value == "js7.base.scalasource")
 
   "sourcecode.File" in:
     val file = Paths.get(implicitly[sourcecode.File].value)
-    assert(file.isAbsolute && file.endsWith(Paths.get("js7/base/utils/SourcecodeTest.scala")))
+    assert(file.isAbsolute && file.endsWith(Paths.get("js7/base/scalasource/SourcecodeTest.scala")))
 
   "sourcecode.FileName" in:
     assert(implicitly[sourcecode.FileName].value == "SourcecodeTest.scala")
