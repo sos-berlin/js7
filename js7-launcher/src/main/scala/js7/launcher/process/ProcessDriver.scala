@@ -5,6 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.{catchAsChecked, left, startAndForget}
 import js7.base.io.process.{KeyLogin, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -45,38 +46,39 @@ final class ProcessDriver(
     returnValuesProvider: ShellReturnValuesProvider):
 
     def runProcess: IO[OrderOutcome.Completed] =
-      startProcess.flatMap:
-        case Left(problem) =>
-          IO.pure(OrderOutcome.Failed.fromProblem(problem))
+      meterProcess:
+        startProcess.flatMap:
+          case Left(problem) =>
+            IO.pure(OrderOutcome.Failed.fromProblem(problem))
 
-        case Right(process) =>
-          crashPidFile
-            .register(process.pid).surround:
-              process.awaitProcessTermination
-                .guarantee:
-                  crashPidFile.remove(process.pid) // Immediately when process terminated
-                .startAndForget
-                .flatMap: _ =>
-                  IO.defer:
-                    logger.info:
-                      s"$orderId ↘ Process ${process.process} started · ${conf.jobKey} · ${conf.commandLine}"
-                    killedBeforeStart.traverse:
-                      sendProcessSignal(process, _)
-                .flatMap: _ =>
-                  process.watchProcessAndStdouterr
-                    .attempt.flatMap: either =>
-                      IO.defer:
-                        // Don't log PID because the process may have terminated long before
-                        // stdout or stderr ended (due to still running child processes)
-                        logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
-                          process.duration.pretty}")
-                        IO.fromEither(either)
-                    .flatMap: returnCode =>
-                      fetchReturnValues(returnCode)
-          .guarantee:
-            process.release
-      //.guarantee:
-      //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
+          case Right(process) =>
+            crashPidFile
+              .register(process.pid).surround:
+                process.awaitProcessTermination
+                  .guarantee:
+                    crashPidFile.remove(process.pid) // Immediately when process terminated
+                  .startAndForget
+                  .flatMap: _ =>
+                    IO.defer:
+                      logger.info:
+                        s"$orderId ↘ Process ${process.process} started · ${conf.jobKey} · ${conf.commandLine}"
+                      killedBeforeStart.traverse:
+                        sendProcessSignal(process, _)
+                  .flatMap: _ =>
+                    process.watchProcessAndStdouterr
+                      .attempt.flatMap: either =>
+                        IO.defer:
+                          // Don't log PID because the process may have terminated long before
+                          // stdout or stderr ended (due to still running child processes)
+                          logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
+                            process.duration.pretty}")
+                          IO.fromEither(either)
+                      .flatMap: returnCode =>
+                        fetchReturnValues(returnCode)
+            .guarantee:
+              process.release
+          //.guarantee:
+          //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
     private def startProcess: IO[Checked[PipedProcess]] =
       IO.defer:
@@ -142,6 +144,7 @@ final class ProcessDriver(
 
 object ProcessDriver:
   private val logger = Logger[this.type]
+  private val meterProcess = CallMeter("Process")
 
   private[process] final case class Conf(
     jobKey: JobKey,
