@@ -26,7 +26,7 @@ import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.{Ops, RichCheckedF}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
-import js7.base.time.JavaTime.*
+import js7.base.time.JavaTime.extensions.toZoneId
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
@@ -88,7 +88,7 @@ extends Service.StoppableByRequest:
   private val journal = workingClusterNode.journal
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
   private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
-    isStopping = isStopping)
+    isStopping = isStopping, conf)
   private val agentProcessCount = Atomic(0)
   private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
   private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)

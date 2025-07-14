@@ -5,6 +5,7 @@ import cats.effect.{FiberIO, IO}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
+import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, startAndForget}
@@ -29,13 +30,15 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.director.SubagentKeeper
 import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 
 final class JobMotor(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   getAgentState: IO[AgentState],
   onSubagentEvents: OrderId => Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
-  isStopping: => Boolean)
+  isStopping: => Boolean,
+  agentConf: AgentConfiguration)
   (using AlarmClock, Dispatcher[IO]):
   jobMotor =>
 
@@ -49,7 +52,7 @@ final class JobMotor(
   def createJobEntries(workflow: Workflow): IO[Unit] =
     val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
     workflow.keyToJob.filter(_._2.agentPath == agentPath).foldMap: (jobKey, job) =>
-      jobToEntry.insert(jobKey, JobEntry(jobKey, job, zoneId))
+      jobToEntry.insert(jobKey, JobEntry(jobKey, job, zoneId, agentConf.findTimeIntervalLimit))
         .map(_.orThrow)
 
   def deleteEntriesForWorkflow(workflowId: WorkflowId): IO[Unit] =
@@ -166,13 +169,15 @@ final class JobMotor(
         agentRef.processLimit
 
 
-  private final class JobEntry(val jobKey: JobKey, val workflowJob: WorkflowJob, zoneId: ZoneId)
+  private final class JobEntry(val jobKey: JobKey, val workflowJob: WorkflowJob, zoneId: ZoneId,
+    findTimeIntervalLimit: FiniteDuration)
     (using Dispatcher[IO]):
 
     private val lock = SimpleLock[IO]
     private val queue = new OrderQueue
     private val admissionTimeIntervalSwitch = ExecuteAdmissionTimeSwitch(
       workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
+      findTimeIntervalLimit,
       zoneId,
       onSwitch = to =>
         IO:
