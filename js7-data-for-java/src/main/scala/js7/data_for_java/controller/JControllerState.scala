@@ -10,6 +10,7 @@ import js7.base.metering.CallMeter
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
+import js7.base.utils.MoreJavaConverters.asJava
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
@@ -33,7 +34,6 @@ import js7.data_for_java.board.{JBoardItem, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
-import js7.data_for_java.common.MoreJavaConverters.asJava
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}

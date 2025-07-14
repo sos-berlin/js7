@@ -12,13 +12,12 @@
  * additional information regarding copyright ownership.
  */
 
-package js7.data_for_java.common
+package js7.base.utils
 
 import java.util as ju
 import scala.collection.MapView
 
-final class JMapViewWrapper[K, V](mapView: MapView[K, V])
-  extends ju.AbstractMap[K, V]:
+final class MapViewJavaWrapper[K, V](mapView: MapView[K, V]) extends ju.AbstractMap[K, V]:
   self =>
 
   override def size: Int =

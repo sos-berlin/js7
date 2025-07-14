@@ -1,8 +1,8 @@
 package js7.data_for_java.board
 
+import js7.base.utils.MoreJavaConverters.asJava
 import js7.data.board.{NoticeKey, PlannedBoard, PlannedBoardId}
 import js7.data_for_java.common.JavaWrapper
-import js7.data_for_java.common.MoreJavaConverters.asJava
 import scala.jdk.CollectionConverters.*
 
 final case class JPlannedBoard(asScala: PlannedBoard) extends JavaWrapper:

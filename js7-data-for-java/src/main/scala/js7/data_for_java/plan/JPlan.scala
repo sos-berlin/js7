@@ -1,13 +1,13 @@
 package js7.data_for_java.plan
 
 import js7.base.annotation.javaApi
+import js7.base.utils.MoreJavaConverters.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardPath
 import js7.data.order.OrderId
 import js7.data.plan.{Plan, PlanId, PlanStatus}
 import js7.data_for_java.board.JPlannedBoard
 import js7.data_for_java.common.JavaWrapper
-import js7.data_for_java.common.MoreJavaConverters.*
 import scala.jdk.CollectionConverters.*
 
 final case class JPlan(asScala: Plan) extends JavaWrapper:
