@@ -268,7 +268,14 @@ object RunningController:
           logger.traceIOWithResult:
             clusterNode.untilActivated
               .map(_.flatMap { workingClusterNode =>
+                // TODO stop journalActor
+                val journalActor =
+                  actorSystem.actorOf(
+                      Props(new JournalActor(workingClusterNode.journal)),
+                      "Journal")
+                    .taggedWith[JournalActor.type]
                 startControllerOrderKeeper(
+                  journalActor,
                   clusterNode.workingClusterNode.orThrow,
                   alarmClock,
                   conf, testEventBus)
@@ -393,6 +400,7 @@ object RunningController:
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
+    journalActor: ActorRef @@ JournalActor.type,
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
@@ -403,7 +411,7 @@ object RunningController:
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new ControllerOrderKeeper(terminationPromise, workingClusterNode,
+          new ControllerOrderKeeper(terminationPromise, journalActor, workingClusterNode,
             alarmClock, conf, testEventPublisher)
         },
         "ControllerOrderKeeper")

@@ -1,7 +1,8 @@
 package js7.data.execution.workflow.instructions
 
+import cats.effect.std.Dispatcher
+import cats.effect.{IO, Ref}
 import java.time.ZoneId
-import js7.base.monixlike.SerialSyncCancelable
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -13,40 +14,45 @@ final class ExecuteAdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
   findTimeIntervalLimit: FiniteDuration,
   zone: ZoneId,
-  onSwitch: Option[TimeInterval] => Unit):
+  onSwitch: Option[TimeInterval] => IO[Unit])
+  (using dispatcher: Dispatcher[IO]):
 
   private given ZoneId = zone
 
   @volatile private var _nextTime: Option[Timestamp] = None
-  private val _timer = SerialSyncCancelable()
+  private val cancelSchedule = Ref.unsafe[IO, IO[Unit]](IO.unit)
 
   @TestOnly
   private[instructions] def nextTime = _nextTime
 
-  /** Cancel the callback _timer for admission start. */
-  def cancel(): Unit =
-    _nextTime = None
-    _timer.cancel()
+  def cancelDelay: IO[Unit] =
+    IO.defer:
+      _nextTime = None
+      cancelSchedule.get.flatten
 
-  /** Update the state with the current or next admission time and set a _timer.
+  /** Update the state with the current or next admission time and set a _fiber.
    * @return true iff an AdmissionTimeInterval is effective now. */
-  def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): Boolean =
-    clock.lock:
+  def updateAndCheck(onAdmissionStart: IO[Unit])(using clock: AlarmClock): IO[Boolean] =
+    IO.defer:
       val now = clock.now()
       admissionTimeScheme.findTimeInterval(
         now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
       match
         case None =>
-          _timer.cancel()
-          false // Not enterable now
+          cancelSchedule.getAndSet(IO.unit).flatten
+            .as(false) // No admission now or in the future
 
         case Some(interval) =>
-          if !_nextTime.contains(interval.start) then
-            onSwitch((interval != TimeInterval.never) ? interval)
-            // Also set _timer if clock has been adjusted
-            if now < interval.start then
-              _nextTime = Some(interval.start)
-              _timer := clock.scheduleAt(interval.start):
-                _nextTime = None
-                onAdmissionStart
-          interval.contains(now) // Has admission now?
+          IO.unlessA(_nextTime.contains(interval.start)):
+            onSwitch((interval != TimeInterval.never) ? interval) *>
+              // Also start a fiber if clock has been adjusted
+              IO.whenA(now < interval.start):
+                _nextTime = Some(interval.start)
+                clock.scheduleIOAt(interval.start, label = "ExecuteAdmissionTimeSwitch"):
+                  IO.defer:
+                    _nextTime = None
+                    onAdmissionStart
+                .flatMap: cancel =>
+                  cancelSchedule.getAndSet(cancel).flatten
+          .as:
+            interval.contains(now) // Has admission now?

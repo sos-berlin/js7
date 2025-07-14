@@ -13,6 +13,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NonFatalInterruptedException
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unchecked.uncheckedVariance
+import scala.annotation.unused
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -153,7 +154,7 @@ object CatsEffectExtensions:
     def right[R](value: R): IO[Either[Nothing, R]] =
       IO.pure(Right(value))
 
-    def right(value: Unit): IO[Either[Nothing, Unit]] =
+    inline def right(@unused u: Unit): IO[Either[Nothing, Unit]] =
       rightUnitIO
 
     inline def True: IO[Boolean] =

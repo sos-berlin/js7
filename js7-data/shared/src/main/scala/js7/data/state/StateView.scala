@@ -19,7 +19,7 @@ import js7.data.order.{MinimumOrder, Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{End, NoticeInstruction}
+import js7.data.workflow.instructions.{End, Execute, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
@@ -92,11 +92,13 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     else
       Checked.unit
 
-  def isOrderProcessable(order: Order[Order.State]): Boolean =
-    order.isProcessable &&
-      !isOrderAtStopPosition(order) &&
-      !isOrderAtBreakpoint(order) &&
-      !isWorkflowSuspended(order.workflowPath)
+  def isOrderProcessable(orderId: OrderId): Boolean =
+    idToOrder.get(orderId).exists: order =>
+      instruction(order.workflowPosition).isInstanceOf[Execute]
+        && order.isAttached && order.isProcessable
+        && !isOrderAtStopPosition(order)
+        && !isOrderAtBreakpoint(order)
+        && !isWorkflowSuspended(order.workflowPath)
 
   def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
     order.stopPositions.nonEmpty/*return fast*/ &&

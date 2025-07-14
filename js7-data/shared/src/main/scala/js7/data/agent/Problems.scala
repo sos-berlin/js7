@@ -16,11 +16,15 @@ object Problems:
     def arguments: Map[String, String] = Map(
       "agentPath" -> agentPath.string)
 
+  object AgentRunIdMismatchProblem extends Problem.Coded.Companion
+
+
   final case class AgentPathMismatchProblem(requestedAgentPath: AgentPath, realAgentPath: AgentPath)
   extends Problem.Coded:
     def arguments: Map[String, String] = Map(
       "requestedAgentPath" -> requestedAgentPath.string,
       "realAgentPath" -> realAgentPath.string)
+
 
   final case class AgentWrongControllerProblem(
     requestedControllerId: ControllerId,
@@ -30,12 +34,18 @@ object Problems:
       "requestedControllerId" -> requestedControllerId.string,
       "realControllerId" -> realControllerId.string)
 
+
   final case class AgentDuplicateOrder(orderId: OrderId) extends Problem.Coded:
     def arguments: Map[String, String] = Map(
       "orderId" -> orderId.string)
 
+
   type AgentAlreadyDedicatedProblem = AgentAlreadyDedicatedProblem.type
   case object AgentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded
 
+
   type AgentNotDedicatedProblem = AgentNotDedicatedProblem.type
   case object AgentNotDedicatedProblem extends Problem.ArgumentlessCoded
+
+  //type AgentNotCoupledProblem = AgentNotCoupledProblem.type
+  //case object AgentNotCoupledProblem extends Problem.ArgumentlessCoded

@@ -110,7 +110,7 @@ extends MainService, Service.StoppableByRequest:
           val termination = ProgramTermination(restart = restart)
           terminated.complete(termination).attempt.as(termination)))
 
-  def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
+  def registerDirectorRoute(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
     logger.debugResource(
       for
         _ <- directorRouteVariable.registeringRouteResource(toRoute)
@@ -191,9 +191,8 @@ extends MainService, Service.StoppableByRequest:
       .flatMapT(_.startOrderProcess(order, executeDefaultArguments))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Checked[Unit]] =
-    subagent.checkedDedicatedSubagent
-      .traverse(_
-        .killProcess(orderId, signal))
+    subagent.checkedDedicatedSubagent.traverse:
+      _.killProcess(orderId, signal)
 
   def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     IO(checkedDedicatedSubagent)
@@ -245,8 +244,8 @@ object Subagent:
       subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
       directorRouteVariable = new DirectorRouteVariable
       webServer <- SubagentWebServer.resource(
-        subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf
-        )(using actorSystem, ioRuntime)
+        subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
+        (using actorSystem, ioRuntime)
       _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
       iox <- Resource.eval(environment[IOExecutor])

@@ -10,11 +10,12 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.agent.motor.AgentCommandExecutor
 import js7.base.auth.SessionToken
 import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
@@ -44,7 +45,9 @@ extends
   val agent = allocated.allocatedThing
   @volatile private var released = false
 
-  def start: IO[Service.Started] =
+  private val ioRuntime = allocated.allocatedThing.ioRuntime
+
+  protected def start: IO[Service.Started] =
     startService:
       IO.race(untilStopRequested, untilTerminated) *>
         stopThis
@@ -58,18 +61,21 @@ extends
     agent.terminate(terminateProcessesWith).void
       .guarantee:
         logger.traceIO("allocated.release"):
+          // Stops IORuntime, too
           allocated.release *> IO:
             released = true
 
-  def killForFailOver: IO[ProgramTermination] =
-    terminate(
-      processSignal = Some(SIGTERM),
-      clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
+  def kill: IO[ProgramTermination] =
+    logger.infoIO:
+      terminate(
+        processSignal = Some(SIGKILL),
+        clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
 
   def terminate(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
-    suppressSnapshot: Boolean = false)
+    suppressSnapshot: Boolean = false,
+    restartDirector: Boolean = false)
   : IO[ProgramTermination] =
     IO.defer:
       if released then
@@ -80,7 +86,9 @@ extends
           // Stops IORuntime, too
           agent.terminate(
             processSignal, clusterAction,
-            suppressSnapshot = suppressSnapshot)
+            suppressSnapshot = suppressSnapshot,
+            restartDirector = restartDirector)
+        .evalOn(ioRuntime.compute)
         .guarantee:
           stopThis.logWhenItTakesLonger("terminate -> stopThis")
 
@@ -98,7 +106,7 @@ extends
   def sessionToken: SessionToken =
     agent.systemSessionToken
 
-  def untilReady: IO[MainActor.Ready] =
+  def untilReady: IO[Checked[AgentCommandExecutor]] =
     agent.untilReady
 
   def currentAgentState(): AgentState =
@@ -115,9 +123,11 @@ extends
 
   def executeCommandAsSystemUser(command: AgentCommand): IO[Checked[AgentCommand.Response]] =
     agent.executeCommandAsSystemUser(command)
+      .evalOn(ioRuntime.compute)
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
+      .evalOn(ioRuntime.compute)
 
   def name: String =
     conf.name

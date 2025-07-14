@@ -10,6 +10,7 @@ import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenRight, joinStd, left, materializeIntoChecked, orThrow, right, startAndForget}
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
@@ -19,6 +20,7 @@ import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
 import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
@@ -27,6 +29,7 @@ import js7.base.utils.{Allocated, LockKeeper, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
+import js7.data.event.KeyedEvent
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -43,7 +46,7 @@ import js7.subagent.director.SubagentKeeper.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 
-final class SubagentKeeper[S <: SubagentDirectorState[S]](
+final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   localSubagentId: SubagentId,
   localSubagent: Subagent,
   agentPath: AgentPath,
@@ -52,7 +55,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   journal: Journal[S],
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
-  (implicit ioRuntime: IORuntime):
+  (implicit ioRuntime: IORuntime)
+extends Service.StoppableByRequest:
 
   private val reconnectDelayer: DelayIterator = DelayIterators
     .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(
@@ -65,23 +69,57 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
   @volatile private var started = false // Delays SubagentDriver#startObserving
 
-  def stop: IO[Unit] =
-    logger.traceIO:
-      stateVar
-        .updateWithResult(state => IO:
-          state.clear -> state.subagentToEntry.values)
-        .flatMap: entries =>
-          entries.toVector
-            .map(_.driver)
-            .parUnorderedTraverse(_.terminate)
-            .map(_.combineAll)
+  journal.untilStopped // TODO Terminate when journal dies
 
-  // Call this, but not before recovering !!!
-  def start: IO[Unit] =
-    logger.traceIO:
+  protected def start =
+    journal.aggregate
+      .flatMap: aggregate =>
+        recoverSubagents(aggregate.idToSubagentItemState.values.toVector)
+          .flatMapT: _ =>
+            recoverSubagentBundles:
+              aggregate.pathToUnsignedSimple(SubagentBundle).values.toVector
+      .map(_.orThrow)
+      .productR:
+        continueDetachingSubagents
+      .productR:
+        startService:
+          IO.defer:
+            started = true
+            IO.both(
+              untilStopRequested *> stopMe,
+              startObserving
+            ).void
+
+  private def stopMe: IO[Unit] =
+    stateVar.updateWithResult: state =>
+      IO.pure(state.clear -> state.subagentToEntry.values)
+    .flatMap: entries =>
+      entries.toVector
+        .map(_.driver)
+        .parUnorderedTraverse(_.terminate)
+        .map(_.combineAll)
+
+  def kill: IO[Unit] =
+    stop
+
+  def shutdownLocalSubagent(signal: Option[ProcessSignal]): IO[Unit] =
+    localSubagentDriver.flatMapSome: driver =>
+      logger.debugIO:
+        driver.shutdownSubagent(signal).void
+    .void
+
+  private def localSubagentDriver: IO[Option[LocalSubagentDriver]] =
+    stateVar.value.map:
+      _.idToAllocatedDriver.get(localSubagentId).map(_.allocatedThing).flatMap:
+        case o: LocalSubagentDriver => Some(o)
+        case o => throw new AssertionError(s"localSubagentDriver $o")
+
+  def killLocalProcesses(signal: ProcessSignal): IO[Unit] =
+    logger.debugIO:
       IO.defer:
-        started = true
-        startObserving *> continueDetaching
+        orderToSubagent.toMap.toVector.parFoldMapA:
+          case (orderId, _: LocalSubagentDriver) => killProcess(orderId, signal)
+          case _ => IO.unit
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
     stateVar.value.flatMap: state =>
@@ -89,65 +127,70 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
         .parUnorderedTraverse(_.driver.stopJobs(jobKeys, signal))
         .map(_.combineAll)
 
-  def orderIsLocal(orderId: OrderId): Boolean =
-    orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
+  //def orderIsLocal(orderId: OrderId): Boolean =
+  //  orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
-    onEvents: Seq[OrderCoreEvent] => Unit)
+    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
   : IO[Checked[Unit]] =
+    val orderId = order.id
     selectSubagentDriverCancelable(order).flatMap:
       case Left(problem) =>
         // Maybe suppress when this SubagentKeeper has been stopped ???
-        IO.defer:
-          // ExecuteExecutor should have prechecked this:
-          val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
-            // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-            OrderProcessingStarted.noSubagent ::
-            OrderProcessed(OrderOutcome.Disrupted(problem)) :: Nil
-          persist(order.id, events, onEvents)
-            .rightAs(())
+        // ExecuteExecutor should have prechecked this:
+        journal.persist: agentState =>
+          agentState.idToOrder.checked(orderId).map: order =>
+            Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
+              order.isState[Order.Fresh] ? OrderStarted,
+              // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+              Some(OrderProcessingStarted.noSubagent),
+              Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
+            ).flatten.map(orderId <-: _)
+        .flatMapT(onPersisted(orderId, onEvents))
 
       case Right(None) =>
-        logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
+        logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
         IO.right(())
 
       case Right(Some(selectedDriver)) =>
-        processOrderAndForwardEvents(order, onEvents, selectedDriver)
+        processOrderAndForwardEvents(orderId, onEvents, selectedDriver)
 
   private def processOrderAndForwardEvents(
-    order: Order[Order.IsFreshOrReady],
-    onEvents: Seq[OrderCoreEvent] => Unit,
+    orderId: OrderId,
+    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
   : IO[Checked[Unit]] =
     // TODO Race with CancelOrders ?
     import selectedDriver.{stick, subagentDriver}
-
-    val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
-      OrderProcessingStarted(
-        Some(subagentDriver.subagentId),
-        selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
-        stick = stick) ::
-      Nil
-    persist(order.id, events, onEvents)
-      .map(_.map: persisted =>
-        persisted.aggregate.idToOrder
-          .checked(order.id)
+    journal.persist: agentState =>
+      agentState.idToOrder.checked(orderId).map: order =>
+        val events: List[OrderStarted | OrderProcessingStarted] =
+          order.isState[Order.Fresh].thenList(OrderStarted) :::
+            OrderProcessingStarted(
+              Some(subagentDriver.subagentId),
+              selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
+              stick = stick) ::
+            Nil
+        events.map(orderId <-: _)
+    .flatTapT(onPersisted(orderId, onEvents))
+    .flatMapT: persisted =>
+      IO.pure:
+        persisted.aggregate.idToOrder.checked(orderId)
           .flatMap(_.checkedState[Order.Processing])
-          .orThrow)
-      .flatMapT: order =>
-        forProcessingOrder(order.id, subagentDriver, onEvents):
-          subagentDriver.startOrderProcessing(order)
-      .handleErrorWith(t => IO:
-        logger.error(s"processOrderAndForwardEvents ${order.id} => ${t.toStringWithCauses}",
-          t.nullIfNoStackTrace)
-        Left(Problem.fromThrowable(t)))
+    .flatMapT: order =>
+      forProcessingOrder(orderId, subagentDriver, onEvents):
+        subagentDriver.startOrderProcessing(order)
       .containsType[Checked[FiberIO[OrderProcessed]]]
-      .rightAs(())
+    .handleErrorWith(t => IO:
+      logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
+        t.nullIfNoStackTrace)
+      Left(Problem.fromThrowable(t)))
+    .rightAs(())
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],
-    onEvents: Seq[OrderCoreEvent] => Unit)
+    onEvents: Seq[OrderProcessed] => IO[Unit])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("recoverOrderProcessing", order.id):
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
@@ -170,25 +213,36 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
                 subagentDriver.recoverOrderProcessing(order)
             .materializeIntoChecked
             .flatTap:
-              case Left(problem) => IO(logger.error:
-                s"recoverOrderProcessing ${order.id} => $problem")
+              case Left(problem) =>
+                IO(logger.error(s"recoverOrderProcessing ${order.id} => $problem"))
               case Right(_) => IO.unit
 
-  private def persist(
+  private def persist[E <: OrderCoreEvent](
     orderId: OrderId,
-    events: Seq[OrderCoreEvent],
-    onEvents: Seq[OrderCoreEvent] => Unit)
-  : IO[Checked[Persisted[S, OrderCoreEvent]]] =
+    events: Seq[E],
+    onEvents: Seq[E] => IO[Unit])
+  : IO[Checked[Persisted[S, E]]] =
     journal
       .persist(events.map(orderId <-: _))
-      .map(_.map: o =>
-        onEvents(events)
-        o)
+      .flatTapT(onPersisted(orderId, onEvents))
+
+  private def onPersisted[E <: OrderCoreEvent](orderId: OrderId, onEvents: Seq[E] => IO[Unit])
+    (persisted: Persisted[S, E])
+  : IO[Checked[Unit]] =
+      persisted.aggregate.idToOrder.get(orderId) match
+        case None =>
+          logger.debug(s"❌ onPersisted ignored because $orderId has been deleleted: ${
+            persisted.keyedEvents.map(_.event.toShortString)}")
+          IO.pure(Checked.unit)
+        case Some(order) =>
+          assert(persisted.keyedEvents.forall(_.key == orderId))
+          onEvents(persisted.keyedEvents.map(_.event).toVector)
+            .as(Checked.unit)
 
   private def forProcessingOrder(
     orderId: OrderId,
     subagentDriver: SubagentDriver,
-    onEvents: Seq[OrderCoreEvent] => Unit)
+    onEvents: Seq[OrderProcessed] => IO[Unit])
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToSubagent.put(orderId, subagentDriver) *>
@@ -197,9 +251,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
         case Right(fiber) =>
           // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
           fiber.joinStd
-            .map: orderProcessed =>
-              onEvents(orderProcessed :: Nil)
-              orderProcessed
+            .flatTap: orderProcessed =>
+              journal.aggregate.flatMap:
+                _.idToOrder.get(orderId) match
+                  case None => IO.pure(Checked.unit)
+                  case Some(order) => onEvents(orderProcessed :: Nil)
             .guarantee:
               orderToSubagent.remove(orderId).void
             .start
@@ -327,11 +383,15 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
           // Reset of the local Subagent (running in our JVM) would require a restart of the JVM
           IO.pure(Problem.pure(s"$subagentId as the Agent Director cannot be reset"))
 
-  def startRemoveSubagent(subagentId: SubagentId): IO[Unit] =
-    removeSubagent(subagentId)
-      .handleError[Unit]: t =>
-        logger.error(s"removeSubagent($subagentId) => $t")
-      .startAndForget
+  private def continueDetachingSubagents: IO[Unit] =
+    journal.aggregate.flatMap(_
+      .idToSubagentItemState.values
+      .view
+      .collect:
+        case o if o.isDetaching => o.subagentId
+      .toVector
+      .parFoldMapA:
+        removeSubagent)
 
   def removeSubagent(subagentId: SubagentId): IO[Unit] =
     logger.debugIO("removeSubagent", subagentId):
@@ -362,7 +422,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
                     ItemDetached(subagentId, agentPath)
           .orThrow.void
 
-  def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
+  private def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
     subagentItemStates
       .traverse: state =>
         addOrChange(state)
@@ -377,17 +437,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
           _.startObserving
       .map(_.combineAll)
 
-  private def continueDetaching: IO[Unit] =
-    journal.aggregate.flatMap(_
-      .idToSubagentItemState.values
-      .view
-      .collect:
-        case o if o.isDetaching => o.subagentId
-      .toVector
-      .traverse(startRemoveSubagent)
-      .map(_.combineAll))
-
-  def recoverSubagentBundles(subagentBundles: Seq[SubagentBundle]): IO[Checked[Unit]] =
+  private def recoverSubagentBundles(subagentBundles: Seq[SubagentBundle]): IO[Checked[Unit]] =
     logger.debugIO:
       subagentBundles
         .traverse(addOrReplaceSubagentBundle)
@@ -551,6 +601,21 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
 object SubagentKeeper:
   private val logger = Logger[this.type]
+
+  def resource[S <: SubagentDirectorState[S]](
+    localSubagentId: SubagentId,
+    localSubagent: Subagent,
+    agentPath: AgentPath,
+    controllerId: ControllerId,
+    failedOverSubagentId: Option[SubagentId],
+    journal: Journal[S],
+    directorConf: DirectorConf,
+    actorSystem: ActorSystem)
+    (implicit ioRuntime: IORuntime)
+  : ResourceIO[SubagentKeeper[S]] =
+    Service.resource:
+      new SubagentKeeper(localSubagentId, localSubagent, agentPath, controllerId,
+        failedOverSubagentId, journal, directorConf, actorSystem)
 
   private[director] def determineSubagentBundle(
     order: Order[Order.IsFreshOrReady],

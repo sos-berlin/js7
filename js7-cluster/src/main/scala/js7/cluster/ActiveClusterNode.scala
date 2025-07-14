@@ -27,7 +27,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
-import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
+import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, ClusterSwitchOverButNotCoupledProblem, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
 import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
@@ -39,6 +39,7 @@ import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stampe
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.journal.FileJournal
+import js7.journal.problems.Problems.JournalKilledProblem
 import scala.concurrent.duration.*
 import scala.util.{Failure, Right, Success, Try}
 
@@ -125,12 +126,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   def stop: IO[Unit] =
     logger.debugIO(IO.defer:
       stopRequested = true
-      IO.both(
-        logger.traceIO("fetchingAcks cancel"):
-          fetchingAcks.cancel,
-        logger.traceIO("clusterWatchSynchronizerOnce stop"):
-          clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
-      ).void)
+      stopAcknowledgingRequested = true
+      stopAcknowledging.complete(()) *>
+        IO.both(
+          logger.traceIO("fetchingAcks cancel"):
+            fetchingAcks.cancel,
+          logger.traceIO("clusterWatchSynchronizerOnce stop"):
+            clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
+        ).void)
 
   def beforeJournalingStarts: IO[Checked[Unit]] =
     IO.defer:
@@ -338,11 +341,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   def switchOver: IO[Checked[Completed]] =
     clusterStateLock.lock:
       persist():
-        case coupled: Coupled =>
-          Right(Some(ClusterSwitchedOver(coupled.passiveId)))
-        case state =>
-          Left(Problem.pure("Switchover is possible only for the active and coupled cluster node," +
-            s" but cluster state is: $state"))
+        case coupled: Coupled => Right(Some(ClusterSwitchedOver(coupled.passiveId)))
+        case clusterState => Left(ClusterSwitchOverButNotCoupledProblem(clusterState))
       .flatMapT: (_: Seq[Stamped[?]], _) =>
         stopAcknowledgingRequested = true
         stopAcknowledging.complete(())
@@ -364,12 +364,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             Right(Some(ClusterActiveNodeShutDown))
           case _ =>
             Right(None)
-        .recoverT:
-          case ClusterModuleShuttingDownProblem => ()
-        .flatMapT: _ =>
-          stopAcknowledgingRequested = true
-          stopAcknowledging.complete(())
-            .as(Right(Completed))
+        .recoverFromProblem:
+          case problem @ (ClusterModuleShuttingDownProblem | JournalKilledProblem) =>
+            logger.debug(s"⚠️  shutDownThisNode: $problem")
+        .as(Right(Completed))
 
   private def proceed(state: ClusterState): IO[Completed] =
     state match
