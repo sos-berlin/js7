@@ -15,6 +15,7 @@ import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -22,7 +23,6 @@ import js7.controller.item.ItemUpdater
 import js7.controller.web.ControllerRoute.*
 import js7.controller.web.controller.TestRoute
 import js7.controller.web.controller.api.ApiRoute
-import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentRefState
 import js7.data.controller.{ControllerCommand, ControllerState}
@@ -68,7 +68,7 @@ extends ServiceProviderRoute,
     .map(_.map(s => Stamped(s.eventId, s.clusterState)))
   protected val currentLogFile      = config.as[Path]("js7.log.file")
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
-  protected val routeServiceContext = RouteServiceContext(
+  override protected val routeServiceContext = RouteServiceContext(
     filteredSnapshotRoute, filteredEventRoute, config)
   protected val actorRefFactory     = actorSystem
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)

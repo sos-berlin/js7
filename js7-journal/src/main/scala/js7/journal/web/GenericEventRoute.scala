@@ -26,6 +26,7 @@ import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
+import js7.common.web.serviceprovider.StampedEventFilter
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.data.system.ServerMeteringEvent
@@ -232,10 +233,6 @@ trait GenericEventRoute extends RouteProvider:
 
 
 object GenericEventRoute:
-
-  type StampedEventFilter =
-    Stream[IO, Stamped[KeyedEvent[Event]]] =>
-      Stream[IO, Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")

@@ -11,7 +11,8 @@ object ServiceProviders:
   private val logger = Logger[this.type]
 
   def findServices[A](callback: (=> String, Option[A]) => Unit = defaultCallback[A])
-    (implicit A: ClassTag[A]): Seq[A] =
+    (using A: ClassTag[A])
+  : Seq[A] =
     val interface = A.runtimeClass.asInstanceOf[Class[A]]
     val serviceLoader = ServiceLoader.load(
       interface,
@@ -19,9 +20,7 @@ object ServiceProviders:
 
     val iterator = serviceLoader.iterator.asScala
     if iterator.isEmpty then
-      callback(
-        s"No ${interface.simpleScalaName}",
-        None)
+      callback(s"No ${interface.simpleScalaName}", None)
     else
       for service <- iterator/*loads services lazily*/ do
         val cls = service.getClass

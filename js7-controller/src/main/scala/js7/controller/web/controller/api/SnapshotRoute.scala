@@ -2,7 +2,6 @@ package js7.controller.web.controller.api
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import io.circe.Encoder
 import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.CatsEffectExtensions.right
@@ -16,9 +15,9 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedJso
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.common.web.serviceprovider.SnapshotFilter
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.SnapshotRoute.*
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
@@ -69,7 +68,3 @@ trait SnapshotRoute extends ControllerRouteProvider:
                 .chunkLimit(httpChunkSize)  // TODO Maybe fill-up chunks
                 .map(_.toByteString)
                 .interruptWhenF(shutdownSignaled)
-
-
-object SnapshotRoute:
-  type SnapshotFilter = Stream[IO, Any] => Stream[IO, Any]

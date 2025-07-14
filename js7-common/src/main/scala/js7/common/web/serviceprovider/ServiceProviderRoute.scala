@@ -1,4 +1,4 @@
-package js7.controller.web.serviceprovider
+package js7.common.web.serviceprovider
 
 import com.typesafe.config.Config
 import js7.base.log.Logger
@@ -8,15 +8,17 @@ import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.StandardDirectives.combineRoutes
-import js7.controller.web.serviceprovider.ServiceProviderRoute.*
+import js7.common.web.serviceprovider.ServiceProviderRoute.*
 import org.apache.pekko.http.scaladsl.server.Route
 
 /**
   * @author Joacim Zschimmer
   */
-private[web] trait ServiceProviderRoute:
+trait ServiceProviderRoute:
 
-  protected def routeServiceContext: RouteServiceContext
+  protected def routeServiceContext: RouteServiceContext =
+    RouteServiceContext(config)
+
   protected def config: Config
 
   private lazy val services: Seq[RouteService] =
@@ -28,12 +30,14 @@ private[web] trait ServiceProviderRoute:
         service <- services
         routeMapper = service.newRouteMapper(config)
         (p, r) <- routeMapper.pathToRoute(routeServiceContext)
-      yield (service, p, r)
+      yield
+        (service, p, r)
     logAndCheck(servicePathRoutes)
-    combineRoutes(
-      for (_, p, r) <- servicePathRoutes yield pathSegments(p)(r))
+    combineRoutes:
+      for (_, p, r) <- servicePathRoutes yield pathSegments(p)(r)
 
-  protected final def serviceProviderRoute: Route =
+  /** Routes provided by a Java service. */
+  protected final val serviceProviderRoute: Route =
     //implicit val exceptionHandler = ExceptionHandler { case throwable =>
     //  // Do not return exception to client
     //  logger.error(throwable.toStringWithCauses)
@@ -41,17 +45,25 @@ private[web] trait ServiceProviderRoute:
     //  complete(StatusCodes.NotFound, Problem.pure("Unknown URI or RouteService failed"))
     //}
     //Route.seal(
-      requestContext => {
+      requestContext =>
         if lazyServiceProviderRoute.isEmpty then
           logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
         lazyServiceProviderRoute()(requestContext)
-      }
 
-private[web] object ServiceProviderRoute:
+
+object ServiceProviderRoute:
   private val logger = Logger[this.type]
 
   private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit =
-    if namedRouteToService.isEmpty then logger.trace("No routes")
-    else for (s, p, _) <- namedRouteToService do logger.debug(s"${s.getClass.scalaName} provides route '/$p'")
+    if namedRouteToService.isEmpty then
+      logger.trace("No routes")
+    else
+      for (s, p, _) <- namedRouteToService do
+        logger.debug(s"${s.getClass.scalaName} provides web route '/$p'")
+
     for pathToTriples <- namedRouteToService.duplicateKeys(_._2) do
-      sys.error("Duplicate route paths: " + pathToTriples.values.flatten.map(o => s"'${o._2}'->${o._1.getClass.scalaName}" ).mkString(", "))
+      sys.error:
+        "Duplicate route paths: " +
+          pathToTriples.values.flatten
+            .map(o => s"'${o._2}'->${o._1.getClass.scalaName}")
+            .mkString(", ")

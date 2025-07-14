@@ -1,4 +1,4 @@
-package js7.controller.web.serviceprovider
+package js7.common.web.serviceprovider
 
 import org.apache.pekko.http.scaladsl.server.Route
 
