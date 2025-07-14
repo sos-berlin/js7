@@ -1026,6 +1026,9 @@ extends
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
 
+  override def updateStaticReference(controllerState: ControllerState): Unit =
+    ControllerStateMXBean.setControllerState(controllerState)
+
   private def update(
     s: ControllerState,
     updateOrders: Seq[Order[Order.State]] = Nil,

@@ -272,9 +272,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                   case _ => IO.unit
                 .productR:
                   applied.completeApplied
-                .productR:
-                  IO.whenA(applied.commitOptions.commitLater):
-                    applied.completePersisted
                 .as:
                   Chunk.singleton(applied)
       // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
@@ -313,6 +310,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           else
             chunk
         .flatTap: _ =>
+          S.updateStaticReference(lastWritten.aggregate)
           state.updateDirect:
             _.copy(committed = lastWritten.aggregate)
       .evalTap: chunk =>
