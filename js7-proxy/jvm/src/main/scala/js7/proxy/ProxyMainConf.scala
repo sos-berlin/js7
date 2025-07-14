@@ -25,7 +25,7 @@ private final case class ProxyMainConf(
   config: Config)
 extends BasicConfiguration:
 
-  def name = "Proxy"
+  val name = "Proxy"
 
 
 private object ProxyMainConf:

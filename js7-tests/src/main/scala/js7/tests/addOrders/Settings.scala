@@ -16,7 +16,7 @@ private final case class Settings(
 extends BasicConfiguration:
   val config = ConfigFactory.empty
 
-  def name = "TestAddOrders"
+  val name = "TestAddOrders"
 
 
 private object Settings:

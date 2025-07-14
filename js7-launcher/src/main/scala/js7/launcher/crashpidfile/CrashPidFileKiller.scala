@@ -82,7 +82,7 @@ object CrashPidFileKiller extends ServiceApp:
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
 
-    def name = "CrashPidFileKiller"
+    val name = "CrashPidFileKiller"
 
   object Conf:
     val Default: Conf = Conf()

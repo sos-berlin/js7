@@ -29,7 +29,7 @@ final class ServiceMainTest extends OurAsyncTestSuite:
 
 object ServiceMainTest:
   private case class TestConf(config: Config) extends BasicConfiguration:
-    def name = "SeriviceMainTest"
+    val name = "ServiceMainTest"
 
   private class TestService extends MainService, StoppableByRequest:
     protected type Termination = ProgramTermination

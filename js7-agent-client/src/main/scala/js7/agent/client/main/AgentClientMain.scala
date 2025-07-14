@@ -56,7 +56,7 @@ object AgentClientMain extends SimpleServiceProgram[AgentClientMain.Conf]:
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
 
-    def name = "AgentClient"
+    val name = "AgentClient"
 
   object Conf extends BasicConfiguration.Companion[Conf]:
     def fromCommandLine(args: CommandLineArguments): Conf =

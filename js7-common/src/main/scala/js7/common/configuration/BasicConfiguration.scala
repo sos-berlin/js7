@@ -37,7 +37,7 @@ object BasicConfiguration:
   object Empty extends BasicConfiguration with Companion[Empty]:
     val config = ConfigFactory.empty()
 
-    def name = "Unnamed"
+    val name = "Unnamed"
 
     def fromCommandLine(args: CommandLineArguments): Empty =
       args.requireNoMoreArguments()

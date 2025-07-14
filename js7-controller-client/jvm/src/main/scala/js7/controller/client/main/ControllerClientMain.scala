@@ -62,7 +62,7 @@ object ControllerClientMain extends ServiceApp:
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
 
-    def name = "ControllerClient"
+    val name = "ControllerClient"
 
   object Conf:
     def args(args: String*): Conf =
