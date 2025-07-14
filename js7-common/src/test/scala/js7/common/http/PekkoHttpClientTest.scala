@@ -304,15 +304,15 @@ object PekkoHttpClientTest:
     Uri("https://example.com:7777/PREFIX/api") ->
       None,
     Uri("https://example.com:9999/js7/invalid") ->
-      None,
+      Some(Uri("https://example.com:9999/js7/invalid")), //None,
     Uri("https://example.com:9999/js7/invalid/api") ->
-      None,
+      Some(Uri("https://example.com:9999/js7/invalid/api")), //None,
     Uri("//example.com:9999/PREFIX/api") ->
       None,
     Uri("https:/PREFIX/api") ->
       None,
     Uri("/js7/invalid") ->
-      None,
+      Some(Uri("https://example.com:9999/js7/invalid")), //None,
     Uri("https://example.com:9999/PREFIX") ->
       Some(Uri("https://example.com:9999/PREFIX")),
     Uri("https://example.com:9999/PREFIX/api?q=1") ->

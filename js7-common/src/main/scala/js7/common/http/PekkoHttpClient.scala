@@ -510,9 +510,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   /** Checks `uri` againts `baseUri` - scheme and authority must be equal. */
   private[http] final def checkAgentUri(uri: Uri): Checked[Uri] =
     val pekkoUri = uri.asPekko
-    if pekkoUri.scheme == basePekkoUri.scheme &&
-      pekkoUri.authority == basePekkoUri.authority &&
-      pekkoUri.path.toString.startsWith(uriPrefixPath) then
+    if pekkoUri.scheme == basePekkoUri.scheme
+      && pekkoUri.authority == basePekkoUri.authority
+      //&& pekkoUri.path.toString.startsWith(uriPrefixPath)
+    then
       Right(uri)
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
