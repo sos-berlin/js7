@@ -16,6 +16,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
+import js7.journal.FileJournalMXBean
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file
 import scala.concurrent.duration.*
@@ -27,10 +28,11 @@ import scala.concurrent.duration.Deadline.now
 final class SnapshotJournalWriter(
   S: SnapshotableState.HasCodec,
   file: Path,
+  bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
   (using protected val ioRuntime: IORuntime)
-extends JournalWriter(S, file, after = after, append = false):
+extends JournalWriter(S, file, bean, after = after, append = false):
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
@@ -82,10 +84,15 @@ extends JournalWriter(S, file, after = after, append = false):
 
 object SnapshotJournalWriter:
 
-  def forTest(journalLocation: JournalLocation, after: EventId)(using IORuntime) =
+  def forTest(
+    journalLocation: JournalLocation,
+    after: EventId,
+    bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy)
+    (using IORuntime) =
     new SnapshotJournalWriter(
       journalLocation.S,
       journalLocation.file(after),
+      bean,
       after = after, simulateSync = None)
 
   /** Write a complete journal file with a snapshot.
@@ -96,6 +103,7 @@ object SnapshotJournalWriter:
     journalHeader: JournalHeader,
     snapshotStream: fs2.Stream[fs2.Pure, Any],
     snapshotTaken: Stamped[KeyedEvent[SnapshotTaken]],
+    bean: FileJournalMXBean.Bean,
     syncOnCommit: Boolean = false,
     simulateSync: Option[FiniteDuration] = None)
     (using IORuntime)
@@ -103,7 +111,7 @@ object SnapshotJournalWriter:
     val tmpFile = JournalLocation.toTemporaryFile(file)
     Resource(IO.blocking:
       val w = new SnapshotJournalWriter(
-        S, tmpFile,
+        S, tmpFile, bean,
         after = journalHeader.eventId,
         simulateSync = simulateSync)
       w -> IO:

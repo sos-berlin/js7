@@ -18,6 +18,7 @@ import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked
 import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
@@ -27,6 +28,7 @@ import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState, TimeCtx}
 import js7.journal.FileJournal.*
+import js7.journal.FileJournalMXBean.Bean
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
@@ -50,7 +52,8 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   protected val requireClusterAck: SignallingRef[IO, Boolean],
   protected val ackSignal: SignallingRef[IO, EventId],
   protected val clock: WallClock,
-  protected val eventIdGenerator: EventIdGenerator)
+  protected val eventIdGenerator: EventIdGenerator,
+  protected val bean: FileJournalMXBean.Bean)
   (using
     protected val S: SnapshotableState.Companion[S],
     protected val ioRuntime: IORuntime)
@@ -179,13 +182,14 @@ extends
           logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
 
   protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
-    enqueue(persist)
-      .flatMap: (_, whenPersisted) =>
-        whenPersisted.get
-          //.raceMerge:
-          //  untilStopRequested *>
-          //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
-      .logWhenMethodTakesLonger
+    meterPersist:
+      enqueue(persist)
+        .flatMap: (_, whenPersisted) =>
+          whenPersisted.get
+        //.raceMerge:
+        //  untilStopRequested *>
+        //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
+        .logWhenMethodTakesLonger
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
@@ -332,7 +336,7 @@ extends
 object FileJournal:
 
   private val logger = Logger[this.type]
-  private val meterPersist = CallMeter("FileJournal")
+  private val meterPersist = CallMeter("FileJournal.persist")
 
   def resource[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
     recovered: Recovered[S],
@@ -340,20 +344,23 @@ object FileJournal:
     eventIdGenerator: Option[EventIdGenerator] = None)
     (using IORuntime)
   : ResourceIO[FileJournal[S]] =
-    Service.resource:
-      for
-        queue <- Queue.unbounded[IO, Option[QueueEntry[S]]]
-        requireClusterAck <- SignallingRef[IO].of:
-          recovered.clusterState.isInstanceOf[ClusterState.Coupled]
-        ackSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
-        clock <- Environment.environmentOr[WallClock](WallClock)
-        eventIdGenerator <- eventIdGenerator match
-          case None => Environment.environmentOr[EventIdGenerator](EventIdGenerator(clock))
-          case Some(o) => IO.pure(o)
-      yield
-        new FileJournal(recovered, conf,
-          queue, requireClusterAck, ackSignal, clock, eventIdGenerator)
-
+    for
+      bean <- registerMBean("Journal", new FileJournalMXBean.Bean)
+      journal <- Service.resource:
+        for
+          queue <- Queue.unbounded[IO, Option[QueueEntry[S]]]
+          requireClusterAck <- SignallingRef[IO].of:
+            recovered.clusterState.isInstanceOf[ClusterState.Coupled]
+          ackSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
+          clock <- Environment.environmentOr[WallClock](WallClock)
+          eventIdGenerator <- eventIdGenerator match
+            case None => Environment.environmentOr[EventIdGenerator](EventIdGenerator(clock))
+            case Some(o) => IO.pure(o)
+        yield
+          new FileJournal(recovered, conf,
+            queue, requireClusterAck, ackSignal, clock, eventIdGenerator, bean)
+    yield
+      journal
 
   private[journal] case class State[S <: SnapshotableState[S]](
     uncommitted: S,

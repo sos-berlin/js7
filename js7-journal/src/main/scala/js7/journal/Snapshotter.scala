@@ -2,6 +2,7 @@ package js7.journal
 
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
@@ -27,6 +28,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
       state.updateWithResult: state =>
         startNewJournalFile(state, isStarting = isStarting)
           .map: (aggregate, allocatedEventWriter) =>
+            S.updateStaticReference(aggregate)
             val state_ = state.copy(
               uncommitted = aggregate,
               committed = aggregate,
@@ -75,7 +77,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
             journalLocation,
             fileEventId = fileEventId,
             after = snapshotTaken.eventId,
-            journalId, journalingObserver,
+            journalId, journalingObserver, bean,
             simulateSync = conf.simulateSync,
             initialEventCount = 1 /*SnapshotTaken has been written*/)
           journalLocation.updateSymbolicLink(eventWriter.file)
@@ -115,6 +117,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
               checkingRecoverer.foreach(_.addSnapshotObject(o))
               o,
             snapshotTaken,
+            bean,
             syncOnCommit = conf.syncOnCommit,
             simulateSync = conf.simulateSync)
         _ <- IO:
@@ -122,6 +125,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
             val recoveredAggregate = recoverer.result().withEventId(state.committed.eventId)
             assertEqualSnapshotState("Written snapshot", state.committed, recoveredAggregate)
       yield
+        bean.fileSize = fileLengthBeforeEventsAndEventId.position // Not accurate, without event
         lastJournalHeader = journalHeader
         _lastSnapshotTakenEventId = snapshotTaken.eventId
         (fileLengthBeforeEventsAndEventId.value,
@@ -132,3 +136,4 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
 object Snapshotter:
   private val logger = Logger[this.type]
+  private val meteter = CallMeter("journal.snapshot.duration.total")

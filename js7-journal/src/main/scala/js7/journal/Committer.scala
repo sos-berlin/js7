@@ -316,7 +316,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           state.updateDirect:
             _.copy(committed = lastWritten.aggregate)
       .evalTap: chunk =>
-        journalLogger.logCommitted(chunk.asSeq.view)
+        val writtenView = chunk.asSeq.view
+        bean.addEventCount(writtenView.map(_.eventCount).sum)
+        journalLogger.logCommitted(writtenView)
         chunk.traverse: written =>
           IO.defer:
             statistics.onPersisted(written.eventCount, written.since)
@@ -373,6 +375,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       .flatMap: chunk =>
         IO.blocking:
           eventWriter.flush(sync = conf.syncOnCommit)
+          bean.fileSize = eventWriter.bytesWritten
           markAsFlushed(chunk)
 
     /** For logging: mark the last non-empty chunk as isLastOfFlushedOrSynced. */
@@ -468,8 +471,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
 
     final def completePersisted: IO[Unit] =
-      whenPersisted.complete(Right(persisted))
-        .void
+      IO(bean.persistTotal += 1) *>
+        whenPersisted.complete(Right(persisted))
+          .void
 
     protected final def persisted: Persisted[S, Event] =
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)

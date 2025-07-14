@@ -9,6 +9,7 @@ import js7.base.utils.Missing
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.journal.FileJournalMXBean
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.watch.JournalingObserver
@@ -24,6 +25,7 @@ final class EventJournalWriter(
   after: EventId,
   journalId: JournalId,
   observer: JournalingObserver,
+  bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
   protected val simulateSync: Option[FiniteDuration],
   append: Boolean = true,
   initialEventCount: Int = 0)
@@ -32,6 +34,7 @@ extends
   JournalWriter(
     journalLocation.S,
     journalLocation.file(fileEventId),
+    bean,
     after = after,
     append = append,
     initialEventCount = initialEventCount),
@@ -100,11 +103,13 @@ private[journal] object EventJournalWriter:
 
   def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
     observer: JournalingObserver | Missing = Missing,
+    bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
     append: Boolean = false)
     (using IORuntime)
   : EventJournalWriter =
     new EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId,
       observer getOrElse JournalingObserver.Dummy(journalLocation),
+      bean,
       simulateSync = None, append = append)
 
   final class SerializationException(cause: Throwable)

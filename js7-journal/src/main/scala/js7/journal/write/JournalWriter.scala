@@ -12,10 +12,12 @@ import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toMB
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
+import js7.journal.FileJournalMXBean
 import js7.journal.write.EventJournalWriter.SerializationException
 import js7.journal.write.JournalWriter.*
 import scala.concurrent.duration.FiniteDuration
@@ -27,6 +29,7 @@ import scala.util.control.NonFatal
 private[journal] abstract class JournalWriter(
   S: JournaledState.HasEventCodec,
   val file: Path,
+  bean: FileJournalMXBean.Bean,
   after: EventId,
   append: Boolean,
   initialEventCount: Long = 0)
@@ -118,6 +121,7 @@ extends AutoCloseable:
         statistics.afterSync()
     catch case NonFatal(t) =>
       throw new RuntimeException(s"Error while writing to journal file", t)
+    bean.flushTotal += 1
 
   final def isFlushed: Boolean =
     jsonWriter.isFlushed
