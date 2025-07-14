@@ -9,7 +9,7 @@ mkdir -p volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,clust
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/{subagent-1a,subagent-1b,subagent-1c,subagent-2a}/config/executables
 mkdir -p -m 700 volumes/prometheus/config/private
-mkdir -p -m 700 volumes/prometheus/etc/prometheus
+mkdir -p -m 700 volumes/prometheus/etc
 mkdir -p -m 700 volumes/prometheus/data
 mkdir -p -m 700 volumes/grafana
 

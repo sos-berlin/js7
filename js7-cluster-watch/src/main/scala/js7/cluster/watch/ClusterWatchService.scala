@@ -23,6 +23,7 @@ import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.common.http.PekkoHttpClient
+import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
@@ -30,6 +31,7 @@ import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProb
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 
 final class ClusterWatchService private[ClusterWatchService](
@@ -150,16 +152,16 @@ extends MainService, Service.StoppableByRequest:
 object ClusterWatchService:
   private val logger = Logger[this.type]
 
-  def completeResource(conf: ClusterWatchConf): ResourceIO[ClusterWatchService] =
+  def programResource(conf: ClusterWatchConf): ResourceIO[ClusterWatchService] =
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for
-      actorSystem <- actorSystemResource(name = "ClusterWatch", config)
+      given ActorSystem <- actorSystemResource(name = "ClusterWatch", config)
+      _ <- MinimumWebServer.service(conf)
       service <- resource(
         conf.clusterWatchId,
         apisResource = clusterNodeAdmissions
           .traverse(admission => PekkoHttpClient
-            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(
-              using actorSystem)
+            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
     yield service

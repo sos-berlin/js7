@@ -1,7 +1,7 @@
 package js7.tests.provider
 
 import cats.syntax.option.*
-import java.nio.file.Files.{createDirectories, delete}
+import java.nio.file.Files.{createDirectories, createDirectory, delete}
 import java.nio.file.Paths
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.*
@@ -11,12 +11,13 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.completedL
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
@@ -35,7 +36,6 @@ import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.base.monixlike.MonixLikeExtensions.completedL
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -57,6 +57,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"
+  private lazy val data = providerDirectory / "data"
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
 
   private lazy val conf: ProviderConfiguration =
@@ -76,6 +77,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
   override def beforeAll() =
     createDirectories(providerDirectory / "config" / "private")
     createDirectories(live)
+    createDirectory(data)
     createDirectories(orderGeneratorsDir)
 
     providerDirectory / "config" / "provider.conf" :=

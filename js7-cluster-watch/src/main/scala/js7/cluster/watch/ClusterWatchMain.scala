@@ -1,5 +1,6 @@
 package js7.cluster.watch
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO}
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
@@ -12,13 +13,14 @@ object ClusterWatchMain extends ServiceApp:
   override protected val productName = "ClusterWatch"
 
   def run(args: List[String]): IO[ExitCode] =
+    given IORuntime = runtime
     runService(args, ClusterWatchConf.fromCommandLine):
-      ClusterWatchService.completeResource
+      ClusterWatchService.programResource
 
   @TestOnly
   def runAsTest(args: List[String])
     (use: ClusterWatchService => IO[ProgramTermination])
   : IO[ExitCode] =
     runService(args, ClusterWatchConf.fromCommandLine, suppressLogShutdown = true)(
-      ClusterWatchService.completeResource,
+      ClusterWatchService.programResource,
       use = (_, service: ClusterWatchService) => use(service))

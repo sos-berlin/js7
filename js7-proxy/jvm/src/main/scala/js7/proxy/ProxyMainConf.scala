@@ -7,11 +7,11 @@ import js7.base.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.https.HttpsConfig
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{BasicConfiguration, Js7Configuration}
+import js7.common.configuration.CommonConfiguration
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.data.cluster.ClusterWatchId
 import js7.proxy.configuration.{ProxyConf, ProxyConfs}
 import scala.jdk.CollectionConverters.*
@@ -19,11 +19,11 @@ import scala.jdk.CollectionConverters.*
 private final case class ProxyMainConf(
   configDirectory: Path,
   admissions: Nel[Admission],
-  httpsConfig: HttpsConfig,
+  webServerPorts: Seq[WebServerPort],
   proxyConf: ProxyConf,
   clusterWatchId: Option[ClusterWatchId],
   config: Config)
-extends BasicConfiguration:
+extends CommonConfiguration:
 
   val name = "Proxy"
 
@@ -31,6 +31,7 @@ extends BasicConfiguration:
 private object ProxyMainConf:
 
   def fromCommandLine(args: CommandLineArguments): ProxyMainConf =
+    val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(args)
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
     val unusedDataDir = args.as[Path]("--data-directory=").toAbsolutePath
     val clusterWatchId = args.optionAs[ClusterWatchId]("--cluster-watch-id=")
@@ -41,7 +42,7 @@ private object ProxyMainConf:
       .withFallback(ConfigFactory.systemProperties)
       .withFallback(parseConfigIfExists(configDir / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDir / "proxy.conf", secret = false))
-      .withFallback(Js7Configuration.defaultConfig)
+      .withFallback(ProxyConfs.defaultConfig)
       .resolve
 
     val uris = args.seqAs[Uri]("--cluster-node-uri=")
@@ -68,7 +69,7 @@ private object ProxyMainConf:
     ProxyMainConf(
       configDirectory = configDir,
       admissions,
-      HttpsConfig.fromConfig(config, configDir),
+      common.webServerPorts,
       ProxyConfs.default,
       clusterWatchId,
       config = config)

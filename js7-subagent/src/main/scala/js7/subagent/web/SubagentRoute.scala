@@ -17,13 +17,14 @@ import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
+import js7.common.web.serviceprovider.ServiceProviderRoute
 import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
-import org.apache.pekko.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix}
+import org.apache.pekko.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix, reject}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.RouteConcatenation.*
 
@@ -37,12 +38,16 @@ private final class SubagentRoute(
   (implicit
     protected val ioRuntime: IORuntime,
     protected val actorSystem: ActorSystem)
-extends WebLogDirectives,
+extends
+  ServiceProviderRoute,
+  WebLogDirectives,
   CommandRoute,
   SessionRoute,
   EventRoute:
 
   import routeBinding.webServerBinding
+
+  protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
   protected val eventWatch = subagent.journal.eventWatch
@@ -59,7 +64,9 @@ extends WebLogDirectives,
       pathPrefix(Segment):
         case "subagent" => subagentRoute
         case "agent" => ioRoute(directorRoute)
-        case _ => complete(NotFound)
+        case _ => reject
+      ~ serviceProviderRoute
+
 
   private lazy val subagentRoute: Route =
     pathSegment("api"):

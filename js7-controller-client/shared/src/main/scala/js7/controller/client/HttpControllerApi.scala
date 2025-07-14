@@ -4,6 +4,7 @@ import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.Admission
+import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.session.SessionApi
@@ -48,6 +49,9 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   final def get[B: Decoder](uriTail: String): IO[B] =
     httpClient.get[B](baseUri /? uriTail)
+
+  final def getRawLinesStream(uriTail: String): IO[Stream[IO, ByteArray]] =
+    httpClient.getRawLinesStream(baseUri /? uriTail)
 
   final def executeCommand[C <: ControllerCommand](command: C): IO[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)

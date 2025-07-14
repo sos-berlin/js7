@@ -221,6 +221,7 @@ object WebLogDirectives:
     js7.web.server.shutdown-delay = 500ms
     """
 
+  // Prometheus name: http_request_duration_seconds
   private val requestCallMeter = CallMeter("web server request")
 
   private def appendQuotedString(sb: StringBuilder, string: String) =

@@ -217,6 +217,7 @@ lazy val js7Subprojects: Seq[ProjectReference] = {
     `js7-provider`,
     `js7-proxy`,
     `js7-service-pgp`,
+    `js7-service-prometheus`,
     `js7-subagent`,
     `js7-tester`,
     `js7-tests`)
@@ -235,6 +236,7 @@ lazy val `js7-install` = project
     `js7-engine`,
     `js7-provider`,
     `js7-license-fake`,
+    `js7-service-prometheus`,
     `js7-tests`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
@@ -257,6 +259,7 @@ lazy val `js7-install` = project
             !path.endsWith(".jar") ||
             // But include these into the tar file:
             path.contains("js7-license-fake") ||
+            path.contains("js7-service-prometheus") ||
             path.contains("js7-provider")
           def isRelevant = // Ignore irrelevant and testing jars
             path.startsWith("lib/") && !isExcludedJar(path.stripPrefix("lib/"))
@@ -683,6 +686,7 @@ lazy val `js7-cluster-watch` = project
   .dependsOn(
     `js7-cluster-watch-api`.jvm,
     `js7-common`,
+    `js7-common-http`.jvm,
     `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
@@ -792,6 +796,16 @@ lazy val `js7-service-pgp` = project
     libraryDependencies ++= bouncyCastle
   }
 
+lazy val `js7-service-prometheus` = project
+  .dependsOn(
+    `js7-common`,
+    `js7-base`.jvm % "test->test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies.*
+    libraryDependencies ++= prometheus
+  }
+
 lazy val `js7-tests` = project
   .dependsOn(
     `js7-controller`,
@@ -810,7 +824,8 @@ lazy val `js7-tests` = project
     `js7-launcher-for-java` % "test->test",
     `js7-launcher-for-windows` % "test->test",
     `js7-license-fake`,
-    `js7-service-pgp`)
+    `js7-service-pgp`,
+    `js7-service-prometheus`)
   .settings(
     commonSettings,
     publish / skip := true,

@@ -4,6 +4,7 @@ import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import js7.base.service.{MainService, Service}
 import js7.base.utils.ProgramTermination
 import js7.cluster.watch.ClusterWatchService
+import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.startup.ServiceApp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
@@ -41,6 +42,7 @@ object Proxy extends ServiceApp:
   private def completeResource(conf: ProxyMainConf): ResourceIO[Proxy] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("Proxy")
+      _ <- MinimumWebServer.service(conf)
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
       controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>

@@ -23,6 +23,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction, continueWithLast}
 import js7.base.utils.{Atomic, ProgramTermination}
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
+import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.controller.workflow.WorkflowReader
@@ -217,9 +218,10 @@ object Provider:
     SimpleItemReader(using SubagentItem),
     SimpleItemReader(using Calendar))
 
-  def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
+  def resource(conf: ProviderConfiguration)(using IORuntime): ResourceIO[Provider] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
+      _ <- MinimumWebServer.service(conf)
       provider <- resource2(conf)
     yield
       provider

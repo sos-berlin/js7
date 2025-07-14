@@ -9,4 +9,6 @@ exec "$JS7_HOME/bin/internal/js7-run" \
   --camel-name=Provider \
   --kebab-name=provider \
   --main-class=js7.provider.ProviderMain \
+  --http-port=4444 \
+  --https-port=4443 \
   "$@"

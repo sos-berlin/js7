@@ -205,10 +205,11 @@ final class GateKeeper[U <: User](
 
   private def ifPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Checked[U] =
     user.checkPermissions(requiredPermissions)
-      .flatMap(_ =>
-        if requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
-            user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
-            isGet(method) then                                        // ... only to read
+      .flatMap: _ =>
+        if requiredPermissions.contains(ValidUserPermission) // If ValidUserPermission is not required (Anonymous is allowed)...
+          || user.hasPermission(ValidUserPermission)         // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
+          || isGet(method)                                   // ... only to read
+        then
           Right(user)
         else
           Left(Problem.pure("Anonymous is permitted HTTP GET only"))

@@ -9,4 +9,6 @@ exec "$JS7_HOME/bin/internal/js7-run" \
   --camel-name=ClusterWatch \
   --kebab-name=cluster-watch \
   --main-class=js7.cluster.watch.ClusterWatchMain \
+  --http-port=4444 \
+  --https-port=4443 \
   "$@"
