@@ -1,8 +1,10 @@
 package js7.base.metering
 
-import cats.effect.IO
+import cats.effect.{IO, SyncIO}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.metering.CallMeter.*
+import js7.base.system.MBeanUtils
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.MultipleLinesBracket.Square
@@ -11,21 +13,25 @@ import scala.quoted.{Expr, Quotes, Type}
 import sourcecode.Enclosing
 
 // Instances register themselves. Must only be used in (static) object variables !!!
-final class CallMeter private(val name: String):
+final class CallMeter private(val name: String)
+extends CallMeter.CallMeterMXBean:
 
   private val _sinceNano = System.nanoTime()
   // We don't synchronize _total and _nanos, to be a little faster.
   // With big numbers, the error gets small.
   // With small numbers, concurrent access should occur seldom.
-  private val _active = Atomic(0)
+  private val _running = Atomic(0)
   private val _total = Atomic(0L)
   private val _nanos = Atomic(0L)
+
+  register(this) // Never unregister
+  registerAsMBean(this) // Never unregister
 
   inline def apply[T](inline body: => T): T =
     ${ CallMeterMacros.applyMacro[T]('this, 'body) }
 
   private[metering] def meterCall[A](body: => A): A =
-    _active += 1
+    _running += 1
     val t = startMetering()
     try
       body
@@ -50,12 +56,12 @@ final class CallMeter private(val name: String):
   //  addNanos(startedAt.elapsed.toNanos)
 
   private def startMetering(): Long =
-    _active += 1
+    _running += 1
     System.nanoTime()
 
   private def stopMetering(started: Long): Unit =
     addNanos(System.nanoTime() - started)
-    _active -= 1
+    _running -= 1
 
   def addNanos(nanos: Long): Unit =
     addNanosInline(nanos)
@@ -67,12 +73,16 @@ final class CallMeter private(val name: String):
   def measurement(): Measurement =
     Measurement(this,
       total = total,
-      active = _active.get(),
+      running = _running.get(),
       meteredNanos = _nanos.get(),
       elapsedNanos = System.nanoTime() - _sinceNano)
 
   def total: Long =
     _total.get()
+
+  override def getRunning = _running.get()
+  override def getTotal = _total.get()
+  override def getSeconds = _nanos.get() / 1_000_000_000.0
 
   override def toString = s"CallMeter(${measurement().asString})"
 
@@ -93,6 +103,10 @@ object CallMeter:
   private def register(callMeter: CallMeter): Unit =
     _callMeters.getAndUpdate(_.insertOrdered(callMeter))
 
+  private def registerAsMBean(callMeter: CallMeter): Unit =
+    MBeanUtils.registerMBean(s"CallMeter_${callMeter.name}")(SyncIO(callMeter))
+      .allocated.unsafeRunSync()  // Never unregister !!!
+
   private[metering] def callMeters: Vector[CallMeter] =
     _callMeters.get
 
@@ -112,6 +126,12 @@ object CallMeter:
         .sortBy(_.name)
       for callMeter <- callMeters do
         logger.trace(s"${callMeter.asString}")
+
+
+  sealed trait CallMeterMXBean:
+    def getRunning: Int
+    def getTotal: Long
+    def getSeconds: Double
 
 
 private object CallMeterMacros:

@@ -9,7 +9,7 @@ import scala.concurrent.duration.*
 private[metering] final case class Measurement(
   callMeter: CallMeter,
   total: Long,
-  active: Int,
+  running: Int,
   meteredNanos: Long,
   elapsedNanos: Long):
 
@@ -29,12 +29,12 @@ private[metering] final case class Measurement(
   def diff(m: Measurement): Measurement =
     Measurement(callMeter,
       total = total - m.total,
-      active = active,
+      running = running,
       meteredNanos = meteredNanos - m.meteredNanos,
       elapsedNanos = elapsedNanos - m.elapsedNanos)
 
   def copy(): Measurement =
-    Measurement(callMeter, total, active, meteredNanos, elapsedNanos)
+    Measurement(callMeter, total, running, meteredNanos, elapsedNanos)
 
   def asString: String =
     synchronized:
