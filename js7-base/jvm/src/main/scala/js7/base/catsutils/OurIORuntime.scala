@@ -163,7 +163,10 @@ object OurIORuntime:
             OurIORuntime.reportFailure(t)
 
   private def reportFailure(throwable: Throwable): Unit =
-    def msg = s"Uncaught exception in thread '${currentThread.getName}': ${
+    reportFailure(throwable, currentThread)
+
+  private def reportFailure(throwable: Throwable, thread: Thread): Unit =
+    def msg = s"Uncaught exception in thread '${thread.getName}': ${
       throwable.toStringWithCauses}"
 
     throwable match
