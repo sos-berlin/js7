@@ -141,13 +141,17 @@ extends Service.StoppableByRequest:
         // Maybe suppress when this SubagentKeeper has been stopped ???
         // ExecuteExecutor should have prechecked this:
         journal.persist: agentState =>
-          agentState.idToOrder.checked(orderId).map: order =>
-            Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
-              order.isState[Order.Fresh] ? OrderStarted,
-              // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-              Some(OrderProcessingStarted.noSubagent),
-              Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
-            ).flatten.map(orderId <-: _)
+          agentState.idToOrder.checked(orderId).map: order2 =>
+            if order != order2 then
+              // Do nothing when the Order has been changed by a concurrent operation
+              Nil
+            else
+              Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
+                order2.isState[Order.Fresh] ? OrderStarted,
+                // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+                Some(OrderProcessingStarted.noSubagent),
+                Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
+              ).flatten.map(orderId <-: _)
         .flatMapT(onPersisted(orderId, onEvents))
 
       case Right(None) =>
