@@ -3,6 +3,8 @@ package js7.data.controller
 import cats.effect.ResourceIO
 import js7.base.system.MBeanUtils.registerMBean
 import js7.base.utils.MoreJavaConverters.*
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import scala.jdk.CollectionConverters.*
 
 trait ControllerStateMXBean:
   this: ControllerStateMXBean.Bean =>
@@ -15,6 +17,14 @@ trait ControllerStateMXBean:
 
   def getEventTotal: Long =
     controllerState.eventCounter.totalEventCount
+
+  def getOrderStatusToCount: java.util.Map[String, java.lang.Integer] =
+    controllerState.idToOrder
+      .groupMapReduce(_._2.state.getClass)(_ => 1)(_ + _)
+      .view.map: (cls, n) =>
+        cls.simpleScalaName -> Int.box(n)
+      .toMap
+      .asJava
 
 
 object ControllerStateMXBean:
