@@ -95,7 +95,7 @@ object AsyncLock:
       for
         onAcquired <- logAcquisition(acquirer)
         _ <- mutex.resource
-        _ <- AsyncLockMXBean.locked.gauge[IO]
+        _ <- AsyncLockMXBean.locked.countConcurrency[IO]
         _ <- Resource.eval(onAcquired)
       yield ()
 

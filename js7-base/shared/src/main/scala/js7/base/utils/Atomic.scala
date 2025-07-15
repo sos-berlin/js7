@@ -48,7 +48,7 @@ object Atomic:
         atomic.getAndAdd(-a)
 
       /** Count current Resource usage. */
-      def gauge[F[_]: Sync as F]: Resource[F, Unit] =
+      def countConcurrency[F[_]: Sync as F]: Resource[F, Unit] =
         Resource.make(
           acquire = F.delay(atomic += 1))(
           release = _ => F.delay(atomic -= 1))
