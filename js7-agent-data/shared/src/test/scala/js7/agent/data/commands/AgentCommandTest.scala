@@ -263,7 +263,7 @@ final class AgentCommandTest extends OurTestSuite:
         "key": "Workflow:WORKFLOW~1"
       }""")
 
-  "OrderCommand" - {
+  "IsOrderCommand" - {
     "AttachOrder" in :
       testJson[AgentCommand](AgentCommand.AttachOrder(
         Order(

@@ -56,7 +56,7 @@ private final class ItemCommandExecutor(
   private val changeSubagentAndClusterNodeAndProceedFiber =
     AsyncVariable(pureFiberIO(Checked.unit))
 
-  def executeItemCommand(cmd: AgentCommand.ItemCommand): IO[Checked[AgentCommand.Response]] =
+  def executeItemCommand(cmd: AgentCommand.IsItemCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
       case AttachItem(item) =>
         attachUnsignedItem(item)

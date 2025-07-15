@@ -52,7 +52,7 @@ object AgentCommand extends CommonCommand.Companion:
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
 
 
-  final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends OrderCommand:
+  final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends IsOrderCommand:
     type Response = Response.Accepted
 
 
@@ -74,7 +74,7 @@ object AgentCommand extends CommonCommand.Companion:
     * JS7 may delete these events to reduce the journal,
     * keeping all events after `untilEventId`.
     */
-  final case class ReleaseEvents(untilEventId: EventId) extends OrderCommand:
+  final case class ReleaseEvents(untilEventId: EventId) extends IsOrderCommand:
     type Response = Response.Accepted
 
 
@@ -183,19 +183,19 @@ object AgentCommand extends CommonCommand.Companion:
       deriveConfiguredCodec[ShutDown]
 
 
-  sealed trait OrderCommand extends AgentCommand
-  sealed trait ItemCommand extends AgentCommand
+  sealed trait IsOrderCommand extends AgentCommand
+  sealed trait IsItemCommand extends AgentCommand
 
 
   final case class AttachItem(item: UnsignedItem)
-  extends ItemCommand:
+  extends IsItemCommand:
     type Response = Response.Accepted
 
     override def toShortString =
       s"AttachItem(${item.key}${item.itemRevision.fold("")(o => "~" + o.number)})"
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
-  extends ItemCommand:
+  extends IsItemCommand:
     type Response = Response.Accepted
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
     override def toString: String = toShortString
@@ -210,11 +210,11 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   final case class DetachItem(key: InventoryItemKey)
-  extends ItemCommand:
+  extends IsItemCommand:
     type Response = Response.Accepted
 
 
-  sealed trait AttachOrDetachOrder extends OrderCommand
+  sealed trait AttachOrDetachOrder extends IsOrderCommand
 
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady])

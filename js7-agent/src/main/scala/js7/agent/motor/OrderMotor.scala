@@ -76,7 +76,7 @@ private final class OrderMotor(
     .productR:
       proceedWithOrders(otherOrders)
 
-  def executeOrderCommand(cmd: AgentCommand.OrderCommand): IO[Checked[AgentCommand.Response]] =
+  def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
       case _: AttachOrder | _: DetachOrder | _: MarkOrder | _: ReleaseEvents =>
         persist:

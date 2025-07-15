@@ -7,7 +7,7 @@ import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{OrderCommand, ResetSubagent}
+import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, ResetSubagent}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.left
@@ -100,10 +100,10 @@ extends Service.StoppableByRequest:
 
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
-      case cmd: OrderCommand =>
+      case cmd: IsOrderCommand =>
         orderMotor.executeOrderCommand(cmd)
 
-      case cmd: AgentCommand.ItemCommand  =>
+      case cmd: IsItemCommand  =>
         itemCommandExecutor.executeItemCommand(cmd)
 
       case ResetSubagent(subagentId, force) =>

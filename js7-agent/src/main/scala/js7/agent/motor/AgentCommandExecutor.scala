@@ -5,7 +5,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Response.Accepted
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, ShutDown, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, IsOrderCommand, Reset, ResetSubagent, ShutDown, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.motor.AgentCommandExecutor.*
 import js7.agent.{CommandHandler, DirectorTermination}
@@ -96,7 +96,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
     batchId: Option[CorrelId])
   : IO[Checked[AgentCommand.Response]] =
     command match
-      case cmd @ (_: OrderCommand | _: AttachItem | _: AttachSignedItem | _: DetachItem |
+      case cmd @ (_: IsOrderCommand | _: AttachItem | _: AttachSignedItem | _: DetachItem |
                   _: ResetSubagent) =>
         // TODO Check AgentRunId ?
         checkedAgentMotor.flatMapT:
