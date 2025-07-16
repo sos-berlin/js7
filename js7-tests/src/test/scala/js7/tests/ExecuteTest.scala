@@ -516,10 +516,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
       execCmd(CancelOrders(extraOrderId :: Nil))
       eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
 
-      controller.api
-        .executeCommand(
-          CancelOrders(orderIds, CancellationMode.kill(immediately = true)))
-        .await(99.s).orThrow
+      execCmd:
+        CancelOrders(orderIds, CancellationMode.kill(immediately = true))
       for orderId <- orderIds do
         eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
 
@@ -532,11 +530,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
       try
         val orderIds = for i <- 0 until agentProcessLimit.get yield OrderId(s"AGENT-LIMIT-$i")
         val eventId = eventWatch.lastAddedEventId
-        controller.api
-          .addOrders(Stream
-            .iterable(0 until agentProcessLimit.get)
-            .map(i => FreshOrder(orderIds(i), workflows(i / jobProcessLimit).path)))
-          .await(99.s).orThrow
+        controller.api.addOrders:
+          Stream.iterable(0 until agentProcessLimit.get).map:
+            i => FreshOrder(orderIds(i), workflows(i / jobProcessLimit).path)
+        .await(99.s).orThrow
         for orderId <- orderIds do
           eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
 

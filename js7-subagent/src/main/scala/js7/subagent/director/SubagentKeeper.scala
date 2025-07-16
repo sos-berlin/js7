@@ -139,21 +139,7 @@ extends Service.StoppableByRequest:
     val orderId = order.id
     selectSubagentDriverCancelable(order).flatMap:
       case Left(problem) =>
-        // Maybe suppress when this SubagentKeeper has been stopped ???
-        // ExecuteExecutor should have prechecked this:
-        journal.persist: agentState =>
-          agentState.idToOrder.checked(orderId).map: order2 =>
-            if order != order2 then
-              // Do nothing when the Order has been changed by a concurrent operation
-              Nil
-            else
-              Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
-                order2.isState[Order.Fresh] ? OrderStarted,
-                // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-                Some(OrderProcessingStarted.noSubagent),
-                Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
-              ).flatten.map(orderId <-: _)
-        .flatMapT(onPersisted(orderId, onEvents))
+        failProcessStart(problem, order, onEvents)
 
       case Right(None) =>
         logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
@@ -161,6 +147,30 @@ extends Service.StoppableByRequest:
 
       case Right(Some(selectedDriver)) =>
         processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
+
+  private def failProcessStart(
+    problem: Problem,
+    order: Order[IsFreshOrReady],
+    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
+    : IO[Checked[Unit]] =
+    // Maybe suppress when this SubagentKeeper has been stopped ???
+    // ExecuteExecutor should have prechecked this:
+    val orderId = order.id
+    journal.persist: agentState =>
+      agentState.idToOrder.checked(orderId).map: order2 =>
+        if order != order2 then
+          // Do nothing when the Order has been changed by a concurrent operation
+          Nil
+        else
+          Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
+            order2.isState[Order.Fresh] ? OrderStarted,
+            // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+            Some(OrderProcessingStarted.noSubagent),
+            Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
+          ).flatten.map(orderId <-: _)
+    .flatMapT: persisted =>
+      onPersisted(orderId, onEvents)(persisted)
+        .rightAs(())
 
   private def processOrderAndForwardEvents(
     order: Order[IsFreshOrReady],
