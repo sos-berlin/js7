@@ -37,7 +37,7 @@ trait AsyncLock:
 object AsyncLock:
 
   private val logger = Logger[this.type]
-  private val AlwaysLogMinor = sys.props.contains("js7.AsyncLock.logMinor") //|| true // FIXME TEST
+  private val AlwaysLogMinor = sys.props.contains("js7.AsyncLock.logMinor")
   private val counter = Atomic(0)
 
   def apply()(using sourcecode.Enclosing): AsyncLock =
@@ -285,5 +285,5 @@ object AsyncLock:
     private[AsyncLock] val queued = Atomic(0)
     private[AsyncLock] val usedTotal = Atomic(0L)
     def getLockedCount: Int = locked.get
-    def getQueuedCount: Int = (queued.get - locked.get) max 0 // Not synchronized !!!
+    def getQueuedCount: Int = queued.get // (queued.get - locked.get) max 0 // Not synchronized !!!
     def getUsedTotal: Long = usedTotal.get

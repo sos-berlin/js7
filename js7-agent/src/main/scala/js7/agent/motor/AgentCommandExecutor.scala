@@ -285,9 +285,9 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
                   }' for '${agentMotor.controllerId}'"))
 
             case None =>
-              AgentMotor.resource(failedOverSubagentId, forDirector, workingClusterNode,
+              AgentMotor.service(failedOverSubagentId, forDirector, workingClusterNode,
                   agentConf, actorSystem)
-                .toAllocated // Allocated memoizes stop
+                .toAllocated
                 .flatMap: allocated =>
                   _dedicated.complete(Dedicated(allocated))
                     .as(Checked.unit)

@@ -1,8 +1,10 @@
 package js7.agent.motor
 
-import cats.effect.std.Dispatcher
-import cats.effect.{IO, Ref}
+import cats.effect.kernel.Resource
+import cats.effect.std.{Dispatcher, Queue}
+import cats.effect.{IO, Ref, ResourceIO}
 import cats.syntax.traverse.*
+import fs2.Chunk
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -10,14 +12,15 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, MarkOrder, ReleaseEvents}
 import js7.agent.motor.OrderMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, right, startAndForget}
-import js7.base.catsutils.CatsEffectUtils.whenDeferred
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.{Ops, RichCheckedF}
+import js7.base.service.Service
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
@@ -28,53 +31,63 @@ import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
 import js7.data.item.InventoryItem
-import js7.data.order.OrderEvent.{OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.job.JobKey
+import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
 import js7.journal.{FileJournal, Persisted}
 import js7.subagent.director.SubagentKeeper
 
-private final class OrderMotor(
+private final class OrderMotor private(
+  orderQueue: Queue[IO, Option[Seq[Order[Order.State]]]],
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   journal: FileJournal[AgentState],
-  isStopping: => Boolean,
   agentConf: AgentConfiguration)
   (using
     clock: AlarmClock,
-    dispatcher: Dispatcher[IO]):
+    dispatcher: Dispatcher[IO])
+extends Service.StoppableByRequest:
 
   private val agentCommandToEventCalc = AgentCommandToEventCalc(agentConf)
   private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
     isStopping = isStopping, agentConf)
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
 
-  def stop: IO[Unit] =
-    orderToEntry.toMap.values.foldMap(_.stop) *>
-      jobMotor.stop
+  def start =
+    startService:
+      (untilStopRequested *> orderQueue.offer(None))
+        .background.surround:
+          processQueue
+      *> orderToEntry.toMap.values.foldMap(_.stop)
+        *> jobMotor.stop
+
+  override def stop: IO[Unit] =
+    super.stop
 
   def recoverWorkflows(agentState: AgentState): IO[Unit] =
     agentState.idToWorkflow.values.foldMap:
       jobMotor.attachWorkflow
 
   def recoverOrders(agentState: AgentState): IO[Unit] =
-    val orders = agentState.idToOrder.values.view
-    val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
-    val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
-    // Continue already processing Orders
-    jobMotor.recoverProcessingOrders(processingOrders).flatMap: checkedFibers =>
-      checkedFibers.foldMap: (orderId, checkedFiber) =>
-        checkedFiber.traverse: fiber =>
-          fiber.joinStd.flatMap: (_: OrderProcessed) =>
-            proceedWithOrder(orderId)
-          .handleErrorWith: t =>
-            IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
-          .startAndForget
-        .handleProblemWith: problem =>
-          IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
-    .productR:
-      proceedWithOrders(otherOrders)
+    logger.debugIO:
+      val orders = agentState.idToOrder.values.view
+      val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
+      val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
+      // Continue already processing Orders
+      jobMotor.recoverProcessingOrders(processingOrders).flatMap: checkedFibers =>
+        checkedFibers.foldMap: (orderId, checkedFiber) =>
+          checkedFiber.traverse: fiber =>
+            fiber.joinStd.flatMap: (_: OrderProcessed) =>
+              enqueue(orderId)
+            .handleErrorWith: t =>
+              IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
+            .startAndForget
+          .handleProblemWith: problem =>
+            IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
+      .productR:
+        enqueue(otherOrders)
 
   def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
@@ -104,7 +117,7 @@ private final class OrderMotor(
         //  .flatten
         //  .forall(previous => agentRef.processLimit.forall(previous < _))
         //if processLimitIncreased then
-        jobMotor.tryStartProcessing.map(Right(_))
+        jobMotor.tryStartProcessingAllJobs.map(Right(_))
 
       case subagentItem: SubagentItem =>
         journal.aggregate.flatMap:
@@ -113,16 +126,16 @@ private final class OrderMotor(
               subagentKeeper.proceedWithSubagent(subagentItemState)
                 .catchIntoChecked
         .flatMapT: _ =>
-          jobMotor.tryStartProcessing.map(Right(_))
+          jobMotor.tryStartProcessingAllJobs.map(Right(_))
 
       case subagentBundle: SubagentBundle =>
         subagentKeeper.addOrReplaceSubagentBundle(subagentBundle)
           .flatMapT: _ =>
-            jobMotor.tryStartProcessing.map(Right(_))
+            jobMotor.tryStartProcessingAllJobs.map(Right(_))
 
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then
-          proceedWithOrders:
+          enqueue:
             agentState().orders.view // Slow !!!
               .filter(_.workflowPath == workflowPathControl.workflowPath)
               .toVector
@@ -132,15 +145,15 @@ private final class OrderMotor(
 
       case _ => IO.right(())
 
-  private def onSubagentEvents(orderId: OrderId)
+  private def onSubagentEvents(orderId: OrderId, jobKey: JobKey)
     (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
   : IO[Unit] =
     events.foldMap:
       case OrderStarted => IO.unit
       case _: OrderProcessingStarted => maybeKillOrder(orderId)
-      case _: OrderProcessed => jobMotor.onOrderProcessed(orderId)
+      case _: OrderProcessed => jobMotor.onOrderProcessed(orderId, jobKey)
     .productR:
-      proceedWithOrder(orderId)
+      enqueue(orderId)
 
   private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
   : IO[Checked[Persisted[AgentState, E]]] =
@@ -149,8 +162,7 @@ private final class OrderMotor(
   private def persist[E <: Event](eventCalc: EventCalc[AgentState, E, TimeCtx])
   : IO[Checked[Persisted[AgentState, E]]] =
     journal.persist(eventCalc)
-      .flatTapT: persisted =>
-        onPersisted(persisted).map(Right(_))
+      .ifPersisted(onPersisted)
 
   private def onPersisted(persisted: Persisted[AgentState, Event]): IO[Unit] =
     persisted.keyedEvents.toVector.flatTraverse:
@@ -162,10 +174,11 @@ private final class OrderMotor(
           maybeKillOrder(order, kill)
         .as(Vector(orderId))
 
-      case KeyedEvent(orderId: OrderId, OrderDetached) =>
-        orderToEntry.remove(orderId).flatMapSome:
-          _.stop
-        .as(Vector(orderId))
+      case KeyedEvent(orderId: OrderId, OrderDetachable | OrderDetached) =>
+        jobMotor.onOrderDetached(orderId, persisted.originalAggregate) *>
+          orderToEntry.remove(orderId).flatMapSome:
+            _.stop
+          .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, _) =>
         IO.pure(Vector(orderId))
@@ -173,39 +186,56 @@ private final class OrderMotor(
       case _ =>
         IO.pure(Vector.empty)
     .flatMap: touchedOrderIds =>
-      proceedWithOrders:
-        touchedOrderIds.distinct
-          .flatMap(persisted.aggregate.idToOrder.get)
+      enqueue:
+        touchedOrderIds.distinct.flatMap:
+          persisted.aggregate.idToOrder.get
 
-  private def proceedWithOrder(orderId: OrderId): IO[Unit] =
+  private def enqueue(orderId: OrderId): IO[Unit] =
     withCurrentOrder(orderId): order =>
-      proceedWithOrders(order :: Nil)
+      enqueue(Vector(order))
 
-  private def proceedWithOrders(orders: Seq[Order[Order.State]]): IO[Unit] =
-    whenDeferred(orders.nonEmpty && !isStopping):
-      clock.lockIO: now =>
-        val (immediateOrderIds, delayOrderIds) =
-          orders.map: order =>
-            order.id -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
-          .partition(_._2 <= now)
-        delayOrderIds.foldMap: (orderId, delayUntil) =>
-          orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
-            entry.schedule(delayUntil):
-              proceedWithOrder(orderId) // Try again after delay
-        .as(immediateOrderIds.map(_._1))
-      .flatMap: (orderIds: Seq[OrderId] /*IntelliJ*/) =>
-        // persist calls recursively this proceedWithOrders !!! TODO use Queue and Stream
-        persist: agentState =>
-          Right:
-            orderIds.flatMap: orderId =>
+  private def enqueue(orders: Seq[Order[Order.State]]): IO[Unit] =
+    IO.whenA(orders.nonEmpty):
+      orderQueue.offer(Some(orders))
+
+  private def processQueue: IO[Unit] =
+    // TODO Beliebige Aufträge müssen aus orderQueue löschbar sein
+    fs2.Stream.fromQueueNoneTerminated(orderQueue)
+      .mapChunks: chunk =>
+        Chunk(chunk.toVector.flatten
+          // Keep last duplicates only
+          .reverse.distinctBy(_.id).reverse)
+      .evalMap:
+        continueOrders
+      .compile.drain
+
+  private def continueOrders(orders: Vector[Order[Order.State]]): IO[Unit] =
+   logger.traceIO(s"### continueOrders(${orders.map(_.id).mkString(", ")})"):
+    clock.lockIO: now =>
+      val (immediateOrderIds, delayOrderIds) =
+        orders.map: order =>
+          order.id -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
+        .partition(_._2 <= now)
+      delayOrderIds.foldMap: (orderId, delayUntil) =>
+        orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+          entry.schedule(delayUntil):
+            enqueue(orderId) // Try again after delay
+      .as(immediateOrderIds.map(_._1))
+    .flatMap: (orderIds: Seq[OrderId] /*IntelliJ*/) =>
+      persist: agentState =>
+        Right:
+          orderIds.flatMap: orderId =>
+            if !agentState.idToOrder.contains(orderId) then
+              Nil
+            else
               OrderEventSource(agentState)(using InstructionExecutorService(clock))
                 .nextEvents(orderId)
-        .map(_.orThrow) // TODO throws
-        .flatMap: persisted =>
-          orderIds.foldMap: orderId =>
-            persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
-              IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
-                jobMotor.onOrderIsProcessable(order)
+      .map(_.orThrow) // TODO throws
+      .flatMap: persisted =>
+        orderIds.foldMap: orderId =>
+          persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+            IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
+              jobMotor.onOrderIsProcessable(order)
 
   private def maybeKillOrder(orderId: OrderId): IO[Unit] =
     withCurrentOrder(orderId): order =>
@@ -234,9 +264,28 @@ private final class OrderMotor(
   private def agentState(): AgentState =
     journal.unsafeAggregate()
 
+  override def toString = "OrderMotor"
+
 
 object OrderMotor:
   private val logger = Logger[this.type]
+
+  def service(
+    agentPath: AgentPath,
+    subagentKeeper: SubagentKeeper[AgentState],
+    journal: FileJournal[AgentState],
+    agentConf: AgentConfiguration)
+    (using
+      clock: AlarmClock,
+      dispatcher: Dispatcher[IO])
+  : ResourceIO[OrderMotor] =
+    for
+      orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[Order[Order.State]]]])
+      orderMotor <- Service.resource:
+        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, agentConf)
+    yield
+      orderMotor
+
 
   private final class OrderEntry(orderId: OrderId):
     private val cancelScheduleRef = Ref.unsafe[IO, IO[Unit]](IO.unit)

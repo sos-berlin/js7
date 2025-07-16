@@ -27,7 +27,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{Event, EventId}
 import js7.data.subagent.SubagentId
-import js7.journal.Persisted
+import js7.journal.{FileJournal, Persisted}
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import org.apache.pekko.actor.ActorSystem
@@ -39,24 +39,15 @@ import org.apache.pekko.actor.ActorSystem
   * Subagents.
   */
 final class AgentMotor private(
-  failedOverSubagentId: Option[SubagentId],
+  itemCommandExecutor: ItemCommandExecutor,
+  orderMotor: OrderMotor,
   val controllerId: ControllerId,
   val agentPath: AgentPath,
-  localSubagentId: SubagentId,
   subagentKeeper: SubagentKeeper[AgentState],
-  forDirector: Subagent.ForDirector,
-  fileWatchManager: FileWatchManager,
-  workingClusterNode: WorkingClusterNode[AgentState],
+  journal: FileJournal[AgentState],
   conf: AgentConfiguration)
-  (using
-    clock: AlarmClock,
-    dispatcher: Dispatcher[IO])
 extends Service.StoppableByRequest:
 
-  private val journal = workingClusterNode.journal
-  private val orderMotor = OrderMotor(agentPath, subagentKeeper, journal, isStopping, conf)
-  private val itemCommandExecutor = ItemCommandExecutor(forDirector, agentPath, subagentKeeper,
-    fileWatchManager, workingClusterNode, conf, orderMotor, journal)
   private val agentProcessCount = Atomic(0)
   private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
   private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)
@@ -130,7 +121,7 @@ object AgentMotor:
   private val logger = Logger[this.type]
 
   /** AgentMotor with SubagentKeeper (including local Subagent) and FileWatchManager. */
-  def resource(
+  def service(
     failedOverSubagentId: Option[SubagentId],
     forDirector: Subagent.ForDirector,
     workingClusterNode: WorkingClusterNode[AgentState],
@@ -165,15 +156,16 @@ object AgentMotor:
           for
             fileWatchManager <- FileWatchManager.resource(ownAgentPath, journal, conf.config)
             given IORuntime <- Resource.eval(environment[IORuntime])
-            clock <- Resource.eval(environment[AlarmClock])
+            given AlarmClock <- Resource.eval(environment[AlarmClock])
+            given Dispatcher[IO] <- Dispatcher.parallel[IO]
             subagentKeeper <- SubagentKeeper.resource(
               localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
               journal, conf.directorConf, actorSystem)
-            dispatcher <- Dispatcher.parallel[IO]
+            orderMotor <- OrderMotor.service(ownAgentPath, subagentKeeper, journal, conf)
+            itemCommandExecutor = ItemCommandExecutor(forDirector, ownAgentPath, subagentKeeper,
+              fileWatchManager, workingClusterNode, conf, orderMotor, journal)
             agentMotor <- Service.resource:
-              new AgentMotor(
-                failedOverSubagentId, controllerId, ownAgentPath, localSubagentId,
-                subagentKeeper, forDirector, fileWatchManager, workingClusterNode, conf,
-              )(using clock, dispatcher)
+              new AgentMotor(itemCommandExecutor, orderMotor,
+                controllerId, ownAgentPath, subagentKeeper, journal, conf)
           yield
             agentMotor
