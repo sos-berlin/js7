@@ -69,7 +69,7 @@ extends Journal[S], Service.StoppableByRequest:
 
     override def toString = "MemoryJournal.EventWatch"
 
-  def start =
+  protected def start =
     startService(untilStopRequested) // Nothing to do
 
   def aggregate: IO[S] =

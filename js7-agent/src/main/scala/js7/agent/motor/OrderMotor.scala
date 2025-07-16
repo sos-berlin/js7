@@ -55,7 +55,7 @@ extends Service.StoppableByRequest:
     isStopping = isStopping, agentConf)
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
 
-  def start =
+  protected def start =
     startService:
       (untilStopRequested *> orderQueue.offer(None))
         .background.surround:
