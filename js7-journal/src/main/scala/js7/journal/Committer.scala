@@ -125,6 +125,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         waitForAck(snapshotTaken.eventId, Some(snapshotTaken))
     .flatMap: isAcknowledged =>
       IO:
+        bean.addEventCount(1)
         statistics.onPersisted(eventCount = 1, since)
         journalLogger.logCommitted(snapshotTaken :: Nil,
           eventNumber = eventNumber,

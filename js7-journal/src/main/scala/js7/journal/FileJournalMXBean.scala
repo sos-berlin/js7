@@ -14,7 +14,7 @@ object FileJournalMXBean:
 
   final class Bean extends FileJournalMXBean:
     private[journal] var fileSize = 0L
-    private[journal] val eventTotal = Atomic(0L)
+    private val eventTotal = Atomic(0L)
     private[journal] val flushTotal = Atomic(0L)
     private[journal] val persistTotal = Atomic(0L)
 
