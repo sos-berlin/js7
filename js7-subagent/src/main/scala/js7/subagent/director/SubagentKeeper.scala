@@ -32,6 +32,7 @@ import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.KeyedEvent
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
+import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{ProcessLostDueSubagentDeletedProblem, ProcessLostDueSubagentUriChangeProblem}
@@ -131,7 +132,7 @@ extends Service.StoppableByRequest:
   //  orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
 
   def processOrder(
-    order: Order[Order.IsFreshOrReady],
+    order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
   : IO[Checked[Unit]] =
@@ -159,41 +160,49 @@ extends Service.StoppableByRequest:
         IO.right(())
 
       case Right(Some(selectedDriver)) =>
-        processOrderAndForwardEvents(orderId, endOfAdmissionPeriod, onEvents, selectedDriver)
+        processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
 
   private def processOrderAndForwardEvents(
-    orderId: OrderId,
+    order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
   : IO[Checked[Unit]] =
     // TODO Race with CancelOrders ?
     import selectedDriver.{stick, subagentDriver}
+    val orderId = order.id
     journal.persist: agentState =>
-      agentState.idToOrder.checked(orderId).map: order =>
-        val events: List[OrderStarted | OrderProcessingStarted] =
-          order.isState[Order.Fresh].thenList(OrderStarted) :::
-            OrderProcessingStarted(
-              Some(subagentDriver.subagentId),
-              selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
-              stick = stick,
-              endOfAdmissionPeriod = endOfAdmissionPeriod) ::
-            Nil
-        events.map(orderId <-: _)
+      agentState.idToOrder.checked(orderId).map: order2 =>
+        if order2 != order then
+          // Do nothing when the Order has been changed by a concurrent operation
+          Nil
+        else
+          val events: List[OrderStarted | OrderProcessingStarted] =
+            order2.isState[Order.Fresh].thenList(OrderStarted) :::
+              OrderProcessingStarted(
+                Some(subagentDriver.subagentId),
+                selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
+                stick = stick,
+                endOfAdmissionPeriod = endOfAdmissionPeriod) ::
+              Nil
+          events.map(orderId <-: _)
     .flatTapT(onPersisted(orderId, onEvents))
     .flatMapT: persisted =>
-      IO.pure:
-        persisted.aggregate.idToOrder.checked(orderId)
-          .flatMap(_.checkedState[Order.Processing])
-      .flatMapT: order =>
-        forProcessingOrder(orderId, subagentDriver, onEvents):
-          subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
-      .handleErrorWith(t => IO:
-        logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
-          t.nullIfNoStackTrace)
-        Left(Problem.fromThrowable(t)))
-      .containsType[Checked[FiberIO[OrderProcessed]]]
-      .rightAs(())
+      if persisted.isEmpty then
+        IO.right(())
+      else
+        IO.pure:
+          persisted.aggregate.idToOrder.checked(orderId)
+            .flatMap(_.checkedState[Order.Processing])
+        .flatMapT: order =>
+          forProcessingOrder(orderId, subagentDriver, onEvents):
+            subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
+        .handleErrorWith(t => IO:
+          logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
+            t.nullIfNoStackTrace)
+          Left(Problem.fromThrowable(t)))
+        .containsType[Checked[FiberIO[OrderProcessed]]]
+        .rightAs(())
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],
@@ -270,7 +279,7 @@ extends Service.StoppableByRequest:
       .guaranteeExceptWhenRight:
         orderToSubagent.remove(orderId).void
 
-  private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
+  private def selectSubagentDriverCancelable(order: Order[IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
     orderToSubagentBundleId(order).flatMapT:
       case DeterminedSubagentBundle(subagentBundleId, stick) =>
@@ -284,7 +293,7 @@ extends Service.StoppableByRequest:
             .sequence
             .map(_.map(SelectedDriver(subagentBundleId, _, stick))))
 
-  private def orderToSubagentBundleId(order: Order[Order.IsFreshOrReady])
+  private def orderToSubagentBundleId(order: Order[IsFreshOrReady])
   : IO[Checked[DeterminedSubagentBundle]] =
     for agentState <- journal.aggregate yield
       for
@@ -625,7 +634,7 @@ object SubagentKeeper:
         failedOverSubagentId, journal, directorConf, actorSystem)
 
   private[director] def determineSubagentBundle(
-    order: Order[Order.IsFreshOrReady],
+    order: Order[IsFreshOrReady],
     agentPath: AgentPath,
     maybeJobsBundleId: Option[SubagentBundleId])
   : DeterminedSubagentBundle =
