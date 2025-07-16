@@ -1,7 +1,7 @@
 package js7.agent.motor
 
 import cats.effect.std.Dispatcher
-import cats.effect.{FiberIO, IO}
+import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
@@ -10,21 +10,24 @@ import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.unlessDeferred
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
+import js7.base.service.Service
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, NonEmptyTimeInterval, TimeInterval}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitch
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -37,19 +40,26 @@ final class JobMotor(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   getAgentState: IO[AgentState],
-  onSubagentEvents: (OrderId, JobKey) => Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
-  isStopping: => Boolean,
   agentConf: AgentConfiguration)
-  (using AlarmClock, Dispatcher[IO]):
+  (using AlarmClock, Dispatcher[IO])
+extends Service.StoppableByRequest:
   jobMotor =>
 
   private val jobToEntry = AsyncMap[JobKey, JobEntry]
   private val agentProcessCount = Atomic(0)
   //private lazy val orderQueue: Queue[IO, OrderId] = ???
   private val lock = AsyncLock()
+  private var wiredOnOrderProcessed: OrderId => IO[Unit] = null.asInstanceOf
 
-  def stop: IO[Unit] =
+  protected def start =
+    startService:
+      untilStopRequested *> stopMe
+
+  private def stopMe: IO[Unit] =
     jobToEntry.toMap.values.foldMap(_.stop)
+
+  def wireOnOrderProcessed(onOrderProcessed: OrderId => IO[Unit]): Unit =
+    wiredOnOrderProcessed = onOrderProcessed
 
   def attachWorkflow(workflow: Workflow): IO[Unit] =
     val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
@@ -81,22 +91,6 @@ final class JobMotor(
               subagentKeeper.recoverOrderProcessing(order, onSubagentEvents(order.id, jobEntry.jobKey))
                 .catchIntoChecked
             .map(order.id -> _)
-
-  def onOrderProcessed(orderId: OrderId, jobKey: JobKey): IO[Unit] =
-    getAgentState.flatMap: agentState =>
-      jobToEntry.checked(jobKey) match
-        case Left(problem) =>
-          IO(logger.error(s"❓ onOrderProcessed($orderId, $jobKey): $problem"))
-        case Right(jobEntry) =>
-
-          jobEntry.remove(orderId) /*TODO Delete this ?*/ *>
-            jobEntry.decrementAgentAndProcessCount.flatMap: (agentWasLimited, jobWasLimited) =>
-              if agentWasLimited then
-                tryStartProcessingAllJobs
-              else if jobWasLimited then
-                tryStartProcessing(jobEntry)
-              else
-                IO.unit
 
   def onOrderIsProcessable(order: Order[Order.State]): IO[Unit] =
     order.ifState[Order.IsFreshOrReady].fold(IO.unit): order =>
@@ -194,6 +188,32 @@ final class JobMotor(
                 .startAndForget
         .compile.drain
 
+  private def onSubagentEvents(orderId: OrderId, jobKey: JobKey)
+    (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
+  : IO[Unit] =
+    events.foldMap:
+      case OrderStarted => IO.unit
+      case _: OrderProcessingStarted => maybeKillOrder(orderId)
+      case _: OrderProcessed =>
+        onOrderProcessed(orderId, jobKey) *>
+          wiredOnOrderProcessed(orderId)
+
+  private def onOrderProcessed(orderId: OrderId, jobKey: JobKey): IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      jobToEntry.checked(jobKey) match
+        case Left(problem) =>
+          IO(logger.error(s"❓ onOrderProcessed($orderId, $jobKey): $problem"))
+        case Right(jobEntry) =>
+
+          jobEntry.remove(orderId) /*TODO Delete this ?*/ *>
+            jobEntry.decrementAgentAndProcessCount.flatMap: (agentWasLimited, jobWasLimited) =>
+              if agentWasLimited then
+                tryStartProcessingAllJobs
+              else if jobWasLimited then
+                tryStartProcessing(jobEntry)
+              else
+                IO.unit
+
   private def agentProcessLimit(agentState: AgentState): Option[Int] =
     agentState.keyToItem(AgentRef).get(agentPath) match
       case None =>
@@ -201,6 +221,30 @@ final class JobMotor(
         Some(0)
       case Some(agentRef) =>
         agentRef.processLimit
+
+  def maybeKillOrder(orderId: OrderId): IO[Unit] =
+    withCurrentOrder(orderId): order =>
+      order.ifState[Order.Processing].fold(IO.unit): order =>
+        order.mark match
+          case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
+            maybeKillOrder(order, kill)
+
+          case Some(OrderMark.Suspending(SuspensionMode(_, Some(mode)))) =>
+            maybeKillOrder(order, mode)
+
+          case _ => IO.unit
+
+  def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
+    order.ifState[Order.Processing].fold(IO.unit): order =>
+      IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
+        subagentKeeper.killProcess(
+          order.id,
+          if kill.immediately then SIGKILL else SIGTERM)
+
+  private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      agentState.idToOrder.get(orderId).foldMap:
+        body
 
   override def toString = "JobMotor"
 
@@ -297,6 +341,16 @@ final class JobMotor(
 
 object JobMotor:
   private val logger = Logger[this.type]
+
+  def service(
+    agentPath: AgentPath,
+    subagentKeeper: SubagentKeeper[AgentState],
+    getAgentState: IO[AgentState],
+    agentConf: AgentConfiguration)
+    (using AlarmClock, Dispatcher[IO])
+  : ResourceIO[JobMotor] =
+    Service.resource:
+      new JobMotor(agentPath, subagentKeeper, getAgentState, agentConf)
 
   private final class OrderQueue:
     private val queue = mutable.ListBuffer.empty[Order[Order.IsFreshOrReady]]

@@ -14,7 +14,6 @@ import js7.agent.motor.OrderMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.crypt.Signed
-import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
@@ -24,22 +23,22 @@ import js7.base.service.Service
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.command.CancellationMode
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
 import js7.data.item.InventoryItem
-import js7.data.job.JobKey
-import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed}
+import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
 import js7.journal.{FileJournal, Persisted}
 import js7.subagent.director.SubagentKeeper
 
 private final class OrderMotor private(
+  jobMotor: JobMotor,
   orderQueue: Queue[IO, Option[Seq[Order[Order.State]]]],
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
@@ -51,9 +50,9 @@ private final class OrderMotor private(
 extends Service.StoppableByRequest:
 
   private val agentCommandToEventCalc = AgentCommandToEventCalc(agentConf)
-  private val jobMotor = JobMotor(agentPath, subagentKeeper, journal.aggregate, onSubagentEvents,
-    isStopping = isStopping, agentConf)
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
+
+  jobMotor.wireOnOrderProcessed(onOrderProcessed)
 
   protected def start =
     startService:
@@ -61,7 +60,6 @@ extends Service.StoppableByRequest:
         .background.surround:
           processQueue
       *> orderToEntry.toMap.values.foldMap(_.stop)
-        *> jobMotor.stop
 
   override def stop: IO[Unit] =
     super.stop
@@ -145,14 +143,8 @@ extends Service.StoppableByRequest:
 
       case _ => IO.right(())
 
-  private def onSubagentEvents(orderId: OrderId, jobKey: JobKey)
-    (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
-  : IO[Unit] =
-    events.foldMap:
-      case OrderStarted => IO.unit
-      case _: OrderProcessingStarted => maybeKillOrder(orderId)
-      case _: OrderProcessed => jobMotor.onOrderProcessed(orderId, jobKey)
-    .productR:
+  private def onOrderProcessed(orderId: OrderId): IO[Unit] =
+    IO.unlessA(isStopping):
       enqueue(orderId)
 
   private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
@@ -171,7 +163,7 @@ extends Service.StoppableByRequest:
 
       case KeyedEvent(orderId: OrderId, OrderKillingMarked(Some(kill))) =>
         persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
-          maybeKillOrder(order, kill)
+          jobMotor.maybeKillOrder(order, kill)
         .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, OrderDetachable | OrderDetached) =>
@@ -237,25 +229,6 @@ extends Service.StoppableByRequest:
             IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
               jobMotor.onOrderIsProcessable(order)
 
-  private def maybeKillOrder(orderId: OrderId): IO[Unit] =
-    withCurrentOrder(orderId): order =>
-      order.ifState[Order.Processing].fold(IO.unit): order =>
-        order.mark match
-          case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-            maybeKillOrder(order, kill)
-
-          case Some(OrderMark.Suspending(SuspensionMode(_, Some(mode)))) =>
-            maybeKillOrder(order, mode)
-
-          case _ => IO.unit
-
-  private def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
-    order.ifState[Order.Processing].fold(IO.unit): order =>
-      IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
-        subagentKeeper.killProcess(
-          order.id,
-          if kill.immediately then SIGKILL else SIGTERM)
-
   private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
     journal.aggregate.flatMap: agentState =>
       agentState.idToOrder.get(orderId).foldMap:
@@ -280,9 +253,10 @@ object OrderMotor:
       dispatcher: Dispatcher[IO])
   : ResourceIO[OrderMotor] =
     for
+      jobMotor <- JobMotor.service(agentPath, subagentKeeper, journal.aggregate, agentConf)
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[Order[Order.State]]]])
       orderMotor <- Service.resource:
-        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, agentConf)
+        new OrderMotor(jobMotor, orderQueue, agentPath, subagentKeeper, journal, agentConf)
     yield
       orderMotor
 
