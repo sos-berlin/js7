@@ -30,7 +30,6 @@ import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import js7.launcher.processkiller.SubagentProcessKiller
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
@@ -41,15 +40,14 @@ final class PipedProcess private(
   orderId: OrderId,
   jobKey: JobKey,
   processKillerAlloc: Allocated[IO, SubagentProcessKiller],
-  label: String):
+  label: String,
+  runningSince: Deadline):
 
   private val logger = Logger.withPrefix[this.type](label)
   private val processKiller = processKillerAlloc.allocatedThing
   private val sigkilled = Deferred.unsafe[IO, Unit]
   private var _isKilling = none[ProcessSignal]
   private val _isKillingLock = BlockingLock()
-
-  private val runningSince = now
 
   def pid: Pid =
     process.pid
@@ -66,7 +64,8 @@ final class PipedProcess private(
                 logger.traceCallWithResult(s"waitFor $process"):
                   process.waitFor()
       .flatTap: rc =>
-        IO(logger.trace(s"Process $pid terminated with $rc"))
+        ProcessMXBean.running -= 1
+        IO(logger.trace(s"Process $pid terminated with $rc after ${duration.pretty}"))
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
@@ -185,12 +184,15 @@ object PipedProcess:
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
       startProcess(commandArgs, conf, orderId)
         .flatMapT: process =>
+          ProcessMXBean.starts += 1
+          ProcessMXBean.running += 1
+          val since = Deadline.now
           process.stdin.close() // Process gets an empty stdin
           val label = s"$orderId $process"
           SubagentProcessKiller.resource(label).toAllocated
             .map: killer =>
               Right:
-                PipedProcess(conf, process, stdObservers, orderId, jobKey, killer, label)
+                PipedProcess(conf, process, stdObservers, orderId, jobKey, killer, label, since)
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration, orderId: OrderId)
   : IO[Checked[Js7Process]] =
@@ -259,3 +261,13 @@ object PipedProcess:
         .flatMap:
           case Left(((), logging)) => logging.cancel
           case Right((_, ())) => IO.unit // Forget fiber
+
+
+  sealed trait ProcessMXBean:
+    this: ProcessMXBean.type =>
+    def getRunning: Int = running.get
+    def getStarts: Long = starts.get
+
+  object ProcessMXBean extends ProcessMXBean:
+    private[PipedProcess] val running = Atomic(0)
+    private[PipedProcess] val starts = Atomic(0L)

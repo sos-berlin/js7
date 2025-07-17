@@ -21,6 +21,7 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -41,6 +42,7 @@ import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.crashpidfile.{CrashPidFile, CrashPidFileService}
+import js7.launcher.process.PipedProcess
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
@@ -236,6 +238,7 @@ object Subagent:
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
 
     for
+      _ <- registerMBean("Process", PipedProcess.ProcessMXBean)
       pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
       actorSystem <- Pekkos.actorSystemResource(conf.name, config)
       sessionRegister <- SessionRegister.resource(SubagentSession(_), config)
