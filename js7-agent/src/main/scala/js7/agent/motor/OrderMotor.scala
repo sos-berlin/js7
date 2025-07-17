@@ -218,10 +218,9 @@ extends Service.StoppableByRequest:
                 .nextEvents(orderId)
       .map(_.orThrow) // TODO throws
       .flatMap: persisted =>
-        orderIds.foldMap: orderId =>
-          persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
-            IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
-              jobMotor.onOrderIsProcessable(order)
+        jobMotor.onOrdersAreProcessable:
+          orderIds.flatMap(persisted.aggregate.idToOrder.get)
+            .filter(persisted.aggregate.isOrderProcessable)
 
   private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
     journal.aggregate.flatMap: agentState =>

@@ -2,7 +2,6 @@ package js7.agent.motor
 
 import cats.effect.std.Dispatcher
 import cats.effect.{FiberIO, IO, ResourceIO}
-import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
@@ -26,6 +25,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitch
 import js7.data.job.JobKey
+import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -91,15 +91,20 @@ extends Service.StoppableByRequest:
                 .catchIntoChecked
             .map(order.id -> _)
 
-  def onOrderIsProcessable(order: Order[Order.State]): IO[Unit] =
-    order.ifState[Order.IsFreshOrReady].foldMap: order =>
-      getAgentState.flatMap: agentState =>
-        agentState.maybeJobKey(order.workflowPosition)
-          .flatMap(jobToEntry.get)
-          .foldMap: jobEntry =>
-            jobEntry.enqueue(order).flatMap: enqueued =>
-              IO.whenA(enqueued):
-                tryStartProcessing(jobEntry)
+  def onOrdersAreProcessable(orders: Seq[Order[Order.State]]): IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      orders.flatMap: order =>
+        order.ifState[Order.IsFreshOrReady].flatMap: order =>
+          agentState.maybeJobKey(order.workflowPosition)
+            .map(_ -> order)
+      .groupMap(_._1)(_._2)
+      .toVector.flatMap: (jobKey, orders) =>
+        jobToEntry.get(jobKey).map: (jobEntry: JobEntry) =>
+          jobEntry.enqueue(orders).flatMap: enqueued =>
+            IO.whenA(enqueued):
+              tryStartProcessing(jobEntry)
+      .sequence
+      .map((x: Vector[Unit]) => ())
 
   def onOrderDetached(orderId: OrderId, originalAgentState: AgentState): IO[Unit] =
     originalAgentState.idToOrder.get(orderId)
@@ -123,53 +128,56 @@ extends Service.StoppableByRequest:
         tryStartProcessing
 
   private def tryStartProcessing(jobEntry: JobEntry): IO[Unit] =
+    tryStartProcessing1(jobEntry).startAndForget
+
+  private def tryStartProcessing1(jobEntry: JobEntry): IO[Unit] =
     IO.whenA(jobEntry.hasQueuedOrders):
-      unlessDeferred(isStopping):
-       logger.traceIO(s"### tryStartProcessing ${jobEntry.jobKey}"):
-        jobEntry.onNextAdmissionTimeInterval:
-          tryStartProcessing(jobEntry)
-        .flatMap: maybeTimeInterval =>
-          tryStartProcessing2(jobEntry, maybeTimeInterval)
+      lock.lock:
+        unlessDeferred(isStopping):
+          jobEntry.onNextAdmissionTimeInterval:
+            tryStartProcessing(jobEntry)
+          .flatMap: maybeTimeInterval =>
+            tryStartProcessing2(jobEntry, maybeTimeInterval)
+              .startAndForget
 
   private def tryStartProcessing2(jobEntry: JobEntry, maybeTimeInterval: Option[TimeInterval])
   : IO[Unit] =
     import jobEntry.jobKey
-    //lock.lock:
-    jobEntry.xxLock.lock:
-      getAgentState.flatMap: agentState =>
-        IO.whenA(jobEntry.hasQueuedOrders):
-          fs2.Stream.eval:
-            IO.defer:
-              if jobEntry.isBelowProcessLimits(agentState) then
-                jobEntry.dequeueNextOrderId(jobAdmits = maybeTimeInterval.isDefined)
-              else
-                IO.none
-          .unNoneTerminate
-          .evalMap: order =>
-            if !order.isProcessable then
-              IO:
-                val msg = s"Order in job queue is not processable: $order"
-                logger.error(s"❓$msg")
-                if isStrict then throw new AssertionError(msg)
+    logger.traceIO(s"### tryStartProcessing2 ${jobEntry.jobKey}"):
+     getAgentState.flatMap: agentState =>
+      IO.whenA(jobEntry.hasQueuedOrders):
+        fs2.Stream.eval:
+          IO.defer:
+            if jobEntry.isBelowProcessLimits(agentState) then
+              jobEntry.dequeueNextOrderId(jobAdmits = maybeTimeInterval.isDefined)
             else
-              jobEntry.incrementProcessCount.productR:
-                // subagentKeeper.processOrder blocks until a Subagent becomes available
-                val endOfAdmissionPeriod = maybeTimeInterval match
-                  case Some(o: TimeInterval.Standard) => Some(o.end)
-                  case _ => None
-                // SubagentKeeper ignores the Order when it has been changed concurrently
-                subagentKeeper
-                  .processOrder(order, endOfAdmissionPeriod, onSubagentEvents(order.id, jobKey))
-                  .catchIntoChecked
-                  .handleProblemWith: problem =>
-                    getAgentState.flatMap: agentState =>
-                      val o = agentState.idToOrder.get(order.id)
-                      val isEqual = o.contains(order)
-                      val x = 1
-                      IO(logger.error:
-                        s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order")
-                  .startAndForget
-          .compile.drain
+              IO.none
+        .unNoneTerminate
+        .evalMap: order =>
+          if !order.isProcessable then
+            IO:
+              val msg = s"Order in job queue is not processable: $order"
+              logger.error(s"❓$msg")
+              if isStrict then throw new AssertionError(msg)
+          else
+            jobEntry.incrementProcessCount.productR:
+              // subagentKeeper.processOrder blocks until a Subagent becomes available
+              val endOfAdmissionPeriod = maybeTimeInterval match
+                case Some(o: TimeInterval.Standard) => Some(o.end)
+                case _ => None
+              // SubagentKeeper ignores the Order when it has been changed concurrently
+              subagentKeeper
+                .processOrder(order, endOfAdmissionPeriod, onSubagentEvents(order.id, jobKey))
+                .catchIntoChecked
+                .handleProblemWith: problem =>
+                  getAgentState.flatMap: agentState =>
+                    val o = agentState.idToOrder.get(order.id)
+                    val isEqual = o.contains(order)
+                    val x = 1
+                    IO(logger.error:
+                      s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order")
+                .startAndForget
+        .compile.drain
 
   private def onSubagentEvents(orderId: OrderId, jobKey: JobKey)
     (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
@@ -236,7 +244,6 @@ extends Service.StoppableByRequest:
     findTimeIntervalLimit: FiniteDuration)
     (using Dispatcher[IO]):
 
-    val xxLock = AsyncLock(name = jobKey.toString)
     private val lock = SimpleLock[IO]
     private val forceAdmissionQueue = new OrderQueue
     private val queue = new OrderQueue
@@ -258,11 +265,17 @@ extends Service.StoppableByRequest:
       incrementProcessCount
 
     def enqueue(order: Order[Order.IsFreshOrReady]): IO[Boolean] =
+      enqueue(Seq(order))
+
+    def enqueue(orders: Seq[Order[Order.IsFreshOrReady]]): IO[Boolean] =
       lock.surround:
         IO:
-          if order.forceJobAdmission then
-            forceAdmissionQueue.enqueue(order)
-          queue.enqueue(order)
+          var enqueued = false
+          orders.foreach: order =>
+            if order.forceJobAdmission then
+              forceAdmissionQueue.enqueue(order)
+            enqueued |= queue.enqueue(order)
+          enqueued
 
     def dequeueNextOrderId(jobAdmits: Boolean): IO[Option[Order[Order.IsFreshOrReady]]] =
       lock.surround:
@@ -353,6 +366,7 @@ object JobMotor:
         isQueued += order.id
         true
 
+    // Slow
     def remove(orderId: OrderId): Boolean =
       isQueued.remove(orderId) && locally:
         queue.indexWhere(_.id == orderId) match
