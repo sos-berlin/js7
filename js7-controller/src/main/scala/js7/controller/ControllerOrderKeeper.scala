@@ -56,6 +56,7 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
+import js7.data.command.IsEventEmittingCommand
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.delegate.DelegateCouplingState
@@ -936,14 +937,14 @@ extends Stash, JournalingActor[ControllerState, Event]:
       proceedWithItem(workflowControlId)
       Right(ControllerCommand.Response.Accepted)
 
-  private def executeCommandAndPersist(cmd: ControllerCommand)
+  private def executeCommandAndPersist(cmd: ControllerCommand & IsEventEmittingCommand)
   : Future[Checked[ControllerCommand.Response.Accepted]] =
     executeCommandAndPersistAndHandle(cmd): persisted =>
       handleEvents(persisted)
       Right(ControllerCommand.Response.Accepted)
 
   private def executeCommandAndPersistAndHandle[R <: ControllerCommand.Response](
-    cmd: ControllerCommand)
+    cmd: ControllerCommand & IsEventEmittingCommand)
     (handle: Persisted[ControllerState, Event] => Checked[R])
   : Future[Checked[R]] =
     executeCommandAndPersistAndHandle2[R](

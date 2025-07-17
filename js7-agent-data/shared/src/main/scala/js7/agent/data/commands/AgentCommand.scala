@@ -17,7 +17,7 @@ import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.command.CommonCommand
+import js7.data.command.{CommonCommand, IsEventEmittingCommand}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{EventId, ItemContainer}
 import js7.data.item.{InventoryItemKey, SignableItem, UnsignedItem}
@@ -39,6 +39,9 @@ object AgentCommand extends CommonCommand.Companion:
     type Accepted = Accepted.type
     case object Accepted extends Response:
       implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
+
+
+  sealed trait IsEventEmittingAgentCommand extends AgentCommand, IsEventEmittingCommand
 
 
   final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
@@ -183,7 +186,7 @@ object AgentCommand extends CommonCommand.Companion:
       deriveConfiguredCodec[ShutDown]
 
 
-  sealed trait IsOrderCommand extends AgentCommand
+  sealed trait IsOrderCommand extends IsEventEmittingAgentCommand
   sealed trait IsItemCommand extends AgentCommand
 
 

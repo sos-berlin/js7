@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
-import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
+import js7.data.command.{CancellationMode, CommonCommand, IsEventEmittingCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
 import js7.data.node.NodeId
@@ -42,6 +42,8 @@ sealed trait ControllerCommand extends CommonCommand:
 object ControllerCommand extends CommonCommand.Companion:
   protected type Command = ControllerCommand
 
+  sealed trait IsEventEmitting extends ControllerCommand, IsEventEmittingCommand
+
   final case class Batch(commands: Seq[CorrelIdWrapped[ControllerCommand]])
   extends ControllerCommand, CommonBatch, Big:
     type Response = Batch.Response
@@ -50,14 +52,15 @@ object ControllerCommand extends CommonCommand.Companion:
     extends ControllerCommand.Response, CommonBatch.Response, Big:
       override def productPrefix = "BatchResponse"
 
-  final case class AddOrder(order: FreshOrder) extends ControllerCommand:
+  final case class AddOrder(order: FreshOrder) extends IsEventEmitting:
     type Response = AddOrder.Response
     override def toShortString = s"AddOrder(${order.id}, ${order.workflowPath})"
   object AddOrder:
     final case class Response(ignoredBecauseDuplicate: Boolean)
     extends ControllerCommand.Response
 
-  final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand:
+  final case class AddOrders(orders: Seq[FreshOrder])
+  extends IsEventEmitting:
     type Response = AddOrders.Response
     override def toShortString = s"AddOrders(${orders.size} orders, ${orders.take(1).map(o => o.toString.truncateWithEllipsis(200) + ", ").mkString} ...)"
   object AddOrders:
@@ -71,7 +74,7 @@ object ControllerCommand extends CommonCommand.Companion:
   final case class CancelOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: CancellationMode = CancellationMode.FreshOrStarted())
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   object CancelOrders:
@@ -87,7 +90,7 @@ object ControllerCommand extends CommonCommand.Companion:
       yield CancelOrders(orderIds, mode)
 
   final case class PostNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   object PostNotice:
@@ -108,7 +111,7 @@ object ControllerCommand extends CommonCommand.Companion:
         codec(c)
 
   final case class DeleteNotice(noticeId: NoticeId)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   object DeleteNotice:
@@ -131,7 +134,7 @@ object ControllerCommand extends CommonCommand.Companion:
     plannableBoard: PlannableBoard,
     planSchemaId: PlanSchemaId,
     splitNoticeKey: ExprFunction)
-  extends ControllerCommand:
+  extends IsEventEmitting:
 
     def evalSplitNoticeKey(noticeKey: NoticeKey): Checked[(PlanKey, NoticeKey)] =
       given Scope = Scope.empty
@@ -148,7 +151,7 @@ object ControllerCommand extends CommonCommand.Companion:
     globalBoard: GlobalBoard,
     planSchemaId: PlanSchemaId,
     makeNoticeKey: ExprFunction)
-  extends ControllerCommand:
+  extends IsEventEmitting:
 
     def evalMakeNoticeKey(planKey: PlanKey, noticeKey: NoticeKey): Checked[NoticeKey] =
       given Scope = Scope.empty
@@ -157,13 +160,13 @@ object ControllerCommand extends CommonCommand.Companion:
 
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
     override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${
       orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
 
   final case class AnswerOrderPrompt(orderId: OrderId)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type response = Response.Accepted
 
   final case class NoOperation(duration: Option[FiniteDuration] = None)
@@ -172,7 +175,7 @@ object ControllerCommand extends CommonCommand.Companion:
 
   type EmitTestEvent = EmitTestEvent.type
   /** For tests only. */
-  case object EmitTestEvent extends ControllerCommand:
+  case object EmitTestEvent extends IsEventEmitting:
     type Response = Response.Accepted
 
   /** Controller stops immediately with exit(). */
@@ -239,7 +242,7 @@ object ControllerCommand extends CommonCommand.Companion:
 
   /** Go, Order! */
   final case class GoOrder(orderId: OrderId, position: Position)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   final case class ResumeOrder(
@@ -248,44 +251,44 @@ object ControllerCommand extends CommonCommand.Companion:
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false,
     restartKilledJob: Option[Boolean] = None)
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
 
   final case class ResumeOrders(
     orderIds: immutable.Iterable[OrderId],
     asSucceeded: Boolean = false,
     restartKilledJob: Option[Boolean] = None)
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
 
   final case class SuspendOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: SuspensionMode = SuspensionMode.standard)
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
 
   final case class ChangeOrder(
     orderId: OrderId,
     priority: Option[BigDecimal])
-  extends ControllerCommand, Big:
+  extends IsEventEmitting, Big:
     type Response = Response.Accepted
 
   /** Transfer all Orders from the given Workflow to the newest version.
    * @param workflowId denotes the Workflow from which all Orders are transferred
    */
   final case class TransferOrders(workflowId: WorkflowId)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   final case class ChangePlanSchema(
     planSchemaId: PlanSchemaId,
     namedValues: Option[NamedValues] = None,
     finishedPlanRetentionPeriod: Option[FiniteDuration] = None)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   final case class ChangePlan(planId: PlanId, status: PlanStatus)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
@@ -293,7 +296,7 @@ object ControllerCommand extends CommonCommand.Companion:
     workflowPath: WorkflowPath,
     suspend: Option[Boolean] = None,
     skip: Map[Label, Boolean] = Map.empty)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   /** Command to control a Workflow (a specific version). */
@@ -301,7 +304,7 @@ object ControllerCommand extends CommonCommand.Companion:
     workflowId: WorkflowId,
     addBreakpoints: Set[Position] = Set.empty,
     removeBreakpoints: Set[Position] = Set.empty)
-  extends ControllerCommand:
+  extends IsEventEmitting:
     type Response = Response.Accepted
 
   case object TakeSnapshot extends ControllerCommand:
