@@ -110,11 +110,6 @@ extends Service.StoppableByRequest:
   def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
-        //TODO val processLimitIncreased = previous
-        //  .collect { case o: AgentRef => o.processLimit }
-        //  .flatten
-        //  .forall(previous => agentRef.processLimit.forall(previous < _))
-        //if processLimitIncreased then
         jobMotor.tryStartProcessingAllJobs.map(Right(_))
 
       case subagentItem: SubagentItem =>
@@ -162,7 +157,7 @@ extends Service.StoppableByRequest:
         IO.pure(orderId +: event.children.map(_.orderId))
 
       case KeyedEvent(orderId: OrderId, OrderKillingMarked(Some(kill))) =>
-        persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+        persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
           jobMotor.maybeKillOrder(order, kill)
         .as(Vector(orderId))
 
@@ -202,7 +197,6 @@ extends Service.StoppableByRequest:
       .compile.drain
 
   private def continueOrders(orders: Vector[Order[Order.State]]): IO[Unit] =
-   logger.traceIO(s"### continueOrders(${orders.map(_.id).mkString(", ")})"):
     clock.lockIO: now =>
       val (immediateOrderIds, delayOrderIds) =
         orders.map: order =>
@@ -225,7 +219,7 @@ extends Service.StoppableByRequest:
       .map(_.orThrow) // TODO throws
       .flatMap: persisted =>
         orderIds.foldMap: orderId =>
-          persisted.aggregate.idToOrder.get(orderId).fold(IO.unit): order =>
+          persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
             IO.whenA(persisted.aggregate.isOrderProcessable(orderId)):
               jobMotor.onOrderIsProcessable(order)
 

@@ -27,7 +27,7 @@ final class ProcessDriver(
 
   import jobLauncherConf.crashPidFile
   private val pipedProcessOnce = SetOnce[PipedProcess]
-  private val startProcessLock = AsyncLock(orderId.toString)
+  private val startProcessLock = AsyncLock(orderId.toString, suppressLog = true)
   @volatile private var killed = false
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 

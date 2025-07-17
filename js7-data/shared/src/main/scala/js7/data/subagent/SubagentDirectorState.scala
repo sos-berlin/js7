@@ -38,6 +38,13 @@ extends JournaledState[S]:
 
   def toOrderScope(order: Order[Order.State]): Checked[Scope]
 
+  final def maybeJobKey(workflowPosition: WorkflowPosition): Option[JobKey] =
+    for
+      workflow <- idToWorkflow.get(workflowPosition.workflowId)
+      jobKey <- workflow.positionToJobKeyMaybe(workflowPosition.position)
+    yield
+      jobKey
+
   final def jobKey(workflowPosition: WorkflowPosition): Checked[JobKey] =
     for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)

@@ -378,6 +378,11 @@ extends VersionedItem, TrivialItemState[Workflow]:
       case _: Execute.Anonymous => Right(anonymousJobKey(id /: position))
       case o: Execute.Named     => jobKey(position.branchPath, o.name)
 
+  def positionToJobKeyMaybe(position: Position): Option[JobKey] =
+    maybeExecuteInstr(position).flatMap:
+      case _: Execute.Anonymous => Some(anonymousJobKey(id /: position))
+      case o: Execute.Named     => jobKey(position.branchPath, o.name).toOption
+
   def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
     JobKey.Anonymous(workflowPosition.normalized)
 
@@ -386,16 +391,15 @@ extends VersionedItem, TrivialItemState[Workflow]:
     jobKey(WorkflowBranchPath(id, branchPath), name)
 
   private def jobKey(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Checked[JobKey] =
-    nestedWorkflow(workflowBranchPath.branchPath).flatMap(w =>
+    nestedWorkflow(workflowBranchPath.branchPath).flatMap: w =>
       if w.nameToJob contains name then
         Right(JobKey(workflowBranchPath, name))
       else
-        workflowBranchPath.branchPath match {
+        workflowBranchPath.branchPath match
           case Nil =>
             Left(Problem(s"Unknown job name '$name'"))
           case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
-        })
 
   lazy val keyToJob: Map[JobKey, WorkflowJob] =
     flattenedBranchToWorkflow.flatMap { case (branchPath, workflow) =>
@@ -416,6 +420,11 @@ extends VersionedItem, TrivialItemState[Workflow]:
     instruction(position) match
       case o: Execute => Right(o)
       case o => Left(Problem(s"Expected 'Execute' statement at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+
+  def maybeExecuteInstr(position: Position): Option[Execute] =
+    instruction(position) match
+      case o: Execute => Some(o)
+      case _ => None
 
   def reachablePositions(from: Position): Iterable[Position] =
     if !isDefinedAt(from) then
