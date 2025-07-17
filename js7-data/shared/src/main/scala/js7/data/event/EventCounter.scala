@@ -8,6 +8,7 @@ import js7.base.utils.MoreJavaConverters.*
 import js7.base.utils.MultipleLinesBracket.streamInBrackets
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.EventCounter.*
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 final case class EventCounter(eventToCount: Map[String, Long], totalEventCount: Long)
@@ -32,6 +33,7 @@ extends EventCounterMXBean:
   def toSnapshotStream: fs2.Stream[fs2.Pure, EventCount] =
     fs2.Stream.iterable:
       eventToCount.view.map((name, n) => EventCount(name, n))
+        .to(ArraySeq).sortBy(_.eventName) // For readability
 
   def appendToPrometheus(sb: StringBuilder): Unit =
     eventToCount.foreach: (name, n) =>

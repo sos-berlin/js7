@@ -170,7 +170,7 @@ private final class ItemCommandExecutor(
 
       case WorkflowId.as(workflowId) =>
         persistItemDetachedIfExists.ifPersisted: persisted =>
-          persisted.originalAggregate.idToWorkflow.get(workflowId).fold(IO.unit): workflow =>
+          persisted.originalAggregate.idToWorkflow.get(workflowId).foldMap: workflow =>
             subagentKeeper
               .stopJobs(workflow.keyToJob.keys, SIGKILL /*just in case*/)
               .handleError: t =>
