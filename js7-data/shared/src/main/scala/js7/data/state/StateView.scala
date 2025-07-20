@@ -96,9 +96,15 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     idToOrder.get(orderId).exists(isOrderProcessable)
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =
+    order.isProcessable && isOrderProcessable2(order)
+
+  def ifOrderProcessable(order: Order[Order.State]): Option[Order[IsFreshOrReady]] =
+    order.ifProcessable.flatMap: order =>
+      isOrderProcessable2(order) ? order
+
+  private def isOrderProcessable2(order: Order[Order.State]): Boolean =
     instruction(order.workflowPosition).isInstanceOf[Execute]
       && order.isAttached
-      && order.isProcessable
       && !isOrderAtStopPosition(order)
       && !isOrderAtBreakpoint(order)
       && !isWorkflowSuspended(order.workflowPath)

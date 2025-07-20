@@ -13,32 +13,28 @@ import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, MarkOrder
 import js7.agent.motor.OrderMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
-import js7.base.crypt.Signed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
-import js7.base.problem.Checked.{Ops, RichCheckedF}
+import js7.base.problem.Checked.*
 import js7.base.service.Service
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.command.CancellationMode
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
 import js7.data.item.InventoryItem
 import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed}
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentBundle, SubagentItem}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
+import js7.data.workflow.WorkflowPathControl
 import js7.journal.{FileJournal, Persisted}
 import js7.subagent.director.SubagentKeeper
 
 private final class OrderMotor private(
-  jobMotor: JobMotor,
   orderQueue: Queue[IO, Option[Seq[Order[Order.State]]]],
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
@@ -51,22 +47,23 @@ extends Service.StoppableByRequest:
 
   private val agentCommandToEventCalc = AgentCommandToEventCalc(agentConf)
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
-
-  jobMotor.wireOnOrderProcessed(onOrderProcessed)
+  private[motor] val jobs =
+    new JobMotorsKeeper(agentPath, this, subagentKeeper, journal.aggregate, agentConf)
 
   protected def start =
     startService:
       (untilStopRequested *> orderQueue.offer(None))
         .background.surround:
-          processQueue
+          processTheQueue
       *> orderToEntry.toMap.values.foldMap(_.stop)
+      *> jobs.stop
 
   override def stop: IO[Unit] =
     super.stop
 
   def recoverWorkflows(agentState: AgentState): IO[Unit] =
     agentState.idToWorkflow.values.foldMap:
-      jobMotor.attachWorkflow
+      jobs.attachWorkflow
 
   def recoverOrders(agentState: AgentState): IO[Unit] =
     logger.debugIO:
@@ -74,7 +71,7 @@ extends Service.StoppableByRequest:
       val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
       val otherOrders = orders.filterNot(_.isState[Order.Processing]).toVector
       // Continue already processing Orders
-      jobMotor.recoverProcessingOrders(processingOrders).flatMap: checkedFibers =>
+      jobs.recoverProcessingOrders(processingOrders, agentState).flatMap: checkedFibers =>
         checkedFibers.foldMap: (orderId, checkedFiber) =>
           checkedFiber.traverse: fiber =>
             fiber.joinStd.flatMap: (_: OrderProcessed) =>
@@ -94,23 +91,10 @@ extends Service.StoppableByRequest:
           agentCommandToEventCalc.commandToEventCalc(cmd)
         .rightAs(AgentCommand.Response.Accepted)
 
-  def onItemEventPersisted(persisted: Persisted[AgentState, Event]): IO[Checked[Unit]] =
-    persisted.keyedEvents.foldMap:
-      case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
-        jobMotor.detachWorkflow(workflowId)
-          .map(Right(_))
-      case KeyedEvent(NoKey, ItemAttachedToMe(item)) =>
-        proceedWithItem(item)
-      case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
-        jobMotor.attachWorkflow(persisted.aggregate.idToWorkflow(workflow.id))
-          .map(Right(_))
-      case _ =>
-        IO.right(())
-
   def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
-        jobMotor.tryStartProcessingAllJobs.map(Right(_))
+        jobs.tryStartProcessingAllJobs.map(Right(_))
 
       case subagentItem: SubagentItem =>
         journal.aggregate.flatMap:
@@ -119,12 +103,12 @@ extends Service.StoppableByRequest:
               subagentKeeper.proceedWithSubagent(subagentItemState)
                 .catchIntoChecked
         .flatMapT: _ =>
-          jobMotor.tryStartProcessingAllJobs.map(Right(_))
+          jobs.tryStartProcessingAllJobs.map(Right(_))
 
       case subagentBundle: SubagentBundle =>
         subagentKeeper.addOrReplaceSubagentBundle(subagentBundle)
           .flatMapT: _ =>
-            jobMotor.tryStartProcessingAllJobs.map(Right(_))
+            jobs.tryStartProcessingAllJobs.map(Right(_))
 
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then
@@ -138,9 +122,8 @@ extends Service.StoppableByRequest:
 
       case _ => IO.right(())
 
-  private def onOrderProcessed(orderId: OrderId): IO[Unit] =
-    IO.unlessA(isStopping):
-      enqueue(orderId)
+  def trigger(orderId: OrderId): IO[Unit] =
+    enqueue(orderId)
 
   private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
   : IO[Checked[Persisted[AgentState, E]]] =
@@ -158,11 +141,11 @@ extends Service.StoppableByRequest:
 
       case KeyedEvent(orderId: OrderId, OrderKillingMarked(Some(kill))) =>
         persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
-          jobMotor.maybeKillOrder(order, kill)
+          jobs.maybeKillOrder(order, kill)
         .as(Vector(orderId))
 
       case KeyedEvent(orderId: OrderId, OrderDetachable | OrderDetached) =>
-        jobMotor.onOrderDetached(orderId, persisted.originalAggregate) *>
+        jobs.onOrderDetached(orderId, persisted.originalAggregate) *>
           orderToEntry.remove(orderId).flatMapSome:
             _.stop
           .as(Vector(orderId))
@@ -185,7 +168,7 @@ extends Service.StoppableByRequest:
     IO.whenA(orders.nonEmpty):
       orderQueue.offer(Some(orders))
 
-  private def processQueue: IO[Unit] =
+  private def processTheQueue: IO[Unit] =
     // TODO Beliebige Aufträge müssen aus orderQueue löschbar sein
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .mapChunks: chunk =>
@@ -218,9 +201,7 @@ extends Service.StoppableByRequest:
                 .nextEvents(orderId)
       .map(_.orThrow) // TODO throws
       .flatMap: persisted =>
-        jobMotor.onOrdersAreProcessable:
-          orderIds.flatMap(persisted.aggregate.idToOrder.get)
-            .filter(persisted.aggregate.isOrderProcessable)
+        jobs.onOrdersMayBeProcessable(orderIds, persisted.aggregate)
 
   private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
     journal.aggregate.flatMap: agentState =>
@@ -246,10 +227,9 @@ object OrderMotor:
       dispatcher: Dispatcher[IO])
   : ResourceIO[OrderMotor] =
     for
-      jobMotor <- JobMotor.service(agentPath, subagentKeeper, journal.aggregate, agentConf)
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[Order[Order.State]]]])
       orderMotor <- Service.resource:
-        new OrderMotor(jobMotor, orderQueue, agentPath, subagentKeeper, journal, agentConf)
+        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, agentConf)
     yield
       orderMotor
 

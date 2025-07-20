@@ -56,6 +56,7 @@ trait AlarmClock extends WallClock:
       IO(scheduled.cancel())
 
 
+  // TODO Are sleep and sleepUntil cancelable?
   final def sleep(duration: FiniteDuration, label: => String = ""): IO[Unit] =
     toIO:
       scheduleOnce(duration, label)

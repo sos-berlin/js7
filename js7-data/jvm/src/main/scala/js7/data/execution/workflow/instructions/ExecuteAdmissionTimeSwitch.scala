@@ -15,7 +15,7 @@ final class ExecuteAdmissionTimeSwitch(
   findTimeIntervalLimit: FiniteDuration,
   zone: ZoneId,
   onSwitch: Option[TimeInterval] => IO[Unit])
-  (using dispatcher: Dispatcher[IO]):
+  (using dispatcher: Dispatcher[IO], clock: AlarmClock):
 
   private given ZoneId = zone
 
@@ -31,13 +31,11 @@ final class ExecuteAdmissionTimeSwitch(
       cancelSchedule.get.flatten
 
   /** Update the state with the current or next admission time and set a _fiber.
-   * @return true iff an AdmissionTimeInterval is effective now. */
-  def updateAndCheck(onAdmissionStart: IO[Unit])(using clock: AlarmClock)
+   * @return The now effective AdmissionTimeInterval or None. */
+  def updateAndCheck(onAdmissionStart: IO[Unit])
   : IO[Option[NonEmptyTimeInterval]] =
     clock.lockIO: now =>
-      admissionTimeScheme.findLongTimeInterval(
-        now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
-      match
+      findCurrentTimeInterval(now) match
         case None =>
           cancelSchedule.getAndSet(IO.unit).flatten
             .as(None) // No admission now or in the future
@@ -61,3 +59,7 @@ final class ExecuteAdmissionTimeSwitch(
               case o: TimeInterval.Always => o
               case o: TimeInterval.Never =>
                 throw new AssertionError(s"NonEmptyTimeInterval expected: $o")
+
+  def findCurrentTimeInterval(now: Timestamp): Option[TimeInterval] =
+    admissionTimeScheme.findLongTimeInterval(
+      now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)

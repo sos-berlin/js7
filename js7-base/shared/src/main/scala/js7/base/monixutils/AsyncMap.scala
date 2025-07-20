@@ -29,6 +29,9 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   final def isEmpty: Boolean =
     _map.isEmpty
 
+  final def nonEmpty: Boolean =
+    _map.nonEmpty
+
   final def size: Int =
     _map.size
 

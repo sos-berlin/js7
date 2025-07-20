@@ -139,7 +139,6 @@ object AsyncLock:
             //    since.elapsed.pretty} ↘")
 
         def logRelease(exitCase: ExitCase): IO[Unit] =
-         logger.traceIO(s"### logRelease $nrString"):
           IO:
             if acquisitionMinorLogged || sym.used then
               val logLevel = if sym.used then sym.logLevel else LogLevel.Trace
@@ -200,7 +199,7 @@ object AsyncLock:
                           case QueueingState(currentAcquirer, currentNr, acquiredSince, queueLength, _) =>
                             sym.escalateUpTo(2)
                             relieveLogLevel = sym.relievedLogLevel
-                            logger.log(sym.logLevel, s"$sym $name is still acquired since ${
+                            logger.log(sym.logLevel, s"$sym $name is continuously acquired since ${
                               since.elapsed.pretty
                             }, currently by $currentAcquirer †$currentNr since ${
                               acquiredSince.elapsed.pretty

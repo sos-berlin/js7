@@ -881,8 +881,14 @@ extends
       || isState[Broken]
     ) && isDetachedOrAttached
 
+  def ifProcessable: Option[Order[IsFreshOrReady]] =
+    ifState[IsFreshOrReady].filter(_ => isProcessable2)
+
   def isProcessable: Boolean =
-    isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
+    isState[IsFreshOrReady] && isProcessable2
+
+  private def isProcessable2: Boolean =
+    !isSuspendedOrStopped && !isMarked
 
   def isInOutermostBlock: Boolean =
     position.branchPath == innerBlock

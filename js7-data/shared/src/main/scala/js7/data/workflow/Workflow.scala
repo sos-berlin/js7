@@ -378,7 +378,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
       case _: Execute.Anonymous => Right(anonymousJobKey(id /: position))
       case o: Execute.Named     => jobKey(position.branchPath, o.name)
 
-  def positionToJobKeyMaybe(position: Position): Option[JobKey] =
+  def maybePositionToJobKey(position: Position): Option[JobKey] =
     maybeExecuteInstr(position).flatMap:
       case _: Execute.Anonymous => Some(anonymousJobKey(id /: position))
       case o: Execute.Named     => jobKey(position.branchPath, o.name).toOption

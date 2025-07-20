@@ -275,7 +275,20 @@ private final class ItemCommandExecutor(
     if persisted.isEmpty then
       IO.right(())
     else
-      orderMotor.onItemEventPersisted(persisted)
+      onItemEventPersisted(persisted)
+
+  private def onItemEventPersisted(persisted: Persisted[AgentState, Event]): IO[Checked[Unit]] =
+    persisted.keyedEvents.foldMap:
+      case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
+        orderMotor.jobs.detachWorkflow(workflowId)
+          .map(Right(_))
+      case KeyedEvent(NoKey, ItemAttachedToMe(item)) =>
+        orderMotor.proceedWithItem(item)
+      case KeyedEvent(NoKey, SignedItemAttachedToMe(Signed(workflow: Workflow, _))) =>
+        orderMotor.jobs.attachWorkflow(persisted.aggregate.idToWorkflow(workflow.id))
+          .map(Right(_))
+      case _ =>
+        IO.right(())
 
 
 object ItemCommandExecutor:

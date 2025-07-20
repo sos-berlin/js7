@@ -41,7 +41,7 @@ extends JournaledState[S]:
   final def maybeJobKey(workflowPosition: WorkflowPosition): Option[JobKey] =
     for
       workflow <- idToWorkflow.get(workflowPosition.workflowId)
-      jobKey <- workflow.positionToJobKeyMaybe(workflowPosition.position)
+      jobKey <- workflow.maybePositionToJobKey(workflowPosition.position)
     yield
       jobKey
 

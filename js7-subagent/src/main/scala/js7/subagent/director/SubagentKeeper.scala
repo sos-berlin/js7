@@ -137,16 +137,22 @@ extends Service.StoppableByRequest:
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
   : IO[Checked[Unit]] =
     val orderId = order.id
-    selectSubagentDriverCancelable(order).flatMap:
-      case Left(problem) =>
-        failProcessStart(problem, order, onEvents)
+    if !order.isProcessable then
+      IO:
+        val msg = s"Order in job queue is not isProcessable: $order"
+        logger.error(msg)
+        Left(Problem.pure(msg))
+    else
+      selectSubagentDriverCancelable(order).flatMap:
+        case Left(problem) =>
+          failProcessStart(problem, order, onEvents)
 
-      case Right(None) =>
-        logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
-        IO.right(())
+        case Right(None) =>
+          logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
+          IO.right(())
 
-      case Right(Some(selectedDriver)) =>
-        processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
+        case Right(Some(selectedDriver)) =>
+          processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
 
   private def failProcessStart(
     problem: Problem,
@@ -185,6 +191,8 @@ extends Service.StoppableByRequest:
       agentState.idToOrder.checked(orderId).map: order2 =>
         if order2 != order then
           // Do nothing when the Order has been changed by a concurrent operation
+          logger.debug:
+            s"$orderId has concurrently been changed, no OrderProcessingStarted is emitted"
           Nil
         else
           val events: List[OrderStarted | OrderProcessingStarted] =
@@ -236,6 +244,7 @@ extends Service.StoppableByRequest:
                 subagentDriver.emitOrderProcessLostAfterRestart(order)
                   .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
               else
+                logger.trace(s"### subagentDriver.recoverOrderProcessing ${order.id}")
                 subagentDriver.recoverOrderProcessing(order)
             .materializeIntoChecked
             .flatTap:
