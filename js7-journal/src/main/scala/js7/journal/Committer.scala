@@ -51,7 +51,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
   protected final def logStatistics(): Unit =
     statistics.logLine.foreach:
-      logger.debug(_)
+      logger.debug
 
   protected final def whenCommitterTerminatedUnexpectedly: IO[Either[Throwable, Unit]] =
     committerTerminatedUnexpectedly.get
@@ -73,23 +73,23 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     // A snapshot is taken through stopping and starting the Committer.
     logger.debugIO("takeSnapshot"):
       snapshotLock.lock:
-        IO.defer:
-          // The new snapshot's EventId must differ from the last snapshot's EventId,
-          // otherwise no snapshot is taken, and the committer continues.
-          IO.whenA(
-            (!isStopping || ignoreIsStopping) &&
-              state.get.committed.eventId > lastSnapshotTakenEventId
-          ):
-            IO.uncancelable: _ => // Uncancelable !!!
-              stopCommitter >>
-                IO.whenA(!isStopping || ignoreIsStopping):
-                  startCommitter(isStarting = false)
+        // The new snapshot's EventId must differ from the last snapshot's EventId,
+        // otherwise no snapshot is taken, and the committer continues.
+        // A SnapshotTaken event at the beginning of a journal file increments the EventId.
+        whenDeferred(
+          (!isStopping || ignoreIsStopping) &&
+            state.get.committed.eventId > lastSnapshotTakenEventId
+        ):
+          IO.uncancelable: _ => // Uncancelable !!!
+            stopCommitter >>
+              IO.whenA(!isStopping || ignoreIsStopping):
+                startCommitter(isStarting = false)
         .logWhenMethodTakesLonger
 
   protected final def startCommitter(isStarting: Boolean): IO[Unit] =
     currentService.update:
       case Some(_) => IO.raiseError:
-        throw new IllegalStateException("startCommitter but Committer is already running")
+        new IllegalStateException("startCommitter but Committer is already running")
       case None =>
         logger.traceIO("startCommitter"):
           CommitterService.resource(isStarting = isStarting)
