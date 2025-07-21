@@ -51,7 +51,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
 import js7.subagent.Subagent
-import js7.tests.testenv.DirectoryProvider.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
 import scala.concurrent.ExecutionContext
@@ -88,6 +87,8 @@ final class DirectoryProvider(
   doNotAddItems: Boolean = false,
   commonIORuntime: Option[IORuntime] = None)
 extends HasCloser:
+  import DirectoryProvider.*
+
   private lazy val controllerPort_ = controllerPort
 
   val directory = useDirectory.getOrElse:
