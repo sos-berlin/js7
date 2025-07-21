@@ -13,8 +13,9 @@ private[launcher] final class SubagentProcessKiller private(
 extends ProcessKiller[Js7Process]:
 
   def sigtermMainProcessAndSaveDescendant(process: Js7Process): IO[Unit] =
-    IO.whenA(process.isAlive):
-      sigtermMainProcessesAndSaveDescendants(Seq(process))
+    IO.defer:
+      IO.whenA(process.isAlive):
+        sigtermMainProcessesAndSaveDescendants(Seq(process))
 
   def sigkillWithDescendants(process: Js7Process): IO[Unit] =
     sigkillWithDescendants(Seq(process))
