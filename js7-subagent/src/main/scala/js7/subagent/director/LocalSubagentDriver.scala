@@ -107,21 +107,25 @@ extends SubagentDriver, Service.StoppableByRequest:
           val stampedEvents = chunk.toVector.flatMap(_._1)
           val followUpAll = chunk.foldMap(_._2)
           IO.whenA(stampedEvents.nonEmpty):
-            stampedEvents.traverse: stamped =>
-              stamped.value match
-                case KeyedEvent(orderId: OrderId, _: OrderProcessed) =>
-                  // After an OrderProcessed event, a DetachProcessedOrder must be sent,
-                  // to terminate StartOrderProcess command idempotency detection and
-                  // allow a new StartOrderProcess command for a next process.
-                  subagent.commandExecutor
-                    .executeCommand(
-                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
-                      CommandMeta.System)
-                    .orThrow
-                    .void
-                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown | SubagentItemStateEvent.SubagentShutdownV7) =>
-                  whenSubagentShutdown.complete(()).void
-                case _ => IO.unit
+            val detachOrderIds = stampedEvents.collect:
+              case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) => orderId
+            IO.whenA(detachOrderIds.nonEmpty):
+              // After an OrderProcessed event, a DetachProcessedOrder must be sent,
+              // to terminate StartOrderProcess command idempotency detection and
+              // allow a new StartOrderProcess command for a next process.
+              subagent.commandExecutor
+                .executeCommand(
+                  Numbered(0, SubagentCommand.DetachProcessedOrders(detachOrderIds)),
+                  CommandMeta.System)
+                .orThrow
+                .void
+            .productR:
+              stampedEvents.traverse: stamped =>
+                stamped.value match
+                  case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown |
+                                                   SubagentItemStateEvent.SubagentShutdownV7) =>
+                    whenSubagentShutdown.complete(()).void
+                  case _ => IO.unit
             .flatMap: _ =>
               val lastEventId = stampedEvents.last.eventId
               // TODO Save Stamped timestamp
@@ -305,10 +309,6 @@ extends SubagentDriver, Service.StoppableByRequest:
       .onError: t =>
         // Error isn't logged until stopEventListener is called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
-
-  protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
-    enqueueCommandAndForget:
-      SubagentCommand.DetachProcessedOrder(orderId)
 
   protected def releaseEvents(eventId: EventId): IO[Unit] =
     enqueueCommandAndForget:

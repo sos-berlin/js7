@@ -197,9 +197,9 @@ extends MainService, Service.StoppableByRequest:
     subagent.checkedDedicatedSubagent.traverse:
       _.killProcess(orderId, signal)
 
-  def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
+  def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Checked[Unit]] =
     IO(checkedDedicatedSubagent)
-      .flatMapT(_.detachProcessedOrder(orderId))
+      .flatMapT(_.detachProcessedOrders(orderIds))
 
   def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
     journal.releaseEvents(eventId)

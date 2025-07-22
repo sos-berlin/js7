@@ -19,19 +19,20 @@ extends CommandDispatcher:
 
   // Required only for change of URI when it denotes the same running Subagent
   private def enqueueExecutes(previous: SubagentDispatcher): IO[Unit] =
-    logger.debugIO(previous
-      .queue
-      .stop
-      .flatMap(executes => queue
-        .enqueueNumbered(executes
-          .filter(_.value.command match {
-            case _: SubagentCommand.OrderCommand => true
-            case _: SubagentCommand.ReleaseEvents => false
-            case _: SubagentCommand.ShutDown => false
-          })
-          .tapEach(cmd => logger.debug(s"enqueueExecutes $cmd"))
-          .map(numbered => numbered.copy(
-            value = new Execute(numbered.value.command, numbered.value.promise))))))
+    logger.debugIO:
+      previous.queue.stop
+        .flatMap: executes =>
+          queue.enqueueNumbered:
+            executes.filter:
+              _.value.command match
+                case _: SubagentCommand.OrderCommand => true
+                case _: SubagentCommand.DetachProcessedOrders => true
+                case _: SubagentCommand.ReleaseEvents => false
+                case _: SubagentCommand.ShutDown => false
+            .tapEach(cmd => logger.debug(s"enqueueExecutes $cmd"))
+            .map: numbered =>
+              numbered.copy(
+                value = new Execute(numbered.value.command, numbered.value.promise))
 
   override def toString = s"SubagentDispatcher($name)"
 

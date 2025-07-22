@@ -309,11 +309,12 @@ extends Service.StoppableByRequest:
             logger.debug:
               s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}")
 
-  def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
-    orderToProcessing.remove(orderId)
-      .flatMap(_.fold(IO.unit):
-        _.acknowledged.complete(()))
-      .as(Checked.unit)
+  def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Checked[Unit]] =
+    orderIds.foldMap: orderId =>
+      orderToProcessing.remove(orderId)
+        .flatMap(_.fold(IO.unit):
+          _.acknowledged.complete(()))
+        .as(Checked.unit)
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,

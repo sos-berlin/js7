@@ -13,7 +13,7 @@ import js7.data.event.JournalId
 import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
+import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, DetachProcessedOrders, KillProcess, ShutDown, StartOrderProcess}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -172,6 +172,22 @@ final class SubagentCommandTest extends OurTestSuite:
               "position": [ 0 ]
             }
           }
+        }""")
+
+    "DetachProcessedOrder" in:
+      testJson[SubagentCommand](
+        DetachProcessedOrder(OrderId("ORDER")),
+        json"""{
+          "TYPE": "DetachProcessedOrder",
+          "orderId": "ORDER"
+        }""")
+
+    "DetachProcessedOrders" in:
+      testJson[SubagentCommand](
+        DetachProcessedOrders(Seq(OrderId("ORDER"))),
+        json"""{
+          "TYPE": "DetachProcessedOrders",
+          "orderIds": ["ORDER"]
         }""")
 
     "KillProcess" in:

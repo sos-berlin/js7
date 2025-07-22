@@ -46,7 +46,7 @@ private trait SubagentEventListener:
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: HttpSubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
-  protected def detachProcessedOrder(orderId: OrderId): IO[Unit]
+  protected def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Unit]
   protected def releaseEvents(eventId: EventId): IO[Unit]
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : IO[Option[IO[Unit]]]
@@ -130,10 +130,9 @@ private trait SubagentEventListener:
                 // After an OrderProcessed event a DetachProcessedOrder must be sent,
                 // to terminate StartOrderProcess command idempotency detection and
                 // allow a new StartOrderProcess command for a next process.
-                .*>(updatedStampedSeq
-                  .collect:
-                    case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o
-                  .traverse(detachProcessedOrder))
+                .*>(detachProcessedOrders:
+                  updatedStampedSeq.collect:
+                    case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) => orderId)
                 .*>(lastEventId.traverse(releaseEvents))
                 .*>(followUps.combineAll))
           .onFinalize:

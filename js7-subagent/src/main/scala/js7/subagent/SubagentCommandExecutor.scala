@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import js7.core.command.CommandMeta
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentCommand
-import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
+import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, DetachProcessedOrders, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.subagent.SubagentCommandExecutor.*
 import scala.concurrent.duration.Deadline.now
@@ -84,11 +84,18 @@ private[subagent] final class SubagentCommandExecutor(
                 restart = restart)
               .as(Right(SubagentCommand.Accepted))
 
+          case DetachProcessedOrders(orderIds) =>
+            // DO NOT execute concurrently with a following StartOrderProcess(orderId)
+            // OrderId must be released before start of next order.
+            // Otherwise idempotency detection would kick in.
+            subagent.detachProcessedOrders(orderIds)
+              .rightAs(SubagentCommand.Accepted)
+
           case DetachProcessedOrder(orderId) =>
             // DO NOT execute concurrently with a following StartOrderProcess(orderId)
             // OrderId must be released before start of next order.
             // Otherwise idempotency detection would kick in.
-            subagent.detachProcessedOrder(orderId)
+            subagent.detachProcessedOrders(orderId :: Nil)
               .rightAs(SubagentCommand.Accepted)
 
           case ReleaseEvents(eventId) =>

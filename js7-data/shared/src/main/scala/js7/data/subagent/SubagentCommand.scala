@@ -34,6 +34,8 @@ object SubagentCommand extends CommonCommand.Companion:
   type Accepted = Accepted.type
   case object Accepted extends Response
 
+  sealed trait Queueable extends SubagentCommand
+
   final case class Batch(commands: Seq[CorrelIdWrapped[SubagentCommand]])
   extends SubagentCommand, CommonBatch, Big:
     type Response = Batch.Response
@@ -102,8 +104,6 @@ object SubagentCommand extends CommonCommand.Companion:
     implicit val jsonDecoder: Decoder[AttachSignedItem] =
       c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
 
-  sealed trait Queueable extends SubagentCommand
-
   sealed trait OrderCommand extends Queueable:
     def orderId: OrderId
 
@@ -123,8 +123,13 @@ object SubagentCommand extends CommonCommand.Companion:
   extends OrderCommand:
     type Response = Accepted
 
+  // COMPATIBLE with v2.8.0
   final case class DetachProcessedOrder(orderId: OrderId)
   extends OrderCommand:
+    type Response = Accepted
+
+  final case class DetachProcessedOrders(orderIds: Seq[OrderId])
+  extends Queueable, Big:
     type Response = Accepted
 
   final case class ShutDown(
@@ -163,6 +168,7 @@ object SubagentCommand extends CommonCommand.Companion:
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
     Subtype(deriveCodec[DetachProcessedOrder]),
+    Subtype(deriveCodec[DetachProcessedOrders]),
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
     Subtype(deriveCodec[KillProcess]),
