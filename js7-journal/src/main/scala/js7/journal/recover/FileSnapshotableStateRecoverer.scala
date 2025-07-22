@@ -161,7 +161,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
           ) + " read"
     if snapshotCount + _eventCount > 0 then
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
-      logger.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
+      logger.info(s"Recovered $S, last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
         s"($snapshotCount snapshot objects and ${_eventCount} events" +
         byteCount.fold("")(o => ", " + toKBGB(o)) +
         " read" +

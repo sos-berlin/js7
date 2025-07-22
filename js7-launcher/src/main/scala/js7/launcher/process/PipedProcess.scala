@@ -91,7 +91,8 @@ final class PipedProcess private(
               logger.debug(s"terminated with $returnCode")
               IO:
                 logger.info:
-                  s"terminated with $returnCode, awaiting stdout or stderr (maybe a child process is still running)"
+                  s"terminated with ${returnCode
+                    }, still awaiting stdout or stderr (maybe a child process is still running)"
               .delayBy(conf.worryAboutStdoutAfterTermination)
               .background.surround:
                 val what = s"$orderId stdout or stderr"

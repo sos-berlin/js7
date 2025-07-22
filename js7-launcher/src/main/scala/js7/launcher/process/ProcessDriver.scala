@@ -26,6 +26,7 @@ final class ProcessDriver(
   jobLauncherConf: JobLauncherConf):
 
   import jobLauncherConf.crashPidFile
+  private val logger = Logger.withPrefix[ProcessDriver](orderId.toString)
   private val pipedProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString, suppressLog = true)
   @volatile private var killed = false
@@ -61,7 +62,7 @@ final class ProcessDriver(
                   .flatMap: _ =>
                     IO.defer:
                       logger.info:
-                        s"$orderId ↘ Process ${process.process} started · ${conf.jobKey} · ${conf.commandLine}"
+                        s"↘ Process ${process.process} started · ${conf.jobKey} · ${conf.commandLine}"
                       killedBeforeStart.traverse:
                         sendProcessSignal(process, _)
                   .flatMap: _ =>
@@ -70,7 +71,7 @@ final class ProcessDriver(
                         IO.defer:
                           // Don't log PID because the process may have terminated long before
                           // stdout or stderr ended (due to still running child processes)
-                          logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
+                          logger.info(s"↙ Process completed with ${either.merge} after ${
                             process.duration.pretty}")
                           IO.fromEither(either)
                       .flatMap: returnCode =>
@@ -130,7 +131,7 @@ final class ProcessDriver(
           case None =>
             IO:
               killedBeforeStart = Some(signal)
-              logger.debug(s"$orderId ◼️ Kill before start")
+              logger.debug(s"◼️ Kill before start")
           case Some(pipedProcess) =>
             sendProcessSignal(pipedProcess, signal)
 
@@ -143,7 +144,6 @@ final class ProcessDriver(
 
 
 object ProcessDriver:
-  private val logger = Logger[this.type]
   private val meterProcess = CallMeter("Process")
 
   private[process] final case class Conf(

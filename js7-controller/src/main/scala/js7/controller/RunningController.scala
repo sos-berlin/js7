@@ -186,6 +186,8 @@ extends MainService, Service.StoppableByRequest:
     .mapTo[JournalActor.Output.JournalActorState]
     .await(99.s)
 
+  override def toString = "RunningController"
+
 
 object RunningController:
   private lazy val logger = Logger[this.type]

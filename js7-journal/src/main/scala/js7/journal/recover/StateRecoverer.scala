@@ -22,7 +22,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
   journalLocation: JournalLocation,
   newFileJournaledStateRecoverer: () => FileSnapshotableStateRecoverer[S])
-  (implicit S: SnapshotableState.Companion[S]):
+  (using S: SnapshotableState.Companion[S]):
 
   private val fileRecoverer = newFileJournaledStateRecoverer()
 
@@ -31,7 +31,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   private val _firstEventPosition = SetOnce[Long]
 
   def recoverAll(): Unit =
-    logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
+    logger.info(s"Recovering $S from file ${file.getFileName} (${toKBGB(Files.size(file))})")
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do

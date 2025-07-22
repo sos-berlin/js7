@@ -244,7 +244,6 @@ extends Service.StoppableByRequest:
                 subagentDriver.emitOrderProcessLostAfterRestart(order)
                   .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
               else
-                logger.trace(s"### subagentDriver.recoverOrderProcessing ${order.id}")
                 subagentDriver.recoverOrderProcessing(order)
             .materializeIntoChecked
             .flatTap:
