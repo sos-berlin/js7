@@ -174,7 +174,8 @@ object AsyncMap:
     private val whenEmpty = Deferred.unsafe[IO, Unit]
     @volatile private var stoppingProblem: Problem | Null = null
 
-    private def isStopping = stoppingProblem != null
+    def isStopping: Boolean =
+      stoppingProblem != null
 
     def isStoppingWith(problem: Problem): Boolean =
       problem == stoppingProblem

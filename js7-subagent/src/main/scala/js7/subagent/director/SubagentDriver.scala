@@ -123,7 +123,11 @@ trait SubagentDriver:
   : IO[Option[IO[Unit]]] =
     orderToDeferred.remove(orderId).map:
       case None =>
-        logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
+        val msg = s"Unknown Order for event: ${orderId <-: orderProcessed}"
+        if orderToDeferred.isStopping then
+          logger.debug(msg)
+        else
+          logger.error(msg)
         None
 
       case Some(processing) =>
