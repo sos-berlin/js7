@@ -7,8 +7,9 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.startAndForget
+import js7.base.catsutils.CatsEffectExtensions.{True, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
+import js7.base.catsutils.{FiberVar, UnsafeMemoizable}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -40,7 +41,7 @@ import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
 transparent trait Committer[S <: SnapshotableState[S]]:
-  journal: FileJournal[S] =>
+  this: FileJournal[S] =>
 
   private val snapshotLock = AsyncLock()
   private val currentService = AsyncVariable(none[Allocated[IO, CommitterService]])
@@ -59,17 +60,29 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   protected final def isSwitchedOver =
     _isSwitchedOver
 
+
+  private val snapshotPeridicallyFiber = FiberVar[Unit]
+
   protected final def snapshotPeriodically: IO[Unit] =
-    fs2.Stream.awakeEvery[IO](conf.snapshotPeriod)
-      .interruptWhenF(untilStopRequested)
-      .evalMap: _ =>
-        takeSnapshot
-      .compile.drain
+    logger.traceIO:
+      restartSnapshotTimerSignal.discrete.as(false)
+        .keepAlive(conf.snapshotPeriod, IO.True)
+        .filter(identity) // let through keep-alives
+        .interruptWhenF(untilStopRequested)
+        .evalMap: _ =>
+          IO.defer:
+            logger.debug:
+              s"takeSnapshot because period of ${conf.snapshotPeriod.pretty} has elapsed"
+            takeSnapshot(dontSignal = ())
+        .compile.drain
 
   final def takeSnapshot: IO[Unit] =
-    takeSnapshot(ignoreIsStopping = false)
+    takeSnapshot(dontSignal = ()) *>
+      restartSnapshotTimerSignal.set(())
 
-  protected final def takeSnapshot(ignoreIsStopping: Boolean): IO[Unit] =
+  /** @param dontSignal To make the difference to argumentless takeSignal clear. */
+  protected final def takeSnapshot(ignoreIsStopping: Boolean = false, dontSignal: Unit)
+  : IO[Unit] =
     // A snapshot is taken through stopping and starting the Committer.
     logger.debugIO("takeSnapshot"):
       snapshotLock.lock:
@@ -414,7 +427,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       IO.defer:
         IO.whenA(!isStopping && isJournalFileTooBig):
           IO.unlessA(snapshotBecauseBig.getAndSet(true)):
-            logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)
+            logger.debug(s"takeSnapshot because written size ${toKBGB(eventWriter.bytesWritten)
               } is above the limit ${toKBGB(conf.fileSizeLimit)}")
             // takeSnapshot stops this Committer and starts new one. This is recursive !!!
             takeSnapshot

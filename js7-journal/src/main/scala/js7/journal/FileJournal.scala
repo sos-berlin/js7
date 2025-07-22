@@ -49,6 +49,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   recovered: Recovered[S],
   val conf: JournalConf,
   protected val journalQueue: Queue[IO, Option[QueueEntry[S]]],
+  protected val restartSnapshotTimerSignal: SignallingRef[IO, Unit],
   protected val requireClusterAck: SignallingRef[IO, Boolean],
   protected val ackSignal: SignallingRef[IO, EventId],
   protected val clock: WallClock,
@@ -131,7 +132,7 @@ extends
               .guarantee:
                 IO.defer:
                   IO.whenA(!isSwitchedOver && !_suppressSnapshotWhenStopping):
-                    takeSnapshot(ignoreIsStopping = true)
+                    takeSnapshot(ignoreIsStopping = true, dontSignal = ())
               .guarantee:
                 stopCommitter
               .guarantee:
@@ -352,13 +353,14 @@ object FileJournal:
           requireClusterAck <- SignallingRef[IO].of:
             recovered.clusterState.isInstanceOf[ClusterState.Coupled]
           ackSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
+          restartSnapshotTimerSignal <- SignallingRef[IO].of(())
           clock <- Environment.environmentOr[WallClock](WallClock)
           eventIdGenerator <- eventIdGenerator match
             case None => Environment.environmentOr[EventIdGenerator](EventIdGenerator(clock))
             case Some(o) => IO.pure(o)
         yield
           new FileJournal(recovered, conf,
-            queue, requireClusterAck, ackSignal, clock, eventIdGenerator, bean)
+            queue, restartSnapshotTimerSignal, requireClusterAck, ackSignal, clock, eventIdGenerator, bean)
     yield
       journal
 
