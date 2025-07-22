@@ -229,11 +229,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def runStream: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
-          .through(pipe)
+          .through(pipeline)
           .interruptWhenF(whenBeingKilled.get)
           .compile.drain
 
-    private def pipe: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
+    private def pipeline: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
       .chunks
       .evalMap[IO, Chunk[Applied]]/*IntelliJ*/: chunk =>
         // Try to preserve the chunks for faster processing!
@@ -285,10 +285,10 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       //</editor-fold>
       // TODO Return early when no keyedEvents
       .filter(_.nonEmpty)
-      .prefetch // Process two chunks concurrently //
+      .prefetch // Process two chunks concurrently // TODO Apparently, this makes it slower?
       .evalMap:
         writeToFile
-        // maybe optimize: flush concurrently, but only whole lines must be flushed
+        // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .prefetch // Process three chunks concurrently //
       .evalMap: chunk =>
@@ -354,22 +354,10 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       IO.blocking:
         // TODO parallelize JSON serialization properly!
         chunk.map: applied =>
-          import applied.{commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
+          import applied.{commitOptions, stampedKeyedEvents}
           val positionAndEventId =
             eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
-          val lastStamped = stampedKeyedEvents.lastOption
-          Written(
-            eventId = lastStamped.fold(applied.aggregate.eventId)(_.eventId),
-            eventCount = stampedKeyedEvents.size,
-            lastStamped,
-            applied.originalAggregate,
-            if applied.commitOptions.commitLater then
-              // Reduce heap usage. The (OrderStdWritten) events will neither be logged nor returned.
-              Vector.empty
-            else
-              stampedKeyedEvents,
-            applied.aggregate, since, eventNumber, commitOptions, whenPersisted,
-            positionAndEventId)
+          Written.fromApplied(applied, positionAndEventId)
       .flatMap: chunk =>
         IO.blocking:
           eventWriter.flush(sync = conf.syncOnCommit)
@@ -466,7 +454,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     val stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]]
     val aggregate: S
     val commitOptions: CommitOptions
-    val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
+    protected val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
 
     final def completePersisted: IO[Unit] =
       IO(bean.persistTotal += 1) *>
@@ -493,8 +481,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     commitOptions: CommitOptions,
     since: Deadline,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
-    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
-  ) extends AppliedOrFlushed:
+    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
+  extends AppliedOrFlushed:
     def completeApplied: IO[Unit] =
       whenApplied.complete(Right(persisted))
         .void
@@ -520,6 +508,26 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def stampedSeq = stampedKeyedEvents
     def nonEmpty = eventCount > 0
     def clusterState: String = aggregate.clusterState.getClass.simpleScalaName
+
+  private object Written:
+    def fromApplied(
+      applied: Applied,
+      positionAndEventId: PositionAnd[EventId])
+    : Written =
+      val lastStamped = applied.stampedKeyedEvents.lastOption
+      Written(
+        eventId = lastStamped.fold(applied.aggregate.eventId)(_.eventId),
+        eventCount = applied.stampedKeyedEvents.size,
+        lastStamped,
+        applied.originalAggregate,
+        if applied.commitOptions.commitLater then
+          // Reduce heap usage. The (OrderStdWritten) events will neither be logged nor returned.
+          Vector.empty
+        else
+          applied.stampedKeyedEvents,
+        applied.aggregate, applied.since, applied.eventNumber, applied.commitOptions,
+        applied.whenPersisted,
+        positionAndEventId)
 
 end Committer
 
