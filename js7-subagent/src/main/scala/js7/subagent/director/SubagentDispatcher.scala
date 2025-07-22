@@ -14,6 +14,7 @@ private final class SubagentDispatcher(
   protected val postCommand: PostCommand)
 extends CommandDispatcher:
   protected type Command = SubagentCommand.Queueable
+  protected type Response = Unit
 
   protected def name = subagentId.toString
 
