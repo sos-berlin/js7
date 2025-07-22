@@ -41,12 +41,9 @@ private final class JobMotorsKeeper(
   private val lock = AsyncLock()
 
   def stop: IO[Unit] =
-    IO.defer:
-      if jobToMotor.nonEmpty then
-        logger.warn("JobMotorsKeeper stop, but Workflows have not been detached")
-      jobToMotor.removeAll.flatMap:
-        _.values.toVector.parFoldMapA:
-          _.release
+    jobToMotor.removeAll.flatMap:
+      _.values.toVector.parFoldMapA:
+        _.release
 
   def attachWorkflow(workflow: Workflow): IO[Unit] =
     val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
