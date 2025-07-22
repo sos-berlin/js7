@@ -169,6 +169,11 @@ private trait SubagentEventListener:
           None -> IO.unit
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+        // TODO Aufträge im Zustand Processing abbrechen.
+        // Das sind Aufträge, für die ein OrderProcessingStarted ausgegeben wurde, die aber noch
+        // nicht zum Subagenten geschickt worden sind, sodass der die nicht mit Disrupted
+        // abschließen kann.
+        // onSubagentDied? OrderProcessed wie oben behandeln als käme es vom Subgenten.
         IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
