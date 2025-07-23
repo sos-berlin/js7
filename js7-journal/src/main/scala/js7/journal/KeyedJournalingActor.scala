@@ -44,7 +44,7 @@ extends JournalingActor[S, E]:
   : Future[A] =
     super.persist(
       EventCalc.pure(events.map(toKeyedEvent)),
-      CommitOptions(transaction = true),
+      CommitOptions.Transaction,
       async = async):
       persisted => callback(
         persisted.stampedKeyedEvents.map(_.value.event.asInstanceOf[EE]),
@@ -62,7 +62,7 @@ extends JournalingActor[S, E]:
     super.persistKeyedEventsReturnChecked(
       EventCalc.pure:
         events.map(e => key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e),
-      CommitOptions(transaction = true),
+      CommitOptions.Transaction,
       async = async):
       persisted => callback(
         persisted.stampedKeyedEvents.map(_.value.event.asInstanceOf[EE]),

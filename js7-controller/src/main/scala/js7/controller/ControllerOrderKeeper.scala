@@ -435,7 +435,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       val orderIds = orderQueue.readAll()
       persist(
         ControllerStateExecutor.nextOrderEvents(orderIds),
-        CommitOptions(transaction = true)
+        CommitOptions.Transaction
       )(handleEvents)
 
     case Command.Execute(command, meta, correlId) =>
@@ -994,7 +994,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     persist(
       EventCalc.pure:
         addSubsequentEvents.calculate(coll).orThrow.keyedEvents,
-      CommitOptions(transaction = true)
+      CommitOptions.Transaction
     )(callback)
 
   private def addSubsequentEvents: EventCalc[ControllerState, Event, TimeCtx] =

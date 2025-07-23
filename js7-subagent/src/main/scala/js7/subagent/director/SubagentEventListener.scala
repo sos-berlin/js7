@@ -125,7 +125,7 @@ private trait SubagentEventListener:
                 .toVector
               // TODO Save Stamped timestamp
               journal
-                .persistKeyedEvents(CommitOptions(transaction = true))(events)
+                .persistKeyedEvents(CommitOptions.Transaction)(events)
                 .map(_.orThrow /*???*/)
                 // After an OrderProcessed event a DetachProcessedOrder must be sent,
                 // to terminate StartOrderProcess command idempotency detection and
