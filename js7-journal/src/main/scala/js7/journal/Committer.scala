@@ -271,7 +271,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               val applied = applied_ : Applied/*IntelliJ 2025.1*/
               if applied.stampedKeyedEvents.isEmpty then
                 // When no events, exit early //
-                (applied.completeApplied *> applied.completePersisted)
+                (applied.completeApplied *> applied.completePersistOperation)
                   .as(Chunk.empty)
               else
                 applied.stampedKeyedEvents.lastOption.map(_.value.event).match
@@ -335,7 +335,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             statistics.onPersisted(written.eventCount, written.since)
             eventWriter.onCommitted(written.positionAndEventId, n = written.eventCount)
             //NOT TESTED: IO.unlessA(written.commitOptions.commitLater):
-              written.completePersisted
+            written.completePersistOperation
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater
         chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).traverse: stamped =>
@@ -469,10 +469,13 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     val commitOptions: CommitOptions
     protected val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
 
-    final def completePersisted: IO[Unit] =
-      IO(bean.persistTotal += 1) *>
-        whenPersisted.complete(Right(persisted))
-          .void
+    def nonEmpty: Boolean
+
+    final def completePersistOperation: IO[Unit] =
+      whenPersisted.complete(Right(persisted))
+        .map: ok =>
+          if ok && nonEmpty then
+          bean.commitTotal += 1
 
     protected final def persisted: Persisted[S, Event] =
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)
@@ -496,6 +499,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
   extends AppliedOrFlushed:
+    def nonEmpty = stampedKeyedEvents.nonEmpty
+
     def completeApplied: IO[Unit] =
       whenApplied.complete(Right(persisted))
         .void
