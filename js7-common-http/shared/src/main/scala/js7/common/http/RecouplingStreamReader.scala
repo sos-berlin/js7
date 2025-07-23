@@ -223,7 +223,7 @@ abstract class RecouplingStreamReader[
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
               updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
             yield updatedIndex
-          ) .materializeIntoChecked
+          ) .catchIntoChecked
             .flatMap {
               case Left(problem) =>
                 if isStopped then

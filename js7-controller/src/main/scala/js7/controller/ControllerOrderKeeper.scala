@@ -13,7 +13,7 @@ import com.softwaremill.tagging.@@
 import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
-import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, now}
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.SyncDeadline
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -336,7 +336,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             coll
       ) { persisted =>
         clusterNode.afterJournalingStarted
-          .materializeIntoChecked
+          .catchIntoChecked
           .map(Internal.Ready.apply)
           .unsafeToFuture()
           .pipeTo(self)
@@ -854,7 +854,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                             .agentDriver.reset(force = force)
                             .onError: t =>
                               IO(logger.error("ResetAgent: " + t.toStringWithCauses, t))
-                            .materializeIntoChecked
+                            .catchIntoChecked
                             .flatMapT: _ =>
                               journal.persist(_
                                 .keyTo(AgentRefState).checked(agentPath)
@@ -896,7 +896,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
               agentDriver
                 .executeCommandDirectly(AgentCommand.ClusterSwitchOver)
                 .logWhenItTakesLonger(s"$agentDriver.send(ClusterSwitchOver)")
-                .materializeIntoChecked
+                .catchIntoChecked
                 .rightAs(ControllerCommand.Response.Accepted)
                 .unsafeToFuture()
 

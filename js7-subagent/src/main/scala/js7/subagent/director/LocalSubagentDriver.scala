@@ -234,7 +234,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         orderToExecuteDefaultArguments(order)
           .flatMapT:
             subagent.startOrderProcess(order, _, endOfAdmissionPeriod)
-          .materializeIntoChecked
+          .catchIntoChecked
           .flatMap:
             case Left(problem) =>
               orderToDeferred

@@ -109,11 +109,6 @@ object CatsEffectExtensions:
   extension [A](io: IO[Checked[A]])
 
     /** Catches a Throwable into `Checked[A]`. */
-    // TODO Use catchIntoChecked
-    def materializeIntoChecked: IO[Checked[A]] =
-      catchIntoChecked
-
-    /** Catches a Throwable into `Checked[A]`. */
     def catchIntoChecked: IO[Checked[A]] =
       io.attempt.map(either => Checked.fromThrowableEither(either).flatten)
 

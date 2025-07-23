@@ -309,7 +309,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           orderToExecuteDefaultArguments(order)
             .map(_.map(StartOrderProcess(order, _)))
             .flatMapT(dispatcher.executeCommand)
-            .materializeIntoChecked
+            .catchIntoChecked
             .flatMap:
               case Left(problem) =>
                 // StartOrderProcess failed
