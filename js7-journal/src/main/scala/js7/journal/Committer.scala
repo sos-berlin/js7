@@ -270,8 +270,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             case Right(applied_) =>
               val applied = applied_ : Applied/*IntelliJ 2025.1*/
               if applied.stampedKeyedEvents.isEmpty then
-                // exit early
-                applied.completeApplied *> applied.completePersisted.as(Chunk.empty)
+                // When no events, exit early //
+                (applied.completeApplied *> applied.completePersisted)
+                  .as(Chunk.empty)
               else
                 applied.stampedKeyedEvents.lastOption.map(_.value.event).match
                   case Some(_: ClusterSwitchedOver) =>
@@ -296,7 +297,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
       //    .maxOption.getOrElse(ZeroDuration)
       //</editor-fold>
-      // TODO Return early when no keyedEvents
       .filter(_.nonEmpty)
       .prefetch // Process two chunks concurrently // TODO Apparently, this makes it slower?
       .evalMap:
@@ -334,7 +334,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           IO.defer:
             statistics.onPersisted(written.eventCount, written.since)
             eventWriter.onCommitted(written.positionAndEventId, n = written.eventCount)
-            IO.unlessA(written.commitOptions.commitLater):
+            //NOT TESTED: IO.unlessA(written.commitOptions.commitLater):
               written.completePersisted
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater

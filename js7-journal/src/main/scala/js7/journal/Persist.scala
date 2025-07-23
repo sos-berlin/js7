@@ -6,7 +6,7 @@ import scala.concurrent.duration.Deadline
 /** Command to write and commit events to the Journal. */
 final case class Persist[S <: EventDrivenState[S, E], E <: Event] private(
   eventCalc: EventCalc[S, E, TimeCtx],
-  options: CommitOptions,
+  commitOptions: CommitOptions,
   since: Deadline)
 
 

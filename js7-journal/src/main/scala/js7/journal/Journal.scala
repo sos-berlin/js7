@@ -39,12 +39,12 @@ trait Journal[S <: JournaledState[S]] extends Service:
       EventCalc.pure(keyedEvents)
 
   final def persist[E <: Event](
-    commitOptions: CommitOptions = CommitOptions.default,
+    options: CommitOptions = CommitOptions.default,
     since: Deadline = Deadline.now)
     (eventCalc: EventCalc[S, E, TimeCtx])
   : IO[Checked[Persisted[S, E]]] =
     persist_(
-      Persist(commitOptions, since)(eventCalc))
+      Persist(options, since)(eventCalc))
 
   @targetName("persist_rightNoKeys")
   final def persist[E <: NoKeyEvent](aggregateToEvents: S => IterableOnce[E])

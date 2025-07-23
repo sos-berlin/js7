@@ -204,7 +204,7 @@ extends
       val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
       val queueEntry = QueueEntry[S](
-        persist.eventCalc.widen[S, Event, TimeCtx], persist.options, persist.since,
+        persist.eventCalc.widen[S, Event, TimeCtx], persist.commitOptions, persist.since,
         whenApplied, whenPersisted)
       IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
         case Left(problem) =>
@@ -376,7 +376,7 @@ object FileJournal:
 
   private[journal] final case class QueueEntry[S <: EventDrivenState[S, Event]](
     eventCalc: EventCalc[S, Event, TimeCtx],
-    commitOptions: CommitOptions = CommitOptions.default,
+    commitOptions: CommitOptions,
     since: Deadline,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
