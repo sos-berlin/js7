@@ -1,12 +1,12 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, Outcome, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Outcome, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
@@ -223,11 +223,14 @@ extends Service.StoppableByRequest:
                   logger.warn:
                     s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost"
                   orderToProcessing.remove(order.id).void
-
-              case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
+              case outcome => IO.unit
             .map: fiber =>
               Right:
                 new Processing(order.workflowPosition, fiber)
+      .onError: t =>
+        logger.error(s"🔥 startOrderProcess ${order.id}: ${t.toStringWithCauses}", t)
+        // Tidy-up on failure
+        orderToProcessing.remove(order.id).void
       .map(_.map(_.fiber))
 
   private def startOrderProcess2(
@@ -246,8 +249,7 @@ extends Service.StoppableByRequest:
             logger.debug(s"⚠️ $orderProcessed suppressed because journal is halted")
             IO.pure(orderProcessed)
           else
-            journal
-              .persistSingle(order.id <-: orderProcessed)
+            journal.persistSingle(order.id <-: orderProcessed)
               .map(_.orThrow._1.value.event)
         .start)
 
