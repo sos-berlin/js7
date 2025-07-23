@@ -286,7 +286,7 @@ extends Service.StoppableByRequest:
   : ResourceIO[StdObservers] =
     import subagentConf.{outerrByteBufferSize, outerrQueueSize, stdouterr}
     for
-      outErrStatistics <- outErrStatisticsResource
+      outErrStatistics <- OutErrStatistics.stdouterrToStatisticsResource
       stdObservers <- StdObservers.resource(
         outErrToJournalSink(order.id, outErrStatistics),
         byteBufferSize = outerrByteBufferSize,
@@ -297,19 +297,6 @@ extends Service.StoppableByRequest:
         name = s"${order.id} ${order.workflowPosition}")
     yield
       stdObservers
-
-  /** Logs some stdout and stderr statistics. */
-  private def outErrStatisticsResource: ResourceIO[Map[StdoutOrStderr, OutErrStatistics]] =
-    Resource
-      .make(
-        acquire = IO:
-          Map[StdoutOrStderr, OutErrStatistics](
-            Stdout -> new OutErrStatistics,
-            Stderr -> new OutErrStatistics))(
-        release = outErrStatistics => IO:
-          if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then
-            logger.debug:
-              s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}")
 
   def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Checked[Unit]] =
     orderIds.foldMap: orderId =>
@@ -332,14 +319,13 @@ extends Service.StoppableByRequest:
         chunk.toVector.map: string =>
           orderId <-: OrderStdWritten(outErr)(string)
       .foreach: events =>
-        val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
-        outErrStatistics(outErr)
-          .count(n = events.size, totalLength = totalLength):
-            journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
-          .map:
-            case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-            case Right(_) =>
-          .void
+        val charCount = events.iterator.map(_.event.chunk.length).sum
+        outErrStatistics(outErr).count(n = events.size, charCount = charCount):
+          journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
+        .map:
+          _.onProblem: problem =>
+            logger.error(s"Emission of OrderStdWritten event failed: $problem")
+        .void
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

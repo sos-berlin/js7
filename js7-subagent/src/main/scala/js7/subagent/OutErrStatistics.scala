@@ -1,37 +1,80 @@
 package js7.subagent
 
+import cats.effect.{IO, Resource, ResourceIO}
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.subagent.OutErrStatistics.*
-import cats.effect.IO
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 private final class OutErrStatistics:
   private val runningSince = now
-  private var blockedNanos = 0L
-  private var messageCount = 0
-  private var size = 0L
+  private var persistDuraton = ZeroDuration
+  private var eventTotal = 0
+  private var charTotal = 0L
 
-  def count[A](totalLength: Int, n: Int = 1)(io: IO[A]): IO[A] =
-    messageCount += n
-    size += totalLength
-    io.timed.map { case (duration, a) =>
-      blockedNanos += duration.toNanos
+  def count[A](n: Int = 1, charCount: Int)(body: IO[A]): IO[A] =
+    eventTotal += n
+    charTotal += charCount
+    body.timed.map: (duration, a) =>
+      persistDuraton += duration
+      Bean.persistNanos += duration.toNanos
+      Bean.eventTotal += n
+      Bean.charTotal += charCount
       a
-    }
 
-  def isRelevant = blockedNanos >= RelevantBlockedNanos
+  def isRelevant: Boolean =
+    persistDuraton >= RelevantDuration
 
   override def toString =
-    s"$messageCount chunks" +
-      (if size == 0 then "" else {
-        val blocked = blockedNanos.nanoseconds
-        val duration = runningSince.elapsed.toNanos
-        val percentage = if duration == 0 then 1 else 100 * blocked.toNanos / duration
-        s" (${toKBGB(size)}), blocked ${blocked.pretty} " +
-          s"${(blocked / messageCount).pretty}/chunk ($percentage%)"
-      })  // This is the time an unbuffered stdout/stderr pipe is blocked
+    s"$eventTotal OrderStdWritten events" + locally:
+      if charTotal == 0 then
+        ""
+      else locally:
+        val duration = persistDuraton
+        val totalDuration = runningSince.elapsed
+        val percentage = if totalDuration.isZero then 100.0 else 100 * totalDuration / totalDuration
+        s" (${toKBGB(charTotal)}), blocked output ${duration.pretty} " +
+          s"⏱️ ${(duration / eventTotal).pretty}/chunk ($percentage%)"
+        // This is the time an unbuffered stdout/stderr pipe is blocked
 
 private object OutErrStatistics:
-  private val RelevantBlockedNanos = 1.s.toNanos
+  private val RelevantDuration = 1.s
+
+  private val logger = Logger[this.type]
+
+  /** Logs some stdout and stderr statistics. */
+  def stdouterrToStatisticsResource: ResourceIO[Map[StdoutOrStderr, OutErrStatistics]] =
+    for
+      //? _ <- registerMBean("OrderStdWrittenStatistics", Bean)
+      result <- Resource
+        .make(
+          acquire = IO:
+            Map[StdoutOrStderr, OutErrStatistics](
+              Stdout -> new OutErrStatistics,
+              Stderr -> new OutErrStatistics))(
+          release = outErrStatistics => IO:
+            if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then
+              logger.debug:
+                s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}")
+    yield
+      result
+
+
+  sealed trait OrderStdWrittenStatisticsMXBean:
+    def getBlockedSeconds: java.math.BigDecimal
+    def getCharacterTotal: Long
+    def getEventTotal: Long
+
+  private object Bean extends OrderStdWrittenStatisticsMXBean:
+    private[OutErrStatistics] val persistNanos = Atomic(0L)
+    private[OutErrStatistics] val eventTotal = Atomic(0L)
+    private[OutErrStatistics] val charTotal = Atomic(0L)
+
+    def getBlockedSeconds: java.math.BigDecimal = java.math.BigDecimal.valueOf(persistNanos.get, 9)
+    def getCharacterTotal: Long = charTotal.get
+    def getEventTotal: Long = eventTotal.get
