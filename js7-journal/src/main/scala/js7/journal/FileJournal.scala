@@ -21,6 +21,7 @@ import js7.base.service.Service
 import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -183,6 +184,7 @@ extends
           logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
 
   protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
+    if isTest then assertThat(!persist.commitOptions.commitLater/*not implemented*/)
     meterPersist:
       enqueue(persist)
         .flatMap: (_, whenPersisted) =>
@@ -402,9 +404,9 @@ object FileJournal:
     private var persistDurationMax = 0L
     private var persistDurationSum = 0L
 
-    def onPersisted(eventCount: Int, since: Deadline): Unit =
+    def onPersisted(persistCount: Int, eventCount: Int, since: Deadline): Unit =
       this.eventCount += eventCount
-      persistCount += 1
+      this.persistCount += persistCount
       val duration = since.elapsed.toNanos
       persistDurationSum += duration
       if persistDurationMin > duration then persistDurationMin = duration

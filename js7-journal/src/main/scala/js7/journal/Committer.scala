@@ -3,6 +3,7 @@ package js7.journal
 import cats.effect
 import cats.effect.kernel.{DeferredSink, Outcome}
 import cats.effect.{Deferred, IO, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
@@ -139,7 +140,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     .flatMap: isAcknowledged =>
       IO:
         bean.addEventCount(1)
-        statistics.onPersisted(eventCount = 1, since)
+        statistics.onPersisted(persistCount = 1, eventCount = 1, since)
         journalLogger.logCommitted(snapshotTaken :: Nil,
           eventNumber = eventNumber,
           since,
@@ -327,15 +328,20 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           state.updateDirect:
             _.copy(committed = lastWritten.aggregate)
       .evalTap: chunk =>
-        val writtenView = chunk.asSeq.view
-        bean.addEventCount(writtenView.map(_.eventCount).sum)
-        journalLogger.logCommitted(writtenView)
-        chunk.traverse: written =>
-          IO.defer:
-            statistics.onPersisted(written.eventCount, written.since)
-            eventWriter.onCommitted(written.positionAndEventId, n = written.eventCount)
-            //NOT TESTED: IO.unlessA(written.commitOptions.commitLater):
+        IO.whenA(chunk.nonEmpty):
+          val writtenView = chunk.asSeq.view
+          val eventCount = writtenView.map(_.eventCount).sum
+          bean.addEventCount(eventCount)
+          val persistCount = chunk.size
+          bean.persistTotal += persistCount
+          bean.commitTotal += persistCount // Would differ if commitLater is implemented
+          statistics.onPersisted(persistCount = persistCount, eventCount,
+            since = chunk.iterator.map(_.since).min)
+          journalLogger.logCommitted(writtenView)
+          eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
+          chunk.traverse: written =>
             written.completePersistOperation
+          .map(_.fold)
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater
         chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).traverse: stamped =>
@@ -472,10 +478,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def nonEmpty: Boolean
 
     final def completePersistOperation: IO[Unit] =
-      whenPersisted.complete(Right(persisted))
-        .map: ok =>
-          if ok && nonEmpty then
-          bean.commitTotal += 1
+      whenPersisted.complete(Right(persisted)).void
 
     protected final def persisted: Persisted[S, Event] =
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)
