@@ -5,6 +5,8 @@ import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
+import js7.base.scalasource.ScalaSourceLocation
+import js7.base.utils.Tests.isTest
 import org.slf4j.Marker
 
 /** AdHocLogger is used without a logger variable.
@@ -12,43 +14,60 @@ import org.slf4j.Marker
 transparent trait AdHocLogger:
   this: Logger.type =>
 
-  inline def error(inline msg: String)(using sourcecode.Enclosing): Unit =
-    logger.error(msg)
-
-  inline def error(inline msg: String, inline throwable: Throwable)(using sourcecode.Enclosing)
+  inline def error(inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
   : Unit =
-    logger.error(msg, throwable)
+    logger.error(withLoc(msg))
 
-  inline def warn(inline msg: String)(using sourcecode.Enclosing): Unit =
-    logger.warn(msg)
+  inline def error(inline msg: String, inline throwable: Throwable)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.error(withLoc(msg), throwable)
 
-  inline def info(inline msg: String)(using sourcecode.Enclosing): Unit =
-    logger.info(msg)
+  inline def warn(inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.warn(withLoc(msg))
 
-  inline def debug(inline msg: String)(using sourcecode.Enclosing): Unit =
-    logger.debug(msg)
+  inline def info(inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.info(withLoc(msg))
 
-  inline def trace(inline msg: String)(using sourcecode.Enclosing): Unit =
-    logger.trace(msg)
+  inline def debug(inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.debug(withLoc(msg))
 
-  inline def isEnabled(level: LogLevel)(using sourcecode.Enclosing): Boolean =
+  inline def trace(inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.trace(withLoc(msg))
+
+  inline def isEnabled(level: LogLevel)
+    (using inline enc: sourcecode.Enclosing)
+  : Boolean =
     logger.isEnabled(level)
 
-  inline def isEnabled(level: LogLevel, marker: Marker)(using sourcecode.Enclosing): Boolean =
+  inline def isEnabled(level: LogLevel, marker: Marker)
+    (using inline enc: sourcecode.Enclosing)
+  : Boolean =
     logger.isEnabled(level, marker)
 
-  inline def log(level: LogLevel, message: => String)(using sourcecode.Enclosing): Unit =
-    logger.log(level, message)
-
-  inline def log(level: LogLevel, message: => String, throwable: Throwable)
-    (using sourcecode.Enclosing)
+  inline def log(level: LogLevel, inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
   : Unit =
-    logger.log(level, message, throwable)
+    logger.log(level, withLoc(msg))
 
-  inline def log(level: LogLevel, marker: Marker, message: => String)
-    (using sourcecode.Enclosing)
+  inline def log(level: LogLevel, inline msg: String, throwable: Throwable)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
   : Unit =
-    logger.log(level, marker, message)
+    logger.log(level, withLoc(msg), throwable)
+
+  inline def log(level: LogLevel, marker: Marker, inline msg: String)
+    (using inline enc: sourcecode.Enclosing, inline loc: ScalaSourceLocation)
+  : Unit =
+    logger.log(level, marker, withLoc(msg))
 
   inline def infoCall[A](inline body: => A)(using inline src: sourcecode.Name): A =
     logger.infoCall[A](body)
@@ -78,16 +97,17 @@ transparent trait AdHocLogger:
     logger.infoCallWithResult(function, args, result, marker, body)
 
   inline def infoIO[A](functionName: String, args: => Any = "")(body: IO[A])
-    (using sourcecode.Enclosing)
+    (using inline enc: sourcecode.Enclosing)
   : IO[A] =
     logger.infoIO(functionName, args)(body)
 
   inline def infoIO[A](body: IO[A])
-    (using sourcecode.Enclosing, sourcecode.Name)
+    (using inline enc: sourcecode.Enclosing, nam: sourcecode.Name)
   : IO[A] =
     logger.infoIO(body)
 
-  inline def infoF[F[_], A](body: F[A])(using Sync[F], sourcecode.Enclosing, sourcecode.Name)
+  inline def infoF[F[_], A](body: F[A])
+    (using Sync[F], sourcecode.Enclosing, sourcecode.Name)
   : F[A] =
     logger.infoF(body)
 
@@ -272,3 +292,6 @@ transparent trait AdHocLogger:
 
   private def logger(using src: sourcecode.Enclosing): ScalaLogger =
     Logger(nameRegex.replaceFirstIn(src.value, "").replace("#", "."))
+
+  private inline def withLoc(inline msg: String)(using inline loc: ScalaSourceLocation): String =
+    s"$loc ${if isTest then "🔺 " else ""}$msg"

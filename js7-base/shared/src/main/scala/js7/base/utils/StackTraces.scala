@@ -8,8 +8,9 @@ import scala.util.{Failure, Try}
   * @author Joacim Zschimmer
   */
 object StackTraces:
-
   // FIXME Bad for constant exceptions which will get its stack trace growing
+
+  private lazy val logger = Logger[this.type]
 
   private val eyecatcher =
     val bar = "________________________________________"
@@ -52,7 +53,7 @@ object StackTraces:
         val limit = 5
         val st = delegate.getStackTrace
         if st.count(_ == eyecatcher) > limit then
-          Logger.warn:
+          logger.warn:
             s"🔥🔥🔥 More than $limit appendStackTrace  for the same Exception_:\n  ${
               st.mkString("\n  ")}"
 

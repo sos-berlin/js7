@@ -161,7 +161,7 @@ object ControllerStateExecutor:
         if !subcoll.hasEvents then
           Right(coll)
         else if isStrict && recursion > 10 && coll.keyedEvents.endsWith(subcoll.keyedEvents) then
-          subcoll.foreachLog(o => Logger.error(s"addSubsequentEvents recursion=$recursion $o"))
+          subcoll.foreachLog(o => logger.error(s"addSubsequentEvents recursion=$recursion $o"))
           throw new AssertionError("addSubsequentEvents endless recursion")
         else
           // TODO Avoid recursion
