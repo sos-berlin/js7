@@ -2,15 +2,14 @@ package js7.journal
 
 import cats.effect
 import cats.effect.kernel.{DeferredSink, Outcome}
-import cats.effect.{Deferred, IO, ResourceIO}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.{True, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
-import js7.base.catsutils.{FiberVar, UnsafeMemoizable}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -24,7 +23,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenMethodTakesLonger, whenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, AsyncLock, Atomic}
+import js7.base.utils.{Allocated, Atomic}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
@@ -34,6 +33,7 @@ import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Committer.*
 import js7.journal.FileJournal.*
+import js7.journal.files.JournalFiles.extensions.updateSymbolicLink
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.problems.Problems.JournalKilledProblem
@@ -41,10 +41,10 @@ import js7.journal.write.EventJournalWriter
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
+/** Provides the nested class CommitterService. */
 transparent trait Committer[S <: SnapshotableState[S]]:
   this: FileJournal[S] =>
 
-  private val snapshotLock = AsyncLock()
   private val currentService = AsyncVariable(none[Allocated[IO, CommitterService]])
   private var _isSwitchedOver = false
   private val committerTerminatedUnexpectedly = Deferred.unsafe[IO, Either[Throwable, Unit]]
@@ -61,56 +61,16 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   protected final def isSwitchedOver =
     _isSwitchedOver
 
-
-  private val snapshotPeridicallyFiber = FiberVar[Unit]
-
-  protected final def snapshotPeriodically: IO[Unit] =
-    logger.traceIO:
-      restartSnapshotTimerSignal.discrete.as(false)
-        .keepAlive(conf.snapshotPeriod, IO.True)
-        .filter(identity) // let through keep-alives
-        .interruptWhenF(untilStopRequested)
-        .evalMap: _ =>
-          IO.defer:
-            logger.debug:
-              s"takeSnapshot because period of ${conf.snapshotPeriod.pretty} has elapsed"
-            takeSnapshot(dontSignal = ())
-        .compile.drain
-
-  final def takeSnapshot: IO[Unit] =
-    takeSnapshot(dontSignal = ()) *>
-      restartSnapshotTimerSignal.set(())
-
-  /** @param dontSignal To make the difference to argumentless takeSignal clear. */
-  protected final def takeSnapshot(ignoreIsStopping: Boolean = false, dontSignal: Unit)
-  : IO[Unit] =
-    // A snapshot is taken through stopping and starting the Committer.
-    logger.debugIO("takeSnapshot"):
-      snapshotLock.lock:
-        // The new snapshot's EventId must differ from the last snapshot's EventId,
-        // otherwise no snapshot is taken, and the committer continues.
-        // A SnapshotTaken event at the beginning of a journal file increments the EventId.
-        whenDeferred(
-          (!isStopping || ignoreIsStopping) &&
-            state.get.committed.eventId > lastSnapshotTakenEventId
-        ):
-          IO.uncancelable: _ => // Uncancelable !!!
-            stopCommitter >>
-              IO.whenA(!isStopping || ignoreIsStopping):
-                startCommitter(isStarting = false)
-        .logWhenMethodTakesLonger
-
   protected final def startCommitter(isStarting: Boolean): IO[Unit] =
     currentService.update:
       case Some(_) => IO.raiseError:
         new IllegalStateException("startCommitter but Committer is already running")
       case None =>
-        logger.traceIO("startCommitter"):
-          CommitterService.resource(isStarting = isStarting)
-            .toAllocated
-            .productL:
-              releaseObsoleteEvents
-            .map(Some(_))
+        CommitterService.service(isStarting = isStarting)
+          .toAllocated
+          .productL:
+            releaseObsoleteEvents
+          .map(Some(_))
     .void
 
   protected final def stopCommitter: IO[Unit] =
@@ -119,34 +79,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       case Some(allocated) => allocated.release.as(None)
     .void
     .logWhenMethodTakesLonger
-
-  protected final def onSnapshotTaken(
-    eventWriter: EventJournalWriter,
-    snapshotTaken: Stamped[KeyedEvent[SnapshotTaken]],
-    eventNumber: Long,
-    since: Deadline,
-    isStarting: Boolean)
-  : IO[Unit] =
-    IO.defer:
-      if isStarting then
-        // This is because after starting a Coupled active node,
-        // the passive node is still not ready to acknowledged,
-        // instead we get a deadlock with endless ClusterRecouple retries
-        // TODO Maybe issue an PassiveLost after first SnapshotToken after actice node start,
-        //  to change to ClusterState.PassiveLost ?
-        IO.pure(false)
-      else
-        waitForAck(snapshotTaken.eventId, Some(snapshotTaken))
-    .flatMap: isAcknowledged =>
-      IO:
-        bean.addEventCount(1)
-        statistics.onPersisted(persistCount = 1, eventCount = 1, since)
-        journalLogger.logCommitted(snapshotTaken :: Nil,
-          eventNumber = eventNumber,
-          since,
-          clusterState = unsafeAggregate().clusterState.getClass.simpleScalaName,
-          isAcknowledged = isAcknowledged)
-        eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
 
   /** Release a concurrent persist operation, which waits for the missing acknowledgement and
     * blocks the persist lock.
@@ -160,57 +92,14 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   final def onPassiveLost: IO[Unit] =
     noMoreAcks("onPassiveLost")
 
-  /** Wait for acknowledgement of passive cluster node.
-    *
-    * On ClusterPassiveLost terminate with false. */
-  private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
-  : IO[Boolean] =
-    requireClusterAck.get.flatMap: requireAck =>
-      if !requireAck then
-        IO.pure(false)
-      else
-        IO.race(
-          // Cancel waiting on ClusterPassiveLost
-          requireClusterAck.waitUntil(!_) *> IO:
-            logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
-            false,
-          logWaitingForAck(eventId, lastStamped):
-            ackSignal.waitUntil(_ >= eventId)
-              .as(true)
-        ).map(_.merge)
 
-  private def logWaitingForAck[A](eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
-    (body: IO[A])
-  : IO[A] =
-    IO.defer:
-      val sym = new BlockingSymbol
-      val since = Deadline.now
-      body
-        .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
-          //val lastStampedEvent = persistBuffer.view
-          //  .collect { case o: StandardPersist => o }
-          //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
-          //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
-          //  .toString.truncateWithEllipsis(200))
-          ackSignal.get.flatMap: lastAck =>
-            IO:
-              sym.onWarn()
-              val event = lastStamped.fold(""): stamped =>
-                s" ${stamped.value.event.getClass.simpleScalaName}"
-              logger.warn(s"$sym Waiting for ${elapsed.pretty
-                } for acknowledgement from passive cluster node of events until ${
-                eventId}$event, last acknowledged: ${EventId.toString(lastAck)}")
-        .productL:
-          whenDeferred(sym.warnLogged):
-            IO:
-              logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
-                since.elapsed.pretty}")
-              sym.clear()
-
+  // CommitterService //
 
   /** The CommitterService writes a single journal file, starting with a snapshot. */
   private final class CommitterService(eventWriter: EventJournalWriter)
   extends Service.StoppableByRequest:
+    import CommitterService.waitForAck
+
     private val processingPassiveLost = Atomic(0)
     private val snapshotBecauseBig = Atomic(false)
 
@@ -458,14 +347,162 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             meterEstimatedSnapshotSize:
               state.get.committed.estimatedSnapshotSize
         cachedResult
+  end CommitterService
 
   private object CommitterService:
-    def resource(isStarting: Boolean): ResourceIO[CommitterService] =
+    def service(isStarting: Boolean): ResourceIO[CommitterService] =
       for
-        eventWriter <- eventWriterResource(isStarting = isStarting)
+        eventWriter <- completeJournalFileWriterResource(isStarting = isStarting)
         committerService <- Service.resource(new CommitterService(eventWriter))
       yield
         committerService
+
+    private final def completeJournalFileWriterResource(isStarting: Boolean)
+    : ResourceIO[EventJournalWriter] =
+      Resource:
+        state.updateWithResult: state =>
+          startNewJournalFile(state, isStarting = isStarting)
+            .map: (aggregate, allocatedEventWriter) =>
+              S.updateStaticReference(aggregate)
+              val state_ = state.copy(
+                uncommitted = aggregate,
+                committed = aggregate,
+                totalEventCount = state.totalEventCount + 1 /*SnapshotTaken*/)
+              state_ -> allocatedEventWriter
+
+    private def startNewJournalFile(state: State[S], isStarting: Boolean)
+    : IO[(S, (EventJournalWriter, IO[Unit]))] =
+      IO.defer:
+        val since = Deadline.now
+        assertNothingIsUncommitted(state)
+        for
+          (fileEventId, fileLengthBeforeEvents, snapshotTaken, aggregate) <- writeSnapshot(state)
+          (eventWriter, release) <-
+            eventWriterResource(fileEventId = fileEventId, snapshotTaken).allocated
+          _ <- IO:
+            eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
+          _ <- onSnapshotTaken(eventWriter, snapshotTaken, eventNumber = state.totalEventCount, since,
+            isStarting = isStarting)
+          _ <- IO:
+            val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
+            logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
+        yield
+          (aggregate, eventWriter -> release)
+
+    private def assertNothingIsUncommitted(state: State[S]): Unit =
+      if state.uncommitted ne state.committed then
+        if state.uncommitted == state.committed then
+          logger.error("💥 state.uncommitted ne state.committed DESPITE state.uncommitted == state.committed")
+        else
+          logger.error("💥 state.uncommitted != state.committed")
+        logger.info(s"state.uncommitted=⏎")
+        state.uncommitted.emitLineStream(logger.info(_))
+        logger.info(s"state.committed=⏎")
+        state.committed.emitLineStream(logger.info(_))
+        throw new AssertionError("Snapshotter: state.uncommitted != state.committed")
+
+    private def eventWriterResource(
+      fileEventId: EventId,
+      snapshotTaken: Stamped[KeyedEvent[SnapshotTaken]])
+    : ResourceIO[EventJournalWriter] =
+      Resource.make(
+        acquire =
+          IO.blocking:
+            val eventWriter = new EventJournalWriter(
+              journalLocation,
+              fileEventId = fileEventId,
+              after = snapshotTaken.eventId,
+              journalId, journalingObserver, bean,
+              simulateSync = conf.simulateSync,
+              initialEventCount = 1 /*SnapshotTaken has been written*/)
+            journalLocation.updateSymbolicLink(eventWriter.file)
+            eventWriter)(
+        release = eventWriter =>
+          IO.blocking:
+            if isSwitchedOver || _suppressSnapshotWhenStopping then
+              eventWriter.flush(sync = false)
+              eventWriter.close()
+            else
+              eventWriter.closeProperly(sync = conf.syncOnCommit))
+
+    private final def onSnapshotTaken(
+      eventWriter: EventJournalWriter,
+      snapshotTaken: Stamped[KeyedEvent[SnapshotTaken]],
+      eventNumber: Long,
+      since: Deadline,
+      isStarting: Boolean)
+    : IO[Unit] =
+      IO.defer:
+        if isStarting then
+          // This is because after starting a Coupled active node,
+          // the passive node is still not ready to acknowledged,
+          // instead we get a deadlock with endless ClusterRecouple retries
+          // TODO Maybe issue an PassiveLost after first SnapshotToken after actice node start,
+          //  to change to ClusterState.PassiveLost ?
+          IO.pure(false)
+        else
+          waitForAck(snapshotTaken.eventId, Some(snapshotTaken))
+      .flatMap: isAcknowledged =>
+        IO:
+          bean.addEventCount(1)
+          statistics.onPersisted(persistCount = 1, eventCount = 1, since)
+          journalLogger.logCommitted(snapshotTaken :: Nil,
+            eventNumber = eventNumber,
+            since,
+            clusterState = unsafeAggregate().clusterState.getClass.simpleScalaName,
+            isAcknowledged = isAcknowledged)
+          eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
+
+    /** Wait for acknowledgement of passive cluster node.
+      *
+      * On ClusterPassiveLost terminate with false. */
+    private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
+    : IO[Boolean] =
+      requireClusterAck.get.flatMap: requireAck =>
+        if !requireAck then
+          IO.pure(false)
+        else
+          IO.race(
+            // Cancel waiting on ClusterPassiveLost
+            requireClusterAck.waitUntil(!_) *> IO:
+              logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
+              false,
+            logWaitingForAck(eventId, lastStamped):
+              ackSignal.waitUntil(_ >= eventId)
+                .as(true)
+          ).map(_.merge)
+
+    private def logWaitingForAck[A](eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
+      (body: IO[A])
+    : IO[A] =
+      IO.defer:
+        val sym = new BlockingSymbol
+        val since = Deadline.now
+        body
+          .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
+            //val lastStampedEvent = persistBuffer.view
+            //  .collect { case o: StandardPersist => o }
+            //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
+            //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
+            //  .toString.truncateWithEllipsis(200))
+            ackSignal.get.flatMap: lastAck =>
+              IO:
+                sym.onWarn()
+                val event = lastStamped.fold(""): stamped =>
+                  s" ${stamped.value.event.getClass.simpleScalaName}"
+                logger.warn(s"$sym Waiting for ${
+                  elapsed.pretty
+                } for acknowledgement from passive cluster node of events until ${
+                  eventId
+                }$event, last acknowledged: ${EventId.toString(lastAck)}")
+          .productL:
+            whenDeferred(sym.warnLogged):
+              IO:
+                logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
+                  since.elapsed.pretty
+                }")
+                sym.clear()
+  end CommitterService // object
 
 
   private sealed trait AppliedOrFlushed:
@@ -549,8 +586,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         applied.aggregate, applied.since, applied.eventNumber, applied.commitOptions,
         applied.whenPersisted,
         positionAndEventId)
-
-end Committer
 
 
 object Committer:

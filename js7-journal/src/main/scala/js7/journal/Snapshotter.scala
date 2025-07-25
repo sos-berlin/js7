@@ -1,10 +1,16 @@
 package js7.journal
 
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.True
+import js7.base.catsutils.CatsEffectUtils.whenDeferred
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AsyncLock
+import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
@@ -12,83 +18,52 @@ import js7.data.event.{EventId, JournalEvent, KeyedEvent, SnapshotableState, Sta
 import js7.journal.FileJournal.*
 import js7.journal.Snapshotter.*
 import js7.journal.files.JournalFiles.extensions.*
-import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
-import scala.concurrent.duration.Deadline
+import js7.journal.write.SnapshotJournalWriter
 import scala.language.unsafeNulls
 
 transparent trait Snapshotter[S <: SnapshotableState[S]]:
   this: FileJournal[S] =>
 
+  private val snapshotLock = AsyncLock()
   private var _lastSnapshotTakenEventId = EventId.BeforeFirst
 
-  protected final def lastSnapshotTakenEventId = _lastSnapshotTakenEventId
+  private final def lastSnapshotTakenEventId = _lastSnapshotTakenEventId
 
-  protected final def eventWriterResource(isStarting: Boolean): ResourceIO[EventJournalWriter] =
-    Resource:
-      state.updateWithResult: state =>
-        startNewJournalFile(state, isStarting = isStarting)
-          .map: (aggregate, allocatedEventWriter) =>
-            S.updateStaticReference(aggregate)
-            val state_ = state.copy(
-              uncommitted = aggregate,
-              committed = aggregate,
-              totalEventCount = state.totalEventCount + 1 /*SnapshotTaken*/)
-            state_ -> allocatedEventWriter
+  protected final def snapshotPeriodically: IO[Unit] =
+    logger.traceIO:
+      restartSnapshotTimerSignal.discrete.as(false)
+        .keepAlive(conf.snapshotPeriod, IO.True)
+        .filter(identity) // let through keep-alives
+        .interruptWhenF(untilStopRequested)
+        .evalMap: _ =>
+          IO.defer:
+            logger.debug:
+              s"takeSnapshot because period of ${conf.snapshotPeriod.pretty} has elapsed"
+            takeSnapshot(dontSignal = ())
+        .compile.drain
 
-  private def startNewJournalFile(state: State[S], isStarting: Boolean)
-  : IO[(S, (EventJournalWriter, IO[Unit]))] =
-    IO.defer:
-      val since = Deadline.now
-      assertNothingIsUncommitted(state)
-      for
-        (fileEventId, fileLengthBeforeEvents, snapshotTaken, aggregate) <- writeSnapshot(state)
-        (eventWriter, release) <-
-          eventWriterResource(fileEventId = fileEventId, snapshotTaken).allocated
-        _ <- IO:
-          eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
-        _ <- onSnapshotTaken(eventWriter, snapshotTaken, eventNumber = state.totalEventCount, since,
-          isStarting = isStarting)
-        _ <- IO:
-          val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
-          logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
-      yield
-        (aggregate, eventWriter -> release)
+  final def takeSnapshot: IO[Unit] =
+    takeSnapshot(dontSignal = ()) *>
+      restartSnapshotTimerSignal.set(())
 
-  private def assertNothingIsUncommitted(state: State[S]): Unit =
-    if state.uncommitted ne state.committed then
-      if state.uncommitted == state.committed then
-        logger.error("💥 state.uncommitted ne state.committed DESPITE state.uncommitted == state.committed")
-      else
-        logger.error("💥 state.uncommitted != state.committed")
-      logger.info(s"state.uncommitted=⏎")
-      state.uncommitted.emitLineStream(logger.info(_))
-      logger.info(s"state.committed=⏎")
-      state.committed.emitLineStream(logger.info(_))
-      throw new AssertionError("Snapshotter: state.uncommitted != state.committed")
-
-  private def eventWriterResource(
-    fileEventId: EventId,
-    snapshotTaken: Stamped[KeyedEvent[SnapshotTaken]])
-  : ResourceIO[EventJournalWriter] =
-    Resource.make(
-      acquire =
-        IO.blocking:
-          val eventWriter = new EventJournalWriter(
-            journalLocation,
-            fileEventId = fileEventId,
-            after = snapshotTaken.eventId,
-            journalId, journalingObserver, bean,
-            simulateSync = conf.simulateSync,
-            initialEventCount = 1 /*SnapshotTaken has been written*/)
-          journalLocation.updateSymbolicLink(eventWriter.file)
-          eventWriter)(
-      release = eventWriter =>
-        IO.blocking:
-          if isSwitchedOver || _suppressSnapshotWhenStopping then
-            eventWriter.flush(sync = false)
-            eventWriter.close()
-          else
-            eventWriter.closeProperly(sync = conf.syncOnCommit))
+  /** @param dontSignal To make the difference to argumentless takeSignal clear. */
+  protected final def takeSnapshot(ignoreIsStopping: Boolean = false, dontSignal: Unit)
+  : IO[Unit] =
+    // A snapshot is taken through stopping and starting the Committer.
+    logger.debugIO("takeSnapshot"):
+      snapshotLock.lock:
+        // The new snapshot's EventId must differ from the last snapshot's EventId,
+        // otherwise no snapshot is taken, and the committer continues.
+        // A SnapshotTaken event at the beginning of a journal file increments the EventId.
+        whenDeferred(
+          (!isStopping || ignoreIsStopping) &&
+            state.get.committed.eventId > lastSnapshotTakenEventId
+        ):
+          IO.uncancelable: _ => // Uncancelable !!!
+            stopCommitter >>
+              IO.whenA(!isStopping || ignoreIsStopping):
+                startCommitter(isStarting = false)
+        .logWhenMethodTakesLonger
 
   protected final def writeSnapshot(state: State[S])
   : IO[(EventId, Long, Stamped[KeyedEvent[SnapshotTaken]], S)] =

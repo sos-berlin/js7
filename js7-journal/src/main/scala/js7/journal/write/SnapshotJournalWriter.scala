@@ -40,8 +40,7 @@ extends JournalWriter(S, file, bean, after = after, append = false):
   private var snapshotCount = 0
   private val runningSince = now
 
-  def closeAndLog(): Unit =
-    super.close()
+  private def log(): Unit =
     val elapsed = runningSince.elapsed
     logger.debug("Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") +
       " · " + bytesPerSecondString(elapsed, fileLength))
@@ -109,30 +108,36 @@ object SnapshotJournalWriter:
     (using IORuntime)
   : IO[PositionAnd[EventId]] =
     val tmpFile = JournalLocation.toTemporaryFile(file)
-    Resource(IO.blocking:
-      val w = new SnapshotJournalWriter(
-        S, tmpFile, bean,
-        after = journalHeader.eventId,
-        simulateSync = simulateSync)
-      w -> IO:
-        w.closeAndLog())
-    .use: w =>
-      IO.blocking:
-        w.writeHeader(journalHeader)
-        w.beginSnapshotSection()
-      .productR:
-        w.writeSnapshotStream(snapshotStream)
-      .productR:
+    Resource
+      .make(
+        acquire = IO.blocking:
+          new SnapshotJournalWriter(
+            S, tmpFile, bean,
+            after = journalHeader.eventId,
+            simulateSync = simulateSync))(
+        release = w =>
+          IO.blocking:
+            w.close()
+          *>
+            IO:
+              w.log())
+      .use: w =>
         IO.blocking:
-          w.endSnapshotSection()
+          w.writeHeader(journalHeader)
+          w.beginSnapshotSection()
+        .productR:
+          w.writeSnapshotStream(snapshotStream)
+        .productR:
+          IO.blocking:
+            w.endSnapshotSection()
 
-          // Write a SnapshotTaken event to increment EventId to
-          // get a new (EventId-based) filename for the next journal file
-          w.beginEventSection(sync = false)
-          val firstEventPositionAndEventId = w.fileLengthAndEvenId
-          w.writeEvent(snapshotTaken)
-          w.flush(sync = syncOnCommit)
-          firstEventPositionAndEventId
-    .flatTap: _ =>
-      IO.blocking:
-        Files.move(tmpFile, file, ATOMIC_MOVE)
+            // Write a SnapshotTaken event to increment EventId to
+            // get a new (EventId-based) filename for the next journal file
+            w.beginEventSection(sync = false)
+            val firstEventPositionAndEventId = w.fileLengthAndEvenId
+            w.writeEvent(snapshotTaken)
+            w.flush(sync = syncOnCommit)
+            firstEventPositionAndEventId
+      .flatTap: _ =>
+        IO.blocking:
+          Files.move(tmpFile, file, ATOMIC_MOVE)
