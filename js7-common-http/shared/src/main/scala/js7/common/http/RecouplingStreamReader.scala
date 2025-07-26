@@ -11,6 +11,7 @@ import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
+import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
@@ -46,9 +47,14 @@ abstract class RecouplingStreamReader[
         var logged = false
         lazy val msg = s"$api reports: $problem"
         if inUse && !stopRequested && !coupledApiVar.isStopped then
-          sym.onWarn()
-          logger.warn(s"$sym $msg")
-          logged = true
+          if problem is InvalidSessionTokenProblem then
+            sym.onWarn()
+            logger.warn(s"$sym $msg")
+            logged = true
+          else
+            sym.onDebug()
+            logger.debug(s"$sym $msg")
+            logged = true
         for throwable <- problem.throwableOption.flatMap(_.ifStackTrace) do
           if api.hasRelevantStackTrace(throwable) then
             logger.debug(s"💥 $msg", throwable)
@@ -164,7 +170,7 @@ abstract class RecouplingStreamReader[
     private def streamOnceAfter(after: I): IO[(I, Stream[IO, V])] =
       tryEndlesslyToGetStream(after) <*
         IO:
-          logger.log(sym.relievedLogLevel, s"🟢 Streaming $api ...")
+          logger.log(sym.relievedLogLevel, s"${sym.relievedLogLevel} Streaming $api ...")
           sym.clear()
 
     /** Retries until web request returns an Stream. */
