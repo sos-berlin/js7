@@ -8,7 +8,7 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.startAndForget
+import js7.base.catsutils.CatsEffectExtensions.{False, addElapsedToAtomicNanos, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
@@ -75,7 +75,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
   protected final def stopCommitter: IO[Unit] =
     currentService.update:
-      case None => IO.pure(None)
+      case None => IO.none
       case Some(allocated) => allocated.release.as(None)
     .void
     .logWhenMethodTakesLonger
@@ -141,43 +141,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       .evalMap[IO, Chunk[Applied]]/*IntelliJ*/: chunk =>
         // Try to preserve the chunks for faster processing!
         chunk.flatTraverse: queueEntry =>
-          state.updateCheckedWithResult: state =>
-            IO:
-              if _isSwitchedOver then Left(ClusterNodeHasBeenSwitchedOverProblem)
-              else if isBeingKilled then
-                Left(JournalKilledProblem)
-              else
-                applyEvents(state, queueEntry).map: (aggregate, applied) =>
-                  state.copy(
-                    uncommitted = aggregate,
-                    totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
-                  ) -> applied
-          .flatMap:
-            case Left(problem) =>
-              queueEntry.whenApplied.complete(Left(problem)) *>
-                queueEntry.whenPersisted.complete(Left(problem))
-                  .as(Chunk.empty)
-            case Right(applied_) =>
-              val applied = applied_ : Applied/*IntelliJ 2025.1*/
-              if applied.stampedKeyedEvents.isEmpty then
-                // When no events, exit early //
-                (applied.completeApplied *> applied.completePersistOperation)
-                  .as(Chunk.empty)
-              else
-                applied.stampedKeyedEvents.lastOption.map(_.value.event).match
-                  case Some(_: ClusterSwitchedOver) =>
-                    IO:
-                      logger.debug("ClusterSwitchedOver: no more events are accepted")
-                      _isSwitchedOver = true
-                  case Some(_: ClusterPassiveLost) =>
-                    processingPassiveLost += 1
-                    // onPassiveLost should already have switched off acks
-                    noMoreAcks("ClusterPassiveLost")
-                  case _ => IO.unit
-                .productR:
-                  applied.completeApplied
-                .as:
-                  Chunk.singleton(applied)
+          applyQueueEntryEvents(queueEntry)
+            .addElapsedToAtomicNanos(bean.eventCalcNanos)
       // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
       //<editor-fold desc="// ...">
       //.chunks
@@ -189,8 +154,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       //</editor-fold>
       .filter(_.nonEmpty)
       .prefetch // Process two chunks concurrently // TODO Apparently, this makes it slower?
-      .evalMap:
-        writeToFile
+      .evalMap: chunk =>
+        writeToFile(chunk)
+          .addElapsedToAtomicNanos(bean.jsonWriteNanos)
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .prefetch // Process three chunks concurrently //
@@ -242,6 +208,45 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         maybeDoASnasphot
       .drain
 
+    private def applyQueueEntryEvents(queueEntry: QueueEntry[S]): IO[Chunk[Applied]] =
+      state.updateCheckedWithResult: state =>
+        IO:
+          if _isSwitchedOver then Left(ClusterNodeHasBeenSwitchedOverProblem)
+          else if isBeingKilled then
+            Left(JournalKilledProblem)
+          else
+            applyEvents(state, queueEntry).map: (aggregate, applied) =>
+              state.copy(
+                uncommitted = aggregate,
+                totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
+              ) -> applied
+      .flatMap:
+        case Left(problem) =>
+          queueEntry.whenApplied.complete(Left(problem)) *>
+            queueEntry.whenPersisted.complete(Left(problem))
+              .as(Chunk.empty)
+        case Right(applied_) =>
+          val applied = applied_ : Applied /*IntelliJ 2025.1*/
+          if applied.stampedKeyedEvents.isEmpty then
+            // When no events, exit early //
+            (applied.completeApplied *> applied.completePersistOperation)
+              .as(Chunk.empty)
+          else
+            applied.stampedKeyedEvents.lastOption.map(_.value.event).match
+              case Some(_: ClusterSwitchedOver) =>
+                IO:
+                  logger.debug("ClusterSwitchedOver: no more events are accepted")
+                  _isSwitchedOver = true
+              case Some(_: ClusterPassiveLost) =>
+                processingPassiveLost += 1
+                // onPassiveLost should already have switched off acks
+                noMoreAcks("ClusterPassiveLost")
+              case _ => IO.unit
+            .productR:
+              applied.completeApplied
+            .as:
+              Chunk.singleton(applied)
+
     private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[(S, Applied)] =
       catchNonFatalFlatten:
         queueEntry.eventCalc.calculate(state.uncommitted, TimeCtx(clock.now()))
@@ -268,6 +273,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           Written.fromApplied(applied, positionAndEventId)
       .flatMap: chunk =>
         IO.blocking:
+          val t = Deadline.now
           eventWriter.flush(sync = conf.syncOnCommit)
           bean.fileSize = eventWriter.bytesWritten
           markAsFlushed(chunk)
@@ -352,12 +358,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   private object CommitterService:
     def service(isStarting: Boolean): ResourceIO[CommitterService] =
       for
-        eventWriter <- completeJournalFileWriterResource(isStarting = isStarting)
+        eventWriter <- journalFileWriterCompleteResource(isStarting = isStarting)
         committerService <- Service.resource(new CommitterService(eventWriter))
       yield
         committerService
 
-    private final def completeJournalFileWriterResource(isStarting: Boolean)
+    private final def journalFileWriterCompleteResource(isStarting: Boolean)
     : ResourceIO[EventJournalWriter] =
       Resource:
         state.updateWithResult: state =>
@@ -376,7 +382,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         val since = Deadline.now
         assertNothingIsUncommitted(state)
         for
-          (fileEventId, fileLengthBeforeEvents, snapshotTaken, aggregate) <- writeSnapshot(state)
+          (fileEventId, fileLengthBeforeEvents, snapshotTaken, aggregate) <-
+            writeSnapshot(state)
           (eventWriter, release) <-
             eventWriterResource(fileEventId = fileEventId, snapshotTaken).allocated
           _ <- IO:
@@ -439,7 +446,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           // instead we get a deadlock with endless ClusterRecouple retries
           // TODO Maybe issue an PassiveLost after first SnapshotToken after actice node start,
           //  to change to ClusterState.PassiveLost ?
-          IO.pure(false)
+          IO.False
         else
           waitForAck(snapshotTaken.eventId, Some(snapshotTaken))
       .flatMap: isAcknowledged =>
@@ -460,17 +467,17 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     : IO[Boolean] =
       requireClusterAck.get.flatMap: requireAck =>
         if !requireAck then
-          IO.pure(false)
+          IO.False
         else
-          IO.race(
+          logWaitingForAck(eventId, lastStamped):
+            ackSignal.waitUntil(_ >= eventId).as(true)
+              .addElapsedToAtomicNanos(bean.ackNanos)
+          .race:
             // Cancel waiting on ClusterPassiveLost
             requireClusterAck.waitUntil(!_) *> IO:
               logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
-              false,
-            logWaitingForAck(eventId, lastStamped):
-              ackSignal.waitUntil(_ >= eventId)
-                .as(true)
-          ).map(_.merge)
+              false
+          .map(_.merge)
 
     private def logWaitingForAck[A](eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
       (body: IO[A])
@@ -490,18 +497,16 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                 sym.onWarn()
                 val event = lastStamped.fold(""): stamped =>
                   s" ${stamped.value.event.getClass.simpleScalaName}"
-                logger.warn(s"$sym Waiting for ${
-                  elapsed.pretty
-                } for acknowledgement from passive cluster node of events until ${
-                  eventId
-                }$event, last acknowledged: ${EventId.toString(lastAck)}")
+                logger.warn(s"$sym Waiting for ${elapsed.pretty
+                } for acknowledgement from passive cluster node of events until $eventId${event
+                }, last acknowledged: ${EventId.toString(lastAck)}")
           .productL:
             whenDeferred(sym.warnLogged):
               IO:
                 logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
-                  since.elapsed.pretty
-                }")
-                sym.clear()
+                  since.elapsed.pretty}")
+          .productL:
+            IO(sym.clear())
   end CommitterService // object
 
 

@@ -6,10 +6,12 @@ import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, 
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor}
+import java.util.concurrent.atomic.AtomicLong
 import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.NonFatalInterruptedException
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unchecked.uncheckedVariance
@@ -102,6 +104,11 @@ object CatsEffectExtensions:
     /** Like Cats timeoutTo, but the fallback is computed anew for each execution. */
     def timeoutDefer[A1 >: A](duration: Duration)(fallback: => IO[A1]): IO[A1] =
       io.timeoutTo(duration, IO.defer(fallback))
+
+    def addElapsedToAtomicNanos(atomic: AtomicLong): IO[A] =
+      io.timed.map: (duration, result) =>
+        atomic += duration.toNanos
+        result
 
 
   private val fromFutureDummyCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))

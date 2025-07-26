@@ -50,7 +50,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
   protected final def takeSnapshot(ignoreIsStopping: Boolean = false, dontSignal: Unit)
   : IO[Unit] =
     // A snapshot is taken through stopping and starting the Committer.
-    logger.debugIO("takeSnapshot"):
+    logger.debugIO:
       snapshotLock.lock:
         // The new snapshot's EventId must differ from the last snapshot's EventId,
         // otherwise no snapshot is taken, and the committer continues.

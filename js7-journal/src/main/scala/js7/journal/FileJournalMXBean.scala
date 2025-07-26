@@ -9,6 +9,9 @@ sealed trait FileJournalMXBean:
   def getCommitTotal: Long
   def getPersistTotal: Long
   def getFlushTotal: Long
+  def getEventCalcSecondsTotal: Double
+  def getJsonWriteSecondsTotal: Double
+  def getAckSecondsTotal: Double
 
 
 object FileJournalMXBean:
@@ -19,6 +22,9 @@ object FileJournalMXBean:
     private[journal] val persistTotal = Atomic(0L)
     private[journal] val commitTotal = Atomic(0L)
     private[journal] val flushTotal = Atomic(0L)
+    private[journal] val eventCalcNanos = Atomic(0L)
+    private[journal] val jsonWriteNanos = Atomic(0L)
+    private[journal] val ackNanos = Atomic(0L)
 
     def getFileSize: Long =
       fileSize
@@ -37,6 +43,15 @@ object FileJournalMXBean:
 
     def getFlushTotal: Long =
       flushTotal.get
+
+    def getEventCalcSecondsTotal: Double =
+      eventCalcNanos.get / 1_000_000_000.0
+
+    override def getJsonWriteSecondsTotal: Double =
+      jsonWriteNanos.get / 1_000_000_000.0
+
+    def getAckSecondsTotal: Double =
+      ackNanos.get / 1_000_000_000.0
 
 
   object Bean:
