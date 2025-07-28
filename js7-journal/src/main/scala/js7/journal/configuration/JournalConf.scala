@@ -15,7 +15,7 @@ final case class JournalConf(
   syncOnCommit: Boolean,
   simulateSync: Option[FiniteDuration],
   delay: FiniteDuration,
-  persistLimit: Int,
+  concurrentPersistLimit: Int,
   snapshotPeriod: FiniteDuration,
   fileSizeLimit: Long,
   snapshotSizeEstimateEventThreshold: Long,
@@ -41,7 +41,7 @@ object JournalConf:
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),
       delay = (if syncOnCommit then syncDelay max delay else delay) min 1.s,
-      persistLimit = config.as[Int]("js7.journal.persist-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
+      concurrentPersistLimit = config.as[Int]("js7.journal.concurrent-persist-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
       fileSizeLimit =
         config.as("js7.journal.snapshot.when-bigger-than")(using StringAsByteCountWithDecimalPrefix),

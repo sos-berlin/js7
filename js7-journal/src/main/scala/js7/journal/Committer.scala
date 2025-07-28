@@ -35,7 +35,7 @@ import js7.journal.Committer.*
 import js7.journal.FileJournal.*
 import js7.journal.files.JournalFiles.extensions.updateSymbolicLink
 import js7.journal.log.JournalLogger
-import js7.journal.log.JournalLogger.Loggable
+import js7.journal.log.JournalLogger.LoggablePersist
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.write.EventJournalWriter
 import scala.concurrent.duration.Deadline
@@ -131,69 +131,75 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     private def runStream: IO[Unit] =
       logger.traceIO:
-        fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.persistLimit)
-          .through(pipeline)
+        fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.concurrentPersistLimit)
+          .through(commitPipeline)
           .interruptWhenF(whenBeingKilled.get)
           .compile.drain
 
-    private def pipeline: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
+    // The pipeline //
+    private def commitPipeline: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
       .chunks
-      .evalMap[IO, Chunk[Applied]]/*IntelliJ*/: chunk =>
+      .evalMap: chunk =>
         // Try to preserve the chunks for faster processing!
         chunk.flatTraverse: queueEntry =>
           applyQueueEntryEvents(queueEntry)
-            .addElapsedToAtomicNanos(bean.eventCalcNanos)
+        .addElapsedToAtomicNanos(bean.eventCalcNanos)
+      .unchunks
+      .conflateChunks(conf.concurrentPersistLimit) // Process two chunks concurrently
+      //.pipeIf(conf.delay.isPositive):
+      //  _.groupWithin(Int.MaxValue, conf.delay).unchunks
+      .evalMap: chunk =>
       // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
-      //<editor-fold desc="// ...">
-      //.chunks
-      //.flatTap: chunk =>
-      //  fs2.Stream.sleep:
+      //<editor-fold desc="// delay code ...">
+      //  val delay =
       //    chunk.iterator.map: applied =>
       //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
       //    .maxOption.getOrElse(ZeroDuration)
+      //  IO.whenA(delay.isPositive):
+      //    logger.trace(s"### delay ${delay.pretty}")
+      //    IO.sleep(delay)
+      //  .productR:
       //</editor-fold>
-      .filter(_.nonEmpty)
-      .prefetch // Process two chunks concurrently // TODO Apparently, this makes it slower?
-      .evalMap: chunk =>
-        writeToFile(chunk)
-          .addElapsedToAtomicNanos(bean.jsonWriteNanos)
+          writeToFile(chunk)
+            .addElapsedToAtomicNanos(bean.jsonWriteNanos)
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
-      .prefetch // Process three chunks concurrently //
-      .evalMap: chunk =>
-        // TODO Complete a single Written as soon as it has been acknowledged
-        // - Collect all Written that have been acknowledged at once
-        // - But the original chunk should be logCommitted (split logCommitted?)
-        val lastWritten = chunk.last.get // chunk is nonEmpty
-        val clusterState = lastWritten.aggregate.clusterState
+      .unchunks
+      .prefetchN(conf.concurrentPersistLimit) // Process three chunks concurrently //
+      .evalMap: written =>
+        val clusterState = written.aggregate.clusterState
         IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
           // Do not switch requireClusterAck on, because
           // TODO ClusterResetStarted doesn't leave the Coupled state
           noMoreAcks(clusterState.getClass.getSimpleName)
         .productR:
-          waitForAck(eventId = lastWritten.eventId, lastStamped = lastWritten.lastStamped)
-        .map:
-          if _ then
-            chunk.map: written =>
-              written.copy(isAcknowledged = true)
-          else
-            chunk
-        .flatTap: _ =>
-          S.updateStaticReference(lastWritten.aggregate)
-          state.updateDirect:
-            _.copy(committed = lastWritten.aggregate)
+          waitForAck(eventId = written.eventId, lastStamped = written.lastStamped)
+        .map: isAck =>
+          written.isAcknowledged = isAck
+          written
+        .productL:
+          IO.defer:
+            S.updateStaticReference(written.aggregate)
+            state.updateDirect:
+              _.copy(committed = written.aggregate)
+      .chunks
       .evalTap: chunk =>
-        IO.whenA(chunk.nonEmpty):
+        IO.defer:
           val writtenView = chunk.asSeq.view
           val eventCount = writtenView.map(_.eventCount).sum
-          bean.addEventCount(eventCount)
-          val persistCount = chunk.size
-          bean.persistTotal += persistCount
-          bean.commitTotal += persistCount // Would differ if commitLater is implemented
-          statistics.onPersisted(persistCount = persistCount, eventCount,
-            since = chunk.iterator.map(_.since).min)
-          journalLogger.logCommitted(writtenView)
-          eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
+          if chunk.nonEmpty then
+            bean.addEventCount(eventCount)
+            val persistCount = chunk.size
+            val now = System.nanoTime
+            bean.persistTotal += persistCount
+            bean.persistNanos += writtenView.map(w => now - w.since.time.toNanos).sum
+            bean.commitTotal += persistCount // Would differ if commitLater is implemented
+            statistics.onPersisted(persistCount = persistCount, eventCount,
+              since = chunk.iterator.map(_.since).min)
+            journalLogger.logCommitted(writtenView)
+
+            eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
+          end if
           chunk.traverse: written =>
             written.completePersistOperation
           .map(_.fold)
@@ -269,26 +275,15 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         chunk.map: applied =>
           import applied.{commitOptions, stampedKeyedEvents}
           val positionAndEventId =
-            eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
+            meterJsonWrite:
+              eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
           Written.fromApplied(applied, positionAndEventId)
-      .flatMap: chunk =>
+      .flatTap: chunk =>
         IO.blocking:
           val t = Deadline.now
           eventWriter.flush(sync = conf.syncOnCommit)
           bean.fileSize = eventWriter.bytesWritten
-          markAsFlushed(chunk)
-
-    /** For logging: mark the last non-empty chunk as isLastOfFlushedOrSynced. */
-    private def markAsFlushed(chunk: Chunk[Written]): Chunk[Written] =
-      var i = chunk.size
-      if chunk.reverseIterator.exists: written =>
-        i -= 1
-        written.stampedKeyedEvents.nonEmpty // An existing event (not deleted due to commitLater)
-      then
-        val (a, b) = chunk.splitAt(i)
-        a ++ b.map(_.copy(isLastOfFlushedOrSynced = true))
-      else
-        chunk
+          JournalLogger.markChunkForLogging(chunk)
 
     private def possiblySwitchAck(stamped: Stamped[AnyKeyedEvent]): IO[Unit] =
       stamped.value.event match
@@ -470,8 +465,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           IO.False
         else
           logWaitingForAck(eventId, lastStamped):
-            ackSignal.waitUntil(_ >= eventId).as(true)
-              .addElapsedToAtomicNanos(bean.ackNanos)
+            meterAck:
+              ackSignal.waitUntil(_ >= eventId).as(true)
+                .addElapsedToAtomicNanos(bean.ackNanos)
           .race:
             // Cancel waiting on ClusterPassiveLost
             requireClusterAck.waitUntil(!_) *> IO:
@@ -533,7 +529,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     //    logger.trace(s"$prefix$br$o")
 
 
-  /** Events have been applied to State#uncommitted. */
+  /** Events of an Persist have been applied to State#uncommitted. */
   private final case class Applied(
     originalAggregate: S,
     stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
@@ -551,8 +547,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         .void
 
 
-  /** Events have been written and flushed to the journal file. */
-  private final case class Written(
+  /** Events of an Persist have been written and flushed to the journal file. */
+  private final case class Written private/*not copyable due to vars in LoggablePersist*/(
     eventId: EventId,
     eventCount: Int,
     lastStamped: Option[Stamped[AnyKeyedEvent]],
@@ -563,10 +559,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     eventNumber: Long,
     commitOptions: CommitOptions,
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
-    positionAndEventId: PositionAnd[EventId],
-    isAcknowledged: Boolean = false,
-    isLastOfFlushedOrSynced: Boolean = false)
-  extends AppliedOrFlushed with Loggable:
+    positionAndEventId: PositionAnd[EventId])
+  extends AppliedOrFlushed with LoggablePersist:
     def isTransaction = commitOptions.transaction
     def stampedSeq = stampedKeyedEvents
     def nonEmpty = eventCount > 0
@@ -593,6 +587,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         positionAndEventId)
 
 
-object Committer:
+private[journal] object Committer:
   private val logger = Logger[this.type]
   private val meterEstimatedSnapshotSize = CallMeter("FileJournal.estimatedSnapshotSize")
+  private val meterJsonWrite = CallMeter("FileJournal.jsonWrite")
+  private val meterAck = CallMeter("FileJournal.ack")

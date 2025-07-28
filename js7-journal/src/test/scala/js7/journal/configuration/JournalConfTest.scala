@@ -42,7 +42,7 @@ object JournalConfTest:
        sync = on
        delay = 1ms
        sync-delay = 2ms
-       persist-limit = 6
+       concurrent-persist-limit = 6
        slow-check-state = true  // Set by build.sbt, anyway
        snapshot.log-period = 4s
        snapshot.period = 7h
@@ -59,7 +59,7 @@ object JournalConfTest:
     syncOnCommit = true,
     simulateSync = None,
     delay = 2.ms,
-    persistLimit = 6,
+    concurrentPersistLimit = 6,
     snapshotPeriod = 7.h,
     fileSizeLimit = 8*1000*1000*1000L,
     snapshotSizeEstimateEventThreshold = 1000L,

@@ -41,23 +41,24 @@ private[journal] final class JournalLogger(
   : Unit =
     logCommitted:
       Array:
-        SimpleLoggable(
+        val persist = SimpleLoggablePersist(
           stampedSeq,
           eventNumber = eventNumber,
           since,
           isTransaction = isTransaction,
-          clusterState = clusterState,
-          isAcknowledged = isAcknowledged,
-          isLastOfFlushedOrSynced = true)
+          clusterState = clusterState)
+        persist.isAcknowledged = isAcknowledged
+        persist
       .view
 
-  def logCommitted(persists: IndexedSeqView[Loggable]): Unit =
+  def logCommitted(persists: IndexedSeqView[LoggablePersist]): Unit =
     if !suppressed then logger.whenInfoEnabled:
       val committedAt = now
       val myPersists = dropEmptyPersists(persists)
 
       logger.whenTraceEnabled:
-        logPersists(myPersists, committedAt)(traceLogPersist)
+        logPersists(myPersists, committedAt):
+          traceLogPersist
 
       def isLoggable(stamped: Stamped[AnyKeyedEvent]) =
         val event = stamped.value.event
@@ -65,28 +66,28 @@ private[journal] final class JournalLogger(
 
       val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
       if loggablePersists.nonEmpty then
-        logPersists(loggablePersists.toVector.view, committedAt, isLoggable)(infoLogPersist)
+        logPersists(loggablePersists.toVector.view, committedAt, isLoggable):
+          infoLogPersist
 
   def suppress(supressed: Boolean): Unit =
     this.suppressed = supressed
 
-  private def dropEmptyPersists(persists: IndexedSeqView[Loggable]): IndexedSeqView[Loggable] =
+  private def dropEmptyPersists(persists: IndexedSeqView[LoggablePersist]): IndexedSeqView[LoggablePersist] =
     val dropLeft = persists.segmentLength(_.stampedSeq.isEmpty)
     val dropRight = persists.reverse.segmentLength(_.stampedSeq.isEmpty)
     persists.slice(dropLeft, persists.length - dropRight)
 
   private def logPersists(
-    persists: IndexedSeqView[Loggable],
+    persists: IndexedSeqView[LoggablePersist],
     committedAt: Deadline,
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (PersistFrame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit =
     CorrelId.isolate: logCorrelId =>
-      var index = 0
       for persist <- persists do
         //logCorrelId := persist.correlId
         val stampedSeq = persist.stampedSeq.filter(isLoggable)
-        val frame = PersistFrame(persist, stampedSeq.length, index, persists.length, committedAt)
+        val frame = PersistFrame(persist, stampedSeq.length, committedAt)
         val stampedIterator = stampedSeq.iterator
         var hasNext = stampedIterator.hasNext
         while hasNext do
@@ -96,7 +97,6 @@ private[journal] final class JournalLogger(
           body(frame, stamped)
           frame.nr += 1
           frame.isFirstEvent = false
-        index += 1
 
   private def traceLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
@@ -105,9 +105,10 @@ private[journal] final class JournalLogger(
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth):
+      import persist.{isAcknowledged, isFirstPersist, persistCount}
       if isLastEvent && persist.isLastOfFlushedOrSynced then
-        sb.append(if frame.persist.isAcknowledged then ackSyncOrFlushString else syncOrFlushString)
-      else if isFirstEvent && persistIndex == 0 && persistCount >= 2 then
+        sb.append(if isAcknowledged then ackSyncOrFlushString else syncOrFlushString)
+      else if isFirstEvent && isFirstPersist && persistCount >= 2 then
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
       else if nr == beforeLastEventNr && persistEventCount >= 10_000 then
         val micros = duration.toMicros
@@ -193,28 +194,39 @@ object JournalLogger:
       infoLogEvents = conf.infoLogEvents)
 
 
-  private[journal] trait Loggable:
+  private[journal] trait LoggablePersist:
     //def correlId: CorrelId
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
     def since: Deadline
     def clusterState: String
-    def isAcknowledged: Boolean
-    def isLastOfFlushedOrSynced: Boolean
+
+    private[JournalLogger] final var persistIndex = 0
+    private[JournalLogger] final var persistCount = 0
+    private[JournalLogger] final var isFirstPersist = false
+    private[JournalLogger] final var isLastPersist = false
+    private[JournalLogger] final var isLastOfFlushedOrSynced = false
+    //private[JournalLogger] final var isBeforeLast = false
+    final var isAcknowledged: Boolean = false
 
 
-  private final class SimpleLoggable(
+  // Not copyable due to vars in LoggablePersist
+  private final class SimpleLoggablePersist(
     //val correlId: CorrelId,
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     val eventNumber: Long,
     val since: Deadline,
     val isTransaction: Boolean,
-    val clusterState: String,
-    val isAcknowledged: Boolean,
-    val isLastOfFlushedOrSynced: Boolean)
-  extends Loggable
-
+    val clusterState: String)
+  extends LoggablePersist:
+    persistIndex = 0
+    persistCount = 1
+    isFirstPersist = true
+    isLastPersist = true
+    isLastOfFlushedOrSynced = true
+    isLastOfFlushedOrSynced = true
+    isAcknowledged = false
 
   private final class SubclassCache(superclassNames: Set[String]):
     private val cache = mutable.Map.empty[Class[?], Boolean]
@@ -229,33 +241,36 @@ object JournalLogger:
     override def toString = s"SubclassCache($superclassNames)"
 
 
-  private final case class PersistFrame(persist: Loggable,
+  private final case class PersistFrame(
+    persist: LoggablePersist,
     persistEventCount: Int,
-    persistIndex: Int,
-    persistCount: Int,
-    committedAt: Deadline
-  ):
+    committedAt: Deadline):
+
     val beforeLastEventNr = persist.eventNumber + persistEventCount - 2
     val duration = committedAt - persist.since
     var nr = persist.eventNumber
     var isFirstEvent = true
-    var isLastEvent = true
+    var isLastEvent = false
 
-    /** Mark a Chunk and Loggables (collapsed persist operations) and each end of Loggable. */
+    import persist.{isFirstPersist, isLastPersist, isTransaction}
+
+    /** Mark a Chunk and LoggablePersists (collapsed persist operations) and
+      * each end of LoggablePersist. */
     def persistMarker: Char =
-      if persistCount == 1 then ' '
-      else if persistIndex == 0 & isFirstEvent then // chunk starts
+      if isFirstPersist && isFirstEvent then // First line of chunk
         if isLastEvent then
-          '╒' // Start of the Chunk and end of the first (one-event) Loggable
+          if isLastPersist then ' ' // Single event chunk
+          else '╒' // Start of the Chunk and end of the first (single event) LoggablePersist
         else
           '┌' // Start of the Chunk
-      else if persistIndex == persistCount - 1 & isLastEvent then '└' // chunk ends
-      else if isLastEvent then '├' // End of Loggable
+      else if isLastEvent then
+        if isLastPersist then '└' // chunk ends
+        else '├' // End of LoggablePersist
       else '│'
 
     def transactionMarker(forTrace: Boolean): Char =
-      if persistEventCount == 1 then ' '
-      else if persist.isTransaction then
+      if isFirstEvent && isLastEvent then ' '
+      else if isTransaction then
         if isFirstEvent then '⎛' // ⎧
         else if isLastEvent then '⎝' // ⎩
         else if forTrace && nr == beforeLastEventNr then '⎨'
@@ -263,5 +278,31 @@ object JournalLogger:
       else if !forTrace then ' '
       else if isFirstEvent then '┌'
       else if isLastEvent then '└'
-      else if nr == beforeLastEventNr then '┤'
+      else if isLastPersist && nr == beforeLastEventNr then '┤'
       else '┆' // ╵╷┊┆╎
+  end PersistFrame
+
+
+  def markChunkForLogging(chunk: fs2.Chunk[LoggablePersist]): Unit =
+    val n = chunk.size
+    chunk(0).isFirstPersist = true
+    for i <- 0 until n do
+      val persist = chunk(i)
+      persist.persistIndex = i
+      persist.persistCount = n
+    //if n >= 2 then chunk(n - 2).isBeforeLast = true
+
+    var i = n
+    val it = chunk.reverseIterator
+    if it.exists: written =>
+      i -= 1
+      written.stampedSeq.nonEmpty // An existing event (not deleted due to commitLater)
+    then
+      chunk(i).isLastPersist = true
+      chunk(i).isLastOfFlushedOrSynced = true
+
+    //if it.exists: written =>
+    //  i -= 1
+    //  written.stampedSeq.nonEmpty // An existing event (not deleted due to commitLater)
+    //then
+    //  chunk(i).isBeforeLast = true

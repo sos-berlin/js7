@@ -104,14 +104,14 @@ final class FileJournalTest extends OurAsyncTestSuite:
 
     def run(n: Int, persistLimit: Int, toEvents: Int => Seq[AnyKeyedEvent]): IO[Assertion] =
       testJournal(config"""
-        js7.journal.persist-limit = $persistLimit
+        js7.journal.concurrent-persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
       ): journal =>
         (1 to n).toVector.parTraverse: i =>
           journal.persist(toEvents(i))
         .timed.flatMap: (duration, _) =>
           IO:
-            info_(s"$n in parallel, persist-limit=$persistLimit " +
+            info_(s"$n in parallel, concurrent-persist-limit=$persistLimit " +
               Stopwatch.itemsPerSecondString(duration, n, "commits"))
             succeed
   }
@@ -150,7 +150,7 @@ object FileJournalTest:
     js7.journal.delay = 0s
     js7.journal.sync-delay = 0s
     js7.journal.simulate-sync = 1ms
-    js7.journal.persist-limit = 1000
+    js7.journal.concurrent-persist-limit = 1024
     js7.journal.users-allowed-to-release-events = []
     js7.journal.watch.index-size = 1000
     js7.journal.watch.keep-open = 100

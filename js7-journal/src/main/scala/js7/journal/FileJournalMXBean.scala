@@ -8,6 +8,7 @@ sealed trait FileJournalMXBean:
   def getEventTotal: Long
   def getCommitTotal: Long
   def getPersistTotal: Long
+  def getPersistSecondsTotal: Double
   def getFlushTotal: Long
   def getEventCalcSecondsTotal: Double
   def getJsonWriteSecondsTotal: Double
@@ -20,6 +21,7 @@ object FileJournalMXBean:
     private[journal] var fileSize = 0L
     private val eventTotal = Atomic(0L)
     private[journal] val persistTotal = Atomic(0L)
+    private[journal] val persistNanos = Atomic(0L)
     private[journal] val commitTotal = Atomic(0L)
     private[journal] val flushTotal = Atomic(0L)
     private[journal] val eventCalcNanos = Atomic(0L)
@@ -37,6 +39,9 @@ object FileJournalMXBean:
 
     def getPersistTotal: Long =
       persistTotal.get
+
+    def getPersistSecondsTotal: Double =
+      persistNanos.get / 1_000_000_000.0
 
     def getCommitTotal: Long =
       commitTotal.get
