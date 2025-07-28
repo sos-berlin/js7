@@ -307,7 +307,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         case Left(problem) => IO.left(problem)
         case Right(deferred) =>
           orderToExecuteDefaultArguments(order)
-            .map(_.map(StartOrderProcess(order, _)))
+            .mapmap:
+              StartOrderProcess(order, _)
             .flatMapT(dispatcher.executeCommand)
             .catchIntoChecked
             .flatMap:

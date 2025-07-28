@@ -197,7 +197,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           Right(Some(ClusterActiveNodeRestarted))
         case _ =>
           Right(None)
-      .mapt(_ => Completed))
+      .rightAs(Completed))
 
   def executeCommand(command: ClusterCommand): IO[Checked[ClusterCommand.Response]] =
     command match

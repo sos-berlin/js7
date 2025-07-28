@@ -38,10 +38,11 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert((Some(Left("X")): O).rightAs(()) == Some(Left("X")))  // Optimized
       assert((Some(Right(7)): O).rightAs(()).get eq RightUnit)  // Optimized
 
-    "mapt" in:
-      assert((None: O).mapt(_ => ignored) == None)
-      assert((Some(Left("A")): O).mapt(_ => ignored) == Some(Left("A")))
-      assert((Some(Right(7)): O).mapt(3 * _) == Some(Right(21)))
+    "mapmap" in:
+      assert((None: O).mapmap(_ => ignored) == None)
+      assert((Some(Left("A")): O).mapmap(_ => ignored) == Some(Left("A")))
+      assert((Some(Right(7)): O).mapmap(3 * _) == Some(Right(21)))
+      assert((Some(Right(7)): O).map(_.map(3 * _)) == Some(Right(21)))
 
     "mapT" in:
       assert((None: O).mapT(_ => ignored) == None)
