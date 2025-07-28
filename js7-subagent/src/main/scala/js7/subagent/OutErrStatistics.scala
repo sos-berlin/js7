@@ -3,6 +3,7 @@ package js7.subagent
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -50,7 +51,6 @@ private object OutErrStatistics:
   /** Logs some stdout and stderr statistics. */
   def stdouterrToStatisticsResource: ResourceIO[Map[StdoutOrStderr, OutErrStatistics]] =
     for
-      //? _ <- registerMBean("OrderStdWrittenStatistics", Bean)
       result <- Resource
         .make(
           acquire = IO:
@@ -65,16 +65,17 @@ private object OutErrStatistics:
       result
 
 
-  sealed trait OrderStdWrittenStatisticsMXBean:
-    def getBlockedSeconds: java.math.BigDecimal
-    def getCharacterTotal: Long
-    def getEventTotal: Long
+  def registerMXBean: ResourceIO[Unit] =
+    registerMBean("OrderStdWrittenStatistics", Bean).map(_ => ())
 
-  private object Bean extends OrderStdWrittenStatisticsMXBean:
-    private[OutErrStatistics] val persistNanos = Atomic(0L)
-    private[OutErrStatistics] val eventTotal = Atomic(0L)
-    private[OutErrStatistics] val charTotal = Atomic(0L)
-
+  private sealed trait OrderStdWrittenStatisticsMXBean:
+    this: Bean.type =>
     def getBlockedSeconds: java.math.BigDecimal = java.math.BigDecimal.valueOf(persistNanos.get, 9)
+    /** Number of Java characters (16bit characters, longer characters count twice). */
     def getCharacterTotal: Long = charTotal.get
     def getEventTotal: Long = eventTotal.get
+
+  private object Bean extends OrderStdWrittenStatisticsMXBean:
+    val persistNanos = Atomic(0L)
+    val eventTotal = Atomic(0L)
+    val charTotal = Atomic(0L)

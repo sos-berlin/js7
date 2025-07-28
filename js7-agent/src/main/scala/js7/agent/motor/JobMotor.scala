@@ -166,7 +166,8 @@ extends Service.StoppableByRequest:
         def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
         agentState.idToOrder.get(order.id) match
           case None =>
-            logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently")
+            logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
+              problem.throwableIfStackTrace)
             if problem != UnknownKeyProblem("OrderId", order.id) then
               logger.error(msg)
             decrementAgentAndProcessCount

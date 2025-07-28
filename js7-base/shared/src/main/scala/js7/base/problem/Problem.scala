@@ -26,6 +26,9 @@ sealed trait Problem:
 
   def throwableOption: Option[Throwable]
 
+  final def throwableIfStackTrace: Throwable | Null =
+    throwableOption.fold(null)(_.nullIfNoStackTrace)
+
   /** For Java, return an unchecked Exception. */
   final def toRuntimeException: RuntimeException =
     throwable match

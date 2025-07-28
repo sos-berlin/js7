@@ -39,6 +39,7 @@ import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
+import js7.subagent.OutErrStatistics
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
 import scala.concurrent.duration.Deadline
@@ -382,10 +383,14 @@ object DedicatedSubagent:
     subagentConf: SubagentConf)
     (using ioRuntime: IORuntime)
   : ResourceIO[DedicatedSubagent] =
-    Service.resource:
-      DedicatedSubagent(
-        subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-        jobLauncherConf, subagentConf)
+    for
+      _ <- OutErrStatistics.registerMXBean
+      service <- Service.resource:
+        DedicatedSubagent(
+          subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
+          jobLauncherConf, subagentConf)
+    yield
+      service
 
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,

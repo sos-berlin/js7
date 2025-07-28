@@ -28,16 +28,15 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
       .guarantee:
         IO(logAndStartNewDiff())
 
-
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
   private def logAndStartNewDiff(): Unit =
     if logger.isTraceEnabled then
-      CallMeter.callMeters.filter(_.total > 0).map: callMeter =>
+      CallMeter.callMeters.view.filter(_.total > 0).map: callMeter =>
         val m = callMeter.measurement()
         val diff = lastMeasurements.get(callMeter.name).fold(m)(m.diff)
         lastMeasurements(callMeter.name) = m
         diff.asString
-      // Anything is computed, now we log quickly:
+      .toVector // Compute first, then log quickly:
       .foreachWithBracket(Square): (measurementString, bracket) =>
         logger.trace(s"$bracket $measurementString")
 
@@ -64,4 +63,4 @@ object CallMeterLoggingService:
     def fromConfig(config: Config): Conf =
       Conf(
         logEvery =
-          config.finiteDuration("js7.metering.log-every") getOrElse 1.minutes)
+          config.finiteDuration("js7.metering.log-every") getOrElse 1.minute)

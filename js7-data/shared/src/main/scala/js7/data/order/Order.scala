@@ -96,7 +96,7 @@ extends
   def forkPosition: Checked[Position] =
     val reversed = position.forkBranchReversed
     if reversed.isEmpty then
-      Left(Problem.pure(s"$id is in state FailedInFork but not below a Fork instruction"))
+      Left(Problem.pure(s"$id is expected to be under a Fork instruction"))
     else
       Right(reversed.tail.reverse % reversed.head.nr)
 
