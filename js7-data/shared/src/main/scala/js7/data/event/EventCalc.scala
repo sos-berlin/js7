@@ -3,6 +3,8 @@ package js7.data.event
 import cats.Monoid
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{Timestamp, WallClock}
+import js7.base.utils.ScalaUtils.syntax.toEagerSeq
+import js7.data.event.KeyedEvent.NoKey
 import org.jetbrains.annotations.TestOnly
 
 /** Calculator for EventColl.
@@ -75,13 +77,16 @@ object EventCalc:
   def addChecked[S <: EventDrivenState[S, E], E <: Event, Ctx](
     keyedEvents: Checked[IterableOnce[KeyedEvent[E]]])
   : EventCalc[S, E, Ctx] =
-    EventCalc(_.addChecked(keyedEvents))
+    val eagerlyComputedKeyedEvents = keyedEvents.map(_.toEagerSeq)
+    EventCalc(_.addChecked(eagerlyComputedKeyedEvents))
 
-  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: MaybeTimestampedKeyedEvent[E])
+  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    keyedEvent: MaybeTimestampedKeyedEvent[E])
   : EventCalc[S, E, Ctx] =
     pureEvent(keyedEvent)
 
-  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvents: MaybeTimestampedKeyedEvent[E]*)
+  inline def pure[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    keyedEvents: MaybeTimestampedKeyedEvent[E]*)
   : EventCalc[S, E, Ctx] =
     pureEvents(keyedEvents)
 
@@ -96,17 +101,20 @@ object EventCalc:
   //: Checked[EventCalc[S, E, Ctx] =
   //  pureWithKey[K, E1](key)(events)
 
-  def pureNoKey[S <: EventDrivenState[S, E], E <: Event, Ctx](events: Iterable[E])(using E <:< NoKeyEvent)
+  def pureNoKey[S <: EventDrivenState[S, E], E <: NoKeyEvent, Ctx](events: Iterable[E])
   : EventCalc[S, E, Ctx] =
-    EventCalc(_.addNoKey(events))
+    val eagerlyComputedKeyedEvents = events.view.map(NoKey <-: _).toVector
+    EventCalc(_.add(eagerlyComputedKeyedEvents))
 
-  def pureEvent[S <: EventDrivenState[S, E], E <: Event, Ctx](keyedEvent: MaybeTimestampedKeyedEvent[E])
+  def pureEvent[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    keyedEvent: MaybeTimestampedKeyedEvent[E])
   : EventCalc[S, E, Ctx] =
     EventCalc(_.addEvent(keyedEvent))
 
   private def pureEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](
     keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : EventCalc[S, E, Ctx] =
+    val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
     EventCalc(_.addEvents(keyedEvents))
 
   //private val Monoid = new Monoid[EventCalc[?, ?, ?]]:
@@ -117,7 +125,8 @@ object EventCalc:
 
   opaque type OpaqueEventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] = EventColl[S, E, Ctx]
 
-  def context[S <: EventDrivenState[S, E], E <: Event, Ctx](using coll: OpaqueEventColl[S, E, Ctx]): Ctx =
+  def context[S <: EventDrivenState[S, E], E <: Event, Ctx](using coll: OpaqueEventColl[S, E, Ctx])
+  : Ctx =
     coll.context
 
   /** TODO Don't use this, use `now`. */

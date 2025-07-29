@@ -405,6 +405,25 @@ object ScalaUtils:
                 case a: A @unchecked => a
 
     extension [A](iterableOnce: IterableOnce[A])
+      /** Convert to Seq[A].
+       * <p>The original toSeq method is deprecated..
+       * <p>Use this method only once! */
+      def asSeqOrToVector: Seq[A] =
+        iterableOnce match
+          case o: Seq[A] => o
+          case _ => Vector.from(iterableOnce)
+
+      /** Make an eagerly computed Seq.
+       * <p>The original toSeq method is deprecated..
+       * <p>Use this method only once! */
+      def toEagerSeq: Seq[A] =
+        iterableOnce match
+          case o: scala.collection.immutable.List[A] => o
+          case o: scala.collection.immutable.ArraySeq[A] => o
+          case o: scala.collection.immutable.Queue[A] => o
+          case o: fs2.Chunk[A] => o.asSeq
+          case _ => Vector.from(iterableOnce)
+
       def foldMap[B: Monoid as B](f: A => B): B =
         iterableOnce match
           case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
