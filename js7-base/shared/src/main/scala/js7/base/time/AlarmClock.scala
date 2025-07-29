@@ -43,7 +43,8 @@ trait AlarmClock extends WallClock:
   : IO[IO[Unit]] =
     scheduleIO(scheduleAt(timestamp, label), s"scheduleIOAt($timestamp, $label)", io)
 
-  private final def scheduleIO(schedule: (=> Unit) => SyncCancelable, label: String, io: IO[Unit])
+  private final def scheduleIO(
+    schedule: (=> Unit) => SyncCancelable, label: => String, io: IO[Unit])
     (using dispatcher: Dispatcher[IO])
   : IO[IO[Unit]] =
     IO:

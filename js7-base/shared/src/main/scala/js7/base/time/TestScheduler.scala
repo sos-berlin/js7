@@ -30,7 +30,7 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
   def sleep(delay: FiniteDuration, runnable: Runnable): Runnable =
     val id = nextId.getAndIncrement()
     val task = Task(_state.monotonicNanos + delay.toNanos, id, runnable)
-    logger.trace(s"⏰ schedule $task")
+    logger.trace(s"⏰ sleep $task")
     synchronized:
       queue += task
     logTasks(indent = true)
@@ -81,7 +81,7 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
 
       // Shuffle ripe times like in reality
       for task <- Random.shuffle(tasks) do
-        logger.trace(s"🔔 run $task")
+        logger.trace(s"🔔 tick: run $task")
         task.runnable.run() // Exception? Let it crash! OTHER TASKS ARE LOST THEN!
 
   private def awokenTasks(): Vector[Task] =

@@ -110,7 +110,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         IO.uncancelable: _ =>
           (untilStopRequested *> journalQueue.offer(None))
             .background.surround:
-              runStream
+              runCommitPipeline
             .guaranteeCase: outcome =>
               IO.unlessA(isStopping):
                 whenBeingKilled.tryGet.map(_.isDefined).flatMap: isKilling =>
@@ -129,7 +129,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                       outcomeToEither(outcome).rightAs(())
                     .void
 
-    private def runStream: IO[Unit] =
+    private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.concurrentPersistLimit)
           .through(commitPipeline)

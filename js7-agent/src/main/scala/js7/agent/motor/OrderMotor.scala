@@ -54,7 +54,7 @@ extends Service.StoppableByRequest:
     startService:
       (untilStopRequested *> orderQueue.offer(None))
         .background.surround:
-          processTheQueue
+          runOrderPipeline
       *> orderToEntry.toMap.values.foldMap(_.stop)
       *> jobs.stop
 
@@ -168,16 +168,21 @@ extends Service.StoppableByRequest:
     IO.whenA(orders.nonEmpty):
       orderQueue.offer(Some(orders))
 
-  private def processTheQueue: IO[Unit] =
-    // TODO Beliebige Aufträge müssen aus orderQueue löschbar sein
+  private def runOrderPipeline: IO[Unit] =
+    // TODO Beliebige Aufträge sollen aus orderQueue löschbar sein
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
-      .mapChunks: chunk =>
-        Chunk(chunk.toVector.flatten
-          // Keep last duplicates only
-          .reverse.distinctBy(_.id).reverse)
-      .evalMap:
-        continueOrders
+      .through:
+        orderPipeline
       .compile.drain
+
+  private def orderPipeline: fs2.Pipe[IO, Seq[Order[Order.State]], Unit] =
+    _.mapChunks: chunk =>
+      Chunk:
+        chunk.toVector.flatten
+          // Keep last duplicates only
+          .reverse.distinctBy(_.id).reverse
+    .evalMap:
+      continueOrders
 
   private def continueOrders(orders: Vector[Order[Order.State]]): IO[Unit] =
     clock.lockIO: now =>
@@ -187,6 +192,7 @@ extends Service.StoppableByRequest:
         .partition(_._2 <= now)
       delayOrderIds.foldMap: (orderId, delayUntil) =>
         orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+          logger.info(s"### $delayUntil: $orderId")
           entry.schedule(delayUntil):
             enqueue(orderId) // Try again after delay
       .as(immediateOrderIds.map(_._1))
