@@ -27,8 +27,8 @@ object SubagentWebServer:
       conf.config,
       routeBinding => new PekkoWebServer.BoundRoute:
         private val gateKeeperConf =
-          GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply, Seq(
-            AgentDirectorPermission))
+          GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
+            Set(AgentDirectorPermission))
 
         def serviceName = "Subagent"
 

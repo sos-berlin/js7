@@ -38,8 +38,8 @@ object ControllerWebServer:
         import controllerConfiguration.config
 
         private val gateKeeperConf =
-          GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
-            UpdateItemPermission, AgentDirectorForwardPermission))
+          GateKeeper.Configuration.fromConfig(config, SimpleUser.apply,
+            Set(UpdateItemPermission, AgentDirectorForwardPermission))
 
         def serviceName = "Controller"
 

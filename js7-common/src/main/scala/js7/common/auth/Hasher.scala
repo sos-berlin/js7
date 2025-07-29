@@ -16,11 +16,10 @@ final class Hasher(algorithm: String) extends (String => String):
   private def cloneMessageDigest() =
     if isCloneable then
       try prototype.clone().asInstanceOf[MessageDigest]
-      catch { case _: CloneNotSupportedException =>
+      catch case _: CloneNotSupportedException =>
         isCloneable = false
         logger.debug(s"$algorithm MessageDigest is not cloneable")
         newMessageDigest()
-      }
     else
       newMessageDigest()
 

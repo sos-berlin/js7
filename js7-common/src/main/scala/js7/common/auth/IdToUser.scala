@@ -11,6 +11,7 @@ import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.IdToUser.*
 import scala.jdk.CollectionConverters.*
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -57,14 +58,18 @@ extends (UserId => Option[U]):
       Right(Left(userIds))  // Only one of these UserIds is allowed to authenticate
 
   private def rawToUser(raw: RawUserAccount): Option[U] =
-    (raw.encodedPassword match {
-      case None => Some(HashedPassword.MatchesNothing)
-      case Some(pw) => toHashedPassword(raw.userId, pw).map(_.hashAgainRandom)
-    }).map(hashedPassword => toUser(
-        raw.userId,
-        hashedPassword,
-        raw.permissions.flatMap(toPermission.lift),
-        raw.distinguishedNames))
+    raw.encodedPassword
+      .match
+        case None => Some(HashedPassword.MatchesNothing)
+        case Some(pw) => toHashedPassword(raw.userId, pw).map(_.hashAgainRandom)
+      .map: hashedPassword =>
+        toUser(
+          raw.userId,
+          hashedPassword,
+          raw.permissions.flatMap: p =>
+            toPermission.get(p).tap: maybe =>
+              if maybe.isEmpty then logger.warn(s"${raw.userId} has unknown '$p' permission"),
+          raw.distinguishedNames)
 
 
 object IdToUser:
@@ -106,32 +111,28 @@ object IdToUser:
 
     val distinguishedNameToUserIds: Map[DistinguishedName, Set[UserId]] =
       cfgObject.asScala.view
-        .flatMap { case (key, value) =>
+        .flatMap: (key, value) =>
           UserId.checked(key)
             .toOption/*ignore error*/
-            .view
-            .flatMap(userId =>
-              value match {
+            .view.flatMap: userId =>
+              value match
                 case value: ConfigObject =>
                   Option(value.get("distinguished-names"))
-                    .view
-                    .flatMap(_.unwrapped match {
-                      case list: java.util.List[?] =>
-                        list.asScala.flatMap {
-                          case o: String =>
-                            DistinguishedName.checked(o)
-                              .toOption/*ignore error*/
-                              .map(_ -> userId)
-                          case _ =>
-                            Nil/*ignore type error*/
-                        }
-                    })
+                    .view.flatMap:
+                      _.unwrapped match
+                        case list: java.util.List[?] =>
+                          list.asScala.flatMap:
+                            case o: String =>
+                              DistinguishedName.checked(o)
+                                .toOption/*ignore error*/
+                                .map(_ -> userId)
+                            case _ =>
+                              Nil/*ignore type error*/
                 case _=>
                   Nil/*ignore type mismatch*/
-              })
-        }
         .groupMap(_._1)(_._2)
-        .map { case (k, v) => k -> v.toSet }
+        .map: (k, v) =>
+          k -> v.toSet
 
     logger.debug(s"distinguishedNameToUserIds=⏎${
       distinguishedNameToUserIds.map { case (k, v) => s"\n  $k --> ${v mkString " "}" }.mkString}")

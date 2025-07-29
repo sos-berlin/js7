@@ -78,9 +78,8 @@ final class GateKeeper[U <: User](
     .result()
 
   def authenticateUser(userAndPassword: UserAndPassword): Option[U] =
-    if !userAndPassword.userId.isAnonymous then ifPublic foreach { reason =>
+    if !userAndPassword.userId.isAnonymous then ifPublic foreach: reason =>
       logger.warn(s"User '${userAndPassword.userId.string}' logs in with credentials despite $reason")
-    }
     authenticator.authenticate(userAndPassword)
 
   /** Continues with pre-authenticated UserIds or authenticated user or `Anonymous`,
@@ -94,13 +93,13 @@ final class GateKeeper[U <: User](
     *     - if not HTTP authentication, User is Anonymous.
     */
   val preAuthenticate: Directive1[Either[Set[UserId], U]] =
-    Directive(inner =>
-      seal {
-        httpAuthenticate { httpUser =>
+    Directive: inner =>
+      seal:
+        httpAuthenticate: httpUser =>
           if !httpsClientAuthRequired then
             inner(Tuple1(Right(httpUser)))
           else
-            clientHttpsAuthenticate {
+            clientHttpsAuthenticate:
               case idsOrUser if httpUser.isAnonymous || idsOrUser == Right(httpUser) =>
                 inner(Tuple1(idsOrUser))
 
@@ -108,57 +107,51 @@ final class GateKeeper[U <: User](
                 inner(Tuple1(Right(httpUser)))
 
               case _ =>
-                respondWithHeader(wwwAuthenticateHeader) {
-                  completeDelayed(
-                    Forbidden -> Problem.pure(
-                      "HTTP user does not match UserIds allowed by HTTPS client distinguished name"))
-                }
-            }
-        }
-      })
+                respondWithHeader(wwwAuthenticateHeader):
+                  completeDelayed:
+                    Forbidden -> Problem.pure:
+                      "HTTP user does not match UserIds allowed by HTTPS client distinguished name"
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   private val httpAuthenticate: Directive1[U] =
-    Directive(inner =>
-      handleRejections(credentialRejectionHandler) {
-        authenticateBasic(realm, authenticator).apply { user =>
+    Directive: inner =>
+      handleRejections(credentialRejectionHandler):
+        authenticateBasic(realm, authenticator).apply: user =>
           inner(Tuple1(user))
-        }
-      })
 
   private def clientHttpsAuthenticate: Directive1[Either[Set[UserId], U]] =
-    Directive(inner =>
-      optionalHeaderValueByType(`Tls-Session-Info`) {
+    Directive: inner =>
+      optionalHeaderValueByType(`Tls-Session-Info`):
         case None =>
           // Unreachable code because Pekko Http rejects requests without certificate
           complete(Forbidden -> Problem.pure("A client HTTPS certificate is required"))
 
         case Some(tlsSessionInfo) =>
-          (tlsSessionInfo.peerCertificates match {
-            case (cert: X509Certificate) :: Nil =>
-              Right(cert)
+          tlsSessionInfo.peerCertificates
+            .match
+              case (cert: X509Certificate) :: Nil =>
+                Right(cert)
 
-            case certs =>
-              // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
-              certs.collect {
-                case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
-              } match {
-                case cert :: Nil =>
-                  logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
-                  Right(cert)
-                case _ =>
-                  if certs.nonEmpty then logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
-                  Left(certs.length match {
-                    case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
-                    case _ => Problem.pure("A client X.509 certificate is required")
-                  })
-              }
-            }
-          ).flatMap(certToUsers) match {
-            case Left(problem) => completeDelayed(unauthorized -> problem)
-            case Right(o) => inner(Tuple1(o))
-          }
-      })
+              case certs =>
+                // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
+                certs.collect:
+                  case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
+                match
+                  case cert :: Nil =>
+                    logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
+                    Right(cert)
+                  case _ =>
+                    if certs.nonEmpty then logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                    Left:
+                      certs.length match
+                        case n if n > 1 =>
+                          Problem.pure(s"One and only one peer certificate is required (not $n)")
+                        case _ =>
+                          Problem.pure("A client X.509 certificate is required")
+            .flatMap(certToUsers)
+            .match
+              case Left(problem) => completeDelayed(unauthorized -> problem)
+              case Right(o) => inner(Tuple1(o))
 
   private def certToUsers(cert: X509Certificate): Checked[Either[Set[UserId], U]] =
     DistinguishedName.checked(cert.getSubjectX500Principal.getName)
@@ -166,10 +159,10 @@ final class GateKeeper[U <: User](
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
-    Directive(inner =>
-      seal {
-        extractRequest { request =>
-          allowedUser(user, request, requiredPermissions) match {
+    Directive: inner =>
+      seal:
+        extractRequest: request =>
+          allowedUser(user, request, requiredPermissions) match
             case Right(authorizedUser) =>
               inner(Tuple1(authorizedUser))
             case Left(problem) =>
@@ -177,9 +170,6 @@ final class GateKeeper[U <: User](
                 reject(credentialsMissing)  // Let a browser show its authentication dialog
               else
                 complete(Forbidden -> problem)
-          }
-        }
-      })
 
   /** If ValidUserPermission is not required (meaning Anonymous is allowed)
     * then loopbackIsPublic and getIsPublic determine the allowance.
@@ -190,10 +180,9 @@ final class GateKeeper[U <: User](
     ifPublic(request.method) match
       case Some(reason) =>
         //if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
-        val empoweredUser = U.addPermissions(user, reason match {
+        val empoweredUser = U.addPermissions(user, reason match
           case IsPublic | LoopbackIsPublic => configuration.publicPermissions
-          case GetIsPublic                 => configuration.publicGetPermissions
-        })
+          case GetIsPublic                 => configuration.publicGetPermissions)
         if empoweredUser.grantedPermissions != user.grantedPermissions then
           logger.debug(s"Due to $reason, user '${empoweredUser.id.string}' has all permissions for " +
             s"${request.method.value} ${request.uri.path}")
@@ -203,8 +192,8 @@ final class GateKeeper[U <: User](
         ifPermitted(user, requiredPermissions, request.method)
 
   private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] =
-    ifPublic.orElse(
-      (getIsPublic && isGet(method)) ? GetIsPublic)
+    ifPublic.orElse:
+      (getIsPublic && isGet(method)) ? GetIsPublic
 
   private[auth] def ifPublic: Option[AuthorizationReason] =
     if isPublic then
@@ -222,7 +211,7 @@ final class GateKeeper[U <: User](
             isGet(method) then                                        // ... only to read
           Right(user)
         else
-          Left(Problem.pure("Anonymous is permitted HTTP GET only")))
+          Left(Problem.pure("Anonymous is permitted HTTP GET only"))
 
   private def completeDelayed(body: => ToResponseMarshallable): Route =
     completeIO:
