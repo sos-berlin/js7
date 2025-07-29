@@ -173,7 +173,7 @@ private trait SubagentEventListener:
         // Das sind Aufträge, für die ein OrderProcessingStarted ausgegeben wurde, die aber noch
         // nicht zum Subagenten geschickt worden sind, sodass der die nicht mit Disrupted
         // abschließen kann.
-        // onSubagentDied? OrderProcessed wie oben behandeln als käme es vom Subgenten.
+        // onSubagentDied? OrderProcessed wie oben behandeln als käme es vom Subagenten.
         IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>

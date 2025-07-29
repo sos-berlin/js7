@@ -321,7 +321,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                       // Deferred has been removed
                       if problem != CommandDispatcher.StoppedProblem then
                         // onSubagentDied has stopped all queued StartOrderProcess commands
-                        logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
+                        logger.info(s"${order.id} got OrderProcessed, so we ignore $problem")
                       IO.right(())
 
                     case Some(deferred_) =>
