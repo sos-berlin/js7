@@ -1,6 +1,7 @@
 package js7.common.web.serviceprovider
 
 import com.typesafe.config.Config
+import js7.base.auth.Permission
 import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.*
@@ -9,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.StandardDirectives.combineRoutes
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.web.serviceprovider.ServiceProviderRoute.*
 import org.apache.pekko.http.scaladsl.server.Route
 
@@ -16,6 +18,7 @@ import org.apache.pekko.http.scaladsl.server.Route
   * @author Joacim Zschimmer
   */
 trait ServiceProviderRoute:
+  this: RouteProvider =>
 
   protected def routeServiceContext: RouteServiceContext =
     RouteServiceContext(config)
@@ -27,16 +30,19 @@ trait ServiceProviderRoute:
     findServices[RouteService]()
 
   private val lazyServiceProviderRoute = Lazy[Route]:
-    val servicePathRoutes: Seq[(RouteService, String, Route)] =
+    val servicePathRoutes: Seq[(RouteService, String, Route, Set[Permission])] =
       for
         service <- services
         routeMapper = service.newRouteMapper(commonConf)
-        (p, r) <- routeMapper.pathToRoute(routeServiceContext)
+        (path, (route, permissions)) <- routeMapper.pathToRoute(routeServiceContext)
       yield
-        (service, p, r)
+        (service, path, route, permissions)
     logAndCheck(servicePathRoutes)
     combineRoutes:
-      for (_, p, r) <- servicePathRoutes yield pathSegments(p)(r)
+      servicePathRoutes.map: (_, path, route, permissions) =>
+        pathSegments(path):
+          authorizedUser(permissions): _ =>
+            route
 
   /** Routes provided by a Java service. */
   protected final val serviceProviderRoute: Route =
@@ -56,12 +62,13 @@ trait ServiceProviderRoute:
 object ServiceProviderRoute:
   private val logger = Logger[this.type]
 
-  private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit =
+  private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route, Set[Permission])])
+  : Unit =
     if namedRouteToService.isEmpty then
       logger.trace("No routes")
     else
-      for (s, p, _) <- namedRouteToService do
-        logger.debug(s"${s.getClass.scalaName} provides web route '/$p'")
+      for (routeService, path, _, _) <- namedRouteToService do
+        logger.debug(s"${routeService.getClass.scalaName} provides web route '/$path'")
 
     for pathToTriples <- namedRouteToService.duplicateKeys(_._2) do
       sys.error:

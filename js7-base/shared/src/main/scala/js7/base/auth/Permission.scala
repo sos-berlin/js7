@@ -7,12 +7,16 @@ import js7.base.utils.ScalaUtils.syntax.*
   * @author Joacim Zschimmer
   */
 trait Permission:
-  def name: String = getClass.simpleScalaName stripSuffix "Permission"
+  val name: String =
+    getClass.simpleScalaName stripSuffix "Permission"
 
 
 object Permission:
   def toStringToPermission(permissions: Iterable[Permission]): Map[String, Permission] =
     permissions.toKeyedMap(_.name)
+
+  val StandardSet: Set[Permission] = Set(ReadMetricsPermission)
+
 
 /** SuperPermission covering all permissions. */
 case object SuperPermission extends Permission
@@ -42,3 +46,5 @@ case object AgentDirectorPermission extends Permission
 
 /** Permission to forward web requests to Agent Directors. */
 case object AgentDirectorForwardPermission extends Permission
+
+case object ReadMetricsPermission extends Permission

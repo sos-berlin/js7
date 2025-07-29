@@ -280,7 +280,8 @@ object GateKeeper:
         SimpleUser.apply,
       permissions: Iterable[Permission] = Nil)
     : Configuration[U] =
-      val idToUser = IdToUser.fromConfig(config, toUser, Permission.toStringToPermission(permissions))
+      val idToUser = IdToUser.fromConfig(config, toUser,
+        Permission.toStringToPermission(Permission.StandardSet ++ permissions))
       Configuration[U](
         realm                       = config.getString  ("js7.web.server.auth.realm"),
         invalidAuthenticationDelay  = config.getDuration("js7.web.server.auth.invalid-authentication-delay").toFiniteDuration,
