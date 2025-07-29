@@ -10,7 +10,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
-import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
+import js7.data.subagent.Problems.{ProcessLostDueToUnknownReasonProblem, ProcessLostProblem}
 import js7.data.value.{NamedValues, NumberValue}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
@@ -23,6 +23,12 @@ sealed trait OrderOutcome:
 
   final def isSucceeded: Boolean =
     isInstanceOf[OrderOutcome.IsSucceeded]
+
+  final def isDisrupted: Boolean =
+    isInstanceOf[OrderOutcome.Disrupted]
+
+  def isProcessLostProblem: Boolean =
+    false
 
   /** Different to namedValues, findNamedValues dives into nested OrderOutcomes. */
   def findNamedValues: Option[NamedValues]
@@ -216,6 +222,9 @@ object OrderOutcome:
 
     def findNamedValues: None.type =
       None
+
+    override def isProcessLostProblem: Boolean =
+      reason.problem.isInstanceOf[ProcessLostProblem]
 
     override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
 

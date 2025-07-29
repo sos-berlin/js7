@@ -4,7 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsExtensions.{traverseCombine, tryIt}
+import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -237,32 +237,28 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDiedEvent
-    val processing = Order.Processing(subagentId)
-    logger.debugIO(orderToDeferred
-      .removeAll
-      .flatMap: oToD =>
+    logger.debugIO("stopDispatcherAndEmitProcessLostEvents", s"$orderProblem, $subagentDiedEvent"):
+      orderToDeferred.removeAll.flatMap: oToD =>
         val orderIds = oToD.keys
-        IO
-          .whenA(subagentDiedEvent.isDefined):
-            if isLocal then dispatcher.shutdown else dispatcher.stopAndFailCommands
-          .*>(attachedItemKeys.update(_ => IO.pure(Map.empty)))
-          .*>(journal
-            .persist(state => Right(orderIds.view
-              .flatMap:
-                state.idToOrder.get
-              .filter: order =>
-                order.state == processing // Just to be sure, condition should always be true
-              // Filter Orders which have been sent to Subagent ???
+        IO.whenA(subagentDiedEvent.isDefined):
+          dispatcher.stopAndFailCommands
+        .productR:
+          attachedItemKeys.update(_ => IO.pure(Map.empty))
+        .productR:
+          journal.persist: state =>
+            orderIds.view.flatMap(state.idToOrder.get)
+              .flatMap(_.ifState[Order.Processing])
+              .find(_.state.subagentId.contains(subagentId)) // Just to be sure
               .map: order =>
                 order.id <-: state.orderProcessLostIfRestartable(order, orderProblem)
+              .toVector.sortBy(_.key: OrderId) // for prettier logging
               .concat(subagentDiedEvent.map(subagentId <-: _))
-              .toVector)))
-          .map(_.orThrow)
-          .flatMap: persisted =>
-            persisted.keyedEvents.toVector.traverseCombine:
-              case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
-                oToD(orderId).complete(orderProcessed).void
-              case _ => IO.unit)
+        .map(_.orThrow)
+        .flatMap: persisted =>
+          persisted.keyedEvents.toVector.foldMap:
+            case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
+              oToD(orderId).complete(orderProcessed).void
+            case _ => IO.unit
 
   // May run concurrently with onSubagentDied !!!
   // Be sure that only on OrderProcessed event is emitted!
