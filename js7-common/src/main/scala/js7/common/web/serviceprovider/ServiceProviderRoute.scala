@@ -6,6 +6,7 @@ import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.StandardDirectives.combineRoutes
 import js7.common.web.serviceprovider.ServiceProviderRoute.*
@@ -20,6 +21,7 @@ trait ServiceProviderRoute:
     RouteServiceContext(config)
 
   protected def config: Config
+  protected def commonConf: CommonConfiguration
 
   private lazy val services: Seq[RouteService] =
     findServices[RouteService]()
@@ -28,7 +30,7 @@ trait ServiceProviderRoute:
     val servicePathRoutes: Seq[(RouteService, String, Route)] =
       for
         service <- services
-        routeMapper = service.newRouteMapper(config)
+        routeMapper = service.newRouteMapper(commonConf)
         (p, r) <- routeMapper.pathToRoute(routeServiceContext)
       yield
         (service, p, r)
