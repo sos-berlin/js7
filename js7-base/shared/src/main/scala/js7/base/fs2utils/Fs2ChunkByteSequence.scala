@@ -21,6 +21,9 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
   def unsafeWrap(bytes: Array[Byte]): Chunk[Byte] =
     Chunk.array(bytes)
 
+  def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): Chunk[Byte] =
+    Chunk.array(bytes, offset, length)
+
   override def isEmpty(chunk: Chunk[Byte])(using @unused Eq: Eq[Chunk[Byte]]): Boolean =
     chunk.isEmpty
 

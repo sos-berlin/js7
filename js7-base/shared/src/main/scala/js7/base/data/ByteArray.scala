@@ -110,6 +110,14 @@ object ByteArray extends ByteSequence[ByteArray]:
   def unsafeWrap(bytes: Array[Byte]) =
     new ByteArray(requireNonNull(bytes))
 
+  // TODO Implement ByteArray for slices ?
+  /** Emulated for ByteArray — ByteArray doesn't wrap slices. */
+  def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): ByteArray =
+    if offset == 0 && length == bytes.length then
+      unsafeWrap(bytes)
+    else
+      unsafeWrap(bytes.slice(offset, offset + length))
+
   def length(byteArray: ByteArray): Int =
     byteArray.length
 

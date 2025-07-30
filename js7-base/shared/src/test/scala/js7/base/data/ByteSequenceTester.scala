@@ -95,6 +95,11 @@ extends OurTestSuite:
     val a = Array[Byte](1, 2, 3)
     assert(ByteSeq.unsafeWrap(a).unsafeArray eq a)
 
+  "unsafeWrap slice" in:
+    val a = Array[Byte](1, 2, 3, 4, 5, 6, 7, 8, 9)
+    assert(ByteSeq.unsafeWrap(a, 3, 4) == ByteSeq(4, 5, 6, 7))
+    assert(ByteSeq.unsafeWrap(a, 3, 4).unsafeArray sameElements Array[Byte](4, 5, 6, 7))
+
   "wrapChunk" in:
     val array = Array[Byte](1, 2, 3)
     val chunk = Chunk.array(array)

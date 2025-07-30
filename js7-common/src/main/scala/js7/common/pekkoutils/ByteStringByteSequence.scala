@@ -23,6 +23,9 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
   def unsafeWrap(bytes: Array[Byte]): ByteString =
     ByteString.fromArrayUnsafe(bytes)
 
+  def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): ByteString =
+    ByteString.fromArrayUnsafe(bytes, offset, length)
+
   override def isEmpty(byteString: ByteString)(using @unused Eq: Eq[ByteString]): Boolean =
     byteString.isEmpty
 

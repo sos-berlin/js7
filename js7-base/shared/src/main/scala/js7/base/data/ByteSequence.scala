@@ -99,6 +99,8 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def unsafeWrap(bytes: Array[Byte]): ByteSeq
 
+  def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): ByteSeq
+
   def wrapChunk(chunk: fs2.Chunk[Byte]): ByteSeq =
     unsafeWrap(chunk.toArray)
 
