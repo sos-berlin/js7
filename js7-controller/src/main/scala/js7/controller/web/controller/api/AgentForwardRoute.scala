@@ -55,31 +55,30 @@ trait AgentForwardRoute extends ControllerRouteProvider:
     request: HttpRequest)
   : Route =
     def route =
-      rawPathPrefix(PathMatchers.Remaining)(remaining =>
+      rawPathPrefix(PathMatchers.Remaining): remaining =>
         if request.method == GET && remaining.isEmpty then
           forward1(remainingUrl = "")
         else
           //authorizedUser(AgentDirectorForwardPermission)(_ =>
           //  forward1(remaining))
-          complete(Forbidden))
+          complete(Forbidden)
 
     def forward1(remainingUrl: String): Route =
-      completeIO(
+      completeIO:
         pathToAgentRefState.map(_.flatMap(_.checked(agentPath)))
           .flatMapT(agentRefState =>
             forward2(agentRefState.agentRef, remainingUrl = remainingUrl)
-              .map(Right.apply)))
+              .map(Right.apply))
 
     def forward2(agentRef: AgentRef, remainingUrl: String)
     : IO[HttpResponse] =
       controllerState
-        .map(_.map { s =>
+        .mapmap: s =>
           val uri = s.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
           val pekkoUri = uri.asPekko.copy(
             path = PekkoUri.Path((uri.asPekko.path ?/ "agent" / "api").toString + remainingUrl),
             rawQueryString = request.uri.rawQueryString)
           uri -> pekkoUri
-        })
         .flatMap:
           case Left(problem) =>
             IO.pure(HttpResponse(
@@ -97,16 +96,18 @@ trait AgentForwardRoute extends ControllerRouteProvider:
           Admission(uri, userAndPassword),
           label = agentRef.path.toString,
           controllerConfiguration.httpsConfig)
-        .use { agentClient =>
-          implicit val sessionToken: IO[Option[SessionToken]] = IO(agentClient.sessionToken)
+        .use: agentClient =>
+          given IO[Option[SessionToken]] = IO(agentClient.sessionToken)
           agentClient.login() *>
             agentClient
-              .sendReceive(HttpRequest(request.method, pekkoUri,
-                headers = headers.filter(h => isForwardableHeaderClass(h.getClass)),
-                entity = request.entity))
-              .map(response => response.withHeaders(
-                response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))))
-        }
+              .sendReceive:
+                HttpRequest(
+                  request.method, pekkoUri,
+                  headers = headers.filter(h => isForwardableHeaderClass(h.getClass)),
+                  entity = request.entity)
+              .map: response =>
+                response.withHeaders:
+                  response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))
 
     route
 
@@ -134,3 +135,5 @@ object AgentForwardRoute:
     classOf[headers.`Tls-Session-Info`])
     //classOf[headers.`Content-Type`],
     //classOf[headers.`Content-Length`])
+
+  private val isAllowedPath = Set("", "metrics")
