@@ -421,7 +421,7 @@ object ScalaUtils:
           case o: scala.collection.immutable.List[A] => o
           case o: scala.collection.immutable.ArraySeq[A] => o
           case o: scala.collection.immutable.Queue[A] => o
-          case o: fs2.Chunk[A] => o.asSeq
+          case o: fs2.Chunk[A @unchecked] => o.asSeq
           case _ => Vector.from(iterableOnce)
 
       def foldMap[B: Monoid as B](f: A => B): B =
