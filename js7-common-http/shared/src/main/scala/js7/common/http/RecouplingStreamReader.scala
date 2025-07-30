@@ -48,13 +48,13 @@ abstract class RecouplingStreamReader[
         lazy val msg = s"$api reports: $problem"
         if inUse && !stopRequested && !coupledApiVar.isStopped then
           if problem is InvalidSessionTokenProblem then
-            sym.onWarn()
-            logger.warn(s"$sym $msg")
-            logged = true
-          else
+          //if problem.toString.startsWith("InvalidSessionToken: ") then
             sym.onDebug()
             logger.debug(s"$sym $msg")
-            logged = true
+          else
+            sym.onWarn()
+            logger.warn(s"$sym $msg")
+          logged = true
         for throwable <- problem.throwableOption.flatMap(_.ifStackTrace) do
           if api.hasRelevantStackTrace(throwable) then
             logger.debug(s"💥 $msg", throwable)
