@@ -56,7 +56,7 @@ extends Service.StoppableByRequest:
               IO.blocking:
                 logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
                 directory.register(watchService, kinds.toArray[WatchEvent.Kind[?]], modifiers*)
-        .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
+        .logWhenItTakesLonger(s"Registering $directory directory in WatchService"))(
       release = watchKey => IO:
         logger.debug(s"watchKey.cancel() $directory")
         try watchKey.cancel()
