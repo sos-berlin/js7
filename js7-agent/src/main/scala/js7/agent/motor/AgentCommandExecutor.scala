@@ -263,7 +263,9 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
                 terminated.complete:
                   // If dedicated while being shut down, the dedicated AgentMotor is
                   // being stopped asynchronously in background.
-                  DirectorTermination(restartDirector = cmd.restartDirector)
+                  DirectorTermination(
+                    restartJvm = cmd.restart,
+                    restartDirector = cmd.restartDirector)
             .startAndForget // Respond early to the command
             .as(Right(Accepted))
           }
