@@ -177,7 +177,10 @@ extends Service.StoppableByRequest:
               decrementAgentAndProcessCount
             else
               logger.error(msg)
-              logger.error(s"${order.id} has been changed concurrently")
+              if order.isState[Order.Processing] then
+                logger.error(s"${order.id} will stay Processing due to unknown error")
+              else
+                logger.error(s"${order.id} has been changed concurrently: $order")
               IO.unit
 
   private def onSubagentEvents(orderId: OrderId)

@@ -211,8 +211,19 @@ extends SubagentDriver, Service.StoppableByRequest:
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping
-        .flatMapT(_ => attachItemsForOrder(order))
-        .flatMapT(_ => startProcessingOrder2(order, endOfAdmissionPeriod))
+        .flatMapT: _ =>
+          attachItemsForOrder(order)
+        .flatMap:
+          case Left(problem) =>
+            logger.error(s"attachItemsForOrder ${order.id}: $problem")
+            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(problem))
+            journal.persist:
+              order.id <-: orderProcessed
+            .flatMapT: _ =>
+              IO.pure(orderProcessed).start.map(Right(_))
+
+          case Right(()) =>
+            startProcessingOrder2(order, endOfAdmissionPeriod)
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
     signableItemsForOrderProcessing(order.workflowPosition)
