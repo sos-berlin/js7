@@ -20,11 +20,28 @@ import js7.base.utils.ScalaUtilsTest.*
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View, mutable}
 import scala.concurrent.duration.Deadline.now
+import scala.math.ScalaNumber
 import scala.reflect.ClassTag
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
 final class ScalaUtilsTest extends OurTestSuite:
+
+  "AnyRef" - {
+    "isSubtypeOf" in:
+      val number: Number = BigDecimal(1)
+      assert(number.isSubtypeOf[Number])
+      assert(number.isSubtypeOf[ScalaNumber])
+      assert(number.isSubtypeOf[BigDecimal])
+
+      assert(!number.isSubtypeOf[java.lang.Integer])
+      assert(java.lang.Integer.valueOf(1).isSubtypeOf[java.lang.Integer])
+
+      "number.isSubtypeOf[String]" shouldNot compile
+
+      "number.isSubtypeOf[java.io.Serializable]" shouldNot compile
+      assert(number.isInstanceOf[java.io.Serializable])
+  }
 
   "Monad transforming funtions" - {
     def ignored = throw new RuntimeException("Nothing")

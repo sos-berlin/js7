@@ -5,7 +5,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Response.Accepted
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, IsOrderCommand, Reset, ResetSubagent, ShutDown, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, IsOrderCommand, NoOperation, Reset, ResetSubagent, ShutDown, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.motor.AgentCommandExecutor.*
 import js7.agent.{CommandHandler, DirectorTermination}
@@ -20,7 +20,7 @@ import js7.base.service.{MainService, Service}
 import js7.base.system.startup.Halt
 import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, ScalaUtils, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
@@ -207,11 +207,9 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
             agentMotor.resetAllSubagents
           *>
             journal.persist:
-              _.clusterState match
-                case _: ClusterState.Coupled =>
-                  // ClusterResetStarted lets the passive cluster node delete its journal
-                  ClusterResetStarted :: Nil
-                case _ => Nil
+              _.clusterState.isSubtypeOf[ClusterState.Coupled] ?
+                // ClusterResetStarted lets the passive cluster node delete its journal
+                ClusterResetStarted
             .catchIntoChecked
             .flatMapT: _ =>
               initiateShutdown(ShutDown(

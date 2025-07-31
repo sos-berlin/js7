@@ -49,6 +49,15 @@ object ScalaUtils:
   //      ###
 
   object syntax:
+    extension [A <: AnyRef](a: A)
+      /** Like isInstanceOf, but compiles only if A1 is an A. */
+      def isSubtypeOf[A1 <: A: ClassTag as A1]: Boolean =
+        // TODO Could be an inline macro generating instanceOf
+        a.isSubtypeOf(A1.runtimeClass)
+
+      inline def isSubtypeOf[A1 <: A](cls: Class[A1]): Boolean =
+        cls.isAssignableFrom(a.getClass)
+
     implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal:
       def unless(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =
         when(!condition)
