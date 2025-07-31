@@ -145,7 +145,7 @@ object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
-  private val FindTimeIntervalLimit = 365.days
+  private val FindTimeIntervalLimit = 1096.days // TODO Use AgentConfiguration.findTimeIntervalLimit
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
     orderId.string match
