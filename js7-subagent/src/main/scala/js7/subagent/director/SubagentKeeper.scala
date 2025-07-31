@@ -9,7 +9,7 @@ import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenRight, joinStd, left, catchIntoChecked, orThrow, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, guaranteeExceptWhenRight, joinStd, left, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
@@ -204,7 +204,8 @@ extends Service.StoppableByRequest:
                 endOfAdmissionPeriod = endOfAdmissionPeriod) ::
               Nil
           events.map(orderId <-: _)
-    .flatTapT(onPersisted(orderId, onEvents))
+    .flatTapT:
+      onPersisted(orderId, onEvents)
     .flatMapT: persisted =>
       if persisted.isEmpty then
         IO.right(())

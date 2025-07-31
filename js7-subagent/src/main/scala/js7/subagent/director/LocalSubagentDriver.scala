@@ -219,14 +219,16 @@ extends SubagentDriver, Service.StoppableByRequest:
       // TODO Do not attach already attached Items
       //.map(_.map(_.filterNot(signed =>
       //  alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
-      .flatMapT(_
-        .traverse(signedItem =>
+      .flatMapT:
+        _.traverse: signedItem =>
           subagent.commandExecutor.executeCommand(
             Numbered(0, AttachSignedItem(signedItem)),
-            CommandMeta.System))
-        .map(_.map(_.rightAs(())).combineAll))
+            CommandMeta.System)
+        .map:
+          _.map(_.rightAs(())).combineAll
 
-  private def startProcessingOrder2(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  private def startProcessingOrder2(
+    order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred
       .insert(order.id, Deferred.unsafe)
@@ -263,8 +265,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                         s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"
                       ).start
                     else
-                      journal
-                        .persist(order.id <-: orderProcessed)
+                      journal.persist(order.id <-: orderProcessed)
                         .orThrow.start
 
             case Right(_: FiberIO[OrderProcessed]) =>

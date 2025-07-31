@@ -25,9 +25,9 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple}
+import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{ItemOperation, VersionId}
+import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
@@ -223,8 +223,8 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
   }
 
   "Delete a JobResource" in:
-    val deleteJobResource =
-      controller.api.updateItems(Stream.emit(DeleteSimple(bJobResource.path)))
+    val deleteJobResource = controller.api.updateItems(Stream.emit:
+      DeleteSimple(bJobResource.path))
 
     // ItemIsStillReferenced
     assert(deleteJobResource.await(99.s)
@@ -240,19 +240,12 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
       .filter(o => referencingWorkflows(o.workflowId))
       .map(_.id)
       .toSeq
-    controller.api
-      .executeCommand(CancelOrders(orderIds, mode = CancellationMode.kill(immediately = true)))
-      .await(99.s).orThrow
-    execCmd(DeleteOrdersWhenTerminated(orderIds))
+    execCmd:
+      CancelOrders(orderIds, mode = CancellationMode.kill(immediately = true))
+    execCmd:
+      DeleteOrdersWhenTerminated(orderIds)
 
-    // Remove workflows
-    controller.api
-      .updateItems(Stream(
-        AddVersion(VersionId("JOBRESOURCE-DELETED")),
-        ItemOperation.RemoveVersioned(workflow.path),
-        ItemOperation.RemoveVersioned(internalWorkflow.path)))
-      .await(99.s).orThrow
-
+    deleteItems(workflow.path, internalWorkflow.path)
     eventWatch.await[ItemDeleted](_.event.key == workflow.id)
     eventWatch.await[ItemDeleted](_.event.key == internalWorkflow.id)
 
@@ -261,12 +254,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     // JobResource can be added again
     val v = VersionId("JOBRESOURCE-ADDED-AGAIN")
-    controller.api
-      .updateItems(Stream(
-        AddVersion(v),
-        AddOrChangeSigned(toSignedString(bJobResource)),
-        AddOrChangeSigned(toSignedString(workflow.withId(workflow.path ~ v)))))
-      .await(99.s).orThrow
+    updateItems(bJobResource, workflow.withVersion(VersionId.Anonymous))
 
   "toFile" in:
     // Test is slow due to >20MB stdout (many OrderStdoutWritten events)
