@@ -25,8 +25,6 @@ sealed trait TimeInterval:
 type NonEmptyTimeInterval = TimeInterval.Standard | TimeInterval.Always
 
 object TimeInterval:
-  val never: TimeInterval = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
-  val alwaysSinceEpoch: TimeInterval = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
 
   def apply(start: Timestamp, duration: FiniteDuration): TimeInterval =
     Standard(start, duration)

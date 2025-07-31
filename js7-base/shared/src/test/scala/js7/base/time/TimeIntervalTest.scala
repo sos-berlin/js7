@@ -21,19 +21,19 @@ final class TimeIntervalTest extends OurTestSuite:
     assert(timeInterval.contains(timeInterval.start + timeInterval.duration - 1.ms))
     assert(!timeInterval.contains(timeInterval.start + timeInterval.duration))
 
-  "never" in:
-    assert(!TimeInterval.never.contains(Timestamp.now))
-    assert(!TimeInterval.never.contains(Timestamp.now - 100*365*24.h))
-    assert(!TimeInterval.never.contains(Timestamp.now + 100*365*24.h))
-    assert(TimeInterval.never.endsBefore(Timestamp.Epoch))
-    assert(TimeInterval.never.endsBefore(Timestamp.now + 100*365*24.h))
+  "Never" in:
+    assert(!TimeInterval.Never.contains(Timestamp.now))
+    assert(!TimeInterval.Never.contains(Timestamp.now - 100*365*24.h))
+    assert(!TimeInterval.Never.contains(Timestamp.now + 100*365*24.h))
+    assert(TimeInterval.Never.endsBefore(Timestamp.Epoch))
+    assert(TimeInterval.Never.endsBefore(Timestamp.now + 100*365*24.h))
 
-  "always" in:
-    assert(TimeInterval.alwaysSinceEpoch.contains(Timestamp.now))
-    assert(!TimeInterval.alwaysSinceEpoch.contains(Timestamp.Epoch - 1.ms))
-    assert(TimeInterval.alwaysSinceEpoch.contains(Timestamp.now + 100*365*24.h))
+  "Always" in:
+    assert(TimeInterval.Always.contains(Timestamp.now))
+    assert(TimeInterval.Always.contains(Timestamp.Epoch - 1.ms))
+    assert(TimeInterval.Always.contains(Timestamp.now + 100*365*24.h))
 
-    assert(!TimeInterval.alwaysSinceEpoch.endsBefore(Timestamp.Epoch - 100*365*24.h))
-    assert(!TimeInterval.alwaysSinceEpoch.endsBefore(Timestamp.Epoch))
-    assert(!TimeInterval.alwaysSinceEpoch.endsBefore(Timestamp.now))
-    assert(!TimeInterval.alwaysSinceEpoch.endsBefore(Timestamp.now + 100*365*24.h))
+    assert(!TimeInterval.Always.endsBefore(Timestamp.Epoch - 100*365*24.h))
+    assert(!TimeInterval.Always.endsBefore(Timestamp.Epoch))
+    assert(!TimeInterval.Always.endsBefore(Timestamp.now))
+    assert(!TimeInterval.Always.endsBefore(Timestamp.now + 100*365*24.h))

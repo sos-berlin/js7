@@ -230,7 +230,7 @@ private object JobMotor:
   : ResourceIO[JobMotor] =
     for
       queueSignal <- Resource.eval(SignallingRef[IO].of(()))
-      admissionTimeSwitcher <- AdmissionTimeSwitcher.service(
+      admissionSignal <- AdmissionTimeSwitcher.signalService(
         workflowJob.admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)
       service <- Service.resource:
         new JobMotor(
@@ -240,7 +240,7 @@ private object JobMotor:
           orderMotor,
           subagentKeeper,
           queueSignal,
-          admissionTimeSwitcher.admissionSignal)
+          admissionSignal)
     yield
       service
 

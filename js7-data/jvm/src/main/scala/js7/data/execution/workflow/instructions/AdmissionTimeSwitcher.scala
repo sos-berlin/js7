@@ -17,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final class AdmissionTimeSwitcher private(
   currentAdmissionTimeSignal: SignallingRef[IO, Option[TimeInterval]],
-  admissionTimeScheme: Option[AdmissionTimeScheme],
+  admissionTimeScheme: AdmissionTimeScheme,
   zoneId: ZoneId,
   findTimeIntervalLimit: FiniteDuration,
   jobKey: JobKey)
@@ -26,7 +26,7 @@ extends
   Service.StoppableByRequest:
 
   private val admissionTimeIntervalSwitch = ExecuteAdmissionTimeSwitch(
-    admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
+    admissionTimeScheme,
     findTimeIntervalLimit,
     zoneId,
     onSwitch = to =>
@@ -73,7 +73,7 @@ object AdmissionTimeSwitcher:
   private val logger = Logger[this.type]
 
   def service(
-    admissionTimeScheme: Option[AdmissionTimeScheme],
+    admissionTimeScheme: AdmissionTimeScheme,
     zoneId: ZoneId,
     findTimeIntervalLimit: FiniteDuration,
     jobKey: JobKey)
@@ -87,3 +87,20 @@ object AdmissionTimeSwitcher:
           admissionSignal, admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)
     yield
       service
+
+  /** Return a Service if admissionTimeScheme, otherwise a dummy signal is returned. */
+  def signalService(
+    admissionTimeScheme: Option[AdmissionTimeScheme],
+    zoneId: ZoneId,
+    findTimeIntervalLimit: FiniteDuration,
+    jobKey: JobKey)
+    (using AlarmClock, Dispatcher[IO])
+  : ResourceIO[Signal[IO, Option[TimeInterval]]] =
+    admissionTimeScheme match
+      case None =>
+        Resource.eval:
+          SignallingRef[IO].of(Some(TimeInterval.Always))
+
+      case Some(admissionTimeScheme) =>
+        service(admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)
+          .map(_.admissionSignal)

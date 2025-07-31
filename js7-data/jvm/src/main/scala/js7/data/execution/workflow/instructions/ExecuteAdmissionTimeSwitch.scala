@@ -42,7 +42,7 @@ final class ExecuteAdmissionTimeSwitch(
 
         case Some(interval) =>
           IO.unlessA(_nextTime.contains(interval.start)):
-            onSwitch((interval != TimeInterval.never) ? interval) *>
+            onSwitch((interval != TimeInterval.Never) ? interval) *>
               // Also start a fiber if clock has been adjusted
               IO.whenA(now < interval.start):
                 _nextTime = Some(interval.start)
