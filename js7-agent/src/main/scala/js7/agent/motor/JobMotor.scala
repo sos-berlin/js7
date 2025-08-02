@@ -12,6 +12,7 @@ import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.agent.motor.JobOrderQueue.End
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, right, startAndForget}
+import js7.base.catsutils.CatsEffectUtils.unlessDeferred
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
@@ -40,7 +41,7 @@ private final class JobMotor private(
   getAgentState: IO[AgentState],
   orderMotor: OrderMotor,
   subagentKeeper: SubagentKeeper[AgentState],
-  queueSignal: SignallingRef[IO, Unit],
+  queueSignal: SignallingRef[IO, () => String],
   admissionSignal: Signal[IO, Option[TimeInterval]])
 extends Service.StoppableByRequest:
 
@@ -51,7 +52,7 @@ extends Service.StoppableByRequest:
 
   def start =
     startService:
-      run
+      runPipeline
 
   override def stop =
     super.stop
@@ -65,46 +66,47 @@ extends Service.StoppableByRequest:
           .map(order.id -> _)
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
-    IO.whenA(isStrict):
-      getAgentState.flatMap: agentState =>
-        IO:
-          orders.foreach: order =>
-            if !agentState.isOrderProcessable(order) then
-              val msg = s"Order in job queue is not isOrderProcessable: $order"
-              logger.error(msg)
-              throw new AssertionError(msg)
-    *>
-      queue.enqueue(orders) *>
-      queueSignal.set(())
+    IO.whenA(orders.nonEmpty):
+      IO.whenA(isStrict):
+        getAgentState.flatMap: agentState =>
+          IO:
+            orders.foreach: order =>
+              if !agentState.isOrderProcessable(order) then
+                val msg = s"Order in job queue is not isOrderProcessable: $order"
+                logger.error(msg)
+                throw new AssertionError(msg)
+      *>
+        queue.enqueue(orders) *>
+        queueSignal.set(() => orders.map(_.id).mkString(" "))
 
-  def trigger: IO[Unit] =
-    IO.defer:
-      IO.unlessA(queue.isEmptyUnsafe/*fast lane, if empty*/):
-        queueSignal.set(())
+  def trigger(reason: => Any): IO[Unit] =
+    unlessDeferred(queue.isEmptyUnsafe/*fast lane, if empty*/):
+      queueSignal.set(() => reason.toString)
 
   def remove(orderId: OrderId): IO[Unit] =
     queue.lockForRemoval:
       queue.remove(orderId)
     .map:
       if _ then
-        logger.debug(s"$orderId removed from $jobKey queue")
+        logger.debug(s"$orderId removed from queue")
 
-  private def run: IO[Unit] =
-    admissionSignal.discrete.merge:
+  private def runPipeline: IO[Unit] =
+    admissionSignal.discrete.map(o => () => s"admission $o").merge:
       queueSignal.discrete
-    .evalMap: _ =>
+    .evalMap: signalReason =>
       dequeue
-    .filter: chunk =>
+        .map(signalReason -> _)
+    .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
-        logger.trace("run: signal without order")
+        logger.trace(s"runPipeline: No Order is processable despite signal: ${signalReason()}")
         false
+    .map(_._2)
     .unchunks
     .takeWhile(_ != End)
     .evalMap:
       case o: OrderWithEndOfAdmission =>
         startOrderProcess(o).startAndForget // TODO How to cancel this?
       case End => IO.unit // Cannot happen due takeWhile(_ != End)
-    .repeat
     .interruptWhenF(untilStopRequested)
     .compile.drain
 
@@ -123,13 +125,13 @@ extends Service.StoppableByRequest:
             val endOfAdmission = maybeTimeInterval match
               case Some(o: TimeInterval.Standard) => Some(o.end)
               case _ => None
-            val onlyForceAdmission = maybeTimeInterval.isEmpty
+            val onlyForcedAdmission = maybeTimeInterval.isEmpty
             Vector.newBuilder[OrderWithEndOfAdmission | End].tailRecM: builder =>
-              if queue.isEmpty(onlyForceAdmission) then
+              if queue.isEmpty(onlyForcedAdmission) then
                 IO.right(builder)
               else
                 tryIncrementProcessCount(agentState):
-                  queue.dequeueNextOrder(onlyForceAdmission).map:
+                  queue.dequeueNextOrder(onlyForcedAdmission).map:
                     case End => Some(End)
                     case o: Order[IsFreshOrReady @unchecked] =>
                       Some(OrderWithEndOfAdmission(o, endOfAdmission))
@@ -144,11 +146,12 @@ extends Service.StoppableByRequest:
   : IO[Option[A]] =
     IO.defer:
       if processCount.get() < workflowJob.processLimit then
-        orderMotor.jobs.processLimits.tryIncrementProcessCount(agentState)(body)
-          .map: result =>
-            if result.isDefined then
-              processCount += 1
-            result
+        orderMotor.jobMotorKeeper.processLimits.tryIncrementProcessCount(agentState):
+          body
+        .map: result =>
+          if result.isDefined then
+            processCount += 1
+          result
       else
         IO.none
 
@@ -189,7 +192,7 @@ extends Service.StoppableByRequest:
     events.foldMap:
       case OrderStarted => IO.unit
       case _: OrderProcessingStarted =>
-        orderMotor.jobs.maybeKillOrder(orderId)
+        orderMotor.jobMotorKeeper.maybeKillOrder(orderId)
 
       case _: OrderProcessed =>
         onOrderProcessed(orderId) *>
@@ -204,9 +207,9 @@ extends Service.StoppableByRequest:
     processCountLock.surround:
       IO.defer:
         processCount.getAndDecrement()
-        orderMotor.jobs.processLimits.decrementProcessCount.flatMap: agentWasLimited =>
+        orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: agentWasLimited =>
           if agentWasLimited then
-            orderMotor.jobs.tryStartProcessingAllJobs
+            orderMotor.jobMotorKeeper.triggerAllJobs("processCount below AgentRef#processLimit")
           else
             IO.unit
 
@@ -229,7 +232,7 @@ private object JobMotor:
     (using AlarmClock, Dispatcher[IO])
   : ResourceIO[JobMotor] =
     for
-      queueSignal <- Resource.eval(SignallingRef[IO].of(()))
+      queueSignal <- Resource.eval(SignallingRef[IO].of[() => String](() => "initial signal"))
       admissionSignal <- AdmissionTimeSwitcher.signalService(
         workflowJob.admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)
       service <- Service.resource:

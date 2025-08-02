@@ -50,7 +50,7 @@ private[agent] abstract class CommandQueue(
   private object queue:
     private val queue = mutable.Queue.empty[Queueable]
     private val queueSet = mutable.Set.empty[Queueable]
-    private val detachQueue = mutable.Queue.empty[Queueable]  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
+    private val detachQueue = mutable.Queue.empty[Queueable.DetachOrder]  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
     def enqueue(queueable: Queueable): Unit =
       queueable match

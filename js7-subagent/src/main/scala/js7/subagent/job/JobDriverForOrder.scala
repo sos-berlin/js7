@@ -153,7 +153,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
         timedOut = true
         // TODO Weitere Öffnungszeiten können sich anschließen, auch überlappend!
         logger.warn:
-          s"$orderId OrderProcess has reached the end of admission period after and will be killed now"
+          s"$orderId OrderProcess has reached the end of admission period and will be killed now"
     .productR:
       // TODO Es darf nur einen geben:
       killWithSigkillDelay(SIGTERM)

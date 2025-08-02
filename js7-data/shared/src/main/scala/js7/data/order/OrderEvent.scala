@@ -833,7 +833,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderPromptAnswered(/*outcome: OrderOutcome.Completed*/)
-  extends OrderCoreEvent
+  extends OrderCoreEvent, IsControllerOnly
 
 
   sealed trait OrderCycleEvent extends OrderActorEvent

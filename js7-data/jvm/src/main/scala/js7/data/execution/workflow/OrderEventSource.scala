@@ -45,27 +45,27 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private var idToOrder = state.idToOrder
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
-    val order = idToOrder(orderId)
-    if !weHave(order) then
-      Nil
-    else
-      maybeOrderDeleted(order)
-        .ifEmpty:
-          orderMarkKeyedEvent(order)
-        .ifEmpty:
-          if order.isState[Order.Broken] then
-            Nil // Avoid issuing a second OrderBroken (would be a loop)
-          else if order.isSuspendedOrStopped then
-            Nil
-          else if state.isOrderAtBreakpoint(order) then
-            atController(OrderSuspended :: Nil)
-              .map(order.id <-: _)
-          else if state.isWorkflowSuspended(order.workflowPath) then
-            Nil
-          else
-            checkedNextEvents(order) match
-              case Left(problem) => invalidToEvent(order, problem)
-              case Right(keyedEvents) => keyedEvents
+    idToOrder.get(orderId).fold(Nil): order =>
+      if !weHave(order) then
+        Nil
+      else
+        maybeOrderDeleted(order)
+          .ifEmpty:
+            orderMarkKeyedEvent(order)
+          .ifEmpty:
+            if order.isState[Order.Broken] then
+              Nil // Avoid issuing a second OrderBroken (would be a loop)
+            else if order.isSuspendedOrStopped then
+              Nil
+            else if state.isOrderAtBreakpoint(order) then
+              atController(OrderSuspended :: Nil)
+                .map(order.id <-: _)
+            else if state.isWorkflowSuspended(order.workflowPath) then
+              Nil
+            else
+              checkedNextEvents(order) match
+                case Left(problem) => invalidToEvent(order, problem)
+                case Right(keyedEvents) => keyedEvents
 
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =

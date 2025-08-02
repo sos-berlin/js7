@@ -6,7 +6,7 @@ import cats.syntax.parallel.*
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
-import js7.agent.motor.JobMotorsKeeper.*
+import js7.agent.motor.JobMotorKeeper.*
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -28,8 +28,8 @@ import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.director.SubagentKeeper
 
-/** Manages the JobMotor·s. */
-private final class JobMotorsKeeper(
+/** Manages all the JobMotor·s. */
+private final class JobMotorKeeper(
   agentPath: AgentPath,
   orderMotor: OrderMotor,
   subagentKeeper: SubagentKeeper[AgentState],
@@ -86,10 +86,8 @@ private final class JobMotorsKeeper(
         .map(_ -> order)
     .toVector
     .groupMap(_._1)(_._2)
-    .view.map: (jobKey, orders) =>
-      keyToJobMotor(jobKey) -> orders
-    .foldMap: (jobMotor: JobMotor, orders) =>
-      jobMotor.enqueue(orders)
+    .foldMap: (jobKey, orders) =>
+      keyToJobMotor(jobKey).enqueue(orders)
 
   def onOrderDetached(orderId: OrderId, originalAgentState: AgentState): IO[Unit] =
     originalAgentState.idToOrder.get(orderId)
@@ -99,12 +97,12 @@ private final class JobMotorsKeeper(
       .foldMap:
         _.remove(orderId)
 
-  // TODO Slow!
-  def tryStartProcessingAllJobs: IO[Unit] =
+  def triggerAllJobs(reason: => Any): IO[Unit] =
     IO.defer:
+      // TODO Slow?
       // TODO Respect Order's priority
-      jobToMotor.toMap.values.map(_.allocatedThing).foldMap:
-        _.trigger
+      jobToMotor.toMap.values.view.map(_.allocatedThing).foldMap:
+        _.trigger(reason)
 
   object processLimits:
     private val agentProcessCount = Atomic(0)
@@ -116,11 +114,12 @@ private final class JobMotorsKeeper(
 
     def tryIncrementProcessCount[A](agentState: AgentState)(body: => IO[Option[A]]): IO[Option[A]] =
       processLimitLock.lock:
-        if agentProcessLimit(agentState).forall(agentProcessCount.get < _) then
-          agentProcessCount += 1
-          body
-        else
-          IO.none
+        IO.defer:
+          if agentProcessLimit(agentState).forall(agentProcessCount.get < _) then
+            agentProcessCount += 1
+            body
+          else
+            IO.none
 
     /** @return true iff processCount was at current AgentRef#processLimit. */
     def decrementProcessCount: IO[Boolean] =
@@ -186,5 +185,5 @@ private final class JobMotorsKeeper(
         body
 
 
-object JobMotorsKeeper:
+object JobMotorKeeper:
   private val logger = Logger[this.type]

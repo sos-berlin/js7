@@ -48,6 +48,11 @@ object EventCalc:
   inline def empty[S <: EventDrivenState[S, E], E <: Event, Ctx]: EventCalc[S, E, Ctx] =
     Empty.asInstanceOf
 
+  inline def apply[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
+  : EventCalc[S, E, Ctx] =
+    new EventCalc(function)
+
   def problem[S <: EventDrivenState[S, E], E <: Event, Ctx](problem: Problem): EventCalc[S, E, Ctx] =
     EventCalc(_ => Left(problem))
 

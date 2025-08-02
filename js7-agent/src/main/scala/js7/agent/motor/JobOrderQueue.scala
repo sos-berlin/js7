@@ -2,7 +2,6 @@ package js7.agent.motor
 
 import cats.effect.IO
 import js7.agent.motor.JobOrderQueue.*
-import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.monixutils.SimpleLock
 import js7.data.order.Order.IsFreshOrReady
@@ -14,7 +13,7 @@ private final class JobOrderQueue:
   private val queue = new MutableOrderQueue
   private val forceAdmissionQueue = new MutableOrderQueue
   private val lock = SimpleLock[IO]
-  private val subtractQueueLock = SimpleLock[IO]
+  private val removalLock = SimpleLock[IO]
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
     lock.surround:
@@ -25,15 +24,15 @@ private final class JobOrderQueue:
           queue.enqueue(order)
 
   /** Guard a sequence of isEmpty, dequeueNextOrder and isEmpty for atomar behaviour. */
-  def lockForRemoval[A](body: SubtractionLocked ?=> IO[A]): IO[A] =
-    subtractQueueLock.surround:
-      body(using SubtractionLocked)
+  def lockForRemoval[A](body: LockedForRemoval ?=> IO[A]): IO[A] =
+    removalLock.surround:
+      body(using LockedForRemoval)
 
-  def dequeueNextOrder(onlyForceAdmission: Boolean)(using SubtractionLocked)
+  def dequeueNextOrder(onlyForcedAdmission: Boolean)(using LockedForRemoval)
   : IO[Order[IsFreshOrReady] | End] =
     lock.surround:
       IO:
-        if onlyForceAdmission then
+        if onlyForcedAdmission then
           val order = forceAdmissionQueue.dequeueNext()
           queue.remove(order.id)
           order
@@ -42,15 +41,15 @@ private final class JobOrderQueue:
           forceAdmissionQueue.remove(order.id)
           order
 
-  def remove(orderId: OrderId)(using SubtractionLocked): IO[Boolean] =
+  def remove(orderId: OrderId)(using LockedForRemoval): IO[Boolean] =
     lock.surround:
       IO:
         queue.remove(orderId) && locally:
           forceAdmissionQueue.remove(orderId)
           true
 
-  def isEmpty(onlyForceAdmission: Boolean)(using SubtractionLocked): Boolean =
-    if onlyForceAdmission then
+  def isEmpty(onlyForcedAdmission: Boolean)(using LockedForRemoval): Boolean =
+    if onlyForcedAdmission then
       forceAdmissionQueue.isEmpty
     else
       queue.isEmpty
@@ -67,8 +66,8 @@ private object JobOrderQueue:
   case object End
 
   @implicitNotFound("Code must be wrapped in lockForRemoval")
-  sealed trait SubtractionLocked
-  private object SubtractionLocked extends SubtractionLocked
+  sealed trait LockedForRemoval
+  private object LockedForRemoval extends LockedForRemoval
 
 
   private final class MutableOrderQueue:
@@ -89,7 +88,6 @@ private object JobOrderQueue:
     // Slow
     def remove(orderId: OrderId): Boolean =
       isQueued.remove(orderId) && locally:
-        Logger.trace(s"### remove $orderId")
         meterRemove:
           queue.indexWhere(_.id == orderId) match
             case -1 => false

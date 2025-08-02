@@ -165,7 +165,7 @@ extends Service.StoppableByRequest:
     journal.persist: agentState =>
       agentState.idToOrder.checked(orderId).map: order2 =>
         if order != order2 then
-          // Do nothing when the Order has been changed by a concurrent operation
+          // Do nothing when the Order has been changed by a concurrent event
           Nil
         else
           Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](

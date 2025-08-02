@@ -1310,7 +1310,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
           orderEntry.triedToAttached = true
 
-          // Now, IOs are calculcated from mutable state and and be started as a sequence:
+          // Now, IOs are calculated from mutable state and and be started as a sequence:
           (attachSignedItems ++ attachUnsignedItems :+ attachOrder)
             .sequence
             .map(_.combineAll)
