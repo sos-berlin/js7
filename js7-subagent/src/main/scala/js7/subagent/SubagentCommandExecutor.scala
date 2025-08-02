@@ -29,7 +29,7 @@ private[subagent] final class SubagentCommandExecutor(
   : IO[Checked[numbered.value.Response]] =
     IO.defer:
       val command = numbered.value
-      logger.debug(s"#${numbered.number} -> $command")
+      logger.trace(s"#${numbered.number} ↘ $command ↘")
       val since = now
       command
         .match
@@ -120,11 +120,13 @@ private[subagent] final class SubagentCommandExecutor(
               .map(_.rightAs(()))
               .compile.foldMonoid
               .rightAs(SubagentCommand.Accepted)
-        .flatTap(checked => IO(logger.debug(
-          s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
-            s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)}")))
+        .flatTap(checked => IO:
+          logger.trace:
+            s"#${numbered.number} ↙ ${command.getClass.simpleScalaName}" +
+              s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)} ↙")
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
         .logWhenItTakesLonger(s"executeCommand(${numbered.toString.truncateWithEllipsis(100)})")
+
 
 private object SubagentCommandExecutor:
   private val logger = Logger[this.type]

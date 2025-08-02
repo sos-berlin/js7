@@ -111,12 +111,12 @@ object Service:
           if service.started.getAndSet(true) then
             IO.raiseError(IllegalStateException(s"$toString service started twice"))
           else
-            logger.traceF(s"$service start"):
-              service.start
-                .onError: t =>
-                  IO:
-                    // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                    logger.error(s"$service start: ${t.toStringWithCauses}", t.nullIfNoStackTrace))(
+            //logger.traceF(s"$service start"):
+            service.start
+              .onError: t =>
+                IO:
+                  // Maybe duplicate, but some tests don't propagate this error and silently deadlock
+                  logger.error(s"$service start: ${t.toStringWithCauses}", t.nullIfNoStackTrace))(
       release = service =>
         service.stop.logWhenItTakesLonger(s"stopping $service"))
 
