@@ -40,6 +40,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source
 import org.scalatest.Assertions.*
+import scala.annotation.nowarn
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
@@ -223,6 +224,7 @@ final class InternalJobTest
       else
         assert(events.exists(_.isInstanceOf[OrderFailed]))
 
+  @nowarn("msg=Unnecessary .nn: expected type admits null")
   private def runMultipleOrdersWithWorkflow(
     anonymousWorkflow: Workflow,
     ordersArguments: Map[OrderId, Map[String, Value]])

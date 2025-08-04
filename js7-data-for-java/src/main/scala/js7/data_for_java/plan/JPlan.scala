@@ -8,6 +8,7 @@ import js7.data.order.OrderId
 import js7.data.plan.{Plan, PlanId, PlanStatus}
 import js7.data_for_java.board.JPlannedBoard
 import js7.data_for_java.common.JavaWrapper
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
 final case class JPlan(asScala: Plan) extends JavaWrapper:
@@ -35,6 +36,7 @@ final case class JPlan(asScala: Plan) extends JavaWrapper:
 object JPlan:
 
   @javaApi @throws[RuntimeException]
+  @nowarn("msg=Unnecessary .nn: qualifier")
   def of(
     id: PlanId,
     orderIds: java.util.Set[OrderId],

@@ -225,7 +225,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
     var stampedKeyedEvents = new mutable.ArrayBuffer[Stamped[KeyedEvent[Event]]]
 
     def add(stamped: Stamped[KeyedEvent[Event]]): Unit =
-      stampedKeyedEvents = stampedKeyedEvents.nn :+ stamped
+      stampedKeyedEvents = stampedKeyedEvents :+ stamped
 
 
 object FileSnapshotableStateRecoverer:

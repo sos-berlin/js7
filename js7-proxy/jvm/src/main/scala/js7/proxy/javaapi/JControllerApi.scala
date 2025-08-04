@@ -40,6 +40,7 @@ import js7.proxy.data.event.ProxyEvent
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import reactor.core.publisher.Flux
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
@@ -214,6 +215,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     execute(SuspendOrders(orderIds.asScala.toVector, mode.asScala))
 
   @Nonnull
+  @nowarn("msg=Unnecessary .nn: qualifier")
   def resumeOrder(
     @Nonnull orderId: OrderId,
     @Nonnull position: Optional[JPosition],

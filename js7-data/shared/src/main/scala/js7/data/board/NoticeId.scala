@@ -8,6 +8,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
+import scala.annotation.nowarn
 
 /** Globally unique NoticeId. */
 final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
@@ -28,6 +29,7 @@ final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
 object NoticeId:
 
   @javaApi
+  @nowarn("msg=Unnecessary .nn: qualifier")
   def of(planId: PlanId, boardPath: BoardPath, noticeKey: NoticeKey): NoticeId =
     new NoticeId(planId.nn, boardPath.nn / noticeKey.nn)
 
