@@ -13,9 +13,8 @@ private final class StreamQueue[K, V] private(
   stopSignal: SignallingRef[IO, Boolean],
   availableSignal: SignallingRef[IO, Unit]):
 
-  private type Value = StreamQueue.Value[V]
-
-  private val queue = mutable.ListBuffer.empty[Value | End]
+  // Use LinkedHashMap ???
+  private val queue = mutable.ListBuffer.empty[V | End]
   // isQueued is for optimisation
   private val isQueued = mutable.Set.empty[K]
 
@@ -40,46 +39,54 @@ private final class StreamQueue[K, V] private(
     fs2.Stream.eval(dequeueNext)
       .repeat
       .takeWhile(_ != End)
-      .collect:
-        case Value(v) => v
+      .asInstanceOf[fs2.Stream[IO, V]]
       .interruptWhen(stopSignal)
 
-  private def dequeueNext: IO[Value | End] =
+  private def dequeueNext: IO[V | End] =
     availableSignal.discrete
       .evalMap: _ =>
         tryDequeueNext
-      .collect:
-        case o: (Value | End) @unchecked => o
+      .filter(_ != NoValue)
+      .asInstanceOf[fs2.Stream[IO, V | End]]
       .head.compile.lastOrError
 
-  private def tryDequeueNext: IO[Value | End | NoValue] =
+  private def tryDequeueNext: IO[NoValue | V | End] =
     mutex.lock.surround:
       IO:
         if queue.isEmpty then
           NoValue
         else
-          queue.remove(0)
+          val v = queue.remove(0)
+          v match
+            case End =>
+            case v: V @unchecked => isQueued -= toKey(v)
+          v
 
   def enqueue(value: V): IO[Boolean] =
     mutex.lock.surround:
       IO:
         // race? IO.unlessA(isQueued(toKey(value))):
-        queue += Value(value)
+        removeLocked(toKey(value))
+        queue += value
         isQueued += toKey(value)
       *>
         availableSignal.set(()).as(true)
 
-  //// Slow
-  //def withdraw(key: K): IO[Boolean] =
-  //  mutex.lock.surround:
-  //    IO:
-  //      isQueued.remove(key) && locally:
-  //        queue.indexWhere:
-  //          case None => false
-  //          case Some(v) => toKey(v) == key
-  //        match
-  //          case -1 => false
-  //          case i => queue.remove(i); true
+  // Slow
+  private def withdraw(key: K): IO[Boolean] =
+    mutex.lock.surround:
+      IO:
+        removeLocked(key)
+
+  // Slow
+  private def removeLocked(key: K): Boolean =
+    isQueued.remove(key) && locally:
+      queue.indexWhere:
+        case End => false
+        case v: V @unchecked => toKey(v) == key
+      match
+        case -1 => false
+        case i => queue.remove(i); true
 
   override def toString = "StreamQueue"
 
@@ -97,7 +104,6 @@ object StreamQueue:
   private type NoValue = NoValue.type
 
   private case object NoValue
-  private final case class Value[V](value: V)
 
   private type End = End.type
   private case object End

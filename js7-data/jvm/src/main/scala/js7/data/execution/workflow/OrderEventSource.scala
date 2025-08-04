@@ -585,6 +585,10 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 object OrderEventSource:
   private val logger = Logger[this.type]
 
+  inline def nextEvents(orderId: OrderId, state: StateView)(using InstructionExecutorService)
+  : Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
+    OrderEventSource(state).nextEvents(orderId)
+
   def leaveBlocks(
     workflow: Workflow,
     order: Order[Order.State],

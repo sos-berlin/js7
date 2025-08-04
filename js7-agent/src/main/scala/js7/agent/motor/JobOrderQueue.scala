@@ -12,16 +12,17 @@ import scala.collection.mutable
 private final class JobOrderQueue:
   private val queue = new MutableOrderQueue
   private val forceAdmissionQueue = new MutableOrderQueue
-  private val lock = SimpleLock[IO]
   private val removalLock = SimpleLock[IO]
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
-    lock.surround:
-      IO:
+    IO:
+      //JobMotorsMXBean.Bean.orderQueueLength += orders.length
+      val metering = entryMeter.startMetering(orders.length)
+      synchronized:
         orders.foreach: order =>
           if order.forceJobAdmission then
-            forceAdmissionQueue.enqueue(order)
-          queue.enqueue(order)
+            forceAdmissionQueue.enqueue(order, metering)
+          queue.enqueue(order, metering)
 
   /** Guard a sequence of isEmpty, dequeueNextOrder and isEmpty for atomar behaviour. */
   def lockForRemoval[A](body: LockedForRemoval ?=> IO[A]): IO[A] =
@@ -29,23 +30,29 @@ private final class JobOrderQueue:
       body(using LockedForRemoval)
 
   def dequeueNextOrder(onlyForcedAdmission: Boolean)(using LockedForRemoval)
-  : IO[Order[IsFreshOrReady] | End] =
-    lock.surround:
-      IO:
+  : Order[IsFreshOrReady] =
+    synchronized:
+      val entry =
         if onlyForcedAdmission then
-          val order = forceAdmissionQueue.dequeueNext()
-          queue.remove(order.id)
-          order
+          val entry = forceAdmissionQueue.dequeueNext()
+          queue.remove(entry.order.id)
+          entry
         else
-          val order = queue.dequeueNext()
-          forceAdmissionQueue.remove(order.id)
-          order
+          val entry = queue.dequeueNext()
+          forceAdmissionQueue.remove(entry.order.id)
+          entry
+
+      entryMeter.stopMetering(entry.metering)
+      //JobMotorsMXBean.Bean.orderQueueLength -= 1
+      //JobMotorsMXBean.Bean.orderQueueNanos += entry.since.elapsed.toNanos
+      entry.order
 
   def remove(orderId: OrderId)(using LockedForRemoval): IO[Boolean] =
-    lock.surround:
-      IO:
+    IO:
+      synchronized:
         queue.remove(orderId) && locally:
           forceAdmissionQueue.remove(orderId)
+          //JobMotorsMXBean.Bean.orderQueueLength -= 1
           true
 
   def isEmpty(onlyForcedAdmission: Boolean)(using LockedForRemoval): Boolean =
@@ -61,9 +68,7 @@ private final class JobOrderQueue:
 private object JobOrderQueue:
 
   private val meterRemove = CallMeter("JobOrderQueue.MutableOrderQueue.remove")
-
-  type End = End.type
-  case object End
+  private val entryMeter = CallMeter("JobOrderQueue.Entry")
 
   @implicitNotFound("Code must be wrapped in lockForRemoval")
   sealed trait LockedForRemoval
@@ -71,33 +76,41 @@ private object JobOrderQueue:
 
 
   private final class MutableOrderQueue:
-    private val queue = mutable.ListBuffer.empty[Order[IsFreshOrReady]]
+    private val queue = mutable.ListBuffer.empty[Entry]
     // isQueued is for optimisation
     private val isQueued = mutable.Set.empty[OrderId]
 
-    def enqueue(order: Order[IsFreshOrReady]): Unit =
-      remove(order.id)
-      queue += order
-      isQueued += order.id
+    def enqueue(order: Order[IsFreshOrReady], metering: CallMeter.Metering): Unit =
+      synchronized:
+        remove(order.id)
+        queue += Entry(order, metering)
+        isQueued += order.id
 
-    def dequeueNext(): Order[IsFreshOrReady] =
-      val order = queue.remove(0)
-      isQueued -= order.id
-      order
+    def dequeueNext(): Entry =
+      synchronized:
+        val entry = queue.remove(0)
+        isQueued -= entry.order.id
+        entry
 
-    // Slow
+    // Slow !!!
     def remove(orderId: OrderId): Boolean =
-      isQueued.remove(orderId) && locally:
-        meterRemove:
-          queue.indexWhere(_.id == orderId) match
-            case -1 => false
-            case i => queue.remove(i); true
+      synchronized:
+        isQueued.remove(orderId) && locally:
+          meterRemove:
+            queue.indexWhere(_.order.id == orderId) match
+              case -1 => false
+              case i => queue.remove(i); true
 
     def isEmpty: Boolean =
-      queue.isEmpty
+      synchronized:
+        queue.isEmpty
 
     def nonEmpty: Boolean =
-      queue.nonEmpty
+      !isEmpty
 
     override def toString =
-      s"MutableOrderQueue(${queue.size} orders)" //, ${inProcess.size} in process)"
+      synchronized:
+        s"MutableOrderQueue(${queue.size} orders)" //, ${inProcess.size} in process)"
+
+
+  final case class Entry(order: Order[IsFreshOrReady], metering: CallMeter.Metering)

@@ -10,10 +10,11 @@ import javax.annotation.Nullable
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotorKeeper.*
+import js7.base.catsutils.CatsEffectExtensions.False
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.AsyncMap
+import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.system.MBeanUtils.registerMBean
@@ -31,8 +32,9 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.director.SubagentKeeper
+import scala.collection.View
 
-/** Manages all the JobMotor·s. */
+/** The Keeper of all JobMotors. */
 private final class JobMotorKeeper(
   agentPath: AgentPath,
   orderMotor: OrderMotor,
@@ -81,6 +83,7 @@ private final class JobMotorKeeper(
         .map(_.flatten)
 
   def onOrdersMayBeProcessable(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
+    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### onOrdersMayBeProcessable $br$orderId"))
     orderIds.view.flatMap:
       agentState.idToOrder.get
     .flatMap:
@@ -102,40 +105,80 @@ private final class JobMotorKeeper(
         _.remove(orderId)
 
   def triggerAllJobs(reason: => Any): IO[Unit] =
-    IO.defer:
-      // TODO Slow?
-      // TODO Respect Order's priority
-      jobToMotor.toMap.values.view.map(_.allocatedThing).foldMap:
-        _.trigger(reason)
+    lazy val reason_ = reason.toString
+    logger.traceIO("triggerAllJobs", reason_):
+      IO.defer:
+        // TODO Respect Order's priority
+        jobMotors.foldMap:
+          _.trigger(reason_)
+
+  private def jobMotors: View[JobMotor] =
+    jobToMotor.toMap.values.view.map(_.allocatedThing)
 
   object processLimits:
-    private val agentProcessCount = Atomic(0)
-    private val processLimitLock = AsyncLock()
+    private val _processCount = Atomic(0)
+    private val processLimitLock = SimpleLock[IO]
+    private var _processLimit = none[Option[Int]]
+
+    def processLimit: Option[Int] =
+      _processLimit.getOrElse:
+        logger.debug("⚠️  processLimit (own AgentRef) is still unknown, assuming processLimit = 0")
+        Some(0)
+
+    def processCount: Int =
+      _processCount.get
+
+    def onProcessLimitChanged(newLimit: Option[Int]): IO[Unit] =
+      IO.defer:
+        val isAtLimitAndGetsBigger =
+          processLimits.synchronized:
+            val previous = _processLimit.getOrElse(0.some)
+            _processLimit = newLimit.some
+            val processCount = this.processCount
+            val wasAtLimit = previous.exists(_ <= processCount)
+            val getsBigger = newLimit.forall(processCount < _)
+            logger.trace(s"onProcessLimitChanged previous=$previous new=$newLimit wasAtLimit=${
+              wasAtLimit} getsBigger=$getsBigger processCount=$processCount")
+            wasAtLimit & getsBigger
+        IO.whenA(isAtLimitAndGetsBigger):
+          triggerAllJobs:
+            s"Agent process limit increased to ${newLimit.getOrElse("unlimited")}"
+        .map(Right(_))
 
     def forceIncreaseProcessCount(n: Int): IO[Unit] =
       IO:
-        agentProcessCount += n
+        _processCount += n
 
-    def tryIncrementProcessCount[A](agentState: AgentState)(body: => IO[Option[A]]): IO[Option[A]] =
-      processLimitLock.lock:
-        IO.defer:
-          if agentProcessLimit(agentState).forall(agentProcessCount.get < _) then
-            agentProcessCount += 1
-            body
-          else
-            IO.none
+    def tryIncrementProcessCount(jobProcessCount: AtomicInteger, jobProcessLimit: Int): Boolean =
+      jobProcessCount.get < jobProcessLimit &&
+        processLimits.synchronized:
+          processLimit.forall(_processCount.get < _) && locally:
+            jobProcessCount += 1
+            _processCount += 1
+            true
 
-    /** @return true iff processCount was at current AgentRef#processLimit. */
+    /** @return true iff JobMotors have been triggered because a process has become available. */
     def decrementProcessCount: IO[Boolean] =
-      getAgentState.map: agentState =>
-        val was = agentProcessCount.getAndDecrement()
-        if was <= 0 then
-          val msg = s"🔥 agentProcessCount got negative: ${was - 1}"
-          logger.error(msg)
-          if isStrict then throw new AssertionError(msg)
-        agentProcessLimit(agentState).forall(was >= _)
+      IO:
+        processLimit.synchronized:
+          val n = _processCount.decrementAndGet()
+          if n < 0 then
+            val msg = s"🔥 decrementProcessCount: processCount=$n is below zero"
+            logger.error(msg)
+            if isStrict then throw new AssertionError(msg)
+          processLimit.fold(None): limit =>
+            (n + 1 == limit) ? (n, limit)
+      .flatTap: o =>
+        IO(logger.trace(s"### decrementProcessCount: $o"))
+      .flatMap:
+        case Some((n, limit)) =>
+          triggerAllJobs: // TODO Slow, may happen to often
+            s"processCount=$n got below AgentRef processLimit=$limit"
+          .as(true)
+        case _ =>
+          IO.False
 
-    private def agentProcessLimit(agentState: AgentState): Option[Int] =
+    def agentProcessLimit(agentState: AgentState): Option[Int] =
       agentState.keyToItem(AgentRef).get(agentPath) match
         case None =>
           logger.debug("❓ Missing own AgentRef — assuming processLimit = 0")

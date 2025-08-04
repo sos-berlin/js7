@@ -10,7 +10,6 @@ import fs2.concurrent.{Signal, SignallingRef}
 import java.time.ZoneId
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
-import js7.agent.motor.JobOrderQueue.End
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, right, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.unlessDeferred
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
@@ -96,8 +95,8 @@ extends Service.StoppableByRequest:
         logger.debug(s"$orderId removed from queue")
 
   private def runPipeline: IO[Unit] =
-    admissionSignal.discrete.map(o => () => s"admission $o").merge:
-      queueSignal.discrete
+    queueSignal.discrete.merge:
+      admissionSignal.discrete.map(o => () => s"admission $o")
     .evalMap: signalReason =>
       dequeue
         .map(signalReason -> _)
@@ -107,58 +106,39 @@ extends Service.StoppableByRequest:
         false
     .map(_._2)
     .unchunks
-    .takeWhile(_ != End)
-    .evalMap:
-      case o: OrderWithEndOfAdmission =>
-        startOrderProcess(o).startAndForget // TODO How to cancel this?
-      case End => IO.unit // Cannot happen due takeWhile(_ != End)
+    .evalMap: o =>
+      startOrderProcess(o).startAndForget // TODO How to cancel this?
     .interruptWhenF(untilStopRequested)
     .compile.drain
 
-  private val dequeue: IO[Chunk[OrderWithEndOfAdmission | End]] =
+  private val dequeue: IO[Chunk[OrderWithEndOfAdmission]] =
     IO.defer:
       if queue.isEmptyUnsafe/*fast lane*/ then
         emptyChunk
       else
         dequeue2
 
-  private lazy val dequeue2: IO[Chunk[OrderWithEndOfAdmission | End]] =
-    meterDequeue:
-      queue.lockForRemoval:
-        getAgentState.flatMap: agentState =>
-          admissionSignal.get.flatMap: maybeTimeInterval =>
-            val endOfAdmission = maybeTimeInterval match
-              case Some(o: TimeInterval.Standard) => Some(o.end)
-              case _ => None
-            val onlyForcedAdmission = maybeTimeInterval.isEmpty
-            Vector.newBuilder[OrderWithEndOfAdmission | End].tailRecM: builder =>
-              if queue.isEmpty(onlyForcedAdmission) then
-                IO.right(builder)
-              else
-                tryIncrementProcessCount(agentState):
-                  queue.dequeueNextOrder(onlyForcedAdmission).map:
-                    case End => Some(End)
-                    case o: Order[IsFreshOrReady @unchecked] =>
-                      Some(OrderWithEndOfAdmission(o, endOfAdmission))
-                .map:
-                  case None => Right(builder)
-                  case Some(End) => Right(builder += End)
-                  case Some(o) => Left(builder += o)
-            .map: builder =>
-              Chunk.from(builder.result)
+  private lazy val dequeue2: IO[Chunk[OrderWithEndOfAdmission]] =
+    queue.lockForRemoval:
+      meterDequeue:
+        admissionSignal.get.flatMap: maybeTimeInterval =>
+          val endOfAdmission = maybeTimeInterval match
+            case Some(o: TimeInterval.Standard) => Some(o.end)
+            case _ => None
+          val onlyForcedAdmission = maybeTimeInterval.isEmpty
 
-  private def tryIncrementProcessCount[A](agentState: AgentState)(body: => IO[Option[A]])
-  : IO[Option[A]] =
-    IO.defer:
-      if processCount.get() < workflowJob.processLimit then
-        orderMotor.jobMotorKeeper.processLimits.tryIncrementProcessCount(agentState):
-          body
-        .map: result =>
-          if result.isDefined then
-            processCount += 1
-          result
-      else
-        IO.none
+          Vector.newBuilder[OrderWithEndOfAdmission].tailRecM: builder =>
+            if queue.isEmpty(onlyForcedAdmission) then
+              IO.right(builder)
+            else
+              tryIncrementProcessCount.map: ok =>
+                if ok then
+                  val order = queue.dequeueNextOrder(onlyForcedAdmission)
+                  Left(builder += OrderWithEndOfAdmission(order, endOfAdmission))
+                else
+                  Right(builder)
+          .map: builder =>
+            Chunk.from(builder.result)
 
   private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
     import orderWithEndOfAdmission.{endOfAdmission, order}
@@ -177,6 +157,7 @@ extends Service.StoppableByRequest:
   private def handleFailedProcessStart(order: Order[IsFreshOrReady], problem: Problem): IO[Unit] =
     IO.defer:
       getAgentState.flatMap: agentState =>
+        // This is an unexpected situation
         def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
         agentState.idToOrder.get(order.id) match
           case None =>
@@ -184,11 +165,11 @@ extends Service.StoppableByRequest:
               problem.throwableIfStackTrace)
             if problem != UnknownKeyProblem("OrderId", order.id) then
               logger.error(msg)
-            decrementAgentAndProcessCount
+            decrementProcessCount
           case Some(current) =>
             if order == current then
               logger.warn(msg)
-              decrementAgentAndProcessCount
+              decrementProcessCount
             else
               logger.error(msg)
               if order.isState[Order.Processing] then
@@ -211,18 +192,25 @@ extends Service.StoppableByRequest:
 
   private def onOrderProcessed(orderId: OrderId): IO[Unit] =
     remove(orderId) /*Remove a maybe duplicate inserted order???*/ *>
-      decrementAgentAndProcessCount
+      decrementProcessCount
 
-  /** @return true iff process count equalled its limit. */
-  private def decrementAgentAndProcessCount: IO[Unit] =
+  // Don't call concurrently:
+  private def tryIncrementProcessCount[A]: IO[Boolean] =
+    processCountLock.surround:
+      IO:
+        val agentProcessLimit = orderMotor.jobMotorKeeper.processLimits.processLimit
+        orderMotor.jobMotorKeeper.processLimits
+          .tryIncrementProcessCount(processCount, workflowJob.processLimit)
+
+  /** Triggers this JobMotor or all JobMotor when a process counter gets below its limit.
+    * @return true iff process count was at processLimit. */
+  private def decrementProcessCount: IO[Unit] =
     processCountLock.surround:
       IO.defer:
-        processCount.getAndDecrement()
-        orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: agentWasLimited =>
-          if agentWasLimited then
-            orderMotor.jobMotorKeeper.triggerAllJobs("processCount below AgentRef#processLimit")
-          else
-            IO.unit
+        val jobN = processCount.decrementAndGet()
+        orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
+          IO.whenA(!triggered && jobN == workflowJob.processLimit - 1):
+            trigger(s"processCount=$jobN below Job's processLimit=${workflowJob.processLimit}")
 
   override def toString = s"JobMotor($jobKey)"
 
