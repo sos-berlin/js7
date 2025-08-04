@@ -1,9 +1,12 @@
 package js7.agent.motor
 
 import cats.effect.std.Dispatcher
-import cats.effect.{FiberIO, IO}
+import cats.effect.{FiberIO, IO, ResourceIO}
+import cats.syntax.option.*
 import cats.syntax.parallel.*
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicInteger
+import javax.annotation.Nullable
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotorKeeper.*
@@ -13,6 +16,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.AlarmClock
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -184,6 +188,20 @@ private final class JobMotorKeeper(
       agentState.idToOrder.get(orderId).foldMap:
         body
 
+  private val bean: JobMotorKeeperMXBean = new JobMotorKeeperMXBean:
+    def getProcessCount = processLimits.processCount
+    /** @return null means no limit. */
+    @Nullable def getProcessLimit =
+      processLimits.processLimit.fold(null.asInstanceOf[java.lang.Integer])(Int.box)
+
+  def registerMBeans: ResourceIO[Unit] =
+    registerMBean("JobMotorKeeper", bean)
+      .map(_ => ())
+
 
 object JobMotorKeeper:
   private val logger = Logger[this.type]
+
+  sealed trait JobMotorKeeperMXBean:
+    def getProcessCount: Int
+    @Nullable def getProcessLimit: java.lang.Integer

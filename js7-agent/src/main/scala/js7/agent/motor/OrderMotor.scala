@@ -4,7 +4,6 @@ import cats.effect.kernel.Resource
 import cats.effect.std.{Dispatcher, Queue}
 import cats.effect.{IO, Ref, ResourceIO}
 import cats.syntax.traverse.*
-import fs2.Chunk
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -39,6 +38,7 @@ private final class OrderMotor private(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   journal: FileJournal[AgentState],
+  bean: Bean,
   agentConf: AgentConfiguration)
   (using
     clock: AlarmClock,
@@ -168,6 +168,10 @@ extends Service.StoppableByRequest:
   private def runOrderPipeline: IO[Unit] =
     // TODO Beliebige Aufträge sollen aus orderQueue löschbar sein
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
+      .chunks.map: chunk =>
+        chunk.toVector.flatten
+      .evalTapChunk: (orderIds: Vector[OrderId]) =>
+        IO(bean.orderQueueLength -= orderIds.size)
       .through:
         orderPipeline
       .compile.drain
@@ -231,9 +235,11 @@ object OrderMotor:
       dispatcher: Dispatcher[IO])
   : ResourceIO[OrderMotor] =
     for
-      orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[Order[Order.State]]]])
+      orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[OrderId]]])
+      bean <- registerMBean("OrderMotorMXBean", new Bean)
       orderMotor <- Service.resource:
-        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, agentConf)
+        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, bean, agentConf)
+      _ <- orderMotor.jobMotorKeeper.registerMBeans
     yield
       orderMotor
 
@@ -252,3 +258,11 @@ object OrderMotor:
       .flatMap: cancel =>
         cancelScheduleRef.getAndSet(cancel)
           .flatten/*cancel previous schedule*/
+
+
+  private sealed trait OrderMotorMXBean:
+    def getOrderQueueLength: Int
+
+  private final class Bean extends OrderMotorMXBean:
+    val orderQueueLength = Atomic(0)
+    def getOrderQueueLength = orderQueueLength.get

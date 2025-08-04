@@ -13,6 +13,7 @@ object MultipleLinesBracket:
   val Square: MultipleLinesBracket = MultipleLinesBracket("⎡⎢⎣")
   val SmallSquare: MultipleLinesBracket = MultipleLinesBracket("┌│└")
   val Space: MultipleLinesBracket = MultipleLinesBracket("   ")
+  val Default: MultipleLinesBracket = SmallSquare
 
   def apply(chars: String): MultipleLinesBracket =
     def f(i: Int) = if chars.length > i then chars(i) else ' '
@@ -23,12 +24,12 @@ object MultipleLinesBracket:
       case bracket: MultipleLinesBracket => bracket
       case brackets: String => MultipleLinesBracket(brackets)
 
-  def streamInBrackets[A](name: String, brackets: MultipleLinesBracket | String = SmallSquare)
+  def streamInBrackets[A](name: String, brackets: MultipleLinesBracket | String = Default)
     (iterableOrStream: Iterable[A] | Stream[fs2.Pure, A])
   : Stream[fs2.Pure, String] =
     Stream(name, "=\n") ++ bracketLineStream(brackets)(iterableOrStream)
 
-  def bracketLineStream[A](brackets: MultipleLinesBracket | String = SmallSquare)
+  def bracketLineStream[A](brackets: MultipleLinesBracket | String = Default)
     (iterableOrStream: Iterable[A] | Stream[fs2.Pure, A])
   : Stream[fs2.Pure, String] =
     iterableOrStream.match
@@ -40,7 +41,7 @@ object MultipleLinesBracket:
       Stream(" ", br.toString, o.toString, "\n")
 
   extension[F[_], O](stream: Stream[F, O])
-    def zipWithBracket(bracket: MultipleLinesBracket | String): Stream[F, (O, Char)] =
+    def zipWithBracket(bracket: MultipleLinesBracket | String = Default): Stream[F, (O, Char)] =
       val br = MultipleLinesBracket.normalize(bracket)
       stream.through:
         _.zipWithPreviousAndNext.map:
@@ -49,7 +50,7 @@ object MultipleLinesBracket:
           case (Some(_), o, None) => o -> br.last
           case (None, o, None) => o -> br.single
 
-    def evalTapWithBracket(bracket: MultipleLinesBracket | String = Square)
+    def evalTapWithBracket(bracket: MultipleLinesBracket | String = Default)
       (body: (O, Char) => F[Unit])
       (using Functor[F])
     : Stream[F, O] =
@@ -57,7 +58,7 @@ object MultipleLinesBracket:
         body(o, br).as(o)
 
   extension[O](stream: Stream[fs2.Pure, O])
-    def unsafeTapWithBracket(bracket: MultipleLinesBracket | String = Square)
+    def unsafeTapWithBracket(bracket: MultipleLinesBracket | String = Default)
       (body: (O, Char) => Unit)
     : Stream[fs2.Pure, O] =
       stream.zipWithBracket(bracket).map: (o, br) =>

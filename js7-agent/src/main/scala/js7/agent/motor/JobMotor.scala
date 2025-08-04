@@ -75,13 +75,18 @@ extends Service.StoppableByRequest:
                 val msg = s"Order in job queue is not isOrderProcessable: $order"
                 logger.error(msg)
                 throw new AssertionError(msg)
-      *>
-        queue.enqueue(orders) *>
+      //.productR:
+      //  IO(orders.foreachWithBracket()((o, br) => logger.trace(s"### enqueue $br$o")))
+      .productR:
+        queue.enqueue(orders)
+      .productR:
         queueSignal.set(() => orders.map(_.id).mkString(" "))
 
   def trigger(reason: => Any): IO[Unit] =
-    unlessDeferred(queue.isEmptyUnsafe/*fast lane, if empty*/):
-      queueSignal.set(() => reason.toString)
+    unlessDeferred(queue.isEmptyUnsafe):
+      lazy val reason_ = reason.toString
+      logger.trace(s"trigger($reason_)")
+      queueSignal.set(() => reason_)
 
   def remove(orderId: OrderId): IO[Unit] =
     queue.lockForRemoval:
@@ -98,7 +103,7 @@ extends Service.StoppableByRequest:
         .map(signalReason -> _)
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
-        logger.trace(s"runPipeline: No Order is processable despite signal: ${signalReason()}")
+        logger.trace(s"runPipeline: No Order is processable despite signal \"${signalReason()}\"")
         false
     .map(_._2)
     .unchunks

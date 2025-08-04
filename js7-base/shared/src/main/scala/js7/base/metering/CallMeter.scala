@@ -55,13 +55,14 @@ extends CallMeter.CallMeterMXBean:
   //def addMeasurement(startedAt: Deadline): Unit =
   //  addNanos(startedAt.elapsed.toNanos)
 
-  private def startMetering(): Long =
-    _running += 1
-    System.nanoTime()
+  def startMetering(n: Int = 1): Metering =
+    _running += n
+    System.nanoTime().asInstanceOf[Metering]
 
-  private def stopMetering(started: Long): Unit =
-    addNanos(System.nanoTime() - started)
-    _running -= 1
+  /** Call only once for each metering!. */
+  def stopMetering(metering: Metering, n: Int = 1): Unit =
+    addNanos(n * (System.nanoTime() - metering.asInstanceOf[Long]))
+    _running -= n
 
   def addNanos(nanos: Long): Unit =
     addNanosInline(nanos)
@@ -127,6 +128,8 @@ object CallMeter:
       for callMeter <- callMeters do
         logger.trace(s"${callMeter.asString}")
 
+
+  opaque type Metering = Long
 
   sealed trait CallMeterMXBean:
     def getRunning: Int
