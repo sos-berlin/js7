@@ -159,6 +159,12 @@ extends Service.StoppableByRequest:
     import orderWithEndOfAdmission.{endOfAdmission, order}
     // SubagentKeeper ignores the Order when it has been changed concurrently
     subagentKeeper.processOrder(order, endOfAdmission, onSubagentEvents(order.id))
+      .flatMapT: processingStartedEmitted =>
+        IO.unlessA(processingStartedEmitted):
+          // When SubagentKeeper didn't emit an OrderProcessingStarted (due to changed Order,
+          // duplicate enqueued OrderId), then decrement process counters:
+          decrementProcessCount
+        .as(Checked.unit)
       .catchIntoChecked
       .handleProblemWith: problem =>
         handleFailedProcessStart(order, problem)

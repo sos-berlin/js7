@@ -135,7 +135,7 @@ extends Service.StoppableByRequest:
     order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
-  : IO[Checked[Unit]] =
+  : IO[Checked[Boolean]] =
     val orderId = order.id
     if !order.isProcessable then
       IO:
@@ -149,7 +149,7 @@ extends Service.StoppableByRequest:
 
         case Right(None) =>
           logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
-          IO.right(())
+          IO.right(false)
 
         case Right(Some(selectedDriver)) =>
           processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
@@ -158,7 +158,7 @@ extends Service.StoppableByRequest:
     problem: Problem,
     order: Order[IsFreshOrReady],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
-    : IO[Checked[Unit]] =
+    : IO[Checked[Boolean]] =
     // Maybe suppress when this SubagentKeeper has been stopped ???
     // ExecuteExecutor should have prechecked this:
     val orderId = order.id
@@ -176,14 +176,14 @@ extends Service.StoppableByRequest:
           ).flatten.map(orderId <-: _)
     .flatMapT: persisted =>
       onPersisted(orderId, onEvents)(persisted)
-        .rightAs(())
+        .rightAs(true)
 
   private def processOrderAndForwardEvents(
     order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
     onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
-  : IO[Checked[Unit]] =
+  : IO[Checked[Boolean]] =
     // TODO Race with CancelOrders ?
     import selectedDriver.{stick, subagentDriver}
     val orderId = order.id
@@ -208,7 +208,7 @@ extends Service.StoppableByRequest:
       onPersisted(orderId, onEvents)
     .flatMapT: persisted =>
       if persisted.isEmpty then
-        IO.right(())
+        IO.right(false)
       else
         IO.pure:
           persisted.aggregate.idToOrder.checked(orderId)
@@ -221,7 +221,7 @@ extends Service.StoppableByRequest:
             t.nullIfNoStackTrace)
           Left(Problem.fromThrowable(t)))
         .requireElementType[Checked[FiberIO[OrderProcessed]]]
-        .rightAs(())
+        .rightAs(true)
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],
