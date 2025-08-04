@@ -100,11 +100,12 @@ trait AgentForwardRoute extends ControllerRouteProvider:
           given IO[Option[SessionToken]] = IO(agentClient.sessionToken)
           agentClient.login() *>
             agentClient
-              .sendReceive:
+              .sendReceive(
                 HttpRequest(
                   request.method, pekkoUri,
                   headers = headers.filter(h => isForwardableHeaderClass(h.getClass)),
-                  entity = request.entity)
+                  entity = request.entity),
+                dontLog = true)
               .map: response =>
                 response.withHeaders:
                   response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))

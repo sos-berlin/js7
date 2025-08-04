@@ -141,7 +141,8 @@ extends Service.StoppableByRequest:
               after = after,
               timeout = None /*no timeout due to heartbeat keep-alive (otherwise requestTimeout)*/),
             heartbeat = conf.recouplingStreamReader.keepAlive.some,
-            idleTimeout = idleTimeout)
+            idleTimeout = idleTimeout,
+            dontLog = true)
           .map(_.map(_
             .recoverWith(PekkoHttpClient.warnIdleTimeout)
             .interruptWhenF(untilStopRequested)))

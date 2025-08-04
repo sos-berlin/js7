@@ -174,7 +174,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
     "/controller/api/agent-forward/UNKNOWN returns 400" in:
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val e = intercept[HttpException]:
-        httpClient.get[Json](Uri(s"$uri/controller/api/agent-forward/UNKNOWN"), headers).await(99.s)
+        httpClient.getWithHeaders[Json](Uri(s"$uri/controller/api/agent-forward/UNKNOWN"), headers).await(99.s)
       assert(e.status.intValue == 400/*BadRequest*/)
       assert(e.problem == Some(UnknownKeyProblem("AgentPath", AgentPath("UNKNOWN"))))
 
@@ -312,7 +312,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
 
     "controller/api/order/ORDER-ID" in:
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-      val order = httpClient.get[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers).await(99.s)
+      val order = httpClient.getWithHeaders[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers).await(99.s)
       assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
   }
 
@@ -398,7 +398,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
     suburi - {
       "JSON" in:
         testJson(
-          manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), headers).await(99.s)),
+          manipulateResponse(httpClient.getWithHeaders[Json](Uri(s"$uri/$suburi"), headers).await(99.s)),
           expected)
     }
 

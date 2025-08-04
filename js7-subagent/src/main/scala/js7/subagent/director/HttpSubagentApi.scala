@@ -79,7 +79,8 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
                 request.toQueryParameters,
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
         idleTimeout = idleTimeout,
-        responsive = true)
+        responsive = true,
+        dontLog = true)
 
 
 object HttpSubagentApi:

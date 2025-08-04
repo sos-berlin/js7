@@ -45,7 +45,10 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
   "HTTP authentication" - {
     def get(headers: List[HttpHeader]) =
       import httpControllerApi.implicitSessionToken
-      httpControllerApi.httpClient.get[ClusterState](controller.localUri / "controller/api/cluster", headers).await(99.s)
+      httpControllerApi.httpClient.getWithHeaders[ClusterState](
+        controller.localUri / "controller/api/cluster",
+        headers 
+      ).await(99.s)
 
     "Missing authentication is rejected" in:
       val e = intercept[PekkoHttpClient.HttpException]:

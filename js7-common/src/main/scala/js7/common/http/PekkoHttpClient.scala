@@ -123,13 +123,14 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
     idleTimeout: Option[FiniteDuration] = None,
-    prefetch: Int | Missing = Missing)
+    prefetch: Int | Missing = Missing,
+    dontLog: Boolean = false)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
-    getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout).map: stream =>
-      stream.map:
+    getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
+      _.map:
         case HttpHeartbeatByteArray => heartbeatAsChunk
         case o => fs2.Chunk.singleton(o)
       .unchunks
@@ -139,11 +140,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def getRawLinesStream(
     uri: Uri,
     returnHeartbeatAs: Option[ByteArray] = None,
-    idleTimeout: Option[FiniteDuration] = None)
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
-    get_[HttpResponse](uri, StreamingJsonHeaders)
+    get_[HttpResponse](uri, StreamingJsonHeaders, dontLog = dontLog)
       .map(_
         .entity.withoutSizeLimit.dataBytes
         .pipeMaybe(idleTimeout): (stream, t) =>
@@ -186,29 +188,38 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       Stream.empty
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri)(implicit s: IO[Option[SessionToken]]): IO[A] =
-    get[A](uri, Nil)
+  final def get[A: Decoder](uri: Uri, dontLog: Boolean = false)(using IO[Option[SessionToken]])
+  : IO[A] =
+    getWithHeaders[A](uri, Nil, dontLog = dontLog)
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, headers: List[HttpHeader])
+  final def getWithHeaders[A: Decoder](uri: Uri, headers: List[HttpHeader], dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[A] =
-    get_[A](uri, AcceptJson ::: headers)
+    get_[A](uri, AcceptJson ::: headers, dontLog = dontLog)
 
-  final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
+  final def get_[A: FromResponseUnmarshaller](
+    uri: Uri,
+    headers: List[HttpHeader] = Nil,
+    dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[A] =
-    sendReceive(HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers))
-      .flatMap(unmarshal[A](GET, uri))
+    sendReceive(
+      HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers),
+      dontLog = dontLog
+    ).flatMap(unmarshal[A](GET, uri))
 
-  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: IO[Option[SessionToken]]): IO[B] =
+  final def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)(
+    using IO[Option[SessionToken]])
+  : IO[B] =
     post2[A, B](uri, data, Nil)
 
   final def postStream[A: Encoder, B: Decoder](
     uri: Uri,
     stream: Stream[IO, A],
     responsive: Boolean = false,
-    terminateStreamOnCancel: Boolean = false)
+    terminateStreamOnCancel: Boolean = false,
+    dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[B] =
     def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
@@ -237,7 +248,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           sendReceive(
             HttpRequest(POST, uri.asPekko, AcceptJson,
               HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-            logData = Some("postStream"))
+            logData = Some("postStream"),
+            dontLog = dontLog)
         .flatMap(unmarshal[B](POST, uri))
         .pipeIf(terminateStreamOnCancel)(_.onCancel:
           // Terminate stream properly to avoid "TCP Connection reset" error
@@ -258,22 +270,34 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         sendReceive(
           HttpRequest(POST, uri.asPekko, AcceptJson,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-          logData = Some("postStream"))
+          logData = Some("postStream"),
+          dontLog = false)
       .flatMap(unmarshal[Json](POST, uri))
 
-  final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: IO[Option[SessionToken]])
+  final def postWithHeaders[A: Encoder, B: Decoder](
+    uri: Uri,
+    data: A,
+    headers: List[HttpHeader],
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
   : IO[B] =
-    post2[A, B](uri, data, headers)
+    post2[A, B](uri, data, headers, dontLog = dontLog)
 
-  private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: IO[Option[SessionToken]])
+  private def post2[A: Encoder, B: Decoder](
+    uri: Uri,
+    data: A,
+    headers: List[HttpHeader],
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
   : IO[B] =
-    post_[A](uri, data, AcceptJson ::: headers)
+    post_[A](uri, data, AcceptJson ::: headers, dontLog = dontLog)
       .flatMap(unmarshal[B](POST, uri))
 
-  final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
-    (implicit s: IO[Option[SessionToken]])
+  final def postDiscardResponse[A: Encoder](
+    uri: Uri,
+    data: A,
+    allowedStatusCodes: Set[Int] = Set.empty)
+    (using IO[Option[SessionToken]])
   : IO[Int] =
     post_[A](uri, data, AcceptJson)
       .flatMap: httpResponse =>
@@ -285,7 +309,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         .guarantee(IO:
           httpResponse.discardEntityBytes())
 
-  final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
+  final def post_[A: Encoder](
+    uri: Uri,
+    data: A,
+    headers: List[HttpHeader],
+    dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[HttpResponse] =
     for
@@ -296,15 +324,20 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         Marshal(data).to[RequestEntity])
       response <- sendReceive(
         HttpRequest(POST, uri.asPekko, headers, entity),
-        logData = Some(data.toString))
+        logData = Some(data.toString),
+        dontLog = dontLog)
     yield response
 
-  final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
-    (implicit s: IO[Option[SessionToken]])
+  final def postRaw(
+    uri: Uri,
+    headers: List[HttpHeader],
+    entity: RequestEntity,
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
   : IO[HttpResponse] =
-    sendReceive(HttpRequest(POST, uri.asPekko, headers, entity))
+    sendReceive(HttpRequest(POST, uri.asPekko, headers, entity), dontLog = dontLog)
 
-  final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
+  final def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
     (implicit sessionTokenIO: IO[Option[SessionToken]])
   : IO[HttpResponse] =
     withCheckedAgentUri(request): request =>
@@ -314,7 +347,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         val number = requestCounter.incrementAndGet()
 
         val req =
-          logStream("#" + number, "->->  ", "|-->  ", "~~> 💥"):
+          logStream("#" + number, "->->  ", "|-->  ", "~~> 💥", dontLog = dontLog):
             val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
               `x-js7-request-id`(number) ::
               CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
@@ -328,7 +361,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        locally:
+        if !dontLog then
           def arrow = if request.entity.isChunked then ">-->" else "|-->"
           logger.trace(s"$arrow  $logPrefix ${requestToString(req, logData)}")
         IO
@@ -370,7 +403,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .pipeIf(logger.isDebugEnabled):
             logResponding(request, _, responseLogPrefix)
               .map: response =>
-                logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥"):
+                logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = dontLog):
                   response
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
@@ -444,7 +477,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def logStream[M <: HttpMessage](
     prefix: => String,
-    msgArrow: String, lastArrow: String, errArrow: String)
+    msgArrow: String, lastArrow: String, errArrow: String, dontLog: Boolean)
     (message: M)
   : M =
     if !logger.isTraceEnabled then
@@ -466,10 +499,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     else
                       s"${chunk.data.length} bytes"
 
-                  if isJson && chunk.data == HttpHeartbeatByteString then
-                    logger.trace(Logger.Heartbeat, s"$arrow$prefix $string 🩶")
-                  else
-                    logger.trace(Logger.Stream, s"$arrow$prefix $string")
+                  if !dontLog then
+                    if isJson && chunk.data == HttpHeartbeatByteString then
+                      logger.trace(Logger.Heartbeat, s"$arrow$prefix $string 🩶")
+                    else
+                      logger.trace(Logger.Stream, s"$arrow$prefix $string")
                   chunk
                 .mapError: t =>
                   logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")

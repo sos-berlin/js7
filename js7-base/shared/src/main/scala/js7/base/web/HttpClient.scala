@@ -23,27 +23,32 @@ trait HttpClient:
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
     idleTimeout: Option[FiniteDuration] = None,
-    prefetch: Int | Missing =  Missing)
+    prefetch: Int | Missing =  Missing,
+    dontLog: Boolean = false)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 
   def getRawLinesStream(
     uri: Uri,
     returnHeartbeatAs: Option[ByteArray] = None,
-    idleTimeout: Option[FiniteDuration] = None)
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]]
 
-  def get[A: Decoder](uri: Uri)(implicit s: IO[Option[SessionToken]]): IO[A]
+  def get[A: Decoder](uri: Uri, dontLog: Boolean = false)
+    (using IO[Option[SessionToken]]): IO[A]
 
-  def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: IO[Option[SessionToken]])
+  def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
   : IO[B]
 
   def postStream[A: Encoder, B: Decoder](
     uri: Uri,
     data: Stream[IO, A],
     responsive: Boolean = false,
-    terminateStreamOnCancel: Boolean = false)
+    terminateStreamOnCancel: Boolean = false,
+    dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[B]
 

@@ -80,7 +80,8 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
   final def agentEventStream(
     request: EventRequest[Event],
     heartbeat: Option[FiniteDuration] = None,
-    idleTimeout: Option[FiniteDuration] = None)
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
     retryIfSessionLost:
       liftProblem:
@@ -89,7 +90,8 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
             request,
             heartbeat = heartbeat),
           responsive = true,
-          idleTimeout = idleTimeout)
+          idleTimeout = idleTimeout,
+          dontLog = dontLog)
 
 
 object AgentClient:
