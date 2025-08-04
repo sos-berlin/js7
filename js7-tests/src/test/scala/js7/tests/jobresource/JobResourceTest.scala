@@ -2,7 +2,7 @@ package js7.tests.jobresource
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.implicits.*
+import cats.syntax.all.*
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.lang.System.lineSeparator as nl
@@ -20,6 +20,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -41,6 +42,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobresource.JobResourceTest.*
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertions.*
 
@@ -94,6 +96,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     val orderId = OrderId("ORDER-1")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
+    succeed
 
   "JobResource with order variable references (no order access)" in:
     val eventId = controller.eventWatch.lastAddedEventId
@@ -255,6 +258,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     // JobResource can be added again
     val v = VersionId("JOBRESOURCE-ADDED-AGAIN")
     updateItems(bJobResource, workflow.withVersion(VersionId.Anonymous))
+    succeed
 
   "toFile" in:
     // Test is slow due to >20MB stdout (many OrderStdoutWritten events)
@@ -309,6 +313,22 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
       .combineAll
     assert(stdout.contains(resourceContent))
     assert(stdout.contains(executableContent))
+
+  "Heavy addition and removal of Workflow and JobResource" in:
+    if !isIntelliJIdea then pending
+    val jobResource = JobResource(JobResourcePath("HEAVY"))
+    val workflow = Workflow(
+      WorkflowPath("HEAVY"),
+      Vector:
+        EmptyJob.execute(agentPath),
+      jobResourcePaths = Seq(jobResource.path))
+
+    for _ <- 1 to 1000 do
+      updateItems(workflow, jobResource)
+      val stamped = controller.runOrder:
+        FreshOrder(OrderId("HEAVY"), workflow.path, deleteWhenTerminated = true)
+      assert(stamped.map(_.value).contains(OrderFinished()))
+      deleteItems(workflow.path, jobResource.path)
 
 
 object JobResourceTest:
