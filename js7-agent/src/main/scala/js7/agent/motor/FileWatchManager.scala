@@ -59,7 +59,7 @@ extends
         .traverse(startWatching)
         .map(_.combineAll))
       .map(_.orThrow)
-      .containsType[Unit]
+      .requireElementType[Unit]
       .productR:
         startService:
           untilStopRequested *> stopMe

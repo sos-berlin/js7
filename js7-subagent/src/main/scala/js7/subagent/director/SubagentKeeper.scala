@@ -220,7 +220,7 @@ extends Service.StoppableByRequest:
           logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
             t.nullIfNoStackTrace)
           Left(Problem.fromThrowable(t)))
-        .containsType[Checked[FiberIO[OrderProcessed]]]
+        .requireElementType[Checked[FiberIO[OrderProcessed]]]
         .rightAs(())
 
   def recoverOrderProcessing(

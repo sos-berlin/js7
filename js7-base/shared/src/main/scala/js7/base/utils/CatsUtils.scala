@@ -52,7 +52,7 @@ object CatsUtils:
   object syntax:
     implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal:
       /** Compiles iff A == B or A extends B. */
-      @inline def containsType[B >: A]: F[A] =
+      inline def requireElementType[B >: A]: F[A] =
         underlying
 
     extension[A](underlying: IO[A])
