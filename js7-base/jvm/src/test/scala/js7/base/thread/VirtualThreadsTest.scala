@@ -12,20 +12,41 @@ import scala.concurrent.duration.{Deadline, FiniteDuration, SECONDS}
 import scala.util.control.NonFatal
 
 final class VirtualThreadsTest extends OurTestSuite:
+  // Start JVM with -Djs7.virtualThreads !!!
+  // With a JVM still pinning blocked threads: -Djdk.virtualThreadScheduler.maxPoolSize=1000000
+
+  // A million blocking threads with 1MiB stack size means 1TB of memory is needed.
+  // But this memory would be needed without virtual threads, anyway.
 
   private val logger = Logger[this.type]
 
-  "Simple test" in:
+  "System properties" in:
+    logger.info(s"js7.virtualThreads=${sys.props("js7.virtualThreads")}")
+    logger.info(s"jdk.virtualThreadScheduler.maxPoolSize=${
+      sys.props("jdk.virtualThreadScheduler.maxPoolSize")}")
+
+  "Simple test without blocking threads" in:
     val n = 10_000
     runThreads(Vector.fill(n)(() => ()), timeout = 10.s)
 
+  "Read stdout of processes in one virtual thread" in:
+    readStdoutThreads(n = 1)
+
+  "Read stdout of processes in 256 virtual threads" in:
+    readStdoutThreads(n = 256)
+
   "Read stdout of processes in 257 virtual threads will fail" in:
+    // Test may fail without -Djdk.virtualThreadScheduler.maxPoolSize=N, where N >= 257
+    readStdoutThreads(n = 257)
+
+  private lazy val logPendingingOnce: Unit =
+    alert("Tests are pending because of not isIntelliJIdea")
+
+  private def readStdoutThreads(n: Int): Unit =
     if !isIntelliJIdea then
-      logger.info("VirtualThreadsTest would fail")
+      logPendingingOnce
       pending
 
-    // n > 256 will let the test fail //
-    val n = 256 + 1
     val processes =
       val pb = new ProcessBuilder("sleep", "99999")
       (1 to n).toVector.map(_ => pb.start)
@@ -34,7 +55,8 @@ final class VirtualThreadsTest extends OurTestSuite:
       runThreads(
         processes.map: process =>
           () =>
-            val len = process.getInputStream /*stdout*/.read()
+            // Read stdout of the process. This blocks the thread.
+            val len = process.getInputStream.read()
             assert(len == -1 /*EOF*/),
         whenAllStarted = () => processes.foreach(_.toHandle.destroyForcibly()),
         timeout = 10.s)
@@ -53,7 +75,7 @@ final class VirtualThreadsTest extends OurTestSuite:
   : Unit =
     VirtualThreads.newVirtualThreadFactory match
       case None =>
-        alert("Virtual threads are not enabled")
+        logger.info("❌ Virtual threads are not enabled • Start JVM with -Djs7.virtualThreads ❌")
         pending
 
       case Some(threadFactory) =>
