@@ -228,9 +228,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               ) -> applied
       .flatMap:
         case Left(problem) =>
-          queueEntry.whenApplied.complete(Left(problem)) *>
-            queueEntry.whenPersisted.complete(Left(problem))
-              .as(Chunk.empty)
+          queueEntry.completePersistedWithProblem(problem).as(Chunk.empty)
         case Right(applied_) =>
           val applied = applied_ : Applied /*IntelliJ 2025.1*/
           if applied.stampedKeyedEvents.isEmpty then
@@ -265,7 +263,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           coll.aggregate.withEventId(last.eventId)
         val applied = Applied(
           coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1,
-          queueEntry.commitOptions, queueEntry.since,
+          queueEntry.commitOptions, queueEntry.since, queueEntry.metering,
           queueEntry.whenApplied, queueEntry.whenPersisted)
         (aggregate, applied)
 
@@ -511,12 +509,15 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     val stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]]
     val aggregate: S
     val commitOptions: CommitOptions
+    val metering: CallMeter.Metering
     protected val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]
 
     def nonEmpty: Boolean
 
     final def completePersistOperation: IO[Unit] =
-      whenPersisted.complete(Right(persisted)).void
+      IO.defer:
+        FileJournal.persistMeter.stopMetering(metering)
+        whenPersisted.complete(Right(persisted)).void
 
     protected final def persisted: Persisted[S, Event] =
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)
@@ -537,6 +538,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     eventNumber: Long,
     commitOptions: CommitOptions,
     since: Deadline,
+    metering: CallMeter.Metering,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
   extends AppliedOrFlushed:
@@ -558,6 +560,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     since: Deadline,
     eventNumber: Long,
     commitOptions: CommitOptions,
+    metering: CallMeter.Metering,
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
     positionAndEventId: PositionAnd[EventId])
   extends AppliedOrFlushed with LoggablePersist:
@@ -583,6 +586,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         else
           applied.stampedKeyedEvents,
         applied.aggregate, applied.since, applied.eventNumber, applied.commitOptions,
+        applied.metering,
         applied.whenPersisted,
         positionAndEventId)
 

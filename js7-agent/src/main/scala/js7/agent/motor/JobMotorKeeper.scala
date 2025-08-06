@@ -168,8 +168,6 @@ private final class JobMotorKeeper(
             if isStrict then throw new AssertionError(msg)
           processLimit.fold(None): limit =>
             (n + 1 == limit) ? (n, limit)
-      .flatTap: o =>
-        IO(logger.trace(s"### decrementProcessCount: $o"))
       .flatMap:
         case Some((n, limit)) =>
           triggerAllJobs: // TODO Slow, may happen to often

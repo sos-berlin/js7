@@ -55,6 +55,7 @@ extends CallMeter.CallMeterMXBean:
   //def addMeasurement(startedAt: Deadline): Unit =
   //  addNanos(startedAt.elapsed.toNanos)
 
+  /** MUST be followed by stopMetering. */
   def startMetering(n: Int = 1): Metering =
     _running += n
     System.nanoTime().asInstanceOf[Metering]
@@ -130,6 +131,8 @@ object CallMeter:
 
 
   opaque type Metering = Long
+  object Metering:
+    val Dummy: Metering = 0L
 
   sealed trait CallMeterMXBean:
     def getRunning: Int

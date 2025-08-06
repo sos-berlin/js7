@@ -15,7 +15,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.monixutils.{AsyncVariable, Switch}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
 import js7.base.system.MBeanUtils.registerMBean
@@ -185,14 +185,14 @@ extends
 
   protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     if isTest then assertThat(!persist.commitOptions.commitLater/*not implemented*/)
-    meterPersist:
-      enqueue(persist)
-        .flatMap: (_, whenPersisted) =>
-          whenPersisted.get
-        //.raceMerge:
-        //  untilStopRequested *>
-        //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
-        .logWhenMethodTakesLonger // TODO When cluster hangs then there can be many concurrent log lines
+    //meterPersist:
+    enqueue(persist)
+      .flatMap: (_, whenPersisted) =>
+        whenPersisted.get
+      //.raceMerge:
+      //  untilStopRequested *>
+      //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
+      .logWhenMethodTakesLonger // TODO When cluster hangs then there can be many concurrent log lines
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
@@ -207,6 +207,7 @@ extends
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
       val queueEntry = QueueEntry[S](
         persist.eventCalc.widen[S, Event, TimeCtx], persist.commitOptions, persist.since,
+        persistMeter.startMetering(),
         whenApplied, whenPersisted)
       IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
         case Left(problem) =>
@@ -339,7 +340,8 @@ extends
 object FileJournal:
 
   private val logger = Logger[this.type]
-  private val meterPersist = CallMeter("FileJournal.persist")
+  //private val meterPersist = CallMeter("FileJournal.persist")
+  private[journal] val persistMeter = CallMeter("FileJournal.persist")
 
   def resource[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
     recovered: Recovered[S],
@@ -380,9 +382,15 @@ object FileJournal:
     eventCalc: EventCalc[S, Event, TimeCtx],
     commitOptions: CommitOptions,
     since: Deadline,
+    metering: CallMeter.Metering,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
-    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
+    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]):
 
+    def completePersistedWithProblem(problem: Problem): IO[Unit] =
+      IO.defer:
+        persistMeter.stopMetering(metering)
+        whenApplied.complete(Left(problem)) *>
+          whenPersisted.complete(Left(problem)).void
 
   sealed transparent trait PossibleFailover:
     private val tryingPassiveLostSwitch = Switch(false)
