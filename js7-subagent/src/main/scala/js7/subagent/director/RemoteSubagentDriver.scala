@@ -303,9 +303,9 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         case Left(problem) => IO.left(problem)
         case Right(deferred) =>
           orderToExecuteDefaultArguments(order)
-            .mapmap:
-              StartOrderProcess(order, _)
-            .flatMapT(dispatcher.executeCommand)
+            .flatMapT: defaultArguments =>
+              dispatcher.executeCommand:
+                StartOrderProcess(order, defaultArguments)
             .catchIntoChecked
             .flatMap:
               case Left(problem) =>
@@ -322,14 +322,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
                     case Some(deferred_) =>
                       assert(deferred_ eq deferred)
-
                       val orderProcessed =
                         problem match
                           case SubagentIsShuttingDownProblem =>
                             OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
                           case _ =>
                             OrderProcessed(OrderOutcome.Disrupted(problem))
-
                       journal
                         .persist(order.id <-: orderProcessed)
                         .orThrow
@@ -406,10 +404,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       .onError: t =>
         // Error isn't logged until stopEventListener has been called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
-
-  protected def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Unit] =
-    enqueueCommandAndForget:
-      SubagentCommand.DetachProcessedOrders(orderIds)
 
   protected def releaseEvents(eventId: EventId): IO[Unit] =
     enqueueCommandAndForget:

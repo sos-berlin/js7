@@ -27,7 +27,6 @@ extends CommandDispatcher:
             executes.filter:
               _.value.command match
                 case _: SubagentCommand.OrderCommand => true
-                case _: SubagentCommand.DetachProcessedOrders => true
                 case _: SubagentCommand.ReleaseEvents => false
                 case _: SubagentCommand.ShutDown => false
             .tapEach(cmd => logger.debug(s"enqueueExecutes $cmd"))

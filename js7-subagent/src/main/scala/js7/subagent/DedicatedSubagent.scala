@@ -22,7 +22,7 @@ import js7.base.utils.{AsyncLock, Atomic}
 import js7.core.command.CommandMeta
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.EventCalc
+import js7.data.event.{EventCalc, EventId}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -34,7 +34,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.{CommitOptions, Journal}
+import js7.journal.{CommitOptions, MemoryJournal}
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
@@ -42,13 +42,14 @@ import js7.subagent.DedicatedSubagent.*
 import js7.subagent.OutErrStatistics
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
   val subagentRunId: SubagentRunId,
   val commandExecutor: SubagentCommandExecutor,
-  val journal: Journal[SubagentState],
+  val journal: MemoryJournal[SubagentState],
   val agentPath: AgentPath,
   val agentRunId: AgentRunId,
   val controllerId: ControllerId,
@@ -63,6 +64,7 @@ extends Service.StoppableByRequest:
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
+  private val orderProcessedQueue = mutable.Queue.empty[ProcessedQueueEntry]
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
   private var _isUsed = false
   @volatile private var _dontWaitForDirector = false
@@ -251,7 +253,13 @@ extends Service.StoppableByRequest:
             IO.pure(orderProcessed)
           else
             journal.persistSingle(order.id <-: orderProcessed)
-              .map(_.orThrow._1.value.event)
+              .map(_.orThrow._1)
+              .flatMap: stamped =>
+                IO:
+                  val entry = ProcessedQueueEntry(stamped.eventId, order.id)
+                  orderProcessedQueue.synchronized:
+                    orderProcessedQueue += entry
+                  stamped.value.event
         .start)
 
   private def startOrderProcess3(
@@ -299,12 +307,21 @@ extends Service.StoppableByRequest:
     yield
       stdObservers
 
-  def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Checked[Unit]] =
+  def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
+    journal.releaseEvents(eventId).flatMapT: _ =>
+      IO:
+        orderProcessedQueue.synchronized:
+          orderProcessedQueue.dequeueWhile(_.eventId <= eventId).toEagerSeq
+        .map(_.orderId)
+      .flatMap:
+        detachProcessedOrders
+      .map(Right(_))
+
+  private def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
-      orderToProcessing.remove(orderId)
-        .flatMap(_.fold(IO.unit):
-          _.acknowledged.complete(()))
-        .as(Checked.unit)
+      orderToProcessing.remove(orderId).flatMap:
+        _.fold(IO.unit):
+          _.acknowledged.complete(()).void
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,
@@ -375,7 +392,7 @@ object DedicatedSubagent:
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
     commandExecutor: SubagentCommandExecutor,
-    journal: Journal[SubagentState],
+    journal: MemoryJournal[SubagentState],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId,
@@ -396,3 +413,5 @@ object DedicatedSubagent:
     val workflowPosition: WorkflowPosition /*for check only*/ ,
     val fiber: FiberIO[OrderProcessed]):
     val acknowledged = Deferred.unsafe[IO, Unit]
+
+  private final case class ProcessedQueueEntry(eventId: EventId, orderId: OrderId)

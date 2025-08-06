@@ -21,7 +21,7 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
-import js7.base.system.MBeanUtils.{registerMBean, registerStaticMBean}
+import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -196,12 +196,9 @@ extends MainService, Service.StoppableByRequest:
     subagent.checkedDedicatedSubagent.traverse:
       _.killProcess(orderId, signal)
 
-  def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Checked[Unit]] =
-    IO(checkedDedicatedSubagent)
-      .flatMapT(_.detachProcessedOrders(orderIds))
-
   def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
-    journal.releaseEvents(eventId)
+    IO(checkedDedicatedSubagent).flatMapT:
+      _.releaseEvents(eventId)
 
   def subagentId: Option[SubagentId] =
     checkedDedicatedSubagent.toOption.map(_.subagentId)

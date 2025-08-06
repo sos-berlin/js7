@@ -123,15 +123,6 @@ object SubagentCommand extends CommonCommand.Companion:
   extends OrderCommand:
     type Response = Accepted
 
-  // COMPATIBLE with v2.8.0
-  final case class DetachProcessedOrder(orderId: OrderId)
-  extends OrderCommand:
-    type Response = Accepted
-
-  final case class DetachProcessedOrders(orderIds: Seq[OrderId])
-  extends Queueable, Big:
-    type Response = Accepted
-
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
     dontWaitForDirector: Boolean = false,
@@ -167,8 +158,6 @@ object SubagentCommand extends CommonCommand.Companion:
     //Subtype(deriveCodec[AttachItem]),
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
-    Subtype(deriveCodec[DetachProcessedOrder]),
-    Subtype(deriveCodec[DetachProcessedOrders]),
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
     Subtype(deriveCodec[KillProcess]),

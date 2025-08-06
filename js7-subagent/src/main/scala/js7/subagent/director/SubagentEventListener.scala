@@ -47,7 +47,6 @@ private trait SubagentEventListener:
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: HttpSubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
-  protected def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Unit]
   protected def releaseEvents(eventId: EventId): IO[Unit]
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : IO[Option[IO[Unit]]]
@@ -127,13 +126,16 @@ private trait SubagentEventListener:
                     lastEventId.map:
                       subagentId <-: SubagentEventsObserved(_)
                 .map(_.orThrow /*???*/)
-                // After an OrderProcessed event a DetachProcessedOrder must be sent,
-                // to terminate StartOrderProcess command idempotency detection and
-                // allow a new StartOrderProcess command for a next process.
-                .*>(detachProcessedOrders:
-                  updatedStampedSeq.collect:
-                    case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) => orderId)
-                .*>(lastEventId.traverse(releaseEvents))
+                // • After an OrderProcessed event, a ReleaseEvents command must be sent,
+                //   to terminate StartOrderProcess command idempotency detection and
+                //   to allow a new StartOrderProcess command for a next process.
+                // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
+                // TODO Optimize: ReleaseEvents only after OrderProcessed or after a number of events
+                //val hasOrderProcessed = updatedStampedSeq.collectFirst:
+                //  case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
+                //.isDefined
+                .*>(lastEventId.traverse:
+                  releaseEvents)
                 .*>(followUps.combineAll))
           .onFinalize:
             recouplingStreamReader.terminateAndLogout

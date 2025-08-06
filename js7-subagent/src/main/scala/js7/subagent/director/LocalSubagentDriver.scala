@@ -107,25 +107,12 @@ extends SubagentDriver, Service.StoppableByRequest:
           val stampedEvents = chunk.toVector.flatMap(_._1)
           val followUpAll = chunk.foldMap(_._2)
           IO.whenA(stampedEvents.nonEmpty):
-            val detachOrderIds = stampedEvents.collect:
-              case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) => orderId
-            IO.whenA(detachOrderIds.nonEmpty):
-              // After an OrderProcessed event, a DetachProcessedOrder must be sent,
-              // to terminate StartOrderProcess command idempotency detection and
-              // allow a new StartOrderProcess command for a next process.
-              subagent.commandExecutor
-                .executeCommand(
-                  Numbered(0, SubagentCommand.DetachProcessedOrders(detachOrderIds)),
-                  CommandMeta.System)
-                .orThrow
-                .void
-            .productR:
-              stampedEvents.traverse: stamped =>
-                stamped.value match
-                  case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown |
-                                                   SubagentItemStateEvent.SubagentShutdownV7) =>
-                    whenSubagentShutdown.complete(()).void
-                  case _ => IO.unit
+            stampedEvents.foldMap: stamped =>
+              stamped.value match
+                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown |
+                                                 SubagentItemStateEvent.SubagentShutdownV7) =>
+                  whenSubagentShutdown.complete(()).void
+                case _ => IO.unit
             .flatMap: _ =>
               val lastEventId = stampedEvents.last.eventId
               // TODO Save Stamped timestamp
