@@ -34,7 +34,8 @@ import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
-import js7.journal.{CommitOptions, Journal}
+import js7.journal.CommitOptions.Transaction
+import js7.journal.Journal
 import scala.concurrent.duration.Deadline
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
@@ -119,13 +120,12 @@ private trait SubagentEventListener:
               val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
               val updatedStampedSeq = updatedStampedSeqSeq.flatten
               val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
-              val events = updatedStampedSeq.view.map(_.value)
-                .concat(lastEventId.map:
-                  subagentId <-: SubagentEventsObserved(_))
-                .toVector
               // TODO Save Stamped timestamp
               journal
-                .persistKeyedEvents(CommitOptions.Transaction)(events)
+                .persistKeyedEvents(Transaction):
+                  updatedStampedSeq.view.map(_.value) ++
+                    lastEventId.map:
+                      subagentId <-: SubagentEventsObserved(_)
                 .map(_.orThrow /*???*/)
                 // After an OrderProcessed event a DetachProcessedOrder must be sent,
                 // to terminate StartOrderProcess command idempotency detection and

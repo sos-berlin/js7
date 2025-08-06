@@ -4,7 +4,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, asSeqOrToVector}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, toEagerSeq}
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.EventColl.*
 import js7.data.event.KeyedEvent.NoKey
@@ -74,7 +74,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
 
   def addEvents(keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : Checked[EventColl[S, E, Ctx]] =
-    val eventSeq = keyedEvents.asSeqOrToVector
+    val eventSeq = keyedEvents.toEagerSeq
     if eventSeq.isEmpty then
       Right(this)
     else
