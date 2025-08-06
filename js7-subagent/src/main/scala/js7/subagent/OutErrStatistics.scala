@@ -3,7 +3,7 @@ package js7.subagent
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.system.MBeanUtils.registerMBean
+import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -66,7 +66,7 @@ private object OutErrStatistics:
 
 
   def registerMXBean: ResourceIO[Unit] =
-    registerMBean("OrderStdWrittenStatistics", Bean).map(_ => ())
+    registerStaticMBean("OrderStdWrittenStatistics", Bean).map(_ => ())
 
   private sealed trait OrderStdWrittenStatisticsMXBean:
     this: Bean.type =>

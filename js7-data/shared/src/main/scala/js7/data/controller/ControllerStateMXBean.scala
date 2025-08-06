@@ -1,7 +1,7 @@
 package js7.data.controller
 
 import cats.effect.ResourceIO
-import js7.base.system.MBeanUtils.registerMBean
+import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.utils.MoreJavaConverters.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.jdk.CollectionConverters.*
@@ -34,7 +34,7 @@ object ControllerStateMXBean:
 
   // "inline" hides method from JMX
   inline def register: ResourceIO[ControllerStateMXBean] =
-    registerMBean("EngineState", bean)
+    registerStaticMBean("EngineState", bean)
 
   private final class Bean private[ControllerStateMXBean] extends ControllerStateMXBean:
     protected var controllerState = ControllerState.empty

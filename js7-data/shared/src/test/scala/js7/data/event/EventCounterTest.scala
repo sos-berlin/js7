@@ -8,7 +8,7 @@ import js7.base.test.OurAsyncTestSuite
 final class EventCounterTest extends OurAsyncTestSuite:
 
   "EventCounterMXBean" in :
-    val objectName = toMBeanName("EventCounter")
+    val objectName = toMBeanName("EventCounterTest")
     registerMBean(objectName):
       IO:
         EventCounter(Map("OneEvent" -> 1, "OtherEvent" -> 2))
