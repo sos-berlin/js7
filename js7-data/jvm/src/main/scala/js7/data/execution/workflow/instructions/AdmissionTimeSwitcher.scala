@@ -10,8 +10,8 @@ import js7.base.log.Logger
 import js7.base.service.Service
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.execution.workflow.instructions.AdmissionTimeSwitch
 import js7.data.execution.workflow.instructions.AdmissionTimeSwitcher.*
-import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitch
 import js7.data.job.JobKey
 import scala.concurrent.duration.FiniteDuration
 
@@ -25,14 +25,12 @@ final class AdmissionTimeSwitcher private(
 extends
   Service.StoppableByRequest:
 
-  private val admissionTimeIntervalSwitch = ExecuteAdmissionTimeSwitch(
-    admissionTimeScheme,
-    findTimeIntervalLimit,
-    zoneId,
-    onSwitch = to =>
-      IO:
-        if !to.contains(TimeInterval.Always) then
-          logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zoneId"))
+  private val admissionTimeSwitch =
+    AdmissionTimeSwitch(admissionTimeScheme, findTimeIntervalLimit, zoneId, jobKey,
+      onSwitch = to =>
+        IO:
+          if !to.contains(TimeInterval.Always) then
+            logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zoneId"))
 
   /** Signal for the currently valid admission TimeInterval.
     *
@@ -44,20 +42,20 @@ extends
   protected def start =
     // First Signal will be duplicated by selectTimeInterval — TODO optimise this
     currentAdmissionTimeSignal.set:
-      admissionTimeIntervalSwitch.findCurrentTimeInterval(clock.now())
+      admissionTimeSwitch.findCurrentTimeInterval(clock.now())
     *>
       startService:
         selectTimeIntervalAgainAndAgain.start.flatMap: fiber =>
           untilStopRequested *>
             fiber.cancel *>
-            admissionTimeIntervalSwitch.cancelDelay
+            admissionTimeSwitch.cancelDelay
 
   private val selectTimeIntervalAgainAndAgain: IO[Unit] =
     selectTimeInterval(IO.defer(selectTimeIntervalAgainAndAgain))
 
   private def selectTimeInterval(onPermissionStartOrEnd: IO[Unit]): IO[Unit] =
     unlessDeferred(isStopping): // clock.sleepUntil may be not cancelable
-      admissionTimeIntervalSwitch.updateAndCheck:
+      admissionTimeSwitch.updateAndCheck:
         onPermissionStartOrEnd
       .flatMap: maybeTimeInterval =>
         logger.trace(s"selectTimeInterval $jobKey ${maybeTimeInterval getOrElse "None"}")

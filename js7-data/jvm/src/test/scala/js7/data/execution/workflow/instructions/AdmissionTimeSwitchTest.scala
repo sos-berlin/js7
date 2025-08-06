@@ -14,13 +14,18 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.job.JobKey
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import scala.concurrent.duration.*
 
-final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
+
+final class AdmissionTimeSwitchTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
+  private val jobKey = JobKey(WorkflowPath("WORKFLOW") /: Position(1))
 
   "AdmissionTimeScheme.always" in:
     Dispatcher.parallel[IO].use: dispatcher =>
@@ -28,7 +33,8 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
       IO:
         val now = ts"2021-01-01T12:00:00Z"
         given clock: TestAlarmClock = TestAlarmClock(now)
-        val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, 9999.days, UTC, _ => IO.unit)
+        val switch = AdmissionTimeSwitch(AdmissionTimeScheme.always, 9999.days, UTC, jobKey,
+          onSwitch = _ => IO.unit)
 
         switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
         assert(switch.nextTime == None)
@@ -155,7 +161,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
 
     private given clock: TestAlarmClock = TestAlarmClock(Timestamp.Epoch)
     private var _switched = null.asInstanceOf[Option[TimeInterval]]
-    private val switch = new ExecuteAdmissionTimeSwitch(admissionTimeScheme, 9999.days, zone,
+    private val switch = AdmissionTimeSwitch(admissionTimeScheme, 9999.days, zone, jobKey,
       onSwitch = o => IO { _switched = o })
     @volatile private var admissionStarts = 0
 

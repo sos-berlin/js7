@@ -1,18 +1,16 @@
 package js7.base.utils
 
-final case class LabeledRunnable(label: String, runnable: Runnable) extends Runnable:
+final case class LabeledRunnable(label: Lazy[String], runnable: Runnable) extends Runnable:
 
   def run(): Unit = runnable.run()
 
-  override def toString: String = label
+  override def toString: String = label.value
 
 
 object LabeledRunnable:
 
-  def apply(label: String)(callback: => Unit): LabeledRunnable =
-    LabeledRunnable(label, () => callback)
-
-
+  def apply(label: => String)(callback: => Unit): LabeledRunnable =
+    LabeledRunnable(Lazy(label), () => callback)
 
 
 // ⭐️ This can rename the thread, maybe for testing:

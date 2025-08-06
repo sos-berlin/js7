@@ -48,7 +48,7 @@ private[time] trait ClockChecking extends Runnable:
   final def scheduleAt(at: Timestamp, label: => String)(callback: => Unit): SyncCancelable =
     val milli = at.toEpochMilli
     if toMs(milli - epochMilli()).isFailure then
-      logger.warn(s"schedulerAt($at, $label) ignored because it is out of range")
+      logger.warn(s"scheduleAt($at, $label) ignored because it is out of range")
       SyncCancelable.empty
     else
       val alarm = new Alarm(milli, callback)

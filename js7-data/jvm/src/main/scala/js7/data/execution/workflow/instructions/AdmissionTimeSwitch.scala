@@ -6,19 +6,22 @@ import java.time.ZoneId
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, NonEmptyTimeInterval, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.job.JobKey
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Mutable state for calculating the current or next admission time. */
-final class ExecuteAdmissionTimeSwitch(
+final class AdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
   findTimeIntervalLimit: FiniteDuration,
   zone: ZoneId,
+  jobKey: JobKey,
   onSwitch: Option[TimeInterval] => IO[Unit])
   (using dispatcher: Dispatcher[IO], clock: AlarmClock):
 
   private given ZoneId = zone
 
+  private val label = s"AdmissionTimeSwitch($jobKey)"
   @volatile private var _nextTime: Option[Timestamp] = None
   private val cancelSchedule = Ref.unsafe[IO, IO[Unit]](IO.unit)
 
@@ -46,7 +49,7 @@ final class ExecuteAdmissionTimeSwitch(
               // Also start a fiber if clock has been adjusted
               IO.whenA(now < interval.start):
                 _nextTime = Some(interval.start)
-                clock.scheduleIOAt(interval.start, label = "ExecuteAdmissionTimeSwitch"):
+                clock.scheduleIOAt(interval.start, label = label):
                   IO.defer:
                     _nextTime = None
                     onAdmissionStart
@@ -63,3 +66,5 @@ final class ExecuteAdmissionTimeSwitch(
   def findCurrentTimeInterval(now: Timestamp): Option[TimeInterval] =
     admissionTimeScheme.findLongTimeInterval(
       now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
+
+  override def toString = label
