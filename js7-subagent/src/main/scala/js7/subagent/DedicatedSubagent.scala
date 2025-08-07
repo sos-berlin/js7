@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Outcome, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
-import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
+import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd, right}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger
@@ -156,6 +156,11 @@ extends Service.StoppableByRequest:
         _ <- checkSubagentRunId(cmd.subagentRunId)
         _ <- journal.eventWatch.checkEventId(cmd.eventId)
       yield ()
+    .flatMapT: _ =>
+      if cmd.eventId == EventId.BeforeFirst then
+        IO.right(())
+      else
+        releaseEvents(cmd.eventId)
 
   private def checkSubagentId(requestedSubagentId: SubagentId): Checked[Unit] =
     (requestedSubagentId == subagentId) !!
