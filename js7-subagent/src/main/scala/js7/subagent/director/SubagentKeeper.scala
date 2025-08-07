@@ -29,7 +29,7 @@ import js7.base.utils.{Allocated, LockKeeper, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
-import js7.data.event.KeyedEvent
+import js7.data.event.{EventCalc, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
@@ -40,6 +40,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetS
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
+import js7.journal.CommitOptions.Transaction
 import js7.journal.{Journal, Persisted}
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
@@ -162,18 +163,19 @@ extends Service.StoppableByRequest:
     // Maybe suppress when this SubagentKeeper has been stopped ???
     // ExecuteExecutor should have prechecked this:
     val orderId = order.id
-    journal.persist: agentState =>
-      agentState.idToOrder.checked(orderId).map: order2 =>
-        if order != order2 then
-          // Do nothing when the Order has been changed by a concurrent event
-          Nil
-        else
-          Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
-            order2.isState[Order.Fresh] ? OrderStarted,
-            // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-            Some(OrderProcessingStarted.noSubagent),
-            Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
-          ).flatten.map(orderId <-: _)
+    journal.persist(Transaction):
+      EventCalc.checked: agentState =>
+        agentState.idToOrder.checked(orderId).map: order2 =>
+          if order != order2 then
+            // Do nothing when the Order has been changed by a concurrent event
+            Nil
+          else
+            Vector[Option[OrderStarted | OrderProcessingStarted | OrderProcessed]](
+              order2.isState[Order.Fresh] ? OrderStarted,
+              // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+              Some(OrderProcessingStarted.noSubagent),
+              Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
+            ).flatten.map(orderId <-: _)
     .flatMapT: persisted =>
       onPersisted(orderId, onEvents)(persisted)
         .rightAs(true)
