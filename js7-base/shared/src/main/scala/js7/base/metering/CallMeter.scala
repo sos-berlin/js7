@@ -1,6 +1,7 @@
 package js7.base.metering
 
 import cats.effect.{IO, SyncIO}
+import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter.*
@@ -58,11 +59,21 @@ extends CallMeter.CallMeterMXBean:
   /** MUST be followed by stopMetering. */
   def startMetering(n: Int = 1): Metering =
     _running += n
-    System.nanoTime().asInstanceOf[Metering]
+    Metering(this, sinceNano = System.nanoTime(), n = n)
 
   /** Call only once for each metering!. */
   def stopMetering(metering: Metering, n: Int = 1): Unit =
-    addNanos(n * (System.nanoTime() - metering.asInstanceOf[Long]))
+    addNanos(metering.elapsedNanos)
+    _running -= n
+
+  /** MUST be followed by stopMetering. */
+  private def startMetering_(n: Int): Long =
+    _running += n
+    System.nanoTime()
+
+  /** Call only once for each metering!. */
+  private def stopMetering_(sinceNano: Long, n: Int): Unit =
+    addNanos(System.nanoTime() - sinceNano)
     _running -= n
 
   def addNanos(nanos: Long): Unit =
@@ -130,10 +141,19 @@ object CallMeter:
         logger.trace(s"${callMeter.asString}")
 
 
-  opaque type Metering = Long
-  object Metering:
-    val Dummy: Metering = 0L
+  final class Metering private[CallMeter](callMeter: CallMeter, sinceNano: Long, n: Int)
+  extends AtomicBoolean, AutoCloseable:
+    def close(): Unit =
+      if compareAndSet(false, true) then
+        callMeter.stopMetering(this)
 
+    def elapsedNanos: Long =
+      System.nanoTime() - sinceNano
+
+  object Metering:
+    val Dummy = Metering(CallMeter("Dummy"), 0, 0)
+
+  
   sealed trait CallMeterMXBean:
     def getRunning: Int
     def getTotal: Long

@@ -42,7 +42,7 @@ private final class JobOrderQueue:
           forceAdmissionQueue.remove(entry.order.id)
           entry
 
-      entryMeter.stopMetering(entry.metering)
+      entry.metering.close()
       //JobMotorsMXBean.Bean.orderQueueLength -= 1
       //JobMotorsMXBean.Bean.orderQueueNanos += entry.since.elapsed.toNanos
       entry.order
