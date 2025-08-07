@@ -34,15 +34,16 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.priority.ServerMeteringLiveScope
 import js7.subagent.{LocalSubagentApi, Subagent}
 
-private final class LocalSubagentDriver private(
+private final class LocalSubagentDriver[S <: SubagentDirectorState[S]] private(
   // Change of disabled does not change this subagentItem.
   // Then, it differs from the original SubagentItem
   val subagentItem: SubagentItem,
   subagent: Subagent,
-  protected val journal: Journal[? <: SubagentDirectorState[?]],
+  protected val journal: Journal[S],
   controllerId: ControllerId,
   protected val subagentConf: SubagentConf)
 extends SubagentDriver, Service.StoppableByRequest:
+  protected type State = S
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val whenSubagentShutdown = Deferred.unsafe[IO, Unit]
@@ -340,6 +341,6 @@ object LocalSubagentDriver:
     journal: Journal[S],
     controllerId: ControllerId,
     subagentConf: SubagentConf)
-  : ResourceIO[LocalSubagentDriver] =
+  : ResourceIO[LocalSubagentDriver[S]] =
     Service.resource:
       new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)

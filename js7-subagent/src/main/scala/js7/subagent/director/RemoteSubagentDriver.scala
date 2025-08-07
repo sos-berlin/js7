@@ -48,16 +48,17 @@ import scala.util.{Failure, Success}
 // - dedicate, couple, reset, delete, ...
 // - Which operations may overlap with, wait for or cancel the older?
 
-private final class RemoteSubagentDriver private(
+private final class RemoteSubagentDriver[S <: SubagentDirectorState[S]] private(
   // Change of disabled does not change this subagentItem.
   // Then, it differs from the original SubagentItem
   val subagentItem: SubagentItem,
   protected val api: HttpSubagentApi,
-  protected val journal: Journal[? <: SubagentDirectorState[?]],
+  protected val journal: Journal[S],
   controllerId: ControllerId,
   protected val conf: RemoteSubagentDriver.Conf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
 extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
+  protected type State = S
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val resetLock = AsyncLock()
@@ -85,7 +86,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   def startObserving =
     startEventListener
 
-  def startMovedSubagent(previous: RemoteSubagentDriver): IO[Unit] =
+  def startMovedSubagent(previous: RemoteSubagentDriver[S]): IO[Unit] =
     logger.debugIO:
       //previous.stopDispatcherAndEmitProcessLostEvents(None) *>
       IO.race(
@@ -481,7 +482,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
                     case Some(deferred) =>
                       // The SubagentEventListener should do the same for all lost processes
-                      // at once, but just in case the SubagentEventListener does run, we issue
+                      // at once, but just in case the SubagentEventListener does run, we emit
                       // an OrderProcess event here.
                       val orderProcessed = OrderProcessed.processLost(SubagentNotDedicatedProblem)
                       onStartOrderProcessFailed(command, orderProcessed)
@@ -579,7 +580,7 @@ object RemoteSubagentDriver:
     controllerId: ControllerId,
     conf: RemoteSubagentDriver.Conf,
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
-  : ResourceIO[RemoteSubagentDriver] =
+  : ResourceIO[RemoteSubagentDriver[S]] =
     Service.resource:
       new RemoteSubagentDriver(
         subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)

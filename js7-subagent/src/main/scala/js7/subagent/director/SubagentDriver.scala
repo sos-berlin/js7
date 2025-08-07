@@ -26,6 +26,9 @@ import js7.journal.Journal
 
 trait SubagentDriver:
 
+  protected type State <: SubagentDirectorState[State]
+  private type S = State
+
   // Change of disabled does not change this subagentItem.
   // Then, it differs from the original SubagentItem
   def subagentItem: SubagentItem
@@ -38,7 +41,7 @@ trait SubagentDriver:
 
   def startObserving: IO[Unit]
 
-  protected val journal: Journal[? <: SubagentDirectorState[?]]
+  protected val journal: Journal[S]
 
   def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]]

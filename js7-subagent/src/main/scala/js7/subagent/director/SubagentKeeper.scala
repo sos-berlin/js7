@@ -8,6 +8,7 @@ import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
+import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, guaranteeExceptWhenRight, joinStd, left, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
@@ -57,7 +58,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   journal: Journal[S],
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
-  (implicit ioRuntime: IORuntime)
+  (implicit ioRuntime: IORuntime, sTag: Tag[S])
 extends Service.StoppableByRequest:
 
   private val reconnectDelayer: DelayIterator = DelayIterators
@@ -110,17 +111,17 @@ extends Service.StoppableByRequest:
         driver.shutdownSubagent(signal).void
     .void
 
-  private def localSubagentDriver: IO[Option[LocalSubagentDriver]] =
+  private def localSubagentDriver: IO[Option[LocalSubagentDriver[S]]] =
     stateVar.value.map:
       _.idToAllocatedDriver.get(localSubagentId).map(_.allocatedThing).flatMap:
-        case o: LocalSubagentDriver => Some(o)
+        case o: LocalSubagentDriver[S @unchecked] => Some(o)
         case o => throw new AssertionError(s"localSubagentDriver $o")
 
   def killLocalProcesses(signal: ProcessSignal): IO[Unit] =
     logger.debugIO:
       IO.defer:
         orderToSubagent.toMap.toVector.parFoldMapA:
-          case (orderId, _: LocalSubagentDriver) => killProcess(orderId, signal)
+          case (orderId, _: LocalSubagentDriver[?]) => killProcess(orderId, signal)
           case _ => IO.unit
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
@@ -398,7 +399,7 @@ extends Service.StoppableByRequest:
             .toVector
             .map(_.driver)
             .collect:
-              case driver: RemoteSubagentDriver => driver
+              case driver: RemoteSubagentDriver[?] => driver
             .filterNot: driver =>
               except(driver.subagentId)
             .parUnorderedTraverse:
@@ -408,7 +409,7 @@ extends Service.StoppableByRequest:
   def startResetSubagent(subagentId: SubagentId, force: Boolean = false): IO[Checked[Unit]] =
     stateVar.value.map(_.idToDriver.checked(subagentId))
       .flatMapT:
-        case driver: RemoteSubagentDriver =>
+        case driver: RemoteSubagentDriver[?] =>
           journal.persist(subagentId <-: SubagentResetStarted(force))
             .flatMapT: _ =>
               driver.reset(force)
@@ -416,7 +417,7 @@ extends Service.StoppableByRequest:
                   logger.error(s"$subagentId reset => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                 .startAndForget
                 .map(Right(_))
-        case _: LocalSubagentDriver =>
+        case _: LocalSubagentDriver[?] =>
           // Reset of the local Subagent (running in our JVM) would require a restart of the JVM
           IO.pure(Problem.pure(s"$subagentId as the Agent Director cannot be reset"))
 
@@ -494,7 +495,7 @@ extends Service.StoppableByRequest:
       stateVar.value
         .map(_.idToDriver.get(subagentItem.id))
         .flatMap:
-          case Some(_: LocalSubagentDriver) =>
+          case Some(_: LocalSubagentDriver[?]) =>
             stateVar
               .updateChecked(state => IO:
                 state.setDisabled(subagentItem.id, subagentItem.disabled))
@@ -531,7 +532,10 @@ extends Service.StoppableByRequest:
                       .setDisabled(subagentItem.id, subagentItem.disabled)
                       .map(_ -> result))
         .flatMapT:
-          case Some((Some(Allocated(oldDriver: RemoteSubagentDriver, releaseOld)), newDriver: RemoteSubagentDriver)) =>
+          case Some((Some(Allocated(
+              oldDriver: RemoteSubagentDriver[S @unchecked], releaseOld)),
+              newDriver: RemoteSubagentDriver[S @unchecked]
+            )) =>
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
@@ -546,7 +550,7 @@ extends Service.StoppableByRequest:
                 .startAndForget
                 .as(Right(None)))
 
-          case Some((None, newDriver: LocalSubagentDriver)) =>
+          case Some((None, newDriver: LocalSubagentDriver[?])) =>
             emitLocalSubagentCoupled
               .as(Right(Some(newDriver)))
 
@@ -584,7 +588,7 @@ extends Service.StoppableByRequest:
           driver.startObserving
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
-  : ResourceIO[RemoteSubagentDriver] =
+  : ResourceIO[RemoteSubagentDriver[S]] =
     for
       api <- subagentApiResource(subagentItem)
       driver <- RemoteSubagentDriver
@@ -629,7 +633,7 @@ extends Service.StoppableByRequest:
   def testFailover(): Unit =
     stateVar.get.idToDriver.values
       .collect:
-        case o: LocalSubagentDriver => o
+        case o: LocalSubagentDriver[?] => o
       .foreach:
         _.testFailover()
 
@@ -648,7 +652,7 @@ object SubagentKeeper:
     journal: Journal[S],
     directorConf: DirectorConf,
     actorSystem: ActorSystem)
-    (implicit ioRuntime: IORuntime)
+    (using IORuntime, Tag[S])
   : ResourceIO[SubagentKeeper[S]] =
     Service.resource:
       new SubagentKeeper(localSubagentId, localSubagent, agentPath, controllerId,
