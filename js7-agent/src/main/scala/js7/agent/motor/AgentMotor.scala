@@ -162,7 +162,7 @@ object AgentMotor:
             given IORuntime <- Resource.eval(environment[IORuntime])
             given AlarmClock <- Resource.eval(environment[AlarmClock])
             given Dispatcher[IO] <- Dispatcher.parallel[IO]
-            subagentKeeper <- SubagentKeeper.resource(
+            subagentKeeper <- SubagentKeeper.service(
               localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
               journal, conf.directorConf, actorSystem)
             orderMotor <- OrderMotor.service(ownAgentPath, subagentKeeper, journal, conf)

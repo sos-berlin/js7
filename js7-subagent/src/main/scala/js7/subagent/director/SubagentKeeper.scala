@@ -637,7 +637,7 @@ extends Service.StoppableByRequest:
 object SubagentKeeper:
   private val logger = Logger[this.type]
 
-  def resource[S <: SubagentDirectorState[S]](
+  def service[S <: SubagentDirectorState[S]](
     localSubagentId: SubagentId,
     localSubagent: Subagent,
     agentPath: AgentPath,
