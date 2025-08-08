@@ -3,7 +3,7 @@ package js7.journal
 import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
@@ -135,24 +135,27 @@ extends Journal[S], Service.StoppableByRequest:
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueLock.lock(IO.defer:
       val q = queue
-      val (index, found) = queue.search(untilEventId)
-      if !found then
-        IO.left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}"))
+      if untilEventId == q.tornEventId then
+        IO.right(())
       else
-        val n = index + 1
-        queue = q.copy(
-          tornEventId = untilEventId,
-          events = q.events.drop(n))
+        val (index, found) = queue.search(untilEventId)
+        if !found then
+          IO.left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}"))
+        else
+          val n = index + 1
+          queue = q.copy(
+            tornEventId = untilEventId,
+            events = q.events.drop(n))
 
-        semaphore.releaseN(n)
-          .*>(semaphore.available.map(available => assertThat(available >= 0)))
-          .pipeIf(isTest && false/*FIXME*/):
-            _.<*(semaphore.count.flatTap(cnt => IO:
-              if cnt > size then
-                val msg = s"MemoryJournal: Semaphore is greater than queue size: $cnt > $size "
-                logger.error(msg)
-                throw new IllegalStateException(msg)))
-          .as(Checked.unit))
+          semaphore.releaseN(n)
+            .*>(semaphore.available.map(available => assertThat(available >= 0)))
+            .pipeIf(isTest && false/*FIXME*/):
+              _.<*(semaphore.count.flatTap(cnt => IO:
+                if cnt > size then
+                  val msg = s"MemoryJournal: Semaphore is greater than queue size: $cnt > $size "
+                  logger.error(msg)
+                  throw new IllegalStateException(msg)))
+            .as(Checked.unit))
 
   private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] =
     val q = queue
