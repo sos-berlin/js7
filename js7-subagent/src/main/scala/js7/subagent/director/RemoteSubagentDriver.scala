@@ -74,8 +74,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   protected def isShuttingDown = shuttingDown
 
   protected def start =
-    startService(
-      untilStopRequested *> onStop)
+    startService:
+      untilStopRequested *> onStop
 
   private def onStop =
     IO.both(dispatcher.shutdown, stopEventListener)
@@ -94,15 +94,17 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       .flatMap:
         case Left(())/*stopped*/ => IO.unit
         case Right(subagentRunId) =>
-          logger.debug(
-            s"startMovedSubagent(${previous.lastSubagentRunId} $previous ${previous.hashCode}): this=$subagentRunId")
-          // Does not work, so we kill all processes. FIXME Do we kill them?
+          IO:
+            logger.debug:
+              s"startMovedSubagent(${previous.lastSubagentRunId} $previous ${previous.hashCode
+              }): this=$subagentRunId"
+          // Does not work, so we kill all processes. TODO Do we kill them?
           //if (previous.lastSubagentRunId contains subagentRunId)
           //  // Same SubagentRunId continues. So we transfer the command queue.
           //  dispatcher.enqueueExecutes(previous.dispatcher)
           //else
-            /*previous.stopDispatcherAndEmitProcessLostEvents(None)
-          .*>*/(IO.unit/*dispatcher.start(subagentRunId)*/)
+          //  previous.stopDispatcherAndEmitProcessLostEvents(None)
+          //.*>(IO.unit/*dispatcher.start(subagentRunId)*/)
 
   def terminate: IO[Unit] =
     logger.traceIO:
@@ -570,7 +572,7 @@ object RemoteSubagentDriver:
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
 
-  private[director] def resource[S <: SubagentDirectorState[S]](
+  private[director] def service[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     api: HttpSubagentApi,
     journal: Journal[S],

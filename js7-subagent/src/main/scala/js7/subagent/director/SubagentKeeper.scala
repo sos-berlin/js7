@@ -586,7 +586,7 @@ extends Service.StoppableByRequest:
     for
       api <- subagentApiResource(subagentItem)
       driver <- RemoteSubagentDriver
-        .resource(
+        .service(
           subagentItem,
           api,
           journal,

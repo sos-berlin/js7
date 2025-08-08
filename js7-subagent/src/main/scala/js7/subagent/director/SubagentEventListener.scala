@@ -120,23 +120,21 @@ private trait SubagentEventListener:
               val updatedStampedSeq = updatedStampedSeqSeq.flatten
               val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
               // TODO Save Stamped timestamp
-              journal
-                .persistKeyedEvents(Transaction):
-                  updatedStampedSeq.view.map(_.value) ++
-                    lastEventId.map:
-                      subagentId <-: SubagentEventsObserved(_)
-                .map(_.orThrow /*???*/)
+              journal.persistKeyedEvents(Transaction):
+                updatedStampedSeq.view.map(_.value) ++
+                  lastEventId.map:
+                    subagentId <-: SubagentEventsObserved(_)
+              .map(_.orThrow /*???*/)
+              .productR:
                 // • After an OrderProcessed event, a ReleaseEvents command must be sent,
                 //   to terminate StartOrderProcess command idempotency detection and
                 //   to allow a new StartOrderProcess command for a next process.
                 // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
                 // TODO Optimize: ReleaseEvents only after OrderProcessed or after a number of events
-                //val hasOrderProcessed = updatedStampedSeq.collectFirst:
-                //  case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
-                //.isDefined
-                .*>(lastEventId.traverse:
-                  releaseEvents)
-                .*>(followUps.combineAll))
+                lastEventId.traverse:
+                  releaseEvents
+              .productR:
+                followUps.combineAll)
           .onFinalize:
             recouplingStreamReader.terminateAndLogout
               .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
