@@ -184,7 +184,25 @@ private final class JobMotorKeeper(
         case Some(agentRef) =>
           agentRef.processLimit
 
-  def maybeKillOrder(orderId: OrderId): IO[Unit] =
+  def onSubagentEvents(startedOrderIds: Seq[OrderId], processedOrderIds: Seq[OrderId])
+  : IO[Unit] =
+    startedOrderIds.foldMap(maybeKillOrder) *>
+      onOrderProcessed(processedOrderIds)
+
+  private def onOrderProcessed(processedOrderIds: Seq[OrderId])
+  : IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      processedOrderIds.flatMap:
+        agentState.idToOrder.get
+      .flatMap: order =>
+        agentState.maybeJobKey(order.workflowPosition)
+          .map(_ -> order.id)
+      .groupMap(_._1)(_._2)
+      .foldMap: (jobKey, orders) =>
+        jobToMotor.get(jobKey).map(_.allocatedThing).foldMap: jobMotor =>
+          jobMotor.onOrdersProcessed(orders)
+
+  private def maybeKillOrder(orderId: OrderId): IO[Unit] =
     withCurrentOrder(orderId): order =>
       order.ifState[Processing].foldMap: order =>
         order.mark match
@@ -199,6 +217,8 @@ private final class JobMotorKeeper(
   def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
     order.ifState[Processing].foldMap: order =>
       IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
+        // RemoteSubagentDriver.killProcess kills asynchronously and does not block.
+        // This operation must not block, otherwise the whole OrderMotor pipeline would block !!!
         subagentKeeper.killProcess(
           order.id,
           if kill.immediately then SIGKILL else SIGTERM)

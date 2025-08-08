@@ -30,7 +30,7 @@ import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.InventoryItem
-import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted}
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.WorkflowPathControl
@@ -56,12 +56,15 @@ extends Service.StoppableByRequest:
     new JobMotorKeeper(agentPath, this, subagentKeeper, journal.aggregate, agentConf)
 
   protected def start =
-    startService:
-      (untilStopRequested *> orderQueue.offer(None))
-        .background.surround:
-          runOrderPipeline
-      .guarantee:
-        orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+    subagentKeeper.coupleWithOrderMotor(onSubagentEvents) *>
+      startService:
+        untilStopRequested
+          .productR:
+            orderQueue.offer(None)
+          .background.surround:
+            runOrderPipeline
+        .guarantee:
+          orderToEntry.toMap.values.foldMap(_.cancelSchedule)
 
   override def stop: IO[Unit] =
     super.stop
@@ -134,6 +137,19 @@ extends Service.StoppableByRequest:
           IO.right(())
 
       case _ => IO.right(())
+
+  def onSubagentEvents(keyedEvents: Iterable[KeyedEvent[OrderProcessingStarted | OrderProcessed]])
+  : IO[Unit] =
+    val typeToEvent: Map[Int, Vector[OrderId]] =
+      keyedEvents.toVector.groupMap {
+        case KeyedEvent(_, event: OrderProcessingStarted) => 1
+        case KeyedEvent(_, event: OrderProcessed) => 2
+      }(_.key)
+    val processedOrderIds = typeToEvent.getOrElse(2, Vector.empty)
+    val startedOrderIds = typeToEvent.getOrElse(1, Vector.empty).filterNot(processedOrderIds.toSet)
+
+    jobMotorKeeper.onSubagentEvents(startedOrderIds, processedOrderIds) *>
+      enqueue(processedOrderIds)
 
   def trigger(orderId: OrderId): IO[Unit] =
     enqueue(orderId)

@@ -28,7 +28,7 @@ import js7.base.utils.Tests.isStrict
 import js7.data.execution.workflow.instructions.AdmissionTimeSwitcher
 import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
-import js7.data.order.OrderEvent.{OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.subagent.director.SubagentKeeper
@@ -61,7 +61,7 @@ extends Service.StoppableByRequest:
     IO.defer:
       processCount += orders.size
       orders.parTraverse: order =>
-        subagentKeeper.recoverOrderProcessing(order, onSubagentEvents(order.id))
+        subagentKeeper.recoverOrderProcessing(order)
           .map(order.id -> _)
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
@@ -144,7 +144,7 @@ extends Service.StoppableByRequest:
   private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
     import orderWithEndOfAdmission.{endOfAdmission, order}
     // SubagentKeeper ignores the Order when it has been changed concurrently
-    subagentKeeper.processOrder(order, endOfAdmission, onSubagentEvents(order.id))
+    subagentKeeper.processOrder(order, endOfAdmission)
       .flatMapT: processingStartedEmitted =>
         IO.unlessA(processingStartedEmitted):
           // When SubagentKeeper didn't emit an OrderProcessingStarted (due to changed Order,
@@ -179,21 +179,10 @@ extends Service.StoppableByRequest:
                 logger.error(s"${order.id} has been changed concurrently: $order")
               IO.unit
 
-  private def onSubagentEvents(orderId: OrderId)
-    (events: Iterable[OrderStarted | OrderProcessingStarted | OrderProcessed])
-  : IO[Unit] =
-    events.foldMap:
-      case OrderStarted => IO.unit
-      case _: OrderProcessingStarted =>
-        orderMotor.jobMotorKeeper.maybeKillOrder(orderId)
-
-      case _: OrderProcessed =>
-        onOrderProcessed(orderId) *>
-          orderMotor.trigger(orderId)
-
-  private def onOrderProcessed(orderId: OrderId): IO[Unit] =
-    remove(orderId) /*Remove a maybe duplicate inserted order???*/ *>
-      decrementProcessCount
+  def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
+    orderIds.foldMap: orderId =>
+      remove(orderId) /*Remove a maybe duplicate inserted order???*/ *>
+        decrementProcessCount
 
   // Don't call concurrently:
   private def tryIncrementProcessCount[A]: IO[Boolean] =

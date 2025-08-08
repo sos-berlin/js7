@@ -22,7 +22,7 @@ import scala.util.{Success, Try}
 
 private trait CommandDispatcher:
   protected type Command <: CommonCommand
-  protected type Response 
+  protected type Response
   protected final type PostCommand = (Numbered[Command], SubagentRunId, Switch.ReadOnly) =>
     IO[Checked[Response]]
 

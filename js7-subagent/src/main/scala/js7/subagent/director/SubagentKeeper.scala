@@ -26,7 +26,7 @@ import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, LockKeeper, StandardMapView}
+import js7.base.utils.{Allocated, LockKeeper, SetOnce, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -70,11 +70,36 @@ extends Service.StoppableByRequest:
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
+  private val eventCallbackOnce = SetOnce[EventCallback]
+  private val orderMotorCoupled = Deferred.unsafe[IO, Unit]
+  private val serviceStarted = Deferred.unsafe[IO, Unit]
   @volatile private var started = false // Delays SubagentDriver#startObserving
 
   journal.untilStopped // TODO Terminate when journal dies
 
+  def coupleWithOrderMotor(callback: EventCallback): IO[Unit] =
+    logger.debugIO:
+      IO.defer:
+        eventCallbackOnce := callback
+        orderMotorCoupled.complete(()).void *>
+          serviceStarted.get.logWhenItTakesLonger("SubagentKeeper serviceStarted")
+
   protected def start =
+    startService:
+      orderMotorCoupled.get.logWhenItTakesLonger("SubagentKeeper orderMotorCoupled")
+        .productR:
+          start1
+        .productR:
+          serviceStarted.complete(())
+        .productR:
+          IO.defer:
+            started = true
+            IO.both(
+              untilStopRequested *> stopMe,
+              startObserving
+            ).void
+
+  private def start1 =
     journal.aggregate
       .flatMap: aggregate =>
         recoverSubagents(aggregate.idToSubagentItemState.values.toVector)
@@ -84,14 +109,7 @@ extends Service.StoppableByRequest:
       .map(_.orThrow)
       .productR:
         continueDetachingSubagents
-      .productR:
-        startService:
-          IO.defer:
-            started = true
-            IO.both(
-              untilStopRequested *> stopMe,
-              startObserving
-            ).void
+
 
   private def stopMe: IO[Unit] =
     stateVar.updateWithResult: state =>
@@ -135,8 +153,7 @@ extends Service.StoppableByRequest:
 
   def processOrder(
     order: Order[IsFreshOrReady],
-    endOfAdmissionPeriod: Option[Timestamp],
-    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[Boolean]] =
     val orderId = order.id
     if !order.isProcessable then
@@ -147,20 +164,17 @@ extends Service.StoppableByRequest:
     else
       selectSubagentDriverCancelable(order).flatMap:
         case Left(problem) =>
-          failProcessStart(problem, order, onEvents)
+          failProcessStart(problem, order)
 
         case Right(None) =>
           logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
           IO.right(false)
 
         case Right(Some(selectedDriver)) =>
-          processOrderAndForwardEvents(order, endOfAdmissionPeriod, onEvents, selectedDriver)
+          processOrderAndForwardEvents(order, endOfAdmissionPeriod, selectedDriver)
 
-  private def failProcessStart(
-    problem: Problem,
-    order: Order[IsFreshOrReady],
-    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit])
-    : IO[Checked[Boolean]] =
+  private def failProcessStart(problem: Problem, order: Order[IsFreshOrReady])
+  : IO[Checked[Boolean]] =
     // Maybe suppress when this SubagentKeeper has been stopped ???
     // ExecuteExecutor should have prechecked this:
     val orderId = order.id
@@ -178,13 +192,12 @@ extends Service.StoppableByRequest:
               Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
             ).flatten.map(orderId <-: _)
     .flatMapT: persisted =>
-      onPersisted(orderId, onEvents)(persisted)
+      onPersisted(orderId)(persisted)
         .rightAs(true)
 
   private def processOrderAndForwardEvents(
     order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
-    onEvents: Seq[OrderStarted | OrderProcessingStarted | OrderProcessed] => IO[Unit],
     selectedDriver: SelectedDriver)
   : IO[Checked[Boolean]] =
     // TODO Race with CancelOrders ?
@@ -208,7 +221,7 @@ extends Service.StoppableByRequest:
               Nil
           events.map(orderId <-: _)
     .flatTapT:
-      onPersisted(orderId, onEvents)
+      onPersisted(orderId)
     .flatMapT: persisted =>
       if persisted.isEmpty then
         IO.right(false)
@@ -217,7 +230,7 @@ extends Service.StoppableByRequest:
           persisted.aggregate.idToOrder.checked(orderId)
             .flatMap(_.checkedState[Order.Processing])
         .flatMapT: order =>
-          forProcessingOrder(orderId, subagentDriver, onEvents):
+          forProcessingOrder(orderId, subagentDriver):
             subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
         .handleErrorWith(t => IO:
           logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
@@ -226,10 +239,7 @@ extends Service.StoppableByRequest:
         .requireElementType[Checked[FiberIO[OrderProcessed]]]
         .rightAs(true)
 
-  def recoverOrderProcessing(
-    order: Order[Order.Processing],
-    onEvents: Seq[OrderProcessed] => IO[Unit])
-  : IO[Checked[FiberIO[OrderProcessed]]] =
+  def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("recoverOrderProcessing", order.id):
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.value
@@ -239,11 +249,11 @@ extends Service.StoppableByRequest:
           case None =>
             val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure:
               s"$subagentId is missed"))
-            persist(order.id, orderProcessed :: Nil, onEvents)
+            persist(order.id, orderProcessed :: Nil)
               .flatMapT(_ => IO.pure(orderProcessed).start.map(Right(_)))
 
           case Some(subagentDriver) =>
-            forProcessingOrder(order.id, subagentDriver, onEvents):
+            forProcessingOrder(order.id, subagentDriver):
               if failedOverSubagentId contains subagentDriver.subagentId then
                 subagentDriver.emitOrderProcessLostAfterRestart(order)
                   .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
@@ -255,16 +265,14 @@ extends Service.StoppableByRequest:
                 IO(logger.error(s"recoverOrderProcessing ${order.id} => $problem"))
               case Right(_) => IO.unit
 
-  private def persist[E <: OrderCoreEvent](
-    orderId: OrderId,
-    events: Seq[E],
-    onEvents: Seq[E] => IO[Unit])
+  private def persist[E <: OrderCoreEvent](orderId: OrderId, events: Seq[E])
   : IO[Checked[Persisted[S, E]]] =
     journal
       .persist(events.map(orderId <-: _))
-      .flatTapT(onPersisted(orderId, onEvents))
+      .flatTapT:
+        onPersisted(orderId)
 
-  private def onPersisted[E <: OrderCoreEvent](orderId: OrderId, onEvents: Seq[E] => IO[Unit])
+  private def onPersisted[E <: OrderCoreEvent](orderId: OrderId)
     (persisted: Persisted[S, E])
   : IO[Checked[Unit]] =
       persisted.aggregate.idToOrder.get(orderId) match
@@ -274,13 +282,13 @@ extends Service.StoppableByRequest:
           IO.pure(Checked.unit)
         case Some(order) =>
           assert(persisted.keyedEvents.forall(_.key == orderId))
-          onEvents(persisted.keyedEvents.map(_.event).toVector)
-            .as(Checked.unit)
+          eventCallbackOnce.orThrow:
+            persisted.keyedEvents.collect:
+              case ke @ KeyedEvent(_, _: (OrderProcessingStarted | OrderProcessed)) =>
+                ke.asInstanceOf[KeyedEvent[OrderProcessingStarted | OrderProcessed]]
+          .map(Right(_))
 
-  private def forProcessingOrder(
-    orderId: OrderId,
-    subagentDriver: SubagentDriver,
-    onEvents: Seq[OrderProcessed] => IO[Unit])
+  private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver)
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToSubagent.put(orderId, subagentDriver) *>
@@ -293,7 +301,8 @@ extends Service.StoppableByRequest:
               journal.aggregate.flatMap:
                 _.idToOrder.get(orderId) match
                   case None => IO.pure(Checked.unit)
-                  case Some(order) => onEvents(orderProcessed :: Nil)
+                  case Some(order) =>
+                    eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
             .guarantee:
               orderToSubagent.remove(orderId).void
             .start
@@ -641,6 +650,8 @@ extends Service.StoppableByRequest:
 
 
 object SubagentKeeper:
+  type EventCallback = Iterable[KeyedEvent[OrderProcessingStarted | OrderProcessed]] => IO[Unit]
+
   private val logger = Logger[this.type]
 
   def service[S <: SubagentDirectorState[S]](
