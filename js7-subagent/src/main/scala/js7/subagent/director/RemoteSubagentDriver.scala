@@ -355,13 +355,22 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   //      })
   //  }
 
+  /** Doesn't block the caller, runs in background. */
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
-    dispatcher.executeCommand(KillProcess(orderId, signal))
-      .map:
-        // TODO Stop postQueuedCommand loop for this OrderId
-        // Subagent may have been restarted
-        case Left(problem) => logger.error(s"killProcess $orderId => $problem")
-        case Right(_) =>
+    // The caller must not be blocked, otherwise the whole OrderMotor pipeline blocks !!!
+    //
+    // Enqueue command immediately, await response in background
+    // Despite killProcess is executed in background, the KillProcess command precedes any other
+    // command arriving later.
+    // This way, we are sure to kill only the current process (not any process started in future).
+    dispatcher.enqueueCommand(KillProcess(orderId, signal))
+      .flatMap: response =>
+        response.map:
+          // TODO Stop postQueuedCommand loop for this OrderId
+          // Subagent may have been restarted
+          case Left(problem) => logger.error(s"killProcess $orderId => $problem")
+          case Right(_) =>
+        .startAndForget
 
   private def postCommandUntilSucceeded(command: SubagentCommand): IO[command.Response] =
     logger.traceIO("postCommandUntilSucceeded", command.toShortString):
