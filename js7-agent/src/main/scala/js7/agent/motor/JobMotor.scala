@@ -102,7 +102,8 @@ extends Service.StoppableByRequest:
         .map(signalReason -> _)
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
-        logger.trace(s"runPipeline: No Order is processable despite signal \"${signalReason()}\"")
+        logger.trace:
+          s"🐌 runPipeline: No Order is processable despite signal \"${signalReason()}\""
         false
     .map(_._2)
     .unchunks
@@ -210,7 +211,7 @@ extends Service.StoppableByRequest:
         val jobN = processCount.decrementAndGet()
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
           IO.whenA(!triggered && jobN == workflowJob.processLimit - 1):
-            trigger(s"processCount=$jobN below Job's processLimit=${workflowJob.processLimit}")
+            trigger(s"processCount=$jobN is below Job's processLimit=${workflowJob.processLimit}")
 
   override def toString = s"JobMotor($jobKey)"
 
