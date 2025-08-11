@@ -3,6 +3,7 @@ package js7.base.utils
 import cats.effect.Sync
 import cats.effect.kernel.Resource
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
+import scala.annotation.targetName
 
 type Atomic[A] = A match
   case Boolean => AtomicBoolean
@@ -38,14 +39,22 @@ object Atomic:
 
 
     extension(atomic: AtomicInteger)
-      inline def :=(a: Int): Unit =
-        atomic.set(a)
+      inline def :=(n: Int): Unit =
+        atomic.set(n)
 
-      inline def +=(a: Int): Unit =
-        atomic.getAndAdd(a)
+      inline def +=(n: Int): Unit =
+        atomic.getAndAdd(n)
 
-      inline def -=(a: Int): Unit =
-        atomic.getAndAdd(-a)
+      @targetName("getAndIncrement")
+      inline def +=(n: 1): Unit =
+        atomic.getAndIncrement()
+
+      inline def -=(n: Int): Unit =
+        atomic.getAndAdd(-n)
+
+      @targetName("getAndDecrement")
+      inline def -=(n: 1): Unit =
+        atomic.getAndDecrement()
 
       /** Count current Resource usage. */
       def countConcurrency[F[_]: Sync as F]: Resource[F, Unit] =
@@ -58,11 +67,27 @@ object Atomic:
       inline def :=(a: Long): Unit =
         atomic.set(a)
 
-      inline def +=(a: Long): Unit =
-        atomic.getAndAdd(a)
+      @targetName("getAndIncrement")
+      inline def +=(n: 1): Unit =
+        atomic.getAndIncrement()
 
-      inline def -=(a: Long): Unit =
-        atomic.getAndAdd(-a)
+      @targetName("getAndIncrement")
+      inline def +=(n: 1L): Unit =
+        atomic.getAndIncrement()
+
+      inline def +=(n: Long): Unit =
+        atomic.getAndAdd(n)
+
+      @targetName("getAndDecrement")
+      inline def -=(n: 1): Unit =
+        atomic.getAndDecrement()
+
+      @targetName("getAndDecrement")
+      inline def -=(n: 1L): Unit =
+        atomic.getAndDecrement()
+
+      inline def -=(n: Long): Unit =
+        atomic.getAndAdd(-n)
 
       /** Count current Resource usage. */
       def gauge[F[_]: Sync as F]: Resource[F, Unit] =
