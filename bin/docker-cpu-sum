@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+grep cpus: js7-docker/src/main/resources/js7/install/docker/docker-compose.yml| awk '{ sum += $2 } END { print sum } '

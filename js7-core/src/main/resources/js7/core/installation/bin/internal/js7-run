@@ -15,7 +15,7 @@ mainClass=
 config=
 data=
 appOptions=()
-javaOptions=(-XX:+UseStringDeduplication)
+javaOptions=()
 execOptions=()
 
 for arg in "$@"; do :
