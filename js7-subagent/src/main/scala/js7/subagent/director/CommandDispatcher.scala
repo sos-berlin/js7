@@ -68,9 +68,6 @@ private trait CommandDispatcher:
             // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
             processing.joinStd
 
-  //def dequeueAll: IO[Seq[Numbered[Command]]] =
-  //  queue.dequeueAll.map(_.map(_.map(_.command)))
-
   final def executeCommand(command: Command): IO[Checked[Response]] =
     executeCommands(command :: Nil)
       .map(_.head)
@@ -117,7 +114,7 @@ private trait CommandDispatcher:
 
   override def toString = s"CommandDispatcher($name)"
 
-  protected final class Execute(
+  private final class Execute(
     val command: Command,
     val promise: Promise[Checked[Response]] = Promise(),
     val correlId: CorrelId = CorrelId.current):
