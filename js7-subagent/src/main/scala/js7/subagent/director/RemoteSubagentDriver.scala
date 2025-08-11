@@ -258,7 +258,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               .concat(subagentDiedEvent.map(subagentId <-: _))
         .map(_.orThrow)
         .flatMap: persisted =>
-          persisted.keyedEvents.toVector.foldMap:
+          persisted.keyedEvents.foldMap:
             case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
               oToD(orderId).complete(orderProcessed).void
             case _ => IO.unit
@@ -281,68 +281,55 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    logger.traceIO("recoverOrderProcessing", order.id):
-      if isLocal/*TODO always false*/ then
-        emitOrderProcessLostAfterRestart(order)
-          .map(_.orThrow)
-          .start
-          .map(Right(_))
-      else
-        requireNotStopping.flatMapT(_ =>
-          startOrderProcessing(order, endOfAdmissionPeriod = order.state.endOfAdmissionPeriod))
+    requireNotStopping.flatMapT: _ =>
+      startOrderProcessing(order, order.state.endOfAdmissionPeriod)
 
   def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
+    // FIXME endOfAdmissionPeriod ?
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping.flatMapT: _ =>
         startProcessingOrder2(order)
 
   private def startProcessingOrder2(order: Order[Order.Processing])
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    orderToDeferred
-      .insert(order.id, Deferred.unsafe)
+    orderToDeferred.insert(order.id, Deferred.unsafe)
       // OrderProcessed event will fulfill and remove the Deferred
-      .flatMap:
-        case Left(problem) => IO.left(problem)
-        case Right(deferred) =>
-          orderToExecuteDefaultArguments(order)
-            .flatMapT: defaultArguments =>
-              dispatcher.executeCommand:
-                StartOrderProcess(order, defaultArguments)
-            .catchIntoChecked
-            .flatMap:
-              case Left(problem) =>
-                // StartOrderProcess failed
-                orderToDeferred
-                  .remove(order.id)
-                  .flatMap:
-                    case None =>
-                      // Deferred has been removed
-                      if problem != CommandDispatcher.StoppedProblem then
-                        // onSubagentDied has stopped all queued StartOrderProcess commands
-                        logger.info(s"${order.id} got OrderProcessed, so we ignore $problem")
-                      IO.right(())
+      .flatMapT: deferred =>
+        orderToExecuteDefaultArguments(order)
+          .flatMapT: defaultArguments =>
+            dispatcher.executeCommand:
+              StartOrderProcess(order, defaultArguments)
+          .catchIntoChecked
+          .recoverFromProblemWith: problem =>
+            logger.trace(s"💥 startProcessingOrder2: $problem")
+            startProcessingOrderFailed(order, problem)
+              .map(Right(_))
+          .productR:
+            deferred.get
+          .start
+          .map(Right(_))
 
-                    case Some(deferred_) =>
-                      assert(deferred_ eq deferred)
-                      val orderProcessed =
-                        problem match
-                          case SubagentIsShuttingDownProblem =>
-                            OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
-                          case _ =>
-                            OrderProcessed(OrderOutcome.Disrupted(problem))
-                      journal
-                        .persist(order.id <-: orderProcessed)
-                        .orThrow
-                        .*>(deferred.complete(orderProcessed))
-                        .as(orderProcessed)
+  private def startProcessingOrderFailed(order: Order[Order.Processing], problem: Problem)
+  : IO[Unit] =
+    orderToDeferred.remove(order.id).flatMap:
+      case None =>
+        // Deferred has already been completed and removed
+        IO:
+          if problem != CommandDispatcher.StoppedProblem then
+            // onSubagentDied has stopped all queued StartOrderProcess commands
+            logger.info(s"${order.id} got OrderProcessed, so we ignore $problem")
 
-              case Right(()) =>
-                // Command succeeded, wait for Deferred
-                IO.right(())
-            .*>(deferred.get)
-            .start
-            .map(Right(_))
+      case Some(deferred) =>
+        val orderProcessed = problem match
+          case SubagentIsShuttingDownProblem =>
+            OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
+          case _ =>
+            OrderProcessed(OrderOutcome.Disrupted(problem))
+        journal.persist(order.id <-: orderProcessed)
+          .orThrow
+          .productR:
+            deferred.complete(orderProcessed).void
 
   //private def killAll(signal: ProcessSignal): IO[Unit] =
   //  IO.defer {

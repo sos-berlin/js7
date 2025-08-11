@@ -81,8 +81,16 @@ extends Service.StoppableByRequest:
       val orders = agentState.idToOrder.values.view
       val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
       val otherOrderIds = orders.filterNot(_.isState[Order.Processing]).map(_.id).toVector
-      // Continue already processing Orders
-      jobMotorKeeper.recoverProcessingOrders(processingOrders, agentState).flatMap: checkedFibers =>
+      recoverProcessingOrders(processingOrders, agentState) *>
+        enqueue(otherOrderIds)
+
+  /** Continue processing Orders (running at a remote Subagent). */
+  private def recoverProcessingOrders(
+    orders: Vector[Order[Order.Processing]],
+    agentState: AgentState)
+  : IO[Unit] =
+    logger.debugIO:
+      jobMotorKeeper.recoverProcessingOrders(orders, agentState).flatMap: checkedFibers =>
         checkedFibers.foldMap: (orderId, checkedFiber) =>
           checkedFiber.traverse: fiber =>
             fiber.joinStd.flatMap: (_: OrderProcessed) =>
@@ -92,8 +100,6 @@ extends Service.StoppableByRequest:
             .startAndForget
           .handleProblemWith: problem =>
             IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
-      .productR:
-        enqueue(otherOrderIds)
 
   def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
     cmd match

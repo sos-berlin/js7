@@ -105,7 +105,7 @@ private object JobOrderQueue:
       synchronized:
         queue.isEmpty
 
-    def nonEmpty: Boolean =
+    inline def nonEmpty: Boolean =
       !isEmpty
 
     override def toString =

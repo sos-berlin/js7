@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
 import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, guaranteeExceptWhenRight, joinStd, left, orThrow, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, guaranteeExceptWhenRight, joinStd, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
@@ -292,21 +292,19 @@ extends Service.StoppableByRequest:
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToSubagent.put(orderId, subagentDriver) *>
-      body.flatMap:
-        case Left(problem) => IO.left(problem)
-        case Right(fiber) =>
-          // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
-          fiber.joinStd
-            .flatTap: orderProcessed =>
-              journal.aggregate.flatMap:
-                _.idToOrder.get(orderId) match
-                  case None => IO.pure(Checked.unit)
-                  case Some(order) =>
-                    eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
-            .guarantee:
-              orderToSubagent.remove(orderId).void
-            .start
-            .map(Right(_))
+      body.flatMapT: fiber =>
+        // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
+        fiber.joinStd
+          .flatTap: orderProcessed =>
+            journal.aggregate.flatMap:
+              _.idToOrder.get(orderId) match
+                case None => IO.pure(Checked.unit)
+                case Some(order) =>
+                  eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
+          .guarantee:
+            orderToSubagent.remove(orderId).void
+          .start
+          .map(Right(_))
       .guaranteeExceptWhenRight:
         orderToSubagent.remove(orderId).void
 

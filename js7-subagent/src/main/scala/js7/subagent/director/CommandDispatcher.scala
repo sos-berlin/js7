@@ -29,7 +29,8 @@ private trait CommandDispatcher:
   protected def name: String
   protected val postCommand: PostCommand
 
-  protected final var queue = new StreamNumberedQueue[Execute]
+  private lazy val logger = Logger.withPrefix[this.type](name)
+  private var queue = new StreamNumberedQueue[Execute]
   private val processingAllowed = Switch(false)
   private var processing: FiberIO[Unit] = pureFiberIO(()) // TODO Maybe unsafe immutable
   private val lock = AsyncLock()
@@ -46,8 +47,8 @@ private trait CommandDispatcher:
     stopWithProblem(PartialFunction.empty)
 
   def stopAndFailCommands: IO[Unit] =
-    stopWithProblem:
-      case _ => StoppedProblem
+    stopWithProblem: _ =>
+      StoppedProblem
 
   private def stopWithProblem(
     commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
@@ -138,5 +139,4 @@ private trait CommandDispatcher:
 
 
 object CommandDispatcher:
-  private val logger = Logger[this.type]
   private[director] val StoppedProblem = Problem.pure("CommandDispatcher stopped")
