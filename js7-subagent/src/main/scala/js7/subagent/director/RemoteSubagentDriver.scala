@@ -250,12 +250,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         .productR:
           journal.persist: state =>
             orderIds.view.flatMap(state.idToOrder.get)
-              .flatMap(_.ifState[Order.Processing])
-              .find(_.state.subagentId.contains(subagentId)) // Just to be sure
+              .flatMap(_.ifProcessing(subagentId))
               .map: order =>
                 order.id <-: state.orderProcessLostIfRestartable(order, orderProblem)
               .toVector.sortBy(_.key: OrderId) // for prettier logging
-              .concat(subagentDiedEvent.map(subagentId <-: _))
+              .concat:
+                subagentDiedEvent.map(subagentId <-: _)
         .map(_.orThrow)
         .flatMap: persisted =>
           persisted.keyedEvents.foldMap:
@@ -466,8 +466,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             logger.debug(s"⚠️ $commandString => SubagentNotDedicatedProblem => ProcessLost")
             command match
               case command: StartOrderProcess =>
-                orderToDeferred
-                  .remove(command.orderId)
+                orderToDeferred.remove(command.orderId)
                   // Delay to let onSubagentDied go ahead and let it handle all orders at once
                   //?.delayBy(100.ms)
                   .flatMap:

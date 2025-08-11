@@ -239,7 +239,15 @@ extends Service.StoppableByRequest:
         .requireElementType[Checked[FiberIO[OrderProcessed]]]
         .rightAs(true)
 
-  def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
+  def recoverProcessingOrders(orders: Seq[Order[Order.Processing]])
+  : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
+    orders.parTraverse: order =>
+      recoverOrderProcessing(order)
+        .map(order.id -> _)
+
+  // TODO recover all orders at once
+  private def recoverOrderProcessing(order: Order[Order.Processing])
+  : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("recoverOrderProcessing", order.id):
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.value
@@ -250,13 +258,17 @@ extends Service.StoppableByRequest:
             val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure:
               s"$subagentId is missed"))
             persist(order.id, orderProcessed :: Nil)
-              .flatMapT(_ => IO.pure(orderProcessed).start.map(Right(_)))
+              .flatMapT: _ =>
+                IO.pure(orderProcessed).start // dummy fiber
+                  .map(Right(_))
 
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver):
               if failedOverSubagentId contains subagentDriver.subagentId then
                 subagentDriver.emitOrderProcessLostAfterRestart(order)
-                  .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
+                  .flatMapT: orderProcessed =>
+                    IO.pure(orderProcessed).start // dummy fiber
+                      .map(Right(_))
               else
                 subagentDriver.recoverOrderProcessing(order)
             .catchIntoChecked
@@ -452,8 +464,7 @@ extends Service.StoppableByRequest:
           journal.persistTransaction: state =>
             Right:
               state.idToOrder.values.view
-                .flatMap(_.ifState[Order.Processing])
-                .filter(_.state.subagentId contains subagentId)
+                .flatMap(_.ifProcessing(subagentId))
                 .map:
                   // Not OrderOutcome.processLost because the job should not be repeated,
                   // in case it requests the same, now deleted, Subagent.

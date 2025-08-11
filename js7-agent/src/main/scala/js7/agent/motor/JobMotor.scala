@@ -4,7 +4,6 @@ import cats.effect.kernel.Resource
 import cats.effect.std.Dispatcher
 import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
-import cats.syntax.parallel.*
 import fs2.Chunk
 import fs2.concurrent.{Signal, SignallingRef}
 import java.time.ZoneId
@@ -60,9 +59,7 @@ extends Service.StoppableByRequest:
   : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
     IO.defer:
       processCount += orders.size
-      orders.parTraverse: order =>
-        subagentKeeper.recoverOrderProcessing(order)
-          .map(order.id -> _)
+      subagentKeeper.recoverProcessingOrders(orders)
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
     IO.whenA(orders.nonEmpty):

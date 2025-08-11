@@ -726,6 +726,9 @@ extends
   def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
     Checked.fromOption(ifState[A], Problem(s"'$id' is expected to be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
 
+  def ifProcessing(subagentId: SubagentId): Option[Order[Processing]] =
+    ifState[Order.Processing].filter(_.state.subagentId.contains(subagentId))
+
   def ifState[A <: State: ClassTag]: Option[Order[A]] =
     isState[A] ? this.asInstanceOf[Order[A]]
 
