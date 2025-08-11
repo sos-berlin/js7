@@ -1,5 +1,6 @@
 package js7.subagent.director
 
+import cats.effect.kernel.Deferred
 import cats.effect.{FiberIO, IO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
@@ -17,7 +18,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
 import js7.subagent.director.CommandDispatcher.*
-import scala.concurrent.Promise
 import scala.util.{Success, Try}
 
 private trait CommandDispatcher:
@@ -57,16 +57,17 @@ private trait CommandDispatcher:
         logger.debugIO:
           queue.stop.flatMap: numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
-            for numberedExecute <- numberedExecutes do
+            numberedExecutes.foldMap: numberedExecute =>
               commandToProblem.lift(numberedExecute.value.command) match
                 case None =>
-                  logger.debug(s"⚠️  stopWithProblem $numberedExecute => discarded")
+                  IO(logger.debug(s"⚠️  stopWithProblem $numberedExecute => discarded"))
 
                 case Some(problem) =>
                   logger.debug(s"⚠️  stopWithProblem $numberedExecute => $problem")
                   numberedExecute.value.tryRespond(Success(Left(problem)))
             // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
-            processing.joinStd
+            .productR:
+              processing.joinStd
 
   final def executeCommand(command: Command): IO[Checked[Response]] =
     executeCommands(command :: Nil)
@@ -82,9 +83,8 @@ private trait CommandDispatcher:
 
   private def enqueueCommands(commands: Iterable[Command]): IO[Seq[IO[Checked[Response]]]] =
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
-    queue
-      .enqueue(executes)
-      .map(_ => executes.map(_.responded))
+    queue.enqueue(executes).as:
+      executes.map(_.responded)
 
   private def processQueue(subagentRunId: SubagentRunId): IO[Unit] =
     logger.debugIO:
@@ -94,16 +94,17 @@ private trait CommandDispatcher:
         queue
           .stream
           .interruptWhenF(processingAllowed.whenOff)
-          .evalMap(numbered =>
-            numbered.value.correlId.bind(
+          .evalMap: numbered =>
+            numbered.value.correlId.bind:
               executeCommandNow(subagentRunId, numbered)
                 .tryIt
                 .flatTap(_ => queue
                   .release(numbered.number)
                   .map(_.orThrow)
-                  .handleError(t =>
-                    logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
-                .map(numbered.value/*Execute*/.respond)))
+                  .handleError: t =>
+                    logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}"))
+                .flatMap:
+                  numbered.value/*Execute*/.respond
           .completedL
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
@@ -116,17 +117,22 @@ private trait CommandDispatcher:
 
   private final class Execute(
     val command: Command,
-    val promise: Promise[Checked[Response]] = Promise(),
+    val whenResponded: Deferred[IO, Try[Checked[Response]]] =
+      Deferred.unsafe[IO, Try[Checked[Response]]],
     val correlId: CorrelId = CorrelId.current):
-    val responded: IO[Checked[Response]] = IO.fromFuture(IO.pure(promise.future))
 
-    def respond(response: Try[Checked[Response]]): Unit =
-      if !promise.tryComplete(response) then
-        logger.warn/*debug?*/(
-          s"response($response): command already responded: ${command.toShortString} => ${promise.future.value.get}")
+    val responded: IO[Checked[Response]] =
+      whenResponded.get.flatMap(IO.fromTry)
 
-    def tryRespond(response: Try[Checked[Response]]): Unit =
-      promise.tryComplete(response)
+    def respond(response: Try[Checked[Response]]): IO[Unit] =
+      whenResponded.complete(response).flatMap:
+        IO.unlessA(_):
+          whenResponded.get.map: tried =>
+            logger.warn/*debug?*/:
+              s"response($response): command already responded: ${command.toShortString} => $tried"
+
+    def tryRespond(response: Try[Checked[Response]]): IO[Unit] =
+      whenResponded.complete(response).void
 
     override def toString = s"Execute(${command.toShortString})"
 

@@ -137,7 +137,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         .head.value.event
       assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
 
-      // For this test, the terminating Subagent must no emit any event before shutdown
+      // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
 
