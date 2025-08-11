@@ -286,12 +286,13 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    // FIXME endOfAdmissionPeriod ?
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping.flatMapT: _ =>
-        startProcessingOrder2(order)
+        startProcessingOrder2(order, endOfAdmissionPeriod)
 
-  private def startProcessingOrder2(order: Order[Order.Processing])
+  private def startProcessingOrder2(
+    order: Order[Order.Processing],
+    endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred.insert(order.id, Deferred.unsafe)
       // OrderProcessed event will fulfill and remove the Deferred
@@ -299,7 +300,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         orderToExecuteDefaultArguments(order)
           .flatMapT: defaultArguments =>
             dispatcher.executeCommand:
-              StartOrderProcess(order, defaultArguments)
+              StartOrderProcess(order, defaultArguments, endOfAdmissionPeriod)
           .catchIntoChecked
           .recoverFromProblemWith: problem =>
             logger.trace(s"💥 startProcessingOrder2: $problem")
