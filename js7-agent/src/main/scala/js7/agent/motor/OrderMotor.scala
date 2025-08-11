@@ -193,7 +193,7 @@ extends Service.StoppableByRequest:
 
   private def enqueue(orderIds: Seq[OrderId]): IO[Unit] =
     IO.whenA(orderIds.nonEmpty):
-      bean.orderQueueLength += 1
+      bean.orderQueueLength += orderIds.size
       orderQueue.offer(Some(orderIds))
 
   private def runOrderPipeline: IO[Unit] =
@@ -266,7 +266,7 @@ object OrderMotor:
   : ResourceIO[OrderMotor] =
     for
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[OrderId]]])
-      bean <- registerMBean("OrderMotorMXBean", new Bean)
+      bean <- registerMBean("OrderMotor", new Bean)
       orderMotor <- Service.resource:
         new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, bean, agentConf)
       _ <- orderMotor.jobMotorKeeper.registerMBeans

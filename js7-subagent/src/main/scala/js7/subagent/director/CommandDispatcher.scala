@@ -55,7 +55,7 @@ private trait CommandDispatcher:
   : IO[Unit] =
     lock.lock:
       processingAllowed.switchOff *>
-        logger.debugIO:
+        logger.traceIO:
           queue.stop.flatMap: numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
             numberedExecutes.foldMap: numberedExecute =>

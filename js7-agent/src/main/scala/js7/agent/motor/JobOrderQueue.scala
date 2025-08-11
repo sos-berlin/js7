@@ -17,9 +17,9 @@ private final class JobOrderQueue:
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
     IO:
       //JobMotorsMXBean.Bean.orderQueueLength += orders.length
-      val metering = entryMeter.startMetering(orders.length)
       synchronized:
         orders.foreach: order =>
+          val metering = entryMeter.startMetering()
           if order.forceJobAdmission then
             forceAdmissionQueue.enqueue(order, metering)
           queue.enqueue(order, metering)
@@ -42,7 +42,7 @@ private final class JobOrderQueue:
           forceAdmissionQueue.remove(entry.order.id)
           entry
 
-      entry.metering.close()
+      entryMeter.stopMetering(entry.metering)
       //JobMotorsMXBean.Bean.orderQueueLength -= 1
       //JobMotorsMXBean.Bean.orderQueueNanos += entry.since.elapsed.toNanos
       entry.order

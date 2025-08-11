@@ -7,8 +7,8 @@ import fs2.Pipe
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd, right}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -181,15 +181,24 @@ extends Service.StoppableByRequest:
       IO.defer:
         val since = Deadline.now
         val oToP = orderToProcessing.toMap.toVector
-        // TODO Wait a second before logging at info level
-        logger.info(s"🟡 Delaying shutdown until Agent Director has acknowledged processing of ${
-          oToP.map(_._1).sorted.mkStringLimited(3)}")
-        oToP.parFoldMapA: (orderId, processing) =>
-          processing.acknowledged.get *>
-            IO(logger.debug(s"🟢 Director has acknowledged processing of $orderId"))
-        *>
-          IO(logger.info(s"🟢 Director has acknowledged processing of all orders after ${
-            since.elapsed.pretty}"))
+        val sym = BlockingSymbol()
+        List(0.s/*debug*/, 1.s/*info*/).foldMap: delay =>
+          // Wait a second before logging at info level
+          IO:
+            sym.escalate()
+            logger.log(sym.logLevel,
+              s"$sym Delaying shutdown until Agent Director has acknowledged processing of ${
+                oToP.map(_._1).sorted.mkStringLimited(3)}")
+          .delayBy(delay)
+        .background.surround:
+          oToP.parFoldMapA: (orderId, processing) =>
+            processing.acknowledged.get *>
+              IO(logger.log(sym.relievedLogLevel,
+                s"🟢 Director has acknowledged processing of $orderId"))
+        .productR:
+          IO(logger.log(sym.relievedLogLevel,
+            s"🟢 Director has acknowledged processing of all orders after ${
+              since.elapsed.pretty}"))
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("killAndStopAllJobs", signal)(

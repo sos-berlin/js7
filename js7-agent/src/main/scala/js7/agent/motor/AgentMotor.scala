@@ -22,6 +22,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
+import js7.common.system.startup.ServiceMain.readyMessageWithLine
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -70,7 +71,9 @@ extends Service.StoppableByRequest:
           orderMotor.recoverOrders(agentState)
       .productR:
         startService:
-          untilStopRequested *> stopMe
+          IO.defer:
+            logger.info(readyMessageWithLine(s"$agentPath is ready"))
+            untilStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
     IO.defer:

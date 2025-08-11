@@ -6,10 +6,12 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter.*
 import js7.base.system.MBeanUtils
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.duration.Deadline
 import scala.quoted.{Expr, Quotes, Type}
 import sourcecode.Enclosing
 
@@ -33,18 +35,18 @@ extends CallMeter.CallMeterMXBean:
 
   private[metering] def meterCall[A](body: => A): A =
     _running += 1
-    val t = startMetering()
+    val t = startMetering_()
     try
       body
     finally
-      stopMetering(t)
+      stopMetering_(t)
 
   private[metering] def meterIO[A](io: IO[A]): IO[A] =
     IO.defer:
-      val t = startMetering()
+      val t = startMetering_()
       io.guarantee:
         IO:
-          stopMetering(t)
+          stopMetering_(t)
 
   //private[metering] def meterSync[F[_], A](Fa: F[A])(using F: Sync[F]): F[A] =
   //  F.defer:
@@ -53,35 +55,41 @@ extends CallMeter.CallMeterMXBean:
   //      F.delay:
   //        stopMetering(t)
 
-  //def addMeasurement(startedAt: Deadline): Unit =
-  //  addNanos(startedAt.elapsed.toNanos)
+  /** @return Metering, must be stopped with stopMetering to restore _running! */
+  def startMetering(): Metering =
+    _running += 1
+    System.nanoTime().asInstanceOf[Metering]
 
-  /** MUST be followed by stopMetering. */
-  def startMetering(n: Int = 1): Metering =
+  /** Must be called once and only once. */
+  def stopMetering(metering: Metering): Unit =
+    addNanos(System.nanoTime() - metering.asInstanceOf[Long])
+    _running -= 1
+
+  /** @return MeteringN, must be closed to restore _running! */
+  def startMetering(n: Int): MeteringN =
     _running += n
-    Metering(this, sinceNano = System.nanoTime(), n = n)
+    MeteringN(this, sinceNano = System.nanoTime(), n = n)
 
-  /** Call only once for each metering!. */
-  def stopMetering(metering: Metering, n: Int = 1): Unit =
+  private def stopMetering(metering: MeteringN, n: Int): Unit =
     addNanos(metering.elapsedNanos)
     _running -= n
 
   /** MUST be followed by stopMetering. */
-  private def startMetering_(n: Int): Long =
-    _running += n
+  private def startMetering_(): Long =
+    _running += 1
     System.nanoTime()
 
   /** Call only once for each metering!. */
-  private def stopMetering_(sinceNano: Long, n: Int): Unit =
+  private def stopMetering_(sinceNano: Long): Unit =
     addNanos(System.nanoTime() - sinceNano)
-    _running -= n
+    _running -= 1
 
   def addNanos(nanos: Long): Unit =
     addNanosInline(nanos)
 
   private inline def addNanosInline(inline nanos: Long): Unit =
-    _total.getAndIncrement()
-    _nanos.getAndAdd(nanos)
+    _total += 1
+    _nanos += nanos
 
   def measurement(): Measurement =
     Measurement(this,
@@ -141,19 +149,25 @@ object CallMeter:
         logger.trace(s"${callMeter.asString}")
 
 
-  final class Metering private[CallMeter](callMeter: CallMeter, sinceNano: Long, n: Int)
-  extends AtomicBoolean, AutoCloseable:
+  type Metering = Long // Nanoseconds
+
+  /** Metering of a batch of operations.
+    * <p>This is a slower variant of `Metering`. */
+  final class MeteringN private[CallMeter](callMeter: CallMeter, sinceNano: Long, n: Int)
+    extends AtomicBoolean(false), AutoCloseable:
     def close(): Unit =
       if compareAndSet(false, true) then
-        callMeter.stopMetering(this)
+        callMeter.stopMetering(this, n)
 
     def elapsedNanos: Long =
       System.nanoTime() - sinceNano
 
-  object Metering:
-    val Dummy = Metering(CallMeter("Dummy"), 0, 0)
+    override def toString = s"$callMeter $n× ${Deadline(sinceNano.ns).elapsed}"
 
-  
+  object MeteringN:
+    val Dummy = MeteringN(CallMeter("Dummy"), 0, 0)
+
+
   sealed trait CallMeterMXBean:
     def getRunning: Int
     def getTotal: Long
