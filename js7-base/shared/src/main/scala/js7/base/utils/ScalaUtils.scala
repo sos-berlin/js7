@@ -25,6 +25,7 @@ import scala.annotation.tailrec
 import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
+import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
 import scala.util.boundary.break
 import scala.util.chaining.*
@@ -50,13 +51,12 @@ object ScalaUtils:
 
   object syntax:
     extension [A <: AnyRef](a: A)
-      /** Like isInstanceOf, but compiles only if A1 is an A. */
-      def isSubtypeOf[A1 <: A: ClassTag as A1]: Boolean =
-        // TODO Could be an inline macro generating instanceOf
-        a.isSubtypeOf(A1.runtimeClass)
+      /** Like isInstanceOf, but compiles only if A1 &lt;: A. */
+      inline def isSubtypeOf[A1 <: A]: Boolean =
+        ${ isInstanceOfMacro[A1]('a) }
 
-      inline def isSubtypeOf[A1 <: A](cls: Class[A1]): Boolean =
-        cls.isAssignableFrom(a.getClass)
+    private def isInstanceOfMacro[T: Type](any: Expr[AnyRef])(using Quotes): Expr[Boolean] =
+      '{ $any.isInstanceOf[T] }
 
     implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal:
       def unless(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =

@@ -30,17 +30,31 @@ final class ScalaUtilsTest extends OurTestSuite:
   "AnyRef" - {
     "isSubtypeOf" in:
       val number: Number = BigDecimal(1)
+      assert(number.isInstanceOf[Number])
       assert(number.isSubtypeOf[Number])
+
+      assert(number.isInstanceOf[ScalaNumber])
       assert(number.isSubtypeOf[ScalaNumber])
+
+      assert(number.isInstanceOf[BigDecimal])
       assert(number.isSubtypeOf[BigDecimal])
 
+      assert(!number.isInstanceOf[java.lang.Integer])
       assert(!number.isSubtypeOf[java.lang.Integer])
+
+      assert(java.lang.Integer.valueOf(1).isInstanceOf[java.lang.Integer])
       assert(java.lang.Integer.valueOf(1).isSubtypeOf[java.lang.Integer])
 
+      // Impossible type is not compilable
+      // This is different to Scala's isInstanceOf, which allows any type
+      assert(!number.isInstanceOf[String])
       "number.isSubtypeOf[String]" shouldNot compile
 
-      "number.isSubtypeOf[java.io.Serializable]" shouldNot compile
+      // Supertype is not compilable, too!
+      assert(number.isInstanceOf[Any])
       assert(number.isInstanceOf[java.io.Serializable])
+      "number.isSubtypeOf[Any]" shouldNot compile
+      "number.isSubtypeOf[java.io.Serializable]" shouldNot compile
   }
 
   "Monad transforming funtions" - {
