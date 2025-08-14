@@ -34,6 +34,8 @@ import scala.util.{Failure, Success, Try, boundary}
 
 object ScalaUtils:
 
+  type =>?[-A, +B] = PartialFunction[A, B]
+
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
   private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
