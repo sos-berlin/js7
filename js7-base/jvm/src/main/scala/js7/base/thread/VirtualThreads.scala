@@ -10,6 +10,7 @@ object VirtualThreads:
   private val logger = Logger[this.type]
   private var hasVirtualThreads =
     Runtime.version.feature >= 19 && sys.props.asSwitch("js7.virtualThreads")
+  private def DefaultVirtualThreadMaxPoolSize = 999_999  // Should be virtually unlimited
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
@@ -42,6 +43,7 @@ object VirtualThreads:
     if !hasVirtualThreads then
       None
     else
+      setBlockingVirtualThreadPoolSize(DefaultVirtualThreadMaxPoolSize)
       try
         val method = classOf[Executors]
           .getMethod("newThreadPerTaskExecutor", classOf[ThreadFactory])
@@ -49,6 +51,12 @@ object VirtualThreads:
           threadFactory =>
             method.invoke(null, threadFactory).asInstanceOf[ExecutorService]
       catch throwableToNone
+
+  private def setBlockingVirtualThreadPoolSize(n: Int): Unit =
+    val name = "jdk.virtualThreadScheduler.maxPoolSize"
+    if !sys.props.contains(name) then
+      logger.debug(s"Setting missing system property $name=$n")
+      sys.props.put(name, n.toString)
 
   private[thread] lazy val newVirtualThreadFactory: Option[ThreadFactory] =
     if !hasVirtualThreads then

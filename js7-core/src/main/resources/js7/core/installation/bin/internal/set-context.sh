@@ -47,6 +47,7 @@ fi
 
 standardJavaOptions=()
 standardJavaOptions+=("-Dfile.encoding=UTF-8")
+#standardJavaOptions+=("-Djs7.virtualThreads=on")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 24 ]]; then
   standardJavaOptions+=("-XX:+UnlockExperimentalVMOptions" "-XX:+UseCompactObjectHeaders")
