@@ -30,7 +30,7 @@ import js7.base.utils.{Allocated, LockKeeper, SetOnce, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
-import js7.data.event.{EventCalc, KeyedEvent}
+import js7.data.event.{Event, EventCalc, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
@@ -294,11 +294,8 @@ extends Service.StoppableByRequest:
           IO.pure(Checked.unit)
         case Some(order) =>
           assert(persisted.keyedEvents.forall(_.key == orderId))
-          eventCallbackOnce.orThrow:
-            persisted.keyedEvents.collect:
-              case ke @ KeyedEvent(_, _: (OrderProcessingStarted | OrderProcessed)) =>
-                ke.asInstanceOf[KeyedEvent[OrderProcessingStarted | OrderProcessed]]
-          .map(Right(_))
+          callEventCallback(persisted)
+            .map(Right(_))
 
   private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver)
     (body: IO[Checked[FiberIO[OrderProcessed]]])
@@ -309,16 +306,20 @@ extends Service.StoppableByRequest:
         fiber.joinStd
           .flatTap: orderProcessed =>
             journal.aggregate.flatMap:
-              _.idToOrder.get(orderId) match
-                case None => IO.pure(Checked.unit)
-                case Some(order) =>
-                  eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
+              _.idToOrder.get(orderId).fold(IO.right(())): order =>
+                eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
           .guarantee:
             orderToSubagent.remove(orderId).void
           .start
           .map(Right(_))
       .guaranteeExceptWhenRight:
         orderToSubagent.remove(orderId).void
+
+  private def callEventCallback[E <: Event](persisted: Persisted[S, E]): IO[Unit] =
+    eventCallbackOnce.orThrow:
+      persisted.keyedEvents.collect:
+        case ke @ KeyedEvent(_, _: (OrderProcessingStarted | OrderProcessed)) =>
+          ke.asInstanceOf[KeyedEvent[OrderProcessingStarted | OrderProcessed]]
 
   private def selectSubagentDriverCancelable(order: Order[IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
@@ -453,7 +454,7 @@ extends Service.StoppableByRequest:
   def removeSubagent(subagentId: SubagentId): IO[Unit] =
     logger.debugIO("removeSubagent", subagentId):
       stateVar.value.flatMap:
-        _.idToDriver.get(subagentId).fold(IO.unit): subagentDriver =>
+        _.idToDriver.get(subagentId).foldMap: subagentDriver =>
           subagentDriver.tryShutdownForRemoval // may take a short time
             .productR:
               stateVar.updateDirect: state =>
@@ -461,7 +462,7 @@ extends Service.StoppableByRequest:
             .productR:
               subagentDriver.terminate
         .productR:
-          journal.persistTransaction: state =>
+          journal.persistTransaction[OrderProcessed | ItemDetached]: state =>
             Right:
               state.idToOrder.values.view
                 .flatMap(_.ifProcessing(subagentId))
@@ -476,6 +477,8 @@ extends Service.StoppableByRequest:
                   // Check again to be sure
                   state.idToSubagentItemState.get(subagentId).exists(_.isDetaching) ?
                     ItemDetached(subagentId, agentPath)
+          .ifPersisted:
+            callEventCallback
           .orThrow.void
 
   private def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
