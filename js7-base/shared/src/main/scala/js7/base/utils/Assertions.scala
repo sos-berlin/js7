@@ -1,44 +1,43 @@
 package js7.base.utils
 
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 
 object Assertions:
 
+  private val logger = Logger[this.type]
+
   /** Like assertThat, but only if isStrict.
     */
-  inline def strictly(inline predicate: sourcecode.Text[Boolean])
-    (using
-      inline fullName: sourcecode.FullName,
-      inline filename: sourcecode.FileName,
-      inline line: sourcecode.Line)
+  def assertIfStrict(predicate: sourcecode.Text[Boolean])
+    (using sourcecode.FullName, ScalaSourceLocation)
   : Unit =
-    if isStrict then
-      assertThat(predicate)
+    if isStrict || logger.isDebugEnabled then
+      try
+        assertThat(predicate)
+      catch
+        case e: AssertionError if !isStrict =>
+          logger.debug(s"🟥 ERROR (suppressed) $e")
 
   def assertThat(predicate: sourcecode.Text[Boolean])
-    (using
-      fullName: sourcecode.FullName,
-      filename: sourcecode.FileName,
-      line: sourcecode.Line)
+    (using sourcecode.FullName, ScalaSourceLocation)
   : Unit =
     assertThat(predicate, "")
 
   def assertThat(predicate: sourcecode.Text[Boolean], clue: => String)
-    (using
-      fullName: sourcecode.FullName,
-      filename: sourcecode.FileName,
-      line: sourcecode.Line)
+    (using sourcecode.FullName, ScalaSourceLocation)
   : Unit =
     if !predicate.value then
-      val c = clue
-      val fn =
-        if isWindows then
-          filename.value.lastIndexOf('\\') match
-            case -1 => filename.value
-            case i => filename.value.drop(i + 1)
-        else
-          filename.value
-      throw new AssertionError(s"assertThat(${predicate.source}) failed in " +
-        s"${fullName.value}, $fn:${line.value}${c.nonEmpty ?? s", $c"}")
+      fail(predicate, clue)
+
+  private def fail(predicate: sourcecode.Text[Boolean], clue: => String)
+    (using
+      fullName: sourcecode.FullName,
+      loc: ScalaSourceLocation)
+  : Unit =
+    val c = clue
+    throw new AssertionError(s"assertThat(${predicate.source}) failed in " +
+      s"${fullName.value}, $loc${c.nonEmpty ?? s", $c"}")
