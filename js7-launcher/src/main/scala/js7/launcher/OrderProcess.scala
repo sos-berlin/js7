@@ -2,6 +2,7 @@ package js7.launcher
 
 import cats.effect.{FiberIO, IO}
 import js7.base.log.Logger
+import js7.base.problem.Checked.RichCheckedF
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.{NonFatalInterruptedException, SetOnce}
@@ -9,6 +10,7 @@ import js7.data.job.JobKey
 import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.launcher.OrderProcess.*
+import scala.annotation.targetName
 
 trait OrderProcess:
 
@@ -41,6 +43,17 @@ object OrderProcess:
 
   def apply(run: IO[OrderOutcome.Completed]): OrderProcess =
     Simple(run)
+
+  @targetName("applyIOChecked")
+  def apply(run: IO[Checked[OrderOutcome.Completed]]): OrderProcess =
+    Simple:
+      run.handleProblem(OrderOutcome.Failed.fromProblem)
+
+  @targetName("applyCheckedIO")
+  def apply(run: Checked[IO[OrderOutcome.Completed]]): OrderProcess =
+    run match
+      case Left(problem) => Simple(IO.pure(OrderOutcome.Failed.fromProblem(problem)))
+      case Right(o) => Simple(o)
 
   def cancelable(run: IO[OrderOutcome.Completed]): OrderProcess.FiberCancelable =
     Cancelable(run)

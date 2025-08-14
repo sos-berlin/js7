@@ -161,7 +161,10 @@ object OrderOutcome:
     : Failed =
       new Failed(errorMessage, namedValues, uncatchable)
 
-    def fromProblem(problem: Problem, namedValues: NamedValues = NamedValues.empty): Failed =
+    def fromProblem(problem: Problem): Failed =
+      fromProblem(problem, NamedValues.empty)
+
+    def fromProblem(problem: Problem, namedValues: NamedValues): Failed =
       Failed(Some(problem.toString), namedValues)
 
     def fromThrowable(throwable: Throwable): Failed =

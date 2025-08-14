@@ -2,13 +2,14 @@ package js7.launcher.internal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.traverse.*
 import java.nio.charset.Charset
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.{=>?, implicitClass}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobConf, JobResourcePath}
@@ -87,6 +88,10 @@ object InternalJob:
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
         .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
         .flatten
+
+    def maybeArg[A](name: String)(convert: Value =>? Checked[A]): Checked[Option[A]] =
+      arguments.get(name).traverse:
+        convert.applyOrElse(_, _ => Left(Problem.pure(s"Invalid argument: $name")))
 
     override def toString = s"Step(${processOrder.order.id} in ${processOrder.jobKey})"
 
