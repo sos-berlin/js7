@@ -45,7 +45,7 @@ cp "${installTgz[@]}" build/
 ln -sn build/bin . &>/dev/null || true
 build/bin/prepare-volumes
 
-[ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .
+[ -f docker-compose.yaml ] || ln -sf build/docker-compose.yaml .
 
 docker compose down --remove-orphans
 echo "docker compose build"
