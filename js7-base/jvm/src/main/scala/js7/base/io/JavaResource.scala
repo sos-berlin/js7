@@ -1,6 +1,7 @@
 package js7.base.io
 
 import cats.effect.{Resource, SyncIO}
+import io.circe.Decoder
 import java.io.{File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
@@ -73,6 +74,9 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   def contentBytes: Array[Byte] =
     readAs[ByteArray].unsafeArray
+
+  def jsonAs[A: Decoder]: Checked[A] =
+    readAs[ByteArray].parseJsonAs[A]
 
   def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
     autoClosing(openStream())(ByteSeq.fromInputStreamUnlimited)

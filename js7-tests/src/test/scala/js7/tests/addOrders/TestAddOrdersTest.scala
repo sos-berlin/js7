@@ -1,6 +1,5 @@
 package js7.tests.addOrders
 
-import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
 import js7.base.log.{CorrelId, Log4jThreadContextMap, Logger}
@@ -47,12 +46,13 @@ final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     CorrelId.logStatisticsIfEnabled()
     Log4jThreadContextMap.logStatistics()
 
+
 private object TestAddOrdersTest:
   private val logger = Logger[this.type]
   private val ClearLine = "\u001B[K"
 
   private val workflow =
-    JavaResource(
-      "js7/install/docker/volumes/provider/config/live/testCase3Empty.workflow.json"
-    ).asUTF8String.parseJsonAs[Workflow].orThrow
-      .withId(WorkflowPath("testCase3"))
+    JavaResource:
+      "js7/install/docker/volumes/provider/config/live/test-1-InternalJob.workflow.json"
+    .jsonAs[Workflow].orThrow
+    .withId(WorkflowPath("testCase3"))
