@@ -220,9 +220,8 @@ extends SubagentDriver, Service.StoppableByRequest:
       //  alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
       .flatMapT:
         _.traverse: signedItem =>
-          subagent.commandExecutor.executeCommand(
-            Numbered(0, AttachSignedItem(signedItem)),
-            CommandMeta.System)
+          executeCommand:
+            AttachSignedItem(signedItem)
         .map:
           _.map(_.rightAs(())).combineAll
 

@@ -21,6 +21,7 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
+import js7.base.stream.Numbered
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp}
@@ -32,12 +33,13 @@ import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools.unlimitedExecutionContextResource
+import js7.core.command.CommandMeta
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentCommand.DedicateSubagent
-import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
+import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
@@ -139,6 +141,10 @@ extends MainService, Service.StoppableByRequest:
   //        "unregisterDirector tried to unregister an alien Director")))
   //      .as(None))
   //    .void
+
+  private[subagent ]def executeCommand(cmd: SubagentCommand.Queueable)
+  : IO[Checked[SubagentCommand.Response]] =
+    commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
 
   def executeDedicateSubagent(cmd: DedicateSubagent): IO[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent

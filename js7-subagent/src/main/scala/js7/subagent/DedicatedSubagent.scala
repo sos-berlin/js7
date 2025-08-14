@@ -13,13 +13,11 @@ import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
-import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
-import js7.core.command.CommandMeta
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventCalc, EventId}
@@ -29,7 +27,7 @@ import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
 import js7.data.subagent.SubagentEvent.SubagentShutdown
-import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
+import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -126,10 +124,6 @@ extends Service.StoppableByRequest:
       .productR:
         jobKeyToJobDriver.removeConditional((jobKey, _) => jobKeySet(jobKey))
       .void
-
-  def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
-  : IO[Checked[numbered.value.Response]] =
-    commandExecutor.executeCommand(numbered, meta)
 
   //private[subagent] def dedicateDirector(cmd: DedicateDirector, meta: CommandMeta)
   //: IO[Checked[Unit]] =
