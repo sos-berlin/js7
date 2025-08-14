@@ -116,8 +116,8 @@ private trait SubagentEventListener:
           .evalTap(_
             .traverse(handleEvent)
             .flatMap: updatedStampedChunk0 =>
-              val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
-              val updatedStampedSeq = updatedStampedSeqSeq.flatten
+              val (updatedStampedMaybes, followUps) = updatedStampedChunk0.toVector.unzip
+              val updatedStampedSeq = updatedStampedMaybes.flatten
               val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
               // TODO Save Stamped timestamp
               journal.persistKeyedEvents(Transaction):

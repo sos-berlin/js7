@@ -57,7 +57,7 @@ final case class WorkflowJob(
 
 object WorkflowJob:
 
-  val DefaultProcessLimit = 1 // Or unlimited like AgentRef.processLimit ???
+  val DefaultProcessLimit = 1
 
   def apply(
     agentPath: AgentPath,

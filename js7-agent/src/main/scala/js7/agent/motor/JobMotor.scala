@@ -221,7 +221,6 @@ extends Service.StoppableByRequest:
 
 
 private object JobMotor:
-  private val logger = Logger[this.type]
   private val meterDequeue = CallMeter("JobMotor.dequeue")
   private val emptyChunk = IO.pure(Chunk.empty)
 

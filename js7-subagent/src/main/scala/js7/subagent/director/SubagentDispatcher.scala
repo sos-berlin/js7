@@ -16,7 +16,7 @@ extends CommandDispatcher:
   protected type Response = Unit
 
   protected def name = subagentId.toString
-    
+
   override def toString = s"SubagentDispatcher($name)"
 
 

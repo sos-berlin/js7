@@ -506,20 +506,21 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
         .map(FreshOrder(_, workflow.path)))
         .await(99.s).orThrow
       for orderId <- orderIds do
-        eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        eventWatch.awaitKey[OrderProcessingStarted](orderId, after = eventId)
       val extraOrderId = OrderId("JOB-LIMIT-EXTRA")
       controller.api.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
+      eventWatch.awaitKey[OrderAttached](extraOrderId, after = eventId)
       assert(orderToObstacles(extraOrderId)(using WallClock) ==
         Right(Set(jobProcessLimitReached)))
 
-      execCmd(CancelOrders(extraOrderId :: Nil))
-      eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
+      execCmd:
+        CancelOrders(extraOrderId :: Nil)
+      eventWatch.awaitKey[OrderCancelled](extraOrderId, after = eventId)
 
       execCmd:
         CancelOrders(orderIds, CancellationMode.kill(immediately = true))
       for orderId <- orderIds do
-        eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+        eventWatch.awaitKey[OrderCancelled](orderId, after = eventId)
 
     "Agent processLimit" in:
       val jobProcessLimit = 2
