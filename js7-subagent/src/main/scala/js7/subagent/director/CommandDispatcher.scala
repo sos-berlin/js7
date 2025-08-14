@@ -14,6 +14,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, StreamNumberedQueue}
 import js7.base.utils.AsyncLock
 import js7.base.utils.CatsUtils.pureFiberIO
+import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
@@ -44,28 +45,26 @@ private trait CommandDispatcher:
 
   /** Stop and forget queued commands (do not respond them). */
   def shutdown: IO[Unit] =
-    stopWithProblem(PartialFunction.empty)
+    stopWithResponse(PartialFunction.empty)
 
   def stopAndFailCommands: IO[Unit] =
-    stopWithProblem: _ =>
-      StoppedProblem
+    stopWithResponse: _ =>
+      Left(StoppedProblem)
 
-  private def stopWithProblem(
-    commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
-  : IO[Unit] =
+  def stopWithResponse(commandToResponse: Command =>? Checked[Response]): IO[Unit] =
     lock.lock:
       processingAllowed.switchOff *>
         logger.traceIO:
           queue.stop.flatMap: numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
             numberedExecutes.foldMap: numberedExecute =>
-              commandToProblem.lift(numberedExecute.value.command) match
+              commandToResponse.lift(numberedExecute.value.command) match
                 case None =>
-                  IO(logger.debug(s"⚠️  stopWithProblem $numberedExecute => discarded"))
+                  IO(logger.debug(s"⚠️  stopWithResponse $numberedExecute => discarded"))
 
-                case Some(problem) =>
-                  logger.debug(s"⚠️  stopWithProblem $numberedExecute => $problem")
-                  numberedExecute.value.tryRespond(Success(Left(problem)))
+                case Some(response) =>
+                  logger.debug(s"⚠️  stopWithResponse $numberedExecute => $response")
+                  numberedExecute.value.tryRespond(Success(response))
             // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
             .productR:
               processing.joinStd

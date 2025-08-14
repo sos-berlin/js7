@@ -141,7 +141,13 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         // Wait until no Order is being processed
         orderToDeferred.stop
         // Emit event and change state ???
-      .*>(tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true))
+      .productR:
+        tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true)
+      .productR:
+        dispatcher.stopWithResponse:
+          case cmd: ReleaseEvents =>
+            logger.info(s"$cmd ignored because Subagent is being removed should no longer run")
+            Right(SubagentCommand.Accepted)
 
   //def suspend: IO[Unit] =
   //  dispatcher.suspend *> stopEventListener
