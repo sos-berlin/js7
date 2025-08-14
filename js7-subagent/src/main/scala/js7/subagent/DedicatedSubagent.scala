@@ -214,12 +214,12 @@ extends Service.StoppableByRequest:
       orderToProcessing.updateChecked(order.id):
         case Some(processing) =>
           IO.pure:
-            if processing.workflowPosition != order.workflowPosition then
+            if processing.order != order then
               val problem = Problem.pure:
-                "Duplicate SubagentCommand.StartOrder with different Order position"
-              logger.warn(s"$problem:")
-              logger.warn(s"  Added order   : ${order.id} ${order.workflowPosition}")
-              logger.warn(s"  Existing order: ${order.id} ${processing.workflowPosition}")
+                "Duplicate SubagentCommand.StartOrder with different Orders"
+              logger.warn(s"${order.id}: $problem ⏎")
+              logger.warn(s"${order.id}  - added order   : $order")
+              logger.warn(s"${order.id}  - existing order: ${processing.order}")
               Left(problem)
             else
               // Operation is idempotent
@@ -237,7 +237,7 @@ extends Service.StoppableByRequest:
               case outcome => IO.unit
             .map: fiber =>
               Right:
-                new Processing(order.workflowPosition, fiber)
+                new Processing(order, fiber)
       .onError: t =>
         logger.error(s"🔥 startOrderProcess ${order.id}: ${t.toStringWithCauses}", t)
         // Tidy-up on failure
@@ -319,17 +319,21 @@ extends Service.StoppableByRequest:
     journal.releaseEvents(eventId).flatMapT: _ =>
       IO:
         orderProcessedQueue.synchronized:
-          orderProcessedQueue.dequeueWhile(_.eventId <= eventId).toEagerSeq
+          orderProcessedQueue.dequeueWhile(_.eventId <= eventId).toVector
         .map(_.orderId)
       .flatMap:
         detachProcessedOrders
       .map(Right(_))
 
-  private def detachProcessedOrders(orderIds: Seq[OrderId]): IO[Unit] =
-    orderIds.foldMap: orderId =>
+  private def detachProcessedOrders(orderIds: Vector[OrderId]): IO[Unit] =
+    orderIds.traverse: orderId =>
       orderToProcessing.remove(orderId).flatMap:
-        _.fold(IO.unit):
-          _.acknowledged.complete(()).void
+        case None => IO.none
+        case Some(processing) => processing.acknowledged.complete(()).as(Some(orderId))
+    .map: detachedOrderIds =>
+      logger.trace:
+        s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString(" ")}"
+    .void
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,
@@ -418,7 +422,7 @@ object DedicatedSubagent:
       service
 
   private final class Processing(
-    val workflowPosition: WorkflowPosition /*for check only*/ ,
+    val order: Order[Order.Processing]/*for check only*/,
     val fiber: FiberIO[OrderProcessed]):
     val acknowledged = Deferred.unsafe[IO, Unit]
 
