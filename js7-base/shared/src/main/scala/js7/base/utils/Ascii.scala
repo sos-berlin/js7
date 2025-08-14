@@ -22,7 +22,7 @@ object Ascii:
     val a = (0 to 0xff).map(_.toChar).toArray[Char]
     for i <- 0 to 0x1f do a(i) = ('\u2400' + i).toChar // Control character representation
     a('\t') = '⟶'
-    a('\n') = '⏎' // ⏎↲ (⮐ ist zu breit)
+    a('\n') = '⏎' // ⏎↲↩︎ (⮐ ist zu breit)
     a(DEL) = '\u2421'
     for i <- 0x80 to 0x9f do a(i) = SubstituteChar
     a

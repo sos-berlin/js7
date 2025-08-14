@@ -50,8 +50,9 @@ private final class JobOrderQueue:
   def remove(orderId: OrderId)(using LockedForRemoval): IO[Boolean] =
     IO:
       synchronized:
-        queue.remove(orderId).isDefined && locally:
+        queue.remove(orderId).fold(false): entry =>
           forceAdmissionQueue.remove(orderId)
+          entryMeter.stopMetering(entry.metering)
           //JobMotorsMXBean.Bean.orderQueueLength -= 1
           true
 

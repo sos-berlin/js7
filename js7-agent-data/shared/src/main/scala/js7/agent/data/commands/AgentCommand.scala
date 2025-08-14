@@ -228,7 +228,7 @@ object AgentCommand extends CommonCommand.Companion:
     type Response = Response.Accepted
 
     override def toShortString: String =
-      s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
+      s"AttachOrder(${order.id}, ${order.workflowPosition}, " +
         s"${order.state.getClass.simpleScalaName}))"
 
   object AttachOrder:
