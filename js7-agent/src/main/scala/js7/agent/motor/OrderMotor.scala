@@ -148,15 +148,16 @@ extends Service.StoppableByRequest:
 
   def onSubagentEvents(keyedEvents: Iterable[KeyedEvent[OrderProcessingStarted | OrderProcessed]])
   : IO[Unit] =
-    val typeToEvent: Map[Int, Vector[OrderId]] =
-      keyedEvents.toVector.groupMap {
-        case KeyedEvent(_, event: OrderProcessingStarted) => 1
-        case KeyedEvent(_, event: OrderProcessed) => 2
-      }(_.key)
-    val processedOrderIds = typeToEvent.getOrElse(2, Vector.empty)
-    val startedOrderIds = typeToEvent.getOrElse(1, Vector.empty).filterNot(processedOrderIds.toSet)
+    val startedOrderIdB = Vector.newBuilder[OrderId]
+    val processedOrderIdB = Vector.newBuilder[OrderId]
+    keyedEvents.foreach:
+      case KeyedEvent(orderId, _: OrderProcessingStarted) => startedOrderIdB += orderId
+      case KeyedEvent(orderId, _: OrderProcessed) => processedOrderIdB += orderId
+    val processedOrderIds = processedOrderIdB.result()
+    val startedOrderIds = startedOrderIdB.result().filterNot(processedOrderIds.toSet)
 
-    jobMotorKeeper.onSubagentEvents(startedOrderIds, processedOrderIds) *>
+    startedOrderIds.foldMap(jobMotorKeeper.maybeKillMarkedOrder) *>
+      jobMotorKeeper.onOrderProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
   def trigger(orderId: OrderId): IO[Unit] =

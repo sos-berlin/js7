@@ -185,12 +185,7 @@ private final class JobMotorKeeper(
         case Some(agentRef) =>
           agentRef.processLimit
 
-  def onSubagentEvents(startedOrderIds: Seq[OrderId], processedOrderIds: Seq[OrderId])
-  : IO[Unit] =
-    startedOrderIds.foldMap(maybeKillOrder) *>
-      onOrderProcessed(processedOrderIds)
-
-  private def onOrderProcessed(processedOrderIds: Seq[OrderId])
+  def onOrderProcessed(processedOrderIds: Seq[OrderId])
   : IO[Unit] =
     getAgentState.flatMap: agentState =>
       processedOrderIds.flatMap:
@@ -203,7 +198,7 @@ private final class JobMotorKeeper(
         jobToMotor.get(jobKey).map(_.allocatedThing).foldMap: jobMotor =>
           jobMotor.onOrdersProcessed(orders)
 
-  private def maybeKillOrder(orderId: OrderId): IO[Unit] =
+  def maybeKillMarkedOrder(orderId: OrderId): IO[Unit] =
     withCurrentOrder(orderId): order =>
       order.ifState[Processing].foldMap: order =>
         order.mark match
@@ -269,4 +264,3 @@ object JobMotorKeeper:
     def getProcessCount: Int
     /** @return null means no limit. */
     @Nullable def getProcessLimit: java.lang.Integer
-

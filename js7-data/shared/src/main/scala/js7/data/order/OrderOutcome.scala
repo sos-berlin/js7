@@ -9,6 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
+import js7.data.order.OrderOutcome.Disrupted
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
 import js7.data.value.{NamedValues, NumberValue}
@@ -26,6 +27,9 @@ sealed trait OrderOutcome:
 
   final def isDisrupted: Boolean =
     isInstanceOf[OrderOutcome.Disrupted]
+
+  def isProcessLost: Boolean =
+    false
 
   /** Different to namedValues, findNamedValues dives into nested OrderOutcomes. */
   def findNamedValues: Option[NamedValues]
@@ -219,6 +223,9 @@ object OrderOutcome:
 
     def findNamedValues: None.type =
       None
+
+    override def isProcessLost: Boolean =
+      reason.isSubtypeOf[ProcessLost]
 
     override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
 
