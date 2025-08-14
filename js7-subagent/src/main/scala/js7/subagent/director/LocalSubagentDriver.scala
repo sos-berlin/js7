@@ -123,8 +123,9 @@ extends SubagentDriver, Service.StoppableByRequest:
               journal.persistKeyedEvents(options):
                 stampedEvents.map(_.value)
                   :+ (subagentId <-: SubagentEventsObserved(lastEventId))
-              .map(_.orThrow /*???*/)
-              .*>(releaseEvents(lastEventId))
+              .map(_.orThrow/*???*/)
+              .productR:
+                releaseEvents(lastEventId).map(_.orThrow/*???*/)
           *>
             followUpAll
         .interruptWhenF(untilStopRequested)
@@ -308,21 +309,14 @@ extends SubagentDriver, Service.StoppableByRequest:
         // Error isn't logged until stopEventListener is called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
-  protected def releaseEvents(eventId: EventId): IO[Unit] =
-    enqueueCommandAndForget:
+  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
+    executeCommand:
       SubagentCommand.ReleaseEvents(eventId)
+    .rightAs(())
 
-  private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
+  private def executeCommand(cmd: SubagentCommand)
+  : IO[Checked[SubagentCommand.Response]] =
     subagent.commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
-      .start
-      .map(_
-        .joinStd
-        .map(_.orThrow)
-        .void
-        .handleError: t =>
-          logger.error(s"${cmd.toShortString} => ${t.toStringWithCauses}",
-            t.nullIfNoStackTrace)
-        .startAndForget/* Don't await response */)
 
   def testFailover(): Unit =
     _testFailover = true

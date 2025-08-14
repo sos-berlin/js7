@@ -47,7 +47,7 @@ private trait SubagentEventListener:
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: HttpSubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
-  protected def releaseEvents(eventId: EventId): IO[Unit]
+  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]]
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : IO[Option[IO[Unit]]]
   protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
@@ -130,9 +130,11 @@ private trait SubagentEventListener:
                 //   to terminate StartOrderProcess command idempotency detection and
                 //   to allow a new StartOrderProcess command for a next process.
                 // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
-                // TODO Optimize: ReleaseEvents only after OrderProcessed or after a number of events
-                lastEventId.traverse:
-                  releaseEvents
+                // TODO Optimize: ReleaseEvents only after OrderProcessed,
+                //  or (asynchronously) after a number of events
+                lastEventId.traverse: eventId =>
+                  releaseEvents(eventId).map(_.orThrow)
+                    .logWhenItTakesLonger(s"$subagentId releaseEvents")
               .productR:
                 followUps.combineAll)
           .onFinalize:

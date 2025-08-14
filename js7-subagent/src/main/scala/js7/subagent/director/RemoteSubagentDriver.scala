@@ -33,7 +33,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
-import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
+import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ReleaseEvents, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.journal.Journal
@@ -405,9 +405,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         // Error isn't logged until stopEventListener has been called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
-  protected def releaseEvents(eventId: EventId): IO[Unit] =
-    enqueueCommandAndForget:
+  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
+    dispatcher.executeCommand:
       SubagentCommand.ReleaseEvents(eventId)
+    .rightAs(())
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
     dispatcher
