@@ -63,8 +63,10 @@ extends Service.StoppableByRequest:
             orderQueue.offer(None)
           .background.surround:
             runOrderPipeline
-        .guarantee:
-          orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+          .guarantee:
+            val n = jobMotorKeeper.processLimits.processCount
+            if n > 0 then logger.debug(s"processCount=$n")
+            orderToEntry.toMap.values.foldMap(_.cancelSchedule)
 
   override def stop: IO[Unit] =
     super.stop

@@ -15,7 +15,6 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.monixutils.SimpleLock
-import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
@@ -32,6 +31,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.subagent.director.SubagentKeeper
 import scala.concurrent.duration.FiniteDuration
+import scala.util.chaining.scalaUtilChainingOps
 
 private final class JobMotor private(
   val jobKey: JobKey,
@@ -50,7 +50,11 @@ extends Service.StoppableByRequest:
 
   def start =
     startService:
-      runPipeline
+      runPipeline *>
+        IO:
+          val n = processCount.get
+          if n > 0 then logger.debug(s"processCount=$n")
+
 
   override def stop =
     super.stop
@@ -84,12 +88,12 @@ extends Service.StoppableByRequest:
       logger.trace(s"trigger($reason_)")
       queueSignal.set(() => reason_)
 
-  def remove(orderId: OrderId): IO[Unit] =
+  def remove(orderId: OrderId): IO[Boolean] =
     queue.lockForRemoval:
       queue.remove(orderId)
-    .map:
-      if _ then
-        logger.debug(s"$orderId removed from queue")
+    .flatTap:
+      IO.whenA(_):
+        IO(logger.debug(s"$orderId removed from queue"))
 
   private def runPipeline: IO[Unit] =
     queueSignal.discrete.merge:
@@ -142,62 +146,76 @@ extends Service.StoppableByRequest:
     import orderWithEndOfAdmission.{endOfAdmission, order}
     // SubagentKeeper ignores the Order when it has been changed concurrently
     subagentKeeper.processOrder(order, endOfAdmission)
-      .flatMapT: processingStartedEmitted =>
-        IO.unlessA(processingStartedEmitted):
-          // When SubagentKeeper didn't emit an OrderProcessingStarted (due to changed Order,
-          // duplicate enqueued OrderId), then decrement process counters:
-          decrementProcessCount
-        .as(Checked.unit)
       .catchIntoChecked
-      .handleProblemWith: problem =>
-        handleFailedProcessStart(order, problem)
+      .flatMap:
+        case Right(None) =>
+          logger.trace(s"subagentKeeper.processOrder: ${order.id} is not processable, ignored")
+          decrementProcessCount(order.id, s"⚠️  ${order.id} is not processable")
+        case Right(Some(order)) =>
+          IO.unlessA(order.isState[Order.Processing]):
+            // Unless SubagentKeeper emitted an OrderProcessingStarted (due to changed Order,
+            // duplicate enqueued OrderId), then decrement process counters here.
+            // Otherwise, an OrderProcessed event will decrement.
+            logger.trace(s"subagentKeeper.processOrder: ${order.id
+              } status is not Processing, decrementing processCount")
+            decrementProcessCount(order.id, "⚠️  Order's status is not Processing")
+        case Left(problem) =>
+          handleFailedProcessStart(order, problem)
 
   private def handleFailedProcessStart(order: Order[IsFreshOrReady], problem: Problem): IO[Unit] =
-    IO.defer:
-      getAgentState.flatMap: agentState =>
-        // This is an unexpected situation
-        def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
-        agentState.idToOrder.get(order.id) match
-          case None =>
-            logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
-              problem.throwableIfStackTrace)
-            if problem != UnknownKeyProblem("OrderId", order.id) then
-              logger.error(msg)
-            decrementProcessCount
-          case Some(current) =>
-            if order == current then
-              logger.warn(msg)
-              decrementProcessCount
-            else
-              logger.error(msg)
-              if order.isState[Order.Processing] then
-                logger.error(s"${order.id} will stay Processing due to unknown error")
-              else
-                logger.error(s"${order.id} has been changed concurrently: $order")
-              IO.unit
+    // FIXME Should we log an error or a warning, or not?
+    // Or has the error always been handled by an OrderProcessed event ???
+    getAgentState.flatMap: agentState =>
+      // This is an unexpected situation
+      def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
+      agentState.idToOrder.get(order.id) match
+        case None =>
+          logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
+            problem.throwableIfStackTrace)
+          if problem != UnknownKeyProblem("OrderId", order.id) then
+            logger.warn(msg)
+          IO.unit //??? decrementProcessCount(order.id)
+
+        case Some(current) =>
+          if order == current then
+            logger.warn(msg)
+            decrementProcessCount(order.id, "⚠️  processOrder failed")
+          else
+            logger.warn(msg)
+            logger.warn(s"${order.id} has been changed concurrently: $order")
+            IO.unit
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
-      remove(orderId) /*Remove a maybe duplicate inserted order???*/ *>
-        decrementProcessCount
+      remove(orderId) /*Remove a maybe duplicate inserted order???*/
+        *> decrementProcessCount(orderId, "OrderProcessed")
 
-  // Don't call concurrently:
-  private def tryIncrementProcessCount[A]: IO[Boolean] =
+  private def tryIncrementProcessCount: IO[Boolean] =
     processCountLock.surround:
       IO:
         val agentProcessLimit = orderMotor.jobMotorKeeper.processLimits.processLimit
         orderMotor.jobMotorKeeper.processLimits
           .tryIncrementProcessCount(processCount, workflowJob.processLimit)
+          .tap:
+            if _ then
+              logger.trace:
+                s"### tryIncrementProcessCount: jobProcessCount=$processCount processCount=$processCount"
 
   /** Triggers this JobMotor or all JobMotor when a process counter gets below its limit.
     * @return true iff process count was at processLimit. */
-  private def decrementProcessCount: IO[Unit] =
+  private def decrementProcessCount(orderId: OrderId, reason: String): IO[Unit] =
     processCountLock.surround:
       IO.defer:
-        val jobN = processCount.decrementAndGet()
+        val n = processCount.decrementAndGet()
+        if reason != "OrderProcessed" then
+          logger.trace(s"decrementProcessCount: processCount=$processCount $orderId • $reason")
+        if n < 0 then
+          val msg = s"decrementProcessCount: processCount=$n is below zero"
+          logger.error(msg)
+          if isStrict then throw new AssertionError(s"$msg • $toString")
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
-          IO.whenA(!triggered && jobN == workflowJob.processLimit - 1):
-            trigger(s"processCount=$jobN is below Job's processLimit=${workflowJob.processLimit}")
+          IO.whenA(!triggered && n == workflowJob.processLimit - 1):
+            trigger(s"processCount=$n is below Job's processLimit=${workflowJob.processLimit}")
 
   override def toString = s"JobMotor($jobKey)"
 

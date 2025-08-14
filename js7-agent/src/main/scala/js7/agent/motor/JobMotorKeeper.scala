@@ -102,7 +102,7 @@ private final class JobMotorKeeper(
       .flatMap: order =>
         orderToJobMotor(order, originalAgentState)
       .foldMap:
-        _.remove(orderId)
+        _.remove(orderId).void
 
   def triggerAllJobs(reason: => Any): IO[Unit] =
     lazy val reason_ = reason.toString
@@ -159,11 +159,12 @@ private final class JobMotorKeeper(
 
     /** @return true iff JobMotors have been triggered because a process has become available. */
     def decrementProcessCount: IO[Boolean] =
+      // May decrement happen before increment due to concurrency ???
       IO:
         processLimit.synchronized:
           val n = _processCount.decrementAndGet()
           if n < 0 then
-            val msg = s"🔥 decrementProcessCount: processCount=$n is below zero"
+            val msg = s"decrementProcessCount: processCount=$n is below zero"
             logger.error(msg)
             if isStrict then throw new AssertionError(msg)
           processLimit.fold(None): limit =>

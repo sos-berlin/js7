@@ -42,6 +42,7 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorStat
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
 import js7.journal.CommitOptions.Transaction
+import js7.journal.Persisted.ifPersisted
 import js7.journal.{Journal, Persisted}
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
@@ -151,11 +152,11 @@ extends Service.StoppableByRequest:
   //def orderIsLocal(orderId: OrderId): Boolean =
   //  orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
 
+  /** @return the persisted Order. */
   def processOrder(
     order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp])
-  : IO[Checked[Boolean]] =
-    val orderId = order.id
+  : IO[Checked[Option[Order[Order.State]]]] =
     if !order.isProcessable then
       IO:
         val msg = s"Order in job queue is not isProcessable: $order"
@@ -167,14 +168,14 @@ extends Service.StoppableByRequest:
           failProcessStart(problem, order)
 
         case Right(None) =>
-          logger.debug(s"⚠️ $orderId has been cancelled while selecting a Subagent")
-          IO.right(false)
+          logger.debug(s"⚠️ ${order.id} has been cancelled while selecting a Subagent")
+          IO.right(None)
 
         case Right(Some(selectedDriver)) =>
           processOrderAndForwardEvents(order, endOfAdmissionPeriod, selectedDriver)
 
   private def failProcessStart(problem: Problem, order: Order[IsFreshOrReady])
-  : IO[Checked[Boolean]] =
+  : IO[Checked[Option[Order[Order.State]]]] =
     // Maybe suppress when this SubagentKeeper has been stopped ???
     // ExecuteExecutor should have prechecked this:
     val orderId = order.id
@@ -191,28 +192,32 @@ extends Service.StoppableByRequest:
               Some(OrderProcessingStarted.noSubagent),
               Some(OrderProcessed(OrderOutcome.Disrupted(problem)))
             ).flatten.map(orderId <-: _)
-    .flatMapT: persisted =>
-      onPersisted(orderId)(persisted)
-        .rightAs(true)
+    .flatTapT:
+      onPersisted(orderId)
+    .mapmap: persisted =>
+      persisted.aggregate.idToOrder.get(orderId)
 
   private def processOrderAndForwardEvents(
     order: Order[IsFreshOrReady],
     endOfAdmissionPeriod: Option[Timestamp],
     selectedDriver: SelectedDriver)
-  : IO[Checked[Boolean]] =
+  : IO[Checked[Option[Order[Order.State]]]] =
     // TODO Race with CancelOrders ?
     import selectedDriver.{stick, subagentDriver}
     val orderId = order.id
-    journal.persist: agentState =>
-      agentState.idToOrder.checked(orderId).map: order2 =>
-        if order2 != order then
+    journal.persist[OrderStarted | OrderProcessingStarted]: agentState =>
+      agentState.idToOrder.checked(orderId).map: currentOrder =>
+        if currentOrder != order then
           // Do nothing when the Order has been changed by a concurrent operation
+          // May happen when the same Order has been enqueued twice in JobMotor's queue
           logger.debug:
             s"$orderId has concurrently been changed, no OrderProcessingStarted is emitted"
+          logger.trace(s"Caller:  $order")
+          logger.trace(s"Journal: $currentOrder")
           Nil
         else
           val events: List[OrderStarted | OrderProcessingStarted] =
-            order2.isState[Order.Fresh].thenList(OrderStarted) :::
+            currentOrder.isState[Order.Fresh].thenList(OrderStarted) :::
               OrderProcessingStarted(
                 Some(subagentDriver.subagentId),
                 selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
@@ -222,9 +227,9 @@ extends Service.StoppableByRequest:
           events.map(orderId <-: _)
     .flatTapT:
       onPersisted(orderId)
-    .flatMapT: persisted =>
+    .flatTapT: persisted =>
       if persisted.isEmpty then
-        IO.right(false)
+        IO.right(())
       else
         IO.pure:
           persisted.aggregate.idToOrder.checked(orderId)
@@ -237,7 +242,11 @@ extends Service.StoppableByRequest:
             t.nullIfNoStackTrace)
           Left(Problem.fromThrowable(t)))
         .requireElementType[Checked[FiberIO[OrderProcessed]]]
-        .rightAs(true)
+        .rightAs(())
+    .mapmap: persisted =>
+      persisted.nonEmpty thenMaybe:
+        // Return the changed Order or None (then nothing has happened)
+        persisted.aggregate.idToOrder.get(orderId)
 
   def recoverProcessingOrders(orders: Seq[Order[Order.Processing]])
   : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =

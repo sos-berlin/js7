@@ -50,7 +50,7 @@ private final class JobOrderQueue:
   def remove(orderId: OrderId)(using LockedForRemoval): IO[Boolean] =
     IO:
       synchronized:
-        queue.remove(orderId) && locally:
+        queue.remove(orderId).isDefined && locally:
           forceAdmissionQueue.remove(orderId)
           //JobMotorsMXBean.Bean.orderQueueLength -= 1
           true
@@ -93,13 +93,15 @@ private object JobOrderQueue:
         entry
 
     // Slow !!!
-    def remove(orderId: OrderId): Boolean =
+    def remove(orderId: OrderId): Option[Entry] =
       synchronized:
-        isQueued.remove(orderId) && locally:
+        if isQueued.remove(orderId) then
           meterRemove:
             queue.indexWhere(_.order.id == orderId) match
-              case -1 => false
-              case i => queue.remove(i); true
+              case -1 => None
+              case i => Some(queue.remove(i))
+        else
+          None
 
     def isEmpty: Boolean =
       synchronized:
