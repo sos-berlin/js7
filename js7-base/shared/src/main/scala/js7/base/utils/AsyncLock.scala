@@ -86,7 +86,7 @@ object AsyncLock:
 
     @TestOnly
     private[utils] def isLocked: Boolean =
-      stateVar.get.isInstanceOf[QueueingState]
+      stateVar.get.isInstanceOf[LockedState]
 
     private def queueLength: Long =
       stateVar.get.queueLength
@@ -186,16 +186,21 @@ object AsyncLock:
         acquire =
           stateMutex.surround:
             IO.defer:
-              val sym = new BlockingSymbol
+              val since = Deadline.now
               stateVar.get match
                 case EmptyState =>
+                  IO:
+                    stateVar := NotQueueingState(acquirer, nr, since)
+
+                case state: NotQueueingState =>
                   IO.defer:
-                    val since = Deadline.now
                     var relieveLogLevel: LogLevel = LogLevel.None
+                    val sym = new BlockingSymbol
                     IO.never.whenItTakesLonger(logWorryDurations): _ =>
                       IO:
                         stateVar.get match
                           case EmptyState => // unexpected
+                          case _: NotQueueingState => // unexpected
                           case QueueingState(currentAcquirer, currentNr, acquiredSince, queueLength, _) =>
                             sym.escalateUpTo(2)
                             relieveLogLevel = sym.relievedLogLevel
@@ -203,56 +208,66 @@ object AsyncLock:
                               since.elapsed.pretty
                             }, currently by $currentAcquirer †$currentNr since ${
                               acquiredSince.elapsed.pretty
-                            } · $queueLength are queuing")
-                    .guarantee(IO:
-                      stateVar.get match
-                        case EmptyState => // unexpected
-                        case QueueingState(currentAcquirer, nr, acquiredSince, queueLength, _) =>
-                          logger.log(relieveLogLevel,
-                            s"🟢 $name released by $currentAcquirer †$nr after ${
-                              acquiredSince.elapsed.pretty}, $queueLength are queuing"))
+                            } · $queueLength queuing")
+                    .guarantee:
+                      IO:
+                        stateVar.get match
+                          case EmptyState => // unexpected
+                          case NotQueueingState(currentAcquirer, nr, acquiredSince) => // unexpected
+                            logger.log(relieveLogLevel,
+                              s"🟢 $name released by $currentAcquirer †$nr after ${
+                                acquiredSince.elapsed.pretty}")
+                          case QueueingState(currentAcquirer, nr, acquiredSince, queueLength, _) =>
+                            logger.log(relieveLogLevel,
+                              s"🟢 $name released by $currentAcquirer †$nr after ${
+                                acquiredSince.elapsed.pretty}, $queueLength queuing")
                   .startAndCatchError.map: fiber =>
-                    stateVar := QueueingState(acquirer, nr, Deadline.now, queueLength = 0, fiber)
+                    stateVar := state.toQueueingState(fiber)
 
                 case state: QueueingState =>
                   IO:
-                    stateVar := state.copy(
-                      currentAcquirer = acquirer,
-                      currentNr = nr,
-                      acquiredSince = Deadline.now,
-                      queueLength = state.queueLength + 1))(
+                    stateVar := state.incrementQueue)(
 
         release = (_, exitCase) =>
           stateMutex.surround:
             IO.defer:
               stateVar.get match
                 case EmptyState => IO.pure(EmptyState) // unexpected
+
+                case state: NotQueueingState =>
+                  IO:
+                    stateVar := EmptyState
+
                 case state: QueueingState =>
-                  if state.queueLength > 0 then
+                  if state.queueLength > 1 then
                     IO:
-                      stateVar := state.copy(queueLength = state.queueLength - 1)
+                      stateVar := state.decrementQueue
                   else
                     state.loggingFiber.cancel *>
                       IO:
-                        stateVar := EmptyState)
+                        stateVar := state.toNotQueueingState)
 
     override def toString = s"AsyncLock:$name"
 
 
     private sealed trait State:
       def queueLength: Long
-      def startQ(acquirer: String, nr: Long, loggingFiber: FiberIO[Unit]): QueueingState
 
     private case object EmptyState extends State:
       val queueLength = 0L
 
-      def startQ(acquirer: String, nr: Long, loggingFiber: FiberIO[Unit]) =
-        QueueingState(
-          currentAcquirer = acquirer,
-          currentNr = nr,
-          acquiredSince = Deadline.now,
-          queueLength = queueLength + 1,
-          loggingFiber)
+
+    private sealed trait LockedState extends State
+
+    private final case class NotQueueingState(
+      currentAcquirer: String,
+      currentNr: Long,
+      acquiredSince: Deadline)
+    extends LockedState:
+      def queueLength = 0
+
+      def toQueueingState(loggingFiber: FiberIO[Unit]): QueueingState =
+        QueueingState(currentAcquirer, currentNr, acquiredSince, queueLength = 1, loggingFiber)
 
 
     private final case class QueueingState(
@@ -261,15 +276,18 @@ object AsyncLock:
       acquiredSince: Deadline,
       queueLength: Long,
       loggingFiber: FiberIO[Unit])
-    extends State:
-      def startQ(acquirer: String, nr: Long, loggingFiber: FiberIO[Unit]): QueueingState =
-        // loggingFiber should be unchanged
-        copy(
-          currentAcquirer = acquirer,
-          currentNr = nr,
-          acquiredSince = Deadline.now,
-          queueLength = queueLength + 1,
-          loggingFiber = loggingFiber)
+    extends LockedState:
+      def incrementQueue: QueueingState =
+        copy(queueLength = queueLength + 1)
+
+      def decrementQueue: QueueingState =
+        assert(queueLength > 1)
+        copy(queueLength = queueLength - 1)
+
+      def toNotQueueingState: NotQueueingState =
+        assert(queueLength == 1)
+        NotQueueingState(currentAcquirer, currentNr, acquiredSince)
+
   end WithLogging
 
 
