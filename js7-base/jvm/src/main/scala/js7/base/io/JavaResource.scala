@@ -1,9 +1,11 @@
 package js7.base.io
 
+import cats.effect.kernel.Sync
 import cats.effect.{Resource, SyncIO}
 import io.circe.Decoder
-import java.io.{File, InputStream, OutputStream}
+import java.io.{File, InputStream, InputStreamReader, OutputStream, Reader}
 import java.net.{URI, URL}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
 import java.util.Properties
@@ -98,8 +100,12 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   def isValid: Boolean = checkedUrl.isRight
 
-  val asResource: Resource[SyncIO, InputStream] =
-    Resource.fromAutoCloseable(SyncIO { openStream() })
+  def inputStream[F[_]: Sync as F]: Resource[F, InputStream] =
+    Resource.fromAutoCloseable(F.delay(openStream()))
+
+  def reader[F[_]: Sync as F]: Resource[F, Reader] =
+    inputStream[F].map: in =>
+      new InputStreamReader(in, UTF_8)
 
   def openStream(): InputStream = url.openStream()
 
@@ -135,7 +141,7 @@ object JavaResource:
   //}
 
   def asResource(o: JavaResource): Resource[SyncIO, InputStream] =
-    o.asResource
+    o.inputStream
 
   implicit val writable: Writable[JavaResource] = _.writeToStream(_)
 

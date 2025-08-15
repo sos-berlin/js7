@@ -73,12 +73,13 @@ final class JavaResourceTest extends OurTestSuite:
     assert(JavaResource("js7/base/io/test-2.txt").asUTF8String == "TEST 2\n")
     assert(JavaResource("js7/base/io/test-äöü.txt").asUTF8String == "ÄÖÜ\n")
 
-  "asResource (Cats Effect)" in:
-    val io = javaResource.asResource.use(in =>
-      SyncIO {
-        new BufferedReader(new InputStreamReader(in)).readLine()
-      })
-    assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
+  "inputStream Resource" in:
+    val string =
+      javaResource.inputStream[SyncIO].use: in =>
+        SyncIO:
+          new BufferedReader(new InputStreamReader(in)).readLine()
+      .unsafeRunSync()
+    assert(string == expectedString.stripSuffix("\n"))
 
   //"Implicit cats.effect.Resource" in:
   //  val io = javaResource.use(in =>
