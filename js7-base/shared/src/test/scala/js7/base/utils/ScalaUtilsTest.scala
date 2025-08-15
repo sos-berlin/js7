@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.effect.SyncIO
+import cats.effect.{IO, SyncIO}
 import cats.instances.either.*
 import cats.instances.list.*
 import cats.instances.option.*
@@ -10,8 +10,8 @@ import js7.base.exceptions.StandardPublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.OurTestSuite
-import js7.base.time.ScalaTime.RichDeadline
+import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.*
@@ -25,7 +25,7 @@ import scala.reflect.ClassTag
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
-final class ScalaUtilsTest extends OurTestSuite:
+final class ScalaUtilsTest extends OurAsyncTestSuite:
 
   "AnyRef" - {
     "isSubtypeOf" in:
@@ -267,6 +267,7 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert(withStackTrace.nullIfNoStackTrace eq withStackTrace)
       assert(withoutStackTrace.nullIfNoStackTrace eq null)
       logger.debug(s"nullIfNoStackTrace: ${withoutStackTrace.toStringWithCauses}", withoutStackTrace)
+      succeed
 
     "ifStackTrace" in:
       val withStackTrace = new Throwable
@@ -310,11 +311,13 @@ final class ScalaUtilsTest extends OurTestSuite:
       val ordered = Vector(1 -> "1", 1 -> "2", 2 -> "1", 2 -> "1")
       for seq <- ordered.permutations.toVector do
         assert(seq.sorted == ordered)
+      succeed
 
     "orderingBy 3" in:
       given Ordering[(Int, String, Int)] = orderingBy(_._1, _._2, _._3)
       val ordered = for a <- 1 to 2; b <- 1 to 2; c <- 1 to 2 yield (a, b.toString, c)
       for seq <- ordered.permutations.toVector do assert(seq.sorted == ordered)
+      succeed
   }
 
   "pipeIf" in:
@@ -447,14 +450,44 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "IterableOnce" - {
-    "foldMap" in:
-      assert(Iterator.empty[Int].foldMap(_.toString) == "")
-      assert(Vector.empty[Int].foldMap(_.toString) == "")
-      assert(List.empty[Int].foldMap(_.toString) == "")
+    "foldMap" - {
+      "Standard types" in:
+        assert(Iterator.empty[Int].foldMap(_.toString) == "")
+        assert(Vector.empty[Int].foldMap(_.toString) == "")
+        assert(List.empty[Int].foldMap(_.toString) == "")
 
-      assert(Iterator(1, 2, 3).foldMap(_.toString) == "123")
-      assert(Vector(1, 2, 3).foldMap(_.toString) == "123")
-      assert(List(1, 2, 3).foldMap(_.toString) == "123")
+        assert(Iterator(1, 2, 3).foldMap(_.toString) == "123")
+        assert(Vector(1, 2, 3).foldMap(_.toString) == "123")
+        assert(List(1, 2, 3).foldMap(_.toString) == "123")
+
+        assert(List(1, 2, 3).foldMap(_ => ()) == ())
+
+      "IO" in:
+        val touched = mutable.Buffer.empty[Int]
+        Iterator(1, 2, 3).foldMap: i =>
+          IO:
+            touched += i
+            ()
+        .map: result =>
+          assert(result == () && touched == List(1, 2, 3))
+
+      "IO[Checked[...]] does't fail fast" in:
+        val touched = mutable.Buffer.empty[Int]
+        Iterator(1, 2, 3).foldMap: i =>
+          IO:
+            touched += i
+            (i == 1) !! Problem("Must be one")
+        .map: result =>
+          // TODO foldMap should fail fast (or maybe foldMapFailFast)
+          //assert(result == Left(Problem("Must be one")) && touched == List(1, 2))
+          assert(result == Left(Problem("Must be one")) && touched == List(1, 2, 3))
+
+      "IO[Checked[...]] only Right" in:
+        Iterator(1, 2, 3).foldMap: i =>
+          IO.pure(Checked.unit)
+        .map: result =>
+          assert(result == Right(()))
+    }
 
     "repeatLast" in:
       assert(Nil.repeatLast.isEmpty)
@@ -578,6 +611,7 @@ final class ScalaUtilsTest extends OurTestSuite:
       if sys.props.contains("test.speed") then
         "speed, simple algorithm" in:
           testSpeed(_.mergeOrderedSlowBy(identity))
+          succeed
 
       def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) =
         val n = 10_000_000
@@ -627,10 +661,12 @@ final class ScalaUtilsTest extends OurTestSuite:
         assert(iterator.headOption.isEmpty)
         assert(!iterator.hasNext)
         intercept[NoSuchElementException](iterator.next())
+        succeed
 
       if sys.props.contains("test.speed") then
         "speed" in:
           testSpeed(_.mergeOrderedOptimizedBy(identity))
+          succeed
 
       def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) =
         val n = 10_000_000
@@ -1072,6 +1108,7 @@ final class ScalaUtilsTest extends OurTestSuite:
 
   "compilable" in:
     compilable(1 / 0)
+    succeed
 
   "makeUnique" - {
     "makeUnique" in:
@@ -1107,7 +1144,7 @@ final class ScalaUtilsTest extends OurTestSuite:
         val set = (1 to 100).map(i => s"A-$i-Z").toSet
         for i <- 1 to 100 do
           assert(makeUnique("A-%d-Z", set - s"A-$i-Z") == Right(s"A-$i-Z"))
-
+      succeed
 
     "Speed, optimizable pattern" in:
       if !sys.props.contains("test.speed") then
@@ -1117,6 +1154,7 @@ final class ScalaUtilsTest extends OurTestSuite:
           val set = (1 to 100_000).map(i => s"A-$i").toSet
           measureTime(n = 10, "makeUnique"):
             makeUnique("A-%d", set)
+        succeed
 
     "Speed, random pattern" in:
       if !sys.props.contains("test.speed") then
@@ -1126,6 +1164,7 @@ final class ScalaUtilsTest extends OurTestSuite:
           val set = (1 to 100_000).map(i => s"A-$i-Z").toSet
           measureTime(n = 10, "makeUnique"):
             makeUnique("A-%d-Z", set)
+        succeed
   }
 
   "eval" in:
