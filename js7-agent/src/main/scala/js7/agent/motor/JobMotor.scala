@@ -19,6 +19,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.{AlarmClock, TimeInterval, Timestamp}
+import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -31,7 +32,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.subagent.director.SubagentKeeper
 import scala.concurrent.duration.FiniteDuration
-import scala.util.chaining.scalaUtilChainingOps
 
 private final class JobMotor private(
   val jobKey: JobKey,
@@ -150,7 +150,7 @@ extends Service.StoppableByRequest:
       .flatMap:
         case Right(None) =>
           logger.trace(s"subagentKeeper.processOrder: ${order.id} is not processable, ignored")
-          decrementProcessCount(order.id, s"⚠️  ${order.id} is not processable")
+          decrementProcessCount(order.id, s"🐌  ${order.id} is not processable")
         case Right(Some(order)) =>
           IO.unlessA(order.isState[Order.Processing]):
             // Unless SubagentKeeper emitted an OrderProcessingStarted (due to changed Order,
@@ -158,7 +158,8 @@ extends Service.StoppableByRequest:
             // Otherwise, an OrderProcessed event will decrement.
             logger.trace(s"subagentKeeper.processOrder: ${order.id
               } status is not Processing, decrementing processCount")
-            decrementProcessCount(order.id, "⚠️  Order's status is not Processing")
+            decrementProcessCount(order.id,
+              s"🐌  Order's status is not Processing but ${order.workflowPosition} ${order.state}")
         case Left(problem) =>
           handleFailedProcessStart(order, problem)
 
@@ -193,26 +194,18 @@ extends Service.StoppableByRequest:
   private def tryIncrementProcessCount: IO[Boolean] =
     processCountLock.surround:
       IO:
-        val agentProcessLimit = orderMotor.jobMotorKeeper.processLimits.processLimit
         orderMotor.jobMotorKeeper.processLimits
           .tryIncrementProcessCount(processCount, workflowJob.processLimit)
-          .tap:
-            if _ then
-              logger.trace:
-                s"### tryIncrementProcessCount: jobProcessCount=$processCount processCount=$processCount"
 
   /** Triggers this JobMotor or all JobMotor when a process counter gets below its limit.
     * @return true iff process count was at processLimit. */
   private def decrementProcessCount(orderId: OrderId, reason: String): IO[Unit] =
     processCountLock.surround:
       IO.defer:
-        val n = processCount.decrementAndGet()
         if reason != "OrderProcessed" then
           logger.trace(s"decrementProcessCount: processCount=$processCount $orderId • $reason")
-        if n < 0 then
-          val msg = s"decrementProcessCount: processCount=$n is below zero"
-          logger.error(msg)
-          if isStrict then throw new AssertionError(s"$msg • $toString")
+        val n = processCount.decrementAndGet()
+        assertIfStrict(n >= 0, s"processCount=$n is below zero")
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
           IO.whenA(!triggered && n == workflowJob.processLimit - 1):
             trigger(s"processCount=$n is below Job's processLimit=${workflowJob.processLimit}")

@@ -12,15 +12,15 @@ object Assertions:
 
   /** Like assertThat, but only if isStrict.
     */
-  def assertIfStrict(predicate: sourcecode.Text[Boolean])
+  def assertIfStrict(predicate: sourcecode.Text[Boolean], clue: => String)
     (using sourcecode.FullName, ScalaSourceLocation)
   : Unit =
     if isStrict || logger.isDebugEnabled then
       try
-        assertThat(predicate)
+        assertThat(predicate, clue)
       catch
         case e: AssertionError if !isStrict =>
-          logger.debug(s"🟥 ERROR (suppressed) $e")
+          logger.debug(s"🔥 possible ERROR (suppressed) $e")
 
   def assertThat(predicate: sourcecode.Text[Boolean])
     (using sourcecode.FullName, ScalaSourceLocation)
