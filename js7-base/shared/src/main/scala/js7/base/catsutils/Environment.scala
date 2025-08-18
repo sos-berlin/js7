@@ -194,11 +194,13 @@ object Environment:
     OurIORuntimeRegister.environment.flatMap(_.get[A]())
 
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
-  def environmentOr[A](default: => A)(using tag: Tag[A]): IO[A] =
+  def environmentOr[A](default: => A)
+    (using tag: Tag[A], enc: sourcecode.Enclosing)
+  : IO[A] =
     maybe[A].map(_ getOrElse default)
 
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
-  def maybe[A](using tag: Tag[A]): IO[Option[A]] =
+  def maybe[A](using tag: Tag[A], enc: sourcecode.Enclosing): IO[Option[A]] =
     OurIORuntimeRegister.environment.flatMap(_.maybe[A])
 
   private val IOSync: Sync[IO] = summon[Sync[IO]]
