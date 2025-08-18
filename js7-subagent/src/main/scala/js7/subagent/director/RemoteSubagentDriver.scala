@@ -411,10 +411,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         // Error isn't logged until stopEventListener has been called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
-  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
-    dispatcher.executeCommand:
+  protected def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit] =
+    dispatcher.enqueueCommand:
       SubagentCommand.ReleaseEvents(eventId)
-    .rightAs(())
+    .void
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
     dispatcher

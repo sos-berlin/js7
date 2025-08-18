@@ -4,7 +4,6 @@ import cats.effect.{FiberIO, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.foldable.*
 import cats.syntax.option.*
-import cats.syntax.traverse.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
@@ -47,7 +46,7 @@ private trait SubagentEventListener:
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: HttpSubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
-  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]]
+  protected def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit]
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : IO[Option[IO[Unit]]]
   protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
@@ -132,9 +131,8 @@ private trait SubagentEventListener:
                 // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
                 // TODO Optimize: ReleaseEvents only after OrderProcessed,
                 //  or (asynchronously) after a number of events
-                lastEventId.traverse: eventId =>
-                  releaseEvents(eventId).map(_.orThrow)
-                    .logWhenItTakesLonger(s"$subagentId releaseEvents")
+                lastEventId.foldMap: eventId =>
+                  enqueueReleaseEventsCommand(eventId)
               .productR:
                 followUps.combineAll)
           .onFinalize:

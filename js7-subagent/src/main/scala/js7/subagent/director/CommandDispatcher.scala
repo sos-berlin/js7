@@ -5,7 +5,7 @@ import cats.effect.{FiberIO, IO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.CatsExtensions.tryIt
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.fs2utils.StreamExtensions.interruptUpstreamWhen
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.completedL
@@ -17,7 +17,7 @@ import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
-import js7.data.subagent.SubagentRunId
+import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import js7.subagent.director.CommandDispatcher.*
 import scala.util.{Success, Try}
 
@@ -91,9 +91,8 @@ private trait CommandDispatcher:
       IO.defer:
         // Save queue, because it may change with stop and start
         val queue = this.queue
-        queue
-          .stream
-          .interruptWhenF(processingAllowed.whenOff)
+        queue.stream
+          .interruptUpstreamWhen(processingAllowed.whenOff)
           .evalMap: numbered =>
             numbered.value.correlId.bind:
               executeCommandNow(subagentRunId, numbered)

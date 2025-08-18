@@ -7,7 +7,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.{+:, interruptUpstreamWhen}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -89,13 +89,12 @@ abstract class RecouplingStreamReader[
   /** Observes endlessly, recoupling and repeating when needed. */
   final def stream(api: Api, after: I): Stream[IO, V] =
     logger.debugStream("stream", s"$api after=$after"):
-      Stream
-        .resource(inUse.resource(api))
+      Stream.resource(inUse.resource(api))
         .evalTap: _ =>
           decouple
         .flatMap: _ =>
           ForApi(api).streamAgainAndAgain(after)
-        .interruptWhenF(stopped.get)
+        .interruptUpstreamWhen(stopped.get)
 
   final def terminateAndLogout: IO[Unit] =
     logger.traceIO:

@@ -1,15 +1,17 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, Outcome, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
-import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd, right}
+import fs2.concurrent.SignallingRef
+import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd, left, right}
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixutils.AsyncMap
+import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
@@ -52,7 +54,8 @@ final class DedicatedSubagent private(
   val agentRunId: AgentRunId,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
-  subagentConf: SubagentConf)
+  subagentConf: SubagentConf,
+  persistedQueue: PersistedQueue)
   (using ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
   protected type S = SubagentState
@@ -62,7 +65,6 @@ extends Service.StoppableByRequest:
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
-  private val orderProcessedQueue = mutable.Queue.empty[ProcessedQueueEntry]
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
   private var _isUsed = false
   @volatile private var _dontWaitForDirector = false
@@ -85,7 +87,6 @@ extends Service.StoppableByRequest:
   private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
   : IO[Unit] =
     IO.defer:
-      Logger.trace(s"### stop dontWaitForDirector=$dontWaitForDirector")
       stopSignal = signal
       stopDontWaitForDirector = dontWaitForDirector
       stop
@@ -222,39 +223,42 @@ extends Service.StoppableByRequest:
     endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO.defer:
-      _isUsed = true
-      orderToProcessing.updateChecked(order.id):
-        case Some(processing) =>
-          IO.pure:
+      if isStopping then
+        IO.left(SubagentIsShuttingDownProblem)
+      else
+        _isUsed = true
+        orderToProcessing.updateChecked(order.id):
+          case Some(processing) =>
             if processing.order != order then
-              val problem = Problem.pure:
-                "Duplicate SubagentCommand.StartOrder with different Orders"
-              logger.warn(s"${order.id}: $problem ⏎")
+              val problem = Problem("Duplicate SubagentCommand.StartOrder with different Order")
+              logger.warn(s"${order.id}: $problem: ⏎")
               logger.warn(s"${order.id}  - added order   : $order")
               logger.warn(s"${order.id}  - existing order: ${processing.order}")
-              Left(problem)
+              IO.left(problem)
             else
               // Operation is idempotent
               logger.debug(s"startOrderProcess ${order.id}: process has already been started")
-              Right(processing)
+              IO.right(processing)
 
-        case None =>
-          startOrderProcess2(order, executeDefaultArguments, endOfAdmissionPeriod)
-            .guaranteeCase:
-              case Outcome.Succeeded(_) =>
+          case None =>
+            startOrderProcess2(order, executeDefaultArguments, endOfAdmissionPeriod)
+              .flatTap: _ =>
                 IO.whenA(_dontWaitForDirector):
                   logger.warn:
                     s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost"
                   orderToProcessing.remove(order.id).void
-              case outcome => IO.unit
-            .map: fiber =>
-              Right:
-                new Processing(order, fiber)
-      .onError: t =>
-        logger.error(s"🔥 startOrderProcess ${order.id}: ${t.toStringWithCauses}", t)
-        // Tidy-up on failure
-        orderToProcessing.remove(order.id).void
-      .map(_.map(_.fiber))
+              .map: fiber =>
+                Right:
+                  new Processing(order, fiber)
+    .onError: t =>
+      logger.error(s"🔥 startOrderProcess ${order.id}: ${t.toStringWithCauses}", t)
+      // Tidy-up on failure
+      orderToProcessing.remove(order.id).void
+    .onProblem: problem =>
+      logger.debug(s"⚠️  startOrderProcess ${order.id}: $problem")
+      // Tidy-up on failure
+      orderToProcessing.remove(order.id).void
+    .map(_.map(_.fiber))
 
   private def startOrderProcess2(
     order: Order[Order.Processing],
@@ -272,14 +276,14 @@ extends Service.StoppableByRequest:
             logger.debug(s"⚠️ $orderProcessed suppressed because journal is halted")
             IO.pure(orderProcessed)
           else
-            journal.persistSingle(order.id <-: orderProcessed)
-              .map(_.orThrow._1)
-              .flatMap: stamped =>
-                IO:
-                  val entry = ProcessedQueueEntry(stamped.eventId, order.id)
-                  orderProcessedQueue.synchronized:
-                    orderProcessedQueue += entry
-                  stamped.value.event
+            // Lock this section to execute persistedQueue.enqueue in proper ascending order
+            // TODO Allow concurrent persisting of multiple OrderProcessed
+            persistedQueue.lock:
+              journal.persistSingle(order.id <-: orderProcessed)
+                .map(_.orThrow._1)
+                .flatMap: stamped =>
+                  persistedQueue.enqueueProcessedOrderId(stamped.eventId, order.id)
+                    .as(stamped.value.event)
         .start)
 
   private def startOrderProcess3(
@@ -329,23 +333,19 @@ extends Service.StoppableByRequest:
 
   def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
     journal.releaseEvents(eventId).flatMapT: _ =>
-      IO:
-        orderProcessedQueue.synchronized:
-          orderProcessedQueue.dequeueWhile(_.eventId <= eventId).toVector
-        .map(_.orderId)
-      .flatMap:
-        detachProcessedOrders
-      .map(Right(_))
+      persistedQueue.waitUntil(eventId)
+        .logWhenItTakesLonger(s"$eventId OrderProcessed event")
+        .flatMap: orderIds =>
+          detachProcessedOrders(orderIds)
+            .map(Right(_))
 
   private def detachProcessedOrders(orderIds: Vector[OrderId]): IO[Unit] =
     orderIds.traverse: orderId =>
-      orderToProcessing.remove(orderId).flatMap:
-        case None => IO.none
-        case Some(processing) => processing.acknowledged.complete(()).as(Some(orderId))
+      orderToProcessing.remove(orderId).flatMapSome: processing =>
+        processing.acknowledged.complete(()).as(orderId)
     .map: detachedOrderIds =>
       logger.trace:
-        s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString(" ")}"
-    .void
+        s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString("{", " ", "}")}"
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,
@@ -364,6 +364,8 @@ extends Service.StoppableByRequest:
         val charCount = events.iterator.map(_.event.chunk.length).sum
         outErrStatistics(outErr).count(n = events.size, charCount = charCount):
           journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
+            .ifPersisted: persisted =>
+              persistedQueue.enqueue(persisted.stampedKeyedEvents.last.eventId)
         .map:
           _.onProblem: problem =>
             logger.error(s"Emission of OrderStdWritten event failed: $problem")
@@ -411,6 +413,7 @@ extends Service.StoppableByRequest:
 
 object DedicatedSubagent:
   private val logger = Logger[this.type]
+  private val ShutdownOrderAckWorryDurations = List(0.s/*debug*/, 1.s/*info*/, 3.s, 6.s, 10.s)
 
   def service(
     subagentId: SubagentId,
@@ -427,9 +430,13 @@ object DedicatedSubagent:
     for
       _ <- OutErrStatistics.registerMXBean
       service <- Service.resource:
-        DedicatedSubagent(
-          subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-          jobLauncherConf, subagentConf)
+        for
+          eventIdSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
+          persistedQueue = PersistedQueue(eventIdSignal)
+        yield
+          DedicatedSubagent(
+            subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
+            jobLauncherConf, subagentConf, persistedQueue)
     yield
       service
 
@@ -438,4 +445,40 @@ object DedicatedSubagent:
     val fiber: FiberIO[OrderProcessed]):
     val acknowledged = Deferred.unsafe[IO, Unit]
 
-  private final case class ProcessedQueueEntry(eventId: EventId, orderId: OrderId)
+
+  /** Links `OrderProcessed` events with its `EventId` such that `ReleaseEvents` can
+    * release `Order`, too. */
+  private final class PersistedQueue(eventIdSignal: SignallingRef[IO, EventId]):
+    private val persistLock = SimpleLock[IO]
+    private val queue = mutable.Queue.empty[(eventId: EventId, processedOrderId: OrderId)]
+
+    private[DedicatedSubagent] def lock[A](io: IO[A]): IO[A] =
+      persistLock.surround(io)
+
+    private[DedicatedSubagent] def enqueueProcessedOrderId(
+      eventId: EventId, processedOrderId: OrderId)
+    : IO[Unit] =
+     Logger.traceIO("enqueueProcessedOrderId", s"$eventId, $enqueueProcessedOrderId)"):
+      IO:
+        val pair = (eventId, processedOrderId)
+        queue.synchronized:
+          queue.enqueue(pair)
+          ()
+      *>
+        // Because persist has notified the Director's event reader,
+        // a fast Director may do a ReleaseEvents command,
+        // before we have enqueued the OrderProcessed EventId.
+        // eventIdSignal synchronizes this.
+        enqueue(eventId)
+
+    private[DedicatedSubagent] def enqueue(eventId: EventId): IO[Unit] =
+      eventIdSignal.set(eventId)
+
+    /** Wait until `eventId` has been persisted.
+      * @return OrderIds for enqueued EventIds of OrderProcessed event.
+      */
+    def waitUntil(eventId: EventId): IO[Vector[OrderId]] =
+      eventIdSignal.waitUntil(eventId <= _) *>
+        IO:
+          queue.synchronized:
+            queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector
