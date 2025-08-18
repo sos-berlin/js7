@@ -5,9 +5,11 @@ import cats.effect.{IO, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.utils.CatsUtils.syntax.RichResource
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.util.Try
 
+@TestOnly
 final case class ResourceAutoCloseable[A](resource: ResourceIO[A], timeout: Duration)
   (using Tag[A], IORuntime, sourcecode.Enclosing)
 extends AutoCloseable:
