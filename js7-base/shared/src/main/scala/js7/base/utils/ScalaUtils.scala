@@ -352,11 +352,11 @@ object ScalaUtils:
 
 
     extension [A](iterable: Iterable[A])
-      def foldMap[B: Monoid as B](f: A => B): B =
-        //iterable.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
-        iterable match
-          case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
-          case _ => B.combineAll(iterable.map(f))
+      //def foldMap[B: Monoid as B](f: A => B): B =
+      //  //iterable.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
+      //  iterable match
+      //    case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
+      //    case _ => B.combineAll(iterable.map(f))
 
       /** Like mkString but limits the number of shown elements.
         *
@@ -438,7 +438,7 @@ object ScalaUtils:
       def foldMap[B: Monoid as B](f: A => B): B =
         iterableOnce match
           case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
-          case iterable: Iterable[A] => iterable.foldMap(f)
+          case iterable: Iterable[A] => B.combineAll(iterable.map(f))
           case _ => iterableOnce.iterator.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
         //iterableOnce match
         //  case iterable: Iterable[A] => B.combineAll(iterable.map(f))
