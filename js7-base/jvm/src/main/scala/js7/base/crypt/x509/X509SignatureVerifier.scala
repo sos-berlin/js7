@@ -4,7 +4,7 @@ import cats.Show
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import java.security.cert.X509Certificate
-import java.security.{PublicKey, Signature, SignatureException}
+import java.security.{PublicKey, Signature}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.x509.X509Cert.CertificatePem
@@ -67,6 +67,7 @@ extends SignatureVerifier:
                 signerId
             .takeThrough(_.isLeft)
             .toVector
+            // FIXME Das letzte Zertifikat entscheidet?
             .lastOption match
               case None =>
                 Left(MessageSignedByUnknownProblem)
@@ -92,8 +93,10 @@ extends SignatureVerifier:
       Right(())
     catch case NonFatal(t) =>
       t match
-        case _: SignatureException => logger.debug(t.toStringWithCauses)
-        case _ => logger.warn(t.toString)
+        case _: (java.security.SignatureException | java.security.InvalidKeyException) =>
+          logger.debug(t.toStringWithCauses)
+        case _ =>
+          logger.warn(t.toString)
       Left(MessageSignedByUnknownProblem)
 
 
