@@ -140,7 +140,7 @@ final class CheckedTest extends OurAsyncTestSuite:
   "onProblem" in:
     assert(Right(1).onProblem(_ => throw new NotImplementedError) == 1.some)
     var flag = false
-    assert(Left(Problem("X")).onProblem(_ => flag = true) == none)
+    assert((Left(Problem("X")): Checked[String]).onProblem(_ => flag = true) == none)
     assert(flag)
 
   "onProblemHandle" in:
