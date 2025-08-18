@@ -139,4 +139,5 @@ trait SubagentDriver:
         None
 
       case Some(processing) =>
-        Some(processing.complete(orderProcessed).void)
+        Some:
+          processing.complete(orderProcessed).void

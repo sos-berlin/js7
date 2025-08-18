@@ -106,7 +106,7 @@ extends MainService, Service.StoppableByRequest:
         .toOption
         .fold(IO.unit): allocated =>
           allocated.allocatedThing
-            .terminate(processSignal, dontWaitForDirector = dontWaitForDirector)
+            .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
             .guarantee(allocated.release)
         .*>(IO.defer:
           logger.info(s"$subagent stopped")
@@ -148,7 +148,7 @@ extends MainService, Service.StoppableByRequest:
 
   def executeDedicateSubagent(cmd: DedicateSubagent): IO[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent
-      .resource(cmd.subagentId, subagentRunId, commandExecutor, journal,
+      .service(cmd.subagentId, subagentRunId, commandExecutor, journal,
         cmd.agentPath, cmd.agentRunId, cmd.controllerId, jobLauncherConf, conf)
       .toAllocated
       .flatMap: allocatedDedicatedSubagent =>

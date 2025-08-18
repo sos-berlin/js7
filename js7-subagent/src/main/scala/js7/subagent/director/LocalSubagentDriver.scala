@@ -101,7 +101,6 @@ extends SubagentDriver, Service.StoppableByRequest:
     logger.debugStream("observeAfter", eventId):
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
-        // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
         .evalMap(handleEvent)
         .groupWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
         .evalMap: chunk =>
@@ -138,7 +137,6 @@ extends SubagentDriver, Service.StoppableByRequest:
         event match
           case _: OrderStdWritten =>
             // TODO Save Timestamp
-            // FIXME Persist asynchronous!
             IO.pure(Some(stamped) -> IO.unit)
 
           case orderProcessed: OrderProcessed =>

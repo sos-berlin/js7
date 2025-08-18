@@ -89,7 +89,7 @@ private trait CommandDispatcher:
   private def processQueue(subagentRunId: SubagentRunId): IO[Unit] =
     logger.debugIO:
       IO.defer:
-        // Save queue, because it may changes with stop and start
+        // Save queue, because it may change with stop and start
         val queue = this.queue
         queue
           .stream
@@ -98,11 +98,11 @@ private trait CommandDispatcher:
             numbered.value.correlId.bind:
               executeCommandNow(subagentRunId, numbered)
                 .tryIt
-                .flatTap(_ => queue
-                  .release(numbered.number)
-                  .map(_.orThrow)
-                  .handleError: t =>
-                    logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}"))
+                .flatTap: _ =>
+                  queue.release(numbered.number)
+                    .map(_.orThrow)
+                    .handleError: t =>
+                      logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")
                 .flatMap:
                   numbered.value/*Execute*/.respond
           .completedL

@@ -37,7 +37,7 @@ import js7.subagent.Subagent
 import org.apache.pekko.actor.ActorSystem
 
 /** Starts and stops the AgentMotor and provides some Cluster and Journal operations. */
-final class AgentCommandExecutor(
+final class AgentCommandExecutor private(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   workingClusterNode: WorkingClusterNode[AgentState],
@@ -344,7 +344,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
 object AgentCommandExecutor:
   private val logger = Logger[this.type]
 
-  def resource(
+  def service(
     forDirector: Subagent.ForDirector,
     workingClusterNode: WorkingClusterNode[AgentState],
     clock: AlarmClock,

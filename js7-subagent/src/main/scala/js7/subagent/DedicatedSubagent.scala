@@ -67,6 +67,8 @@ extends Service.StoppableByRequest:
   private var _isUsed = false
   @volatile private var _dontWaitForDirector = false
   private val shuttingDown = Atomic(false)
+  private var stopSignal: Option[ProcessSignal] = Some(SIGTERM)
+  private var stopDontWaitForDirector = false
 
   def isUsed: Boolean =
     _isUsed || isShuttingDown
@@ -76,9 +78,19 @@ extends Service.StoppableByRequest:
 
   protected def start =
     startService:
-      untilStopRequested *> terminate(Some(SIGTERM))
+      untilStopRequested *>
+        IO.defer:
+          stopMe(stopSignal, stopDontWaitForDirector)
 
-  private[subagent] def terminate(
+  private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
+  : IO[Unit] =
+    IO.defer:
+      Logger.trace(s"### stop dontWaitForDirector=$dontWaitForDirector")
+      stopSignal = signal
+      stopDontWaitForDirector = dontWaitForDirector
+      stop
+
+  private def stopMe(
     signal: Option[ProcessSignal],
     dontWaitForDirector: Boolean = false)
   : IO[Unit] =
@@ -400,7 +412,7 @@ extends Service.StoppableByRequest:
 object DedicatedSubagent:
   private val logger = Logger[this.type]
 
-  def resource(
+  def service(
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
     commandExecutor: SubagentCommandExecutor,

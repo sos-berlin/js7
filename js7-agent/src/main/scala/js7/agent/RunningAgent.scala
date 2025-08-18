@@ -99,7 +99,7 @@ extends MainService, Service.StoppableByRequest:
         case Left(termination) =>
           agentCommandExecutorDeferred.complete(Left(DirectorTerminatedProblem(termination)))
         case Right(workingClusterNode) =>
-          AgentCommandExecutor.resource(forDirector, workingClusterNode, clock, conf, actorSystem)
+          AgentCommandExecutor.service(forDirector, workingClusterNode, clock, conf, actorSystem)
             .toAllocated
             .flatTap: allocated =>
               agentCommandExecutorDeferred.complete(Right(allocated)).flatMap:
