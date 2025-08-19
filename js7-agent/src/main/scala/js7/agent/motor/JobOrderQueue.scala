@@ -22,7 +22,8 @@ private final class JobOrderQueue:
           val metering = entryMeter.startMetering()
           if order.forceJobAdmission then
             forceAdmissionQueue.enqueue(order, metering)
-          queue.enqueue(order, metering)
+          queue.enqueue(order, metering).foreach: removedEntry =>
+            entryMeter.stopMetering(removedEntry.metering)
 
   /** Guard a sequence of isEmpty, dequeueNextOrder and isEmpty for atomar behaviour. */
   def lockForRemoval[A](body: LockedForRemoval ?=> IO[A]): IO[A] =
@@ -81,11 +82,13 @@ private object JobOrderQueue:
     // isQueued is for optimisation
     private val isQueued = mutable.Set.empty[OrderId]
 
-    def enqueue(order: Order[IsFreshOrReady], metering: CallMeter.Metering): Unit =
+    /** @return removed Entry. */
+    def enqueue(order: Order[IsFreshOrReady], metering: CallMeter.Metering): Option[Entry] =
       synchronized:
-        remove(order.id)
+        val result = remove(order.id)
         queue += Entry(order, metering)
         isQueued += order.id
+        result
 
     def dequeueNext(): Entry =
       synchronized:
