@@ -22,9 +22,9 @@ private trait CommandRoute extends SubagentRouteProvider, EntitySizeLimitProvide
   private given IORuntime = ioRuntime
 
   protected final lazy val commandRoute: Route =
-    (pathEnd & post & withSizeLimit(entitySizeLimit))(
-      authorizedUser(AgentDirectorPermission)(user =>
-        entity(as[Numbered[SubagentCommand]])(command =>
-          completeIO(
+    (pathEnd & post & withSizeLimit(entitySizeLimit)):
+      authorizedUser(AgentDirectorPermission): user =>
+        entity(as[Numbered[SubagentCommand]]): command =>
+          completeIO:
             executeCommand(command, CommandMeta(user))
-              .map(_.map(o => o: SubagentCommand.Response))))))
+              .map(_.map(o => o: SubagentCommand.Response))

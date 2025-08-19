@@ -21,13 +21,13 @@ extends
   ClusterRoute:
 
   protected final val apiRoute: Route =
-    pathPrefix(Segment) {
+    pathPrefix(Segment):
       case "event" => eventRoute
       case "command" => commandRoute
       case "session" => sessionRoute
       case "journal" => journalRoute
       case "cluster" => clusterRoute
       case _ => complete(NotFound)
-    } ~
-    pathEndOrSingleSlash:
-      apiRootRoute
+    ~
+      pathEndOrSingleSlash:
+        apiRootRoute

@@ -57,8 +57,6 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
   protected def nodeId =
     clusterNode.clusterConf.ownId
 
-  Logger[this.type].debug(s"new AgentRoute($webServerBinding #${routeBinding.revision})")
-
   lazy val agentRoute: Route =
     pathSegments("api"):
       apiRoute

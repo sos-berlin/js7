@@ -290,7 +290,7 @@ object RunningAgent:
     testEventBus: StandardEventBus[Any],
     conf: AgentConfiguration,
     clock: AlarmClock)
-    (using IORuntime)
+    (using x: IORuntime)
   : ResourceIO[RunningAgent] =
     import clusterNode.actorSystem
 
@@ -299,12 +299,13 @@ object RunningAgent:
 
     for
       nonStartedAgent <- Resource.eval(IO:
-        new RunningAgent(forDirector, clusterNode, testEventBus, conf, clock, actorSystem))
+        RunningAgent(forDirector, clusterNode, testEventBus, conf, clock, actorSystem))
       _ <- forDirector.subagent.registerDirectorRoute:
         routeBinding => IO:
-          new AgentRoute(
+          AgentRoute(
             routeBinding, nonStartedAgent.executeCommand, clusterNode,
-            conf, GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply),
+            conf,
+            GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply),
             forDirector.sessionRegister
           ).agentRoute
       agent <- Service.resource(nonStartedAgent)

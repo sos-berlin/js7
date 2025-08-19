@@ -68,7 +68,8 @@ extends (UserId => Option[U]):
           hashedPassword,
           raw.permissions.flatMap: p =>
             toPermission.get(p).tap: maybe =>
-              if maybe.isEmpty then logger.warn(s"${raw.userId} has unknown '$p' permission"),
+              if maybe.isEmpty then 
+                logger.warn(s"${raw.userId} has unknown '$p' permission"),
           raw.distinguishedNames)
 
 
