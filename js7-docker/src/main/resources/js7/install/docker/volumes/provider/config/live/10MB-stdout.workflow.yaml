@@ -1,0 +1,12 @@
+---
+# Write 10MB to stdout
+instructions:
+- TYPE: Execute.Anonymous
+  job:
+    agentPath: agent-1
+    executable:
+      TYPE: InternalExecutable
+      className: js7.subagent.jobs.TestJob
+      arguments:
+        stdout: '10000000'
+    processLimit: 100

@@ -73,7 +73,7 @@ object TestDockerEnvironment:
     "provider/config/live/subagent-1c.subagent.json",
     "provider/config/live/subagent-2a.subagent.json",
     "provider/config/live/1GB-stdout.workflow.txt",
-    "provider/config/live/10MB-stdout.workflow.json",
+    "provider/config/live/10MB-stdout.workflow.yaml",
     "provider/config/live/child-processes.workflow.json",
     "provider/config/live/ten-processes.workflow.txt",
     "provider/config/live/test.workflow.txt",
