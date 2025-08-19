@@ -11,6 +11,7 @@ extends VersionedItemPath, InventoryItemPath.AttachableToAgent:
 object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]:
   override val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
     SourceType.Json -> ".workflow.json",
+    SourceType.Yaml -> ".workflow.yaml",
     SourceType.Txt -> ".workflow.txt")
 
   protected def unchecked(string: String) = new WorkflowPath(string)

@@ -1,0 +1,49 @@
+---
+instructions:
+- TYPE: "Fork"
+  branches:
+  - id: '1'
+    workflow:
+      instructions:
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+  - id: '2'
+    workflow:
+      instructions:
+      - TYPE: "Execute.Named"
+        jobName: "JOB-2"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-2"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-1"
+      - TYPE: "Execute.Named"
+        jobName: "JOB-2"
+
+jobs:
+  JOB-1:
+    agentPath: "agent-1"
+    executable:
+      TYPE: "InternalExecutable"
+      className: "js7.subagent.jobs.TestJob"
+      arguments:
+        stdout: "'🐟  Here is JOB-1'"
+    processLimit: 1000
+
+  JOB-2:
+    agentPath: "agent-1"
+    executable:
+      TYPE: "InternalExecutable"
+      className: "js7.subagent.jobs.TestJob"
+      arguments:
+        stdout: "'🕷️  Here is JOB-2'"
+    processLimit: 1000

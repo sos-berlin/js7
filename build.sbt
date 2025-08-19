@@ -355,6 +355,7 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
+      "io.circe" %%% "circe-yaml-scalayaml" % circeYamlVersion ++
       "co.fs2" %% "fs2-core" % fs2Version ++
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
       "co.fs2" %% "fs2-io" % fs2Version ++

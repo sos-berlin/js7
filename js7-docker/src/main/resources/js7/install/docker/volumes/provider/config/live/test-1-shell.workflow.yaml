@@ -1,0 +1,54 @@
+---
+# Run 3 child orders with 10 jobs each.
+# Use only one Agent to allow watching this Agent's performance graphs in Grafana.
+# Each Job is a shell job with an echo and then sleeping 0.1 seconds.
+# 1000 added Orders yield 3000 Orders totally and 10000 execute jobs.
+
+instructions:
+- TYPE: "Fork"
+  branches:
+  - id: "A"
+    workflow:
+      instructions:
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+  - id: "B"
+    workflow:
+      instructions:
+      - TYPE: "Execute.Named"
+        jobName: "job-2"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-2"
+      - TYPE: "Execute.Named"
+        jobName: "job-1"
+      - TYPE: "Execute.Named"
+        jobName: "job-2"
+jobs:
+  job-1:
+    agentPath: "agent-1"
+    executable:
+      TYPE: "ShellScriptExecutable"
+      script: |
+        #!/usr/bin/env bash
+        echo "🐟  Here is job-1"
+        sleep 0.1
+    processLimit: 1000
+  job-2:
+    agentPath: "agent-1"
+    executable:
+      TYPE: "ShellScriptExecutable"
+      script: |
+        #!/usr/bin/env bash
+        echo "🕷️  Here is job-2"
+        sleep 0.1
+    processLimit: 1000

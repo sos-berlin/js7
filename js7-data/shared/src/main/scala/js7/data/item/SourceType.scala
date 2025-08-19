@@ -13,10 +13,13 @@ object SourceType:
   case object Json extends JsonLike:
     override def toString = "JSON"
 
+  case object Yaml extends JsonLike:
+    override def toString = "YAML"
+
   case object Txt extends SourceType:
     override def toString = "txt"
 
   case object Xml extends SourceType:
     override def toString = "XML"
 
-  val values: IndexedSeq[SourceType] = IndexedSeq(Json, Txt, Xml)
+  val values: IndexedSeq[SourceType] = IndexedSeq(Json, Yaml, Txt, Xml)

@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
+import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor}
@@ -208,6 +208,13 @@ object CatsEffectExtensions:
     //
     //def fromCancelableFuture[A](io: IO[CancelableFuture[A]]): IO[A] =
     //  io.flatMap(future => IO.fromFutureCancelable(future, future.cancelToFuture)
+
+
+  extension [A](syncIO: SyncIO[A])
+    /** A less dangerous name. */
+    inline def run(): A =
+      syncIO.unsafeRunSync()
+
 
   extension[F[_], A](fiber: Fiber[F, Throwable, A])
     /** Like joinWithUnit but a canceled Fiber results in a Throwable. */

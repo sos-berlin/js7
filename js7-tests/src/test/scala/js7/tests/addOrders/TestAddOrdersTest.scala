@@ -11,6 +11,7 @@ import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.addOrders.TestAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.base.io.yaml.YamlExtensions.yamlAs
 
 final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -53,6 +54,6 @@ private object TestAddOrdersTest:
 
   private val workflow =
     JavaResource:
-      "js7/install/docker/volumes/provider/config/live/test-1-InternalJob.workflow.json"
-    .jsonAs[Workflow].orThrow
+      "js7/install/docker/volumes/provider/config/live/test-1-InternalJob.workflow.yaml"
+    .yamlAs[Workflow].orThrow
     .withId(WorkflowPath("testCase3"))

@@ -3,6 +3,7 @@ package js7.core.item
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.data.ByteArray
+import js7.base.io.yaml.YamlExtensions.yamlToJson
 import js7.base.problem.{Checked, Problem}
 import js7.data.item.{SourceType, VersionedItem, VersionedItemId, VersionedItemPath}
 
@@ -25,15 +26,10 @@ trait VersionedItemReader extends ItemReader:
   //  result.mapProblem(p => SourceProblem(id.path, sourceType, p))
   //}
 
-  final def readJsonString(source: String): Checked[Item] =
-    source.parseJson flatMap convertFromJson
-
   final def readAnonymousJsonLike(sourceType: SourceType.JsonLike, source: ByteArray): Checked[Item] =
     sourceType match
-      case SourceType.Json =>
-        readJsonString(source.utf8String)
-
-  //private[item] def itemPathCompanion: VersionedItemPath.Companion[ThisItemPath] = companion.Path
+      case SourceType.Json => source.utf8String.parseJson flatMap convertFromJson
+      case SourceType.Yaml => source.utf8String.yamlToJson flatMap convertFromJson
 
 
 object VersionedItemReader:

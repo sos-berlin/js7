@@ -29,7 +29,7 @@ trait InventoryItemPath extends GenericString:
 
 
 object InventoryItemPath:
-  
+
   given Ordering[InventoryItemPath] = GenericString.ordering
 
   abstract class Companion[P <: InventoryItemPath] extends Js7PathValidating[P]:
@@ -45,7 +45,9 @@ object InventoryItemPath:
     def pathTypeName: String = itemTypeName
 
     private lazy val defaultSourceTypeToFilenameExtension: Map[SourceType, String] =
-      Map(SourceType.Json -> ("." + pathTypeName.toLowerCase(Locale.ROOT) + ".json"))
+      Map(
+        SourceType.Json -> ("." + pathTypeName.toLowerCase(Locale.ROOT) + ".json"),
+        SourceType.Yaml -> ("." + pathTypeName.toLowerCase(Locale.ROOT) + ".yaml"))
 
     def sourceTypeToFilenameExtension: Map[SourceType, String] =
       defaultSourceTypeToFilenameExtension
