@@ -47,3 +47,13 @@ object CatsExtensions:
       underlying.flatTap:
         case None => F.unit
         case Some(a) => f(a).void
+
+
+  extension [F[_]](underlying: F[Boolean])
+    def whenM(whenTrue: => F[Unit])(using F: Monad[F]): F[Unit] =
+      underlying.flatMap:
+        if(_) whenTrue else F.unit
+
+    def unlessM(unlessTrue: => F[Unit])(using F: Monad[F]): F[Unit] =
+      underlying.flatMap:
+        if(_) F.unit else unlessTrue

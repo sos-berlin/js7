@@ -40,3 +40,11 @@ final class CatsExtensionsTest extends AnyFreeSpec:
     assert(count == 1)
     assert(SyncIO(none).flatTapSome(i => SyncIO { i + 1; count = 2 }).unsafeRunSync() == None)
     assert(count == 1)
+
+  "whenM" in:
+    var n = 0
+    SyncIO(false).whenM(SyncIO(n += 1)).unsafeRunSync()
+    assert(n == 0)
+
+    SyncIO(true).whenM(SyncIO(n += 1)).unsafeRunSync()
+    assert(n == 1)
