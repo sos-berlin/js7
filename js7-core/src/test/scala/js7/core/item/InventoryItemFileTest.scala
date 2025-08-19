@@ -18,7 +18,7 @@ import js7.data.workflow.WorkflowPath
   */
 final class InventoryItemFileTest extends OurTestSuite:
   "typedFiles, checkUniqueness" in:
-    provideDataDirectory { dir =>
+    provideDataDirectory: dir =>
       val checkedTypedFiles = DirectoryReader.files(dir)
         .map(InventoryItemFile.checked(dir, _, Set(WorkflowPath)))
       assert(checkedTypedFiles.toSet == Set(
@@ -26,10 +26,9 @@ final class InventoryItemFileTest extends OurTestSuite:
         Right(InventoryItemFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
         Left(Problem(s"File '...${separator}folder${separator}test.alien.json'" +
           " is not recognized as a configuration file" +
-          " (like *.workflow.json, *.workflow.txt)"))))
+          " (like *.workflow.json, *.workflow.yaml, *.workflow.txt)"))))
       assert(checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) == Left(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
-    }
 
 
 object InventoryItemFileTest:

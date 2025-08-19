@@ -48,7 +48,7 @@ final class VersionedItemReaderTest extends OurTestSuite, BeforeAndAfterAll:
         Problem("""Problem with 'Workflow:E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
         Problem(s"File '...${separator}folder${separator}test.alien.json'" +
           " is not recognized as a configuration file" +
-          " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
+          " (like *.test.json, *.test.yaml, *.workflow.json, *.workflow.yaml, *.workflow.txt)")))))
 
   "Duplicate VersionedItem, Workflows are not checked" in:
     directory / "A.workflow.txt" := "DUPLICATE"
@@ -57,7 +57,7 @@ final class VersionedItemReaderTest extends OurTestSuite, BeforeAndAfterAll:
         Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}"),
         Problem(s"File '...${separator}folder${separator}test.alien.json'" +
           " is not recognized as a configuration file" +
-          " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
+          " (like *.test.json, *.test.yaml, *.workflow.json, *.workflow.yaml, *.workflow.txt)")))))
 
   "Only valid VersionedItem" in:
     delete(directory / "A.workflow.txt")

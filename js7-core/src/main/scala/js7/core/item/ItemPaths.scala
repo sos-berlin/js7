@@ -45,5 +45,6 @@ object ItemPaths:
     "File '..." + separator + relativePath.toString.stripPrefix(separator) + "'" +
       " is not recognized as a configuration file" +
       " (like " +
-      companions.flatMap(_.sourceTypeToFilenameExtension.values).map("*" + _).mkString(", ") +
+      companions.toVector.sortBy(_.name)
+        .flatMap(_.sourceTypeToFilenameExtension.values).map("*" + _).mkString(", ") +
       ")")

@@ -27,7 +27,7 @@ final class VersionedItemPathsTest extends OurTestSuite:
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.wrong") ==
       Left(Problem(s"File '...${separator}folder${separator}test.workflow.wrong'" +
         " is not recognized as a configuration file" +
-        " (like *.workflow.json, *.workflow.txt)")))
+        " (like *.workflow.json, *.workflow.yaml, *.workflow.txt)")))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("folder/test") -> SourceType.Json))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==
@@ -36,7 +36,8 @@ final class VersionedItemPathsTest extends OurTestSuite:
   if sys.props contains "test.speed" then "speed" in:
     val dir = Paths.get("/TEST/JS7/PROVIDER/CONFIG/LIVE")
     val path = dir / "folder/test.workflow.json"
-    for _ <- 1 to 5 do info(
-      measureTime(100000, "fileToItemPathAndSourceType") {
-      fileToItemPathAndSourceType(Set(WorkflowPath), dir, path)
-    }.toString)
+    for _ <- 1 to 5 do
+      info:
+        measureTime(100000, "fileToItemPathAndSourceType"):
+          fileToItemPathAndSourceType(Set(WorkflowPath), dir, path)
+        .toString
