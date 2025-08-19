@@ -12,7 +12,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.motor.AgentCommandExecutor
 import js7.agent.web.AgentRoute
-import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.auth.{AgentDirectorPermission, SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
@@ -305,7 +305,12 @@ object RunningAgent:
           AgentRoute(
             routeBinding, nonStartedAgent.executeCommand, clusterNode,
             conf,
-            GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply),
+            GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
+              // AgentDirectorPermission is not used for local Subagent.
+              // But the user may have a AgentDirectorPermission, in case the Subagent
+              // will become remote after a switchover or failover.
+              // See SubagentWebServer.
+              Set(AgentDirectorPermission)),
             forDirector.sessionRegister
           ).agentRoute
       agent <- Service.resource(nonStartedAgent)
