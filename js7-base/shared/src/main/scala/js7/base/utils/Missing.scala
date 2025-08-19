@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import cats.Applicative
+
 type Missing = Missing.type
 
 /** Marker for a missing value, like Option None. */
@@ -20,6 +22,11 @@ object Missing:
     def map[B](f: A => B): B | Missing =
       underlying match
         case Missing => Missing
+        case a: A @unchecked => f(a)
+
+    def foldMap[F[_]: Applicative as F, B](f: A => F[B | Missing]): F[B | Missing] =
+      underlying match
+        case Missing => F.pure(Missing)
         case a: A @unchecked => f(a)
 
     def foreach(body: A => Unit): Unit =

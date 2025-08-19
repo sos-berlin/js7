@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.SyncIO
 import js7.base.test.OurTestSuite
 import js7.base.utils.Missing.*
 
@@ -25,6 +26,14 @@ final class MissingTest extends OurTestSuite:
 
     val missing: Int | Missing = Missing
     assert(missing.map(_.toString) == Missing)
+
+  "foldMap" in:
+    val a: Int | Missing = 7
+    assert(a.foldMap(SyncIO(_)).unsafeRunSync() == 7)
+    assert(a.foldMap(_ => SyncIO(Missing)).unsafeRunSync() == Missing)
+
+    val missing: Int | Missing = Missing
+    assert(missing.foldMap(SyncIO(_)).unsafeRunSync() == Missing)
 
   "foreach" in:
     val a: Int | Missing = 7
