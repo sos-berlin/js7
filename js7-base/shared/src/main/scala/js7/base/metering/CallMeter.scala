@@ -60,19 +60,19 @@ extends CallMeter.CallMeterMXBean:
     _running += 1
     System.nanoTime().asInstanceOf[Metering]
 
-  /** Must be called once and only once. */
-  def stopMetering(metering: Metering): Unit =
-    addNanos(System.nanoTime() - metering.asInstanceOf[Long])
-    _running -= 1
-
   /** @return MeteringN, must be closed to restore _running! */
   def startMetering(n: Int): MeteringN =
     _running += n
     MeteringN(this, sinceNano = System.nanoTime(), n = n)
 
-  private def stopMetering(metering: MeteringN, n: Int): Unit =
+  /** Must be called once and only once. */
+  def stopMetering(metering: Metering): Unit =
+    addNanos(System.nanoTime() - metering.asInstanceOf[Long])
+    _running -= 1
+
+  def stopMetering(metering: MeteringN): Unit =
     addNanos(metering.elapsedNanos)
-    _running -= n
+    _running -= metering.n
 
   /** MUST be followed by stopMetering. */
   private def startMetering_(): Long =
@@ -153,11 +153,14 @@ object CallMeter:
 
   /** Metering of a batch of operations.
     * <p>This is a slower variant of `Metering`. */
-  final class MeteringN private[CallMeter](callMeter: CallMeter, sinceNano: Long, n: Int)
-    extends AtomicBoolean(false), AutoCloseable:
+  final class MeteringN private[CallMeter](
+    private[CallMeter] callMeter: CallMeter,
+    private[CallMeter] sinceNano: Long,
+    private[CallMeter] val n: Int)
+  extends AtomicBoolean(false), AutoCloseable:
     def close(): Unit =
       if compareAndSet(false, true) then
-        callMeter.stopMetering(this, n)
+        callMeter.stopMetering(this)
 
     def elapsedNanos: Long =
       System.nanoTime() - sinceNano
