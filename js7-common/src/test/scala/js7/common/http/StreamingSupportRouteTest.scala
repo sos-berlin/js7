@@ -72,34 +72,31 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
       val serverStreamCanceled = Deferred.unsafe[IO, ExitCase]
 
       def webServerResource(using as: ActorSystem) =
-        PekkoWebServer.resource(
-          Seq(WebServerBinding.localhostHttp(port)),
-          config,
-          _ =>
-            object route extends WebLogDirectives:
-              val actorSystem = as
-              val ioRuntime = StreamingSupportRouteTest.this.ioRuntime
-              val config = StreamingSupportRouteTest.this.config
-              val whenShuttingDown = Deferred.unsafe
+        PekkoWebServer.resource(Seq(WebServerBinding.localhostHttp(port)), config): _ =>
+          object route extends WebLogDirectives:
+            val actorSystem = as
+            val ioRuntime = StreamingSupportRouteTest.this.ioRuntime
+            val config = StreamingSupportRouteTest.this.config
+            val whenShuttingDown = Deferred.unsafe
 
-              def boundRoute =
-                BoundRoute.simple:
-                  webLog:
-                    completeWithByteStream(`application/x-ndjson`):
-                      Stream
-                        .iterable(data.toArray)
-                        .append(Stream.never[IO])
-                        .through:
-                          if heartbeating then
-                            _.chunks
-                              .keepAlive(interruptAfter / 10, IO.pure(heartbeatChunk.toChunk))
-                              .unchunks
-                          else
-                            identity
-                        .onFinalizeCase: exitCase =>
-                          IO(logger.info(s"onFinalizeCase $exitCase")) *>
-                            serverStreamCanceled.complete(exitCase).void
-            route.boundRoute)
+            def boundRoute =
+              BoundRoute.simple:
+                webLog:
+                  completeWithByteStream(`application/x-ndjson`):
+                    Stream
+                      .iterable(data.toArray)
+                      .append(Stream.never[IO])
+                      .through:
+                        if heartbeating then
+                          _.chunks
+                            .keepAlive(interruptAfter / 10, IO.pure(heartbeatChunk.toChunk))
+                            .unchunks
+                        else
+                          identity
+                      .onFinalizeCase: exitCase =>
+                        IO(logger.info(s"onFinalizeCase $exitCase")) *>
+                          serverStreamCanceled.complete(exitCase).void
+          route.boundRoute
 
       val clientResource: ResourceIO[PekkoHttpClient] =
         for

@@ -22,10 +22,8 @@ object SubagentWebServer:
     (using actorSystem: ActorSystem,
     ioRuntime: IORuntime)
   : ResourceIO[PekkoWebServer] =
-    PekkoWebServer.resource(
-      conf.webServerBindings,
-      conf.config,
-      routeBinding => new PekkoWebServer.BoundRoute:
+    PekkoWebServer.resource(conf.webServerBindings, conf.config): routeBinding =>
+      new PekkoWebServer.BoundRoute:
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
             Set(AgentDirectorPermission))
@@ -44,4 +42,4 @@ object SubagentWebServer:
                 subagent, conf.config
               ).webServerRoute
 
-        override def toString = "Subagent web services")
+        override def toString = "Subagent web services"

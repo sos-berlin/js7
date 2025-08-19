@@ -27,15 +27,13 @@ object ControllerWebServer:
     clusterNode: ClusterNode[ControllerState],
     totalRunningSince: Deadline,
     eventWatch: FileEventWatch,
-    controllerConfiguration: ControllerConfiguration,
+    conf: ControllerConfiguration,
     sessionRegister: SessionRegister[SimpleSession])(
     implicit actorSystem_ : ActorSystem, ioRuntime: IORuntime)
   : ResourceIO[ControllerWebServer] =
-    PekkoWebServer.resource(
-      controllerConfiguration.webServerBindings,
-      controllerConfiguration.config,
-      routeBinding => new PekkoWebServer.BoundRoute {
-        import controllerConfiguration.config
+    PekkoWebServer.resource(conf.webServerBindings, conf.config): routeBinding =>
+      new PekkoWebServer.BoundRoute:
+        import conf.config
 
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(config, SimpleUser.apply,
@@ -50,7 +48,7 @@ object ControllerWebServer:
           IO.pure(
             new ControllerRoute(
               routeBinding,
-              controllerConfiguration,
+              conf,
               orderApi,
               commandExecutor,
               itemUpdater,
@@ -62,4 +60,3 @@ object ControllerWebServer:
             ).webServerRoute)
 
         override def toString = "Controller web services"
-      })

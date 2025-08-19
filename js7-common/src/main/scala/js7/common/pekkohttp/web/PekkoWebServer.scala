@@ -188,47 +188,43 @@ object PekkoWebServer:
 
   def httpResource(port: Int, config: Config, route: Route)(using ActorSystem)
   : ResourceIO[PekkoWebServer] =
-    resource(
-      Seq(WebServerBinding.http(port)),
-      config,
-      _ => BoundRoute.simple(route))
+    resource(Seq(WebServerBinding.http(port)), config): _ =>
+      BoundRoute.simple(route)
 
   def simple(conf: CommonConfiguration)(route: RouteBinding => Route)
     (using actorSystem: ActorSystem,
       testEventBus: StandardEventBus[Any] = new StandardEventBus)
   : ResourceIO[PekkoWebServer] =
-    resource(
-      conf.webServerBindings,
-      conf.config,
-      routeBinding =>
-        PekkoWebServer.BoundRoute.simple(conf):
-          route(routeBinding))
+    resource(conf.webServerBindings, conf.config): routeBinding =>
+      PekkoWebServer.BoundRoute.simple(conf):
+        route(routeBinding)
 
   def resource(
     webServerBindings: Seq[WebServerBinding],
-    config: Config,
-    toBoundRoute: RouteBinding => BoundRoute)
+    config: Config)
+    (toBoundRoute: RouteBinding => BoundRoute)
     (using actorSystem: ActorSystem,
       testEventBus: StandardEventBus[Any] = new StandardEventBus)
   : ResourceIO[PekkoWebServer] =
-    Resource.suspend(IO:
-      val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
-      val shutdownDelay = config.finiteDuration("js7.web.server.shutdown-delay").orThrow
-      val httpsClientAuthRequired = config.getBoolean(
-        "js7.web.server.auth.https-client-authentication")
+    Resource.suspend:
+      IO:
+        val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
+        val shutdownDelay = config.finiteDuration("js7.web.server.shutdown-delay").orThrow
+        val httpsClientAuthRequired = config.getBoolean(
+          "js7.web.server.auth.https-client-authentication")
 
-      Service.resource:
-        new PekkoWebServer(
-          for webServerBinding <- webServerBindings.toVector yield
-            BindingAndResource(
-              webServerBinding,
-              SinglePortPekkoWebServer.resource(
+        Service.resource:
+          PekkoWebServer(
+            for webServerBinding <- webServerBindings.toVector yield
+              BindingAndResource(
                 webServerBinding,
-                toBoundRoute(_),
-                shutdownTimeout = shutdownTimeout,
-                shutdownDelay = shutdownDelay,
-                httpsClientAuthRequired = httpsClientAuthRequired)),
-          config))
+                SinglePortPekkoWebServer.resource(
+                  webServerBinding,
+                  toBoundRoute(_),
+                  shutdownTimeout = shutdownTimeout,
+                  shutdownDelay = shutdownDelay,
+                  httpsClientAuthRequired = httpsClientAuthRequired)),
+            config)
 
   private lazy val stillNotAvailableRoute: Route =
     complete(WebServiceStillNotAvailableProblem)

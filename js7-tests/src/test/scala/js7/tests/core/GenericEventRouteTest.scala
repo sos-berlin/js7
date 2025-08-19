@@ -17,6 +17,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Tests.isIntelliJIdea
@@ -110,15 +111,13 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
   protected lazy val eventWatch: JournalEventWatch = eventCollector.eventWatch
 
-  private lazy val allocatedServer = PekkoWebServer
-    .resource(
-      Seq(
-        WebServerBinding.Http(
-          new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort()))),
-      config,
-      _ => PekkoWebServer.BoundRoute.simple(
-        pathSegments("event")(
-          genericEventRoute(ControllerState.keyedEventJsonCodec /*Example for test*/))))
+  private lazy val allocatedServer: Allocated[IO, PekkoWebServer] =
+    val webServerBinding = WebServerBinding.Http:
+      new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())
+    PekkoWebServer.resource(Seq(webServerBinding), config): _ =>
+      PekkoWebServer.BoundRoute.simple:
+        pathSegments("event"):
+          genericEventRoute(ControllerState.keyedEventJsonCodec /*Example for test*/)
     .toAllocated
     .await(99.s)
 

@@ -66,23 +66,22 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   private implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
-  private lazy val webServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
-    .resource(
-      Seq(
-        WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),
-        WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef)),
-      config"""
+  private lazy val webServer: Allocated[IO, PekkoWebServer] =
+    val webServerBindings = Seq(
+      WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),
+      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef))
+    val config = config"""
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s
         js7.web.server.shutdown-delay = 500ms
         js7.directory-watcher.watch-delay = 10ms
         js7.directory-watcher.directory-silence = 10ms
-        """.withFallback(Js7Configuration.defaultConfig),
-      toBoundRoute = routeBinding =>
-        PekkoWebServer.BoundRoute.simple(
-          path("TEST") {
-            complete(s"OKAY-${routeBinding.revision}")
-          }))
+      """.withFallback(Js7Configuration.defaultConfig)
+
+    PekkoWebServer.resource(webServerBindings, config): routeBinding =>
+      PekkoWebServer.BoundRoute.simple:
+        path("TEST"):
+          complete(s"OKAY-${routeBinding.revision}")
     .flatTap(_.restartWhenHttpsChanges)
     .toAllocated
     .await(99.s)
