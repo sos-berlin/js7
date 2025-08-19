@@ -17,7 +17,7 @@ import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
-import js7.data.subagent.{SubagentCommand, SubagentRunId}
+import js7.data.subagent.SubagentRunId
 import js7.subagent.director.CommandDispatcher.*
 import scala.util.{Success, Try}
 
