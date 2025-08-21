@@ -9,6 +9,8 @@ import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.io.JavaResource
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.StringInterpolators
 
 object YamlExtensions:
 
@@ -33,3 +35,15 @@ object YamlExtensions:
       .run()
       .flatMap(_.as[A])
       .toChecked
+
+
+  extension (sc: StringContext)
+    def yaml(args: Any*): Json =
+      StringInterpolators.interpolate(sc, args, JsonStringInterpolator.toJsonString)
+        .yamlToJson.orThrow
+
+    /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
+    def jsonString(args: Any*): String =
+      require(args.isEmpty, "jsonString string interpolator does not accept variables")
+      sc.parts mkString ""
+

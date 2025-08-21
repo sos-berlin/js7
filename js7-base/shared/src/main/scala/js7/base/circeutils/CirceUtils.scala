@@ -305,7 +305,7 @@ object CirceUtils:
         builder.append(p.next())
       builder.toString
 
-    private def toJsonString(arg: Any): String =
+    def toJsonString(arg: Any): String =
       arg match
         case arg @ (_: String | _: GenericString | _: Path | _: File) =>
           val str = arg match
