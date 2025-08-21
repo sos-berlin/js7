@@ -149,6 +149,8 @@ object Value:
     Double | java.lang.Double |
     Throwable
 
+  val ShellReturnCode: String = "returnCode"
+
   @javaApi
   def of(value: String): StringValue =
     StringValue(value)

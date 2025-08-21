@@ -15,7 +15,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.OrderOutcome
 import js7.data.value.expression.Expression
-import js7.data.value.{NamedValues, NumberValue}
+import js7.data.value.{NamedValues, NumberValue, Value}
 
 sealed trait Executable:
   def arguments: Map[String, Expression]
@@ -49,7 +49,7 @@ sealed trait ProcessExecutable extends Executable:
       namedValues + ProcessExecutable.toNamedValue(returnCode))
 object ProcessExecutable:
   def toNamedValue(returnCode: ReturnCode): (String, NumberValue) =
-    "returnCode" -> NumberValue(returnCode.number)
+    Value.ShellReturnCode -> NumberValue(returnCode.number)
 
 sealed trait PathExecutable
 extends ProcessExecutable:

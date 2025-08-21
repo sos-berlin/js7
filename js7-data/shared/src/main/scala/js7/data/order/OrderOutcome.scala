@@ -12,11 +12,11 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.OrderOutcome.Disrupted
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
-import js7.data.value.{NamedValues, NumberValue}
+import js7.data.value.{NamedValues, NumberValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
+import scala.collection.immutable.Map.Map1
 import scala.util.{Failure, Success, Try}
-
 /**
   * @author Joacim Zschimmer
   */
@@ -53,7 +53,7 @@ object OrderOutcome:
 
   @TestOnly
   def failedWithSignal(signal: ProcessSignal): Failed =
-    Failed(Map("returnCode" -> NumberValue(if isWindows then 0 else 128 + signal.number)))
+    Failed(Map1(Value.ShellReturnCode, NumberValue(if isWindows then 0 else 128 + signal.number)))
 
   /** The job has terminated. */
   sealed trait Completed extends OrderOutcome:

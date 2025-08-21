@@ -1,6 +1,5 @@
 package js7.data.value.expression
 
-import org.typelevel.literally.Literally
 import cats.syntax.all.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
@@ -22,6 +21,7 @@ import js7.data.value.{BooleanValue, FunctionValue, GoodValue, ListValue, Missin
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
+import org.typelevel.literally.Literally
 import scala.annotation.unused
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
@@ -82,7 +82,7 @@ object Expression:
   private lazy val logger = Logger[this.type]
 
   @TestOnly
-  val LastReturnCode: NamedValue = NamedValue("returnCode")
+  val LastReturnCode: NamedValue = NamedValue(Value.ShellReturnCode)
 
   given jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   given jsonDecoder: Decoder[Expression] = c =>

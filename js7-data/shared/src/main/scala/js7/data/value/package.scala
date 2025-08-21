@@ -14,7 +14,7 @@ package object value:
       Map(kv*)
 
     def rc(number: Int): NamedValues =
-      Map("returnCode" -> NumberValue(number))
+      Map(Value.ShellReturnCode -> NumberValue(number))
 
     def rc(returnCode: ReturnCode): NamedValues =
       NamedValues.rc(returnCode.number)
