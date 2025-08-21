@@ -9,14 +9,17 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.value.expression.Expression.NumericConstant
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.jobs.TestJob
 import js7.tests.BigStdoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.duration.Deadline
@@ -34,10 +37,8 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
-  "Speed test big stdout" in:
-    val megabytes = sys.props.get("test.speed").map(_.toInt).getOrElse(10)
-    logger.info(s"${megabytes}MB")
-    assert(megabytes >= 1)
+  "Big stdout" in:
+    val megabytes = 10
 
     val workflow = Workflow(WorkflowPath("BIG-STDOUT"), Seq:
       Execute(WorkflowJob(agentPath,
@@ -60,6 +61,7 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
              |  done
              |done
              |""".stripMargin)))
+
     withItem(workflow): workflow =>
       val orderId = OrderId("BIG-STDOUT")
       val since = Deadline.now
@@ -95,11 +97,26 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
         .guarantee:
           IO:
             val elapsed = since.elapsed
-            val byteCount = charCount // We estimate a character yields one byte
-            logger.info(s"🔵🔵🔵 ${bytesPerSecondString(elapsed, byteCount)}"
+            val byteCount = charCount // We estimate that a character yields one byte
+            logger.info(s"${bytesPerSecondString(elapsed, byteCount)}"
               + " · " + itemsPerSecondString(elapsed, eventCount, "StdoutWrittenEvents")
               + ((eventCount > 0) ?? s" · ~${charCount / eventCount} characters/event"))
         .as(succeed)
+
+  "Speed test big stdout" in:
+    if !isIntelliJIdea then pending // FIXME OutOfMemoryError, maybe due to MemoryJournal's bad limit handling
+    val megabytes = sys.props.get("test.speed").map(_.toInt).getOrElse(10)
+    logger.info(s"${megabytes}MB")
+    assert(megabytes >= 1)
+
+    val workflow = Workflow(WorkflowPath("BIG-STDOUT"), Seq:
+      TestJob.execute(agentPath, arguments = Map(
+        "stdout" -> NumericConstant(megabytes * 1_000_000))))
+    withItem(workflow): workflow =>
+      val since = Deadline.now
+      controller.runOrder(FreshOrder(OrderId("SPEED"), workflow.path))
+      logger.info(s"🔵🔵🔵 ${bytesPerSecondString(since.elapsed, megabytes * 1_000_000)}")
+      succeed
 
 
 object BigStdoutTest:
