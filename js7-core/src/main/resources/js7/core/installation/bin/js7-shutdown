@@ -17,7 +17,19 @@ for arg in "$@"; do :
       jsonFields+=', "restart": true'
       ;;
     --suppress-snapshot=*)
-      jsonFields+=', 'suppressSnapshot': true'
+      jsonFields+=', "suppressSnapshot": true'
+      ;;
+    --SIGTERM)
+      # Only Director and Subagent
+      jsonFields+=', "processSignal": "SIGTERM"'
+      ;;
+    --SIGKILL)
+      # Only Director and Subagent
+      jsonFields+=', "processSignal": "SIGKILL"'
+      ;;
+    --dontWaitForDirector)
+      # Only Director and Subagent
+      jsonFields+=', "dontWaitForDirector": "true"'
       ;;
     -\?|-h|--help)
       usage
