@@ -3,6 +3,7 @@ package js7.tests.testenv
 import cats.effect.unsafe.IORuntime
 import cats.syntax.functor.*
 import fs2.{Pure, Stream}
+import io.circe.{Decoder, Json}
 import js7.base.catsutils.IArrayExtensions.mapOrKeep
 import js7.base.crypt.Signed
 import js7.base.log.Logger
@@ -42,9 +43,14 @@ trait BlockingItemUpdater:
         v
     loop()
 
-  final def withItem[I <: InventoryItem, A](
-    item: I,
-    awaitDeletion: Boolean = false)
+  final def withItem[I <: InventoryItem: Decoder](item: Json): WithItem[I] =
+    WithItem[I](item.as[I].orThrow)
+
+  final class WithItem[I <: InventoryItem](item: I):
+    def apply[A](body: I => A)(using TestController, IORuntime) =
+      withItem(item)(body)
+
+  final def withItem[I <: InventoryItem, A](item: I, awaitDeletion: Boolean = false)
     (body: I => A)
     (using controller: TestController, ioRuntime: IORuntime)
   : A =

@@ -4,7 +4,6 @@ import cats.effect.IO
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.RichDuration
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.*
@@ -41,18 +40,15 @@ extends InternalJob:
         sleep <- step.maybeArg("sleep")(_.asDuration)
         failString <- step.maybeArg("fail")(_.asString)
       yield
-        IO.defer:
-          logger.debug(s"${getClass.simpleScalaName} ${step.order.id}${
-            sleep.fold("")(o => s" sleep=${o.pretty}")} ")
-          writeSomething(stdoutEither, Stdout).both:
-            writeSomething(stderrEither, Stderr)
-          .productR:
-            sleep.foldMap: duration =>
-              IO.sleep(duration)
-          .as:
-            failString match
-              case Some(failString) => OrderOutcome.Failed(Some(failString))
-              case None => OrderOutcome.succeeded
+        writeSomething(stdoutEither, Stdout).both:
+          writeSomething(stderrEither, Stderr)
+        .productR:
+          sleep.foldMap: duration =>
+            IO.sleep(duration)
+        .as:
+          failString match
+            case Some(failString) => OrderOutcome.Failed(Some(failString))
+            case None => OrderOutcome.succeeded
 
 
 object TestJob extends InternalJob.Companion[TestJob]:
