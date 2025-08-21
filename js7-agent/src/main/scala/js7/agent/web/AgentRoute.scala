@@ -6,7 +6,6 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.SimpleUser
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
