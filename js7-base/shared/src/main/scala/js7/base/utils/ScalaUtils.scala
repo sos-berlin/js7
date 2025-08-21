@@ -382,7 +382,10 @@ object ScalaUtils:
           val a = iterator.next()
           builder += a
           continue = predicate(a)
-        builder.result()
+        if continue then
+          iterable // Return the original
+        else
+          builder.result()
 
     extension [A](iterator: Iterator[A])
       def takeUntil(predicate: A => Boolean): Iterator[A] =
