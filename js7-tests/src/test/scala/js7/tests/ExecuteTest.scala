@@ -87,121 +87,131 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(1)))
 
   addExecuteTest(
-    Execute(
+    Execute:
       WorkflowJob(
         agentPath,
         ShellScriptExecutable(
           returnCodeScript(2),
-          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(2)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(2))))),
     expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(2)))
 
   addExecuteTest(
-    Execute(
+    Execute:
       WorkflowJob(
         agentPath,
         ShellScriptExecutable(
           returnCodeScript(3),
           returnCodeMeaning = ReturnCodeMeaning.Success(
             RangeSet.fromRanges(Seq(
-              RangeSet.Interval(ReturnCode(1), ReturnCode(5)))))))),
+              RangeSet.Interval(ReturnCode(1), ReturnCode(5))))))),
     expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(3)))
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(44)))),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NumericConstant(44))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("myExitCode"),
+          env = Map("myExitCode" -> NumericConstant(44)))),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue("orderValue"))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("myExitCode"),
+          env = Map("myExitCode" -> NamedValue("orderValue")))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue("defaultArg"))),
-      defaultArguments = Map("defaultArg" -> NumericConstant(44)))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("myExitCode"),
+          env = Map("myExitCode" -> NamedValue("defaultArg"))),
+        defaultArguments = Map("defaultArg" -> NumericConstant(44))),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue("NAME"))),
-      defaultArguments = Map("NAME" -> NumericConstant(99)))),  // ignored
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("myExitCode"),
+          env = Map("myExitCode" -> NamedValue("NAME"))),
+        defaultArguments = Map("NAME" -> NumericConstant(99))),  // ignored
     orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      RelativePathExecutable(
-        "TEST-SCRIPT.cmd",
-        env = Map("myExitCode" -> NumericConstant(44))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        RelativePathExecutable(
+          "TEST-SCRIPT.cmd",
+          env = Map("myExitCode" -> NumericConstant(44)))),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      AbsolutePathExecutable(
-        myReturnCodeScriptFile.toString,
-        env = Map("myExitCode" -> NumericConstant(44))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        AbsolutePathExecutable(
+          myReturnCodeScriptFile.toString,
+          env = Map("myExitCode" -> NumericConstant(44)))),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      CommandLineExecutable(
-        CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        CommandLineExecutable(
+          CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow)),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      CommandLineExecutable(
-        CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
-        env = Map("myExitCode" -> NamedValue("orderValue"))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        CommandLineExecutable(
+          CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
+          env = Map("myExitCode" -> NamedValue("orderValue")))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("SCHEDULER_PARAM_MYEXITCODE"),
-        v1Compatible = true))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("SCHEDULER_PARAM_MYEXITCODE"),
+          v1Compatible = true)),
     orderArguments = Map("myExitCode" -> NumberValue(44)),
     expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
-  addExecuteTest(Execute(
-    WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue("UNKNOWN"))))),
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript("myExitCode"),
+          env = Map("myExitCode" -> NamedValue("UNKNOWN")))),
     expectedOutcome = OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN")))
 
   addExecuteTest(
-    Execute(
+    Execute:
       WorkflowJob(
         agentPath,
         ShellScriptExecutable(
           returnCodeScript("myExitCode"),
           env = Map("myExitCode" -> NamedValue("myExitCode")),
-          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(1)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(1))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = OrderOutcome.Succeeded.rc(1))
 
@@ -304,10 +314,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
           "C" -> StringValue("FROM SECOND JOB")))))
 
   addExecuteTest(
-    Execute(
+    Execute:
       WorkflowJob(
         agentPath,
-        TestInternalJob.executable(arguments = Map("ARG" -> NamedValue("ARG"))))),
+        TestInternalJob.executable(arguments = Map("ARG" -> NamedValue("ARG")))),
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
