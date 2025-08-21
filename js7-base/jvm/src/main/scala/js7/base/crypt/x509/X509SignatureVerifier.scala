@@ -55,24 +55,22 @@ extends SignatureVerifier:
             verifySignature(document, signature, trustedCertificate)
               .map(_ :: Nil))
 
-      case Right(signerCertificate) =>
+      case Right(signerCert) =>
         catchNonFatalFlatten:
           // We have to try each of the installed trusted certificates !!!
-          trustedRootCertificates.iterator
-            .map: rootCert =>
+          val checkedSignedIds =
+            trustedRootCertificates.iterator.map: rootCert =>
               for
-                signerId <- verifySignature(document, signature, signerCertificate)
-                _ <- verifySignersCertificate(signerCertificate, rootCert.x509Certificate.getPublicKey)
+                signerId <- verifySignature(document, signature, signerCert)
+                _ <- verifySignersCertificate(signerCert, rootCert.x509Certificate.getPublicKey)
               yield
                 signerId
             .takeThrough(_.isLeft)
             .toVector
-            // FIXME Das letzte Zertifikat entscheidet?
-            .lastOption match
-              case None =>
-                Left(MessageSignedByUnknownProblem)
-              case Some(checkedSignerId) =>
-                checkedSignerId.map(_ :: Nil)
+          checkedSignedIds.lastOption match
+            case None => Left(MessageSignedByUnknownProblem)
+            case Some(left @ Left(_)) => left.map/*for typing only*/(Seq(_))
+            case Some(Right(_)) => Right(checkedSignedIds.flatMap(_.toOption))
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert)
   : Checked[SignerId] =
@@ -94,7 +92,7 @@ extends SignatureVerifier:
     catch case NonFatal(t) =>
       t match
         case _: (java.security.SignatureException | java.security.InvalidKeyException) =>
-          logger.debug(t.toStringWithCauses)
+          logger.debug(s"$signatureCertificate: ${t.toStringWithCauses}")
         case _ =>
           logger.warn(t.toString)
       Left(MessageSignedByUnknownProblem)
