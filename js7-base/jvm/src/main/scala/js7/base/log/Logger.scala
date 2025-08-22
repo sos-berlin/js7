@@ -137,13 +137,13 @@ object Logger extends AdHocLogger:
       inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
-      def infoCall[A](body: => A)(implicit src: sourcecode.Name): A =
+      def infoCall[A](body: => A)(using src: sourcecode.Name): A =
         infoCall[A](src.value)(body)
 
       def infoCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).unsafeRunSync()
 
-      inline def infoCallWithResult[A](inline body: => A)(implicit inline src: sourcecode.Name)
+      inline def infoCallWithResult[A](inline body: => A)(using inline src: sourcecode.Name)
       : A =
         infoCallWithResult(src.value)(body)
 
@@ -169,7 +169,7 @@ object Logger extends AdHocLogger:
       def infoIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
         infoF(functionName, args)(body)
 
-      def infoIOWithResult[A](body: IO[A])(implicit src: sourcecode.Name): IO[A] =
+      def infoIOWithResult[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         infoIOWithResult[A](src.value, body = body)
 
       def infoIOWithResult[A](function: String)(body: IO[A]): IO[A] =
@@ -184,8 +184,7 @@ object Logger extends AdHocLogger:
       : IO[A] =
         logF[IO, A](logger, LogLevel.Info, function, args, result, marker = marker)(body)
 
-      def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
-      : F[A] =
+      def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name): F[A] =
         infoF[F, A](functionName = src.value)(body)
 
       def infoF[F[_], A](functionName: String, args: => Any = "")
@@ -194,7 +193,7 @@ object Logger extends AdHocLogger:
       : F[A] =
         logF[F, A](logger, LogLevel.Info, functionName, args)(body)
 
-      def debugCall[A](body: => A)(implicit src: sourcecode.Name): A =
+      def debugCall[A](body: => A)(using src: sourcecode.Name): A =
         debugCall[A](src.value)(body)
 
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
@@ -206,23 +205,20 @@ object Logger extends AdHocLogger:
       def debugIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
         debugF(functionName, args)(body)
 
-      def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
-      : F[A] =
+      def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name): F[A] =
         debugF[F, A](functionName = src.value)(body)
 
-      def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(using F: Sync[F])
       : F[A] =
         logF[F, A](logger, LogLevel.Debug, functionName, args)(body)
 
-      def debugIOWithResult[A](io: IO[A])(implicit src: sourcecode.Name): IO[A] =
+      def debugIOWithResult[A](io: IO[A])(using src: sourcecode.Name): IO[A] =
         debugIOWithResult[A](src.value)(io)
 
-      def debugIOWithResult[A](function: String)(body: IO[A])
-      : IO[A] =
+      def debugIOWithResult[A](function: String)(body: IO[A]): IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, resultToLoggable = identity)(body)
 
-      def debugIOWithResult[A](function: String, args: => Any)(io: IO[A])
-      : IO[A] =
+      def debugIOWithResult[A](function: String, args: => Any)(io: IO[A]): IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, args, resultToLoggable = identity)(io)
 
       def debugIOWithResult[A](
@@ -242,11 +238,11 @@ object Logger extends AdHocLogger:
       def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name): F[A] =
         traceF(functionName = src.value)(body)
 
-      def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(using F: Sync[F])
       : F[A] =
         logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
 
-      def traceIOWithResult[A](body: IO[A])(implicit src: sourcecode.Name): IO[A] =
+      def traceIOWithResult[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         traceIOWithResult[A](src.value, body = body)
 
       def traceIOWithResult[A](function: String)(body: IO[A]): IO[A] =
@@ -264,13 +260,13 @@ object Logger extends AdHocLogger:
       : IO[A] =
         logF[IO, A](logger, LogLevel.Trace, function, args, result, marker = marker)(body)
 
-      inline def traceCall[A](body: => A)(implicit src: sourcecode.Name): A =
+      inline def traceCall[A](body: => A)(using src: sourcecode.Name): A =
         traceCall[A](src.value)(body)
 
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).unsafeRunSync()
 
-      inline def traceCallWithResult[A](inline body: => A)(implicit inline src: sourcecode.Name)
+      inline def traceCallWithResult[A](inline body: => A)(using inline src: sourcecode.Name)
       : A =
         traceCallWithResult(src.value)(body)
 
@@ -323,7 +319,7 @@ object Logger extends AdHocLogger:
         logResource[F, A](logger, LogLevel.Trace)(resource)
 
       def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
-        (implicit F: Sync[F])
+        (using F: Sync[F])
       : Resource[F, A] =
         logResource[F, A](logger, LogLevel.Trace, function, args)(resource)
 
@@ -388,7 +384,7 @@ object Logger extends AdHocLogger:
       resultToLoggable: (A => Any) | Null = null,
       marker: Marker | Null = null)
       (body: F[A])
-      (implicit F: Sync[F])
+      (using F: Sync[F])
     : F[A] =
       F.defer:
         if !logger.isEnabled(logLevel) then
@@ -454,7 +450,7 @@ object Logger extends AdHocLogger:
               new StartReturnLogContext(logger, logLevel, marker = null, function, args))(
           release = (maybeCtx, exitCase) => F.delay:
             for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome))
-        .map(_ => ())
+        .void
 
     private def logStream[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")

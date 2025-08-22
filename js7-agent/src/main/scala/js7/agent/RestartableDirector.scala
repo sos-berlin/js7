@@ -76,7 +76,7 @@ extends MainService, Service.StoppableByRequest:
       .make(
         acquire = (untilStopRequested *> stop).startAndLogError)(
         release = _.cancel)
-      .map(_ => ())
+      .void
 
   def untilTerminated: IO[DirectorTermination] =
     _untilTerminated.get.dematerialize

@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.subagent.OutErrStatistics.*
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -66,7 +67,7 @@ private object OutErrStatistics:
 
 
   def registerMXBean: ResourceIO[Unit] =
-    registerStaticMBean("OrderStdWrittenStatistics", Bean).map(_ => ())
+    registerStaticMBean("OrderStdWrittenStatistics", Bean).void
 
   private sealed trait OrderStdWrittenStatisticsMXBean:
     this: Bean.type =>

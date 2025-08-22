@@ -5,6 +5,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.metering.CallMeterLoggingService
 import js7.base.test.TestMixin.assertionMonoid
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.{Assertion, Informer, Succeeded, Suite}
 import scala.concurrent.duration.DurationInt
@@ -24,8 +25,10 @@ trait TestMixin extends TestCatsEffect:
   override protected def beforeAll(): Unit =
     super.beforeAll()
     if isIntelliJIdea then
-      stopCallMeterService = CallMeterLoggingService.resource(logEvery = 1.minute)
-        .map(_ => ()).allocated.map(_._2).unsafeRunSync()
+      stopCallMeterService =
+        CallMeterLoggingService.resource(logEvery = 1.minute).void
+          .allocated.map(_._2)
+          .unsafeRunSync()
 
   override protected def afterAll() =
     stopCallMeterService.unsafeRunSync()
