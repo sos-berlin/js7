@@ -110,7 +110,7 @@ object X509Cert:
           notExpiredCerts.sortBy(_.notBefore).headOption)
 
         for selected <- result do for cert <- notExpiredCerts.filter(selected.ne) do
-          logger.error(s"Ignoring duplicate $cert")
+          logger.info(s"Ignoring duplicate $cert")
 
         result
 
