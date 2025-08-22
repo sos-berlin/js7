@@ -5,7 +5,7 @@ import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import fs2.concurrent.SignallingRef
-import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd, left, right}
+import js7.base.catsutils.CatsEffectExtensions.{onErrorOrCancel, joinStd, left, right}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
@@ -308,8 +308,8 @@ extends Service.StoppableByRequest:
               .guarantee(releaseStdObservers)
               .guarantee(releaseAssignment)
               .start
-              .guaranteeExceptWhenSucceeded(releaseStdObservers)
-          .guaranteeExceptWhenSucceeded(releaseAssignment)
+              .onErrorOrCancel(releaseStdObservers)
+          .onErrorOrCancel(releaseAssignment)
           .recoverWith:
             case ProblemException(problem) if orderIdToJobDriver.isStoppingWith(problem) =>
               val processLost = OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)

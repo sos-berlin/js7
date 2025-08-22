@@ -48,10 +48,11 @@ object CatsEffectExtensions:
     def catchAsChecked: IO[Checked[A]] =
       io.attempt.map(Checked.fromThrowableEither)
 
-    def guaranteeExceptWhenSucceeded(finalizer: IO[Unit]): IO[A] =
+    def onErrorOrCancel(finalizer: IO[Unit]): IO[A] =
       io.guaranteeCase:
         case Outcome.Succeeded(_) => IO.unit
-        case _ => finalizer
+        case Outcome.Errored(_) => finalizer
+        case Outcome.Canceled() => finalizer
 
     /** Extra name to detect unjoined fibers in code. */
     def startAndForget(using enc: sourcecode.Enclosing): IO[Unit] =
