@@ -299,9 +299,9 @@ extends Service.StoppableByRequest:
         val releaseAssignment = orderIdToJobDriver.remove(order.id).void
         orderIdToJobDriver
           .put(order.id, jobDriver)
-          .*>(
+          .productR:
             stdObserversResource(order, keepLastErrLine = workflowJob.failOnErrWritten)
-              .allocated)
+              .allocated
           .flatMap: (stdObservers, releaseStdObservers) =>
             jobDriver
               .runOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod, stdObservers)
@@ -441,9 +441,11 @@ object DedicatedSubagent:
     yield
       service
 
+
   private final class Processing(
     val order: Order[Order.Processing]/*for check only*/,
     val fiber: FiberIO[OrderProcessed]):
+
     val acknowledged = Deferred.unsafe[IO, Unit]
 
 
@@ -464,7 +466,6 @@ object DedicatedSubagent:
         val pair = (eventId, processedOrderId)
         queue.synchronized:
           queue.enqueue(pair)
-          ()
       *>
         // Because persist has notified the Director's event reader,
         // a fast Director may do a ReleaseEvents command,
@@ -479,7 +480,7 @@ object DedicatedSubagent:
       * @return OrderIds for enqueued EventIds of OrderProcessed event.
       */
     def waitUntil(eventId: EventId): IO[Vector[OrderId]] =
-      eventIdSignal.waitUntil(eventId <= _) *>
+      eventIdSignal.waitUntil(_ >= eventId) *>
         IO:
           queue.synchronized:
             queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector

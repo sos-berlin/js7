@@ -51,18 +51,19 @@ private final class JobMotorKeeper(
       _.values.toVector.parFoldMapA:
         _.release
 
-  def attachWorkflow(workflow: Workflow): IO[Unit] =
-    val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
-    workflow.keyToJob.filter(_._2.agentPath == agentPath).foldMap: (jobKey, workflowJob) =>
-      JobMotor
-        .service(jobKey, workflowJob, getAgentState, orderMotor, subagentKeeper, zoneId,
-          findTimeIntervalLimit = agentConf.findTimeIntervalLimit)
-        .toAllocated
-        .flatMap: allocated =>
-          jobToMotor.insert(jobKey, allocated)
-            .map(_.orThrow)
+  def startJobMotors(workflow: Workflow): IO[Unit] =
+    IO.defer:
+      val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
+      workflow.keyToJob.filter(_._2.agentPath == agentPath).foldMap: (jobKey, workflowJob) =>
+        JobMotor
+          .service(jobKey, workflowJob, getAgentState, orderMotor, subagentKeeper, zoneId,
+            findTimeIntervalLimit = agentConf.findTimeIntervalLimit)
+          .toAllocated
+          .flatMap: allocated =>
+            jobToMotor.insert(jobKey, allocated)
+              .map(_.orThrow)
 
-  def detachWorkflow(workflowId: WorkflowId): IO[Unit] =
+  def stopJobMotors(workflowId: WorkflowId): IO[Unit] =
     jobToMotor.removeConditional: (jobKey, _) =>
       jobKey.workflowId == workflowId
     .flatMap:
@@ -114,6 +115,74 @@ private final class JobMotorKeeper(
 
   private def jobMotors: View[JobMotor] =
     jobToMotor.toMap.values.view.map(_.allocatedThing)
+
+  def onOrdersProcessed(orderIds: Seq[OrderId]): IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      orderIds.flatMap:
+        agentState.idToOrder.get
+      .flatMap: order =>
+        agentState.maybeJobKey(order.workflowPosition)
+          .map(_ -> order.id)
+      .groupMap(_._1)(_._2)
+      .foldMap: (jobKey, orders) =>
+        jobToMotor.get(jobKey).map(_.allocatedThing).foldMap: jobMotor =>
+          jobMotor.onOrdersProcessed(orders)
+
+  def maybeKillMarkedOrder(orderId: OrderId): IO[Unit] =
+    withCurrentOrder(orderId): order =>
+      order.ifState[Processing].foldMap: order =>
+        order.mark match
+          case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
+            maybeKillOrder(order, kill)
+
+          case Some(OrderMark.Suspending(SuspensionMode(_, Some(mode)))) =>
+            maybeKillOrder(order, mode)
+
+          case _ => IO.unit
+
+  def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
+    order.ifState[Processing].foldMap: order =>
+      IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
+        // RemoteSubagentDriver.killProcess kills asynchronously and does not block.
+        // This operation must not block, otherwise the whole OrderMotor pipeline would block !!!
+        subagentKeeper.killProcess(
+          order.id,
+          if kill.immediately then SIGKILL else SIGTERM)
+
+  private def orderToJobMotor(order: Order[Order.State], agentState: AgentState): Option[JobMotor] =
+    agentState.maybeJobKey(order.workflowPosition).match
+      case None =>
+        if order.isState[Processing] then
+          logger.error:
+            s"${order.id} is Processing but there is no Job for instruction at ${
+              order.workflowPosition}"
+        None
+      case o => o
+    .flatMap: jobKey =>
+      jobToMotor.get(jobKey) match
+        case None =>
+          logger.error(s"${order.id} is Processing but no JobMotor is registered for $jobKey")
+          None
+        case o => o
+
+    .map(_.allocatedThing)
+
+  private def keyToJobMotor(jobKey: JobKey): JobMotor =
+    jobToMotor.checked(jobKey).map(_.allocatedThing).orThrow
+
+  private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
+    getAgentState.flatMap: agentState =>
+      agentState.idToOrder.get(orderId).foldMap:
+        body
+
+  def registerMBeans: ResourceIO[Unit] =
+    registerMBean("JobMotorKeeper"):
+      IO:
+        new JobMotorKeeperMXBean:
+          def getProcessCount = processLimits.processCount
+          @Nullable def getProcessLimit =
+            processLimits.processLimit.fold(null.asInstanceOf[java.lang.Integer])(Int.box)
+    .void
 
   object processLimits:
     private val _processCount = Atomic(0)
@@ -184,77 +253,7 @@ private final class JobMotorKeeper(
           Some(0)
         case Some(agentRef) =>
           agentRef.processLimit
-
-  def onOrderProcessed(processedOrderIds: Seq[OrderId])
-  : IO[Unit] =
-    getAgentState.flatMap: agentState =>
-      processedOrderIds.flatMap:
-        agentState.idToOrder.get
-      .flatMap: order =>
-        agentState.maybeJobKey(order.workflowPosition)
-          .map(_ -> order.id)
-      .groupMap(_._1)(_._2)
-      .foldMap: (jobKey, orders) =>
-        jobToMotor.get(jobKey).map(_.allocatedThing).foldMap: jobMotor =>
-          jobMotor.onOrdersProcessed(orders)
-
-  def maybeKillMarkedOrder(orderId: OrderId): IO[Unit] =
-    withCurrentOrder(orderId): order =>
-      order.ifState[Processing].foldMap: order =>
-        order.mark match
-          case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-            maybeKillOrder(order, kill)
-
-          case Some(OrderMark.Suspending(SuspensionMode(_, Some(mode)))) =>
-            maybeKillOrder(order, mode)
-
-          case _ => IO.unit
-
-  def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
-    order.ifState[Processing].foldMap: order =>
-      IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
-        // RemoteSubagentDriver.killProcess kills asynchronously and does not block.
-        // This operation must not block, otherwise the whole OrderMotor pipeline would block !!!
-        subagentKeeper.killProcess(
-          order.id,
-          if kill.immediately then SIGKILL else SIGTERM)
-
-  private def orderToJobMotor(order: Order[Order.State], agentState: AgentState): Option[JobMotor] =
-    agentState.maybeJobKey(order.workflowPosition).match
-      case None =>
-        if order.isState[Processing] then
-          logger.error:
-            s"${order.id} is Processing but there is no Job for instruction at ${
-              order.workflowPosition}"
-        None
-      case o => o
-    .flatMap: jobKey =>
-      jobToMotor.get(jobKey) match
-        case None =>
-          logger.error(s"${order.id} is Processing but no JobMotor is registered for $jobKey")
-          None
-        case o => o
-
-    .map(_.allocatedThing)
-
-  private def keyToJobMotor(jobKey: JobKey): JobMotor =
-    jobToMotor.checked(jobKey).map(_.allocatedThing).orThrow
-
-  private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
-    getAgentState.flatMap: agentState =>
-      agentState.idToOrder.get(orderId).foldMap:
-        body
-
-  private val bean: JobMotorKeeperMXBean = new JobMotorKeeperMXBean:
-    def getProcessCount = processLimits.processCount
-
-    @Nullable def getProcessLimit =
-      processLimits.processLimit.fold(null.asInstanceOf[java.lang.Integer])(Int.box)
-
-
-  def registerMBeans: ResourceIO[Unit] =
-    registerMBean("JobMotorKeeper", bean)
-      .map(_ => ())
+  end processLimits
 
 
 object JobMotorKeeper:

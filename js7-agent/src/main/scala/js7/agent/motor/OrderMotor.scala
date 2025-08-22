@@ -67,6 +67,8 @@ extends Service.StoppableByRequest:
             val n = jobMotorKeeper.processLimits.processCount
             if n > 0 then logger.debug(s"processCount=$n")
             orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+          .guarantee:
+            jobMotorKeeper.stop
 
   override def stop: IO[Unit] =
     super.stop
@@ -76,7 +78,7 @@ extends Service.StoppableByRequest:
 
   def recoverWorkflows(agentState: AgentState): IO[Unit] =
     agentState.idToWorkflow.values.foldMap:
-      jobMotorKeeper.attachWorkflow
+      jobMotorKeeper.startJobMotors
 
   def recoverOrders(agentState: AgentState): IO[Unit] =
     logger.debugIO:
@@ -157,7 +159,7 @@ extends Service.StoppableByRequest:
     val startedOrderIds = startedOrderIdB.result().filterNot(processedOrderIds.toSet)
 
     startedOrderIds.foldMap(jobMotorKeeper.maybeKillMarkedOrder) *>
-      jobMotorKeeper.onOrderProcessed(processedOrderIds) *>
+      jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
   def trigger(orderId: OrderId): IO[Unit] =
