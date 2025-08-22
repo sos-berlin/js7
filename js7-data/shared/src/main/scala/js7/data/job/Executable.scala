@@ -23,10 +23,12 @@ sealed trait Executable:
   def referencedJobResourcePaths: Iterable[JobResourcePath] =
     arguments.values.view.flatMap(_.referencedJobResourcePaths)
 
+
 sealed trait ScriptExecutable:
   this: Executable =>
 
   def script: String
+
 
 sealed trait ProcessExecutable extends Executable:
   final def arguments: Map[String, Expression] = Map.empty
@@ -34,6 +36,8 @@ sealed trait ProcessExecutable extends Executable:
   override def referencedJobResourcePaths: Iterable[JobResourcePath] =
     super.referencedJobResourcePaths ++
       env.values.view.flatMap(_.referencedJobResourcePaths)
+
+  def name: String
 
   def env: Map[String, Expression]
 
@@ -47,15 +51,19 @@ sealed trait ProcessExecutable extends Executable:
     OrderOutcome.Completed(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ProcessExecutable.toNamedValue(returnCode))
+
 object ProcessExecutable:
   def toNamedValue(returnCode: ReturnCode): (String, NumberValue) =
     Value.ShellReturnCode -> NumberValue(returnCode.number)
 
-sealed trait PathExecutable
-extends ProcessExecutable:
+
+sealed trait PathExecutable extends ProcessExecutable:
   def path: String
 
   def isAbsolute: Boolean
+
+  def name = path
+
 object PathExecutable:
   def unapply(pathExecutable: PathExecutable): Some[(String, Map[String, Expression], ReturnCodeMeaning, Option[KeyLogin], Boolean)] =
     Some((pathExecutable.path, pathExecutable.env, pathExecutable.returnCodeMeaning,
@@ -120,7 +128,9 @@ object PathExecutable:
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
       pathExecutable <- PathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).toDecoderResult(cursor.history)
-    yield pathExecutable
+    yield
+      pathExecutable
+
 
 final case class AbsolutePathExecutable(
   path: String,
@@ -134,6 +144,7 @@ extends PathExecutable:
   def isAbsolute = true
 
   override def toString = s"AbsolutePathExecutable($path)"
+
 object AbsolutePathExecutable:
   def checked(
     path: String,
@@ -148,6 +159,7 @@ object AbsolutePathExecutable:
       Left(InvalidNameProblem("AbsolutePathExecutable", path))
     else
       Right(new AbsolutePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
+
 
 final case class RelativePathExecutable(
   path: String,
@@ -164,6 +176,7 @@ extends PathExecutable:
     directory.resolve(path.stripPrefix("/"))
 
   override def toString = s"RelativePathExecutable($path)"
+
 object RelativePathExecutable:
   def checked(
     path: String,
@@ -180,6 +193,7 @@ object RelativePathExecutable:
     else
       Right(new RelativePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
 
+
 final case class CommandLineExecutable(
   commandLineExpression: CommandLineExpression,
   env: Map[String, Expression] = Map.empty,
@@ -189,6 +203,10 @@ extends ProcessExecutable:
   def v1Compatible = false
 
   override def toString = s"CommandLineExecutable($commandLineExpression)"
+
+  def name: String =
+    commandLineExpression.toString
+
 object CommandLineExecutable:
   def fromString(commandLine: String, env: Map[String, Expression] = Map.empty)
   : Checked[CommandLineExecutable] =
@@ -208,7 +226,9 @@ object CommandLineExecutable:
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-    yield CommandLineExecutable(commandExpr, env, login, returnCodeMeaning)
+    yield
+      CommandLineExecutable(commandExpr, env, login, returnCodeMeaning)
+
 
 final case class ShellScriptExecutable(
   script: String,
@@ -217,6 +237,8 @@ final case class ShellScriptExecutable(
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
 extends ProcessExecutable, ScriptExecutable:
+
+  def name: String = "ShellScript"
 
   override def toString = "ShellScriptExecutable(" +
     login.fold("")(o => s"login=$o ") +
@@ -239,6 +261,7 @@ object ShellScriptExecutable:
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
+
 
 final case class InternalExecutable(
   className: String,

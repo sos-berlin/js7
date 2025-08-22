@@ -24,7 +24,7 @@ trait OrderProcess:
   def cancel(immediately: Boolean): IO[Unit]
 
   /** Returns an IO for the started and running process. */
-  final def start(orderId: OrderId, jobKey: JobKey): IO[FiberIO[OrderOutcome.Completed]] =
+  final def run(orderId: OrderId, jobKey: JobKey): IO[OrderOutcome.Completed] =
     run.start.flatMap: fiber =>
       onStarted(fiber)
         .productR:
@@ -35,7 +35,6 @@ trait OrderProcess:
             case _ => t
           logger.warn(s"$orderId in $jobKey: ${u.toStringWithCauses}", u)
           OrderOutcome.Failed.fromThrowable(u)
-        .start
 
 
 object OrderProcess:

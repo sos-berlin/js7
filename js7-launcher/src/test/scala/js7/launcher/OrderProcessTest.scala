@@ -22,8 +22,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
   "Run an OrderProcess" in:
     val orderProcess = OrderProcess.succeeded()
     for
-      running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
-      outcome <- running.joinStd
+      outcome <- orderProcess.run(OrderId("ORDER"), JobKey.forTest("JOB"))
     yield
       assert(outcome == OrderOutcome.succeeded)
 
@@ -61,9 +60,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val orderProcess = OrderProcess.cancelable:
       semaphore.flatMap(_.acquire).as(OrderOutcome.succeeded)
 
-    val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
-      .flatMap(_.joinStd)
-      .unsafeToFuture()
+    val future = orderProcess.run(OrderId("ORDER"), JobKey.forTest("JOB")).unsafeToFuture()
 
     // One waiting acquirer
     awaitAndAssert(count == -1)

@@ -54,6 +54,9 @@ extends JobLauncher:
           internalJob.stop)
     .unsafeMemoize
 
+  def executableName: String =
+    executable.className
+
   def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]] =
     IO:
       for

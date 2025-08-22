@@ -71,8 +71,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
                 testSink.stdObservers,
                 fileValueScope = Scope.empty)
             .map(_.orThrow)
-          fiber <- orderProcess.start(orderId, jobKey)
-          orderOutcome <- fiber.joinStd
+          orderOutcome <- orderProcess.run(orderId, jobKey)
           _ = assert:
             orderOutcome == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(2)))
           outString <- testSink.out

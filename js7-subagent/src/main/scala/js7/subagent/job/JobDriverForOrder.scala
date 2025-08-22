@@ -10,6 +10,7 @@ import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Timestamp}
@@ -91,7 +92,10 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
         case Right(orderProcess) =>
           locally:
             for
-              fiber <- orderProcess.start(processOrder.order.id, jobKey)
+              fiber <-
+                logger.debugIOWithResult(s"Run ${jobLauncher.executableName}"):
+                  orderProcess.run(processOrder.order.id, jobKey)
+                .start
               _ <- SyncDeadline.usingNow: now ?=>
                 runningSince = now
               timeoutFiber <- scheduleTimeoutCancellation

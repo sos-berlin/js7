@@ -151,9 +151,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
                 testSink.stdObservers,
                 fileValueScope))
             .map(_.orThrow)
-          orderOutcome <- orderProcess
-            .start(orderId, jobKey)
-            .flatMap(_.joinStd)
+          orderOutcome <- orderProcess.run(orderId, jobKey)
           _ <- testSink.stdObservers.closeChannels
           out <- testSink.out
           err <- testSink.err

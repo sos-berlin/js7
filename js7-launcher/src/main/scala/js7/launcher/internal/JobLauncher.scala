@@ -24,6 +24,8 @@ trait JobLauncher:
   protected val jobConf: JobConf
 
   def precheck: IO[Checked[Unit]] = IO.pure(Checked.unit)
+  
+  def executableName: String
 
   protected def start: IO[Checked[Unit]]
 
