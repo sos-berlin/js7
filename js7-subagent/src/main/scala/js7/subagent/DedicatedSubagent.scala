@@ -363,9 +363,10 @@ extends Service.StoppableByRequest:
       .foreach: events =>
         val charCount = events.iterator.map(_.event.chunk.length).sum
         outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-          journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
-            .ifPersisted: persisted =>
-              persistedQueue.enqueue(persisted.stampedKeyedEvents.last.eventId)
+          persistedQueue.lock:
+            journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
+              .ifPersisted: persisted =>
+                persistedQueue.enqueue(persisted.stampedKeyedEvents.last.eventId)
         .map:
           _.onProblem: problem =>
             logger.error(s"Emission of OrderStdWritten event failed: $problem")
