@@ -230,9 +230,9 @@ extends Service.StoppableByRequest:
         orderToProcessing.updateChecked(order.id):
           case Some(processing) =>
             if processing.order != order then
-              val problem = Problem("Duplicate SubagentCommand.StartOrder with different Order")
+              val problem = Problem("Duplicate SubagentCommand.StartOrder with changed Order")
               logger.warn(s"${order.id}: $problem: ⏎")
-              logger.warn(s"${order.id}  - added order   : $order")
+              logger.warn(s"${order.id}  - incoming order: $order")
               logger.warn(s"${order.id}  - existing order: ${processing.order}")
               IO.left(problem)
             else
@@ -344,8 +344,11 @@ extends Service.StoppableByRequest:
       orderToProcessing.remove(orderId).flatMapSome: processing =>
         processing.acknowledged.complete(()).as(orderId)
     .map: detachedOrderIds =>
-      logger.trace:
-        s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString("{", " ", "}")}"
+      if detachedOrderIds.isEmpty then
+        logger.trace("detachProcessedOrders: no Order detached")
+      else
+        logger.debug:
+          s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString(" ")}"
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,
@@ -461,7 +464,7 @@ object DedicatedSubagent:
     private[DedicatedSubagent] def enqueueProcessedOrderId(
       eventId: EventId, processedOrderId: OrderId)
     : IO[Unit] =
-     Logger.traceIO("enqueueProcessedOrderId", s"$eventId, $enqueueProcessedOrderId)"):
+     Logger.traceIO(s"### enqueueProcessedOrderId $eventId $processedOrderId"):
       IO:
         val pair = (eventId, processedOrderId)
         queue.synchronized:

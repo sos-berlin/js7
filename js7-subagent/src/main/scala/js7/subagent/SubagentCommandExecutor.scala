@@ -6,9 +6,9 @@ import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import js7.core.command.CommandMeta
@@ -27,12 +27,11 @@ private[subagent] final class SubagentCommandExecutor(
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
   : IO[Checked[numbered.value.Response]] =
-    IO.defer:
-      val command = numbered.value
-      logger.trace(s"#${numbered.number} ↘ $command ↘")
-      val since = now
-      command
-        .match
+    val command = numbered.value
+    logger.debugIO(s"executeCommand(#${numbered.number} $command)"):
+      IO.defer:
+        val since = now
+        command.match
           case StartOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod) =>
             subagent.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod)
               .rightAs(SubagentCommand.Accepted)
@@ -106,10 +105,6 @@ private[subagent] final class SubagentCommandExecutor(
               .map(_.rightAs(()))
               .compile.foldMonoid
               .rightAs(SubagentCommand.Accepted)
-        .flatTap(checked => IO:
-          logger.trace:
-            s"#${numbered.number} ↙ ${command.getClass.simpleScalaName}" +
-              s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)} ↙")
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
         .logWhenItTakesLonger(s"executeCommand(${numbered.toString.truncateWithEllipsis(100)})")
 

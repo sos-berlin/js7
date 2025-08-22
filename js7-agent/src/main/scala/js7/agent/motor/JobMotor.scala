@@ -55,7 +55,6 @@ extends Service.StoppableByRequest:
           val n = processCount.get
           if n > 0 then logger.debug(s"processCount=$n")
 
-
   override def stop =
     super.stop
 
@@ -104,7 +103,7 @@ extends Service.StoppableByRequest:
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
         logger.trace:
-          s"🐌 runPipeline: No Order is processable despite signal \"${signalReason()}\""
+          s"""🐌 runPipeline: No Order is processable despite signal "${signalReason()}""""
         false
     .map(_._2)
     .unchunks
@@ -149,7 +148,6 @@ extends Service.StoppableByRequest:
       .catchIntoChecked
       .flatMap:
         case Right(None) =>
-          logger.trace(s"subagentKeeper.processOrder: ${order.id} is not processable, ignored")
           decrementProcessCount(order.id, s"🐌  ${order.id} is not processable")
         case Right(Some(order)) =>
           IO.unlessA(order.isState[Order.Processing]):
