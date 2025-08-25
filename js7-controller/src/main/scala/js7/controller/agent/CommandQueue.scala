@@ -232,15 +232,17 @@ private[agent] abstract class CommandQueue(
         AgentCommand.ResetSubagent(subagentId, force = force)
 
   final def onOrdersDetached(orderIds: View[OrderId]): IO[Unit] =
-    IO.whenA(orderIds.nonEmpty)(lock.lock(IO[Unit] {
-      attachedOrderIds --= orderIds
-    }))
+    IO.whenA(orderIds.nonEmpty):
+      lock.lock:
+        IO[Unit]:
+          attachedOrderIds --= orderIds
 
   final def onOrdersAttached(orderIds: View[OrderId]): IO[Unit] =
-    IO.whenA(orderIds.nonEmpty)(lock.lock(IO {
-      attachedOrderIds ++= orderIds
-      logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
-    }))
+    IO.whenA(orderIds.nonEmpty):
+      lock.lock:
+        IO[Unit]:
+          attachedOrderIds ++= orderIds
+          //logger.trace(s"onOrdersAttached attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
 
   final def handleBatchSucceeded(responses: Seq[QueueableResponse]): IO[Seq[Queueable]] =
     lock.lock(IO.defer {

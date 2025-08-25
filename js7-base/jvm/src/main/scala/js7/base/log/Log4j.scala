@@ -62,13 +62,7 @@ object Log4j:
         CorrelId.logStatisticsIfEnabled()
         Log4jThreadContextMap.logStatistics()
       for shutdown <- shutdownMethod do
-        if !suppressLogging then
-          // Log complete timestamp in case of short log timestamp
-          logger.info("Shutdown at " +
-            LocalDateTime.now.toString.replace('T', ' ') +
-            " (started at " + startedAt.roundDownTo(1.s).pretty +
-            " " + runningSince.elapsed.pretty + " ago)" + "\n" +
-            "┄" * 80 + "\n")
+        if !suppressLogging then logger.info("Shutdown")
         shutdown.invoke(null, false, false)
 
   /** Set variable accessible in the log4j2 configuration via %X{key}. */

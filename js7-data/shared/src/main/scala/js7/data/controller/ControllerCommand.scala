@@ -76,7 +76,7 @@ object ControllerCommand extends CommonCommand.Companion:
     mode: CancellationMode = CancellationMode.FreshOrStarted())
   extends IsEventEmitting, Big:
     type Response = Response.Accepted
-    override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
+    override def toShortString = s"CancelOrders(${orderIds.mkStringLimited(3, " ")}, $mode)"
   object CancelOrders:
     implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
       JsonObject.fromIterable(

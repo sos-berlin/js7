@@ -35,7 +35,9 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
         val m = callMeter.measurement()
         val diff = lastMeasurements.get(callMeter.name).fold(m)(m.diff)
         lastMeasurements(callMeter.name) = m
-        diff.asString
+        diff
+      .filter(_.total > 0)
+      .map(_.asString)
       .toVector // Compute first, then log quickly:
       .foreachWithBracket(Square): (measurementString, bracket) =>
         logger.trace(s"$bracket $measurementString")

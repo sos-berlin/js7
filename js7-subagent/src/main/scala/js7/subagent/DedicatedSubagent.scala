@@ -464,7 +464,6 @@ object DedicatedSubagent:
     private[DedicatedSubagent] def enqueueProcessedOrderId(
       eventId: EventId, processedOrderId: OrderId)
     : IO[Unit] =
-     Logger.traceIO(s"### enqueueProcessedOrderId $eventId $processedOrderId"):
       IO:
         val pair = (eventId, processedOrderId)
         queue.synchronized:
