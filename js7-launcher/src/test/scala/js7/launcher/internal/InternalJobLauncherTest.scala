@@ -3,7 +3,6 @@ package js7.launcher.internal
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.io.process.{Stderr, Stdout}
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite

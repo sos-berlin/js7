@@ -6,7 +6,7 @@ import cats.syntax.parallel.*
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
