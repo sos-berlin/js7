@@ -13,9 +13,9 @@ private transparent trait IOAppWithCpuStarvationCheck extends IOApp:
 
   override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig.copy(
-      cpuStarvationCheckInterval = cpuStarvationCheckInterval,
-      cpuStarvationCheckThreshold = cpuStarvationCheckThreshold / cpuStarvationCheckInterval,
-      cpuStarvationCheckInitialDelay = cpuStarvationCheckInitialDelay)
+      cpuStarvationCheckInterval = interval,
+      cpuStarvationCheckThreshold = threshold / interval,
+      cpuStarvationCheckInitialDelay = initialDelay)
 
   override protected def onCpuStarvationWarn(metrics: CpuStarvationWarningMetrics): IO[Unit] =
     // See https://typelevel.org/cats-effect/docs/core/starvation-and-tuning
@@ -28,23 +28,25 @@ private transparent trait IOAppWithCpuStarvationCheck extends IOApp:
 object IOAppWithCpuStarvationCheck:
   /** Use only after Logger.initialize! */
   private lazy val logger = Logger[this.type]
-  private val CpuStarvationCheckThresholdDefault = 500.ms
-  private val CpuStarvationCheckIntervalDefault = 1.s
+  private val ThresholdDefault = 3.s
+  private val IntervalDefault = 6.s
+  private val InitialDelayDefault = 60.s
 
   private val starvingLogLevel: LogLevel =
     sys.props.get("js7.cats.effect.cpuStarvationCheckLogLevel").fold(LogLevel.Info)(LogLevel(_))
 
-  private val cpuStarvationCheckInitialDelay: Duration =
+  private val initialDelay: Duration =
     if starvingLogLevel == LogLevel.None then
       Duration.Inf
     else
-      sys.props.get("js7.cats.effect.cpuStarvationCheckInitialDelay").fold(60.s)(StringAsDuration)
+      sys.props.get("js7.cats.effect.cpuStarvationCheckInitialDelay")
+        .fold(InitialDelayDefault)(StringAsDuration)
 
-  private val cpuStarvationCheckThreshold: FiniteDuration =
+  private val threshold: FiniteDuration =
     sys.props.get("js7.cats.effect.cpuStarvationCheckThreshold")
-      .fold(CpuStarvationCheckThresholdDefault)(StringAsDuration)
+      .fold(ThresholdDefault)(StringAsDuration)
 
-  private val cpuStarvationCheckInterval: FiniteDuration =
+  private val interval: FiniteDuration =
     sys.props.get("js7.cats.effect.cpuStarvationCheckInterval")
-      .fold(CpuStarvationCheckIntervalDefault)(StringAsDuration)
-      .max(cpuStarvationCheckThreshold)
+      .fold(IntervalDefault)(StringAsDuration)
+      .max(threshold)
