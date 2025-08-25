@@ -350,7 +350,7 @@ object FileJournal:
     (using IORuntime)
   : ResourceIO[FileJournal[S]] =
     for
-      bean <- registerMBean("Journal", new FileJournalMXBean.Bean)
+      bean <- registerMBean[IO]("Journal", new FileJournalMXBean.Bean)
       journal <- Service.resource:
         for
           queue <- Queue.unbounded[IO, Option[QueueEntry[S]]]
@@ -363,8 +363,8 @@ object FileJournal:
             case None => Environment.environmentOr[EventIdGenerator](EventIdGenerator(clock))
             case Some(o) => IO.pure(o)
         yield
-          new FileJournal(recovered, conf,
-            queue, restartSnapshotTimerSignal, requireClusterAck, ackSignal, clock, eventIdGenerator, bean)
+          FileJournal(recovered, conf, queue, restartSnapshotTimerSignal, requireClusterAck,
+            ackSignal, clock, eventIdGenerator, bean)
     yield
       journal
 

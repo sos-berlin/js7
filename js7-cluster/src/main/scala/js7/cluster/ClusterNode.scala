@@ -1,7 +1,7 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO, Outcome, Ref, Resource, ResourceIO}
+import cats.effect.{Deferred, IO, Outcome, Ref, Resource, ResourceIO, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import izumi.reflect.Tag
@@ -48,7 +48,9 @@ import scala.util.{Failure, Success, Try}
 
 final class ClusterNode[S <: ClusterableState[S]: Tag] private(
   prepared: Prepared[S],
-  passiveOrWorkingNode: AtomicReference[Option[Either[PassiveClusterNode[S], Allocated[IO, WorkingClusterNode[S]]]]],
+  passiveOrWorkingNode: AtomicReference[Option[Either[
+    Allocated[SyncIO, PassiveClusterNode[S]],
+    Allocated[IO, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[IO, IO[Checked[S]]],
   val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
@@ -105,7 +107,8 @@ extends Service.StoppableByRequest:
             IO.defer:
               (passiveOrWorkingNode.get(), outcome) match
                 case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
-                  passiveClusterNode.onShutdown(_dontNotifyActiveNodeAboutShutdown)
+                  passiveClusterNode.allocatedThing.onShutdown(_dontNotifyActiveNodeAboutShutdown)
+                    *> passiveClusterNode.release.to[IO]
 
                 case (Some(Right(workingClusterNodeAllocated)), _) =>
                   workingClusterNodeAllocated.release
@@ -164,9 +167,10 @@ extends Service.StoppableByRequest:
         .resource(recovered, common, clusterConf, eventIdGenerator)
         // Not compilable with Scala 3.3.1: .toAllocated
         .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
-          .flatTap(allocated => IO {
-          passiveOrWorkingNode := Some(Right(allocated))
-        })
+          .flatTap: allocated =>
+            passiveOrWorkingNode.get.flatMap(_.left.toOption).foldMap(_.release.to[IO]) *>
+              IO:
+                passiveOrWorkingNode := Some(Right(allocated))
         .map(_.allocatedThing)
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
@@ -201,7 +205,7 @@ extends Service.StoppableByRequest:
         case ClusterCommand.ClusterConfirmCoupling(token) =>
           IO(
             passiveOrWorkingNode.get() match {
-              case Some(Left(passive)) => passive.confirmCoupling(token)
+              case Some(Left(passive)) => passive.allocatedThing.confirmCoupling(token)
               case _ => Left(Problem("Not a passive cluster node"))
             }
           ).rightAs(ClusterCommand.Response.Accepted)
@@ -370,7 +374,7 @@ object ClusterNode:
 
     val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
     val passiveOrWorkingNode = Atomic[Option[
-      Either[PassiveClusterNode[S], Allocated[IO, WorkingClusterNode[S]]]]](None)
+      Either[Allocated[SyncIO, PassiveClusterNode[S]], Allocated[IO, WorkingClusterNode[S]]]]](None)
 
     import common.activationInhibitor
 
@@ -501,15 +505,17 @@ object ClusterNode:
       injectedPassiveUserId: Option[UserId] = None)
     : PassiveClusterNode[S] =
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
-      val node = new PassiveClusterNode(ownId, setting, recovered,
-        activeNodeName = injectedActiveNodeName getOrElse
-          recovered.state.clusterNodeIdToName(setting.activeId).orThrow,
-        passiveUserId = injectedPassiveUserId getOrElse
-          recovered.state.clusterNodeToUserId(setting.passiveId).orThrow,
-        eventIdGenerator, initialFileEventId,
-        otherFailedOver, clusterConf, common)
-      passiveOrWorkingNode := Some(Left(node))
-      node
+      val allocated = PassiveClusterNode
+        .resource[SyncIO, S](ownId, setting, recovered,
+          activeNodeName = injectedActiveNodeName getOrElse
+            recovered.state.clusterNodeIdToName(setting.activeId).orThrow,
+          passiveUserId = injectedPassiveUserId getOrElse
+            recovered.state.clusterNodeToUserId(setting.passiveId).orThrow,
+          eventIdGenerator, initialFileEventId,
+          otherFailedOver, clusterConf, common)
+        .toAllocated.run()
+      passiveOrWorkingNode := Some(Left(allocated))
+      allocated.allocatedThing
 
     val prepared = recovered.clusterState match
       case Empty =>

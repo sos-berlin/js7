@@ -85,7 +85,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
       val checkingRecoverer = conf.slowCheckState ? S.newRecoverer()
       for
-        fileLengthBeforeEventsAndEventId <-
+        (fileSize, fileLengthBeforeEventsAndEventId) <-
           SnapshotJournalWriter.writeSnapshotStream(
             S, file, journalHeader,
             state.committed.toSnapshotStream.map: o =>
@@ -100,7 +100,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
             val recoveredAggregate = recoverer.result().withEventId(state.committed.eventId)
             assertEqualSnapshotState("Written snapshot", state.committed, recoveredAggregate)
       yield
-        bean.fileSize = fileLengthBeforeEventsAndEventId.position // Not accurate, without event
+        bean.fileSize = fileSize
         lastJournalHeader = journalHeader
         _lastSnapshotTakenEventId = snapshotTaken.eventId
         (fileLengthBeforeEventsAndEventId.value,

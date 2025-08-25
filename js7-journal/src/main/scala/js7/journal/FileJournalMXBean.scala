@@ -18,7 +18,7 @@ sealed trait FileJournalMXBean:
 object FileJournalMXBean:
 
   final class Bean extends FileJournalMXBean:
-    private[journal] var fileSize = 0L
+    var fileSize = 0L
     private val eventTotal = Atomic(0L)
     private[journal] val persistTotal = Atomic(0L)
     private[journal] val persistNanos = Atomic(0L)
@@ -31,16 +31,16 @@ object FileJournalMXBean:
     def getFileSize: Long =
       fileSize
 
-    private[journal] def addEventCount(n: Int): Unit =
+    def addEventCount(n: Int): Unit =
       eventTotal += n
 
     def getEventTotal: Long =
       eventTotal.get
 
-    def getPersistTotal: Long =
+    def getPersistTotal =
       persistTotal.get
 
-    def getPersistSecondsTotal: Double =
+    def getPersistSecondsTotal =
       persistNanos.get / 1_000_000_000.0
 
     def getCommitTotal: Long =
@@ -49,14 +49,19 @@ object FileJournalMXBean:
     def getFlushTotal: Long =
       flushTotal.get
 
-    def getEventCalcSecondsTotal: Double =
+    def getEventCalcSecondsTotal =
       eventCalcNanos.get / 1_000_000_000.0
 
-    override def getJsonWriteSecondsTotal: Double =
+    def getJsonWriteSecondsTotal =
       jsonWriteNanos.get / 1_000_000_000.0
 
-    def getAckSecondsTotal: Double =
+    def getAckSecondsTotal =
       ackNanos.get / 1_000_000_000.0
+
+    private inline def ifPersisted[A <: AnyRef](inline a: A): A =
+      if isUsed then a else null.asInstanceOf[A]
+
+    private def isUsed = persistTotal.get > 0
 
 
   object Bean:

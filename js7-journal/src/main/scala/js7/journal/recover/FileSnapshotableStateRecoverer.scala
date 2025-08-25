@@ -61,8 +61,10 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
       case InSnapshotSection(recoverer, journalHeader) =>
         journalRecord match
           case SnapshotFooter =>
-            _progress = AfterSnapshotSection(journalHeader, recoverer.result())
+            val aggregate = recoverer.result()
+            _progress = AfterSnapshotSection(journalHeader, aggregate)
             //recoverer = null.asInstanceOf[SnapshotableStateRecoverer[S]]
+            S.updateStaticReference(aggregate)
           case _ =>
             recoverer.addSnapshotObject(journalRecord)
             _snapshotCount += 1
@@ -78,8 +80,9 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
             _progress = InTransaction(progress.journalHeader, progress.state)
           case _ =>
             val stamped = cast[Stamped[KeyedEvent[Event]]](journalRecord)
-            progress.rawState = progress.rawState.applyKeyedEvent(stamped.value).orThrow
             progress.eventId = stamped.eventId
+            progress.rawState = progress.rawState.applyKeyedEvent(stamped.value).orThrow
+            S.updateStaticReference(progress.rawState)
             _eventCount += 1
 
       case ta: InTransaction =>
@@ -89,6 +92,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
             val updated = ta.state.applyStampedEvents(events).orThrow
             _progress = InCommittedEventsSection(ta.journalHeader, updated, updated.eventId)
             _eventCount += events.size
+            S.updateStaticReference(updated)
           case _ =>
             ta.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
 

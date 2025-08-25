@@ -1,6 +1,6 @@
 package js7.base.system
 
-import cats.effect.{IO, Resource, ResourceIO, Sync}
+import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
@@ -20,8 +20,14 @@ object MBeanUtils:
   def registerStaticMBean[B](name: String, newBean: B)(using NotGiven[B <:< IO[?]]): ResourceIO[B] =
     registerMBean[IO, B](toMBeanName(name), isStatic = true)(IO.pure(newBean))
 
-  def registerMBean[B](name: String, newBean: => B)(using NotGiven[B <:< IO[?]]): ResourceIO[B] =
-    registerMBean[IO, B](name = name)(IO(newBean))
+  def registerMBean[F[_]: Sync as F]: RegisterMBean[F] =
+    new RegisterMBean[F]
+
+  final class RegisterMBean[F[_]: Sync as F]:
+    def apply[B](name: String, newBean: => B)
+      (using NotGiven[B <:< IO[?]], NotGiven[B <:< SyncIO[?]])
+    : Resource[F, B] =
+      registerMBean[F, B](name)(F.delay(newBean))
 
   def registerMBean[F[_]: Sync, B](name: String)(newBean: F[B]): Resource[F, B] =
     registerMBean[F, B](toMBeanName(name))(newBean)

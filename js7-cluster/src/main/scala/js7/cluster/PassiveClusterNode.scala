@@ -1,7 +1,8 @@
 package js7.cluster
 
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO}
+import cats.effect.{Deferred, IO, Sync}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
@@ -27,6 +28,7 @@ import js7.base.monixutils.RefCountedResource
 import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
@@ -50,14 +52,14 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, Stampe
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
-import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
+import js7.journal.{EventIdGenerator, FileJournalMXBean}
 import scala.concurrent.duration.Deadline
 
-private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
+private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] private(
   ownId: NodeId,
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
@@ -68,8 +70,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   initialFileEventId: Option[EventId],
   otherFailed: Boolean,
   clusterConf: ClusterConf,
-  common: ClusterCommon)
-  (implicit
+  common: ClusterCommon,
+  bean: FileJournalMXBean.Bean)
+  (using
     S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S],
     ioRuntime: IORuntime):
@@ -301,7 +304,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
     IO.defer:
       import continuation.file
 
-      val recoverer = new FileSnapshotableStateRecoverer(journalFileForInfo = file.getFileName,
+      val recoverer = new FileSnapshotableStateRecoverer(
+        journalFileForInfo = file.getFileName,
         continuation.maybeJournalId)
       def releaseEvents(): Unit =
         if journalConf.deleteObsoleteFiles then
@@ -330,6 +334,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
+      bean.fileSize = replicatedFileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
 
@@ -445,6 +450,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
                           replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
                           replicatedFileLength = fileSize
+                          bean.fileSize = fileSize
                           lastProperEventPosition = fileSize
 
                           //eventWatch.onJournalingStarted(???)
@@ -467,6 +473,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                           recoverer.put(failedOverStamped)
                           val fileSize = out.size
                           replicatedFileLength = fileSize
+                          bean.fileSize = fileSize
                           lastProperEventPosition = fileSize
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
@@ -537,6 +544,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                 releaseEvents()
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
             replicatedFileLength = fileLength
+            bean.fileSize = fileLength
             if recoverer.isInCommittedEventsSection then
               lastProperEventPosition = fileLength
             if isReplicatingHeadOfFile then
@@ -554,6 +562,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                   Stream.emit(Right(()))
 
                 case Stamped(_, _, KeyedEvent(_, event)) =>
+                  bean.addEventCount(1)
                   event match
                     case _: JournalEventsReleased =>
                       releaseEvents()
@@ -763,3 +772,25 @@ object PassiveClusterNode:
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
   private val PassiveClusterNodeShutdownProblem = Problem("PassiveClusterNode has been shut down")
+
+  def resource[F[_]: Sync, S <: ClusterableState[S]: ClusterableState.Companion](
+    ownId: NodeId,
+    setting: ClusterSetting,
+    recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
+    activeNodeName: NodeName,
+    passiveUserId: UserId,
+    eventIdGenerator: EventIdGenerator,
+    /** For backup initialization, only when ClusterState.Empty. */
+    initialFileEventId: Option[EventId],
+    otherFailed: Boolean,
+    clusterConf: ClusterConf,
+    common: ClusterCommon)
+    (using
+      nodeNameToPassword: NodeNameToPassword[S],
+      ioRuntime: IORuntime)
+  : Resource[F, PassiveClusterNode[S]] =
+    for
+      bean <- registerMBean[F]("Journal", new FileJournalMXBean.Bean) // TODO Use a passive cluster bean!
+    yield
+      PassiveClusterNode(ownId, setting, recovered, activeNodeName, passiveUserId,
+        eventIdGenerator, initialFileEventId, otherFailed, clusterConf, common, bean)

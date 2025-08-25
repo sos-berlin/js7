@@ -271,7 +271,7 @@ object OrderMotor:
   : ResourceIO[OrderMotor] =
     for
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[OrderId]]])
-      bean <- registerMBean("OrderMotor", new Bean)
+      bean <- registerMBean[IO]("OrderMotor", new Bean)
       orderMotor <- Service.resource:
         new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, bean, agentConf)
       _ <- orderMotor.jobMotorKeeper.registerMBeans

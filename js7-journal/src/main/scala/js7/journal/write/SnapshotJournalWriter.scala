@@ -106,7 +106,7 @@ object SnapshotJournalWriter:
     syncOnCommit: Boolean = false,
     simulateSync: Option[FiniteDuration] = None)
     (using IORuntime)
-  : IO[PositionAnd[EventId]] =
+  : IO[(fileSize: Long, firstEvent: PositionAnd[EventId])] =
     val tmpFile = JournalLocation.toTemporaryFile(file)
     Resource
       .make(
@@ -137,7 +137,7 @@ object SnapshotJournalWriter:
             val firstEventPositionAndEventId = w.fileLengthAndEvenId
             w.writeEvent(snapshotTaken)
             w.flush(sync = syncOnCommit)
-            firstEventPositionAndEventId
+            (w.fileLength, firstEventPositionAndEventId)
       .flatTap: _ =>
         IO.blocking:
           Files.move(tmpFile, file, ATOMIC_MOVE)

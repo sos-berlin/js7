@@ -280,7 +280,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         IO.blocking:
           val t = Deadline.now
           eventWriter.flush(sync = conf.syncOnCommit)
-          bean.fileSize = eventWriter.bytesWritten
+          bean.fileSize = eventWriter.fileLength
           JournalLogger.markChunkForLogging(chunk)
 
     private def possiblySwitchAck(stamped: Stamped[AnyKeyedEvent]): IO[Unit] =
