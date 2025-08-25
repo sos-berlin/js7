@@ -28,9 +28,10 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
-import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
+import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.data.workflow.WorkflowPath
 import js7.subagent.Subagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -222,6 +223,18 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   final def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response])
   : command.Response =
     controller.execCmd(command)
+
+  final def addOrder(workflowPath: WorkflowPath): OrderId =
+    val orderId = nextOrderId()
+    addOrder(orderId, workflowPath)
+    orderId
+
+  final def addOrder(orderId: OrderId, workflowPath: WorkflowPath): Unit =
+    addOrder:
+      FreshOrder(orderId, workflowPath, deleteWhenTerminated = true)
+
+  final def addOrder(order: FreshOrder): Unit =
+    controller.addOrderBlocking(order.copy(deleteWhenTerminated = true))
 
 
 object ControllerAgentForScalaTest:

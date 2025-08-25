@@ -62,7 +62,7 @@ object WorkflowJob:
   def apply(
     agentPath: AgentPath,
     executable: Executable,
-    defaultArguments: Map[String, Expression] = Map.empty,
+    defaultArguments: Map[String, Expression] = Map.empty[String, Expression],
     subagentBundleId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     processLimit: Int = DefaultProcessLimit,

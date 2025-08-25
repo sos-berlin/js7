@@ -5,6 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
+import js7.data.job.ShellScriptExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -34,6 +35,11 @@ object Execute:
   def apply(workflowJob: WorkflowJob): Anonymous =
     Anonymous(workflowJob)
 
+  def shellScript(agentPath: AgentPath, processLimit: Int = WorkflowJob.DefaultProcessLimit)
+    (script: String): Anonymous =
+    Execute.Anonymous:
+      WorkflowJob(agentPath, ShellScriptExecutable(script), processLimit = processLimit)
+
   final case class Named(
     name: WorkflowJob.Name,
     defaultArguments: Map[String, Expression] = Map.empty,
@@ -49,6 +55,7 @@ object Execute:
 
     override def productPrefix = "Execute.Named"
     //override def toString = s"execute $name, defaultArguments=$defaultArguments"
+
   object Named:
     implicit val jsonEncoder: Encoder.AsObject[Named] = o =>
       JsonObject(
@@ -61,6 +68,7 @@ object Execute:
         arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       yield Named(name, arguments, sourcePos)
+
 
   final case class Anonymous(
     job: WorkflowJob,
@@ -77,6 +85,7 @@ object Execute:
 
     override def productPrefix = "Execute.Anonymous"
     override def toString = s"execute($job)$sourcePosToString"
+
   object Anonymous:
     // TODO Implement automatic removal of empty collections in JSON serialization/deserialization
     implicit val jsonEncoder: Encoder.AsObject[Anonymous] = o =>
@@ -91,6 +100,7 @@ object Execute:
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       yield Anonymous(job, args, sourcePos)
 
-  implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(
+
+  given TypedJsonCodec[Execute] = TypedJsonCodec(
     Subtype.named1[Named]("Execute.Named"),
     Subtype.named1[Anonymous]("Execute.Anonymous"))

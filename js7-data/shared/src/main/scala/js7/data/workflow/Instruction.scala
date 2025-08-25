@@ -84,9 +84,6 @@ object Instruction:
     def unapply(labeled: Labeled): Some[(Option[Label], Instruction)] =
       Some(labeled.maybeLabel -> labeled.instruction)
 
-  implicit def toLabeled(instruction: Instruction): Labeled =
-    Labeled(None, instruction)
-
   final case class Labeled(
     maybeLabel: Option[Label],
     instruction: Instruction,
@@ -102,6 +99,9 @@ object Instruction:
         instruction = instruction.withPositions(position))
 
   object Labeled:
+    implicit def toLabeled(instruction: Instruction): Labeled =
+      Labeled(None, instruction)
+
     implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] =
       case Labeled(None, instruction, None) =>
         instruction.asJsonObject

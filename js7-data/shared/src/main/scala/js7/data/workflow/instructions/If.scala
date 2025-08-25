@@ -78,8 +78,8 @@ extends Instruction.WithInstructionBlock:
 
 object If:
 
-  def apply(predicate: Expression)(thenInstr: Instruction.Labeled): If =
-    apply(predicate)(Workflow.of(thenInstr))
+  //def apply(predicate: Expression)(thenInstr: Instruction.Labeled): If =
+  //  apply(predicate)(Workflow.of(thenInstr))
 
   def apply(predicate: Expression)(thenBlock: Workflow): If =
     new If(Nev.one(IfThen(predicate, thenBlock)))
@@ -88,8 +88,8 @@ object If:
     If.Then(Vector.empty, predicate)
 
   final case class Then(ifThens: Vector[IfThen], predicate: Expression):
-    def Then(instruction: Instruction.Labeled): Else =
-      Then(Workflow.of(instruction))
+    //def Then(instruction: Instruction.Labeled): Else =
+    //  Then(Workflow.of(instruction))
 
     def Then(thenBlock: Workflow): Else =
       If.Else:
@@ -100,8 +100,8 @@ object If:
     def elseIf(predicate: Expression): Then =
       Then(ifThens.toVector, predicate)
 
-    def Else(instruction: Instruction.Labeled): If =
-      Else(Workflow.of(instruction))
+    //def Else(instruction: Instruction.Labeled): If =
+    //  Else(Workflow.of(instruction))
 
     def Else(elseBlock: Workflow): If =
       new If(ifThens, elseBlock.some)

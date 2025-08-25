@@ -616,3 +616,12 @@ object Workflow extends VersionedItem.Companion[Workflow], TrivialItemState.Comp
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =
     cursor => jsonDecoder.decodeJson(cursor.value).flatMap(_.completelyChecked.toDecoderResult(cursor.history))
+
+  // At last, implicit conversions //
+  import scala.language.implicitConversions
+
+  implicit def one(instruction: Instruction): Workflow =
+    of(WorkflowPath.NoId, instruction)
+
+  implicit def one(instruction: Instruction.Labeled): Workflow =
+    of(WorkflowPath.NoId, instruction)
