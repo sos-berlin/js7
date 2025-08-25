@@ -201,9 +201,13 @@ object ScalaUtils:
       /** Simple name without companion object's '$'.
         * <p>
         * Calculated values are cached. */
-      def simpleScalaName: String = simpleName stripSuffix "$"
-        simpleScalaClassNameCache.getOrElse(underlying, (_: Class[?]) =>
-          val name = underlying.getName stripSuffix "$"
+      inline def simpleScalaName: String =
+        cachedSimpleScalaName
+
+      /** Explicitly named to allow time-critical use. */
+      def cachedSimpleScalaName: String =
+        simpleScalaClassNameCache.getOrElse(underlying, locally:
+          val name = simpleName stripSuffix "$"
           simpleScalaClassNameCache = simpleScalaClassNameCache.updated(underlying, name)
           name)
 
