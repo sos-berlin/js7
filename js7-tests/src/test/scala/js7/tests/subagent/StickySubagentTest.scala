@@ -2,23 +2,25 @@ package js7.tests.subagent
 
 import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.test.OurTestSuite
 import js7.base.test.TestExtensions.autoSome
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.AnswerOrderPrompt
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
+import js7.data.command.CancellationMode
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Fork, Prompt, StickySubagent}
+import js7.data.value.expression.Expression.convenience.given
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant, expr}
+import js7.data.workflow.instructions.{Execute, Fail, Fork, If, Prompt, StickySubagent}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -278,6 +280,44 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderDetached,
       OrderFailed(Position(1))))
 
+  "Fail after killed Process" in:
+    withItem(
+      Workflow.of:
+        StickySubagent(aAgentPath, None):
+          If(true):
+            Execute.shellScript(aAgentPath):
+              """echo "STARTED"
+                |sleep 100
+              """.stripMargin
+    ): workflow =>
+      enableSubagents(aSubagentId -> false, a1SubagentId -> false, a2SubagentId -> true)
+      val orderId = addOrder(workflow.path)
+      controller.awaitNextKey[OrderStdoutWritten](orderId)
+      execCmd:
+        CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
+      controller.awaitNextKey[OrderTerminated](orderId)
+
+      assert(controller.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStickySubagentEntered(aAgentPath),
+        OrderMoved(Position(0) / "stickySubagent" % 0 / "then" % 0),
+        OrderAttachable(aAgentPath),
+        OrderAttached(aAgentPath),
+        OrderStarted,
+
+        OrderProcessingStarted(a2SubagentId, stick = true),
+        OrderStdoutWritten("STARTED\n"),
+        OrderCancellationMarked(CancellationMode.kill(immediately = true)),
+        OrderCancellationMarkedOnAgent,
+        OrderProcessed(OrderOutcome.killed(SIGKILL)),
+        OrderProcessingKilled,
+
+        OrderDetachable,
+        OrderDetached,
+        OrderStickySubagentLeaved,
+        OrderCancelled,
+        OrderDeleted))
+
 
 object StickySubagentTest:
   private val aAgentPath = AgentPath("A-AGENT")
@@ -302,64 +342,58 @@ object StickySubagentTest:
   private val withSubagentBundleWorkflow = Workflow(
     WorkflowPath("STICKY-WITH-SUBAGENT-BUNDLE") ~ "INITIAL",
     Seq(
-      StickySubagent(
-        aAgentPath,
-        Some(StringConstant(aSubagentBundle.id.string)),
-        subworkflow = Workflow.of(
+      StickySubagent(aAgentPath, Some(StringConstant(aSubagentBundle.id.string))):
+        Workflow.of(
           EmptyJob.execute(aAgentPath,
             subagentBundleId = Some(StringConstant(a2SubagentId.string))),
           EmptyJob.execute(aAgentPath),
-          Prompt(expr("'PROMPT'")),
+          Prompt(expr"'PROMPT'"),
           EmptyJob.execute(aAgentPath),
           EmptyJob.execute(aAgentPath,
             subagentBundleId = Some(StringConstant(a2SubagentBundle.id.string))),
           EmptyJob.execute(bAgentPath),
           EmptyJob.execute(aAgentPath,
             subagentBundleId = Some(StringConstant(a2SubagentBundle.id.string))),
-          EmptyJob.execute(aAgentPath)))))
+          EmptyJob.execute(aAgentPath))))
 
   private val simpleWithSubagentBundleWorkflow = Workflow(
     WorkflowPath("SIMPLE-STICKY-WITH-SUBAGENT-BUNDLE") ~ "INITIAL",
-    Seq(
-      StickySubagent(
-        aAgentPath,
-        Some(StringConstant(aSubagentBundle.id.string)),
-        subworkflow = {
+    Seq:
+      StickySubagent(aAgentPath, Some(StringConstant(aSubagentBundle.id.string))):
+        locally:
           val execute = EmptyJob.execute(aAgentPath,
             subagentBundleId = Some(StringConstant(aSubagentBundle.id.string)))
           Workflow.of(
             execute,
-            Prompt(expr("'PROMPT'")),
+            Prompt(expr"'PROMPT'"),
             execute,
-            execute)
-        })))
+            execute))
 
   private val withoutSubagentBundleWorkflow = Workflow(
     WorkflowPath("STICKY-WITHOUT-SUBAGENT-BUNDLE") ~ "INITIAL",
-    Seq(
-      StickySubagent(
-        aAgentPath,
-        subworkflow = Workflow.of(
+    Seq:
+      StickySubagent(aAgentPath):
+        Workflow.of(
           EmptyJob.execute(aAgentPath),
           EmptyJob.execute(aAgentPath),
-          Fork(
-            Vector(
+          Fork:
+            Vector:
               Fork.Branch(
                 "BRANCH",
-                Workflow.of(
-                  Prompt(expr("'PROMPT'"))))))))))
+                Workflow.of:
+                  Prompt(expr"'PROMPT'"))))
 
   private val failAtControllerWorkflow = Workflow(
     WorkflowPath("FAILING-AT-CONTROLLER") ~ "INITIAL",
-    Seq(
-      StickySubagent(aAgentPath, None,
-        subworkflow = Workflow.of(
-          Fail()))))
+    Seq:
+      StickySubagent(aAgentPath, None):
+        Workflow.of:
+          Fail())
 
   private val failAtAgentWorkflow = Workflow(
     WorkflowPath("FAILING-IN-AGENT") ~ "INITIAL",
-    Seq(
-      StickySubagent(aAgentPath, None,
-        subworkflow = Workflow.of(
+    Seq:
+      StickySubagent(aAgentPath, None):
+        Workflow.of(
           EmptyJob.execute(aAgentPath),
-          Fail()))))
+          Fail()))

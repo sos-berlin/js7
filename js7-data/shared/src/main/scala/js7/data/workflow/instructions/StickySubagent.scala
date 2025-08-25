@@ -11,9 +11,9 @@ import js7.data.workflow.{Instruction, Workflow}
 
 final case class StickySubagent(
   agentPath: AgentPath,
-  subagentBundleIdExpr: Option[Expression] = None,
+  subagentBundleIdExpr: Option[Expression],
   subworkflow: Workflow,
-  sourcePos: Option[SourcePos] = None)
+  sourcePos: Option[SourcePos])
 extends Instruction.WithInstructionBlock:
 
   def withoutSourcePos: StickySubagent = copy(
@@ -46,6 +46,13 @@ extends Instruction.WithInstructionBlock:
 
 
 object StickySubagent:
+
+  def apply(
+    agentPath: AgentPath,
+    subagentBundleIdExpr: Option[Expression] = None)
+    (subworkflow: Workflow)
+  : StickySubagent =
+    new StickySubagent(agentPath, subagentBundleIdExpr, subworkflow, sourcePos = None)
 
   given Codec.AsObject[StickySubagent] =
     deriveRenamingCodec[StickySubagent](Map(

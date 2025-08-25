@@ -71,8 +71,7 @@ final class StdObservers private(
     pumpToSink(outErr):
       channel(outErr).stream
 
-  def pumpInputStreamToSink(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
-  : IO[Unit] =
+  def pumpInputStreamToSink(outErr: StdoutOrStderr, in: InputStream, encoding: Charset): IO[Unit] =
     pumpToSink(outErr):
       inputStreamAsStream(outErr, in, encoding)
 

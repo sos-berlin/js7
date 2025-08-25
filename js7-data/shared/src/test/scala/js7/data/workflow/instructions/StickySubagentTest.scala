@@ -13,10 +13,8 @@ final class StickySubagentTest extends OurTestSuite:
 
   "JSON" in:
     testJson[Instruction.Labeled](
-      StickySubagent(
-        AgentPath("AGENT"),
-        None,
-        subworkflow = Workflow.empty),
+      StickySubagent(AgentPath("AGENT")):
+        Workflow.empty,
       json"""{
         "TYPE": "StickySubagent",
         "agentPath": "AGENT",
@@ -43,10 +41,8 @@ final class StickySubagentTest extends OurTestSuite:
 
   "JSON until v2.7.1" in:
     testJsonDecoder[Instruction.Labeled](
-      StickySubagent(
-        AgentPath("AGENT"),
-        Some(expr("'SUBAGENT-BUNDLE'")),
-        subworkflow = Workflow.empty),
+      StickySubagent(AgentPath("AGENT"), Some(expr("'SUBAGENT-BUNDLE'"))):
+        Workflow.empty,
       json"""{
         "TYPE": "StickySubagent",
         "agentPath": "AGENT",

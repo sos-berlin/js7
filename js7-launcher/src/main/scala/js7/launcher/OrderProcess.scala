@@ -57,6 +57,17 @@ object OrderProcess:
   def cancelable(run: IO[OrderOutcome.Completed]): OrderProcess.FiberCancelable =
     Cancelable(run)
 
+  @targetName("cancelableIOChecked")
+  def cancelable(run: IO[Checked[OrderOutcome.Completed]]): OrderProcess =
+    Cancelable:
+      run.handleProblem(OrderOutcome.Failed.fromProblem)
+
+  @targetName("cancelableCheckedIO")
+  def cancelable(run: Checked[IO[OrderOutcome.Completed]]): OrderProcess =
+    run match
+      case Left(problem) => Simple(IO.pure(OrderOutcome.Failed.fromProblem(problem)))
+      case Right(o) => Cancelable(o)
+
   def succeeded(result: NamedValues = Map.empty): OrderProcess =
     outcome(OrderOutcome.Succeeded(result))
 

@@ -1486,7 +1486,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       forceJobAdmission <- cursor.getOrElse[Boolean]("forceJobAdmission")(false)
       innerBlock <- cursor.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
-      stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
+      stickySubagents <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     yield
       Order(id, workflowPosition, state, arguments, planId, scheduledFor,
@@ -1498,7 +1498,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
         isResumed = isResumed,
         deleteWhenTerminated = deleteWhenTerminated,
         forceJobAdmission = forceJobAdmission,
-        stickySubagentId,
+        stickySubagents,
         innerBlock, stopPositions)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] =

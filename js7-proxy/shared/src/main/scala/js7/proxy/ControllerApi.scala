@@ -132,6 +132,10 @@ extends ControllerApiWithHttp:
           operations)
       .map(_.map((_: JsonObject) => Completed))
 
+  def addOrders(orders: IterableOnce[FreshOrder]): IO[Checked[AddOrders.Response]] =
+    addOrders:
+      Stream.fromIterator[IO](orders.iterator, chunkSize = 1)
+
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     logger.debugIO:
       untilReachable(_.postStream[FreshOrder, Json]("controller/api/order", orders))

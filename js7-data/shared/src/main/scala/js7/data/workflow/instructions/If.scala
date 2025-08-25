@@ -106,6 +106,9 @@ object If:
     def Else(elseBlock: Workflow): If =
       new If(ifThens, elseBlock.some)
 
+    def endIf: If =
+      Else(Workflow.empty)
+
 
   def apply(predicate: Expression, thenBlock: Workflow, sourcePos: SourcePos): If =
     new If(Nev.one(IfThen(predicate, thenBlock)), sourcePos = sourcePos.some)
