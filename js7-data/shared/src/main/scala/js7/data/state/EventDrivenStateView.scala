@@ -5,7 +5,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.event.{Event, EventDrivenState}
+import js7.data.event.{Event, EventDrivenState, SnapshotableState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderOrderAdded, OrderStateReset, OrderStdWritten}
@@ -199,5 +199,8 @@ extends EventDrivenState[Self, Event], StateView:
 
 
 object EventDrivenStateView:
-  trait Companion[Self <: EventDrivenStateView[Self]]
-  extends EventDrivenState.Companion[Self]
+  trait Companion[S <: SnapshotableState[S] & StateView]
+  extends SnapshotableState.Companion[S]:
+    override def updateStaticReference(engineState: S): Unit =
+      EngineStateMXBean.setEngineState(engineState)
+

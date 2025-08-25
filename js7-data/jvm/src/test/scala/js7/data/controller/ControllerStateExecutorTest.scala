@@ -14,7 +14,7 @@ import js7.data.controller.ControllerStateExecutorTest.*
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventCounter, KeyedEvent, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, KeyedEvent, TimeCtx}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -621,4 +621,4 @@ object ControllerStateExecutorTest:
       this.coll = coll.forward
 
     def toSnapshot: Seq[Any] =
-      controllerState.copy(eventCounter = EventCounter.empty).toSnapshotStream.compile.toVector
+      controllerState.withoutStatistics.toSnapshotStream.compile.toVector

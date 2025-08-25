@@ -111,6 +111,7 @@ extends
   val companion: ControllerTestStateView.type = ControllerTestStateView
 
   def isAgent = false
+  def statistics = EngineStateStatistics.empty
 
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]],
@@ -156,6 +157,7 @@ extends TestStateView[AgentTestStateView]:
   val companion: AgentTestStateView.type = AgentTestStateView
 
   def isAgent = true
+  def statistics = EngineStateStatistics.empty
 
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]],
@@ -164,6 +166,7 @@ extends TestStateView[AgentTestStateView]:
     copy(
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
+
 
 
 object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView]:

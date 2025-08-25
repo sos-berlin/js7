@@ -11,7 +11,6 @@ import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.board.{BoardPath, BoardState, Notice, NoticePlace}
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.EventCounter.EventCount
 import js7.data.event.{EventCounter, JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -21,6 +20,7 @@ import js7.data.job.JobResource
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanId, PlanSchemaState}
+import js7.data.state.EngineStateStatistics
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemState
 import js7.data.workflow.position.WorkflowPosition
@@ -46,7 +46,7 @@ extends
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
   private val _noticeSnapshots = mutable.Buffer.empty[Notice | NoticePlace.Snapshot]
   private val _noticeConsumptionSnapshots = mutable.Buffer.empty[NoticeConsumptionSnapshot]
-  private val eventCounter = EventCounter.Builder()
+  private val statistics = EngineStateStatistics.Builder()
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
@@ -151,8 +151,8 @@ extends
       val planSchemaState = _keyToUnsignedItemState(snapshot.id).asInstanceOf[PlanSchemaState]
       _keyToUnsignedItemState(snapshot.id) = planSchemaState.recover(snapshot)
 
-    case o: EventCount =>
-      eventCounter.put(o.eventName, o.count)
+    case o: EngineStateStatistics.SnapshotObjectType =>
+      statistics.put(o)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -177,7 +177,7 @@ extends
       agentAttachments,
       deletionMarkedItems.toSet,
       _idToOrder.toMap,
-      eventCounter.result()
+      statistics.result()
     ).finish.orThrow
 
   // NoticeSnapshots can only be added after idToOrder has been filled.

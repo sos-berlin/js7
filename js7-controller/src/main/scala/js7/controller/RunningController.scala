@@ -51,12 +51,13 @@ import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutd
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
-import js7.data.controller.{ControllerCommand, ControllerState, ControllerStateMXBean, VerifiedUpdateItems}
+import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.{AnyKeyedEvent, EventId, Stamped}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.node.NodeNameToPassword
 import js7.data.order.FreshOrder
+import js7.data.state.EngineStateMXBean
 import js7.journal.JournalActor.Output
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor}
@@ -373,12 +374,11 @@ object RunningController:
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
-        _ <- ControllerStateMXBean.register
         // Stop Journal before before web server to allow receiving acknowledges
-        // TODO Start web server before Journal?
         _ <- Resource.onFinalize(clusterNode.workingClusterNode.fold(_ => IO.unit,
           _.journal.stop))
         runningController <- runningControllerResource(webServer, sessionRegister)
+        _ <- EngineStateMXBean.register
       yield
         runningController
     }

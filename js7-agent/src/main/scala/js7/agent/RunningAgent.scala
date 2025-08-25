@@ -40,6 +40,7 @@ import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.node.NodeNameToPassword
+import js7.data.state.EngineStateMXBean
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.StrictEventWatch
@@ -313,6 +314,7 @@ object RunningAgent:
               Set(AgentDirectorPermission)),
             forDirector.sessionRegister
           ).agentRoute
+      _ <- EngineStateMXBean.register
       agent <- Service.resource(nonStartedAgent)
     yield
       agent

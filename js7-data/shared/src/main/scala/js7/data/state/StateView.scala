@@ -10,12 +10,13 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardState
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
-import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
+import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{Cancelled, FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.LockDemand
 import js7.data.order.{MinimumOrder, Order, OrderId}
+import js7.data.state.EngineStateStatistics
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -34,9 +35,11 @@ trait StateView extends ItemContainer, EngineStateFunctions:
 
   def controllerId: ControllerId
 
-  def idToOrder: PartialFunction[OrderId, Order[Order.State]]
+  def idToOrder: Map[OrderId, Order[Order.State]]
 
   def orders: Iterable[Order[Order.State]]
+
+  def statistics: EngineStateStatistics
 
   final def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
@@ -206,3 +209,21 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     lockPaths.traverse: lockPath =>
       keyTo(LockState).checked(lockPath)
         .flatMap(op)
+
+
+object StateView:
+  val empty: StateView = DummyStateView()
+
+  final case class DummyStateView(
+    isAgent: Boolean = false,
+    controllerId: ControllerId = ControllerId("UNKNOWN"),
+    idToOrder: Map[OrderId, Order[Order.State]] = Map.empty,
+    orders: Iterable[Order[Order.State]] = Nil,
+    statistics: EngineStateStatistics = EngineStateStatistics.empty,
+    idToWorkflow: PartialFunction[WorkflowId, Workflow] = Map.empty,
+    keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] = MapView.empty,
+    keyToItem: MapView[InventoryItemKey, InventoryItem] = MapView.empty
+  ) extends StateView {
+    override def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
+      Left(Problem.pure("DummyStateView"))
+  }

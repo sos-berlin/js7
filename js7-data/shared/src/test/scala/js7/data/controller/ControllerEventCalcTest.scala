@@ -12,6 +12,7 @@ import js7.data.event.{EventCalc, EventColl, EventCounter, NoKeyEvent, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.plan.{PlanSchema, PlanSchemaId}
+import js7.data.state.EngineStateStatistics
 
 /** Test EventCalc[ControllerState, Event, TimeCtx]. */
 final class ControllerEventCalcTest extends OurTestSuite:
@@ -56,9 +57,10 @@ final class ControllerEventCalcTest extends OurTestSuite:
         PlanSchema.Global.path -> PlanSchema.Global.toInitialItemState,
         planSchema.path -> planSchema.toInitialItemState,
         board.path -> board.toInitialItemState),
-      eventCounter = EventCounter(Map(
-        "ControllerInitialized" -> 1,
-        "UnsignedSimpleItemAdded" -> 2))))
+      statistics = EngineStateStatistics(
+        eventCounter = EventCounter(Map(
+          "ControllerInitialized" -> 1,
+          "UnsignedSimpleItemAdded" -> 2)))))
 
     locally:
       // Test combine and |+| //

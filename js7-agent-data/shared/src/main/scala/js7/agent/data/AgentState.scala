@@ -18,6 +18,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.{ControllerId, ControllerRunId}
+import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
@@ -28,7 +29,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.state.EventDrivenStateView
+import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -46,7 +47,8 @@ final case class AgentState(
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   pathToJobResource: Map[JobResourcePath, JobResource],
-  keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
+  keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]],
+  statistics: EngineStateStatistics)
 extends SignedItemContainer,
   EventDrivenStateView[AgentState],
   SubagentDirectorState[AgentState],
@@ -78,10 +80,14 @@ extends SignedItemContainer,
 
   def isFreshlyDedicated: Boolean =
     isDedicated &&
-      this == AgentState.empty.copy(
+      withoutStatistics == AgentState.empty.copy(
         eventId = eventId,
         standards = standards,
-        meta = meta)
+        meta = meta,
+        statistics = EngineStateStatistics.empty)
+
+  def withoutStatistics: AgentState =
+    copy(statistics = EngineStateStatistics.empty)
 
   def estimatedSnapshotSize: Int =
     standards.snapshotSize +
@@ -90,7 +96,8 @@ extends SignedItemContainer,
       idToOrder.size +
       keyToUnsignedItemState_.size +
       fw.estimatedExtraSnapshotSize +
-      pathToJobResource.size
+      pathToJobResource.size +
+      statistics.estimatedSnapshotSize
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
 
   def toSnapshotStream: Stream[fs2.Pure, Any] = Stream(
@@ -106,7 +113,8 @@ extends SignedItemContainer,
     Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
     Stream.iterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotStream),
     Stream.iterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotStream),
-    Stream.iterable(idToOrder.values)
+    Stream.iterable(idToOrder.values),
+    statistics.toSnapshotStream
   ).flatten
 
   // COMPATIBLE with v2.2
@@ -131,7 +139,7 @@ extends SignedItemContainer,
         super.applyOrderEvent(orderId, event)
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
-    keyedEvent match
+    keyedEvent.match
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
@@ -279,6 +287,9 @@ extends SignedItemContainer,
             controllerRunId = controllerRunId,
             directors = directors)))
       case _ => applyStandardEvent(keyedEvent)
+    .map: agentState =>
+      agentState.copy(
+        statistics = agentState.statistics.applyKeyedEvent(keyedEvent))
 
   def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
     keyToUnsignedItemState_.view
@@ -383,7 +394,8 @@ extends
   val empty: AgentState =
     AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
       AgentMetaState.empty,
-      Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+      Map.empty, Map.empty, Map.empty, Map.empty, Map.empty,
+      EngineStateStatistics.empty)
 
   private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
     Set(AgentRefState, SubagentItemState, FileWatchState)
@@ -448,7 +460,8 @@ extends
       Subtype(SignedItemAdded.jsonCodec(using this)),  // For Repo and SignedItemAdded
       Subtype(signableSimpleItemJsonCodec),
       Subtype(unsignedItemJsonCodec),
-      Subtype[BasicItemEvent])
+      Subtype[BasicItemEvent],
+      EventCount.subtype)
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](

@@ -31,7 +31,7 @@ import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{ClusterableState, Event, EventCounter, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -46,7 +46,7 @@ import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderN
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
-import js7.data.state.EventDrivenStateView
+import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -70,7 +70,7 @@ final case class ControllerState(
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
-  eventCounter: EventCounter = EventCounter.empty,
+  statistics: EngineStateStatistics,
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
   SignedItemContainer,
@@ -120,7 +120,7 @@ extends
         _.append:
           workflowToOrders.toStringStream
       .append:
-        eventCounter.toStringStream
+        statistics.toStringStream
 
   def isAgent = false
 
@@ -151,7 +151,7 @@ extends
     agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
     idToOrder.size +
-    eventCounter.estimatedSnapshotSize
+    statistics.estimatedSnapshotSize
 
   def toSnapshotStream: Stream[fs2.Pure, Any] =
     Stream(
@@ -173,7 +173,7 @@ extends
       agentAttachments.toSnapshotStream,
       Stream.iterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
       Stream.iterable(idToOrder.values),
-      eventCounter.toSnapshotStream
+      statistics.toSnapshotStream
     ).flatten
 
   def withEventId(eventId: EventId): ControllerState =
@@ -181,6 +181,9 @@ extends
 
   def withStandards(standards: SnapshotableState.Standards): ControllerState =
     copy(standards = standards)
+
+  def withoutStatistics: ControllerState =
+    copy(statistics = EngineStateStatistics.empty)
 
   def checkedBoardState(path: BoardPath): Checked[BoardState] =
     keyToUnsignedItemState_.checked(path).asInstanceOf[Checked[BoardState]]
@@ -437,8 +440,8 @@ extends
 
       case _ => applyStandardEvent(keyedEvent)
     .map: controllerState =>
-      controllerState.copy(eventCounter =
-        controllerState.eventCounter.applyKeyedEvent(keyedEvent))
+      controllerState.copy(
+        statistics = controllerState.statistics.applyKeyedEvent(keyedEvent))
 
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
   : Checked[ControllerState] =
@@ -960,7 +963,7 @@ extends
     ClientAttachments.empty,
     Set.empty,
     Map.empty,
-    EventCounter.empty,
+    EngineStateStatistics.empty,
     WorkflowToOrders(Map.empty))
 
   val empty: ControllerState =
@@ -1025,9 +1028,6 @@ extends
   object implicits:
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
-
-  override def updateStaticReference(controllerState: ControllerState): Unit =
-    ControllerStateMXBean.setControllerState(controllerState)
 
   private def update(
     s: ControllerState,

@@ -6,11 +6,12 @@ import js7.base.crypt.Signed
 import js7.base.utils.Collections.implicits.*
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
+import js7.data.event.{EventCounter, JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
+import js7.data.state.EngineStateStatistics
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
@@ -26,6 +27,7 @@ extends SnapshotableStateRecoverer[AgentState], StandardsRecoverer:
   private val fileWatchStateRecoverer = new FileWatchStateRecoverer.Recoverer
   private val pathToJobResource = mutable.Map.empty[JobResourcePath, JobResource]
   private val keyToSignedItem = mutable.Map.empty[SignableItemKey, Signed[SignableItem]]
+  private val statistics = EngineStateStatistics.Builder()
 
   protected def onAddSnapshotObject =
     case order: Order[Order.State] =>
@@ -57,6 +59,10 @@ extends SnapshotableStateRecoverer[AgentState], StandardsRecoverer:
     case o: (JournalState | ClusterStateSnapshot) =>
       addStandardObject(o)
 
+    case o: EngineStateStatistics.SnapshotObjectType =>
+      statistics.put(o)
+
+
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     val item = added.signed.value
     keyToSignedItem.insert(item.key, added.signed)
@@ -78,7 +84,8 @@ extends SnapshotableStateRecoverer[AgentState], StandardsRecoverer:
         idToOrder = idToOrder.toMap,
         idToWorkflow = idToWorkflow.toMap,
         pathToJobResource = pathToJobResource.toMap,
-        keyToSignedItem = keyToSignedItem.toMap)
+        keyToSignedItem = keyToSignedItem.toMap,
+        statistics.result())
 
   private def fixMetaBeforev2_6_3(agentState: AgentState): AgentState =
     var a = agentState

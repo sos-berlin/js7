@@ -21,7 +21,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, SnapshotableState}
+import js7.data.event.{EventCounter, EventId, JournalId, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
 import js7.data.item.{ItemRevision, ItemSigner}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -30,6 +30,7 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderAppeared
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.state.EngineStateStatistics
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.{NumericConstant, expr}
 import js7.data.value.expression.{Expression, ExpressionParser}
@@ -147,7 +148,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
       Map.empty,
       Map.empty,
       Map.empty,
-      Map.empty
+      Map.empty,
+      EngineStateStatistics.empty
     ).applyKeyedEvents(Seq(
       JournalEventsReleased(UserId("USER"), 500L),
       AgentDedicated(
@@ -199,7 +201,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
   }
 
   "estimatedSnapshotSize" in:
-    assert(agentState.estimatedSnapshotSize == 14)
+    assert(agentState.estimatedSnapshotSize == 20)
     val n = agentState.toSnapshotStream.compile.count
     assert(n == agentState.estimatedSnapshotSize)
 
@@ -332,6 +334,36 @@ final class AgentStateTest extends OurAsyncTestSuite:
           "TYPE": "Attached",
           "agentPath": "AGENT"
         }
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "AgentDedicated",
+        "count" : 1
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "ExternalOrderAppeared",
+        "count" : 2
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "ItemAttachedToMe",
+        "count" : 6
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "JournalEventsReleased",
+        "count" : 1
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "OrderAttachedToAgent",
+        "count" : 1
+      }""",
+      json"""{
+        "TYPE" : "EventCount",
+        "eventName" : "SignedItemAttachedToMe",
+        "count" : 2
       }"""))
 
     AgentState.fromStream:
@@ -410,7 +442,14 @@ final class AgentStateTest extends OurAsyncTestSuite:
         signedJobResource.value.path -> signedJobResource.value),
       Map(
         signedJobResource.value.path -> signedJobResource,
-        workflow.id -> signedWorkflow)))
+        workflow.id -> signedWorkflow),
+      EngineStateStatistics(
+        EventCounter(Map(
+          "AgentDedicated" -> 1,
+          "ItemAttachedToMe" -> 3,
+          "SignedItemAttachedToMe" -> 2,
+          "OrderAttachedToAgent" -> 1,
+          "OrderForked" -> 1)))))
 
   "keyToItem" in:
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))

@@ -20,7 +20,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest.*
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventCounter, EventId, JournalState, SnapshotableState}
+import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.Attachable
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -35,6 +35,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
+import js7.data.state.EngineStateStatistics
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -409,7 +410,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     "AgentRefState snapshot object" in:
       val recoverer = ControllerState.newRecoverer()
       recoverer.addSnapshotObject(AgentRefState(agentRef))
-      assert(recoverer.result() == cs.withEventId(0).copy(eventCounter = EventCounter.empty))
+      assert(recoverer.result() ==
+        cs.withEventId(0).withoutStatistics)
 
     "UnsignedSimpleItemChanged" in:
       val changedUri = Uri("https://example.com")
@@ -551,5 +553,6 @@ object ControllerStateTest:
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(
           expectedNoticeId)))
-    ).toKeyedMap(_.id)
+    ).toKeyedMap(_.id),
+    EngineStateStatistics.empty
   ).finish.orThrow
