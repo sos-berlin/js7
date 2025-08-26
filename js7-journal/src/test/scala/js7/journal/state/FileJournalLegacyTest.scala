@@ -140,7 +140,7 @@ final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
       journalAllocated = FileJournal
-        .resource(recovered, JournalConf.fromConfig(TestConfig),
+        .service(recovered, JournalConf.fromConfig(TestConfig),
           Some(EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/)))
         .toAllocated
         .await(99.s)

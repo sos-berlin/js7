@@ -1,11 +1,11 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import fs2.concurrent.SignallingRef
-import js7.base.catsutils.CatsEffectExtensions.{onErrorOrCancel, joinStd, left, right}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, right}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
@@ -55,12 +55,12 @@ final class DedicatedSubagent private(
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
   subagentConf: SubagentConf,
-  persistedQueue: PersistedQueue)
+  persistedQueue: PersistedQueue,
+  fileValueState: FileValueState)
   (using ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
   protected type S = SubagentState
 
-  private val fileValueState = new FileValueState(subagentConf.valueDirectory)
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
@@ -108,8 +108,6 @@ extends Service.StoppableByRequest:
                 .both:
                   signal.fold(IO.unit):
                     killAndStopAllJobs
-                .productR:
-                  IO.blocking(fileValueState.close())
                 .productR:
                   orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
                 .productR:
@@ -433,6 +431,8 @@ object DedicatedSubagent:
   : ResourceIO[DedicatedSubagent] =
     for
       _ <- OutErrStatistics.registerMXBean
+      fileValueState <- Resource.fromAutoCloseable(IO:
+        FileValueState(subagentConf.valueDirectory))
       service <- Service.resource:
         for
           eventIdSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
@@ -440,7 +440,7 @@ object DedicatedSubagent:
         yield
           DedicatedSubagent(
             subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-            jobLauncherConf, subagentConf, persistedQueue)
+            jobLauncherConf, subagentConf, persistedQueue, fileValueState)
     yield
       service
 

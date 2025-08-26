@@ -343,7 +343,7 @@ object FileJournal:
   //private val meterPersist = CallMeter("FileJournal.persist")
   private[journal] val persistMeter = CallMeter("FileJournal.persist")
 
-  def resource[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
+  def service[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
     recovered: Recovered[S],
     conf: JournalConf,
     eventIdGenerator: Option[EventIdGenerator] = None)

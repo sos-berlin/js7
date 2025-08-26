@@ -43,7 +43,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
     for
       recovered <- Resource.eval(IO:
         StateRecoverer.recover[TestState](journalLocation, TestConfig))
-      journal <- FileJournal.resource(
+      journal <- FileJournal.service(
         recovered,
         JournalConf.fromConfig(TestConfig),
         eventIdGenerator = Some(EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/)))

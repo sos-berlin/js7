@@ -126,7 +126,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
         _ <- Environment.registerPure[WallClock](clock)
         dir <- temporaryDirectoryResource[IO]("FileJournalTest-")
         journalLocation = JournalLocation(TestState, dir / "test")
-        journal <- FileJournal.resource(
+        journal <- FileJournal.service(
           Recovered.noJournalFile[TestState](
             journalLocation,
             Deadline.now,

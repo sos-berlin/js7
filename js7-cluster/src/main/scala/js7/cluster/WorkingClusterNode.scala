@@ -185,7 +185,7 @@ object WorkingClusterNode:
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
         common.requireValidLicense.map(_.orThrow))
-      journal <- FileJournal.resource(recovered, clusterConf.journalConf, Some(eventIdGenerator))
+      journal <- FileJournal.service(recovered, clusterConf.journalConf, Some(eventIdGenerator))
       workingClusterNode <- Resource.make(
         acquire = IO.defer:
           val w = new WorkingClusterNode(recovered.failedNodeId, journal, common, clusterConf)
