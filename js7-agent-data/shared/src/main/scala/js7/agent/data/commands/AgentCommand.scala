@@ -13,8 +13,9 @@ import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import js7.base.utils.Big
+import js7.base.utils.{Big, ScalaUtils}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.{flatten, parameterListToString}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.{CommonCommand, IsEventEmittingCommand}
@@ -171,6 +172,14 @@ object AgentCommand extends CommonCommand.Companion:
 
     def isSwitchover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Switchover
+
+    override def toString =
+      "Shutdown" + parameterListToString(
+        processSignal, clusterAction,
+        suppressSnapshot ? "suppressSnapshot",
+        restart ?? "restart",
+        restartDirector ?? "restartDirector")
+
   object ShutDown:
     sealed trait ClusterAction
     object ClusterAction:

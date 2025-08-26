@@ -26,8 +26,9 @@ import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.flattenToString
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, ScalaUtils, SetOnce}
 import js7.base.web.Uri
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.SessionRegister
@@ -49,7 +50,6 @@ import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import org.apache.pekko.actor.ActorSystem
-import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
 final class Subagent private(
@@ -101,8 +101,9 @@ extends MainService, Service.StoppableByRequest:
   : IO[ProgramTermination] =
     logger.debugIO(IO.defer:
       logger.info(s"❗ Shutdown ${
-        Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
-          .flatten.mkString(" ")}")
+        flattenToString(
+          processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
+        }")
       dedicatedAllocated
         .toOption
         .fold(IO.unit): allocated =>

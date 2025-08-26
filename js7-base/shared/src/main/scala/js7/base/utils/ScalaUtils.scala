@@ -1128,6 +1128,12 @@ object ScalaUtils:
     else
       Left(problem)
 
+  def flattenToString[A](as: IterableOnce[A]*): String =
+    as.view.flatten.mkString(" ")
+
+  def flatten[A](as: IterableOnce[A]*): Vector[A] =
+    as.view.flatten.toVector
+
   def ifCast[A: ClassTag](o: Any): Option[A] =
     if o == null then
       None
