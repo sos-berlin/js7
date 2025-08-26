@@ -228,7 +228,7 @@ object RunningAgent:
   : ResourceIO[RestartableDirector] =
     for
       subagent <- subagentResource(conf)
-      director <- RestartableDirector.resource(subagent, conf, testWiring)
+      director <- RestartableDirector.service(subagent, conf, testWiring)
     yield
       director
 
@@ -242,7 +242,7 @@ object RunningAgent:
             if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
             conf.createDirectories()
             conf.journalLocation.deleteJournalIfMarked().orThrow)
-          subagent <- Subagent.resource(conf.subagentConf, testEventBus)
+          subagent <- Subagent.service(conf.subagentConf, testEventBus)
         yield
           subagent
     .evalOn(ioRuntime.compute)

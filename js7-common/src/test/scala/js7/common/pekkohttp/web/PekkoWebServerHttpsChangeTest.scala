@@ -78,7 +78,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
         js7.directory-watcher.directory-silence = 10ms
       """.withFallback(Js7Configuration.defaultConfig)
 
-    PekkoWebServer.resource(webServerBindings, config): routeBinding =>
+    PekkoWebServer.service(webServerBindings, config): routeBinding =>
       PekkoWebServer.BoundRoute.simple:
         path("TEST"):
           complete(s"OKAY-${routeBinding.revision}")

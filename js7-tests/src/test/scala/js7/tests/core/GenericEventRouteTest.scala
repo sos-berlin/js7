@@ -114,7 +114,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
   private lazy val allocatedServer: Allocated[IO, PekkoWebServer] =
     val webServerBinding = WebServerBinding.Http:
       new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())
-    PekkoWebServer.resource(Seq(webServerBinding), config): _ =>
+    PekkoWebServer.service(Seq(webServerBinding), config): _ =>
       PekkoWebServer.BoundRoute.simple:
         pathSegments("event"):
           genericEventRoute(ControllerState.keyedEventJsonCodec /*Example for test*/)

@@ -84,7 +84,7 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
         js7.web.server.shutdown-delay = 500ms"""
       .withFallback(Js7Configuration.defaultConfig)
 
-    PekkoWebServer.resource(webServerBindings, config): routeBinding =>
+    PekkoWebServer.service(webServerBindings, config): routeBinding =>
       PekkoWebServer.BoundRoute.simple:
         path("TEST"):
           complete("OKAY")

@@ -51,10 +51,11 @@ extends Service.StoppableByRequest:
         .compile.drain
     .onErrorTap(t => IO(logger.error(t.toStringWithCauses, t)))
 
+
 private object HttpsDirectoryWatch:
   private val logger = Logger[this.type]
 
-  def resource(
+  def service(
     settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: IO[Unit])
   : ResourceIO[HttpsDirectoryWatch] =
     Service.resource:

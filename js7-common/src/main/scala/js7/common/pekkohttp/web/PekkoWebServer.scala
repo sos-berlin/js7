@@ -71,7 +71,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 
   def restartWhenHttpsChanges: ResourceIO[Unit] =
     HttpsDirectoryWatch
-      .resource(
+      .service(
         DirectoryWatchSettings.fromConfig(config).orThrow,
         webServerBindings.flatMap(_.requiredFiles),
         onHttpsKeyOrCertChanged)
@@ -188,18 +188,18 @@ object PekkoWebServer:
 
   def httpResource(port: Int, config: Config, route: Route)(using ActorSystem)
   : ResourceIO[PekkoWebServer] =
-    resource(Seq(WebServerBinding.http(port)), config): _ =>
+    service(Seq(WebServerBinding.http(port)), config): _ =>
       BoundRoute.simple(route)
 
   def simple(conf: CommonConfiguration)(route: RouteBinding => Route)
     (using actorSystem: ActorSystem,
       testEventBus: StandardEventBus[Any] = new StandardEventBus)
   : ResourceIO[PekkoWebServer] =
-    resource(conf.webServerBindings, conf.config): routeBinding =>
+    service(conf.webServerBindings, conf.config): routeBinding =>
       PekkoWebServer.BoundRoute.simple(conf):
         route(routeBinding)
 
-  def resource(
+  def service(
     webServerBindings: Seq[WebServerBinding],
     config: Config)
     (toBoundRoute: RouteBinding => BoundRoute)

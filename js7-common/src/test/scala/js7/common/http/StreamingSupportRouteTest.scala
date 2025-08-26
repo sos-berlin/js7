@@ -72,7 +72,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
       val serverStreamCanceled = Deferred.unsafe[IO, ExitCase]
 
       def webServerResource(using as: ActorSystem) =
-        PekkoWebServer.resource(Seq(WebServerBinding.localhostHttp(port)), config): _ =>
+        PekkoWebServer.service(Seq(WebServerBinding.localhostHttp(port)), config): _ =>
           object route extends WebLogDirectives:
             val actorSystem = as
             val ioRuntime = StreamingSupportRouteTest.this.ioRuntime

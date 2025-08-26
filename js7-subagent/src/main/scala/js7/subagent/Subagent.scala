@@ -49,6 +49,7 @@ import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
 final class Subagent private(
@@ -228,8 +229,8 @@ extends MainService, Service.StoppableByRequest:
 object Subagent:
   private val logger = Logger[this.type]
 
-  def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
-    (implicit ioRuntime: IORuntime)
+  def service(conf: SubagentConf, testEventBus: StandardEventBus[Any])
+    (using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     import conf.config
 
@@ -249,7 +250,7 @@ object Subagent:
       // Stop Subagent _after_ web service to allow Subagent to execute last commands!
       subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
       directorRouteVariable = new DirectorRouteVariable
-      webServer <- SubagentWebServer.resource(
+      webServer <- SubagentWebServer.service(
         subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
         (using actorSystem, ioRuntime)
       _ <- provideUriFile(conf, webServer.localHttpUri)

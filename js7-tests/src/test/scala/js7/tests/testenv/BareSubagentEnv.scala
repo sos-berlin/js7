@@ -49,7 +49,7 @@ extends SubagentEnv:
       given IORuntime <- OurIORuntime.resource[IO](subagentConf.name, subagentConf.config)
       _ <- OurIORuntimeRegister.toEnvironment(summon[IORuntime]).registerMultiple(envResources)
       subagent <- Subagent
-        .resource(subagentConf, new StandardEventBus)
+        .service(subagentConf, new StandardEventBus)
         .evalOn(given_IORuntime.compute)
     yield
       subagent

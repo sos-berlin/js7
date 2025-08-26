@@ -31,7 +31,7 @@ object ControllerWebServer:
     sessionRegister: SessionRegister[SimpleSession])(
     implicit actorSystem_ : ActorSystem, ioRuntime: IORuntime)
   : ResourceIO[ControllerWebServer] =
-    PekkoWebServer.resource(conf.webServerBindings, conf.config): routeBinding =>
+    PekkoWebServer.service(conf.webServerBindings, conf.config): routeBinding =>
       new PekkoWebServer.BoundRoute:
         import conf.config
 

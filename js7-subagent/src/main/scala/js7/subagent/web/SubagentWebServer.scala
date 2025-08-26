@@ -14,7 +14,7 @@ import org.apache.pekko.actor.ActorSystem
 
 object SubagentWebServer:
 
-  def resource(
+  def service(
     subagent: IO[Subagent],
     toDirectorRoute: DirectorRouteVariable.ToRoute,
     sessionRegister: SessionRegister[SubagentSession],
@@ -22,7 +22,7 @@ object SubagentWebServer:
     (using actorSystem: ActorSystem,
     ioRuntime: IORuntime)
   : ResourceIO[PekkoWebServer] =
-    PekkoWebServer.resource(conf.webServerBindings, conf.config): routeBinding =>
+    PekkoWebServer.service(conf.webServerBindings, conf.config): routeBinding =>
       new PekkoWebServer.BoundRoute:
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
