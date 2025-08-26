@@ -127,7 +127,11 @@ extends Service.StoppableByRequest:
   private def untilWorkingNodeStarted: IO[Unit] =
     logger.debugIO:
       untilRecovered
-        .flatMap(startWorkingNode)
+        .productL:
+          passiveOrWorkingNode.get.foldMap(_.left.toOption.foldMap:
+            _.release.to[IO])
+        .flatMap:
+          startWorkingNode
         .tryIt
         .flatTap: triedWorkingNode =>
           workingNodeStarted.complete:
