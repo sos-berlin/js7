@@ -51,17 +51,20 @@ object MBeanUtils:
                 try
                   beanServer.registerMBean(bean, objectName)
                   bean -> Some(objectName)
-                catch case e: javax.management.InstanceAlreadyExistsException
-                  if isTest | isScalaTest =>
-                  val uuid = Base64UUID.randomString()
-                  val testObjectName = new ObjectName(objectName.toString + s",test=$uuid")
-                  logger.trace(s"registerMBean($objectName): $e • trying $testObjectName")
-                  try
-                    beanServer.registerMBean(bean, testObjectName)
-                    bean -> Some(testObjectName)
-                  catch case NonFatal(t) =>
-                    logger.error(s"registerMBean($objectName): $t")
-                    throw t)(
+                catch case e: javax.management.InstanceAlreadyExistsException =>
+                  if isTest | isScalaTest then
+                    val uuid = Base64UUID.randomString()
+                    val testObjectName = new ObjectName(objectName.toString + s",test=$uuid")
+                    logger.trace(s"registerMBean($objectName): $e • trying $testObjectName")
+                    try
+                      beanServer.registerMBean(bean, testObjectName)
+                      bean -> Some(testObjectName)
+                    catch case NonFatal(t) =>
+                      logger.error(s"registerMBean($objectName): $t")
+                      throw t
+                  else
+                    logger.error(s"Ignoring registerMBean($objectName): $e")
+                    bean -> None)(
         release =
           case (bean, None) => F.unit
           case (bean, Some(objectName)) =>
