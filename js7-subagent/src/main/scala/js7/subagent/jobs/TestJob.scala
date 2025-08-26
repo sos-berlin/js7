@@ -33,7 +33,7 @@ extends InternalJob:
           .productR:
             step.write(outerr, charBlock.take(n % charBlockSize)).void
 
-    OrderProcess:
+    OrderProcess.cancelable:
       for
         stdoutEither <- step.maybeArg("stdout")(toStringOrInt)
         stderrEither <- step.maybeArg("stderr")(toStringOrInt)
