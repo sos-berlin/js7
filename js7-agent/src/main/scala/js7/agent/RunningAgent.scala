@@ -20,7 +20,6 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
@@ -125,7 +124,7 @@ extends MainService, Service.StoppableByRequest:
   private def stopMe: IO[Unit] =
     logger.debugIO:
       terminating:
-        executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
+        executeCommandAsSystemUser(ShutDown())
           .attempt
           .map:
             case Left(throwable) => logger.warn(throwable.toStringWithCauses)
