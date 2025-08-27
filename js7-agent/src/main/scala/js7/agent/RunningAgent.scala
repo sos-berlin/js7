@@ -188,7 +188,7 @@ extends MainService, Service.StoppableByRequest:
                       if offered then
                         Right(AgentCommand.Response.Accepted)
                       else
-                        Left(Problem("Starting Director will already be shutting down"))
+                        Left(Problem("Starting Director is already shutting down"))
 
                   case Some(Left(problem)) =>
                     logger.debug(s"⚠️  $cmd, but agentCommandExecutorDeferred = $problem")

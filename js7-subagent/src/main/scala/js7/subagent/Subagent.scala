@@ -99,21 +99,22 @@ extends MainService, Service.StoppableByRequest:
     dontWaitForDirector: Boolean = false,
     restart: Boolean = false)
   : IO[ProgramTermination] =
-    logger.debugIO(IO.defer:
-      logger.info(s"❗ Shutdown ${
-        flattenToString(
-          processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
-        }")
-      dedicatedAllocated
-        .toOption
-        .fold(IO.unit): allocated =>
-          allocated.allocatedThing
-            .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
-            .guarantee(allocated.release)
-        .*>(IO.defer:
-          logger.info(s"$subagent stopped")
-          val termination = ProgramTermination(restart = restart)
-          terminated.complete(termination).attempt.as(termination)))
+    logger.debugIO:
+      terminated.tryGet.flatMap:
+        _.map(IO.pure).getOrElse:
+          IO.defer:
+            logger.info(s"❗ Shutdown ${
+              flattenToString(
+                processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")}")
+            dedicatedAllocated
+              .toOption
+              .fold(IO.unit): allocated =>
+                allocated.allocatedThing
+                  .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
+                  .guarantee(allocated.release)
+              .*>(IO.defer:
+                val termination = ProgramTermination(restart = restart)
+                terminated.complete(termination).attempt.as(termination))
 
   def registerDirectorRoute(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
     logger.debugResource(

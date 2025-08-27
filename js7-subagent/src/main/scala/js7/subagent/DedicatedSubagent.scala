@@ -83,7 +83,8 @@ extends Service.StoppableByRequest:
     startService:
       untilStopRequested *>
         IO.defer:
-          stopMe(stopSignal, stopDontWaitForDirector)
+          stopMe(stopSignal, stopDontWaitForDirector) *>
+            IO(logger.info(s"$toString stopped"))
 
   private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
   : IO[Unit] =
