@@ -50,8 +50,8 @@ final class AgentMotor private(
 extends Service.StoppableByRequest:
 
   private val agentProcessCount = Atomic(0)
-  private val _stopImmediately = Ref.unsafe[IO, Boolean](false)
   private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)
+  private val _kill = Ref.unsafe[IO, Boolean](false)
   /** When only the Director should be shut down while the Subagent keeps running. */
   private val _inhibitShutdownLocalSubagent = Ref.unsafe[IO, Boolean](false)
 
@@ -78,7 +78,7 @@ extends Service.StoppableByRequest:
   private def stopMe: IO[Unit] =
     IO.defer:
       orderMotor.stop *>
-        _stopImmediately.get.flatMap:
+        _kill.get.flatMap:
           IO.unlessA(_):
             _inhibitShutdownLocalSubagent.get.flatMap:
               IO.unlessA(_):
@@ -92,7 +92,7 @@ extends Service.StoppableByRequest:
 
   def kill: IO[Unit] =
     logger.debugIO:
-      _stopImmediately.set(true) *>
+      _kill.set(true) *>
         //subagentKeeper.kill *>
         stop *> subagentKeeper.kill *> journal.kill
 

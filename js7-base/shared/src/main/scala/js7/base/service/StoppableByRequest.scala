@@ -34,13 +34,17 @@ trait StoppableByRequest:
         logger.traceIO(s"$toString stop"):
           _isStopping = true
           stopRequested.complete(())
-            .*>(fiber.get)
+            .productR:
+              fiber.get
             .flatMap: fiber =>
-              IO.whenA(stoppableByCancel)(fiber.cancel) *>
+              IO.whenA(stoppableByCancel):
+                fiber.cancel
+              .productR:
                 fiber.join.flatMap:
                   case Outcome.Canceled() => IO.unit
                   case o => IO.fromOutcome(o)
 
+  /** Stop service and await termination. */
   protected def stop: IO[Unit] =
     memoizedStop
 

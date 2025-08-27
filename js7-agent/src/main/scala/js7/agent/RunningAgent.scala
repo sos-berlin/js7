@@ -104,7 +104,8 @@ extends MainService, Service.StoppableByRequest:
             .toAllocated
             .flatTap: allocated =>
               agentCommandExecutorDeferred.complete(Right(allocated)).flatMap:
-                IO.unlessA(_)(allocated.release)
+                IO.unlessA(_):
+                  allocated.release
               .productR:
                 shutdownBeforeClusterNodeActivated.get.flatMap: (cmd, meta) =>
                   allocated.allocatedThing.execute(cmd, meta)

@@ -217,7 +217,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
             .flatTapT: _ =>
               journal.deleteJournalWhenStopping.as(Checked.unit)
 
-  private def switchOver(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
+  private def switchOver(cmd: ClusterSwitchOver): IO[Checked[AgentCommand.Response]] =
     IO.defer:
       logger.info(s"❗️ $cmd")
       // SubagentKeeper stops the local (surrounding) Subagent,

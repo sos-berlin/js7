@@ -227,19 +227,16 @@ final class GateKeeper[U <: User](
 
 object GateKeeper:
 
-  def apply[U <: User: User.Companion](
-    binding: WebServerBinding,
-    conf: Configuration[U])
-    (implicit
-      IORuntime: IORuntime,
-      exceptionHandler: ExceptionHandler)
+  def apply[U <: User: User.Companion](binding: WebServerBinding, conf: Configuration[U])
+    (using IORuntime, ExceptionHandler)
   : GateKeeper[U] =
     new GateKeeper(
       binding,
       conf,
       isLoopback = binding.address.getAddress.isLoopbackAddress)
 
-  private def isGet(method: HttpMethod) = method == GET || method == HEAD
+  private def isGet(method: HttpMethod) =
+    method == GET || method == HEAD
 
   final case class Configuration[U <: User](
     /** Basic authentication realm */

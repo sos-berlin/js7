@@ -206,14 +206,13 @@ extends Service.StoppableByRequest:
               since.elapsed.pretty}"))
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
-    logger.debugIO("killAndStopAllJobs", signal)(
+    logger.debugIO("killAndStopAllJobs", signal):
       IO(jobKeyToJobDriver.toMap.values)
         .flatMap(_
           .toVector
-          .parUnorderedTraverse(jobDriver => jobDriver
-            .stop(signal)
-            .handleError(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
-          .map(_.combineAll)))
+          .parFoldMapA: jobDriver =>
+            jobDriver.stop(signal)
+              .handleError(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
 
   def startOrderProcess(
     order: Order[Order.Processing],
