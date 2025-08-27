@@ -127,9 +127,6 @@ extends Service.StoppableByRequest:
   private def untilWorkingNodeStarted: IO[Unit] =
     logger.debugIO:
       untilRecovered
-        .productL:
-          passiveOrWorkingNode.get.foldMap(_.left.toOption.foldMap:
-            _.release.to[IO])
         .flatMap:
           startWorkingNode
         .tryIt
@@ -167,15 +164,12 @@ extends Service.StoppableByRequest:
 
   private def startWorkingNode(recovered: Recovered[S]): IO[WorkingClusterNode[S]] =
     logger.traceIO:
-      WorkingClusterNode
-        .resource(recovered, common, clusterConf, eventIdGenerator)
-        // Not compilable with Scala 3.3.1: .toAllocated
-        .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
-          .flatTap: allocated =>
-            passiveOrWorkingNode.get.flatMap(_.left.toOption).foldMap(_.release.to[IO]) *>
-              IO:
-                passiveOrWorkingNode := Some(Right(allocated))
-        .map(_.allocatedThing)
+      passiveOrWorkingNode.get.flatMap(_.left.toOption).foldMap(_.release.to[IO]) *>
+        WorkingClusterNode.resource(recovered, common, clusterConf, eventIdGenerator)
+          .toAllocated.flatTap: allocated =>
+            IO:
+              passiveOrWorkingNode := Some(Right(allocated))
+          .map(_.allocatedThing)
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     passiveOrWorkingNode.get()

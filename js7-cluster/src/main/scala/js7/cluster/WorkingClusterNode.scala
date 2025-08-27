@@ -34,7 +34,7 @@ import js7.journal.{EventIdGenerator, FileJournal}
   * WorkingClusterNode also starts ActiveClusterNodes after
   * the ClusterNodesAppointed event.
   */
-final class WorkingClusterNode[S <: ClusterableState[S]] private(
+final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Companion as S] private(
   val failedNodeId: Option[NodeId],
   val journal: FileJournal[S],
   common: ClusterCommon,
@@ -168,6 +168,8 @@ final class WorkingClusterNode[S <: ClusterableState[S]] private(
 
   def isActive: Boolean =
     _activeClusterNode.isDefined
+
+  override def toString = s"WorkingClusterNode[$S]"
 
 
 object WorkingClusterNode:
