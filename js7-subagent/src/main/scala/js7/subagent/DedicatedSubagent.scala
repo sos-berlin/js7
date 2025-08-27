@@ -10,7 +10,7 @@ import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, Logger}
+import js7.base.log.{BlockingSymbol, LogLevel, Logger}
 import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -19,7 +19,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic}
+import js7.base.utils.{AsyncLock, Atomic, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventCalc, EventId}
@@ -44,6 +44,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
+import scala.math.Ordered.orderingToOrdered
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -101,30 +102,47 @@ extends Service.StoppableByRequest:
           _dontWaitForDirector |= dontWaitForDirector
           val isShuttingDown = shuttingDown.getAndSet(true)
           IO.unlessA(isShuttingDown):
-            IO.defer:
-              val orderCount = orderIdToJobDriver.size
-              if orderCount > 0 then logger.info(s"Stopping, waiting for $orderCount processes")
-              orderIdToJobDriver.stop
-                .both:
-                  signal.fold(IO.unit):
-                    killAndStopAllJobs
-                .productR:
-                  orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
-                .productR:
-                  if dontWaitForDirector then IO:
-                    for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
-                      s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
-                  else
-                    awaitOrderAcknowledgements *>
-                      // Await process termination and DetachProcessedOrder commands
-                      orderToProcessing.whenStopped
-                        .logWhenItTakesLonger("Director-acknowledged Order processes")
-                .productR:
-                  journal.persist:
-                    SubagentShutdown
-                  .handleProblem: problem =>
-                    logger.warn(s"SubagentShutdown: $problem")
-                .void
+            logWhileStopping:
+              orderIdToJobDriver.stop.both:
+                signal.foldMap:
+                  killAndStopAllJobs
+              .productR:
+                orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
+              .productR:
+                if dontWaitForDirector then IO:
+                  for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
+                    s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
+                else
+                  awaitOrderAcknowledgements *>
+                    // Await process termination and DetachProcessedOrder commands
+                    orderToProcessing.whenStopped
+                      .logWhenItTakesLonger("Director-acknowledged Order processes")
+            .productR:
+              journal.persist:
+                SubagentShutdown
+              .handleProblem: problem =>
+                logger.warn(s"SubagentShutdown: $problem")
+            .void
+
+  private def logWhileStopping(body: IO[Unit]): IO[Unit] =
+    IO.defer:
+      val orderCount = orderIdToJobDriver.size
+      val sym = BlockingSymbol()
+      if orderCount > 0 then
+        sym.onInfo()
+        logger.info(s"🟡 Stopping, waiting for $orderCount processes")
+      Delayer.continually():
+        IO:
+          val orderIds = orderIdToJobDriver.toMap.keys
+          sym.onInfo()
+          logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
+            orderIds.toVector.sorted.mkStringLimited(3)}")
+      .background.surround:
+        body
+      .productR:
+        IO:
+          if sym.relievedLogLevel >= LogLevel.Info then
+            logger.info(s"🟢 All processes completed")
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
     val jobKeySet = jobKeys.toSet

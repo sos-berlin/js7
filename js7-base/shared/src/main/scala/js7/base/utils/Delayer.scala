@@ -87,7 +87,15 @@ object Delayer:
       .map(CatsDeadline.fromMonotonic)
       .map(now => new Delayer(now, conf))
 
-  def stream[F[_]](conf: DelayConf)(using F: Async[F], enc: sourcecode.Enclosing): Stream[F, Unit] =
+  def continually[F[_]](conf: DelayConf = DelayConf.default)(body: F[Unit])
+    (using Async[F], sourcecode.Enclosing)
+  : F[Unit] =
+    stream[F](conf).drop(1).evalMap: _ =>
+      body
+    .compile.drain
+
+  def stream[F[_]](conf: DelayConf = DelayConf.default)(using Async[F], sourcecode.Enclosing)
+  : Stream[F, Unit] =
     Stream
       .eval(start(conf))
       .flatMap: delayer =>
