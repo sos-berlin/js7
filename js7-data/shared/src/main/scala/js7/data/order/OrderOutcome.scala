@@ -9,9 +9,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
-import js7.data.order.OrderOutcome.Disrupted
-import js7.data.order.OrderOutcome.Disrupted.ProcessLost
-import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
+import js7.data.order.OrderOutcome.*
+import js7.data.subagent.Problems.{ProcessKilledDueToSubagentShutdownProblem, ProcessLostDueToUnknownReasonProblem}
 import js7.data.value.{NamedValues, NumberValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
@@ -23,13 +22,24 @@ import scala.util.{Failure, Success, Try}
 sealed trait OrderOutcome:
 
   final def isSucceeded: Boolean =
-    isInstanceOf[OrderOutcome.IsSucceeded]
+    isInstanceOf[IsSucceeded]
 
   final def isDisrupted: Boolean =
-    isInstanceOf[OrderOutcome.Disrupted]
+    isInstanceOf[Disrupted]
 
   def isProcessLost: Boolean =
     false
+
+  def toKilledButRestartable(toProblem: Killed => Problem): Option[Disrupted] =
+    def onlyReturnCode(outcome: Succeeded | Failed) =
+      outcome.namedValues.filter(_._1 == Value.ShellReturnCode)
+    val isKilledOutcome =
+      this match
+        case o: OrderOutcome.Succeeded => Some(o.copy(namedValues = onlyReturnCode(o)))
+        case o: Failed if !o.uncatchable => Some(o.copy(namedValues = onlyReturnCode(o)))
+        case _: (Failed | TimedOut | Killed | Disrupted | Caught) => None
+    isKilledOutcome.map: outcome =>
+      processLost(toProblem(Killed(outcome)))
 
   /** Different to namedValues, findNamedValues dives into nested OrderOutcomes. */
   def findNamedValues: Option[NamedValues]
@@ -228,7 +238,7 @@ object OrderOutcome:
       None
 
     override def isProcessLost: Boolean =
-      reason.isSubtypeOf[ProcessLost]
+      reason.isSubtypeOf[Disrupted.ProcessLost]
 
     override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
 
@@ -259,7 +269,8 @@ object OrderOutcome:
     final case class ProcessLost private[OrderOutcome](problem: Problem) extends Reason
     object ProcessLost:
       private val jsonEncoder: Encoder.AsObject[ProcessLost] =
-        o => JsonObject("problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson)
+        o => JsonObject:
+          "problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson
 
       private val jsonDecoder: Decoder[ProcessLost] =
         c => for problem <- c.getOrElse[Problem]("problem")(ProcessLostDueToUnknownReasonProblem) yield
@@ -276,7 +287,16 @@ object OrderOutcome:
         Subtype(deriveCodec[Other]))
 
   def processLost(problem: Problem): Disrupted =
-    Disrupted(ProcessLost(problem))
+    Disrupted(Disrupted.ProcessLost(problem))
+
+  @TestOnly
+  def processKilledRestartable(signal: ProcessSignal): Disrupted =
+    processLost:
+      ProcessKilledDueToSubagentShutdownProblem:
+        OrderOutcome.Killed:
+          OrderOutcome.Failed(namedValues = Map1(
+            Value.ShellReturnCode,
+            NumberValue(if isWindows then 1 else 128 + signal.number)))
 
   sealed trait NotSucceeded extends OrderOutcome:
     def uncatchable: Boolean

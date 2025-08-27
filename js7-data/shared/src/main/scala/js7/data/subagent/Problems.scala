@@ -1,6 +1,7 @@
 package js7.data.subagent
 
 import js7.base.problem.Problem
+import js7.data.order.OrderOutcome
 import scala.collection.immutable.Map.Map1
 
 object Problems:
@@ -55,6 +56,11 @@ object Problems:
   type ProcessLostDueSubagentUriChangeProblem = ProcessLostDueSubagentUriChangeProblem.type
   case object ProcessLostDueSubagentUriChangeProblem
   extends ProcessLostProblem, Problem.ArgumentlessCoded
+
+  final case class ProcessKilledDueToSubagentShutdownProblem(outcome: OrderOutcome.Killed)
+  extends Problem.Coded:
+    def arguments = Map1("outcome", outcome.toString)
+
 
   /** ProcessLostDueSubagentDeletedProblem is not a ProcessLostProblem, because the job
     * should not be repeated.

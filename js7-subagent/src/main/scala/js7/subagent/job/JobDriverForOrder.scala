@@ -11,7 +11,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
@@ -33,6 +33,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
   private val sigkillFiber = FiberVar[Unit]()
   private var runningSince: SyncDeadline | Null = null
   private var isKilled = false
+  private var killedWithProcessLost = none[OrderOutcome.Killed => Problem]
   private var sigkilled = false
   private var timedOut = false
 
@@ -115,13 +116,15 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
             OrderOutcome.Failed.fromThrowable(t)
           .map(Right(_))
 
-  private def modifyOutcome(outcome: OrderOutcome) =
+  private def modifyOutcome(outcome: OrderOutcome): OrderOutcome =
     outcome match
       case outcome: OrderOutcome.Completed =>
         if timedOut then
           OrderOutcome.TimedOut(outcome)
         else if isKilled then
-          OrderOutcome.Killed(outcome)
+          val killed = OrderOutcome.Killed(outcome)
+          killedWithProcessLost.fold(killed): toProblem =>
+            OrderOutcome.processLost(toProblem(killed))
         else
           outcome
       case o => o
@@ -178,7 +181,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
           .start
           .flatMap(sigkillFiber.set)
 
-  def kill(signal: ProcessSignal): IO[Unit] =
+  def kill(signal: ProcessSignal, processLost: Option[OrderOutcome.Killed => Problem] = None): IO[Unit] =
     IO.defer:
       IO.unlessA(signal == SIGKILL && sigkilled):
         _orderProcess.compareAndExchange(None, Some(Left(signal))) match
@@ -189,6 +192,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
             IO.defer:
               logger.debug(s"Kill $signal")
               isKilled = true
+              killedWithProcessLost = processLost
               sigkilled |= signal == SIGKILL
               cancelProcess(orderProcess, signal)
 

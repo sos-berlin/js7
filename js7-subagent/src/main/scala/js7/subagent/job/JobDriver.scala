@@ -17,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderOutcome}
+import js7.data.subagent.Problems.ProcessKilledDueToSubagentShutdownProblem
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.StdObservers
@@ -53,9 +54,9 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
         val deferred = Deferred.unsafe[IO, Unit]
         lastProcessTerminated := deferred
         IO.unlessA(orderToProcess.isEmpty):
-          killAll(signal) *>
+          killAllDueToShutdown(signal) *>
             IO.unlessA(signal == SIGKILL):
-              IO.sleep(sigkillDelay) *> killAll(SIGKILL)
+              IO.sleep(sigkillDelay) *> killAllDueToShutdown(SIGKILL)
             .background.surround:
               deferred.get
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
@@ -69,7 +70,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
                   logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
                     throwable.nullIfNoStackTrace)
 
-  private def killAll(signal: ProcessSignal): IO[Unit] =
+  private def killAllDueToShutdown(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       val drivers = orderToProcess.toMap.values
       if drivers.nonEmpty then
@@ -77,10 +78,10 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
       drivers
         .toVector
         .traverse: driver =>
-          driver.kill(signal)
+          driver.kill(signal, processLost = Some(ProcessKilledDueToSubagentShutdownProblem(_)))
         .map(_.combineAll)
         .handleError: t =>
-          logger.error(s"killAll: ${t.toStringWithCauses}", t)
+          logger.error(s"killAllDueToShutdown: ${t.toStringWithCauses}", t)
 
   def runOrderProcess(
     order: Order[Order.Processing],

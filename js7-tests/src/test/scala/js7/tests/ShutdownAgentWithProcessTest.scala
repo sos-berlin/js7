@@ -1,7 +1,5 @@
 package js7.tests
 
-import js7.base.utils.AllocatedForJvm.useSync
-import org.apache.pekko.actor.ActorSystem
 import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
@@ -13,23 +11,25 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentReady, AgentShutDown}
+import js7.data.command.CancellationMode
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.value.NumberValue
+import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, TryInstruction}
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ShutdownAgentWithProcessTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import org.apache.pekko.actor.ActorSystem
 
 final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -41,7 +41,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(simpleWorkflow, catchingWorkflow)
+  protected val items = Seq(simpleWorkflow)
 
   private implicit def actorSystem: ActorSystem =
     controller.actorSystem
@@ -58,11 +58,6 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
     eventWatch.awaitNextKey[OrderProcessingStarted](simpleOrderId).head.eventId
     eventWatch.awaitNextKey[OrderStdoutWritten](simpleOrderId)
 
-    val caughtOrderId = OrderId("🔸")
-    controller.addOrderBlocking(FreshOrder(OrderId("🔸"), catchingWorkflow.path))
-    eventWatch.awaitNextKey[OrderProcessingStarted](caughtOrderId).head.eventId
-    eventWatch.awaitNextKey[OrderStdoutWritten](caughtOrderId)
-
     val agentEnv = directoryProvider.agentEnvs.head
     locally:
       val agentClient = AgentClient(Admission(agent.localUri, agentEnv.controllerUserAndPassword))
@@ -73,7 +68,13 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
       agent.untilTerminated.await(99.s)
 
     agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
-      eventWatch.awaitNextKey[OrderFailed](simpleOrderId)
+      val stampedEvents = eventWatch.awaitNextKey[OrderProcessed](simpleOrderId)
+      assert(stampedEvents.map(_.value) == Vector(OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL))))
+
+      eventWatch.awaitNextKey[OrderStdoutWritten](simpleOrderId)
+      execCmd:
+        CancelOrders(simpleOrderId :: Nil, CancellationMode.kill(immediately = true))
+      eventWatch.awaitNextKey[OrderTerminated](simpleOrderId)
 
       assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
         .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
@@ -84,39 +85,20 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         simpleOrderId <-: OrderStarted,
         simpleOrderId <-: OrderProcessingStarted(subagentId),
         simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-        simpleOrderId <-: OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(namedValues = Map(
-          "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
+        simpleOrderId <-: OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL)),
         agentPath <-: AgentShutDown,
 
         agentPath <-: AgentReady("UTC", None),
+        simpleOrderId <-: OrderMoved(Position(0)),
+        simpleOrderId <-: OrderProcessingStarted(subagentId),
+        simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
+        simpleOrderId <-: OrderCancellationMarked(CancellationMode.kill(immediately = true)),
+        simpleOrderId <-: OrderCancellationMarkedOnAgent,
+        simpleOrderId <-: OrderProcessed(OrderOutcome.killed(SIGKILL)),
         simpleOrderId <-: OrderProcessingKilled,
-
         simpleOrderId <-: OrderDetachable,
         simpleOrderId <-: OrderDetached,
-        simpleOrderId <-: OrderFailed(Position(0))))
-
-      assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
-        .flatMap(manipulateEvent(_, caughtOrderId)) == Seq(
-        caughtOrderId <-: OrderAdded(catchingWorkflow.id),
-        caughtOrderId <-: OrderMoved(Position(0) / "try+0" % 0),
-        caughtOrderId <-: OrderAttachable(agentPath),
-        caughtOrderId <-: OrderAttached(agentPath),
-
-        caughtOrderId <-: OrderStarted,
-        caughtOrderId <-: OrderProcessingStarted(subagentId),
-        caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-        caughtOrderId <-: OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(namedValues = Map(
-          "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
-        agentPath <-: AgentShutDown,
-
-        agentPath <-: AgentReady("UTC", None),
-        caughtOrderId <-: OrderProcessingKilled,
-        caughtOrderId <-: OrderCaught(Position(0) / "catch+0" % 0),
-        caughtOrderId <-: OrderMoved(Position(1)),
-
-        caughtOrderId <-: OrderDetachable,
-        caughtOrderId <-: OrderDetached,
-        caughtOrderId <-: OrderFinished()))
+        simpleOrderId <-: OrderCancelled))
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
     keyedEvent match
@@ -140,15 +122,3 @@ object ShutdownAgentWithProcessTest:
         (isWindows ?? "@echo off\n") +
           "echo TestJob\n" +
           "sleep 99\n")))
-
-  private val catchingWorkflow = Workflow.of(
-    WorkflowPath("CATCHING") ~ versionId,
-    TryInstruction(
-      Workflow.of:
-        Execute(WorkflowJob(
-          agentPath,
-          ShellScriptExecutable:
-            (isWindows ?? "@echo off\n") +
-              "echo TestJob\n" +
-              "sleep 99\n")),
-      Workflow.empty))

@@ -236,7 +236,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
   protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
   : IO[Unit] =
-    stopDispatcherAndEmitProcessLostEvents(orderProblem, Some(subagentDiedEvent))
+    IO.defer:
+      stopDispatcherAndEmitProcessLostEvents(orderProblem, Some(subagentDiedEvent))
 
   /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDiedEvent` event. */
   def stopDispatcherAndEmitProcessLostEvents(
@@ -331,6 +332,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         val orderProcessed = problem match
           case SubagentIsShuttingDownProblem =>
             OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
+          case CommandDispatcher.StoppedProblem =>
+            OrderProcessed.processLost(problem)
           case _ =>
             OrderProcessed(OrderOutcome.Disrupted(problem))
         journal.persist(order.id <-: orderProcessed)
