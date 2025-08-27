@@ -50,6 +50,7 @@ import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
 final class Subagent private(
@@ -145,7 +146,11 @@ extends MainService, Service.StoppableByRequest:
   //      .as(None))
   //    .void
 
-  private[subagent ]def executeCommand(cmd: SubagentCommand.Queueable)
+  @TestOnly
+  def executeCommandForTest(cmd: SubagentCommand.Queueable): IO[Checked[SubagentCommand.Response]] =
+    executeCommand(cmd)
+
+  private[subagent] def executeCommand(cmd: SubagentCommand.Queueable)
   : IO[Checked[SubagentCommand.Response]] =
     commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
 

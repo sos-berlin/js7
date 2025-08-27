@@ -35,10 +35,18 @@ object Execute:
   def apply(workflowJob: WorkflowJob): Anonymous =
     Anonymous(workflowJob)
 
-  def shellScript(agentPath: AgentPath, processLimit: Int = WorkflowJob.DefaultProcessLimit)
+  def shellScript(
+    agentPath: AgentPath,
+    defaultArguments: Map[String, Expression] = Map.empty,
+    env: Map[String, Expression] = Map.empty,
+    processLimit: Int = WorkflowJob.DefaultProcessLimit)
     (script: String): Anonymous =
     Execute.Anonymous:
-      WorkflowJob(agentPath, ShellScriptExecutable(script), processLimit = processLimit)
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(script, env),
+        defaultArguments,
+        processLimit = processLimit)
 
   final case class Named(
     name: WorkflowJob.Name,
