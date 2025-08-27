@@ -13,7 +13,7 @@ httpPort=127.0.0.1:4444
 httpsPort=4443
 agentOptions=()
 javaOptions=()
-terminateCommand='{ "TYPE": "ShutDown" }'
+terminateCommand='{ "TYPE": "ShutDown", "processSignal": "SIGKILL" }'
 execOptions=()
 
 for arg in "$@"; do :
@@ -149,7 +149,6 @@ while true; do
         -classpath "$classpathString" \
         js7.agent.client.main.AgentClientMain \
         --data-directory="$data" \
-        http://127.0.0.1:"$httpPort" \
         "$terminateCommand" \
         >/dev/null &
     fi
