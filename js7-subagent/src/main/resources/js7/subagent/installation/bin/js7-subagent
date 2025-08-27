@@ -147,7 +147,7 @@ while true; do
         "${logJavaOptions[@]}" \
         "${standardJavaOptions[@]}" \
         -classpath "$classpathString" \
-        js7.agent.client.main.AgentClientMain \
+        js7.agent.client.main.SubagentClientMain \
         --data-directory="$data" \
         "$terminateCommand" \
         >/dev/null &

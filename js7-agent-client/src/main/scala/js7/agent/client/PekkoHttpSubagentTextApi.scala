@@ -2,8 +2,8 @@ package js7.agent.client
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
-import js7.agent.client.PekkoHttpAgentTextApi.*
-import js7.agent.data.web.AgentUris
+import js7.agent.client.PekkoHttpSubagentTextApi.*
+import js7.agent.data.web.SubagentUris
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-private[agent] final class PekkoHttpAgentTextApi(
+private[agent] final class PekkoHttpSubagentTextApi(
   agentUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
@@ -28,10 +28,10 @@ private[agent] final class PekkoHttpAgentTextApi(
 extends HasCloser,
   ProvideActorSystem, TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword:
 
-  protected val name = "PekkoHttpAgentTextApi"
+  protected val name = "PekkoHttpSubagentTextApi"
   protected val config = config"pekko.log-dead-letters = 0"
 
-  private val agentUris = AgentUris(agentUri)
+  private val subagentUris = SubagentUris(agentUri)
 
   protected def keyStoreRef = None
 
@@ -53,13 +53,13 @@ extends HasCloser,
 
   protected def serverName = "JS7 Agent"
 
-  protected val sessionUri = agentUris.session
+  protected val sessionUri = subagentUris.session
 
-  protected val commandUri = agentUris.command
+  protected val commandUri = subagentUris.command
 
   protected def httpClient = this
 
-  protected def apiUri(tail: String) = agentUris.api(tail)
+  protected def apiUri(tail: String) = subagentUris.api(tail)
 
   closer.onClose { super.close() }
 
@@ -68,7 +68,7 @@ extends HasCloser,
     closer.close()
 
 
-object PekkoHttpAgentTextApi:
+object PekkoHttpSubagentTextApi:
   // Like AgentConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory

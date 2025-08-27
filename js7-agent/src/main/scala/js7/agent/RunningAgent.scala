@@ -47,7 +47,6 @@ import js7.journal.watch.StrictEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import scala.collection.immutable.Map.Map1
 
 final class RunningAgent private(
@@ -325,7 +324,6 @@ object RunningAgent:
     alarmClock: Option[AlarmClock] = None,
     eventIdGenerator: Option[EventIdGenerator] = None,
     commandHandler: Option[CommandHandler] = None,
-    authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None,
     envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)
 
   object TestWiring:
