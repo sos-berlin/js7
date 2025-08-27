@@ -177,8 +177,8 @@ object AgentCommand extends CommonCommand.Companion:
       "Shutdown" + parameterListToString(
         processSignal, clusterAction,
         suppressSnapshot ? "suppressSnapshot",
-        restart ?? "restart",
-        restartDirector ?? "restartDirector")
+        restart ? "restart",
+        restartDirector ? "restartDirector")
 
   object ShutDown:
     sealed trait ClusterAction
