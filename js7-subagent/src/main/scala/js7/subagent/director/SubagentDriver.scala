@@ -54,7 +54,7 @@ trait SubagentDriver:
 
   def tryShutdownForRemoval: IO[Unit]
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit]
+  def stopWorkflowJobs(workflow: Workflow): IO[Unit]
 
   def terminate: IO[Unit]
 

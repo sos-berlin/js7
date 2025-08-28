@@ -28,7 +28,6 @@ import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, KeyedEvent}
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
-import js7.data.job.JobKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.other.HeartbeatTiming
@@ -36,6 +35,7 @@ import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueT
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ReleaseEvents, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
+import js7.data.workflow.Workflow
 import js7.journal.Journal
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.subagent.director.RemoteSubagentDriver.*
@@ -111,7 +111,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     logger.traceIO:
       stop
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
+  def stopWorkflowJobs(workflow: Workflow) =
     // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
     IO.unit
 

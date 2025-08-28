@@ -145,14 +145,14 @@ extends Service.StoppableByRequest:
           if sym.relievedLogLevel >= LogLevel.Info then
             logger.info(s"🟢 All processes completed")
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
-    val jobKeySet = jobKeys.toSet
-    jobKeys.toVector
+  def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
+    workflow.keyToJob.keys.toVector
       .flatMap(jobKeyToJobDriver.get)
       .parUnorderedTraverse:
-        _.stop(signal)
+        _.stop(SIGKILL/*just in case*/)
       .productR:
-        jobKeyToJobDriver.removeConditional((jobKey, _) => jobKeySet(jobKey))
+        val isOurs = workflow.keyToJob.keySet
+        jobKeyToJobDriver.removeConditional((jobKey, _) => isOurs(jobKey))
       .void
 
   //private[subagent] def dedicateDirector(cmd: DedicateDirector, meta: CommandMeta)

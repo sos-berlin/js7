@@ -21,13 +21,13 @@ import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent, SubagentRunId}
+import js7.data.workflow.Workflow
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.{CommitOptions, Journal}
 import js7.subagent.configuration.SubagentConf
@@ -167,11 +167,10 @@ extends SubagentDriver, Service.StoppableByRequest:
   def serverMeteringScope(): Option[ServerMeteringLiveScope.type] =
     Some(ServerMeteringLiveScope)
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
+  def stopWorkflowJobs(workflow: Workflow) =
     IO.defer:
-      subagent.checkedDedicatedSubagent.toOption
-        .fold(IO.unit):
-          _.stopJobs(jobKeys, signal)
+      subagent.checkedDedicatedSubagent.toOption.foldMap:
+        _.stopWorkflowJobs(workflow)
 
   def terminate: IO[Unit] =
     logger.traceIO:

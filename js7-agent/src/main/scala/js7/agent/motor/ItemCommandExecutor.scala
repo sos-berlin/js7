@@ -12,7 +12,6 @@ import js7.agent.motor.ItemCommandExecutor.*
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, right, startAndForget, startAndLogError}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.AsyncVariable
@@ -171,8 +170,7 @@ private final class ItemCommandExecutor(
       case WorkflowId.as(workflowId) =>
         persistItemDetachedIfExists.ifPersisted: persisted =>
           persisted.originalAggregate.idToWorkflow.get(workflowId).foldMap: workflow =>
-            subagentKeeper
-              .stopJobs(workflow.keyToJob.keys, SIGKILL /*just in case*/)
+            subagentKeeper.stopWorkflowJobs(workflow)
               .handleError: t =>
                 logger.error(s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t)
         .rightAs(AgentCommand.Response.Accepted)

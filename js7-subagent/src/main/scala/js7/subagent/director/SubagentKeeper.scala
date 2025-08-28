@@ -32,7 +32,6 @@ import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.{Event, EventCalc, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemDetached
-import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -41,6 +40,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetS
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
+import js7.data.workflow.Workflow
 import js7.journal.CommitOptions.Transaction
 import js7.journal.Persisted.ifPersisted
 import js7.journal.{Journal, Persisted}
@@ -143,11 +143,10 @@ extends Service.StoppableByRequest:
           case (orderId, _: LocalSubagentDriver[?]) => killProcess(orderId, signal)
           case _ => IO.unit
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
+  def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
     stateVar.value.flatMap: state =>
-      state.subagentToEntry.values.toVector
-        .parUnorderedTraverse(_.driver.stopJobs(jobKeys, signal))
-        .map(_.combineAll)
+      state.subagentToEntry.values.toVector.parFoldMapA:
+        _.driver.stopWorkflowJobs(workflow)
 
   //def orderIsLocal(orderId: OrderId): Boolean =
   //  orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
