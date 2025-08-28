@@ -7,7 +7,7 @@ import fs2.Pipe
 import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, right}
 import js7.base.catsutils.CatsExtensions.flatMapSome
-import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, LogLevel, Logger}
@@ -32,6 +32,7 @@ import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.{CommitOptions, MemoryJournal}
@@ -93,37 +94,35 @@ extends Service.StoppableByRequest:
       stopDontWaitForDirector = dontWaitForDirector
       stop
 
-  private def stopMe(
-    signal: Option[ProcessSignal],
-    dontWaitForDirector: Boolean = false)
-  : IO[Unit] =
+  private def stopMe(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
     stoppingLock.lock:
       logger.debugIO:
         IO.defer:
           _dontWaitForDirector |= dontWaitForDirector
-          val isShuttingDown = shuttingDown.getAndSet(true)
-          IO.unlessA(isShuttingDown):
-            logWhileStopping:
-              orderIdToJobDriver.stop.both:
-                signal.foldMap:
-                  killAndStopAllJobs
-              .productR:
-                orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
-              .productR:
-                if dontWaitForDirector then IO:
-                  for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
-                    s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
-                else
-                  awaitOrderAcknowledgements *>
-                    // Await process termination and DetachProcessedOrder commands
-                    orderToProcessing.whenStopped
-                      .logWhenItTakesLonger("Director-acknowledged Order processes")
-            .productR:
+          IO.unlessA(shuttingDown.getAndSet(true)):
+            stopAllOrders(signal, dontWaitForDirector) *>
               journal.persist:
                 SubagentShutdown
               .handleProblem: problem =>
                 logger.warn(s"SubagentShutdown: $problem")
-            .void
+              .void
+
+  private def stopAllOrders(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
+    logWhileStopping:
+      orderIdToJobDriver.stop.both:
+        signal.foldMap:
+          killAndStopAllJobs
+      .productR:
+        orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
+      .productR:
+        if dontWaitForDirector then IO:
+          for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
+            s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
+        else
+          awaitOrderAcknowledgements *>
+            // Await process termination and DetachProcessedOrder commands
+            orderToProcessing.whenStopped
+              .logWhenItTakesLonger("Director-acknowledged Order processes")
 
   private def logWhileStopping(body: IO[Unit]): IO[Unit] =
     IO.defer:
