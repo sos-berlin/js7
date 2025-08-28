@@ -3,7 +3,6 @@ package js7.launcher
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO}
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*

@@ -1,8 +1,6 @@
 package js7.base.log
 
 import java.lang.reflect.Method
-import java.time.LocalDateTime
-import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.ifFailed
 import js7.base.utils.{Atomic, Once}
