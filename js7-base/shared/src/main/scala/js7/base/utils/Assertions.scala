@@ -15,6 +15,8 @@ object Assertions:
     (using fullName: sourcecode.FullName, loc: ScalaSourceLocation)
   : Unit =
     if isStrict then
+      assertThat(predicate, clue)
+    else if !predicate.value then
       logger.debug(s"🔥 Maybe an ERROR: ${toMessage("assertIfStrict", predicate, clue)}")
 
   def assertThat(predicate: sourcecode.Text[Boolean])
