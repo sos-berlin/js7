@@ -6,10 +6,11 @@ import scala.language.implicitConversions
 object Dependencies
 {
   val bouncyCastleVersion = "1.81"
-  val pekkoVersion = "1.1.4"
+  val pekkoVersion = "1.1.5"
   val pekkoHttpVersion = "1.2.0"
   val slf4jVersion = "2.0.17"  // See also plugins.sbt
   val log4jVersion = "2.24.3"  // See also plugins.sbt
+//val log4jVersion = "2.25.1"  // See also plugins.sbt      2.25.1 logs NullPointerException
   val catsVersion = "2.13.0"
   val catsEffectVersion = "3.5.7"
   val catsEffectTestingVersion = catsEffectVersion
@@ -55,7 +56,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.3"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.4"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
@@ -81,6 +82,6 @@ object Dependencies
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
-  val prometheus          = "io.prometheus" % "prometheus-metrics-exporter-common" % "1.3.8" ::
-                            "io.prometheus.jmx" % "collector" % "1.3.0" :: Nil
+  val prometheus          = "io.prometheus" % "prometheus-metrics-exporter-common" % "1.4.1" ::
+                            "io.prometheus.jmx" % "collector" % "1.4.0" :: Nil
 }
