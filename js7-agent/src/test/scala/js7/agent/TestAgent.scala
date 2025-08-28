@@ -160,7 +160,7 @@ object TestAgent:
             .registerMultiple(testWiring.envResources)
         .flatMap: ioRuntime =>
           given IORuntime = ioRuntime
-          RunningAgent.resource(conf, testWiring).evalOn(ioRuntime.compute)
+          RunningAgent.service(conf, testWiring).evalOn(ioRuntime.compute)
         .toAllocated
         .map(new TestAgent(_, terminateProcessesWith))
 
@@ -190,7 +190,7 @@ object TestAgent:
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[TestAgent] =
-    RunningAgent.resource(conf, testWiring)
+    RunningAgent.service(conf, testWiring)
       .flatMap: agent =>
         Resource.makeCase(
           acquire = IO(new TestAgent(new Allocated(agent, agent.terminate().void))))(

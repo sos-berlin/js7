@@ -190,18 +190,19 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(subagentRunId -> _)
 
   private def dedicate: IO[DedicateSubagent.Response] =
-    val agentRunId = journal.unsafeAggregate().agentRunId
-    val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
     logger.debugIO:
-      postCommandUntilSucceeded(cmd)
-        .flatMap(response => journal
-          .persist:
+      journal.aggregate.map(_.agentRunId).flatMap: agentRunId =>
+        postCommandUntilSucceeded:
+          DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
+        .flatMap: response =>
+          journal.persist:
             subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo()))
-          .flatTap(checked => IO.whenA(checked.isRight)(IO:
-            lastSubagentRunId = Some(response.subagentRunId)
-            shuttingDown = false))
+          .ifPersisted: _ =>
+            IO:
+              lastSubagentRunId = Some(response.subagentRunId)
+              shuttingDown = false
           .rightAs(response)
-          .orThrow)
+          .orThrow
 
   private def couple(subagentRunId: SubagentRunId, eventId: EventId): IO[EventId] =
     logger.traceIO(cancelAndFailWhenStopping:

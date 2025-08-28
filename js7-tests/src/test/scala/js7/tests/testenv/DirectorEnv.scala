@@ -101,7 +101,7 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
   def directorResource: ResourceIO[RunningAgent] =
     ioRuntimeResource.flatMap: ioRuntime =>
       given IORuntime = ioRuntime
-      RunningAgent.resource(agentConf)
+      RunningAgent.service(agentConf)
         .flatTap(programRegistering)
         .evalOn(ioRuntime.compute)
 

@@ -209,7 +209,7 @@ extends MainService, Service.StoppableByRequest:
 object RunningAgent:
   private val logger = Logger[this.type]
 
-  def resource(
+  def service(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
