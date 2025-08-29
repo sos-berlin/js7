@@ -38,6 +38,7 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
+import js7.data.agent.Problems.AgentIsShuttingDown
 import js7.data.node.NodeNameToPassword
 import js7.data.state.EngineStateMXBean
 import js7.journal.EventIdGenerator
@@ -127,8 +128,9 @@ extends MainService, Service.StoppableByRequest:
         executeCommandAsSystemUser(ShutDown())
           .attempt
           .map:
-            case Left(throwable) => logger.warn(throwable.toStringWithCauses)
-            case Right(Left(problem)) => logger.warn(problem.toString)
+            case Left(throwable) => logger.warn(s"Shutdown: ${throwable.toStringWithCauses}")
+            case Right(Left(problem @ AgentIsShuttingDown)) => logger.debug(s"Shutdown: $problem}")
+            case Right(Left(problem)) => logger.warn(s"Shutdown: $problem}")
             case Right(Right(_)) =>
           .startAndForget
       .void

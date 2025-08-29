@@ -153,7 +153,7 @@ object AgentCommand extends CommonCommand.Companion:
     * @param suppressSnapshot For testing only
     * @param restart Terminate program with a special return code which lets the
     *                outer script restart the Director
-    * @param restartDirector Restart the Director abd keep the local Subagent running.
+    * @param restartDirector Keep the local Subagent running but restart the Director.
     */
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
