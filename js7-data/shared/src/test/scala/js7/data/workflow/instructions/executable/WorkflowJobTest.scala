@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
-import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
+import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -140,6 +140,21 @@ final class WorkflowJobTest extends OurTestSuite:
           },
           "subagentSelectionId": "BUNDLE",
           "skipIfNoAdmissionForOrderDay": true
+        }""")
+
+    "Compatible with v2.7.1 (2)" in:
+      testJsonDecoder(
+        WorkflowJob(
+          AgentPath("AGENT"),
+          ShellScriptExecutable("SCRIPT"),
+          subagentBundleId = Some(expr("'BUNDLE'"))),
+        json"""{
+          "agentPath": "AGENT",
+          "executable": {
+            "TYPE": "ScriptExecutable",
+            "script": "SCRIPT"
+          },
+          "subagentSelectionIdExpr": "'BUNDLE'"
         }""")
   }
 

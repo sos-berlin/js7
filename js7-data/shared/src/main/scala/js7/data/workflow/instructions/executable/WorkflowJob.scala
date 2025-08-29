@@ -130,6 +130,9 @@ object WorkflowJob:
             case None => c.get[Option[SubagentBundleId]]("subagentSelectionId") // COMPATIBLE with v2.7.1
           .flatMap:
             case Some(id) => Right(Some(StringConstant(id.string)))
+            case None => c.get[Option[Expression]]("subagentSelectionIdExpr") // COMPATIBLE with v2.7.1
+          .flatMap:
+            case Some(expr: Expression) => Right(Some(expr))
             case None =>
               c.get[Option[Expression]]("subagentBundleIdExpr").flatMap:
                 case Some(expr) => Right(Some(expr))
