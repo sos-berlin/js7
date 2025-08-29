@@ -265,7 +265,8 @@ extends SignedItemContainer,
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match
-          case SubagentShutdown | SubagentShutdownV7 if !keyToUnsignedItemState_.contains(subagentId) =>
+          case SubagentShutdown | SubagentShutdownV7
+            if !keyToUnsignedItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 
@@ -286,6 +287,7 @@ extends SignedItemContainer,
             controllerId = controllerId,
             controllerRunId = controllerRunId,
             directors = directors)))
+
       case _ => applyStandardEvent(keyedEvent)
     .map: agentState =>
       agentState.copy(

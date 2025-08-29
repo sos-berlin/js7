@@ -331,17 +331,17 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriverCancelable(order: Order[IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
-    orderToSubagentBundleId(order).flatMapT:
-      case DeterminedSubagentBundle(subagentBundleId, stick) =>
-        cancelableWhileWaitingForSubagent(order.id)
-          .use: canceledPromise =>
-            IO.race(
-              canceledPromise.get,
-              selectSubagentDriver(subagentBundleId))
-          .map(_
-            .toOption
-            .sequence
-            .map(_.map(SelectedDriver(subagentBundleId, _, stick))))
+    orderToSubagentBundleId(order).flatMapT: determinedSubagentBundle =>
+      import determinedSubagentBundle.{maybeSubagentBundleId, stick}
+      cancelableWhileWaitingForSubagent(order.id)
+        .use: canceledPromise =>
+          IO.race(
+            canceledPromise.get,
+            selectSubagentDriver(maybeSubagentBundleId))
+        .map(_
+          .toOption
+          .sequence
+          .map(_.map(SelectedDriver(maybeSubagentBundleId, _, stick))))
 
   private def orderToSubagentBundleId(order: Order[IsFreshOrReady])
   : IO[Checked[DeterminedSubagentBundle]] =

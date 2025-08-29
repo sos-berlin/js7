@@ -57,8 +57,8 @@ extends
         if subagentRunId.exists(_ != runId) then
           val problem = Problem.pure(
             s"$subagentId has already been dedicated with a different SubagentRunId")
-          logger.warn(
-            s" $problem · ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId")
+          logger.warn:
+            s" $problem · ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId"
           Left(problem)
         else
           Right(copy(
