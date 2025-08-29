@@ -9,7 +9,7 @@ import js7.data.event.{Event, EventId, ItemContainer, JournaledState, KeyedEvent
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
-import js7.data.subagent.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
+import js7.data.subagent.SubagentEvent.{SubagentItemAttached, SubagentShutdown, SubagentShutdownStarted}
 import js7.data.system.ServerMeteringEvent
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -36,7 +36,8 @@ extends JournaledState[SubagentState], ItemContainer:
         Right(copy(
           pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
-      case KeyedEvent(_, _: OrderProcessed | _: OrderStdWritten | _: SubagentShutdown) =>
+      case KeyedEvent(_, _: OrderProcessed | _: OrderStdWritten |
+                         _: SubagentShutdownStarted | _: SubagentShutdown) =>
         Right(this)
 
       case _ => eventNotApplicable(keyedEvent)

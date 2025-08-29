@@ -30,7 +30,7 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
-import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
+import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentItemStateEvent, SubagentRunId}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
 import js7.journal.CommitOptions.Transaction
@@ -162,13 +162,18 @@ private trait SubagentEventListener:
             logger.error(s"Unexpected event: $keyedEvent")
             IO.pure(None -> IO.unit)
 
-      case KeyedEvent(_: NoKey, e: ServerMeteringEvent) =>
+      case KeyedEvent(NoKey, e: ServerMeteringEvent) =>
         IO:
           _lastServerMeteringEvent = e
           _lastServerMeteringEventSince = Deadline.now
           None -> IO.unit
 
-      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+      case KeyedEvent(NoKey, SubagentEvent.SubagentShutdownStarted) =>
+        IO.pure:
+          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdownStarted))
+            -> IO.unit
+
+      case KeyedEvent(NoKey, SubagentEvent.SubagentShutdown) =>
         // TODO Aufträge im Zustand Processing abbrechen.
         // Das sind Aufträge, für die ein OrderProcessingStarted ausgegeben wurde, die aber noch
         // nicht zum Subagenten geschickt worden sind, sodass der die nicht mit Disrupted
@@ -176,7 +181,7 @@ private trait SubagentEventListener:
         // onSubagentDied? OrderProcessed wie oben behandeln als käme es vom Subagenten.
         IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
-      case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
+      case KeyedEvent(NoKey, event: SubagentEvent.SubagentItemAttached) =>
         logger.debug(event.toShortString)
         IO.pure(None -> IO.unit)
 

@@ -125,10 +125,11 @@ extends Service.StoppableByRequest:
     stop
 
   def shutdownLocalSubagent(signal: Option[ProcessSignal]): IO[Unit] =
-    localSubagentDriver.flatMapSome: driver =>
-      logger.debugIO:
-        driver.shutdownSubagent(signal).void
-    .void
+    logger.traceIO:
+      localSubagentDriver.flatMapSome: driver =>
+        logger.debugIO:
+          driver.shutdownSubagent(signal).void
+      .void
 
   private def localSubagentDriver: IO[Option[LocalSubagentDriver[S]]] =
     stateVar.value.map:

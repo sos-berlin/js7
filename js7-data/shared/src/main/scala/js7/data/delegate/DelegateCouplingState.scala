@@ -33,7 +33,7 @@ object DelegateCouplingState:
     /** Delegate has been reset by command. */
     case object ResetCommand extends Reason
 
-    implicit val jsonCodec: TypedJsonCodec[Reason] = TypedJsonCodec(
+    given TypedJsonCodec[Reason] = TypedJsonCodec(
       Subtype(Fresh),
       Subtype(Shutdown),
       Subtype(Restart),
@@ -45,11 +45,15 @@ object DelegateCouplingState:
   // COMPATIBLE with v2.3: Also used for Subagent (which loses its state).
   case object ShutDown extends DelegateCouplingState
 
+  /** Delegate is shutting down. */
+  case object ShutdownStarted extends DelegateCouplingState
+
   final case class Resetting(force: Boolean = false) extends DelegateCouplingState
 
-  val typedJsonCodec: TypedJsonCodec[DelegateCouplingState] = TypedJsonCodec(
+  private val typedJsonCodec: TypedJsonCodec[DelegateCouplingState] = TypedJsonCodec(
     Subtype(deriveCodec[Reset]),
     Subtype(Coupled),
+    Subtype(ShutdownStarted),
     Subtype(ShutDown),
     Subtype(deriveConfiguredCodec[Resetting]))
 

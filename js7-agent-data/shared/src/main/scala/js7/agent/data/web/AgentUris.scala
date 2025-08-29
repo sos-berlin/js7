@@ -16,6 +16,7 @@ final class AgentUris private(agentUri: Uri):
 
   private val prefixedUri = Uri(s"$agentUri/agent")
 
+  val subagentUris: SubagentUris = SubagentUris(agentUri)
   val overview: Uri = toUri("api")
   val session: Uri = toUri("api/session")
   val command: Uri = toUri("api/command")

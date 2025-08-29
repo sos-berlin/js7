@@ -24,6 +24,7 @@ import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
+import js7.data.subagent.SubagentCommand
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -71,9 +72,15 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
             logger.log(sym.relievedLogLevel, s"💥$toString => $throwable")))
 
   final def commandExecute(command: AgentCommand): IO[Checked[command.Response]] =
-    liftProblem(
+    liftProblem:
       post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
-        .map(_.asInstanceOf[command.Response]))
+        .map(_.asInstanceOf[command.Response])
+
+  final def executeSubagentCommand(command: SubagentCommand): IO[Checked[command.Response]] =
+    liftProblem:
+      post[SubagentCommand, SubagentCommand.Response](
+        uri = agentUris.subagentUris.command, command
+      ).map(_.asInstanceOf[command.Response])
 
   final def overview: IO[AgentOverview] = get[AgentOverview](agentUris.overview)
 

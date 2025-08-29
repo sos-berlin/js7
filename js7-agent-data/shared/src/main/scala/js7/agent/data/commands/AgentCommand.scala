@@ -13,10 +13,10 @@ import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import js7.base.utils.{Big, ScalaUtils}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.{flatten, parameterListToString}
+import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Big, ScalaUtils}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.{CommonCommand, IsEventEmittingCommand}
 import js7.data.controller.{ControllerId, ControllerRunId}

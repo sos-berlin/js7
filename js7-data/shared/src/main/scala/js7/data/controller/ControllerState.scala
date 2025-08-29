@@ -47,7 +47,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownStarted, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
@@ -407,7 +407,8 @@ extends
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match
-          case SubagentShutdown | SubagentShutdownV7 if !keyToUnsignedItemState_.contains(subagentId) =>
+          case SubagentShutdownStarted | SubagentShutdown | SubagentShutdownV7
+            if !keyToUnsignedItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 

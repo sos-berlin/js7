@@ -11,7 +11,9 @@ import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, Rese
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.catsutils.Environment.environment
+import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.{Ops, RichCheckedF}
@@ -50,10 +52,8 @@ final class AgentMotor private(
 extends Service.StoppableByRequest:
 
   private val agentProcessCount = Atomic(0)
-  private val _shutdown = Ref.unsafe[IO, Option[AgentCommand.ShutDown]](None)
+  private val _shutdownLocalSubagent = Ref.unsafe[IO, Option[Option[ProcessSignal]]](None)
   private val _kill = Ref.unsafe[IO, Boolean](false)
-  /** When only the Director should be shut down while the Subagent keeps running. */
-  private val _inhibitShutdownLocalSubagent = Ref.unsafe[IO, Boolean](false)
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
@@ -76,24 +76,26 @@ extends Service.StoppableByRequest:
             untilStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
-    IO.defer:
-      orderMotor.stop *>
-        _kill.get.flatMap:
-          IO.unlessA(_):
-            _inhibitShutdownLocalSubagent.get.flatMap:
-              IO.unlessA(_):
-                _shutdown.get.map(_.flatMap(_.processSignal)).flatMap: maybeSignal =>
-                  subagentKeeper.shutdownLocalSubagent(maybeSignal)
-            *>
-              journal.persist(AgentShutDown)
-                .handleProblemWith: problem =>
-                  IO(logger.error(s"AgentShutDown: $problem"))
-                .void
+    _kill.get.flatMap:
+      if _ then
+        orderMotor.stop
+      else
+        _shutdownLocalSubagent.get.flatMapSome: maybeSignal =>
+          subagentKeeper.shutdownLocalSubagent(maybeSignal)
+        .void
+        .productR:
+          orderMotor.stop
+        .productR:
+          // TODO AgentShutdown in OrderMotor? Dann brauchen wir OrderMotor nicht hier zu stoppen.
+          journal.persist:
+            AgentShutDown // "Director shut down" (maybe not Subagents)
+          .handleProblem: problem =>
+            logger.error(s"AgentShutDown: $problem")
+          .void
 
   def kill: IO[Unit] =
     logger.debugIO:
       _kill.set(true) *>
-        //subagentKeeper.kill *>
         stop *> subagentKeeper.kill *> journal.kill
 
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
@@ -115,11 +117,9 @@ extends Service.StoppableByRequest:
       subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
-    _shutdown.set(Some(cmd)) *>
+    // if cmd.restartDirector then don't shutdown the local Subagent (as with switchover)
+    _shutdownLocalSubagent.set(!cmd.restartDirector ? cmd.processSignal) *>
       stop
-
-  def inhibitShutdownLocalSubagent: IO[Unit] =
-    _inhibitShutdownLocalSubagent.set(true)
 
   override def toString = "AgentMotor"
 

@@ -12,6 +12,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.useSync
+import js7.base.utils.Base64UUID
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentReady, AgentShutDown}
@@ -22,6 +23,8 @@ import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated, SubagentRestarted, SubagentShutdown, SubagentShutdownStarted}
+import js7.data.subagent.{SubagentId, SubagentItemStateEvent, SubagentRunId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -43,40 +46,43 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(simpleWorkflow)
 
-  private implicit def actorSystem: ActorSystem =
-    controller.actorSystem
+  private given ActorSystem = controller.actorSystem
 
   override def beforeAll() =
     super.beforeAll()
-    eventWatch.awaitNext[AgentReady]()
+    controller.awaitNext[AgentReady]()
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in:
-    val addOrderEventId = eventWatch.lastAddedEventId
+    val addOrderEventId = controller.lastAddedEventId
 
     val simpleOrderId = OrderId("🔹")
     controller.addOrderBlocking(FreshOrder(OrderId("🔹"), simpleWorkflow.path))
-    eventWatch.awaitNextKey[OrderProcessingStarted](simpleOrderId).head.eventId
-    eventWatch.awaitNextKey[OrderStdoutWritten](simpleOrderId)
+    controller.awaitNextKey[OrderProcessingStarted](simpleOrderId).head.eventId
+    controller.awaitNextKey[OrderStdoutWritten](simpleOrderId)
 
     val agentEnv = directoryProvider.agentEnvs.head
     locally:
       val agentClient = AgentClient(Admission(agent.localUri, agentEnv.controllerUserAndPassword))
       agentClient.login().await(99.s)
-      agentClient
-        .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
-        .await(99.s)
+      agentClient.commandExecute:
+        AgentCommand.ShutDown(Some(SIGKILL))
+      .await(99.s)
       agent.untilTerminated.await(99.s)
 
-    agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
-      val stampedEvents = eventWatch.awaitNextKey[OrderProcessed](simpleOrderId)
-      assert(stampedEvents.map(_.value) == Vector(OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL))))
+    controller.awaitNextKey[SubagentShutdownStarted](subagentId)
+    val orderProcessed = controller.awaitNextKey[OrderProcessed](simpleOrderId)
+    assert(orderProcessed.map(_.value) == Vector(OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL))))
+    controller.awaitNextKey[SubagentShutdown](subagentId)
+    controller.awaitNextKey[AgentShutDown](agentPath)
 
-      eventWatch.awaitNextKey[OrderStdoutWritten](simpleOrderId)
+    agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
+      controller.awaitNextKey[OrderProcessingStarted](simpleOrderId)
+      controller.awaitNextKey[OrderStdoutWritten](simpleOrderId)
       execCmd:
         CancelOrders(simpleOrderId :: Nil, CancellationMode.kill(immediately = true))
-      eventWatch.awaitNextKey[OrderTerminated](simpleOrderId)
+      controller.awaitNextKey[OrderTerminated](simpleOrderId)
 
-      assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
+      assert(controller.keyedEvents[Event](after = addOrderEventId)
         .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
         simpleOrderId <-: OrderAdded(simpleWorkflow.id),
         simpleOrderId <-: OrderAttachable(agentPath),
@@ -85,11 +91,18 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         simpleOrderId <-: OrderStarted,
         simpleOrderId <-: OrderProcessingStarted(subagentId),
         simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
+
+        subagentId <-: SubagentShutdownStarted,
         simpleOrderId <-: OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL)),
+        simpleOrderId <-: OrderMoved(Position(0)),
+        subagentId <-: SubagentShutdown,
         agentPath <-: AgentShutDown,
 
+        subagentId <-: SubagentCoupled,
+        subagentId <-: SubagentRestarted,
+        subagentId <-: SubagentDedicated(SubagentRunId(Base64UUID.zero), None),
+
         agentPath <-: AgentReady("UTC", None),
-        simpleOrderId <-: OrderMoved(Position(0)),
         simpleOrderId <-: OrderProcessingStarted(subagentId),
         simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
         simpleOrderId <-: OrderCancellationMarked(CancellationMode.kill(immediately = true)),
@@ -102,10 +115,13 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
     keyedEvent match
-      case o @ KeyedEvent(`orderId`, _) => Some(o)
-      case o @ KeyedEvent(_, _: AgentShutDown) => Some(o)
+      case KeyedEvent(`orderId`, _) => Some(keyedEvent)
+      case KeyedEvent(_, _: AgentShutDown) => Some(keyedEvent)
       case KeyedEvent(agentPath: AgentPath, _: AgentReady) =>
         Some(agentPath <-: AgentReady("UTC", None))
+      case KeyedEvent(subagentId: SubagentId, _: SubagentDedicated) =>
+        Some(subagentId <-: SubagentDedicated(SubagentRunId(Base64UUID.zero), None))
+      case KeyedEvent(_, _: SubagentItemStateEvent) => Some(keyedEvent)
       case _ => None
 
 

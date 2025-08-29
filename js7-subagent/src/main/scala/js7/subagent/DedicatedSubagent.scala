@@ -9,8 +9,9 @@ import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, 
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
+import js7.base.log.LogLevel.{Info, Warn}
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, LogLevel, Logger}
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -18,24 +19,24 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.{EventCalc, EventId}
+import js7.data.event.{Event, EventCalc, EventId}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
-import js7.data.subagent.SubagentEvent.SubagentShutdown
+import js7.data.subagent.SubagentEvent.{SubagentShutdown, SubagentShutdownStarted}
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.{CommitOptions, MemoryJournal}
+import js7.journal.{CommitOptions, MemoryJournal, Persisted}
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
@@ -65,12 +66,12 @@ extends Service.StoppableByRequest:
 
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
-  private val stoppingLock = AsyncLock()
+  private val stoppingLock = false
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
   private var _isUsed = false
   @volatile private var _dontWaitForDirector = false
-  private val shuttingDown = Atomic(false)
+  @volatile private var _shuttingDown = false
   private var stopSignal: Option[ProcessSignal] = Some(SIGTERM)
   private var stopDontWaitForDirector = false
 
@@ -78,7 +79,7 @@ extends Service.StoppableByRequest:
     _isUsed || isShuttingDown
 
   def isShuttingDown: Boolean =
-    shuttingDown.get()
+    _shuttingDown
 
   protected def start =
     startService:
@@ -95,17 +96,22 @@ extends Service.StoppableByRequest:
       stop
 
   private def stopMe(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
-    stoppingLock.lock:
-      logger.debugIO:
-        IO.defer:
-          _dontWaitForDirector |= dontWaitForDirector
-          IO.unlessA(shuttingDown.getAndSet(true)):
-            stopAllOrders(signal, dontWaitForDirector) *>
-              journal.persist:
-                SubagentShutdown
-              .handleProblem: problem =>
-                logger.warn(s"SubagentShutdown: $problem")
-              .void
+    logger.debugIO:
+      IO.defer:
+        _dontWaitForDirector |= dontWaitForDirector
+        _shuttingDown = true
+        persistedQueue.persisting:
+          journal.persist:
+            SubagentShutdownStarted
+        .ignoreProblem(Warn)
+        .productR:
+          stopAllOrders(signal, dontWaitForDirector)
+        .productR:
+          persistedQueue.persisting:
+            journal.persist:
+              SubagentShutdown
+          .map(_.orThrow)
+        .void
 
   private def stopAllOrders(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
     logWhileStopping:
@@ -141,7 +147,7 @@ extends Service.StoppableByRequest:
         body
       .productR:
         IO:
-          if sym.relievedLogLevel >= LogLevel.Info then
+          if sym.relievedLogLevel >= Info then
             logger.info(s"🟢 All processes completed")
 
   def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
@@ -349,7 +355,7 @@ extends Service.StoppableByRequest:
   def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
     journal.releaseEvents(eventId).flatMapT: _ =>
       persistedQueue.waitUntil(eventId)
-        .logWhenItTakesLonger(s"$eventId OrderProcessed event")
+        .logWhenItTakesLonger(s"releaseEvents($eventId)")
         .flatMap: orderIds =>
           detachProcessedOrders(orderIds)
             .map(Right(_))
@@ -381,10 +387,8 @@ extends Service.StoppableByRequest:
       .foreach: events =>
         val charCount = events.iterator.map(_.event.chunk.length).sum
         outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-          persistedQueue.lock:
+          persistedQueue.persisting:
             journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
-              .ifPersisted: persisted =>
-                persistedQueue.enqueue(persisted.stampedKeyedEvents.last.eventId)
         .map:
           _.onProblem: problem =>
             logger.error(s"Emission of OrderStdWritten event failed: $problem")
@@ -474,6 +478,12 @@ object DedicatedSubagent:
   private final class PersistedQueue(eventIdSignal: SignallingRef[IO, EventId]):
     private val persistLock = SimpleLock[IO]
     private val queue = mutable.Queue.empty[(eventId: EventId, processedOrderId: OrderId)]
+
+    def persisting[E <: Event](persist: IO[Checked[Persisted[SubagentState, E]]])
+    : IO[Checked[Persisted[SubagentState, E]]] =
+      lock:
+        persist.ifPersisted: persisted =>
+          enqueue(persisted.stampedKeyedEvents.last.eventId)
 
     private[DedicatedSubagent] def lock[A](io: IO[A]): IO[A] =
       persistLock.surround(io)

@@ -151,6 +151,11 @@ extends SubagentDriver, Service.StoppableByRequest:
             logger.error(s"Unexpected event: $keyedEvent")
             IO.pure(None -> IO.unit)
 
+      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdownStarted) =>
+        IO.pure:
+          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdownStarted))
+            -> IO.unit
+
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         IO.pure:
           Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdown))

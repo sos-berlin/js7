@@ -66,7 +66,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
     *>
       startService:
         untilStopRequested *>
-          stopAgentMotor
+          stopAgentMotor()
 
   def untilTerminated: IO[DirectorTermination] =
     logger.debugIO:
@@ -190,7 +190,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
             .rightAs(agentRunId -> persisted.aggregate.eventId)
             .flatTapT: _ =>
               IO.whenA(isStopping): // Shutdown while being dedicated?
-                stopAgentMotor
+                stopAgentMotor()
               .map(Right(_))
 
   private def reset(cmd: Reset): IO[Checked[Accepted]] =
@@ -244,18 +244,15 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
               IO.right(())
           .flatMapT { _ =>
             // Run asynchronously as a fiber:
-            IO.whenA(cmd.restartDirector):
-              agentMotor.flatMapSome(_.inhibitShutdownLocalSubagent).void
-            .productR:
+            locally:
               if cmd.isFailover then
                 agentMotor.flatMapSome(_.kill) *>
                   journal.kill
               else if cmd.isSwitchover then
-                stopAgentMotor *>
+                stopAgentMotor(cmd) *>
                   workingClusterNode.switchOver
               else
-                agentMotor.flatMapSome:
-                  _.shutdown(cmd)
+                stopAgentMotor(cmd)
             .productR:
               stop.productR:
                 terminated.complete:
@@ -292,10 +289,14 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
                   _dedicated.complete(Dedicated(allocated))
                     .as(Checked.unit)
 
-  private def stopAgentMotor: IO[Unit] =
-    _dedicated.tryGet.flatMapSome:
-      _.stopAgentMotor
-    .void
+  private def stopAgentMotor(cmd: AgentCommand.ShutDown = AgentCommand.ShutDown()): IO[Unit] =
+    logger.traceIO:
+      agentMotor.flatMapSome:
+        _.shutdown(cmd)
+      .productR:
+        _dedicated.tryGet.flatMapSome:
+          _.stopAgentMotor // stop the AgentMotor service
+        .void
 
   private def agentMotor: IO[Option[AgentMotor]] =
     _dedicated.tryGet.map(_.map(_.agentMotor))
