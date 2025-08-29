@@ -14,6 +14,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
+import js7.base.log.LogLevel
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite
 import js7.tester.CirceJsonTester.testJson
@@ -93,6 +94,13 @@ final class CheckedTest extends OurAsyncTestSuite:
 
     val problem = Problem("TEST")
     assert(Checked.catchProblem(throw problem.throwable).swap.getOrElse(null) eq problem)
+
+  "ignoreProblem — manual test" in:
+    val leftSyncIO = SyncIO[Checked[Int]](Left(Problem("PROBLEM")))
+    val unit = leftSyncIO
+      .map(x => x)
+      .ignoreProblem(LogLevel.Info).unsafeRunSync()
+    assert(unit == ())
 
   private val right1: Checked[Int] = Right(1)
   private val right2: Checked[Int] = Right(2)

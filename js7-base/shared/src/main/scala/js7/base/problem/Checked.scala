@@ -7,16 +7,18 @@ import cats.{Functor, Monad, Monoid}
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Problem.*
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.scalasource.ScalaSourceLocation
+import js7.base.scalasource.ScalaSourceLocation.sourceCodeToString
+import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import scala.annotation.unused
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Left, NotGiven, Success, Try}
-
 /**
   * @author Joacim Zschimmer
   */
@@ -25,8 +27,8 @@ object Checked:
   val unit: Checked[Unit] = Checked(())
   val completed: Checked[Completed] = Checked(Completed)
 
-  // Only used by catchNonFatal — must be lazy to avoid early initialized of logging.
-  private lazy val catchLogger = Logger[this.type]
+  // Must be lazy to avoid early initialized of logging.
+  private lazy val logger = Logger[this.type]
 
   implicit def checkedMonoid[A](implicit A: Monoid[A]): Monoid[Checked[A]] =
     new Monoid[Checked[A]]:
@@ -75,7 +77,7 @@ object Checked:
     try Right(f)
     catch
       case NonFatal(t) =>
-        for t <- t.ifStackTrace do catchLogger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        for t <- t.ifStackTrace do logger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
 
   def catchNonFatalDontLog[A](f: => A): Checked[A] =
@@ -97,6 +99,17 @@ object Checked:
     try Right(f)
     catch
       case e: ProblemException => Left(e.problem)
+
+
+  extension [F[_]](underlying: sourcecode.Text[F[Checked[?]]])(using loc: ScalaSourceLocation)
+    def ignoreProblem(logLevel: LogLevel)(using F: Monad[F]): F[Unit] =
+      underlying.value.map:
+        case Left(problem) =>
+          // Strip source code lines and combine them to a single, shorted line:
+          def source = underlying.source.split('\n').map(_.trim).mkString("⏎")
+            .truncateWithEllipsis(80, quote = true)
+          logger.log(logLevel, s"${sourceCodeToString(underlying)} failed: $problem • in $loc")
+        case Right(_) => ()
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal:
     def withProblemKey(key: Any): Checked[A] =

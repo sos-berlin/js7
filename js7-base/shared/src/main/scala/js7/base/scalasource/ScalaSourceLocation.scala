@@ -1,5 +1,6 @@
 package js7.base.scalasource
 
+import js7.base.utils.ScalaUtils.syntax.RichString
 import scala.quoted.{Expr, Quotes, quotes}
 import sourcecode.{SourceCompanion, SourceValue}
 
@@ -23,6 +24,11 @@ object ScalaSourceLocation
 
   inline implicit def generate: ScalaSourceLocation =
     ${ ScalaSourceLocationMacros.fileLocationMacro }
+
+
+  /** Strip source code lines and combine them to a single, shorted line. */
+  def sourceCodeToString(text: sourcecode.Text[?]): String =
+    text.source.split('\n').map(_.trim).mkString("⏎").truncateWithEllipsis(80, quote = true)
 
 
 private object ScalaSourceLocationMacros:
