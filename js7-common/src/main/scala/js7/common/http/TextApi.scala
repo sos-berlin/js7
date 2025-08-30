@@ -29,7 +29,7 @@ trait TextApi:
   def executeCommand(command: String)(using IORuntime): Unit =
     val response = awaitResult(
       httpClient.post[Json, Json](uri = commandUri, command.parseJsonOrThrow))
-    printer.doPrint(response.toPrettyString)
+    printer.doPrint(response.compactPrint)
 
   def getApi(uri: String)(using IORuntime): Unit =
     val u = if uri == "?" then "" else uri
@@ -54,7 +54,7 @@ trait TextApi:
     catch
       case ConnectionLost(_) => false
 
-  private def awaitResult[A](io: IO[A])(using IORuntime): A =
+  protected final def awaitResult[A](io: IO[A])(using IORuntime): A =
     try Await.result(io.unsafeToFuture(), 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
     catch
       case t: Throwable =>
@@ -63,7 +63,7 @@ trait TextApi:
 
   protected object printer:
     def doPrint(json: Json): Unit =
-      printer.doPrint(json.toPrettyString)
+      printer.doPrint(json.compactPrint)
 
     def doPrint(string: String): Unit =
       print(string.trim)

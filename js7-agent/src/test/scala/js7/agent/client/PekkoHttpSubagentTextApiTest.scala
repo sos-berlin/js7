@@ -1,12 +1,14 @@
-package js7.agent.tests
+package js7.agent.client
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.agent.client.PekkoHttpSubagentTextApi
+import js7.agent.client.PekkoHttpSubagentTextApiTest.*
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.tests.PekkoHttpSubagentTextApiTest.*
+import js7.agent.data.web.AgentUris
 import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
+import js7.agent.tests.TestAgentProvider
 import js7.base.auth.UserAndPassword
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
 import js7.base.configutils.Configs.*
@@ -52,6 +54,11 @@ extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
 
   override def afterAll() =
     closer closeThen { super.afterAll() }
+
+  "URI" in:
+    autoClosing(newSubagentTestApi(None)(_ => ())): client =>
+      assert(client.directorUris.agentUri == AgentUris(agent.localUri).agentUri)
+      assert(client.directorUris.command == agent.localUri / "agent" / "api" / "command")
 
   "Unauthorized when credentials are missing" in:
     autoClosing(newSubagentTestApi(None)(_ => ())): client =>

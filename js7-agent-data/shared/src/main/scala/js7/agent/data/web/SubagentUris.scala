@@ -3,9 +3,9 @@ package js7.agent.data.web
 import js7.agent.data.web.SubagentUris.*
 import js7.base.web.Uri
 
-final class SubagentUris private(agentUri: Uri):
+final class SubagentUris private(val subagentUri: Uri):
 
-  private val prefixedUri = Uri(s"$agentUri/subagent")
+  private val prefixedUri = Uri(s"$subagentUri/subagent")
 
   val overview: Uri = toUri("api")
   val session: Uri = toUri("api/session")
@@ -23,7 +23,7 @@ final class SubagentUris private(agentUri: Uri):
   private def toUri(uri: String): Uri =
     prefixedUri / uri
 
-  override def toString = agentUri.toString
+  override def toString = subagentUri.toString
 
 
 object SubagentUris:

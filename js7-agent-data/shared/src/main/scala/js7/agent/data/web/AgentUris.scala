@@ -12,11 +12,11 @@ import scala.concurrent.duration.FiniteDuration
  *
  * @author Joacim Zschimmer
  */
-final class AgentUris private(agentUri: Uri):
+final class AgentUris private(val agentUri: Uri):
 
   private val prefixedUri = Uri(s"$agentUri/agent")
 
-  val subagentUris: SubagentUris = SubagentUris(agentUri)
+  lazy val subagentUris: SubagentUris = SubagentUris(agentUri)
   val overview: Uri = toUri("api")
   val session: Uri = toUri("api/session")
   val command: Uri = toUri("api/command")
@@ -46,6 +46,8 @@ final class AgentUris private(agentUri: Uri):
 
 
 object AgentUris:
-  def apply(uri: Uri) = new AgentUris(Uri(uri.string stripSuffix "/"))
+  def apply(uri: Uri): AgentUris =
+    new AgentUris(Uri(uri.string stripSuffix "/"))
 
-  private def stripLeadingSlash(o: String) = o stripPrefix "/"
+  private def stripLeadingSlash(o: String) =
+    o stripPrefix "/"
