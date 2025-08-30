@@ -11,7 +11,7 @@ import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, Rese
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.left
-import js7.base.catsutils.CatsExtensions.unlessM
+import js7.base.catsutils.CatsExtensions.ifFalse
 import js7.base.catsutils.Environment.environment
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -69,7 +69,7 @@ extends Service.StoppableByRequest:
             untilStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
-    _kill.get.unlessM:
+    _kill.get.ifFalse:
       _shutdown.get.flatMap: shutdown =>
         IO.unlessA(shutdown.restartDirector):
           subagentKeeper.shutdownLocalSubagent(shutdown.processSignal)

@@ -51,11 +51,11 @@ object CatsExtensions:
 
   extension [F[_]](underlying: F[Boolean])
     /** Iff `this` monad yields true, return `whenTrue`. */
-    def whenM(whenTrue: => F[Unit])(using F: Monad[F]): F[Unit] =
+    def ifTrue(whenTrue: => F[Unit])(using F: Monad[F]): F[Unit] =
       underlying.flatMap:
         if(_) whenTrue else F.unit
 
     /** Iff `this` monad yields false, return `whenFalse`. */
-    def unlessM(whenFalse: => F[Unit])(using F: Monad[F]): F[Unit] =
+    def ifFalse(whenFalse: => F[Unit])(using F: Monad[F]): F[Unit] =
       underlying.flatMap:
         if(_) F.unit else whenFalse
