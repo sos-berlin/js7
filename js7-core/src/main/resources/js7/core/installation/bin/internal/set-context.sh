@@ -6,13 +6,14 @@
 # - classpathString
 
 if [ -z "${JS7_HOME:-}" ]; then :
-  JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+  JS7_HOME="/opt/js7"
   export JS7_HOME
 fi
 
 declare JAVA_HOME
 declare -a classpath=()
 . <(egrep "^JAVA_VERSION=" "$JAVA_HOME/release")
+JAVA_VERSION_MAJOR="$(echo "$JAVA_VERSION" | awk -F . '{print $1}')"
 
 if [ "$(uname -o)" == "Cygwin" ]; then
   function toUnixPath() {
@@ -49,7 +50,7 @@ standardJavaOptions=()
 standardJavaOptions+=("-Dfile.encoding=UTF-8")
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
-if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 24 ]]; then
+if [[ "$JAVA_VERSION_MAJOR" -ge 24 ]]; then
   standardJavaOptions+=("-XX:+UnlockExperimentalVMOptions" "-XX:+UseCompactObjectHeaders")
 fi
 standardJavaOptions+=("-XX:+UseStringDeduplication")
