@@ -7,20 +7,18 @@ import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, ResetSubagent}
+import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, ResetSubagent, ShutDown}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.left
-import js7.base.catsutils.CatsExtensions.flatMapSome
+import js7.base.catsutils.CatsExtensions.unlessM
 import js7.base.catsutils.Environment.environment
-import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.{Ops, RichCheckedF}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.AlarmClock
-import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -51,8 +49,7 @@ final class AgentMotor private(
   conf: AgentConfiguration)
 extends Service.StoppableByRequest:
 
-  private val agentProcessCount = Atomic(0)
-  private val _shutdownLocalSubagent = Ref.unsafe[IO, Option[Option[ProcessSignal]]](None)
+  private val _shutdown = Ref.unsafe[IO, ShutDown](ShutDown())
   private val _kill = Ref.unsafe[IO, Boolean](false)
 
   protected def start =
@@ -76,22 +73,20 @@ extends Service.StoppableByRequest:
             untilStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
-    _kill.get.flatMap:
-      if _ then
-        orderMotor.stop
-      else
-        _shutdownLocalSubagent.get.flatMapSome: maybeSignal =>
-          subagentKeeper.shutdownLocalSubagent(maybeSignal)
-        .void
+    _kill.get.unlessM:
+      _shutdown.get.flatMap: shutdown =>
+        IO.unlessA(shutdown.restartDirector):
+          subagentKeeper.shutdownLocalSubagent(shutdown.processSignal)
         .productR:
           orderMotor.stop
         .productR:
-          // TODO AgentShutdown in OrderMotor? Dann brauchen wir OrderMotor nicht hier zu stoppen.
-          journal.persist:
-            AgentShutDown // "Director shut down" (maybe not Subagents)
-          .handleProblem: problem =>
-            logger.error(s"AgentShutDown: $problem")
-          .void
+          IO.unlessA(shutdown.isFailOrSwitchover):
+            // TODO AgentShutdown in OrderMotor? Dann brauchen wir OrderMotor nicht hier zu stoppen.
+            journal.persist:
+              AgentShutDown // "Director shut down" (maybe not Subagents)
+            .handleProblem: problem =>
+              logger.error(s"AgentShutDown: $problem")
+            .void
 
   def kill: IO[Unit] =
     logger.debugIO:
@@ -117,8 +112,7 @@ extends Service.StoppableByRequest:
       subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
-    // if cmd.restartDirector then don't shutdown the local Subagent (as with switchover)
-    _shutdownLocalSubagent.set(!cmd.restartDirector ? cmd.processSignal) *>
+    _shutdown.set(cmd) *>
       stop
 
   override def toString = "AgentMotor"
