@@ -261,21 +261,19 @@ extends Service.StoppableByRequest:
 
   def terminate(noJournal: Boolean = false, reset: Boolean = false): IO[Unit] =
     logger.traceIO("terminate",
-      (noJournal ? "noJournal") ++ (reset ? "reset").mkString(" "))(
-      IO.defer {
+      (noJournal ? "noJournal") ++ (reset ? "reset").mkString(" ")):
+      IO.defer:
         this.noJournal |= noJournal
         // Wait until all pending Agent commands are responded, and do not accept further commands
-        IO
-          .unlessA(isTerminating)(IO.defer {
+        IO.unlessA(isTerminating):
+          IO.defer:
             isTerminating = true
-            IO.whenA(reset)(IO.defer {
-              lastAgentRunId.fold(IO.unit)(agentRunId =>
+            IO.whenA(reset)(IO.defer:
+              lastAgentRunId.fold(IO.unit): agentRunId =>
                 // Required only for ItemDeleted, redundant for ResetAgent
                 resetAgent(Some(agentRunId)).void)
-            })
-          })
-          .*>(stop)
-      })
+      .productR:
+        stop
 
   def reset(force: Boolean): IO[Checked[Unit]] =
     if force then

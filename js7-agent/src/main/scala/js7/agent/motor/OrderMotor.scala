@@ -56,30 +56,37 @@ extends Service.StoppableByRequest:
     new JobMotorKeeper(agentPath, this, subagentKeeper, journal.aggregate, agentConf)
 
   protected def start =
-    subagentKeeper.coupleWithOrderMotor(onSubagentEvents) *>
-      startService:
-        untilStopRequested
-          .productR:
-            orderQueue.offer(None)
-          .background.surround:
-            runOrderPipeline
-          .guarantee:
-            val n = jobMotorKeeper.processLimits.processCount
-            if n > 0 then logger.debug(s"processCount=$n")
-            orderToEntry.toMap.values.foldMap(_.cancelSchedule)
-          .guarantee:
-            jobMotorKeeper.stop
+    subagentKeeper.coupleWithOrderMotor(onSubagentEvents)
+      .productR:
+        recoverAgentRefAndJobs
+      .productR:
+        startService:
+          run
+
+  private def run: IO[Unit] =
+    (untilStopRequested *> orderQueue.offer(None))
+      .background.surround:
+        runOrderPipeline
+      .guarantee:
+        IO.defer:
+          val n = jobMotorKeeper.processLimits.processCount
+          if n > 0 then logger.debug(s"❗️processCount=$n")
+          orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+      .guarantee:
+        jobMotorKeeper.stop
 
   override def stop: IO[Unit] =
     super.stop
 
-  def recoverAgentRef(agentRef: AgentRef): IO[Checked[Unit]] =
-    proceedWithItem(agentRef)
+  private def recoverAgentRefAndJobs: IO[Unit] =
+    journal.aggregate.flatMap: agentState =>
+      agentState.keyToItem(AgentRef).get(agentPath).foldMap: agentRef =>
+        proceedWithItem(agentRef).map(_.orThrow)
+      .productR:
+        agentState.idToWorkflow.values.foldMap:
+          jobMotorKeeper.startJobMotors
 
-  def recoverWorkflows(agentState: AgentState): IO[Unit] =
-    agentState.idToWorkflow.values.foldMap:
-      jobMotorKeeper.startJobMotors
-
+  /** Run this after AgentReady event. */
   def recoverOrders(agentState: AgentState): IO[Unit] =
     logger.debugIO:
       val orders = agentState.idToOrder.values.view
@@ -288,6 +295,7 @@ object OrderMotor:
     def schedule(timestamp: Timestamp)(io: IO[Unit])
       (using clock: AlarmClock, dispatcher: Dispatcher[IO])
     : IO[Unit] =
+      // FIXME Dispatcher already closed?
       clock.scheduleIOAt(timestamp, label = orderId.toString):
         io
       .flatMap: cancel =>

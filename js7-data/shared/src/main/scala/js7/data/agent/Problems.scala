@@ -8,6 +8,7 @@ import js7.data.order.OrderId
   * @author Joacim Zschimmer
   */
 object Problems:
+  type AgentIsShuttingDown = AgentIsShuttingDown.type 
   case object AgentIsShuttingDown extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503  // Service unavailable
 

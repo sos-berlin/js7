@@ -40,6 +40,7 @@ object Problems:
   case object InvalidSessionTokenProblem extends Problem.ArgumentlessCoded
 
 
+  type ShuttingDownProblem = ShuttingDownProblem.type
   case object ShuttingDownProblem extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503 // Service Unavailable
 

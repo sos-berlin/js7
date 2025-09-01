@@ -23,7 +23,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.system.startup.ServiceMain.readyMessageWithLine
-import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{Event, EventId}
@@ -54,18 +54,14 @@ extends Service.StoppableByRequest:
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
-      agentState.keyToItem(AgentRef).get(agentPath).foldMap: agentRef =>
-        orderMotor.recoverAgentRef(agentRef)
-          .map(_.orThrow)
+      journal.persist:
+        AgentReady(
+          ZoneId.systemDefault.getId,
+          totalRunningTime = journal.totalRunningTime,
+          Some(currentPlatformInfo()))
+      .map(_.orThrow)
       .productR:
-        orderMotor.recoverWorkflows(agentState) *>
-          journal.persist:
-            AgentReady(
-              ZoneId.systemDefault.getId,
-              totalRunningTime = journal.totalRunningTime,
-              Some(currentPlatformInfo()))
-          .map(_.orThrow) *>
-          orderMotor.recoverOrders(agentState)
+        orderMotor.recoverOrders(agentState)
       .productR:
         startService:
           IO.defer:
