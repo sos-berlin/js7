@@ -2,6 +2,7 @@ package js7.base.metering
 
 import cats.effect.{IO, SyncIO}
 import java.util.concurrent.atomic.AtomicBoolean
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter.*
@@ -126,7 +127,7 @@ object CallMeter:
 
   private def registerAsMBean(callMeter: CallMeter): Unit =
     MBeanUtils.registerMBean(s"CallMeter_${callMeter.name}")(SyncIO(callMeter))
-      .allocated.unsafeRunSync()  // Never unregister !!!
+      .allocated.run()  // Never unregister !!!
 
   private[metering] def callMeters: Vector[CallMeter] =
     _callMeters.get

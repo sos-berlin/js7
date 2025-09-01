@@ -7,6 +7,7 @@ import cats.syntax.functor.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
@@ -141,7 +142,7 @@ object Logger extends AdHocLogger:
         infoCall[A](src.value)(body)
 
       def infoCall[A](functionName: String, args: => Any = "")(body: => A): A =
-        logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).unsafeRunSync()
+        logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).run()
 
       inline def infoCallWithResult[A](inline body: => A)(using inline src: sourcecode.Name)
       : A =
@@ -161,7 +162,7 @@ object Logger extends AdHocLogger:
         body: => A)
       : A =
         logF[SyncIO, A](logger, LogLevel.Info, function, args, result, marker)(SyncIO(body))
-          .unsafeRunSync()
+          .run()
 
       def infoIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         infoF(functionName = src.value)(body)
@@ -197,7 +198,7 @@ object Logger extends AdHocLogger:
         debugCall[A](src.value)(body)
 
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
-        logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).unsafeRunSync()
+        logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).run()
 
       def debugIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         debugF(body)
@@ -264,7 +265,7 @@ object Logger extends AdHocLogger:
         traceCall[A](src.value)(body)
 
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
-        logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).unsafeRunSync()
+        logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).run()
 
       inline def traceCallWithResult[A](inline body: => A)(using inline src: sourcecode.Name)
       : A =
@@ -283,7 +284,7 @@ object Logger extends AdHocLogger:
         body: => A)
       : A =
         logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
-          .unsafeRunSync()
+          .run()
 
       /** Log nothing, usable as a equivalent replacement to temporarily suppress logging. */
       inline def noLogF[F[_], A](inline a: F[A]): F[A] = a

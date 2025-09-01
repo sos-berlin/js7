@@ -5,7 +5,7 @@ import cats.effect.{Resource, Sync, SyncIO}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{ConcurrentHashMap, Executor}
-import js7.base.catsutils.CatsEffectExtensions.defer
+import js7.base.catsutils.CatsEffectExtensions.{defer, run}
 import js7.base.configutils.Configs.{ConvertibleConfig, HoconStringInterpolator}
 import js7.base.convert.As
 import js7.base.log.Logger
@@ -37,7 +37,7 @@ object OurIORuntime:
       commonThreadPrefix,
       config"""js7.thread-pools.compute.threads = 1/1"""
     ).allocated.map(_._1)
-      .unsafeRunSync()
+      .run()
 
   private val usedNames = new ConcurrentHashMap[String, Int]
 

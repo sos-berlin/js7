@@ -1,6 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.thread.CatsBlocking
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -89,7 +90,7 @@ extends Ordered[CatsDeadline]:
       .map:
         case Left(_) => "CatsDeadline(?)"
         case Right(o) => o
-      .unsafeRunSync()
+      .run()
 
 
 object CatsDeadline:

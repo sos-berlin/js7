@@ -4,6 +4,7 @@ import cats.effect.syntax.monadCancel.*
 import cats.effect.{Async, Deferred, SyncIO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.utils.{Atomic, Lazy}
 
 /** Typeclass for Monix Task like unsafe memoize for Cats Effect. */
@@ -47,11 +48,11 @@ object UnsafeMemoizable:
     extension[A](syncIO: SyncIO[A])
       def unsafeMemoize: SyncIO[A] =
         // `Lazy` blocks the thread when used concurrently !!!
-        val lzy = Lazy(syncIO.unsafeRunSync())
+        val lzy = Lazy(syncIO.run())
         SyncIO.delay(lzy.value)
 
   extension [A](syncIO: SyncIO[A])
     def unsafeMemoize: SyncIO[A] =
       // `Lazy` blocks the thread when used concurrently !!!
-      val lzy = Lazy(syncIO.unsafeRunSync())
+      val lzy = Lazy(syncIO.run())
       SyncIO.delay(lzy.value)

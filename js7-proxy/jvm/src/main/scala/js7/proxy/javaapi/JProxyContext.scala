@@ -6,6 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.Executor
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.OurIORuntime
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -43,7 +44,7 @@ extends AutoCloseable:
     OurIORuntime
       .resource[SyncIO]("JS7 Proxy", config_, computeExecutor = nullToNone(computeExecutor))
       .allocated
-      .unsafeRunSync()
+      .run()
 
   private given IORuntime = ioRuntime
 
@@ -57,7 +58,7 @@ extends AutoCloseable:
       try
         for a <- actorSystemLazy do Pekkos.terminateAndWait(a)
       finally
-        ioRuntimeShutdown.unsafeRunSync()
+        ioRuntimeShutdown.run()
 
   @javaApi @Nonnull
   def newControllerApi(
