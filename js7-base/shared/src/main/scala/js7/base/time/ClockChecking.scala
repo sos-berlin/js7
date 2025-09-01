@@ -11,11 +11,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, emptyRunnable}
 import scala.collection.mutable
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** Checks the clock for change and corrects the schedule. */
 private[time] trait ClockChecking extends Runnable:
-  self: AlarmClock =>
+  clockChecking: AlarmClock =>
 
   protected def clockCheckInterval: FiniteDuration
   protected def scheduler: Scheduler
@@ -37,7 +38,7 @@ private[time] trait ClockChecking extends Runnable:
     stopped = true
     stopTicking()
     ticker.cancel()
-    self.synchronized:
+    clockChecking.synchronized:
       epochMilliToAlarms.values.view.flatten.foreach(_.cancel())
       epochMilliToAlarms.clear()
 
@@ -51,8 +52,8 @@ private[time] trait ClockChecking extends Runnable:
       logger.warn(s"scheduleAt($at, $label) ignored because it is out of range")
       SyncCancelable.empty
     else
-      val alarm = new Alarm(milli, callback)
-      self.synchronized:
+      val alarm = Alarm(milli, label, callback)
+      clockChecking.synchronized:
         epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
         scheduleNext()
       SyncCancelable(alarm)
@@ -80,7 +81,7 @@ private[time] trait ClockChecking extends Runnable:
                 alarms.mkString(", ")}")
               emptyRunnable
             case Success(delay) =>
-              scheduler.sleep(delay, this)
+              scheduler.sleep(delay, clockChecking /*=self.run()*/)
 
         nextMilli = firstMilli
 
@@ -105,13 +106,13 @@ private[time] trait ClockChecking extends Runnable:
     if !stopped then
       if nextMilli <= epochMilli() then
         var alarms = Vector.empty[Alarm]
-        self.synchronized:
+        clockChecking.synchronized:
           while epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli() do
             alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
         //logger.trace(s"Tick: ${alarms.size} alarms!")
         for a <- alarms do a.call()
 
-      self.synchronized:
+      clockChecking.synchronized:
         scheduleNext()
 
   override def toString =
@@ -124,18 +125,26 @@ private[time] trait ClockChecking extends Runnable:
       ")"
 
 
-  private final class Alarm(epochMilli: Long, callback: => Unit)
+  private final class Alarm(epochMilli: Long, label: => String, callback: => Unit)
   extends Runnable:
     private val called = Atomic(false)
 
     def call(): Unit =
       if !called.getAndSet(true) then
-        callback
+        try
+          callback
+        catch
+          // When not caught, the Cats Effect working thread will die and not be restarted.
+          // After some exceptions, all working threads have died and the program no longer reacts.
+          case t: IllegalStateException if t.getMessage == "Dispatcher already closed" =>
+            logger.warn(s"$toString: ${t.toStringWithCauses}")
+          case NonFatal(t) =>
+            logger.error(s"$toString: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
 
     def run(): Unit = cancel()
 
     def cancel(): Unit =
-      self.synchronized:
+      clockChecking.synchronized:
         for alarms <- epochMilliToAlarms.get(epochMilli) do
           val remaining = alarms.filterNot(_ eq this)
           if remaining.nonEmpty then
@@ -143,6 +152,9 @@ private[time] trait ClockChecking extends Runnable:
           else
             epochMilliToAlarms -= epochMilli
             scheduleNext()
+
+    override def toString =
+      s"Alarm(${Timestamp.ofEpochMilli(epochMilli)} $label)"
 
 
 object ClockChecking:
