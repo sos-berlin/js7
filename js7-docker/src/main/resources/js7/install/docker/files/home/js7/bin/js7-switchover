@@ -2,7 +2,7 @@
 set -euo pipefail
 
 . /opt/js7/bin/internal/set-context.sh
-declare classpathString java  # returned by set-context.sh
+declare JAVA_VERSION_MAJOR classpathString java # returned by set-context.sh
 declare -a standardJavaOptions
 
 data="$HOME/data"
@@ -31,14 +31,12 @@ if [ -f "config/controller.conf" ]; then
 else
   # js7-client does not work for ClusterSwitchOver.
   # SubagentClientMain sends the command to the Agent web service (not Subagent web service):
-  if [[ -f "$data/cache/js7.jsa" && "$JAVA_VERSION_MAJOR" -ge 19 ]]
-  then
+  cmdLine=()
+  if [[ -f "$data/cache/js7.jsa" && "$JAVA_VERSION_MAJOR" -ge 19 ]]; then
     standardJavaOptions+=("-XX:SharedArchiveFile=$data/cache/js7.jsa")
   fi
-  "$java" -Xmx50m \
-    "${standardJavaOptions[@]}" \
-    -classpath "$classpathString" \
-    js7.agent.client.main.SubagentClientMain \
-    --data-directory="$data" \
-    "$cmd" &
+  cmdLine=("$java" -Xmx50m "${standardJavaOptions[@]}" -classpath "$classpathString"
+    js7.agent.client.main.SubagentClientMain --data-directory="$data" "$cmd")
+  echo 1>&2 "${cmdLine[@]}"
+  "${cmdLine[@]}"
 fi

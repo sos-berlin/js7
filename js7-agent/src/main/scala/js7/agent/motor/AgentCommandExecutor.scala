@@ -218,52 +218,50 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
               journal.deleteJournalWhenStopping.as(Checked.unit)
 
   private def switchOver(cmd: ClusterSwitchOver): IO[Checked[AgentCommand.Response]] =
-    IO.defer:
-      logger.info(s"❗️ $cmd")
-      // SubagentKeeper stops the local (surrounding) Subagent,
-      // which lets the Director (RunningAgent) stop
-      initiateShutdown:
-        ShutDown(
-          clusterAction = Some(ShutDown.ClusterAction.Switchover),
-          restartDirector = true)
+    // SubagentKeeper stops the local (surrounding) Subagent,
+    // which lets the Director (RunningAgent) stop
+    initiateShutdown:
+      ShutDown(
+        clusterAction = Some(ShutDown.ClusterAction.Switchover),
+        restartDirector = true)
 
   private def initiateShutdown(cmd: ShutDown): IO[Checked[Accepted]] =
     logger.traceIO(cmd.toString):
-      IO.defer:
+      locally:
+        if cmd.isSwitchover then
+          journal.aggregate.map(_.clusterState).map:
+            case coupled: ClusterState.Coupled => Right(())
+            case clusterState => Left(ClusterSwitchOverButNotCoupledProblem(clusterState))
+        else
+          IO.right(())
+      .flatMapT { _ =>
         if !shutdownOnce.trySet(cmd) then
           IO.left(AgentIsShuttingDown)
         else
-          IO.whenA(cmd.suppressSnapshot):
-            IO(journal.suppressSnapshotWhenStopping())
-          .productR:
-            if cmd.isSwitchover then
-              journal.aggregate.map(_.clusterState).map:
-                case coupled: ClusterState.Coupled => Right(())
-                case clusterState => Left(ClusterSwitchOverButNotCoupledProblem(clusterState))
+          if cmd.suppressSnapshot then
+            journal.suppressSnapshotWhenStopping()
+          if cmd.isFailover then logger.info(s"❗️ $cmd")
+          // Run asynchronously as a fiber:
+          locally:
+            if cmd.isFailover then
+              agentMotor.flatMapSome(_.kill) *>
+                journal.kill
+            else if cmd.isSwitchover then
+              stopAgentMotor(cmd) *>
+                workingClusterNode.switchOver
             else
-              IO.right(())
-          .flatMapT { _ =>
-            // Run asynchronously as a fiber:
-            locally:
-              if cmd.isFailover then
-                agentMotor.flatMapSome(_.kill) *>
-                  journal.kill
-              else if cmd.isSwitchover then
-                stopAgentMotor(cmd) *>
-                  workingClusterNode.switchOver
-              else
-                stopAgentMotor(cmd)
-            .productR:
-              stop.productR:
-                terminated.complete:
-                  // If dedicated while being shut down, the dedicated AgentMotor is
-                  // being stopped asynchronously in background.
-                  DirectorTermination(
-                    restartJvm = cmd.restart,
-                    restartDirector = cmd.restartDirector)
-            .startAndForget // Respond early to the command
-            .as(Right(Accepted))
-          }
+              stopAgentMotor(cmd)
+          .productR:
+            stop.productR:
+              terminated.complete:
+                // If dedicated while being shut down, the dedicated AgentMotor is
+                // being stopped asynchronously in background.
+                DirectorTermination(
+                  restartJvm = cmd.restart,
+                  restartDirector = cmd.restartDirector)
+          .startAndForget // Respond early to the command
+          .as(Right(Accepted)) // Don't fail after shutdownOnce!
+      }
 
   private def startAgentMotor(agentPath: AgentPath, controllerId: ControllerId): IO[Checked[Unit]] =
     lock.lock:
