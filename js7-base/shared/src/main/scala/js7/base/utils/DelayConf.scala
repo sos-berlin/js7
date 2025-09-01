@@ -26,6 +26,11 @@ final case class DelayConf(
   def lazyList: LazyList[FiniteDuration] =
     delays.iterator.repeatLast
 
+  def tailRecM[F[_]: Async, A](body: Delayer[F] => F[Either[Unit, A]]): F[A] =
+    run[F].apply: delayer =>
+      ().tailRecM: _ =>
+        body(delayer)
+
   /** Like run[IO] — only because Intellij does not detect body's type of run[IO]. */
   def runIO[A](body: Delayer[IO] => IO[A]): IO[A] =
     run[IO].apply(body)
