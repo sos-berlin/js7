@@ -51,6 +51,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
   override def beforeAll() =
     super.beforeAll()
     controller.awaitNext[AgentReady]()
+    controller.awaitNextKey[SubagentDedicated](subagentId)
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in:
     val addOrderEventId = controller.lastAddedEventId
