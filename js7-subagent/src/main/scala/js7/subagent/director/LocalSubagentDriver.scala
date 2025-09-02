@@ -198,19 +198,33 @@ extends SubagentDriver, Service.StoppableByRequest:
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping
-        .flatMapT: _ =>
-          attachItemsForOrder(order)
         .flatMap:
           case Left(problem) =>
-            logger.error(s"attachItemsForOrder ${order.id}: $problem")
-            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(problem))
-            journal.persist:
-              order.id <-: orderProcessed
-            .flatMapT: _ =>
-              IO.pure(orderProcessed).start.map(Right(_))
+            journal.persistSingle:
+              order.id <-: OrderProcessed(OrderOutcome.processLost(problem))
+            .flatMapT: (stamped, _) =>
+              IO.pure(stamped.value.event).start.map(Right(_))
 
           case Right(()) =>
-            startProcessingOrder2(order, endOfAdmissionPeriod)
+            attachItemsForOrder(order).flatMap:
+              case Left(problem) =>
+                logger.error(s"attachItemsForOrder ${order.id}: $problem")
+                persistOrderProcessed(order.id, problem)
+
+              case Right(()) =>
+                startProcessingOrder2(order, endOfAdmissionPeriod)
+                  .recoverFromProblemWith:
+                    case problem @ SubagentIsShuttingDownProblem =>
+                      persistOrderProcessed(order.id, problem)
+
+  private def persistOrderProcessed(orderId: OrderId, problem: Problem)
+  : IO[Checked[FiberIO[OrderProcessed]]] =
+    journal.persistSingle:
+      orderId <-: OrderProcessed(OrderOutcome.processLost(problem))
+    .flatMapT: (stamped, _) =>
+      IO.pure(stamped.value.event)
+        .start
+        .map(Right(_))
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
     signableItemsForOrderProcessing(order.workflowPosition)
