@@ -53,10 +53,7 @@ extends Service.StoppableByRequest:
       runPipeline *>
         IO:
           val n = processCount.get
-          if n > 0 then logger.debug(s"processCount=$n")
-
-  override def stop =
-    super.stop
+          if n > 0 then logger.debug(s"❗️processCount=$n when stopping")
 
   def recoverProcessingOrders(orders: Vector[Order[Order.Processing]])
   : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
@@ -177,10 +174,10 @@ extends Service.StoppableByRequest:
 
         case Some(current) =>
           if order == current then
-            logger.warn(msg)
+            logger.warn(msg, problem.throwableIfStackTrace)
             decrementProcessCount(order.id, "⚠️  processOrder failed")
           else
-            logger.warn(msg)
+            logger.warn(msg, problem.throwableIfStackTrace)
             logger.warn(s"${order.id} has been changed concurrently: $order")
             IO.unit
 

@@ -116,8 +116,8 @@ private final class ItemCommandExecutor(
                     registeredWorkflow.withoutSource
                   then
                     logger.warn(s"AttachSignedItem: Different duplicate ${workflow.id}:")
-                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson.toPrettyString}")
-                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson.toPrettyString}")
+                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson.compactPrint}")
+                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson.compactPrint}")
                     Left(Problem.pure(s"Different duplicate ${workflow.id}"))
                   else
                     Right(Nil)

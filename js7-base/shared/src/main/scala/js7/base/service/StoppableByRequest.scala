@@ -64,8 +64,14 @@ trait StoppableByRequest:
   protected final def requireNotStopping: IO[Checked[Unit]] =
     IO(checkNotStopping)
 
+  protected final def requireNotStopping(context: => String): IO[Checked[Unit]] =
+    IO(checkNotStopping(context))
+
   protected final def checkNotStopping: Checked[Unit] =
     !isStopping !! ServiceStoppedProblem(toString)
+
+  protected final def checkNotStopping(context: => String): Checked[Unit] =
+    !isStopping !! ServiceStoppedProblem(toString, context)
 
 
 object StoppableByRequest:

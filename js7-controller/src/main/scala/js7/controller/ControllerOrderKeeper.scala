@@ -413,7 +413,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info(ServiceMain.readyMessageWithLine(s"${controllerState().controllerId} is ready"))
+      logger.info(s"${controllerState().controllerId} is ready\n" + "─" * 80)
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode
         .onTerminatedUnexpectedly // Happens while isTest suppresses Halt after AckFromActiveClusterNode

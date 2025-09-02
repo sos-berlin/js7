@@ -238,9 +238,9 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
         if !shutdownOnce.trySet(cmd) then
           IO.left(AgentIsShuttingDown)
         else
+          logger.info(s"❗️ $cmd")
           if cmd.suppressSnapshot then
             journal.suppressSnapshotWhenStopping()
-          if cmd.isFailover then logger.info(s"❗️ $cmd")
           // Run asynchronously as a fiber:
           locally:
             if cmd.isFailover then

@@ -65,7 +65,7 @@ extends Service.StoppableByRequest:
       .productR:
         startService:
           IO.defer:
-            logger.info(readyMessageWithLine(s"$agentPath is ready"))
+            logger.info(s"$agentPath is ready\n" + "─" * 80)
             untilStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
