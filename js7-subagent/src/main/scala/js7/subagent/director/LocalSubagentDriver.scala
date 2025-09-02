@@ -86,15 +86,12 @@ extends SubagentDriver, Service.StoppableByRequest:
     .rightAs(())
 
   def startObserving: IO[Unit] =
-    observe.startAndForget
-
-  // TODO Similar to SubagentEventListener
-  private def observe: IO[Unit] =
-    logger.debugIO:
-      journal.aggregate
-        .map(_.idToSubagentItemState(subagentId).eventId)
-        .flatMap: eventId =>
-          observeAfter(eventId).completedL
+    journal.aggregate.map:
+      _.idToSubagentItemState(subagentId).eventId
+    .flatMap: eventId =>
+      releaseEvents(eventId).orThrow *>
+        observeAfter(eventId).completedL
+          .startAndForget
 
   // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): fs2.Stream[IO, Unit] =
