@@ -68,10 +68,11 @@ extends Service.StoppableByRequest:
       .background.surround:
         runOrderPipeline
       .guarantee:
-        IO.defer:
+        IO:
           val n = jobMotorKeeper.processLimits.processCount
-          if n > 0 then logger.debug(s"❗️processCount=$n")
-          orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+          if n > 0 then logger.debug(s"❗️processCount=$n when stopping")
+      .guarantee:
+        orderToEntry.toMap.values.foldMap(_.cancelSchedule)
       .guarantee:
         jobMotorKeeper.stop
 

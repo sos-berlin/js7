@@ -111,7 +111,6 @@ extends Service.StoppableByRequest:
       .productR:
         continueDetachingSubagents
 
-
   private def stopMe: IO[Unit] =
     stateVar.updateWithResult: state =>
       IO.pure(state.clear -> state.subagentToEntry.values)
@@ -499,17 +498,13 @@ extends Service.StoppableByRequest:
       .map(_.map(_.flatten))
 
   private def startObserving: IO[Unit] =
-    stateVar.value
-      .flatMap:
-        _.subagentToEntry.values.toVector.map(_.driver).traverse:
-          _.startObserving
-      .map(_.combineAll)
+    stateVar.value.flatMap:
+      _.subagentToEntry.values.map(_.driver).foldMap:
+        _.startObserving
 
   private def recoverSubagentBundles(subagentBundles: Seq[SubagentBundle]): IO[Checked[Unit]] =
     logger.debugIO:
-      subagentBundles
-        .traverse(addOrReplaceSubagentBundle)
-        .map(_.combineAll)
+      subagentBundles.foldMap(addOrReplaceSubagentBundle)
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): IO[Checked[Unit]] =
@@ -587,15 +582,13 @@ extends Service.StoppableByRequest:
           case maybeNewDriver => IO.right(maybeNewDriver.map(_._2))
 
   private def emitLocalSubagentCoupled: IO[Unit] =
-    journal
-      .persist: agentState =>
-        agentState
-          .idToSubagentItemState.get(localSubagentId)
-          .exists(_.couplingState != Coupled)
-          .thenList:
-            localSubagentId <-: SubagentCoupled
-      .orThrow
-      .void
+    journal.persist:
+      _.idToSubagentItemState.get(localSubagentId)
+        .exists(_.couplingState != Coupled)
+        .thenList:
+          localSubagentId <-: SubagentCoupled
+    .orThrow
+    .void
 
   private def allocateSubagentDriver(subagentItem: SubagentItem) =
     if subagentItem.id == localSubagentId then
@@ -604,14 +597,9 @@ extends Service.StoppableByRequest:
     else
       remoteSubagentDriverResource(subagentItem).toAllocated
 
-  private def localSubagentDriverResource(subagentItem: SubagentItem)
-  : ResourceIO[SubagentDriver] =
+  private def localSubagentDriverResource(subagentItem: SubagentItem): ResourceIO[SubagentDriver] =
     LocalSubagentDriver
-      .resource(
-        subagentItem,
-        localSubagent,
-        journal,
-        controllerId,
+      .service(subagentItem, localSubagent, journal, controllerId,
         directorConf.subagentConf)
       .evalTap: driver =>
         IO.whenA(started):
@@ -622,13 +610,8 @@ extends Service.StoppableByRequest:
     for
       api <- subagentApiResource(subagentItem)
       driver <- RemoteSubagentDriver
-        .service(
-          subagentItem,
-          api,
-          journal,
-          controllerId,
-          directorConf.subagentDriverConf,
-          directorConf.recouplingStreamReaderConf)
+        .service(subagentItem, api, journal, controllerId,
+          directorConf.subagentDriverConf, directorConf.recouplingStreamReaderConf)
         .evalTap: driver =>
           IO.whenA(started):
             driver.startObserving

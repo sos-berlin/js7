@@ -35,7 +35,7 @@ import js7.subagent.priority.ServerMeteringLiveScope
 import js7.subagent.{LocalSubagentApi, Subagent}
 
 private final class LocalSubagentDriver[S <: SubagentDirectorState[S]] private(
-  // Change of disabled does not change this subagentItem.
+  // Change of subagent.disabled does not change this subagentItem.
   // Then, it differs from the original SubagentItem
   val subagentItem: SubagentItem,
   subagent: Subagent,
@@ -328,7 +328,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
 object LocalSubagentDriver:
 
-  private[director] def resource[S <: SubagentDirectorState[S]](
+  private[director] def service[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     subagent: Subagent,
     journal: Journal[S],
@@ -336,4 +336,4 @@ object LocalSubagentDriver:
     subagentConf: SubagentConf)
   : ResourceIO[LocalSubagentDriver[S]] =
     Service.resource:
-      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
+      LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)

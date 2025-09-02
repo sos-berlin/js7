@@ -32,7 +32,7 @@ final class SubagentShutdownTest extends OurTestSuite, SubagentTester:
 
   private val localSubagentId = toLocalSubagentId(agentPath)
 
-  "After Subagent shutdown, process is repeat at a different Subagent" in:
+  "After Subagent shutdown, process is repeated at a different Subagent" in:
     runSubagent(bareSubagentItem): subagent =>
       withItem(
         Workflow.of:
