@@ -259,7 +259,8 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
                 DirectorTermination(
                   restartJvm = cmd.restart,
                   restartDirector = cmd.restartDirector)
-          .startAndForget // Respond early to the command
+          .pipeIf(!cmd.restartDirector):
+            _.startAndForget // Shutdown in background and respond the command early
           .as(Right(Accepted)) // Don't fail after shutdownOnce!
       }
 
