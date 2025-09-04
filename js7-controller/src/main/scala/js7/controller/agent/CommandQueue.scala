@@ -4,13 +4,13 @@ import cats.effect.{Deferred, IO}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
-import js7.base.catsutils.CatsExtensions.tryIt
+import js7.base.catsutils.CatsExtensions.{ifTrue, tryIt}
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichJavaClass, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.AgentDriver.Queueable.{AttachOrder, DetachOrder, MarkOrder}
 import js7.controller.agent.CommandQueue.*
@@ -114,39 +114,39 @@ private[agent] abstract class CommandQueue(
     override def toString = s"CommandQueue.queue(${queue.map(_.toShortString)})"
 
   final def onCoupled(attachedOrderIds: Set[OrderId]): IO[Unit] =
-    lock.lock(IO.defer {
-      this.attachedOrderIds.clear()
-      this.attachedOrderIds ++= attachedOrderIds
-      queue.removeAlreadyAttachedOrders()
-      isCoupled = true
-      freshlyCoupled = true
-      maybeStartSendingLocked
-    })
+    lock.lock:
+      IO.defer:
+        this.attachedOrderIds.clear()
+        this.attachedOrderIds ++= attachedOrderIds
+        queue.removeAlreadyAttachedOrders()
+        isCoupled = true
+        freshlyCoupled = true
+        maybeStartSendingLocked
 
   final def onDecoupled(): IO[Unit] =
-    lock.lock(IO {
-      isCoupled = false
-    })
+    lock.lock:
+      IO:
+        isCoupled = false
 
   final def enqueue(queueable: Queueable): IO[Boolean] =
-    lock.lock(IO.defer {
-      assertThat(!isTerminating)
-      queueable match
-        case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
-          logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
-          IO.pure(false)
-        case _ =>
-          if queue.contains(queueable) then
-            logger.trace(s"Ignore duplicate $queueable")
+    lock.lock:
+      IO.defer:
+        assertThat(!isTerminating)
+        queueable match
+          case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
+            logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
             IO.pure(false)
-          else
-            logger.trace(s"enqueue $queueable")
-            queue.enqueue(queueable)
-            IO
-              .whenA(queue.size == batchSize || freshlyCoupled)(
-                maybeStartSendingLocked)
-              .as(true)
-    })
+          case _ =>
+            if queue.contains(queueable) then
+              logger.trace(s"Ignore duplicate $queueable")
+              IO.pure(false)
+            else
+              logger.trace(s"enqueue $queueable")
+              queue.enqueue(queueable)
+              IO
+                .whenA(queue.size == batchSize || freshlyCoupled)(
+                  maybeStartSendingLocked)
+                .as(true)
 
   final def untilTerminated: IO[Unit] =
     terminated.get
@@ -155,26 +155,21 @@ private[agent] abstract class CommandQueue(
     lock.lock(maybeStartSendingLocked)
 
   private def maybeStartSendingLocked: IO[Unit] =
-    /*logger.traceIO*/(IO.defer(IO.whenA(isCoupled && !isTerminating) {
-      lazy val queueables = queue.view
-        .filterNot(isExecuting)
+    IO(isCoupled && !isTerminating).ifTrue:
+      lazy val queueables = queue.view.filterNot(isExecuting)
         .take(if freshlyCoupled then 1 else batchSize)  // if freshlyCoupled, send only command to try connection
         .toVector
 
       val canSend = openRequestCount < commandParallelism
         && (!freshlyCoupled || openRequestCount == 0)
         && queueables.nonEmpty
-
-      IO.whenA(canSend)(IO.defer {
+      IO.whenA(canSend):
         isExecuting ++= queueables
         openRequestCount += 1
-        delayNextCommand
-          .*>(sendNow(queueables))
+        (delayNextCommand *> sendNow(queueables))
           .handleError: t =>
             logger.error(t.toStringWithCauses, t)
           .startAndForget.void
-      })
-    }))
 
   private def delayNextCommand: IO[Unit] =
     IO.defer:
@@ -187,8 +182,8 @@ private[agent] abstract class CommandQueue(
     IO.defer:
       val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
       executeCommand(Batch(subcmds))
-        .map(_.map(response =>
-          for (i, r) <- queuable zip response.responses yield QueueableResponse(i, r)))
+        .mapmap: response =>
+          for (i, r) <- queuable zip response.responses yield QueueableResponse(i, r)
         .tryIt
         .flatMap:
           case Success(Right(queueableResponses)) =>
@@ -245,54 +240,52 @@ private[agent] abstract class CommandQueue(
           //logger.trace(s"onOrdersAttached attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
 
   final def handleBatchSucceeded(responses: Seq[QueueableResponse]): IO[Seq[Queueable]] =
-    lock.lock(IO.defer {
-      freshlyCoupled = false
+    lock.lock:
+      IO.defer:
+        freshlyCoupled = false
 
-      // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
-      // The dequeued commands will not be repeated !!!
+        // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
+        // The dequeued commands will not be repeated !!!
 
-      def isRepeatable(problem: Problem) = problem match {
-        case _: DirectorDriverStoppedProblem => true
-        case _ => problem.httpStatusCode == 503/*ServiceUnavailable*/
-      }
+        def isRepeatable(problem: Problem) = problem match
+          case _: DirectorDriverStoppedProblem => true
+          case _ => problem.httpStatusCode == 503 /*ServiceUnavailable*/
 
-      queue.dequeueAll(responses.view
-        .flatMap(r => r.response.left.forall(prblm => !isRepeatable(prblm)) ?
-          r.queueable)
-        .toSet)
-      onQueueableResponded(responses.map(_.queueable).toSet)
-        .*>(IO {
-          responses.flatMap {
-            case QueueableResponse(queueable, Right(AgentCommand.Response.Accepted)) =>
-              Some(queueable)
+        queue.dequeueAll(responses.view
+          .flatMap(r => r.response.left.forall(prblm => !isRepeatable(prblm)) ?
+            r.queueable)
+          .toSet)
 
-            //case QueueableResponse(MarkOrder(orderId, _: OrderMark.Go), Right(o)) =>
-            //  emit something like OrderResetGoMarked ???
+        onQueueableResponded(responses.view.map(_.queueable).toSet) *>
+          IO:
+            responses.flatMap:
+              case QueueableResponse(queueable, Right(AgentCommand.Response.Accepted)) =>
+                Some(queueable)
 
-            case QueueableResponse(_, Right(o)) =>
-              sys.error(s"Unexpected response from Agent: $o")
+              //case QueueableResponse(MarkOrder(orderId, _: OrderMark.Go), Right(o)) =>
+              //  emit something like OrderResetGoMarked ???
 
-            //case QueueableResponse(queueable, Left(AgentIsShuttingDown)) =>
-            // TODO Be sure to repeat the command after coupling
+              case QueueableResponse(_, Right(o)) =>
+                sys.error(s"Unexpected response from Agent: $o")
 
-            case QueueableResponse(queueable, Left(problem)) =>
-              // MarkOrder(FreshOnly) fails if order has started !!!
-              logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
-              // Agent's state does not match controller's state ???
-              None
-          }
-        })
-    })
+              //case QueueableResponse(queueable, Left(AgentIsShuttingDown)) =>
+              // TODO Be sure to repeat the command after coupling
+
+              case QueueableResponse(queueable, Left(problem)) =>
+                // MarkOrder(FreshOnly) fails if order has started !!!
+                logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
+                // Agent's state does not match controller's state ???
+                None
 
   final def handleBatchFailed(queuables: Seq[Queueable], delay: Boolean): IO[Unit] =
-    lock.lock(IO.defer {
-      delayCommandExecutionAfterErrorUntil =
-        now + (if delay then commandErrorDelay else shortErrorDelay)
-      logger.trace:
-        s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}"
-      // Don't remove from queue. Queued queueables will be processed again
-      onQueueableResponded(queuables.toSet)
-    })
+    lock.lock:
+      IO.defer:
+        delayCommandExecutionAfterErrorUntil =
+          now + (if delay then commandErrorDelay else shortErrorDelay)
+        logger.trace:
+          s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}"
+        // Don't remove from queue. Queued queueables will be processed again
+        onQueueableResponded(queuables.toSet)
 
   private def onQueueableResponded(queueables: Set[Queueable]): IO[Unit] =
     IO.defer:

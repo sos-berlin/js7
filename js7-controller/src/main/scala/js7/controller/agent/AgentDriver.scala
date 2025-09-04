@@ -218,25 +218,23 @@ extends Service.StoppableByRequest:
         .guarantee(clusterWatchAllocated.releaseFinally))
 
   def send(input: Queueable): IO[Unit] =
-    /*logger.traceIO("send", input.toShortString)*/(IO.defer {
+    IO.defer:
       if isTerminating then
         IO.raiseError(new IllegalStateException(s"$agentDriver is terminating"))
       else
         commandQueue.enqueue(input)
-          .flatMap(ok =>
+          .flatMap: ok =>
             IO.whenA(ok)(IO
               .race(
                 untilStopRequested,
                 IO.sleep(conf.commandBatchDelay)/*TODO Set timer only for the first send*/)
-              .flatMap {
+              .flatMap:
                 case Left(()) => IO.unit // stop requested
                 case Right(()) => commandQueue.maybeStartSending
-              }
               .handleError(t => logger.error(
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
               .raceMerge(untilStopRequested)
-              .startAndForget))
-    })
+              .startAndForget)
 
   def executeCommandDirectly(command: AgentCommand): IO[Checked[command.Response]] =
     logger.traceIO(IO.defer {
