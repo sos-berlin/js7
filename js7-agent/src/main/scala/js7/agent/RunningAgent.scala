@@ -108,18 +108,22 @@ extends MainService, Service.StoppableByRequest:
               .productR:
                 shutdownBeforeClusterNodeActivated.get.flatMap: (cmd, meta) =>
                   allocated.allocatedThing.execute(cmd, meta)
-      .race(untilStopped)
-    .startAndForget
-    .productR:
+                    .handleProblem: prblm =>
+                      logger.error(s"$cmd: $prblm")
+    .start.flatMap: directorFiber =>
       startService:
         forDirector.subagent.untilTerminated
           .flatTap(termination => IO:
             subagentTermination = termination)
-          .*>(stop/*TODO Subagent should terminate this Director ?*/)
+          .productR:
+            stop/*TODO Subagent should terminate this Director ?*/
           .startAndForget
-          .*>(IO.race(
-            untilStopRequested *> stopMe,
-            untilTerminated))
+          .productR:
+            IO.race(
+              untilStopRequested *> stopMe,
+              untilTerminated)
+          .productR:
+            directorFiber.cancel
           .void
 
   private def stopMe: IO[Unit] =

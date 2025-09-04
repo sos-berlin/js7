@@ -1,23 +1,23 @@
 package js7.agent
 
-import cats.effect.{Resource, ResourceIO}
-import cats.effect.Deferred
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import js7.agent.RestartableDirector.*
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
+import js7.base.catsutils.CatsEffectExtensions.{right, startAndLogError}
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
 import js7.base.monixutils.AsyncVariable
 import js7.base.service.{MainService, Service}
-import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Nulls.nullToNone
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.subagent.Subagent
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.CatsEffectExtensions.startAndLogError
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
-import js7.base.utils.Nulls.nullToNone
+import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 
 final class RestartableDirector private(
@@ -33,43 +33,29 @@ extends MainService, Service.StoppableByRequest:
   private val _untilTerminated = Deferred.unsafe[IO, Try[DirectorTermination]]
 
   protected def start =
-    RunningAgent
-      .director(subagent, conf, testWiring)
-      .toAllocated
-      .flatMap: allocated =>
-        _currentDirector.set(allocated.allocatedThing) *>
-          startService:
-            onStopRequested(allocated.release)
-              .surround:
-                allocated.allocatedThing.untilTerminated
-              .guarantee(allocated.release)
-              .flatMap: terminated =>
-                if terminated.restartDirector then
-                  restartLoop
-                else
-                  IO.pure(terminated)
-              .flatTap: termination =>
-                _untilTerminated.complete(Success(termination)).as(Right(()))
-              .tapError: t => // ???
-                _untilTerminated.complete(Failure(t)).void
-              .void
+    startService:
+      loop.flatMap: termination =>
+        _untilTerminated.complete(Success(termination)).void
+      .tapError: t => // TODO Shouldn't MainService handle this ?
+        _untilTerminated.complete(Failure(t)).void
 
-  private def restartLoop: IO[DirectorTermination] =
+  private def loop: IO[DirectorTermination] =
     ().tailRecM: _ =>
-      IO(logger.info(s"⟲ Restart Agent Director after ${Delay.pretty}...")) *>
-        IO.sleep(Delay) *>
-        RunningAgent
-          .director(subagent, conf, testWiring)
-          .use: director =>
-            onStopRequested(director.terminate().void)
-              .surround:
-                _currentDirector.set(director) *>
-                  director.untilTerminated
-              .map: termination =>
-                if termination.restartDirector then
-                  Left(())
-                else
-                  Right(termination)
+      val t = Deadline.now
+      runDirector.flatMap: termination =>
+        if termination.restartDirector then
+          logger.info(s"⟲ Restart Agent Director\n" + "─" * 80)
+          IO.sleep((t + MinimumRestartDuration).timeLeft).as(Left(()))
+        else
+          IO.right(termination)
+
+  private def runDirector: IO[DirectorTermination] =
+    RunningAgent.director(subagent, conf, testWiring).use: director =>
+      _currentDirector.set(director) *>
+        onStopRequested(director.terminate().void).surround:
+          director.untilTerminated
+        .guarantee:
+          _currentDirector.set(null)
 
   private def onStopRequested(stop: IO[Unit]): ResourceIO[Unit] =
     Resource
@@ -81,6 +67,7 @@ extends MainService, Service.StoppableByRequest:
   def untilTerminated: IO[DirectorTermination] =
     _untilTerminated.get.dematerialize
 
+  @TestOnly
   def currentDirector: IO[RunningAgent] =
     _currentDirector.value.map(nullToNone).flatMap:
       case None =>
@@ -95,7 +82,7 @@ extends MainService, Service.StoppableByRequest:
 
 private object RestartableDirector:
   private val logger = Logger[this.type]
-  private val Delay = 1.s // Give Pekko Actors time to terminate and release their names
+  private val MinimumRestartDuration = 10.s
 
   def service(
     subagent: Subagent,
