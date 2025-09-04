@@ -301,3 +301,5 @@ private[agent] object DirectorDriver:
   extends Problem.Coded:
     def arguments: Map[String, String] = Map(
       "agentPath" -> agentPath.string)
+
+  object DirectorDriverStoppedProblem extends Problem.Coded.Companion

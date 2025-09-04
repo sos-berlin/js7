@@ -5,21 +5,27 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.catsutils.CatsExtensions.{ifTrue, tryIt}
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichJavaClass, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.AgentDriver.Queueable.{AttachOrder, DetachOrder, MarkOrder}
 import js7.controller.agent.CommandQueue.*
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
+import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.agent.AgentPath
+import js7.data.agent.Problems.AgentIsShuttingDown
 import js7.data.order.OrderId
+import js7.data.subagent.Problems.NoDirectorProblem
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success}
 
 /**
@@ -155,6 +161,7 @@ private[agent] abstract class CommandQueue(
     lock.lock(maybeStartSendingLocked)
 
   private def maybeStartSendingLocked: IO[Unit] =
+   logger.traceIO("### maybeStartSendingLocked"):
     IO(isCoupled && !isTerminating).ifTrue:
       lazy val queueables = queue.view.filterNot(isExecuting)
         .take(if freshlyCoupled then 1 else batchSize)  // if freshlyCoupled, send only command to try connection
@@ -247,14 +254,25 @@ private[agent] abstract class CommandQueue(
         // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
         // The dequeued commands will not be repeated !!!
 
-        def isRepeatable(problem: Problem) = problem match
-          case _: DirectorDriverStoppedProblem => true
-          case _ => problem.httpStatusCode == 503 /*ServiceUnavailable*/
+        // Some problems don't depend on the command, but on the Agent's state, so we repeat them
+        def isRepeatableProblem(problem: Problem) =
+          problem.httpStatusCode == 503 /*ServiceUnavailable*/ ||
+            (problem is DirectorDriverStoppedProblem) ||
+            (problem is ClusterNodeHasBeenSwitchedOverProblem) ||
+            (problem is NoDirectorProblem) ||
+            (problem is AgentIsShuttingDown) ||
+            (problem is ShuttingDownProblem)
 
-        queue.dequeueAll(responses.view
-          .flatMap(r => r.response.left.forall(prblm => !isRepeatable(prblm)) ?
-            r.queueable)
-          .toSet)
+        val (repeatables, toBeDequeued) =
+          responses.partition: r =>
+            r.response.left.exists(isRepeatableProblem)
+          .pipe: (a, b) =>
+            (a.map(_.queueable).toSet, b.map(_.queueable).toSet)
+
+        queue.dequeueAll(toBeDequeued)
+
+        if repeatables.nonEmpty then
+          delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
 
         onQueueableResponded(responses.view.map(_.queueable).toSet) *>
           IO:
@@ -273,7 +291,10 @@ private[agent] abstract class CommandQueue(
 
               case QueueableResponse(queueable, Left(problem)) =>
                 // MarkOrder(FreshOnly) fails if order has started !!!
-                logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
+                if repeatables(queueable) then
+                  logger.debug(s"⟲ Agent rejected ${queueable.toShortString}: $problem")
+                else
+                  logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
                 // Agent's state does not match controller's state ???
                 None
 
