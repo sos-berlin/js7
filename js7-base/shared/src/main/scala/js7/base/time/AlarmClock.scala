@@ -35,13 +35,17 @@ trait AlarmClock extends WallClock:
   final def scheduleIOOnce(delay: FiniteDuration, label: => String = "")(io: IO[Unit])
     (using dispatcher: Dispatcher[IO])
   : IO[IO[Unit]] =
-    scheduleIO(scheduleOnce(delay, label), s"scheduleIOOnce($delay, $label)", io)
+    scheduleIO(
+      scheduleOnce(delay, label), s"scheduleIOOnce($delay, $label)",
+      io)
 
   /** @return An IO in an IO, to allow cancellation of the schedule (but not the scheduled IO). */
   final def scheduleIOAt(timestamp: Timestamp, label: => String = "")(io: IO[Unit])
     (using dispatcher: Dispatcher[IO])
   : IO[IO[Unit]] =
-    scheduleIO(scheduleAt(timestamp, label), s"scheduleIOAt($timestamp, $label)", io)
+    scheduleIO(
+      scheduleAt(timestamp, label), s"scheduleIOAt($timestamp, $label)",
+      io)
 
   private final def scheduleIO(
     schedule: (=> Unit) => SyncCancelable, label: => String, io: IO[Unit])
@@ -55,7 +59,6 @@ trait AlarmClock extends WallClock:
             case Outcome.Canceled() => IO(logger.debug(s"◼️ $label: Canceled"))
             case Outcome.Errored(t) => IO(logger.error(s"$label: ${t.toStringWithCauses}", t))
       IO(scheduled.cancel())
-
 
   // TODO Are sleep and sleepUntil cancelable?
   final def sleep(duration: FiniteDuration, label: => String = ""): IO[Unit] =

@@ -72,7 +72,9 @@ extends Service.StoppableByRequest:
           val n = jobMotorKeeper.processLimits.processCount
           if n > 0 then logger.debug(s"❗️processCount=$n when stopping")
       .guarantee:
-        orderToEntry.toMap.values.foldMap(_.cancelSchedule)
+        orderToEntry.removeAll.flatMap:
+          _.values.foldMap:
+            _.cancelSchedule
       .guarantee:
         jobMotorKeeper.stop
 
@@ -297,7 +299,7 @@ object OrderMotor:
       (using clock: AlarmClock, dispatcher: Dispatcher[IO])
     : IO[Unit] =
       // FIXME Dispatcher already closed?
-      clock.scheduleIOAt(timestamp, label = orderId.toString):
+      clock.scheduleIOAt(timestamp, label = s"OrderMotor $orderId"):
         io
       .flatMap: cancel =>
         cancelScheduleRef.getAndSet(cancel)
