@@ -2,8 +2,7 @@ package js7.subagent.job
 
 import cats.effect
 import cats.effect.{Deferred, IO}
-import cats.syntax.foldable.*
-import cats.syntax.traverse.*
+import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
@@ -71,17 +70,13 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
                     throwable.nullIfNoStackTrace)
 
   private def killAllDueToShutdown(signal: ProcessSignal): IO[Unit] =
-    IO.defer:
-      val drivers = orderToProcess.toMap.values
+    orderToProcess.toMap.map(_.values).flatMap: drivers =>
       if drivers.nonEmpty then
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
-      drivers
-        .toVector
-        .traverse: driver =>
-          driver.kill(signal, processLost = Some(ProcessKilledDueToSubagentShutdownProblem(_)))
-        .map(_.combineAll)
-        .handleError: t =>
-          logger.error(s"killAllDueToShutdown: ${t.toStringWithCauses}", t)
+      drivers.foldMap: driver =>
+        driver.kill(signal, processLost = Some(ProcessKilledDueToSubagentShutdownProblem(_)))
+      .handleError: t =>
+        logger.error(s"killAllDueToShutdown: ${t.toStringWithCauses}", t)
 
   def runOrderProcess(
     order: Order[Order.Processing],

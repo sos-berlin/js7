@@ -108,13 +108,14 @@ private final class JobMotorKeeper(
   def triggerAllJobs(reason: => Any): IO[Unit] =
     lazy val reason_ = reason.toString
     logger.traceIO("triggerAllJobs", reason_):
-      IO.defer:
-        // TODO Respect Order's priority
-        jobMotors.foldMap:
+      // TODO Respect Order's priority
+      jobMotors.flatMap:
+        _.foldMap:
           _.trigger(reason_)
 
-  private def jobMotors: View[JobMotor] =
-    jobToMotor.toMap.values.view.map(_.allocatedThing)
+  private def jobMotors: IO[View[JobMotor]] =
+    jobToMotor.toMap.map:
+      _.values.view.map(_.allocatedThing)
 
   def onOrdersProcessed(orderIds: Seq[OrderId]): IO[Unit] =
     getAgentState.flatMap: agentState =>

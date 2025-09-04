@@ -122,7 +122,7 @@ extends Service.StoppableByRequest:
         orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
       .productR:
         if dontWaitForDirector then IO:
-          for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
+          for orderId <- orderToProcessing.unsafeToMap.keys.toVector.sorted do logger.warn:
             s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
         else
           awaitOrderAcknowledgements *>
@@ -139,7 +139,7 @@ extends Service.StoppableByRequest:
         logger.info(s"🟡 Stopping, waiting for $orderCount processes")
       Delayer.continually():
         IO:
-          val orderIds = orderIdToJobDriver.toMap.keys
+          val orderIds = orderIdToJobDriver.unsafeToMap.keys
           sym.onInfo()
           logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
             orderIds.toVector.sorted.mkStringLimited(3)}")
@@ -209,7 +209,7 @@ extends Service.StoppableByRequest:
     logger.debugIO:
       IO.defer:
         val since = Deadline.now
-        val oToP = orderToProcessing.toMap.toVector
+        val oToP = orderToProcessing.unsafeToMap.toVector
         val sym = BlockingSymbol()
         List(0.s/*debug*/, 1.s/*info*/).foldMap: delay =>
           // Wait a second before logging at info level
@@ -231,7 +231,7 @@ extends Service.StoppableByRequest:
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("killAndStopAllJobs", signal):
-      IO(jobKeyToJobDriver.toMap.values)
+      IO(jobKeyToJobDriver.unsafeToMap.values)
         .flatMap(_
           .toVector
           .parFoldMapA: jobDriver =>

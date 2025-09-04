@@ -212,7 +212,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         .as(subagentRunId -> eventId)
         .onErrorRestartLoop(()):
           case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
-            orderToDeferred.toMap.size match
+            orderToDeferred.unsafeToMap.size match
               case 0 => logger.info("Subagent restarted")
               case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
             onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
@@ -344,7 +344,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   //private def killAll(signal: ProcessSignal): IO[Unit] =
   //  IO.defer {
-  //    val cmds = orderToDeferred.toMap.keys.map(KillProcess(_, signal))
+  //    val cmds = orderToDeferred.unsafeToMap.keys.map(KillProcess(_, signal))
   //    dispatcher
   //      .executeCommands(cmds)
   //      .map(cmds.zip(_).map {

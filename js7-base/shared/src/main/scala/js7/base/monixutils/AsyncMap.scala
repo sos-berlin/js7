@@ -35,7 +35,10 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   final def size: Int =
     _map.size
 
-  final def toMap: Map[K, V] =
+  final def toMap: IO[Map[K, V]] =
+    IO(_map)
+
+  final def unsafeToMap: Map[K, V] =
     _map
 
   final def contains(key: K): Boolean =
@@ -197,29 +200,29 @@ object AsyncMap:
     final def initiateStopWithProblemIfEmpty(problem: Problem): IO[Boolean] =
       IO.defer:
         logger.trace(s"$name initiateStopWithProblemIfEmpty $problem")
-        shortLock
-          .lock(IO:
-            isEmpty && {
+        shortLock.lock:
+          IO:
+            isEmpty && locally:
               stoppingProblem = problem
               true
-            })
-          .flatTap(IO.whenA(_):
-            whenEmpty.complete(()).void)
+        .flatTap(IO.whenA(_):
+          whenEmpty.complete(()).void)
 
     final def initiateStopWithProblem(problem: Problem): IO[Unit] =
       IO.defer:
         logger.trace(s"$name(initiateStopWithProblem $problem)")
-        shortLock
-          .lock(IO:
+        shortLock.lock:
+          IO:
             stoppingProblem = problem
-            isEmpty)
-          .flatMap(IO.whenA(_):
-            whenEmpty.complete(()).attempt.void)
+            isEmpty
+        .flatMap:
+          IO.whenA(_):
+            whenEmpty.complete(()).attempt.void
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       stoppingProblem.toChecked
 
     override protected[monixutils] final def onEntryRemoved() =
-      IO.defer(
-        IO.whenA(isStopping && isEmpty)(
-          whenEmpty.complete(()).attempt.void))
+      IO.defer:
+        IO.whenA(isStopping && isEmpty):
+          whenEmpty.complete(()).attempt.void

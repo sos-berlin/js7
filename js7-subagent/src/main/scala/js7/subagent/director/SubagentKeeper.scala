@@ -139,7 +139,7 @@ extends Service.StoppableByRequest:
   def killLocalProcesses(signal: ProcessSignal): IO[Unit] =
     logger.debugIO:
       IO.defer:
-        orderToSubagent.toMap.toVector.parFoldMapA:
+        orderToSubagent.unsafeToMap.toVector.parFoldMapA:
           case (orderId, _: LocalSubagentDriver[?]) => killProcess(orderId, signal)
           case _ => IO.unit
 
@@ -149,7 +149,7 @@ extends Service.StoppableByRequest:
         _.driver.stopWorkflowJobs(workflow)
 
   //def orderIsLocal(orderId: OrderId): Boolean =
-  //  orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
+  //  orderToSubagent.unsafeToMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
 
   /** @return the persisted Order. */
   def processOrder(
@@ -399,7 +399,7 @@ extends Service.StoppableByRequest:
 
   private def bundleSubagentProcessCount(bundleId: SubagentBundleId): Int =
     val state = journal.unsafeAggregate()
-    orderToSubagent.toMap.keys.view
+    orderToSubagent.unsafeToMap.keys.view
       .flatMap:
         state.idToOrder.get
       .flatMap:

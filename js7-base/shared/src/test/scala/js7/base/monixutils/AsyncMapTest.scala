@@ -161,8 +161,8 @@ final class AsyncMapTest extends OurAsyncTestSuite:
     }
   }
 
-  "toMap" in:
-    assert(asyncMap.toMap == Map(
+  "unsafeToMap" in:
+    assert(asyncMap.unsafeToMap == Map(
       0 -> "FIRST-UPDATED",
       1 -> "EINS",
       2 -> "FIRST",
@@ -181,7 +181,7 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         0 -> "FIRST-UPDATED",
         1 -> "EINS",
         2 -> "FIRST")))
-      .map(_ => assert(asyncMap.toMap == Map(
+      .map(_ => assert(asyncMap.unsafeToMap == Map(
         3 -> "INSERTED",
         4 -> "FIRST")))
 
@@ -190,7 +190,7 @@ final class AsyncMapTest extends OurAsyncTestSuite:
       .map(all => assert(all == Map(
         3 -> "INSERTED",
         4 -> "FIRST")))
-      .map(_ => assert(asyncMap.toMap.isEmpty))
+      .map(_ => assert(asyncMap.unsafeToMap.isEmpty))
 
   "stop" - {
     "empty" - {
