@@ -22,6 +22,8 @@ with EventDrivenState[ClusterState, ClusterEvent]:
   def companion: ClusterState.type =
     ClusterState
 
+  def asCode: AsCode
+
   final def isActive(nodeId: NodeId, isBackup: Boolean): Boolean =
     this == Empty && !isBackup || isNonEmptyActive(nodeId)
 
@@ -104,6 +106,7 @@ with EventDrivenState.Companion[ClusterState]:
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
   case object Empty extends ClusterState:
+    def asCode = AsCode.Empty
     def isNonEmptyActive(id: Id) = false
     def isEmptyOrActive(id: Id) = true
 
@@ -156,17 +159,23 @@ with EventDrivenState.Companion[ClusterState]:
   /** Initial appointment of the nodes. */
   final case class NodesAppointed(setting: ClusterSetting)
   extends IsDecoupled:
+    def asCode = AsCode.NodesAppointed
+
     def withSetting(setting: ClusterSetting): NodesAppointed =
       copy(setting = setting)
 
   /** Intermediate state only, is immediately followed by transition ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
   extends HasNodes:
+    def asCode = AsCode.PreparedToBeCoupled
+
     def withSetting(setting: ClusterSetting): HasNodes = copy(setting = setting)
 
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
   extends IsCoupledOrDecoupled:
+    def asCode = AsCode.Coupled
+
     def withSetting(setting: ClusterSetting): Coupled =
       copy(setting = setting)
 
@@ -176,11 +185,15 @@ with EventDrivenState.Companion[ClusterState]:
     */
   final case class ActiveShutDown(setting: ClusterSetting)
   extends IsDecoupled:
+    def asCode = AsCode.ActiveShutDown
+
     def withSetting(setting: ClusterSetting): ActiveShutDown =
       copy(setting = setting)
 
   final case class SwitchedOver(setting: ClusterSetting)
   extends IsDecoupled:
+    def asCode = AsCode.SwitchedOver
+
     def withSetting(setting: ClusterSetting): SwitchedOver =
       copy(setting = setting)
 
@@ -189,6 +202,8 @@ with EventDrivenState.Companion[ClusterState]:
 
   final case class PassiveLost(setting: ClusterSetting)
   extends IsNodeLost:
+    def asCode = AsCode.PassiveLost
+
     def withSetting(setting: ClusterSetting): PassiveLost =
       copy(setting = setting)
 
@@ -196,6 +211,8 @@ with EventDrivenState.Companion[ClusterState]:
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
   extends IsNodeLost:
+    def asCode = AsCode.FailedOver
+
     def withSetting(setting: ClusterSetting): FailedOver =
       copy(setting = setting)
 
@@ -208,3 +225,16 @@ with EventDrivenState.Companion[ClusterState]:
   implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
     Subtype(Empty),
     Subtype[HasNodes])
+
+
+  /** Experimental for Prometheus metrics.
+    * <p>Prometheus supports only numeric values. */
+  enum AsCode(val index: Int):
+    case Empty extends AsCode(0)
+    case NodesAppointed extends AsCode(1)
+    case PreparedToBeCoupled extends AsCode(2)
+    case Coupled extends AsCode(3)
+    case ActiveShutDown extends AsCode(4)
+    case PassiveLost extends AsCode(5)
+    case SwitchedOver extends AsCode(6)
+    case FailedOver extends AsCode(7)

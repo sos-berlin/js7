@@ -6,6 +6,7 @@ import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
+import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerEventDrivenStateView, ControllerId, ControllerStatePlanFunctions}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
@@ -111,6 +112,7 @@ extends
   val companion: ControllerTestStateView.type = ControllerTestStateView
 
   def isAgent = false
+  def clusterState: ClusterState = ClusterState.Empty
   def statistics = EngineStateStatistics.empty
 
   def copyX(
@@ -129,7 +131,6 @@ extends
   protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
   : Checked[ControllerTestStateView] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
-
 
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView]:
@@ -157,6 +158,7 @@ extends TestStateView[AgentTestStateView]:
   val companion: AgentTestStateView.type = AgentTestStateView
 
   def isAgent = true
+  def clusterState: ClusterState.Empty.type = ClusterState.Empty
   def statistics = EngineStateStatistics.empty
 
   def copyX(

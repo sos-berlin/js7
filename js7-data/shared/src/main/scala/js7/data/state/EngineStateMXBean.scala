@@ -16,6 +16,9 @@ trait EngineStateMXBean:
       .groupMapReduce(_._2.state.getClass.cachedSimpleScalaName)(_ => 1)(_ + _)
       .view.mapValues(Int.box).asJava
 
+  def getClusterStateCode: Int =
+    stateView.clusterState.asCode.index
+
   def getStatisticsEventToTotal: java.util.Map[String, java.lang.Long] =
     stateView.statistics.eventCounter.eventToCount
       .view.mapValues(Long.box).asJava

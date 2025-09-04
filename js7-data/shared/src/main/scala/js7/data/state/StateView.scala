@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.AgentPath
 import js7.data.board.BoardState
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -30,6 +31,8 @@ import scala.reflect.ClassTag
 trait StateView extends ItemContainer, EngineStateFunctions:
 
   def isAgent: Boolean
+
+  def clusterState: ClusterState
 
   def maybeAgentPath: Option[AgentPath] = None
 
@@ -222,8 +225,9 @@ object StateView:
     statistics: EngineStateStatistics = EngineStateStatistics.empty,
     idToWorkflow: PartialFunction[WorkflowId, Workflow] = Map.empty,
     keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] = MapView.empty,
-    keyToItem: MapView[InventoryItemKey, InventoryItem] = MapView.empty
-  ) extends StateView {
-    override def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
+    keyToItem: MapView[InventoryItemKey, InventoryItem] = MapView.empty)
+  extends StateView:
+    def clusterState: ClusterState = ClusterState.Empty
+
+    def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
       Left(Problem.pure("DummyStateView"))
-  }
