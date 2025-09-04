@@ -5,13 +5,15 @@ set -euo pipefail
 declare java classpathString
 declare -a standardJavaOptions
 
+data="$HOME/data"
+javaOptions=()
 args=()
-javaOptions=(
-  -Xms50m
-  -Xmx100m)
 
 for arg in "$@"; do :
   case "$arg" in
+    --data-directory=*)
+      data="${arg#*=}"
+      ;;
     --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
@@ -25,13 +27,20 @@ for arg in "$@"; do :
   esac
 done
 
-uri="$(cat data/work/http-uri)"
-uri="${uri%/subagent}"
+if [[ "$JAVA_VERSION_MAJOR" -ge 19 ]]; then
+  jsaFile="$data/cache/js7.jsa"
+  myJsaFile="$data/cache/SubagentClient.jsa"
+  if [[ -f "$jsaFile" ]]; then
+    standardJavaOptions+=("-XX:SharedArchiveFile=$jsaFile")
+    [[ ! -f "$myJsaFile" ]] || rm "$myJsaFile"
+  else
+    standardJavaOptions+=("-XX:SharedArchiveFile=$myJsaFile" -XX:+AutoCreateSharedArchive)
+  fi
+fi
 
-"$java"\
-  "${javaOptions[@]}" \
-  -Dlog4j2.configurationFile="classpath:js7/log4j2-stderr.xml"\
-  "${standardJavaOptions[@]}" \
-  -classpath "$classpathString"\
-  js7.agent.client.main.SubagentClientMain \
-  "${args[@]}"
+execute=("$java" -Xmx50m "${javaOptions[@]}" "${standardJavaOptions[@]}")
+execute+=(-classpath "$classpathString")
+execute+=(-Dlog4j2.configurationFile="classpath:js7/log4j2.xml,classpath:js7/log4j2-stderr.xml")
+execute+=(js7.agent.client.main.SubagentClientMain --data-directory="$data" "${args[@]}")
+#echo 1>&2 "${execute[@]}"
+exec "${execute[@]}"

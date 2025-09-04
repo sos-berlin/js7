@@ -3,7 +3,7 @@ set -euo pipefail
 
 export JS7_HOME=/opt/js7
 . "$JS7_HOME"/bin/internal/set-context.sh
-declare classpathString java
+declare classpathString java standardJavaOptions
 
 directory=/var/opt/js7/testAddOrders
 javaOptions=()
@@ -45,6 +45,7 @@ javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 execute=(
   "$java"
   "${javaOptions[@]}"
+  "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   "js7.tests.addOrders.TestAddOrdersMain"
   "${args[@]}"

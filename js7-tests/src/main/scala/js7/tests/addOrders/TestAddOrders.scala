@@ -41,8 +41,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         val orderIds = 1 to orderCount map toOrderId
         val isOurOrder = orderIds.toSet
         val streamingStarted = Deferred.unsafe[IO, Deadline]
-        val statisticsBuilder =
-          new StatisticsBuilder(isOurOrder, o => statisticsQueue.tryOffer(o.some))
+        val statisticsBuilder = StatisticsBuilder(isOurOrder, o => statisticsQueue.tryOffer(o.some))
 
         val awaitOrderCompletion = controllerApi
           .eventAndStateStream()
@@ -61,12 +60,11 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
             else
               Right(statistics)
 
-        val add = streamingStarted.get
-          .flatMap: since =>
-            addOrders(Stream.iterable(orderIds))
-              .flatTap:
-                case Right(_) => allOrdersAdded.complete(since.elapsed).void
-                case Left(_) => IO.unit
+        val add: IO[Checked[Unit]] =
+          streamingStarted.get.flatMap: since =>
+            addOrders(orderIds).flatTap:
+              case Right(_) => allOrdersAdded.complete(since.elapsed).void
+              case Left(_) => IO.unit
 
         IO
           .both(
@@ -80,12 +78,12 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
     yield
       (allOrdersAdded.get, Stream.fromQueueNoneTerminated(statisticsQueue, 1), fiber)
 
-  private def addOrders(orderIds: Stream[IO, OrderId]): IO[Checked[Unit]] =
+  private def addOrders(orderIds: Iterable[OrderId]): IO[Checked[Unit]] =
     logger.debugIO:
-      controllerApi
-        .addOrders:
-          orderIds.map(FreshOrder(_, workflowPath, deleteWhenTerminated = true))
-        .rightAs(())
+      controllerApi.addOrders:
+        Stream.iterable(orderIds).map:
+          FreshOrder(_, workflowPath, deleteWhenTerminated = true)
+      .rightAs(())
 
 
 object TestAddOrders:
