@@ -151,14 +151,15 @@ extends Service.StoppableByRequest:
             logger.info(s"🟢 All processes completed")
 
   def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
-    workflow.keyToJob.keys.toVector
-      .flatMap(jobKeyToJobDriver.get)
-      .parUnorderedTraverse:
-        _.stop(SIGKILL/*just in case*/)
-      .productR:
-        val isOurs = workflow.keyToJob.keySet
-        jobKeyToJobDriver.removeConditional((jobKey, _) => isOurs(jobKey))
-      .void
+    IO.defer:
+      workflow.keyToJob.keys.toVector
+        .flatMap(jobKeyToJobDriver.get)
+        .parUnorderedTraverse:
+          _.stop(SIGKILL/*just in case*/)
+        .productR:
+          val isOurs = workflow.keyToJob.keySet
+          jobKeyToJobDriver.removeConditional((jobKey, _) => isOurs(jobKey))
+        .void
 
   //private[subagent] def dedicateDirector(cmd: DedicateDirector, meta: CommandMeta)
   //: IO[Checked[Unit]] =

@@ -92,18 +92,14 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
       case Some(existing) => IO.pure(existing)
       case None => value
 
-  final def put(key: K, value: V)
-    (using sourcecode.Enclosing)
-  : IO[V] =
+  final def put(key: K, value: V)(using sourcecode.Enclosing): IO[V] =
     lockKeeper.lock(key):
       shortLock.lock:
         IO:
           updateMap(key, value).orThrow
           value
 
-  final def update(key: K)(update: Option[V] => IO[V])
-    (using sourcecode.Enclosing)
-  : IO[V] =
+  final def update(key: K)(update: Option[V] => IO[V])(using sourcecode.Enclosing): IO[V] =
     getAndUpdate(key, update)
       .map(_._2)
 

@@ -98,11 +98,10 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
               removeOrderEntry(forOrder)
 
   private def removeOrderEntry(forOrder: JobDriverForOrder): IO[Unit] =
-      orderToProcess.remove(forOrder.orderId) *>
-        IO.defer:
-          IO.whenA(orderToProcess.isEmpty):
-            lastProcessTerminated.fold(IO.unit):
-              _.complete(()).void
+    orderToProcess.remove(forOrder.orderId) *>
+      IO(orderToProcess.isEmpty).ifTrue:
+        lastProcessTerminated.fold(IO.unit):
+          _.complete(()).void
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:
