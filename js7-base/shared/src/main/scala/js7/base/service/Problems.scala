@@ -1,7 +1,7 @@
 package js7.base.service
 
 import js7.base.problem.Problem
-import js7.base.utils.typeclasses.IsEmpty.syntax.??
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import scala.collection.immutable.Map.Map2
 
 object Problems:
@@ -10,4 +10,4 @@ object Problems:
   extends Problem.Coded:
     def arguments = Map2(
       "serviceName", serviceName,
-      "suffix", extra ?? s" • $extra")
+      "suffix", extra.nonEmpty ?? s" • $extra")
