@@ -237,15 +237,15 @@ extends Service.StoppableByRequest:
               .startAndForget)
 
   def executeCommandDirectly(command: AgentCommand): IO[Checked[command.Response]] =
-    logger.traceIO(IO.defer {
-      val expectedSessionNumber = sessionNumber.get()
-      directorDriverAllocated.checked.flatMapT(directorDriver =>
-        // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
-        if sessionNumber.get() != expectedSessionNumber then
-          IO.left(DecoupledProblem)
-        else
-          directorDriver.executeCommand(command, mustBeCoupled = true))
-    })
+    logger.traceIO:
+      IO.defer:
+        val expectedSessionNumber = sessionNumber.get()
+        directorDriverAllocated.checked.flatMapT(directorDriver =>
+          // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
+          if sessionNumber.get() != expectedSessionNumber then
+            IO.left(DecoupledProblem)
+          else
+            directorDriver.executeCommand(command, mustBeCoupled = true))
 
   def changeAgentRef(agentRef: AgentRef): IO[Unit] =
     logger.traceIO("changeAgentRef", agentRef):

@@ -47,6 +47,7 @@ import js7.journal.watch.StrictEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
 import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map1
 
 final class RunningAgent private(
@@ -74,6 +75,7 @@ extends MainService, Service.StoppableByRequest:
   // Then the restart flag of the command should be respected
   @volatile private var subagentTermination = ProgramTermination()
 
+  @TestOnly
   val untilReady: IO[Checked[AgentCommandExecutor]] =
     agentCommandExecutorDeferred.get.map(_.map(_.allocatedThing))
 
