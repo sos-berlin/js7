@@ -3,6 +3,7 @@ package js7.cluster.watch
 import cats.effect.IO
 import cats.effect.testkit.TestControl
 import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
@@ -43,7 +44,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
 
   "ClusterWatch" - {
     def newClusterWatch(initialState: Option[HasNodes] = None): IO[ClusterWatch] =
-      implicit val watch = new ClusterWatch
+      implicit val watch = new ClusterWatch(requireActiveIsLost = _ => IO.right(()))
       for
         _ <- initialState.fold(IO.unit): clusterState =>
           heartbeat(clusterState.activeId, clusterState).map(_.orThrow)
@@ -306,6 +307,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
   "ClusterPassiveLost when ClusterWatch is still untaught requires manual confirmation" in:
     val eventBus = new ClusterWatchEventBus
     val watch = new ClusterWatch(
+      requireActiveIsLost = _ => IO.right(()),
       onUndecidableClusterNodeLoss = {
         case Some(problem) => IO(eventBus.publish(problem))
         case None => IO.unit
@@ -355,7 +357,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     assert(watch.clusterState() == Right(passiveLost))
 
   "ClusterFailedOver when ClusterWatch is still untaught requires manual confirmation" in:
-    val watch = new ClusterWatch
+    val watch = new ClusterWatch(requireActiveIsLost = _ => IO.right(()))
     val failedOver = FailedOver(setting, failedAt)
     val lostNodeId = failedOver.passiveId
     val activatedId = failedOver.activeId
@@ -416,6 +418,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
       TestControl.executeEmbed:
         implicit val watch = new ClusterWatch(
           requireManualNodeLossConfirmation = true,
+          requireActiveIsLost = _ => IO.right(()),
           onUndecidableClusterNodeLoss = _ => IO.unit)
 
         for

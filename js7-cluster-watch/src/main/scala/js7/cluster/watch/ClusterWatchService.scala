@@ -1,20 +1,20 @@
 package js7.cluster.watch
 
 import cats.data.NonEmptyList
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.mkString
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichThrowable}
 import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
@@ -27,12 +27,13 @@ import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
+import js7.data.cluster.ClusterWatchProblems.{ClusterWatchActiveStillAliveProblem, ClusterWatchRequestDoesNotMatchProblem}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
+
 
 final class ClusterWatchService private[ClusterWatchService](
   val clusterWatchId: ClusterWatchId,
@@ -50,6 +51,7 @@ extends MainService, Service.StoppableByRequest:
   val clusterWatch = new ClusterWatch(
     label = label,
     onClusterStateChanged = onClusterStateChanged,
+    requireActiveIsLost = requireActiveIsLost,
     onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
   val clusterWatchRunId: ClusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
@@ -73,6 +75,27 @@ extends MainService, Service.StoppableByRequest:
     .interruptWhenF(untilStopRequested)
     .compile
     .drain
+
+  private def requireActiveIsLost(clusterState: ClusterState.HasNodes): IO[Checked[Unit]] =
+    import clusterState.{activeId, activeUri}
+    IO:
+      nodeApis.find(_.baseUri == activeUri).toRight:
+        Problem.pure(s"🔥 Active node $activeUri is not in list of nodeApis") // Must not happen
+    .flatMapT: nodeApi =>
+      nodeApi.clusterNodeState
+        .as(Left(ClusterWatchActiveStillAliveProblem))
+        .handleErrorWith:
+          case e: Exception
+            if e.getMessage.contains("java.net.ConnectException: Connection refused") =>
+            logger.info(s"✔︎ requireActiveIsLost: $activeId $activeUri does not connect ✔︎")
+            IO.right(())
+          case t =>
+            logger.warn(s"requireActiveIsLost: $ClusterWatchActiveStillAliveProblem $activeUri: ${
+              t.toStringWithCauses}")
+            IO.left(ClusterWatchActiveStillAliveProblem)
+
+  private def TEST(t: Throwable): Unit =
+    logger.info(t.toStringWithCauses)
 
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
     private val streamFailed = Atomic(false)

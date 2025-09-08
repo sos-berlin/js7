@@ -122,6 +122,7 @@ with EventDrivenState.Companion[ClusterState]:
 
     final def isNonEmptyActive(id: Id): Boolean = id == activeId
     final def isEmptyOrActive(id: Id): Boolean = id == activeId
+    final def activeUri: Uri = idToUri(activeId)
     final def passiveId: NodeId = idToUri.peerOf(activeId)
     final def passiveUri: Uri = idToUri(passiveId)
     final def peerOf(nodeId: NodeId): NodeId = idToUri.peerOf(nodeId)

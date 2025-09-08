@@ -86,16 +86,21 @@ object ClusterWatchProblems:
     rejectedClusterWatchId: ClusterWatchId,
     requestedClusterWatchId: ClusterWatchId)
   extends Problem.Coded:
-    def arguments: Map[String, String] = Map(
-      "rejectedClusterWatchId" -> rejectedClusterWatchId.toString,
-      "requestedClusterWatchId" -> requestedClusterWatchId.toString)
+    def arguments: Map[String, String] = Map2(
+      "rejectedClusterWatchId", rejectedClusterWatchId.toString,
+      "requestedClusterWatchId", requestedClusterWatchId.toString)
 
   final case class ClusterWatchIdNotUniqueProblem(
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId)
   extends Problem.Coded:
-    def arguments: Map[String, String] = Map(
-      "clusterWatchId" -> clusterWatchId.toString,
-      "clusterWatchRunId" -> clusterWatchRunId.toString)
+    def arguments: Map[String, String] = Map2(
+      "clusterWatchId", clusterWatchId.toString,
+      "clusterWatchRunId", clusterWatchRunId.toString)
+
+
+  type ClusterWatchActiveStillAliveProblem = ClusterWatchActiveStillAliveProblem.type
+  object ClusterWatchActiveStillAliveProblem extends Problem.ArgumentlessCoded
+
 
   case object ClusterStateEmptyProblem extends Problem.ArgumentlessCoded
