@@ -27,8 +27,8 @@ final class AsyncVariable[V] private(
     shieldValue:
       IO.defer(body(_value))
 
-  def set(value: V)(using sourcecode.Enclosing): IO[V] =
-    update(_ => IO.pure(value))
+  def set(value: V)(using sourcecode.Enclosing): IO[Unit] =
+    update(_ => IO.pure(value)).void
 
   def updateDirect(update: V => V)(using sourcecode.Enclosing): IO[V] =
     this.update(v => IO.pure(update(v)))

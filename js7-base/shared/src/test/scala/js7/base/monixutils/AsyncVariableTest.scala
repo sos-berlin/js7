@@ -22,7 +22,6 @@ final class AsyncVariableTest extends OurAsyncTestSuite:
 
   "set" in:
     asyncVariable.set(7)
-      .map(v => assert(v == 7))
       .*>(IO(assert(asyncVariable.get == 7)))
       .*>(asyncVariable.set(1).as(succeed))
       .unsafeToFuture()
