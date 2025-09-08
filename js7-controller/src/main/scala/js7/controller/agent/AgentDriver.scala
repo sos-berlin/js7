@@ -12,6 +12,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.DedicateAgentDirector
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
@@ -293,26 +294,27 @@ extends Service.StoppableByRequest:
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
     assertThat(stampedEvents.nonEmpty)
-    IO.defer:
-      commandQueue.onOrdersAttached(
-        stampedEvents.view.collect {
-          case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
-        })
-        .*>(
-          commandQueue.onOrdersDetached(
-            stampedEvents.view.collect {
-              case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
-            }))
-        .*>(maybeAgentRunId.flatMap {
-          case None => IO.raiseError_(new IllegalStateException(
-            s"onEventsFetched $agentPath: Missing AgentRef or AgentRunId"))
-          case Some(agentRunId) => adoptEvents(agentRunId, stampedEvents)
-        })
-        .flatMap(_.fold(IO.unit)(releaseAdoptedEvents))
-        .handleError: t =>
-          logger.error(
-            s"$agentDriver.onEventsFetched => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-        .logWhenItTakesLonger(s"$agentDriver.onEventsFetched")
+    commandQueue.onOrdersAttached:
+      stampedEvents.collect:
+        case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
+    .productR:
+      commandQueue.onOrdersDetached:
+        stampedEvents.view.collect:
+          case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
+    .productR:
+      maybeAgentRunId.flatMap:
+        case None => IO.raiseError_(new IllegalStateException(
+          s"onEventsFetched $agentPath: Missing AgentRef or AgentRunId"))
+        case Some(agentRunId) => IO.pure(agentRunId)
+    .flatMap: agentRunId =>
+      adoptEvents(agentRunId, stampedEvents)
+    .flatMapSome:
+      releaseAdoptedEvents
+    .void
+    .handleError: t =>
+      logger.error(
+        s"$agentDriver.onEventsFetched => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+    .logWhenItTakesLonger(s"$agentDriver.onEventsFetched")
 
   private def releaseAdoptedEvents(adoptedEventId: EventId): IO[Unit] =
     state.lock.lock:
@@ -414,9 +416,8 @@ extends Service.StoppableByRequest:
     logger.traceResource:
       for
         client <- activeClientResource
-        //adoptedEventId <- Resource.eval(IO(state.adoptedEventId))
         afterEventId <- Resource.eval(agentRefState.map(_.eventId))
-        directorDriver <- DirectorDriver.resource(
+        directorDriver <- DirectorDriver.service(
           agentDriver, agentPath, afterEventId,
           client,
           dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
@@ -514,7 +515,7 @@ extends Service.StoppableByRequest:
 
 private[controller] object AgentDriver:
 
-  def resource(
+  def service(
     agentRef: AgentRef, eventId: EventId,
     adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => IO[Option[EventId]],
     onOrderMarked: Map[OrderId, OrderMark] => IO[Unit],

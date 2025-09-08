@@ -11,3 +11,5 @@ object Problems:
     def arguments = Map2(
       "serviceName", serviceName,
       "suffix", extra.nonEmpty ?? s" • $extra")
+
+  object ServiceStoppedProblem extends Problem.Coded.Companion

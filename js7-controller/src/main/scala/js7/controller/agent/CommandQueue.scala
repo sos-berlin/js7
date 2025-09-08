@@ -5,10 +5,10 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.catsutils.CatsExtensions.{ifTrue, tryIt}
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
@@ -96,6 +96,13 @@ private[agent] abstract class CommandQueue(
       queue.dequeueAll(what)
       queueSet --= what
       detachQueue.dequeueAll(what)
+
+    def removeAttachedOrderCommands(orderIds: Set[OrderId]): Unit =
+      val removed = queue.removeAll:
+        case AttachOrder(order, _) => orderIds contains order.id
+        case _ => false
+      logger.trace(s"### removeAttachedOrderCommands($orderIds): removed=$removed")
+      queueSet --= removed
 
     def removeAlreadyAttachedOrders(): Unit =
       def isAlreadyAttached(log: Boolean = false)(queueable: Queueable): Boolean =
@@ -238,11 +245,12 @@ private[agent] abstract class CommandQueue(
         IO[Unit]:
           attachedOrderIds --= orderIds
 
-  final def onOrdersAttached(orderIds: View[OrderId]): IO[Unit] =
+  final def onOrdersAttached(orderIds: Seq[OrderId]): IO[Unit] =
     IO.whenA(orderIds.nonEmpty):
       lock.lock:
         IO[Unit]:
           attachedOrderIds ++= orderIds
+          queue.removeAttachedOrderCommands(orderIds.toSet)
           //logger.trace(s"onOrdersAttached attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
 
   final def handleBatchSucceeded(responses: Seq[QueueableResponse]): IO[Seq[Queueable]] =
@@ -260,7 +268,8 @@ private[agent] abstract class CommandQueue(
             (problem is ClusterNodeHasBeenSwitchedOverProblem) ||
             (problem is NoDirectorProblem) ||
             (problem is AgentIsShuttingDown) ||
-            (problem is ShuttingDownProblem)
+            (problem is ShuttingDownProblem) ||
+            (problem is ServiceStoppedProblem)
 
         val (repeatables, toBeDequeued) =
           responses.partition: r =>

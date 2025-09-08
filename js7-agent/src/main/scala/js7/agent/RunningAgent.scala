@@ -41,6 +41,7 @@ import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.agent.Problems.AgentIsShuttingDown
 import js7.data.node.NodeNameToPassword
 import js7.data.state.EngineStateMXBean
+import js7.data.subagent.Problems.NoDirectorProblem
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.StrictEventWatch
@@ -204,8 +205,11 @@ extends MainService, Service.StoppableByRequest:
                   case Some(Right(Allocated(o, _))) =>
                     o.execute(cmd, meta)
         case _ =>
-          agentCommandExecutorDeferred.get.flatMapT:
-            _.allocatedThing.execute(cmd, meta)
+          agentCommandExecutorDeferred.tryGet.flatMap:
+            case None => IO.left(NoDirectorProblem)
+            case Some(checked) =>
+              IO.pure(checked).flatMapT:
+                _.allocatedThing.execute(cmd, meta)
       .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
 
   def systemSessionToken: SessionToken =
