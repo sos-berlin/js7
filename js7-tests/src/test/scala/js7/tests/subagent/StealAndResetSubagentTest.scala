@@ -13,7 +13,7 @@ import js7.data.item.ItemOperation
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
+import js7.data.subagent.Problems.{ProcessKilledDueToSubagentShutdownProblem, ProcessLostDueToShutdownProblem}
 import js7.data.subagent.SubagentId
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentReset, SubagentResetStarted}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -80,8 +80,10 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       // The stolen orders are canceled (and its processes have been killed)
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head.value.event
       assert:
+        val killed = OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))
         processed == OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)) ||
-        processed == OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled"))))
+        processed == OrderProcessed(OrderOutcome.processLost(ProcessKilledDueToSubagentShutdownProblem(killed))) ||
+        processed == OrderProcessed(killed)
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted

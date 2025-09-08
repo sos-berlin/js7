@@ -86,10 +86,11 @@ private[agent] abstract class CommandQueue(
 
       queue.removeFirst(isCorrespondingCommand).foreach: queueable =>
         logger.debug:
-          s"⚠️  DetachOrder(${detachOrder.orderId}) removes corresponding ${
-            queueable.getClass.simpleScalaName
-          } from queue, because it obviously has been executed by the Agent: $queueable"
-        queueSet -= queueable
+          s"DetachOrder(${detachOrder.orderId}) removes corresponding ${
+            removed.map(o => s"🪱${o.getClass.simpleScalaName}").mkString(", ")
+          } from queue, because it obviously has been executed by the Agent"
+      queueSet --= removed
+      logger.trace(s"### removeStillQueuedCommandsWhenDetachingTheOrder($detachOrder): removed=$removed")
 
     def dequeueAll(what: Set[Queueable]): Unit =
       queue.dequeueAll(what)
