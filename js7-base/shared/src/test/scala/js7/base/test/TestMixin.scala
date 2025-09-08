@@ -1,14 +1,8 @@
 package js7.base.test
 
 import cats.Monoid
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.metering.CallMeterLoggingService
 import js7.base.test.TestMixin.assertionMonoid
-import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.{Assertion, Informer, Succeeded, Suite}
-import scala.concurrent.duration.DurationInt
 
 trait TestMixin extends TestCatsEffect:
   this: Suite =>
@@ -17,22 +11,6 @@ trait TestMixin extends TestCatsEffect:
   protected final inline def Logger = js7.base.log.Logger
 
   protected final given Monoid[Assertion] = assertionMonoid
-
-  private var stopCallMeterService: IO[Unit] = IO.unit
-
-  private given IORuntime = ioRuntime
-
-  override protected def beforeAll(): Unit =
-    super.beforeAll()
-    if isIntelliJIdea then
-      stopCallMeterService =
-        CallMeterLoggingService.resource(logEvery = 1.minute).void
-          .allocated.map(_._2)
-          .unsafeRunSync()
-
-  override protected def afterAll() =
-    stopCallMeterService.unsafeRunSync()
-    super.afterAll()
 
   /** Usable to check the type of something. */
   inline final def expectType[A](inline something: A): Unit = ()
