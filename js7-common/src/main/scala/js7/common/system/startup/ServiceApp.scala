@@ -6,6 +6,7 @@ import js7.base.catsutils.OurApp
 import js7.base.metering.CallMeterLoggingService
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.system.MBeanUtils.registerStaticMBean
+import js7.base.system.ThreadsMXBean
 import js7.base.utils.AsyncLock.AsyncLockMXBean
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -40,6 +41,7 @@ trait ServiceApp extends OurApp:
         suppressLogShutdown = suppressLogShutdown)(
       cnf =>
         CallMeterLoggingService.resource(cnf.config) *>
+          registerStaticMBean("Threads", ThreadsMXBean.Bean) *>
           registerStaticMBean("AsyncLock", AsyncLockMXBean) *>
           program(cnf),
       use)

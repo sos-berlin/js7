@@ -9,7 +9,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.fs2utils.StreamExtensions.{interruptUpstreamWhen, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -57,7 +57,7 @@ extends Service.StoppableByRequest:
   directorDriver =>
 
   private val index = DirectorDriver.index.incrementAndGet()
-  private val logger = Logger.withPrefix[this.type](agentPath.toString + " #" + index)
+  private val logger = Logger.withPrefix[this.type](s"$agentPath #$index ${client.baseUri}")
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
   private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
@@ -195,7 +195,7 @@ extends Service.StoppableByRequest:
             stream.chunks
           else
             stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
-        .interruptWhenF(untilStopRequested)
+        .interruptUpstreamWhen(untilStopRequested)
         .evalMapChunk: chunk =>
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
@@ -257,7 +257,15 @@ extends Service.StoppableByRequest:
       .race(
         untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
         client.retryIfSessionLost:
-          client.commandExecute(command))
+          client.commandExecute(command)
+            // We don't allow cancellation because we cannot know whether
+            // the command has or will be executed.
+            // This is especially important when the Director is switching over.
+            // After failure, we don't know whether the Director has executed the command.
+            // FIXME? After an "unknown" error, we should send the command again, endlessly,
+            //  because this seems the only way to know.
+            //  Bad when Director is not reachable.
+            .uncancelable)
       .map:
         case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
         case Right(o) => o
