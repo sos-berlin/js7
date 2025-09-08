@@ -9,7 +9,7 @@ object VirtualThreads:
 
   private val logger = Logger[this.type]
   private var hasVirtualThreads =
-    Runtime.version.feature >= 19 && sys.props.asSwitch("js7.virtualThreads")
+    Runtime.version.feature >= 24 && sys.props.asSwitch("js7.virtualThreads")
   private def DefaultVirtualThreadMaxPoolSize = 999_999  // Should be virtually unlimited
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
@@ -40,9 +40,7 @@ object VirtualThreads:
           thread
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =
-    if !hasVirtualThreads then
-      None
-    else
+    hasVirtualThreads thenMaybe:
       setBlockingVirtualThreadPoolSize(DefaultVirtualThreadMaxPoolSize)
       try
         val method = classOf[Executors]
@@ -59,9 +57,7 @@ object VirtualThreads:
       sys.props.put(name, n.toString)
 
   private[thread] lazy val newVirtualThreadFactory: Option[ThreadFactory] =
-    if !hasVirtualThreads then
-      None
-    else
+    hasVirtualThreads thenMaybe:
       try
         val builder = classOf[Thread].getMethod("ofVirtual").invoke(null)
         val factory = Class
@@ -80,8 +76,7 @@ object VirtualThreads:
       factory.newThread(runnable)
 
     val testThread = newThread: () =>
-      logger.debug:
-        s"""Using Java VirtualThreads for some operations "${Thread.currentThread}""""
+      logger.debug(s"""Using Java VirtualThreads for some operations "${Thread.currentThread}"""")
     testThread.start()
     testThread.join()
 

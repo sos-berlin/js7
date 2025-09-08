@@ -126,10 +126,11 @@ trait SubagentDriver:
   : IO[Option[IO[Unit]]] =
     orderToDeferred.remove(orderId).map:
       case None =>
+        // TODO Improve the behavior of this case! It could be an error.
         // May happen when SubagentCommand.StartOrderProcess command has failed, because the order
         // has been removed immediately. We land here because an OrderProcessed event with
         // Outcome.Disrupted is fabricated.
-        val msg = s"Unknown Order for event: ${orderId <-: orderProcessed}"
+        val msg = s"❓Unknown Order for event: ${orderId <-: orderProcessed}"
         // Doesn't work. Anyway, we should expect that the Order has been removed due to an error,
         // which should have been handled properly ...
         //if orderToDeferred.isStopping || orderProcessed.outcome.isProcessLostProblem then

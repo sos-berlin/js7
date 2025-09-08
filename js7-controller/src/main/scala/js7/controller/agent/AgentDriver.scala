@@ -122,7 +122,6 @@ extends Service.StoppableByRequest:
   private def onCoupled(attachedOrderIds: Set[OrderId]): IO[Unit] =
     IO.defer:
       assertThat(nonNull(attachedOrderIds))
-      onCoupled(attachedOrderIds)
       sessionNumber += 1
       state
         .lock.lock(IO {
@@ -208,14 +207,14 @@ extends Service.StoppableByRequest:
   end commandQueue
 
   protected def start =
-    startService(
+    startService:
       startNewClusterWatch
         .*>(startAndForgetDirectorDriver)
         .*>(untilStopRequested)
         .guarantee:
           state.releaseEventsCancelable.traverse(_.cancel).void
         .guarantee(directorDriverAllocated.releaseFinally)
-        .guarantee(clusterWatchAllocated.releaseFinally))
+        .guarantee(clusterWatchAllocated.releaseFinally)
 
   def send(input: Queueable): IO[Unit] =
     IO.defer:
@@ -423,7 +422,8 @@ extends Service.StoppableByRequest:
           dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
           onEventsFetched,
           journal, conf)
-      yield directorDriver
+      yield
+        directorDriver
 
   private def clusterWatchResource: ResourceIO[ClusterWatchService] =
     for
@@ -529,9 +529,11 @@ private[controller] object AgentDriver:
         adoptEvents, onOrderMarked,
         journal, agentDriverConf, controllerConf, actorSystem)
 
+
   sealed trait Queueable:
     def toShortString: String =
       toString
+
   object Queueable:
     final case class AttachUnsignedItem(item: UnsignedItem)
     extends Queueable
@@ -547,6 +549,7 @@ private[controller] object AgentDriver:
       override lazy val hashCode: Int = order.id.hashCode
 
       def orderId: OrderId = order.id
+
       override def toShortString =
         s"AttachOrder($orderId, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
 

@@ -80,10 +80,8 @@ private[agent] abstract class CommandQueue(
       // In case we didn't receive a proper response from the Agent
       def isCorrespondingCommand(queueable: Queueable) =
         queueable match
-          case Queueable.AttachOrder(order, _) =>
-            order.id == detachOrder.orderId
-          case Queueable.MarkOrder(orderId, _) =>
-            orderId == detachOrder.orderId
+          case Queueable.AttachOrder(order, _) => order.id == detachOrder.orderId
+          case Queueable.MarkOrder(orderId, _) => orderId == detachOrder.orderId
           case _ => false
 
       queue.removeFirst(isCorrespondingCommand).foreach: queueable =>

@@ -1,6 +1,7 @@
 package js7.data.state
 
 import cats.effect.ResourceIO
+import java.util.Map as JMap
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.utils.MoreJavaConverters.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -8,18 +9,18 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 trait EngineStateMXBean:
   this: EngineStateMXBean.Bean =>
 
+  def getClusterStateCode: Int =
+    stateView.clusterState.asCode.index
+
   def getOrderCount: Int =
     stateView.idToOrder.size
 
-  def getOrderStatusToCount: java.util.Map[String, java.lang.Integer] =
+  def getOrderStatusToCount: JMap[String, java.lang.Integer] =
     stateView.idToOrder
       .groupMapReduce(_._2.state.getClass.cachedSimpleScalaName)(_ => 1)(_ + _)
       .view.mapValues(Int.box).asJava
 
-  def getClusterStateCode: Int =
-    stateView.clusterState.asCode.index
-
-  def getStatisticsEventToTotal: java.util.Map[String, java.lang.Long] =
+  def getStatisticsEventToTotal: JMap[String, java.lang.Long] =
     stateView.statistics.eventCounter.eventToCount
       .view.mapValues(Long.box).asJava
 

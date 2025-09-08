@@ -65,7 +65,7 @@ extends Service.StoppableByRequest:
   logger.trace(s"initialEventId=$initialEventId")
 
   protected def start =
-    startService(
+    startService:
       (untilStopRequested *> eventFetcher.stopStreaming)
         .background.surround:
           continuallyFetchEvents *>
@@ -73,7 +73,7 @@ extends Service.StoppableByRequest:
             //? May block switch-over when JournalActor does not respond to Events (due to
             // switch-over).
             //? onFetchedEventsLock.lock(IO.unit) *>
-            stopEventFetcher)
+            stopEventFetcher
 
   private def stopEventFetcher: IO[Unit] =
     logger.traceIO:
@@ -285,7 +285,7 @@ private[agent] object DirectorDriver:
     classOf[OrderWatchEvent],
     classOf[ClusterEvent])
 
-  def resource(
+  def service(
     agentDriver: AgentDriver,
     agentPath: AgentPath,
     initialEventId: EventId,

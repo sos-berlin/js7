@@ -115,5 +115,5 @@ object OrderProcess:
 
 
   private final class Cancelable(protected val run: IO[OrderOutcome.Completed])
-    extends OrderProcess.FiberCancelable:
+  extends OrderProcess.FiberCancelable:
     override def toString = "OrderProcess.Cancelable"

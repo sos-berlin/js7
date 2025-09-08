@@ -41,7 +41,6 @@ import js7.base.utils.Tests.isStrict
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.SupervisorStrategies
-import js7.common.system.startup.ServiceMain
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.command.ControllerCommandToEventCalc
@@ -168,7 +167,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       if !shuttingDown then
         since := scheduler.now()
         this.shutDown := shutDown
-        if shutDown.suppressSnapshot || shutDown.isFailover then
+        if shutDown.suppressSnapshot then
           journal.suppressSnapshotWhenStopping()
         stillShuttingDownCancelable := scheduler
           .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations/*?*/):
@@ -250,7 +249,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations):
       logger.debug("Still switching over to the other cluster node")
 
-    def start(): IO[Checked[Completed]] =
+    def start(): IO[Checked[Unit]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
         //? .flatMapT(o => journalAllocated.release.as(Right(o)))
 
@@ -963,7 +962,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry =
     val allocated = AgentDriver
-      .resource(agent, eventId = eventId,
+      .service(agent, eventId = eventId,
         (agentRunId, events) => IO.defer {
           val promise = Promise[Option[EventId]]()
           self ! Internal.EventsFromAgent(agent.path, agentRunId, events, promise)
@@ -1414,7 +1413,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             logger.debug(s"SwitchOver => $exitCase")
             so.close()
           })
-        .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
+        .rightAs(ControllerCommand.Response.Accepted)
         .unsafeToFuture()
 
   private def runningAgentDriverCount =

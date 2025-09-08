@@ -22,7 +22,6 @@ import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
-import js7.common.system.startup.ServiceMain.readyMessageWithLine
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -89,6 +88,10 @@ extends Service.StoppableByRequest:
       _kill.set(true) *>
         stop *> subagentKeeper.kill *> journal.kill
 
+  def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
+    _shutdown.set(cmd) *>
+      stop
+
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
       case cmd: IsOrderCommand =>
@@ -106,10 +109,6 @@ extends Service.StoppableByRequest:
   def resetAllSubagents: IO[Unit] =
     journal.aggregate.flatMap: agentState =>
       subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
-
-  def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
-    _shutdown.set(cmd) *>
-      stop
 
   override def toString = "AgentMotor"
 

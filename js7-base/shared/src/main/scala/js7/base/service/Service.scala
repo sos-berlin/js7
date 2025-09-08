@@ -69,24 +69,25 @@ trait Service:
       CatsDeadline.now.flatMap: since =>
         logger.debugIO(s"$service run"):
           run
-        .guaranteeCase:
-          case Outcome.Errored(t) =>
-            since.elapsed
-              .flatMap: elapsed =>
+        .guaranteeCase: outcome =>
+          outcome.match
+            case Outcome.Errored(t) =>
+              since.elapsed.map: elapsed =>
                 IO:
                   val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
                   if !t.isInstanceOf[MainServiceTerminationException] then
                     // A service should not die. The caller should watch untilStopped!
                     logger.error(msg, t.nullIfNoStackTrace)
-              .*>(stopped.complete(Failure(t)))
-              .void
+              .as(Failure(t))
 
-          case Outcome.Canceled() =>
-            stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
-              .void
+            case Outcome.Canceled() =>
+              IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
 
-          case Outcome.Succeeded(_) =>
-            stopped.complete(Success(())).void
+            case Outcome.Succeeded(_) =>
+              IO.pure(Success(()))
+          .flatMap:
+            stopped.complete
+          .void
     .start
     .flatMap: fiber =>
       service match
