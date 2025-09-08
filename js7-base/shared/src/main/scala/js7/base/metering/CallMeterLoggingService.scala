@@ -5,11 +5,8 @@ import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeterLoggingService.*
 import js7.base.service.Service
-import js7.base.utils.MultipleLinesBracket.Square
-import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
 import scala.collection.mutable
 import scala.concurrent.duration.*
 
@@ -30,17 +27,11 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
 
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
   private def logAndStartNewDiff(): Unit =
-    if logger.isTraceEnabled then
-      CallMeter.callMeters.view.filter(_.total > 0).map: callMeter =>
-        val m = callMeter.measurement()
-        val diff = lastMeasurements.get(callMeter.name).fold(m)(m.diff)
-        lastMeasurements(callMeter.name) = m
-        diff
-      .filter(_.total > 0)
-      .map(_.asString)
-      .toVector // Compute first, then log quickly:
-      .foreachWithBracket(Square): (measurementString, bracket) =>
-        logger.trace(s"$bracket $measurementString")
+    CallMeter.log: m =>
+      val name = m.callMeter.name
+      val diff = lastMeasurements.get(name).fold(m)(m.diff)
+      lastMeasurements(name) = m
+      diff
 
   override def toString = "CallMeterLoggingService"
 
@@ -58,11 +49,10 @@ object CallMeterLoggingService:
   def resource(conf: Conf): ResourceIO[CallMeterLoggingService] =
     Service.resource(IO(CallMeterLoggingService(conf)))
 
-  final case class Conf(
-    logEvery: FiniteDuration)
+
+  final case class Conf(logEvery: FiniteDuration)
 
   object Conf:
     def fromConfig(config: Config): Conf =
       Conf(
-        logEvery =
-          config.finiteDuration("js7.metering.log-every") getOrElse 1.minute)
+        logEvery = config.finiteDuration("js7.metering.log-every") getOrElse 1.minute)

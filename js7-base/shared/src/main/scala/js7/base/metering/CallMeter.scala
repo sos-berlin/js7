@@ -133,21 +133,27 @@ object CallMeter:
     _callMeters.get
 
   def logAll(): Unit =
-    if logger.isTraceEnabled then
-      _callMeters.get().iterator
-        .map(_.measurement())
-        .filter(_.total > 0)
-        .foreachWithBracket(Square): (callMeter, bracket) =>
-          logger.trace(s"$bracket ${callMeter.asString}")
+    log()
 
-  private def logAndResetAbove(minimumQuote: Double): Unit =
+  /** Logs the difference to last measurement, then safes the current measurement as the last one. */
+  private[metering] def log(f: Measurement => Measurement = identity): Unit =
     if logger.isTraceEnabled then
-      val callMeters = _callMeters.get().view.map(_.measurement())
-        .filter(_.quote >= minimumQuote)
-        .toVector
-        .sortBy(_.name)
-      for callMeter <- callMeters do
-        logger.trace(s"${callMeter.asString}")
+      CallMeter.callMeters.view.filter(_.total > 0).map: callMeter =>
+        f(callMeter.measurement())
+      .filter(_.total > 0)
+      .map(_.asString)
+      .toVector // Compute first, then log quickly:
+      .foreachWithBracket(Square): (measurementString, bracket) =>
+        logger.trace(s"$bracket $measurementString")
+
+  //private def logAndResetAbove(minimumQuote: Double): Unit =
+  //  if logger.isTraceEnabled then
+  //    val callMeters = _callMeters.get().view.map(_.measurement())
+  //      .filter(_.quote >= minimumQuote)
+  //      .toVector
+  //      .sortBy(_.name)
+  //    for callMeter <- callMeters do
+  //      logger.trace(s"${callMeter.asString}")
 
 
   type Metering = Long // Nanoseconds
