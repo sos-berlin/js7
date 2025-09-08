@@ -62,20 +62,17 @@ extends MainService, Service.StoppableByRequest:
     untilStopped.as(ProgramTermination())
 
   private def run: IO[Unit] =
-    Stream
-      .iterable:
-        for nodeApi <- nodeApis.toList yield
-          val nodeWatch = new NodeServer(nodeApi)
-          nodeWatch.stream.map(nodeWatch -> _)
-      .parJoinUnbounded
-      .evalMap: (nodeWatch, request) =>
-        // Synchronize requests from both nodes
-        request.correlId.bind:
-          nodeWatch.processRequest(request)
-      .interruptWhenF(untilStopRequested)
-      .compile
-      .drain
-
+    Stream.iterable(nodeApis.toList).map: nodeApi =>
+      val nodeWatch = new NodeServer(nodeApi)
+      nodeWatch.stream.map(nodeWatch -> _)
+    .parJoinUnbounded
+    .evalMap: (nodeWatch, request) =>
+      // Synchronize requests from both nodes
+      request.correlId.bind:
+        nodeWatch.processRequest(request)
+    .interruptWhenF(untilStopRequested)
+    .compile
+    .drain
 
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
     private val streamFailed = Atomic(false)
@@ -164,14 +161,15 @@ object ClusterWatchService:
             .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
-    yield service
+    yield
+      service
 
   def resource(
     clusterWatchId: ClusterWatchId,
     apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
     config: Config,
     label: String = "",
-    onClusterStateChanged: (HasNodes) => Unit = _ => (),
+    onClusterStateChanged: HasNodes => Unit = _ => (),
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
   : ResourceIO[ClusterWatchService] =
     resource2(
@@ -183,23 +181,21 @@ object ClusterWatchService:
     apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
     config: Config,
     label: String,
-    onClusterStateChanged: (HasNodes) => Unit,
+    onClusterStateChanged: HasNodes => Unit,
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
   : ResourceIO[ClusterWatchService] =
-    Resource.suspend(IO:
-      for
-        nodeApis <- apisResource
-        service <-
-          Service.resource:
-            new ClusterWatchService(
-              clusterWatchId,
-              nodeApis,
-              label = label,
-              keepAlive =
-                config.finiteDuration("js7.web.client.keep-alive").orThrow,
-              retryDelays =
-                config.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
-              onClusterStateChanged,
-              onUndecidableClusterNodeLoss)
-      yield
-        service)
+    for
+      nodeApis <- apisResource
+      service <-
+        Service.resource:
+          new ClusterWatchService(
+            clusterWatchId,
+            nodeApis,
+            label = label,
+            keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow,
+            retryDelays =
+              config.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
+            onClusterStateChanged,
+            onUndecidableClusterNodeLoss)
+    yield
+      service
