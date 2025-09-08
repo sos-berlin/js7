@@ -152,7 +152,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
     _activeClusterNode.io.flatMap:
       _.onTerminatedUnexpectedly
 
-  def switchOver: IO[Checked[Completed]] =
+  def switchOver: IO[Checked[Unit]] =
     activeClusterNodeIO
       .flatMapT(_.switchOver)
 

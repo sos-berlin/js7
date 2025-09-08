@@ -338,7 +338,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             logger.error(s"$msg: ${throwable.toStringWithCauses}")
             Left(Problem(msg))
 
-  def switchOver: IO[Checked[Completed]] =
+  def switchOver: IO[Checked[Unit]] =
     clusterStateLock.lock:
       persist():
         case coupled: Coupled => Right(Some(ClusterSwitchedOver(coupled.passiveId)))
@@ -346,7 +346,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       .flatMapT: (_: Seq[Stamped[?]], _) =>
         stopAcknowledgingRequested = true
         stopAcknowledging.complete(())
-          .as(Right(Completed))
+          .as(Checked.unit)
 
   def shutDownThisNode: IO[Checked[Completed]] =
     logger.traceIOWithResult:
