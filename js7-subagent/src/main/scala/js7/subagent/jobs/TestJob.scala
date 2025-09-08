@@ -1,11 +1,12 @@
 package js7.subagent.jobs
 
 import cats.effect.IO
+import cats.syntax.parallel.*
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.=>?
+import js7.base.utils.ScalaUtils.{=>?, flatten}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderOutcome
 import js7.data.value.{StringValue, Value}
@@ -24,8 +25,8 @@ extends InternalJob:
       case StringValue(s) => Right(Left(s))
       case v => v.asInt.map(Right(_))
 
-    def writeSomething(arg: Option[Either[String, Int]], outerr: StdoutOrStderr): IO[Unit] =
-      arg.foldMap:
+    def writeSomething(arg: Option[Either[String, Int]], outerr: StdoutOrStderr): Option[IO[Unit]] =
+      arg.map:
         case Left(string) => step.write(outerr, string).void
         case Right(n) =>
           (1 to n / charBlockSize).foldMap: _ =>
@@ -40,11 +41,13 @@ extends InternalJob:
         sleep <- step.maybeArg("sleep")(_.asDuration)
         failString <- step.maybeArg("fail")(_.asString)
       yield
-        writeSomething(stdoutEither, Stdout).both:
-          writeSomething(stderrEither, Stderr)
-        .productR:
-          sleep.foldMap: duration =>
-            IO.sleep(duration)
+        // Try to return fast IO.unit when nothing is done
+        val ios = flatten(
+          writeSomething(stdoutEither, Stdout),
+          writeSomething(stderrEither, Stderr),
+          sleep.map(IO.sleep))
+        IO.whenA(ios.nonEmpty):
+          ios.parSequenceVoid
         .as:
           failString match
             case Some(failString) => OrderOutcome.Failed(Some(failString))

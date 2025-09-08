@@ -34,6 +34,20 @@ final class TestJobTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
+  "Do nothing" in:
+    withItem[Workflow](yaml"""---
+      instructions:
+      - TYPE: Execute.Anonymous
+        job:
+          agentPath: ${agentPath.string}
+          executable:
+            TYPE: InternalExecutable
+            className: js7.subagent.jobs.TestJob
+    """): workflow =>
+      val t = Deadline.now
+      controller.runOrder:
+        FreshOrder(OrderId("ORDER"), workflow.path, deleteWhenTerminated = true)
+
   "stdout" in:
     testStdouterr("stdout", "TEST-STDOUT", OrderStdoutWritten("TEST-STDOUT"))
     testStdouterr("stdout", 94, OrderStdoutWritten:
