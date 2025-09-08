@@ -212,7 +212,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)(
     using IO[Option[SessionToken]])
   : IO[B] =
-    post2[A, B](uri, data, Nil)
+    post2[A, B](uri, data, Nil, dontLog = dontLog)
 
   final def postStream[A: Encoder, B: Decoder](
     uri: Uri,

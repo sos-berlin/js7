@@ -100,7 +100,7 @@ extends Service.StoppableByRequest:
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
         logger.trace:
-          s"""🐌 runPipeline: No Order is processable despite signal "${signalReason()}""""
+          s"""🪱runPipeline: No Order is processable despite signal "${signalReason()}""""
         false
     .map(_._2)
     .unchunks
@@ -140,21 +140,21 @@ extends Service.StoppableByRequest:
 
   private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
     import orderWithEndOfAdmission.{endOfAdmission, order}
-    // SubagentKeeper ignores the Order when it has been changed concurrently
+    // SubagentKeeper ignores the Order when it has been concurrently changed
     subagentKeeper.processOrder(order, endOfAdmission)
       .catchIntoChecked
       .flatMap:
         case Right(None) =>
-          decrementProcessCount(order.id, s"🐌  ${order.id} is not processable")
+          decrementProcessCount(order.id, s"🪱${order.id} is not processable")
         case Right(Some(order)) =>
           IO.unlessA(order.isState[Order.Processing]):
             // Unless SubagentKeeper emitted an OrderProcessingStarted (due to changed Order,
-            // duplicate enqueued OrderId), then decrement process counters here.
+            // duplicate enqueued OrderId), then decrement the process counters here.
             // Otherwise, an OrderProcessed event will decrement.
             logger.trace(s"subagentKeeper.processOrder: ${order.id
               } status is not Processing, decrementing processCount")
             decrementProcessCount(order.id,
-              s"🐌  Order's status is not Processing but ${order.workflowPosition} ${order.state}")
+              s"🪱Order's status is not Processing but ${order.workflowPosition} ${order.state}")
         case Left(problem) =>
           handleFailedProcessStart(order, problem)
 
@@ -177,8 +177,11 @@ extends Service.StoppableByRequest:
             logger.warn(msg, problem.throwableIfStackTrace)
             decrementProcessCount(order.id, "⚠️  processOrder failed")
           else
+            // FIXME Try to not warn when:
+            //  ServiceStopped: RemoteSubagentDriver(Subagent:...) service stopped
             logger.warn(msg, problem.throwableIfStackTrace)
-            logger.warn(s"${order.id} has been changed concurrently: $order")
+            logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
+            logger.warn(s"${order.id} has been changed concurrently, existing: $current")
             IO.unit
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =

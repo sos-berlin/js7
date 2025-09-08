@@ -12,7 +12,7 @@ import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichJavaClass, RichThrowable, mkStringLimited}
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.AgentDriver.Queueable.{AttachOrder, DetachOrder, MarkOrder}
 import js7.controller.agent.CommandQueue.*
@@ -84,7 +84,8 @@ private[agent] abstract class CommandQueue(
           case Queueable.MarkOrder(orderId, _) => orderId == detachOrder.orderId
           case _ => false
 
-      queue.removeFirst(isCorrespondingCommand).foreach: queueable =>
+      val removed = queue.removeAll(isCorrespondingCommand)
+      if removed.nonEmpty then
         logger.debug:
           s"DetachOrder(${detachOrder.orderId}) removes corresponding ${
             removed.map(o => s"🪱${o.getClass.simpleScalaName}").mkString(", ")
@@ -167,7 +168,6 @@ private[agent] abstract class CommandQueue(
     lock.lock(maybeStartSendingLocked)
 
   private def maybeStartSendingLocked: IO[Unit] =
-   logger.traceIO("### maybeStartSendingLocked"):
     IO(isCoupled && !isTerminating).ifTrue:
       lazy val queueables = queue.view.filterNot(isExecuting)
         .take(if freshlyCoupled then 1 else batchSize)  // if freshlyCoupled, send only command to try connection
@@ -200,7 +200,7 @@ private[agent] abstract class CommandQueue(
         .tryIt
         .flatMap:
           case Success(Right(queueableResponses)) =>
-            logger.debug(s"✔︎ sendNow queueables=${queuable.map(_.toShortString)}")
+            logger.debug(s"✔︎ sendNow queueables=${queuable.view.map(_.toShortString).mkStringLimited(3)}")
             asyncOnBatchSucceeded(queueableResponses)
 
           case Success(Left(problem)) =>

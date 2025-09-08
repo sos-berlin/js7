@@ -89,6 +89,7 @@ object ServiceMain:
   private object logging:
     private lazy val logger =
       Logger.initialize("JS7 Engine") // Just in case it has not yet been initialized
+      Logger.trace(s"❌ Logger has been initialized implicitly")
       Logger[ServiceMain.type]
 
     def logTermination(name: String, termination: ProgramTermination): ExitCode =
