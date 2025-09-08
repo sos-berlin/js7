@@ -357,20 +357,23 @@ extends Service.StoppableByRequest:
     journal.releaseEvents(eventId).flatMapT: _ =>
       persistedQueue.waitUntil(eventId)
         .logWhenItTakesLonger(s"releaseEvents($eventId)")
-        .flatMap: orderIds =>
-          detachProcessedOrders(orderIds)
-            .map(Right(_))
+        .productR:
+          detachProcessedOrders(eventId)
+        .map(Right(_))
 
-  private def detachProcessedOrders(orderIds: Vector[OrderId]): IO[Unit] =
-    orderIds.traverse: orderId =>
-      orderToProcessing.remove(orderId).flatMapSome: processing =>
-        processing.acknowledged.complete(()).as(orderId)
-    .map: detachedOrderIds =>
-      if detachedOrderIds.isEmpty then
-        logger.trace("detachProcessedOrders: no Order detached")
-      else
-        logger.debug:
-          s"detachProcessedOrders: detached ${detachedOrderIds.view.flatten.mkString(" ")}"
+  private def detachProcessedOrders(eventId: EventId): IO[Unit] =
+    IO.uncancelable: _ =>
+      persistedQueue.takeOrderIdsUntil(eventId).flatMap: orderIds =>
+        orderIds.traverse: orderId =>
+          orderToProcessing.remove(orderId).flatMapSome: processing =>
+            processing.acknowledged.complete(()).as(orderId)
+        .map: detachedOrderIds_ =>
+          val detachedOrderIds = detachedOrderIds_.flatten: Seq[OrderId]
+          if detachedOrderIds.isEmpty then
+            logger.trace(s"🪱detachProcessedOrders($eventId): no Order detached")
+          else
+            logger.debug(s"detachProcessedOrders($eventId): detached ${
+              detachedOrderIds.mkString(" ")}")
 
   private val stdoutCommitDelayOptions = CommitOptions(
     commitLater = true,
@@ -509,8 +512,12 @@ object DedicatedSubagent:
     /** Wait until `eventId` has been persisted.
       * @return OrderIds for enqueued EventIds of OrderProcessed event.
       */
-    def waitUntil(eventId: EventId): IO[Vector[OrderId]] =
-      eventIdSignal.waitUntil(_ >= eventId) *>
-        IO:
-          queue.synchronized:
-            queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector
+    def waitUntil(eventId: EventId): IO[Unit] =
+      eventIdSignal.waitUntil(_ >= eventId)
+
+    /** @return OrderIds for enqueued EventIds of OrderProcessed event.
+      */
+    def takeOrderIdsUntil(eventId: EventId): IO[Vector[OrderId]] =
+      IO:
+        queue.synchronized:
+          queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector

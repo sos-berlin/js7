@@ -124,6 +124,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                 releaseEvents(lastEventId).map(_.orThrow/*???*/)
           *>
             followUpAll
+        // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
         .interruptWhenF(untilStopRequested)
 
   /** Returns optionally the event and a follow-up io. */
