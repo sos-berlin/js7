@@ -221,29 +221,29 @@ extends MainService, Service.StoppableByRequest:
 object RunningAgent:
   private val logger = Logger[this.type]
 
-  def service(
+  def withSubagent(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
     for
-      subagent <- subagentResource(conf)
-      director <- director(subagent, conf, testWiring)
+      subagent <- subagentService(conf)
+      director <- service(subagent, conf, testWiring)
     yield
       director
 
-  def restartable(
+  def restartableDirector(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RestartableDirector] =
     for
-      subagent <- subagentResource(conf)
+      subagent <- subagentService(conf)
       director <- RestartableDirector.service(subagent, conf, testWiring)
     yield
       director
 
-  private def subagentResource(conf: AgentConfiguration)(using ioRuntime: IORuntime)
+  private def subagentService(conf: AgentConfiguration)(using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     Resource.suspend:
       IO:
@@ -258,7 +258,7 @@ object RunningAgent:
           subagent
     .evalOn(ioRuntime.compute)
 
-  def director(
+  def service(
     subagent: Subagent,
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
@@ -291,18 +291,17 @@ object RunningAgent:
             admission, label, httpsConfig)(using actorSystem),
           licenseChecker,
           journalLocation, clusterConf, eventIdGenerator, subagent.testEventBus)
-        director <-
-          resource2(forDirector, clusterNode, subagent.testEventBus, conf, clock)
+        director <- service2(forDirector, clusterNode, subagent.testEventBus, conf, clock)
       yield
         director)
 
-  private def resource2(
+  private def service2(
     forDirector: Subagent.ForDirector,
     clusterNode: ClusterNode[AgentState],
     testEventBus: StandardEventBus[Any],
     conf: AgentConfiguration,
     clock: AlarmClock)
-    (using x: IORuntime)
+    (using IORuntime)
   : ResourceIO[RunningAgent] =
     import clusterNode.actorSystem
 
@@ -310,12 +309,12 @@ object RunningAgent:
     // Return RunningAgent, even if cluster node has not yet activated
 
     for
-      nonStartedAgent <- Resource.eval(IO:
+      runningAgent <- Resource.eval(IO:
         RunningAgent(forDirector, clusterNode, testEventBus, conf, clock, actorSystem))
       _ <- forDirector.subagent.registerDirectorRoute:
         routeBinding => IO:
           AgentRoute(
-            routeBinding, nonStartedAgent.executeCommand, clusterNode,
+            routeBinding, runningAgent.executeCommand, clusterNode,
             conf,
             GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
               // AgentDirectorPermission is not used for local Subagent.
@@ -326,7 +325,7 @@ object RunningAgent:
             forDirector.sessionRegister
           ).agentRoute
       _ <- EngineStateMXBean.register
-      agent <- Service.resource(nonStartedAgent)
+      agent <- Service.resource(runningAgent)
     yield
       agent
 

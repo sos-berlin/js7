@@ -101,14 +101,14 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
   def directorResource: ResourceIO[RunningAgent] =
     ioRuntimeResource.flatMap: ioRuntime =>
       given IORuntime = ioRuntime
-      RunningAgent.service(agentConf)
+      RunningAgent.withSubagent(agentConf)
         .flatTap(programRegistering)
         .evalOn(ioRuntime.compute)
 
   def restartableDirectorResource: ResourceIO[RestartableDirector] =
     for
       given IORuntime <- ioRuntimeResource
-      agent <- RunningAgent.restartable(agentConf).evalOn(given_IORuntime.compute)
+      agent <- RunningAgent.restartableDirector(agentConf).evalOn(given_IORuntime.compute)
     yield
       agent
 

@@ -50,7 +50,7 @@ extends MainService, Service.StoppableByRequest:
           IO.right(termination)
 
   private def runDirector: IO[DirectorTermination] =
-    RunningAgent.director(subagent, conf, testWiring).use: director =>
+    RunningAgent.service(subagent, conf, testWiring).use: director =>
       _currentDirector.set(director) *>
         onStopRequested(director.terminate().void).surround:
           director.untilTerminated

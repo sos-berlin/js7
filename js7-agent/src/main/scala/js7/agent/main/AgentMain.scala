@@ -14,9 +14,9 @@ object AgentMain extends ServiceApp:
     runService(args, AgentConfiguration.fromCommandLine(_), useLockFile = true):
       conf =>
         for
-          agent <- RunningAgent.restartable(conf)(using runtime)
-          _ <- agent.webServer.restartWhenHttpsChanges
+          restartableDirector <- RunningAgent.restartableDirector(conf)(using runtime)
+          _ <- restartableDirector.webServer.restartWhenHttpsChanges
         yield
-          agent
+          restartableDirector
     .recover:
       case t: RunningAgent.DirectorTerminatedException => t.termination.toExitCode
