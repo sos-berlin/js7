@@ -19,10 +19,10 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.AlarmClock
+import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isStrict
 import js7.base.utils.{Allocated, AsyncLock, Atomic}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.command.{CancellationMode, SuspensionMode}
@@ -233,10 +233,7 @@ private final class JobMotorKeeper(
       IO:
         processLimit.synchronized:
           val n = _processCount.decrementAndGet()
-          if n < 0 then
-            val msg = s"decrementProcessCount: processCount=$n is below zero"
-            logger.error(msg)
-            if isStrict then throw new AssertionError(msg)
+          assertIfStrict(n >= 0, s"JobMotorKeeper.processCount=$n is below zero")
           processLimit.fold(None): limit =>
             (n + 1 == limit) ? (n, limit)
       .flatMap:
