@@ -96,8 +96,7 @@ extends Service.StoppableByRequest:
     queueSignal.discrete.merge:
       admissionSignal.discrete.map(o => () => s"admission $o")
     .evalMap: signalReason =>
-      dequeue
-        .map(signalReason -> _)
+      dequeue.map(signalReason -> _)
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
         logger.trace:
@@ -138,6 +137,7 @@ extends Service.StoppableByRequest:
                   Right(builder)
           .map: builder =>
             Chunk.from(builder.result)
+    .uncancelable
 
   private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
     import orderWithEndOfAdmission.{endOfAdmission, order}
