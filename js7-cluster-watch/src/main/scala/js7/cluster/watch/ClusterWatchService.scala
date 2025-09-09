@@ -51,7 +51,7 @@ extends MainService, Service.StoppableByRequest:
   val clusterWatch = new ClusterWatch(
     label = label,
     onClusterStateChanged = onClusterStateChanged,
-    requireActiveIsLost = requireActiveIsLost,
+    checkActiveIsLost = checkActiveIsLost,
     onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
   val clusterWatchRunId: ClusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
@@ -76,21 +76,22 @@ extends MainService, Service.StoppableByRequest:
     .compile
     .drain
 
-  private def requireActiveIsLost(clusterState: ClusterState.HasNodes): IO[Checked[Unit]] =
+  private def checkActiveIsLost(clusterState: ClusterState.HasNodes): IO[Checked[Unit]] =
     import clusterState.{activeId, activeUri}
     IO:
       nodeApis.find(_.baseUri == activeUri).toRight:
         Problem.pure(s"🔥 Active node $activeUri is not in list of nodeApis") // Must not happen
     .flatMapT: nodeApi =>
+      Logger.info(s"Check if $activeId $activeUri is still alive ...")
       nodeApi.clusterNodeState
         .as(Left(ClusterWatchActiveStillAliveProblem))
         .handleErrorWith:
           case e: Exception
             if e.getMessage.contains("java.net.ConnectException: Connection refused") =>
-            logger.info(s"✔︎ requireActiveIsLost: $activeId $activeUri does not connect ✔︎")
+            logger.info(s"✔︎ $activeId $activeUri does not connect and seems to be lost ✔︎")
             IO.right(())
           case t =>
-            logger.warn(s"requireActiveIsLost: $ClusterWatchActiveStillAliveProblem $activeUri: ${
+            logger.warn(s"checkActiveIsLost: $ClusterWatchActiveStillAliveProblem $activeUri: ${
               t.toStringWithCauses}")
             IO.left(ClusterWatchActiveStillAliveProblem)
 

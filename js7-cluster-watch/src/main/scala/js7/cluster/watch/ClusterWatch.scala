@@ -24,7 +24,7 @@ final class ClusterWatch(
   label: String = "",
   onClusterStateChanged: HasNodes => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
-  requireActiveIsLost: ClusterState.HasNodes => IO[Checked[Unit]],
+  checkActiveIsLost: ClusterState.HasNodes => IO[Checked[Unit]],
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit):
 
   private val logger = Logger.withPrefix[this.type](label)
@@ -69,7 +69,7 @@ final class ClusterWatch(
             IO.right(None -> reportedClusterState)
 
           case (Some(state), _) =>
-            state.processRequest(request, manuallyConfirmed, requireActiveIsLost, opString)(using now)
+            state.processRequest(request, manuallyConfirmed, checkActiveIsLost, opString)(using now)
 
     checkedClusterState.flatMap:
       case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
@@ -175,7 +175,7 @@ object ClusterWatch:
     def processRequest(
       request: ClusterWatchRequest,
       manualConfirmed: ClusterNodeLostEvent => Option[String],
-      requireActiveIsLost: ClusterState.HasNodes => IO[Checked[Unit]],
+      checkActiveIsLost: ClusterState.HasNodes => IO[Checked[Unit]],
       opString: => String)
       (using now: SyncDeadline.Now)
     : IO[Checked[(manualConfirmer: Option[String], clusterState: HasNodes)]] =
@@ -206,7 +206,7 @@ object ClusterWatch:
                   (from == clusterState.passiveId && !isLastHeartbeatStillValid).orLeft:
                     clusterWatchInactiveNodeProblem
                 .flatMapT: _ =>
-                  requireActiveIsLost(clusterState)
+                  checkActiveIsLost(clusterState)
           case _ =>
             IO.pure:
               (from == clusterState.activeId) !! clusterWatchInactiveNodeProblem
