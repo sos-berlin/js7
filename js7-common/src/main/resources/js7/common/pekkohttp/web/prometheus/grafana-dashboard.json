@@ -751,7 +751,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "dark-orange",
+                  "fixedColor": "dark-blue",
                   "mode": "fixed"
                 }
               }
@@ -766,7 +766,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "blue",
+                  "fixedColor": "dark-orange",
                   "mode": "fixed"
                 }
               }
@@ -1742,7 +1742,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "dark-yellow",
+                  "fixedColor": "super-light-yellow",
                   "mode": "fixed"
                 }
               }
@@ -1787,7 +1787,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "super-light-orange",
+                  "fixedColor": "light-blue",
                   "mode": "fixed"
                 }
               }
@@ -1802,7 +1802,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "blue",
+                  "fixedColor": "semi-dark-blue",
                   "mode": "fixed"
                 }
               }
@@ -1817,7 +1817,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "dark-blue",
+                  "fixedColor": "semi-dark-red",
                   "mode": "fixed"
                 }
               }
@@ -1832,7 +1832,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-red",
+                  "fixedColor": "yellow",
                   "mode": "fixed"
                 }
               }
@@ -1847,7 +1847,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "green",
+                  "fixedColor": "light-orange",
                   "mode": "fixed"
                 }
               }
@@ -1862,7 +1862,22 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "green",
+                  "fixedColor": "semi-dark-blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cats"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-red",
                   "mode": "fixed"
                 }
               }
@@ -1963,7 +1978,7 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_G1GCThreads{host=\"$host\"}",
-          "hide": false,
+          "hide": true,
           "instant": false,
           "legendFormat": "G1",
           "range": true,
@@ -1988,12 +2003,12 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "js7_Threads_PekkoThreads{host=\"$host\"}",
+          "expr": "js7_Threads_OtherThreads{host=\"$host\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "Pekko",
+          "legendFormat": "other",
           "range": true,
-          "refId": "Pekko"
+          "refId": "OtherThreads"
         },
         {
           "datasource": {
@@ -2004,9 +2019,23 @@
           "expr": "js7_Threads_CatsEffectComputeThreads{host=\"$host\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "Compute",
+          "legendFormat": "Cats",
           "range": true,
           "refId": "CatsEffectComputeThreads"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "js7_Threads_PekkoThreads{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Pekko",
+          "range": true,
+          "refId": "Pekko"
         },
         {
           "datasource": {
@@ -2033,19 +2062,6 @@
           "legendFormat": "Process reaper",
           "range": true,
           "refId": "ProcessReaperThreads"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "js7_Threads_OtherThreads{host=\"$host\"}",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "other",
-          "range": true,
-          "refId": "OtherThreads"
         }
       ],
       "title": "Threads",
@@ -2871,7 +2887,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Unicode characters above U+FFFF counts twice",
+      "description": "Number of active execute instructions – An execute instructionsruns a \"JS7 Order process\"",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2911,7 +2927,6 @@
             }
           },
           "mappings": [],
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2924,10 +2939,65 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "none"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Process count"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Process limit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Process limit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -2935,7 +3005,7 @@
         "x": 12,
         "y": 37
       },
-      "id": 14,
+      "id": 19,
       "options": {
         "legend": {
           "calcs": [],
@@ -2957,13 +3027,26 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(js7_OrderStdWrittenStatistics_CharacterTotal{host=\"$host\"}[$__rate_interval]) / 1000",
-          "legendFormat": "stdout and stderr",
+          "expr": "js7_JobMotorKeeper_ProcessLimit{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Process limit",
           "range": true,
-          "refId": "A"
+          "refId": "agentProcessLimit"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_JobMotorKeeper_ProcessCount{host=\"$host\"}",
+          "legendFormat": "Execute instructions",
+          "range": true,
+          "refId": "agentProcessCount"
         }
       ],
-      "title": "Process stdout and stderr, 1000 characters/s",
+      "title": "Concurrent execute instructions",
       "type": "timeseries"
     },
     {
@@ -3099,7 +3182,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Number of active execute instructions – An execute instructionsruns a \"JS7 Order process\"",
+      "description": "Unicode characters above U+FFFF counts twice",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3139,6 +3222,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3151,65 +3235,10 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "none"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Process count"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Process limit"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    10
-                  ],
-                  "fill": "dash"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Process limit"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
@@ -3217,7 +3246,7 @@
         "x": 12,
         "y": 43
       },
-      "id": 19,
+      "id": 14,
       "options": {
         "legend": {
           "calcs": [],
@@ -3239,26 +3268,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "js7_JobMotorKeeper_ProcessLimit{host=\"$host\"}",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Process limit",
+          "expr": "rate(js7_OrderStdWrittenStatistics_CharacterTotal{host=\"$host\"}[$__rate_interval]) / 1000",
+          "legendFormat": "stdout and stderr",
           "range": true,
-          "refId": "agentProcessLimit"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "js7_JobMotorKeeper_ProcessCount{host=\"$host\"}",
-          "legendFormat": "Execute instructions",
-          "range": true,
-          "refId": "agentProcessCount"
+          "refId": "A"
         }
       ],
-      "title": "Concurrent execute instructions",
+      "title": "Process stdout and stderr, 1000 characters/s",
       "type": "timeseries"
     },
     {
@@ -3896,6 +3912,6 @@
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 47,
+  "version": 58,
   "weekStart": ""
 }

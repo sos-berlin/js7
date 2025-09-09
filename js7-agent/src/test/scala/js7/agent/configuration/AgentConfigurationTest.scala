@@ -36,7 +36,7 @@ final class AgentConfigurationTest extends OurTestSuite:
           jobWorkingDirectory = WorkingDirectory,
           webServerPorts = Nil,
           internalConfig = DefaultConfig,
-          name = "js7")
+          name = "JS7")
         AgentConfiguration(
           subagentConf,
           findTimeIntervalLimit = 1096.days,

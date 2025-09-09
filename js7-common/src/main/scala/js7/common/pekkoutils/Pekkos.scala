@@ -36,7 +36,7 @@ object Pekkos:
         .resolve
 
       ActorSystem(
-        name,
+        s"pekko-$name", // Because Pekko's scheduler thread name doesn't contain "pekko"
         Some(myConfig),
         Some(getClass.getClassLoader),
         myConfig.getBoolean("js7.pekko.use-js7-thread-pool") ? executionContext)

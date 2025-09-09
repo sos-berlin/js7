@@ -34,7 +34,7 @@ final class SubagentConfTest extends OurTestSuite:
         logDirectory = dataDir / "logs",
         jobWorkingDirectory = WorkingDirectory,
         webServerPorts = Nil,
-        name = "js7"))
+        name = "JS7"))
     }
 
   "--http-port=" in:
