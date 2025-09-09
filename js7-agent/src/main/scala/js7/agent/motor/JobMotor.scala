@@ -17,6 +17,7 @@ import js7.base.metering.CallMeter
 import js7.base.monixutils.SimpleLock
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
 import js7.base.time.{AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.Assertions.assertIfStrict
@@ -159,8 +160,6 @@ extends Service.StoppableByRequest:
           handleFailedProcessStart(order, problem)
 
   private def handleFailedProcessStart(order: Order[IsFreshOrReady], problem: Problem): IO[Unit] =
-    // FIXME Should we log an error or a warning, or not?
-    // Or has the error always been handled by an OrderProcessed event ???
     getAgentState.flatMap: agentState =>
       // This is an unexpected situation
       def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
@@ -177,12 +176,12 @@ extends Service.StoppableByRequest:
             logger.warn(msg, problem.throwableIfStackTrace)
             decrementProcessCount(order.id, "⚠️  processOrder failed")
           else
-            // FIXME Try to not warn when:
-            //  ServiceStopped: RemoteSubagentDriver(Subagent:...) service stopped
-            logger.warn(msg, problem.throwableIfStackTrace)
-            logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
-            logger.warn(s"${order.id} has been changed concurrently, existing: $current")
-            IO.unit
+            IO:
+              if !(problem is ServiceStoppedProblem) then
+                // Maybe not a warning worth?
+                logger.warn(msg, problem.throwableIfStackTrace)
+                logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
+                logger.warn(s"${order.id} has been changed concurrently, existing: $current")
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
@@ -201,7 +200,7 @@ extends Service.StoppableByRequest:
     processCountLock.surround:
       IO.defer:
         if reason != "OrderProcessed" then
-          logger.trace(s"decrementProcessCount: processCount=$processCount $orderId • $reason")
+          logger.trace(s"decrementProcessCount: processCount=$processCount $orderId ($reason)")
         val n = processCount.decrementAndGet()
         assertIfStrict(n >= 0, s"processCount=$n is below zero")
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
