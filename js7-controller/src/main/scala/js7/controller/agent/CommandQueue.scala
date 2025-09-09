@@ -91,7 +91,6 @@ private[agent] abstract class CommandQueue(
             removed.map(o => s"🪱${o.getClass.simpleScalaName}").mkString(", ")
           } from queue, because it obviously has been executed by the Agent"
       queueSet --= removed
-      logger.trace(s"### removeStillQueuedCommandsWhenDetachingTheOrder($detachOrder): removed=$removed")
 
     def dequeueAll(what: Set[Queueable]): Unit =
       queue.dequeueAll(what)
@@ -102,7 +101,6 @@ private[agent] abstract class CommandQueue(
       val removed = queue.removeAll:
         case AttachOrder(order, _) => orderIds contains order.id
         case _ => false
-      logger.trace(s"### removeAttachedOrderCommands($orderIds): removed=$removed")
       queueSet --= removed
 
     def removeAlreadyAttachedOrders(): Unit =
