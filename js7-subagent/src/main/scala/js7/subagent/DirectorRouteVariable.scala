@@ -14,19 +14,23 @@ import scala.collection.mutable
 /** Store for the Agent Director's Route while running. */
 private final class DirectorRouteVariable:
   private val lock = AsyncLock()
-  private var _toRoute: ToRoute = noDirector
+  private var _toRoute: ToRoute = NoDirector
   private val cache = mutable.Map.empty[WebServerBinding, (Route, Int)]
 
   def registeringRouteResource(toRoute: ToRoute): ResourceIO[Unit] =
     Resource.make(
-      acquire = lock.lock(IO:
-        if _toRoute ne noDirector then
-          throw new IllegalStateException("registeringRouteResource called twice")
-        _toRoute = toRoute
-        cache.clear()))(
-      release = _ => lock.lock(IO:
-        _toRoute = noDirector
-        cache.clear()))
+      acquire =
+        lock.lock:
+          IO:
+            if _toRoute ne NoDirector then
+              throw new IllegalStateException("registeringRouteResource called twice")
+            _toRoute = toRoute
+            cache.clear())(
+      release = _ =>
+        lock.lock:
+          IO:
+            _toRoute = NoDirector
+            cache.clear())
 
   def route(routeBinding: RouteBinding): IO[Route] =
     lock.lock: /*readlock!*/
@@ -36,13 +40,13 @@ private final class DirectorRouteVariable:
             IO.pure(route)
 
           case _ =>
-            _toRoute(routeBinding)
-              .flatTap(route => IO:
-                cache(routeBinding.webServerBinding) = route -> routeBinding.revision)
+            _toRoute(routeBinding).flatTap: route =>
+              IO:
+                cache(routeBinding.webServerBinding) = route -> routeBinding.revision
 
 
 object DirectorRouteVariable:
   type ToRoute = RouteBinding => IO[Route]
 
-  private val noDirector: ToRoute =
+  private val NoDirector: ToRoute =
     _ => IO.pure(complete(NoDirectorProblem))

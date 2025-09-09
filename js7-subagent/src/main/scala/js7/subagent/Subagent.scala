@@ -75,9 +75,6 @@ extends MainService, Service.StoppableByRequest:
   private val dedicatedAllocated =
     SetOnce[Allocated[IO, DedicatedSubagent]](SubagentNotDedicatedProblem)
 
-  // Wollen wir SubagentCommand.DedicateDirector ???
-  //private val directorRegisterable = AsyncVariable(none[DirectorRegisterable])
-
   private val terminated = Deferred.unsafe[IO, ProgramTermination]
 
   val forDirector: ForDirector = toForDirector(this)
@@ -118,33 +115,8 @@ extends MainService, Service.StoppableByRequest:
                 terminated.complete(termination).attempt.as(termination))
 
   def registerDirectorRoute(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
-    logger.debugResource(
-      for
-        _ <- directorRouteVariable.registeringRouteResource(toRoute)
-        //_ <- Resource.make(
-        //  acquire = registerDirector(registerable))(
-        //  release = unregisterDirector)
-      yield ())
-
-  //private def registerDirector(registerable: DirectorRegisterable): IO[registerable.type] =
-  //  directorRegisterable
-  //    .update {
-  //      case Some(_) =>
-  //        IO.raiseError(new IllegalStateException(
-  //          "Subagent has already registered an Director"))
-  //
-  //      case None =>
-  //        IO.some(registerable)
-  //    }
-  //    .as(registerable)
-  //
-  //private def unregisterDirector(registerable: DirectorRegisterable): IO[Unit] =
-  //  directorRegisterable
-  //    .update(maybe => IO.whenA(!maybe.contains(registerable))(
-  //      IO.raiseError(new IllegalStateException(
-  //        "unregisterDirector tried to unregister an alien Director")))
-  //      .as(None))
-  //    .void
+    logger.debugResource:
+      directorRouteVariable.registeringRouteResource(toRoute)
 
   @TestOnly
   def executeCommandForTest(cmd: SubagentCommand.Queueable): IO[Checked[SubagentCommand.Response]] =

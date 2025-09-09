@@ -37,15 +37,18 @@ object SubagentCommand extends CommonCommand.Companion:
 
   sealed trait Queueable extends SubagentCommand
 
+
   final case class Batch(commands: Seq[CorrelIdWrapped[SubagentCommand]])
   extends SubagentCommand, CommonBatch, Big:
     type Response = Batch.Response
+
   object Batch:
     final case class Response(responses: Seq[Checked[SubagentCommand.Response]])
     extends SubagentCommand.Response, Big:
       override def toString: String =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
+
 
   /** Registers the Controller identified by current User as a new Controller and couples it.
     * The Command is idempotent.
@@ -57,6 +60,7 @@ object SubagentCommand extends CommonCommand.Companion:
     controllerId: ControllerId)
   extends SubagentCommand:
     type Response = DedicateSubagent.Response
+
   object DedicateSubagent:
     final case class Response(
       subagentRunId: SubagentRunId,
