@@ -22,10 +22,13 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
+import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
+import js7.data.subagent.Problems.NoDirectorProblem
 import js7.data.subagent.SubagentCommand
 import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
@@ -47,6 +50,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
   protected lazy val agentUris = AgentUris(baseUri)
   protected lazy val uriPrefixPath = "/agent"
 
+  @TestOnly
   final def repeatUntilAvailable[A](timeout: FiniteDuration)(body: IO[Checked[A]])
   : IO[Checked[A]] =
     IO.defer:
@@ -56,7 +60,11 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
       ().tailRecM: _ =>
         body
           .flatMap:
-            case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
+            case Left(problem)
+              if (problem.is(ClusterNodeIsNotReadyProblem)
+                || problem.is(NoDirectorProblem)
+                || problem.is(AgentNotDedicatedProblem))
+                && now < until =>
               sym.escalate()
               logger.log(sym.logLevel, s"$sym $toString: $problem")
               IO.sleep(delays.next()).as(Left(()))
