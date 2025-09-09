@@ -7,9 +7,10 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Base64UUID
+import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.{ControllerId, ControllerState}
-import js7.data.event.JournalId
+import js7.data.event.{EventId, JournalId}
 import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
@@ -50,6 +51,20 @@ final class SubagentCommandTest extends OurTestSuite:
           "controllerId": "CONTROLLER"
         }""")
 
+    "DedicateSubagent.Response" in:
+      // Subagent <v2.8.1 is not compatible with Director >=2.8.1
+      testJson[SubagentCommand.Response](
+        DedicateSubagent.Response(
+          SubagentRunId(Base64UUID.zero),
+          EventId(1001),
+          Version("2.8.1")),
+        json"""{
+          "TYPE": "DedicateSubagent.Response",
+          "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "subagentEventId": 1001,
+          "version": "2.8.1"
+        }""")
+
     "CoupleDirector" in:
       testJson[SubagentCommand](
         CoupleDirector(
@@ -66,6 +81,15 @@ final class SubagentCommandTest extends OurTestSuite:
             "heartbeat": 1.234,
             "heartbeatTimeout": 12.345
           }
+        }""")
+
+    "CoupleDirector.Response" in:
+      // Subagent <v2.8.1 is not compatible with Director >=2.8.1
+      testJson[SubagentCommand.Response](
+        CoupleDirector.Response(Version("2.8.1")),
+        json"""{
+          "TYPE": "CoupleDirector.Response",
+          "version": "2.8.1"
         }""")
 
     "AttachSignedItem" in:

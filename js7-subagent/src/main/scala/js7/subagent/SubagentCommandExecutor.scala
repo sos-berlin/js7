@@ -3,6 +3,7 @@ package js7.subagent
 import cats.effect.IO
 import cats.syntax.traverse.*
 import fs2.Stream
+import js7.base.Js7Version
 import js7.base.catsutils.CatsEffectExtensions.{right, startAndForget}
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
@@ -74,7 +75,7 @@ private[subagent] final class SubagentCommandExecutor(
           case cmd: CoupleDirector =>
             IO(subagent.checkedDedicatedSubagent)
               .flatMapT(_.executeCoupleDirector(cmd))
-              .rightAs(SubagentCommand.Accepted)
+              .rightAs(CoupleDirector.Response(Js7Version))
 
           case ShutDown(processSignal, dontWaitForDirector, restart) =>
             subagent.shutdown(

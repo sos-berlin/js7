@@ -3,6 +3,7 @@ package js7.subagent.director
 import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
+import js7.base.Js7Version
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.configutils.Configs.RichConfig
@@ -14,7 +15,7 @@ import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
@@ -22,6 +23,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, DelayConf, SetOnce}
+import js7.base.version.Version
 import js7.base.web.HttpClient
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -175,26 +177,29 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     logger.debugIO:
       currentSubagentItemState
         .flatMapT: subagentItemState =>
-          dedicateOrCouple2(subagentItemState).map(Right(_))
+          dedicateOrCouple2(subagentItemState)
 
-  private def dedicateOrCouple2(subagentItemState: SubagentItemState): IO[(SubagentRunId, EventId)] =
+  private def dedicateOrCouple2(subagentItemState: SubagentItemState)
+  : IO[Checked[(SubagentRunId, EventId)]] =
     subagentItemState.subagentRunId match
       case None =>
-        for
-          response <- dedicate
-          eventId <- couple(response.subagentRunId, response.subagentEventId)
-        yield (response.subagentRunId, eventId)
+        dedicate.flatMapT: response =>
+          couple(response.subagentRunId, response.subagentEventId)
+            .mapmap: eventId =>
+              (response.subagentRunId, eventId)
 
       case Some(subagentRunId) =>
         couple(subagentRunId, subagentItemState.eventId)
-          .map(subagentRunId -> _)
+          .mapmap(subagentRunId -> _)
 
-  private def dedicate: IO[DedicateSubagent.Response] =
+  private def dedicate: IO[Checked[DedicateSubagent.Response]] =
     logger.debugIO:
       journal.aggregate.map(_.agentRunId).flatMap: agentRunId =>
         postCommandUntilSucceeded:
           DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
         .flatMap: response =>
+          // Version check not required because JSON itself is incompatible
+          //checkCompatibility(response.version).flatTraverse: _ =>
           journal.persist:
             subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo()))
           .ifPersisted: _ =>
@@ -202,35 +207,44 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               lastSubagentRunId = Some(response.subagentRunId)
               shuttingDown = false
           .rightAs(response)
-          .orThrow
 
-  private def couple(subagentRunId: SubagentRunId, eventId: EventId): IO[EventId] =
-    logger.traceIO(cancelAndFailWhenStopping:
-      val cmd = CoupleDirector(subagentId, subagentRunId, eventId, conf.heartbeatTiming)
-      api.login(onlyIfNotLoggedIn = true)
-        .*>(api.executeSubagentCommand(Numbered(0, cmd)).orThrow)
-        .as(subagentRunId -> eventId)
-        .onErrorRestartLoop(()):
-          case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
-            orderToDeferred.unsafeToMap.size match
-              case 0 => logger.info("Subagent restarted")
-              case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
-            onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
-              .*>(dedicate)
-              .map(response => response.subagentRunId -> response.subagentEventId)
+  private def couple(subagentRunId: SubagentRunId, eventId: EventId): IO[Checked[EventId]] =
+    logger.traceIO:
+      cancelAndFailWhenStopping:
+        val cmd = CoupleDirector(subagentId, subagentRunId, eventId, conf.heartbeatTiming)
+        ().tailRecM: _ =>
+          api.login(onlyIfNotLoggedIn = true)
+            .productR:
+              api.executeSubagentCommand(Numbered(0, cmd))
+            //.map(_.flatMap: response =>
+            //  checkCompatibility(response.version))
+            .flatMap:
+              case Left(SubagentNotDedicatedProblem) =>
+                orderToDeferred.unsafeToMap.size match
+                  case 0 => logger.info("Subagent restarted")
+                  case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
+                onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted) *>
+                  dedicate.flatMap:
+                    case Left(problem) =>
+                      logger.warn(s"DedicateSubagent failed: $problem")
+                      IO.left(()).andWait(reconnectErrorDelay)
+                    case Right(response) =>
+                      IO.right(response.subagentRunId -> response.subagentEventId)
 
-          case (throwable, _, retry) =>
-            logger.warn(s"CoupleDirector failed: ${throwable.toStringWithCauses}")
-            emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
-              .*>(IO.sleep(reconnectErrorDelay))
-              .*>(retry(()))
+              case Left(problem) =>
+                logger.warn(s"CoupleDirector failed: $problem")
+                emitSubagentCouplingFailed(Some(problem))
+                  .as(Left(()))
+                  .andWait(reconnectErrorDelay)
+
+              case Right(_) =>
+                IO.right(subagentRunId -> eventId)
         .flatTap: (subagentRunId, _) =>
-          IO:
+          IO.defer:
             shuttingDown = false
             initiallyCoupled.trySet(subagentRunId)
-          *>
-            dispatcher.start(subagentRunId)  // Dispatcher may have been stopped after SubagentReset
-        .map(_._2/*EventId*/))
+            dispatcher.start(subagentRunId) // Dispatcher may have been stopped after SubagentReset
+        .map((_, eventId) => Right(eventId))
 
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
@@ -579,6 +593,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 object RemoteSubagentDriver:
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
+  private val MinimumSubagentVersion = Version.mayThrow("2.8.1")
 
   private[director] def service[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
@@ -591,6 +606,12 @@ object RemoteSubagentDriver:
     Service.resource:
       new RemoteSubagentDriver(
         subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)
+
+  private[director] def checkCompatibility(subagentVersion: Option[Version]): Checked[Unit] =
+    subagentVersion.forall: v =>
+      v == Js7Version || v >= MinimumSubagentVersion
+    .orLeft:
+      Problem.pure(s"Subagent version $subagentVersion is not supported")
 
   final case class Conf(
     eventBufferDelay: FiniteDuration,

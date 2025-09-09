@@ -61,7 +61,7 @@ object SubagentCommand extends CommonCommand.Companion:
     final case class Response(
       subagentRunId: SubagentRunId,
       subagentEventId: EventId,
-      version/*COMPATIBLE with v2.3*/: Option[Version])
+      version: Version)
     extends SubagentCommand.Response
 
     given Encoder.AsObject[DedicateSubagent] = deriveCodec[DedicateSubagent]
@@ -75,13 +75,19 @@ object SubagentCommand extends CommonCommand.Companion:
         yield
           DedicateSubagent(subagentId, agentPath, agentRunId, controllerId)
 
+
   final case class CoupleDirector(
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
     eventId: EventId,
     heartbeatTiming: HeartbeatTiming)
   extends SubagentCommand:
-    type Response = SubagentCommand.Accepted
+    type Response = CoupleDirector.Response
+
+  object CoupleDirector:
+    final case class Response(version: Version)
+    extends SubagentCommand.Response
+
 
   //final case class AttachItem(item: InventoryItem)
   //extends SubagentCommand {
@@ -165,4 +171,5 @@ object SubagentCommand extends CommonCommand.Companion:
 
   implicit val responseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec(
     Subtype(Accepted),
-    Subtype(deriveCodec[DedicateSubagent.Response]))
+    Subtype.named(deriveCodec[DedicateSubagent.Response], "DedicateSubagent.Response"),
+    Subtype.named(deriveCodec[CoupleDirector.Response], "CoupleDirector.Response"))

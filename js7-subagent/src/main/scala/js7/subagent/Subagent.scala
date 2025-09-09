@@ -179,7 +179,7 @@ extends MainService, Service.StoppableByRequest:
             logger.info:
               s"Subagent dedicated as ${cmd.subagentId} to ${cmd.agentPath}, is ready"
             Right:
-              DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version))
+              DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Js7Version)
 
   /** Maybe the duplicate command is idempotent? */
   private def handleDuplicateDedication(cmd: DedicateSubagent, existing: DedicatedSubagent)

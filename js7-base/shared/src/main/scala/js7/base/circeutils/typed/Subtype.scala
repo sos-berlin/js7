@@ -108,8 +108,9 @@ object Subtype:
     * <p>
     * Usage: Subtype.named(codec, "name")
     */
-  def named[A: ClassTag](codec: Codec.AsObject[A], typeName: String): Subtype[A] =
-    make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName, codec, codec)
+  def named[A: ClassTag](codec: Codec.AsObject[A], typeName: String, aliases: Seq[String] = Nil)
+  : Subtype[A] =
+    make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName, codec, codec, aliases)
 
   def decodeCompatible[Old: ClassTag, New: ClassTag](decoder: Decoder[Old])(toNew: Old => Checked[New])
   : Subtype[New] =

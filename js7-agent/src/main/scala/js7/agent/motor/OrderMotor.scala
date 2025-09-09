@@ -42,7 +42,7 @@ private final class OrderMotor private(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   journal: FileJournal[AgentState],
-  bean: Bean,
+  bean: OrderMotorMXBean.Bean,
   agentConf: AgentConfiguration)
   (using
     clock: AlarmClock,
@@ -215,7 +215,7 @@ extends Service.StoppableByRequest:
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .chunks.map: chunk =>
         chunk.toVector.flatten
-      .evalTapChunk: (orderIds: Vector[OrderId]) =>
+      .evalTapChunk: (orderIds: Seq[OrderId]) =>
         IO(bean.orderQueueLength -= orderIds.size)
       .through:
         orderPipeline
@@ -281,7 +281,7 @@ object OrderMotor:
   : ResourceIO[OrderMotor] =
     for
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[OrderId]]])
-      bean <- registerMBean[IO]("OrderMotor", new Bean)
+      bean <- registerMBean[IO]("OrderMotor", new OrderMotorMXBean.Bean)
       orderMotor <- Service.resource:
         new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, bean, agentConf)
       _ <- orderMotor.jobMotorKeeper.registerMBeans
@@ -298,8 +298,7 @@ object OrderMotor:
     def schedule(timestamp: Timestamp)(io: IO[Unit])
       (using clock: AlarmClock, dispatcher: Dispatcher[IO])
     : IO[Unit] =
-      // FIXME Dispatcher already closed?
-      clock.scheduleIOAt(timestamp, label = s"OrderMotor $orderId"):
+      clock.scheduleIOAt(timestamp, s"OrderMotor $orderId"):
         io
       .flatMap: cancel =>
         cancelScheduleRef.getAndSet(cancel)
@@ -309,6 +308,7 @@ object OrderMotor:
   private sealed trait OrderMotorMXBean:
     def getOrderQueueLength: Int
 
-  private final class Bean extends OrderMotorMXBean:
-    val orderQueueLength = Atomic(0)
-    def getOrderQueueLength = orderQueueLength.get
+  private object OrderMotorMXBean:
+    final class Bean extends OrderMotorMXBean:
+      val orderQueueLength = Atomic(0)
+      def getOrderQueueLength = orderQueueLength.get
