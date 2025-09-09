@@ -48,11 +48,11 @@ object StartUp:
     Logger[this.type].info(startUpLine(name))
 
   def startUpLine(name: String): String =
-    s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
+    s"""$name ${BuildInfo.prettyVersion} · $startUpLine
        |${"━" * 80}""".stripMargin // Log a bar, in case we append to an existing log file
 
   /** Log Java version, config and data directory, and classpath. */
-  def startUpLine(): String =
+  lazy val startUpLine: String =
     ("Java " + sys.props.getOrElse("java.version", "") + " · " +
       sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " " +
       sys.props.getOrElse("java.vm.version", "") + " " +
