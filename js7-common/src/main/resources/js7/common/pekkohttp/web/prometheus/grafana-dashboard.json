@@ -286,11 +286,39 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "java_lang_Memory_HeapMemoryUsage_committed{host=\"$host\"} ",
-          "hide": true,
+          "hide": false,
           "instant": true,
           "legendFormat": "Committed heap",
           "range": false,
           "refId": "heapCommitted"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "java_lang_Threading_ThreadCount{host=\"$host\"}",
+          "hide": true,
+          "instant": true,
+          "legendFormat": "Threads",
+          "range": false,
+          "refId": "threads"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "js7_Process_Running{host=\"$host\"}",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "Processes",
+          "range": false,
+          "refId": "Processes"
         },
         {
           "editorMode": "code",
@@ -318,7 +346,7 @@
           "instant": true,
           "legendFormat": " ",
           "range": false,
-          "refId": "empty"
+          "refId": "clusterStateFiller"
         }
       ],
       "type": "stat"
@@ -3905,13 +3933,13 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 59,
+  "version": 63,
   "weekStart": ""
 }
