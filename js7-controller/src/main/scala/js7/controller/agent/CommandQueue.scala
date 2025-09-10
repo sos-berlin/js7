@@ -87,8 +87,8 @@ private[agent] abstract class CommandQueue(
       val removed = queue.removeAll(isCorrespondingCommand)
       if removed.nonEmpty then
         logger.debug:
-          s"DetachOrder(${detachOrder.orderId}) removes corresponding ${
-            removed.map(o => s"🪱${o.getClass.simpleScalaName}").mkString(", ")
+          s"🪱 DetachOrder(${detachOrder.orderId}) removes corresponding ${
+            removed.map(o => s"${o.getClass.simpleScalaName}").mkString(", ")
           } from queue, because it obviously has been executed by the Agent"
       queueSet --= removed
 
@@ -145,11 +145,11 @@ private[agent] abstract class CommandQueue(
         assertThat(!isTerminating)
         queueable match
           case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
-            logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
+            logger.debug(s"🪱 AttachOrder(${order.id} ignored because Order is already attached to Agent")
             IO.pure(false)
           case _ =>
             if queue.contains(queueable) then
-              logger.trace(s"Ignore duplicate $queueable")
+              logger.trace(s"🪱 Ignore duplicate $queueable")
               IO.pure(false)
             else
               logger.trace(s"enqueue $queueable")

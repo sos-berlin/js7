@@ -370,7 +370,7 @@ extends Service.StoppableByRequest:
         .map: detachedOrderIds_ =>
           val detachedOrderIds = detachedOrderIds_.flatten: Seq[OrderId]
           if detachedOrderIds.isEmpty then
-            logger.trace(s"🪱detachProcessedOrders($eventId): no Order detached")
+            logger.trace(s"🪱 detachProcessedOrders($eventId): no Order detached")
           else
             logger.debug(s"detachProcessedOrders($eventId): detached ${
               detachedOrderIds.mkString(" ")}")

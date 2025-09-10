@@ -233,6 +233,7 @@ extends Service.StoppableByRequest:
         // Any we call isDelayed/ifDelayed three times.
         // But this way, we are sure to use the proper current AgentState.
         // FIRST, persist non-delayed Orders //
+        // TODO Try to include SubagentKeeper persisting here to avoid a race!
         journal.persist: agentState =>
           orderIds.view
             .flatMap(agentState.idToOrder.get)

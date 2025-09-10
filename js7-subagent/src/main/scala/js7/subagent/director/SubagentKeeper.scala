@@ -56,7 +56,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   agentPath: AgentPath,
   controllerId: ControllerId,
   failedOverSubagentId: Option[SubagentId],
-  journal: Journal[S],
+  journal: Journal[S], // TODO Let the only OrderMotor pipeline persist!
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
   (implicit ioRuntime: IORuntime, sTag: Tag[S])
@@ -211,10 +211,18 @@ extends Service.StoppableByRequest:
         if currentOrder != order then
           // Do nothing when the Order has been changed by a concurrent operation
           // May happen when the same Order has been enqueued twice in JobMotor's queue
-          logger.debug:
-            s"$orderId has concurrently been changed, no OrderProcessingStarted is emitted"
-          logger.trace(s"Caller:  $order")
-          logger.trace(s"Journal: $currentOrder")
+          // TODO Avoid this. ---> Let the OrderMotor pipeline emit OrderProcessingStarted <---
+          if currentOrder.isState[Order.Processing]
+            && order.isState[Order.Ready]
+            && currentOrder.copy[Order.Ready](state = Order.Ready())
+            == order.copy[Order.Ready](state = Order.Ready())
+          then
+            logger.debug(s"🪱 $orderId OrderProcessingStarted has already been emitted")
+          else
+            logger.debug:
+              s"🪱 $orderId has concurrently been changed, no OrderProcessingStarted is emitted"
+            logger.debug(s"Caller:  $order")
+            logger.debug(s"Journal: $currentOrder")
           Nil
         else
           val events: List[OrderStarted | OrderProcessingStarted] =

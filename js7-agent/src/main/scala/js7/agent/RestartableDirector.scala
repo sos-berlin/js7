@@ -44,7 +44,7 @@ extends MainService, Service.StoppableByRequest:
       val t = Deadline.now
       runDirector.flatMap: termination =>
         if termination.restartDirector then
-          logger.info(s"⟲ Restart Agent Director\n" + "─" * 80)
+          logger.info(s"⟳ Restart Agent Director\n" + "─" * 80)
           IO.sleep((t + MinimumRestartDuration).timeLeft).as(Left(()))
         else
           IO.right(termination)

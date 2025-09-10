@@ -67,7 +67,8 @@ extends EventReader:
       flushedLengthSync.onAdded(flushedPosition)
     else
       logger.trace:
-        s"❓Duplicate onFileWritten($flushedPosition) flushedLengthSync.last=${flushedLengthSync.last}"
+        s"🪱 Duplicate onFileWritten($flushedPosition) flushedLengthSync.last=${
+          flushedLengthSync.last}"
 
   private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit =
     synchronized:

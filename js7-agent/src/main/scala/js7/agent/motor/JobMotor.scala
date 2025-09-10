@@ -24,7 +24,6 @@ import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isStrict
 import js7.data.execution.workflow.instructions.AdmissionTimeSwitcher
 import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
@@ -64,19 +63,8 @@ extends Service.StoppableByRequest:
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
     IO.whenA(orders.nonEmpty):
-      IO.whenA(isStrict):
-        getAgentState.flatMap: agentState =>
-          IO:
-            orders.foreach: order =>
-              if !agentState.isOrderProcessable(order) then
-                val msg = s"Order in job queue is not isOrderProcessable: $order"
-                logger.error(msg)
-                throw new AssertionError(msg)
-      //.productR:
-      //  IO(orders.foreachWithBracket()((o, br) => logger.trace(s"### enqueue $br$o")))
-      .productR:
-        queue.enqueue(orders)
-      .productR:
+      //IO(orders.foreachWithBracket()((o, br) => logger.trace(s"### enqueue $br$o"))) *>
+      queue.enqueue(orders) *>
         queueSignal.set(() => orders.map(_.id).mkString(" "))
 
   def trigger(reason: => Any): IO[Unit] =
@@ -85,12 +73,12 @@ extends Service.StoppableByRequest:
       logger.trace(s"trigger($reason_)")
       queueSignal.set(() => reason_)
 
-  def remove(orderId: OrderId): IO[Boolean] =
+  def remove(orderId: OrderId, unnecessary: String = ""): IO[Boolean] =
     queue.lockForRemoval:
       queue.remove(orderId)
     .flatTap:
       IO.whenA(_):
-        IO(logger.debug(s"$orderId removed from queue"))
+        IO(logger.debug(s"$unnecessary$orderId removed from queue"))
 
   private def runPipeline: IO[Unit] =
     queueSignal.discrete.merge:
@@ -100,7 +88,7 @@ extends Service.StoppableByRequest:
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
         logger.trace:
-          s"""🪱runPipeline: No Order is processable despite signal "${signalReason()}""""
+          s"""🪱 runPipeline: No Order is processable despite signal "${signalReason()}""""
         false
     .map(_._2)
     .unchunks
@@ -146,7 +134,9 @@ extends Service.StoppableByRequest:
       .catchIntoChecked
       .flatMap:
         case Right(None) =>
-          decrementProcessCount(order.id, s"🪱${order.id} is not processable")
+          // SubagentKeeper has already logged a 🪱 debug line.
+          // TODO Try to avoid this, see SubagentKeeper processOrderAndForwardEvents
+          decrementProcessCount(order.id, s"${order.id} is not processable")
         case Right(Some(order)) =>
           IO.unlessA(order.isState[Order.Processing]):
             // Unless SubagentKeeper emitted an OrderProcessingStarted (due to changed Order,
@@ -155,7 +145,8 @@ extends Service.StoppableByRequest:
             logger.trace(s"subagentKeeper.processOrder: ${order.id
               } status is not Processing, decrementing processCount")
             decrementProcessCount(order.id,
-              s"🪱Order's status is not Processing but ${order.workflowPosition} ${order.state}")
+              s"Order's status is not Processing but ${order.workflowPosition} ${order.state}",
+              unnecessary = "🪱")
         case Left(problem) =>
           handleFailedProcessStart(order, problem)
 
@@ -185,7 +176,7 @@ extends Service.StoppableByRequest:
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
-      remove(orderId) /*Remove a maybe duplicate inserted order???*/
+      remove(orderId, unnecessary = "🪱") /*Remove a maybe duplicate inserted order???*/
         *> decrementProcessCount(orderId, "OrderProcessed")
 
   private def tryIncrementProcessCount: IO[Boolean] =
@@ -196,11 +187,13 @@ extends Service.StoppableByRequest:
 
   /** Triggers this JobMotor or all JobMotor when a process counter gets below its limit.
     * @return true iff process count was at processLimit. */
-  private def decrementProcessCount(orderId: OrderId, reason: String): IO[Unit] =
+  private def decrementProcessCount(orderId: OrderId, reason: String, unnecessary: String = "")
+  : IO[Unit] =
     processCountLock.surround:
       IO.defer:
         if reason != "OrderProcessed" then
-          logger.trace(s"decrementProcessCount: processCount=$processCount $orderId ($reason)")
+          logger.trace:
+            s"${unnecessary}decrementProcessCount: processCount=$processCount $orderId ($reason)"
         val n = processCount.decrementAndGet()
         assertIfStrict(n >= 0, s"processCount=$n is below zero")
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
