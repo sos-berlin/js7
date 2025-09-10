@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.service.{MainService, MainServiceTerminationException}
 import js7.base.system.startup.StartUp
-import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
+import js7.base.system.startup.StartUp.{logJavaSettings, printlnWithClock}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.useSync

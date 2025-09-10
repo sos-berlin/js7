@@ -158,24 +158,22 @@ extends Service.StoppableByRequest:
 
       case _ => IO.right(())
 
-  def onSubagentEvents(keyedEvents: Iterable[KeyedEvent[OrderProcessingStarted | OrderProcessed]])
+  private def onSubagentEvents(
+    keyedEvents: Iterable[KeyedEvent[OrderProcessingStarted | OrderProcessed]])
   : IO[Unit] =
-    val startedOrderIdB = Vector.newBuilder[OrderId]
-    val processedOrderIdB = Vector.newBuilder[OrderId]
+    val startedBuilder = Vector.newBuilder[OrderId]
+    val processedBuilder = Vector.newBuilder[OrderId]
     keyedEvents.foreach:
-      case KeyedEvent(orderId, _: OrderProcessingStarted) => startedOrderIdB += orderId
-      case KeyedEvent(orderId, _: OrderProcessed) => processedOrderIdB += orderId
-    val processedOrderIds = processedOrderIdB.result()
-    val startedOrderIds = startedOrderIdB.result().filterNot(processedOrderIds.toSet)
+      case KeyedEvent(orderId, _: OrderProcessingStarted) => startedBuilder += orderId
+      case KeyedEvent(orderId, _: OrderProcessed) => processedBuilder += orderId
+    val processedOrderIds = processedBuilder.result()
+    val startedOrderIds = startedBuilder.result().filterNot(processedOrderIds.toSet)
 
     startedOrderIds.foldMap(jobMotorKeeper.maybeKillMarkedOrder) *>
       jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
-  def trigger(orderId: OrderId): IO[Unit] =
-    enqueue(orderId)
-
-  private def onPersisted(persisted: Persisted[AgentState, Event]): IO[Unit] =
+  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing): IO[Unit] =
     persisted.keyedEvents.toVector.flatTraverse:
       case KeyedEvent(orderId: OrderId, event) =>
         event.match
@@ -200,7 +198,6 @@ extends Service.StoppableByRequest:
       case _ =>
         IO.pure(Vector.empty)
     .flatMap: (touchedOrderIds: Seq[OrderId]/*IntelliJ*/) =>
-      val idToOrder = persisted.aggregate.idToOrder
       enqueue(touchedOrderIds.distinct)
 
   private def enqueue(orderId: OrderId): IO[Unit] =

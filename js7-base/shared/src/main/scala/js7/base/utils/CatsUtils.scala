@@ -60,11 +60,11 @@ object CatsUtils:
         underlying.void.handleError: t =>
           IO(logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
-      def logWhenMethodTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
+      def logWhenMethodTakesLonger(using sourcecode.Enclosing): IO[A] =
         Worry.Default.logWhenMethodTakesLonger:
           underlying
 
-      def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
+      def logWhenItTakesLonger(using sourcecode.Enclosing): IO[A] =
         Worry.Default.logWhenItTakesLonger:
           underlying
 

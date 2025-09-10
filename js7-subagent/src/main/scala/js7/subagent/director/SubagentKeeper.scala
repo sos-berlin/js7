@@ -202,6 +202,8 @@ extends Service.StoppableByRequest:
     selectedDriver: SelectedDriver)
   : IO[Checked[Option[Order[Order.State]]]] =
     // TODO Race with CancelOrders ?
+    // TODO Race with stop of LocalSubagentDriver?
+    //   May result in OrderProcessed(💥 Disrupted(ProcessLost(ServiceStopped: LocalSubagentDriver(..) service stopped)))
     import selectedDriver.{stick, subagentDriver}
     val orderId = order.id
     journal.persist[OrderStarted | OrderProcessingStarted]: agentState =>
