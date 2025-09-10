@@ -36,7 +36,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
 
     // Combined EventCalc //
     val eventCalc: EventCalc[ControllerState, NoKeyEvent, TimeCtx] =
-      EventCalc.combine(controllerInitialized.widen, itemAdded.widen)
+      controllerInitialized.widen |+| itemAdded.widen
 
     // Calculate EventColl with events and aggregate //
     val context = TimeCtx(initiallyStartedAt)

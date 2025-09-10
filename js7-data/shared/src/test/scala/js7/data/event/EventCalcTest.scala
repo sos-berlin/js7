@@ -25,7 +25,7 @@ final class EventCalcTest extends OurTestSuite:
         TestEvent.Added(EventCalc.context.value)
 
     val combined: EventCalc[TestState, TestEvent, TimeCtx & X] =
-      EventCalc.combine(a.widen, b.widen, c.widen)
+      EventCalc.combineAll(Seq(a.widen, b.widen, c.widen))
 
     val (events, testState) = combined.calculateEventsAndAggregate(
       TestState("START"),

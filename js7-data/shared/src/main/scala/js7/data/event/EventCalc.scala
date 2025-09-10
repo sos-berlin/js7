@@ -145,8 +145,8 @@ object EventCalc:
   : Timestamp =
     coll.context.now
 
-  // Monoid //
-  given [S <: EventDrivenState[S, E], E <: Event, Ctx] => Monoid[EventCalc[S, E, Ctx]] =
+
+  given monoid: [S <: EventDrivenState[S, E], E <: Event, Ctx] => Monoid[EventCalc[S, E, Ctx]] =
     type EC = EventCalc[S, E, Ctx]
     new Monoid[EC]:
       def empty = EventCalc.empty
@@ -154,12 +154,7 @@ object EventCalc:
       def combine(a: EC, b: EC): EC =
         a.combine(b)
 
-  inline def combine[S <: EventDrivenState[S, E], E <: Event, Ctx](
-    eventCalcs: EventCalc[S, E, Ctx]*)
-  : EventCalc[S, E, Ctx] =
-    combineAll(eventCalcs)
-
   def combineAll[S <: EventDrivenState[S, E], E <: Event, Ctx](
     eventCalcs: Iterable[EventCalc[S, E, Ctx]])
   : EventCalc[S, E, Ctx] =
-    eventCalcs.view.scan(empty)(_.combine(_)).last
+    monoid.combineAll(eventCalcs)
