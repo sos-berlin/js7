@@ -83,11 +83,9 @@ private final class JobMotorKeeper(
             jobMotor.recoverProcessingOrders(orders)
         .map(_.flatten)
 
-  def onOrdersMayBeProcessable(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
+  def onOrdersMayBeProcessable(orders: View[Order[Order.State]], agentState: AgentState): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### onOrdersMayBeProcessable $br$orderId"))
-    orderIds.view.flatMap:
-      agentState.idToOrder.get
-    .flatMap:
+    orders.flatMap:
       agentState.ifOrderProcessable
     .flatMap: order =>
       agentState.maybeJobKey(order.workflowPosition)

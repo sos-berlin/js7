@@ -229,40 +229,42 @@ extends Service.StoppableByRequest:
       continueOrders
 
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
-    scheduleDelayedOrders(orderIds)
-      .flatMap: orderIds =>
-        //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
-        IO.whenA(orderIds.nonEmpty):
-          journal.persist: agentState =>
-            // TODO Don't use same AgentState for each iteration. Use EventCalc!
-            orderIds.flatMap:
-              OrderEventSource.nextEvents(_, agentState)
-          .ifPersisted: persisted =>
-            //logger.whenTraceEnabled:
-            //  orderIds.filterNot(persisted.keyedEvents.map(_.key).toSet).foreachWithBracket(): (orderId, br) =>
-            //    logger.trace(s"### triggered, but no event: $br${persisted.aggregate.idToOrder.getOrElse(orderId, orderId)}")
-            onPersisted(persisted)
-          .map(_.orThrow) // TODO throws
-          .flatMap: persisted =>
-            jobMotorKeeper.onOrdersMayBeProcessable(orderIds, persisted.aggregate)
-
-  /** @return non-delayed OrderIds. */
-  private def scheduleDelayedOrders(orderIds: Vector[OrderId]): IO[Vector[OrderId]] =
-    journal.aggregate.flatMap: agentState =>
+    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
+    IO.whenA(orderIds.nonEmpty):
       clock.lockIO: now =>
-        IO:
-          orderIds.flatMap(agentState.idToOrder.get).map: order =>
-            order.id -> order.maybeDelayedUntil.getOrElse(Timestamp.Epoch)
-          .partition(_._2 <= now)
-    .flatTap: (_, delayOrderIds) =>
-      fs2.Stream.iterable(delayOrderIds).zipWithBracket().evalMap:
-        case ((orderId, delayUntil), br) =>
-          orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
-            logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
-            entry.schedule(delayUntil):
-              enqueue(orderId)
-      .compile.drain
-    .map(_._1.map(_._1))
+        // persist may be delayed a little by the journal, so `now` may be in the past.
+        // Any we call isDelayed/ifDelayed three times.
+        // But this way, we are sure to use the proper current AgentState.
+        // FIRST, persist non-delayed Orders //
+        journal.persist: agentState =>
+          orderIds.view
+            .flatMap(agentState.idToOrder.get)
+            .filterNot(_.isDelayed(now))
+            .flatMap: order =>
+              // TODO Don't use same AgentState for each iteration. Use EventCalcs and combine them!
+              OrderEventSource.nextEvents(order.id, agentState)
+        .ifPersisted:
+          onPersisted
+        .map(_.orThrow) // TODO throws
+        .flatMap: persisted =>
+          val orders = orderIds.flatMap(persisted.aggregate.idToOrder.get)
+          // SECOND, schedule delayed Orders //
+          scheduleDelayedOrders:
+            orders.flatMap: order =>
+              order.ifDelayed(now).map(order.id -> _)
+          .productR:
+            // Maybe start jobs //
+            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
+            jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, persisted.aggregate)
+
+  private def scheduleDelayedOrders(orderIds: Iterable[(OrderId, Timestamp)]): IO[Unit] =
+    fs2.Stream.iterable(orderIds).zipWithBracket().evalMap:
+      case ((orderId, delayUntil), br) =>
+        orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+          logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
+          entry.schedule(delayUntil):
+            enqueue(orderId)
+    .compile.drain
 
   override def toString = "OrderMotor"
 
