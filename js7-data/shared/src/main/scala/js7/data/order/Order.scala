@@ -679,6 +679,9 @@ extends
   def isDelayed(now: Timestamp): Boolean =
     maybeDelayedUntil.exists(now < _)
 
+  def ifDelayed(now: Timestamp): Option[Timestamp] =
+    maybeDelayedUntil.filter(now < _)
+
   def maybeDelayedUntil: Option[Timestamp] =
     if isState[Fresh] then
       scheduledFor

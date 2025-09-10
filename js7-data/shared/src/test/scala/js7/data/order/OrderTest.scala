@@ -1003,6 +1003,24 @@ final class OrderTest extends OurTestSuite:
             order.copy(attachedState = None)))
         val Left(problem) = o.detaching: @unchecked
         assert(problem.toString.contains("ORDER-ID"))
+
+    "ifDelayed, isDelayed" in:
+      val ts = ts"2025-09-10T12:00:00Z"
+      val workflowPosition = WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0)
+
+      val notDelayed = Order(OrderId("ORDER"), workflowPosition, Fresh())
+      assert(!notDelayed.isDelayed(ts))
+      assert(notDelayed.ifDelayed(ts) == None)
+
+      val order = Order(OrderId("ORDER"), workflowPosition, Fresh(), scheduledFor = Some(ts))
+      assert(order.isDelayed(now = ts - 1.s))
+      assert(order.ifDelayed(now = ts - 1.s) == Some(ts))
+
+      assert(!order.isDelayed(now = ts))
+      assert(order.ifDelayed(now = ts) == None)
+
+      assert(!order.isDelayed(now = ts + 1.s))
+      assert(order.ifDelayed(now = ts + 1.s) == None)
   }
 
   "Events" - {
