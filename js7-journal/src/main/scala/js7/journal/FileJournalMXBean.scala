@@ -2,6 +2,8 @@ package js7.journal
 
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.time.ScalaTime.*
+import scala.concurrent.duration.Deadline
 
 sealed trait FileJournalMXBean:
   def getFileSize: Long
@@ -13,11 +15,15 @@ sealed trait FileJournalMXBean:
   def getEventCalcSecondsTotal: Double
   def getJsonWriteSecondsTotal: Double
   def getAckSecondsTotal: Double
+  def getOperatingSeconds: Double
 
 
 object FileJournalMXBean:
 
   final class Bean extends FileJournalMXBean:
+    private val sinceStart = Deadline.now
+    private[journal] val totalOperatingTimeUntilStart = Atomic(ZeroDuration)
+
     var fileSize = 0L
     private val eventTotal = Atomic(0L)
     private[journal] val persistTotal = Atomic(0L)
@@ -57,6 +63,10 @@ object FileJournalMXBean:
 
     def getAckSecondsTotal =
       ackNanos.get / 1_000_000_000.0
+
+    def getOperatingSeconds: Double =
+      (totalOperatingTimeUntilStart.get + sinceStart.elapsed).toDoubleSeconds
+
 
     private inline def ifPersisted[A <: AnyRef](inline a: A): A =
       if isUsed then a else null.asInstanceOf[A]

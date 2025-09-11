@@ -39,6 +39,7 @@ import js7.journal.watch.{JournalEventWatch, JournalingObserver}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.language.unsafeNulls
 import scala.util.control.NonFatal
+import js7.base.utils.Atomic.extensions.*
 
 /** Writes events in an anytime recoverable way to a journal.
   * <ul>
@@ -108,6 +109,7 @@ extends
 
   protected def start =
     IO.defer:
+      bean.totalOperatingTimeUntilStart := lastJournalHeader.totalRunningTime
       for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
       if lastJournalHeader.eventId == EventId.BeforeFirst then
         logger.info("Starting a new empty journal")

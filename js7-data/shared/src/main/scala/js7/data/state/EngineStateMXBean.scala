@@ -1,6 +1,7 @@
 package js7.data.state
 
 import cats.effect.ResourceIO
+import java.lang.management.ManagementFactory
 import java.util.Map as JMap
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.utils.MoreJavaConverters.*
@@ -26,6 +27,9 @@ trait EngineStateMXBean:
 
   def getStatisticsEventTotal: Long =
     stateView.statistics.eventCounter.totalEventCount
+
+  def getJVMRunningSeconds: Double =
+    ManagementFactory.getRuntimeMXBean.getUptime / 1000.0
 
 
 object EngineStateMXBean:
