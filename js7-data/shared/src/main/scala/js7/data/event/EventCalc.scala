@@ -140,8 +140,7 @@ object EventCalc:
   : WallClock =
     context.clock
 
-  def now[S <: EventDrivenState[S, E], E <: Event]()(
-    using coll: OpaqueEventColl[S, E, TimeCtx])
+  def now[S <: EventDrivenState[S, E], E <: Event](using coll: OpaqueEventColl[S, E, TimeCtx])
   : Timestamp =
     coll.context.now
 

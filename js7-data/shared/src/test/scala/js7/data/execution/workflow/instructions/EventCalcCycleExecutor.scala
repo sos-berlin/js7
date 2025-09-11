@@ -106,7 +106,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateVi
       yield
         Some:
           order.id <-: OrderCycleFinished:
-            calculator.nextCycleState(cycleState, EventCalc.now())
+            calculator.nextCycleState(cycleState, EventCalc.now)
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: S) =
     for

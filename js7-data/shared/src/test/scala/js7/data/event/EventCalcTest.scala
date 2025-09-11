@@ -18,7 +18,7 @@ final class EventCalcTest extends OurTestSuite:
 
     val b: EventCalc[TestState, TestEvent.Added, TimeCtx] =
       EventCalc.single: _ =>
-        TestEvent.Added(EventCalc.now().toString)
+        TestEvent.Added(EventCalc.now.toString)
 
     val c: EventCalc[TestState, TestEvent.Added, X] =
       EventCalc.single: _ =>
