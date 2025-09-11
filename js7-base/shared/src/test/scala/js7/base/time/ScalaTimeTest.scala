@@ -48,6 +48,11 @@ final class ScalaTimeTest extends OurTestSuite:
       intercept[ArithmeticException]:
         bigDecimalToDuration(BigDecimal("9223372036.854775808"))  // Long.MaxValue + 1
 
+    "toDoubleSeconds" in:
+      assert(0.s.toDoubleSeconds == 0.0)
+      assert(1.s.toDoubleSeconds == 1.0)
+      assert(1234.ms.toDoubleSeconds == 1.234)
+
     "Int.h" in:
       (7.h: Duration).toHours shouldEqual 7
       (7.h: Duration).toMillis shouldEqual (7*3600*1000)

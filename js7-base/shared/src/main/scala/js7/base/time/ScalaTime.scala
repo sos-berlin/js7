@@ -280,6 +280,9 @@ object ScalaTime:
         BigDecimal(duration.length).round(ctx).toLong,
         duration.unit)
 
+    def toDoubleSeconds: Double = 
+      duration.toNanos / 1_000_000_000.0
+      
     def toBigDecimalSeconds: BigDecimal = duration.unit match
       case NANOSECONDS  => BigDecimal(duration.length, 9)
       case MICROSECONDS => BigDecimal(duration.length, 6)
