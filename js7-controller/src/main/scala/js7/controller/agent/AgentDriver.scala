@@ -345,7 +345,7 @@ extends Service.StoppableByRequest:
             case None =>
               directorDriver.executeCommand:
                 val controllerRunId = ControllerRunId(journal.journalId)
-                DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
+                DedicateAgentDirector(agentPath, directors, controllerId, controllerRunId)
               .flatMapT: response =>
                 import response.{agentEventId, agentRunId}
                 (if noJournal then

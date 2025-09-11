@@ -66,7 +66,8 @@ final class AgentTest extends OurTestSuite, AgentTester:
             val controllerRunId = ControllerRunId(JournalId.random())
             agentApi
               .execute(
-                DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath),
+                DedicateAgentDirector(agentPath, Seq(subagentId),
+                  controllerId, controllerRunId),
                 CommandMeta(TestUser))
               .await(99.s).orThrow
             agentApi

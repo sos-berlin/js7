@@ -102,12 +102,12 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
         checkedAgentMotor.flatMapT:
           _.executeCommand(cmd)
 
-      case DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath) =>
+      case DedicateAgentDirector(agentPath, directors, controllerId, controllerRunId) =>
         if isShuttingDown then
           IO.left(AgentIsShuttingDown)
         else
           // Command is idempotent until AgentState has been touched
-          dedicate(directors, controllerId, controllerRunId, agentPath)
+          dedicate(agentPath, directors, controllerId, controllerRunId)
             .map(_.map: (agentRunId, eventId) =>
               AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId))
 
@@ -158,10 +158,10 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
           .catchAsChecked
 
   private def dedicate(
+    agentPath: AgentPath,
     directors: Seq[SubagentId],
     controllerId: ControllerId,
-    controllerRunId: ControllerRunId,
-    agentPath: AgentPath)
+    controllerRunId: ControllerRunId)
   : IO[Checked[(AgentRunId, EventId)]] =
     IO.defer:
       // Command is idempotent until AgentState has been touched
@@ -171,8 +171,9 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
           || agentPath == agentState.agentPath
           && agentState.meta.directors != directors then
           UserId.checked(agentPath.string).map: _ => /*used for Subagent login*/
-            (NoKey <-: AgentDedicated(directors, agentPath, agentRunId, controllerId, Some(controllerRunId)))
-              :: Nil
+            val event = AgentDedicated(agentPath, directors, agentRunId,
+              controllerId, Some(controllerRunId))
+            (NoKey <-: event) :: Nil
         else if agentPath != agentState.agentPath then
           Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
         else if controllerId != agentState.meta.controllerId then

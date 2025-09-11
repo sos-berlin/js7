@@ -153,8 +153,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
     ).applyKeyedEvents(Seq(
       JournalEventsReleased(UserId("USER"), 500L),
       AgentDedicated(
-        Seq(subagentItem.id),
         meta.agentPath,
+        Seq(subagentItem.id),
         meta.agentRunId,
         meta.controllerId,
         meta.controllerRunId),
@@ -189,8 +189,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
       assert(!afterSnapshot.isFreshlyDedicated)
 
     val dedicated = AgentDedicated(
-      Seq(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("A"),
+      Seq(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentRunId(JournalId.random()),
       ControllerId("C"),
       Some(ControllerRunId(JournalId(Base64UUID.zero))))
@@ -401,8 +401,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
       ControllerId("CONTROLLER"),
       Some(ControllerRunId(JournalId(Base64UUID.zero))))
     agentState = agentState.applyKeyedEvent(AgentDedicated(
-      Seq(subagentItem.id),
       meta.agentPath,
+      Seq(subagentItem.id),
       meta.agentRunId,
       meta.controllerId,
       meta.controllerRunId)).orThrow

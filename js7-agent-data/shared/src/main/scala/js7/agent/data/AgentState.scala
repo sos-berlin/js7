@@ -277,16 +277,19 @@ extends SignedItemContainer,
             yield copy(
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
 
-      case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)) =>
+      case KeyedEvent(
+        _: NoKey,
+        AgentDedicated(agentPath, directors, agentRunId, controllerId, controllerRunId)
+      ) =>
         if meta.controllerRunId.exists(o => controllerRunId.exists(_ != o)) then
           Left(Problem("Duplicate AgentDedicated event for different ControllerRunId"))
         else
           Right(copy(meta = meta.copy(
             agentPath = agentPath,
+            directors = directors,
             agentRunId = agentRunId,
             controllerId = controllerId,
-            controllerRunId = controllerRunId,
-            directors = directors)))
+            controllerRunId = controllerRunId)))
 
       case _ => applyStandardEvent(keyedEvent)
     .map: agentState =>

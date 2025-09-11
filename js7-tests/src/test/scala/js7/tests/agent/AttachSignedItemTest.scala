@@ -38,10 +38,10 @@ final class AttachSignedItemTest extends OurTestSuite, DirectoryProviderForScala
       val controllerRunId = ControllerRunId(JournalId.random())
 
       agent.executeCommand(
-        DedicateAgentDirector(
-          Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath),
-        meta)
-      .await(99.s).orThrow
+          DedicateAgentDirector(
+            agentPath, Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId),
+          meta)
+        .await(99.s).orThrow
 
       // Signed VersionedItem
       val signedWorkflow = itemSigner.sign(workflow)

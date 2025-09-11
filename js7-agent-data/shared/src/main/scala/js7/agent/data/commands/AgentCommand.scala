@@ -91,10 +91,10 @@ object AgentCommand extends CommonCommand.Companion:
     * Command may be given twice (in case of a sudden restart).
     */
   final case class DedicateAgentDirector(
+    agentPath: AgentPath,
     directors: Seq[SubagentId],
     controllerId: ControllerId,
-    controllerRunId: ControllerRunId,
-    agentPath: AgentPath)
+    controllerRunId: ControllerRunId)
   extends AgentCommand:
     type Response = DedicateAgentDirector.Response
 
@@ -107,13 +107,14 @@ object AgentCommand extends CommonCommand.Companion:
     implicit val jsonEncoder: Encoder.AsObject[DedicateAgentDirector] = deriveEncoder
     implicit val jsonDecoder: Decoder[DedicateAgentDirector] =
       c => for
+        agentPath <- c.get[AgentPath]("agentPath")
         directors <- c.get[Option[SubagentId]]("subagentId").flatMap:
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[ControllerRunId]("controllerRunId")
-        agentPath <- c.get[AgentPath]("agentPath")
-      yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
+      yield
+        DedicateAgentDirector(agentPath, directors, controllerId, controllerRunId)
 
 
   /** Couples the registered Controller identified by current User.

@@ -22,8 +22,8 @@ object AgentEvent:
 
   /** Agent has been dedicated to a Controller. */
   final case class AgentDedicated(
-    directors: Seq[SubagentId],
     agentPath: AgentPath,
+    directors: Seq[SubagentId],
     agentRunId: AgentRunId,
     controllerId: ControllerId,
     controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/)
@@ -32,14 +32,15 @@ object AgentEvent:
     implicit val jsonEncoder: Encoder.AsObject[AgentDedicated] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentDedicated] =
       c => for
+        agentPath <- c.get[AgentPath]("agentPath")
         directors <- c.get[Option[SubagentId]]("subagentId").flatMap:
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
-        agentPath <- c.get[AgentPath]("agentPath")
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
-      yield AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)
+      yield
+        AgentDedicated(agentPath, directors, agentRunId, controllerId, controllerRunId)
 
   /** Agent is up and running. */
   final case class AgentReady(

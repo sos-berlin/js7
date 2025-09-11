@@ -103,28 +103,28 @@ final class AgentCommandTest extends OurTestSuite:
 
   "DedicateAgentDirector" in:
     testJson[AgentCommand](AgentCommand.DedicateAgentDirector(
+      AgentPath("AGENT"),
       Seq(SubagentId("SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       ControllerId("CONTROLLER"),
-      ControllerRunId.empty,
-      AgentPath("AGENT")),
+      ControllerRunId.empty),
       json"""{
         "TYPE": "DedicateAgentDirector",
+        "agentPath": "AGENT",
         "directors": ["SUBAGENT", "BACKUP-SUBAGENT" ],
         "controllerId": "CONTROLLER",
-        "agentPath": "AGENT",
         "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
 
     testJsonDecoder[AgentCommand](AgentCommand.DedicateAgentDirector(
+      AgentPath("AGENT"),
       Seq(SubagentId("SUBAGENT")),
       ControllerId("CONTROLLER"),
-      ControllerRunId.empty,
-      AgentPath("AGENT")),
+      ControllerRunId.empty),
       json"""{
         "TYPE": "DedicateAgentDirector",
+        "agentPath": "AGENT",
         "subagentId": "SUBAGENT",
         "controllerId": "CONTROLLER",
-        "agentPath": "AGENT",
         "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
 

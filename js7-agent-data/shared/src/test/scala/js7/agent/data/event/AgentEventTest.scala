@@ -16,8 +16,8 @@ import scala.concurrent.duration.*
 final class AgentEventTest extends OurTestSuite:
   "AgentDedicated" in:
     testJson[KeyedEvent[AgentEvent]](AgentDedicated(
-      List(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("AGENT"),
+      List(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER"),
       Some(ControllerRunId(JournalId(Base64UUID.zero)))),
@@ -32,8 +32,8 @@ final class AgentEventTest extends OurTestSuite:
 
     // COMPATIBLE WITH v2.5
     testJsonDecoder[KeyedEvent[AgentEvent]](AgentDedicated(
-      List(SubagentId("SUBAGENT")),
       AgentPath("AGENT"),
+      List(SubagentId("SUBAGENT")),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER"),
       None),
@@ -47,8 +47,8 @@ final class AgentEventTest extends OurTestSuite:
 
     // COMPATIBLE with v2.1
     testJsonDecoder[KeyedEvent[AgentEvent]](AgentDedicated(
-      Nil,
       AgentPath("AGENT"),
+      Nil,
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER"),
       None),
