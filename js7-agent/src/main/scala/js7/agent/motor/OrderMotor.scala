@@ -26,7 +26,7 @@ import js7.base.utils.MultipleLinesBracket.zipWithBracket
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.command.CancellationMode
-import js7.data.event.{Event, KeyedEvent}
+import js7.data.event.{Event, EventCalc, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.InventoryItem
@@ -228,19 +228,20 @@ extends Service.StoppableByRequest:
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
     IO.whenA(orderIds.nonEmpty):
-      clock.lockIO: now =>
-        // persist may be delayed a little by the journal, so `now` may be in the past.
+      clock.lockIO: delayNow =>
+        // persist may be delayed a little by the journal, so `delayNow` may be in the past.
         // Any we call isDelayed/ifDelayed three times.
         // But this way, we are sure to use the proper current AgentState.
         // FIRST, persist non-delayed Orders //
-        // TODO Try to include SubagentKeeper persisting here to avoid a race!
-        journal.persist: agentState =>
-          orderIds.view
-            .flatMap(agentState.idToOrder.get)
-            .filterNot(_.isDelayed(now))
-            .flatMap: order =>
-              // TODO Don't use same AgentState for each iteration. Use EventCalcs and combine them!
-              OrderEventSource.nextEvents(order.id, agentState)
+        journal.persist:
+          // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
+          EventCalc.combineAll:
+            orderIds.view.map: orderId =>
+              EventCalc.multiple: (agentState: AgentState) =>
+                agentState.idToOrder.get(orderId)
+                  .filter(o => !o.isDelayed(delayNow))
+                  .toVector.flatMap: _ =>
+                    OrderEventSource.nextEvents(orderId, agentState)
         .ifPersisted:
           onPersisted
         .map(_.orThrow) // TODO throws
@@ -249,10 +250,10 @@ extends Service.StoppableByRequest:
           // SECOND, schedule delayed Orders //
           scheduleDelayedOrders:
             orders.flatMap: order =>
-              order.ifDelayed(now).map(order.id -> _)
+              order.ifDelayed(delayNow).map(order.id -> _)
           .productR:
             // Maybe start jobs //
-            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
+            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(delayNow))
             jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, persisted.aggregate)
 
   private def scheduleDelayedOrders(orderIds: Iterable[(OrderId, Timestamp)]): IO[Unit] =

@@ -153,7 +153,8 @@ object EventCalc:
       def combine(a: EC, b: EC): EC =
         a.combine(b)
 
+
   def combineAll[S <: EventDrivenState[S, E], E <: Event, Ctx](
-    eventCalcs: Iterable[EventCalc[S, E, Ctx]])
+    eventCalcs: IterableOnce[EventCalc[S, E, Ctx]])
   : EventCalc[S, E, Ctx] =
     monoid.combineAll(eventCalcs)
