@@ -35,10 +35,10 @@ object ServiceMain:
     (toServiceResource: Cnf => ResourceIO[Svc],
     use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
+    // Log early
+    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+    StartUp.initializeMain()
     IO.defer:
-      printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-      StartUp.initializeMain()
-
       JavaMainLockfileSupport
         .runMain(args.toVector, useLockFile = useLockFile): commandLineArguments =>
           IO.defer:
