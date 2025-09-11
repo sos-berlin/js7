@@ -9,12 +9,12 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.mkString
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
@@ -27,7 +27,7 @@ import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchProblems.{ClusterWatchActiveStillAliveProblem, ClusterWatchRequestDoesNotMatchProblem}
+import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
@@ -77,23 +77,34 @@ extends MainService, Service.StoppableByRequest:
     .drain
 
   private def checkActiveIsLost(clusterState: ClusterState.HasNodes): IO[Checked[Unit]] =
-    import clusterState.{activeId, activeUri}
-    IO:
-      nodeApis.find(_.baseUri == activeUri).toRight:
-        Problem.pure(s"🔥 Active node $activeUri is not in list of nodeApis") // Must not happen
-    .flatMapT: nodeApi =>
-      Logger.info(s"Check if $activeId $activeUri is still alive ...")
-      nodeApi.clusterNodeState
-        .as(Left(ClusterWatchActiveStillAliveProblem))
-        .handleErrorWith:
-          case e: Exception
-            if e.getMessage.contains("java.net.ConnectException: Connection refused") =>
-            logger.info(s"✔︎ $activeId $activeUri does not connect and seems to be lost ✔︎")
-            IO.right(())
-          case t =>
-            logger.warn(s"checkActiveIsLost: $ClusterWatchActiveStillAliveProblem $activeUri: ${
-              t.toStringWithCauses}")
-            IO.left(ClusterWatchActiveStillAliveProblem)
+    IO.right(())
+    // No safe way to differentiate between a living node with bad reachability or //
+    // bad behaviour and a dead node. //
+    //
+    // The active node is the one that is currently being watched.
+    // If it is not reachable, it is not in the cluster state.
+    // If it is reachable, it is in the cluster state.
+    //
+    // If the active node is not in the cluster state, it is not reachable.
+    // If the active node is in the cluster state, it is reachable.
+    //
+    //import clusterState.{activeId, activeUri}
+    //IO:
+    //  nodeApis.find(_.baseUri == activeUri).toRight:
+    //    Problem.pure(s"🔥 Active node $activeUri is not in list of nodeApis") // Must not happen
+    //.flatMapT: nodeApi =>
+    //  Logger.info(s"Check if $activeId $activeUri is still alive ...")
+    //  nodeApi.clusterNodeState
+    //    .as(Left(ClusterWatchActiveStillAliveProblem))
+    //    .handleErrorWith:
+    //      case e: Exception
+    //        if e.getMessage.contains("java.net.ConnectException: Connection refused") =>
+    //        logger.info(s"✔︎ $activeId $activeUri does not connect and seems to be lost ✔︎")
+    //        IO.right(())
+    //      case t =>
+    //        logger.warn(s"checkActiveIsLost: $ClusterWatchActiveStillAliveProblem $activeUri: ${
+    //          t.toStringWithCauses}")
+    //        IO.left(ClusterWatchActiveStillAliveProblem)
 
   private def TEST(t: Throwable): Unit =
     logger.info(t.toStringWithCauses)
