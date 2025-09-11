@@ -20,7 +20,7 @@ final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
     EventCalc[S1, E1, Ctx & Ctx1]: coll =>
       widen[S1, E1, Ctx & Ctx1].calculate(coll).flatMap(other.calculate)
 
-  @TestOnly // ???
+  @TestOnly
   def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
     calculate(aggregate, context).map: coll =>
       coll.keyedEvents -> coll.aggregate
@@ -49,6 +49,11 @@ object EventCalc:
     Empty.asInstanceOf
 
   inline def apply[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
+  : EventCalc[S, E, Ctx] =
+    coll(function)
+
+  def coll[S <: EventDrivenState[S, E], E <: Event, Ctx](
     function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
   : EventCalc[S, E, Ctx] =
     new EventCalc(function)
@@ -121,12 +126,6 @@ object EventCalc:
   : EventCalc[S, E, Ctx] =
     val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
     EventCalc(_.addEvents(keyedEvents))
-
-  //private val Monoid = new Monoid[EventCalc[?, ?, ?]]:
-  //  def empty = EventCalc.empty
-  //
-  //  def combine(a: EventCalc[?, ?, ?], b: EventCalc[?, ?, ?]): EventCalc[?, ?, ?] =
-  //    a.combine[?, ?, ?](b)
 
   opaque type OpaqueEventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] = EventColl[S, E, Ctx]
 
