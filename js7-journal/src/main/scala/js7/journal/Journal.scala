@@ -82,7 +82,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   inline final def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     persist_(persist)
 
-  final def persistSingle[E <: Event](keyedEvent: KeyedEvent[E])
+  final def persistOne[E <: Event](keyedEvent: KeyedEvent[E])
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persist[E]():
       EventCalc.pure(keyedEvent)

@@ -201,7 +201,7 @@ extends SubagentDriver, Service.StoppableByRequest:
       requireNotStopping
         .flatMap:
           case Left(problem) =>
-            journal.persistSingle:
+            journal.persistOne:
               order.id <-: OrderProcessed(OrderOutcome.processLost(problem))
             .flatMapT: (stamped, _) =>
               IO.pure(stamped.value.event).start.map(Right(_))
@@ -220,7 +220,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   private def persistOrderProcessed(orderId: OrderId, problem: Problem)
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    journal.persistSingle:
+    journal.persistOne:
       orderId <-: OrderProcessed(OrderOutcome.processLost(problem))
     .flatMapT: (stamped, _) =>
       IO.pure(stamped.value.event)

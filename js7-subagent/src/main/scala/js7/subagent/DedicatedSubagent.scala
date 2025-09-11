@@ -301,7 +301,7 @@ extends Service.StoppableByRequest:
             // Lock this section to execute persistedQueue.enqueue in proper ascending order
             // TODO Allow concurrent persisting of multiple OrderProcessed
             persistedQueue.lock:
-              journal.persistSingle(order.id <-: orderProcessed)
+              journal.persistOne(order.id <-: orderProcessed)
                 .map(_.orThrow._1)
                 .flatMap: stamped =>
                   persistedQueue.enqueueProcessedOrderId(stamped.eventId, order.id)
