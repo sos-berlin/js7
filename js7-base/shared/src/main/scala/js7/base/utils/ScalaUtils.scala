@@ -316,6 +316,17 @@ object ScalaUtils:
         if i > 0 then throwable.setStackTrace(stackTrace.drop(i))
         throwable
 
+
+    implicit final class RichOrNull[A <: AnyRef](private val a: A | Null) extends AnyVal:
+      def checkedCast[B <: A : ClassTag]: Checked[B] =
+        ScalaUtils.checkedCast[B](a)
+
+      def ifCast[B <: A : ClassTag]: Option[B] =
+        val A = implicitClass[B]
+        a != null && A.isAssignableFrom(a.getClass) thenSome
+          a.asInstanceOf[B]
+
+
     implicit final class RichAny[A](private val delegate: A) extends AnyVal:
       /** Apply the function. */
       inline def |>[B](f: A => B): B =
@@ -330,9 +341,6 @@ object ScalaUtils:
         maybe match
           case Some(o) => f(delegate, o)
           case None => delegate
-
-      def narrow[B <: A: ClassTag]: Checked[B] =
-        checkedCast[B](delegate)
 
       @inline def substitute(when: A, _then: => A): A =
         if delegate == when then _then else delegate
@@ -1116,9 +1124,10 @@ object ScalaUtils:
         throw problem.throwableOption getOrElse new ClassCastException(problem.toString)
       case Right(a) => a
 
+  /** Prefer cast method over this! */
   def checkedCast[A: ClassTag](o: Any): Checked[A] =
-    checkedCast[A](o,
-      Problem(s"Expected ${implicitClass[A].getName} but got ${o.getClass.getName}: ${o.toString.truncateWithEllipsis(30)}"))
+    checkedCast[A](o, Problem(s"Expected ${implicitClass[A].getName} but got ${
+      o.getClass.getName}: ${o.toString.truncateWithEllipsis(30)}"))
 
   def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] =
     val A = implicitClass[A]

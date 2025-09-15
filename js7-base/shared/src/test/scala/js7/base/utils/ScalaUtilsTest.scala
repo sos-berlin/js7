@@ -283,13 +283,6 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     (string: String) shouldEqual "Hej!"
     intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "Expected java.lang.String but got java.lang.Integer: 123"
 
-  "checkedCast" in:
-    val s: Any = "Hej!"
-    val string = checkedCast[String](s)
-    string shouldEqual Right("Hej!")
-    assert(checkedCast[String](123) == Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
-    assert(checkedCast[String](null).left.exists(_.throwable.isInstanceOf[NullPointerException]))
-
   "ifCast" in:
     val s: Any = "Hej!"
     val string = ifCast[String](s)
@@ -848,13 +841,30 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
   }
 
   "Any" - {
-    "narrow" in:
+    "cast" in:
       trait A
       case class A1() extends A
       case class A2() extends A
-      assert(((A1(): A).narrow[A]: Checked[A]) == Right(A1()))
-      assert(((A1(): A).narrow[A2]: Checked[A2]).isLeft)
-      assert(((A2(): A).narrow[A2]: Checked[A]) == Right(A2()))
+      assert(((A1(): A).checkedCast[A]: Checked[A]) == Right(A1()))
+      assert(((A1(): A).checkedCast[A2]: Checked[A2]).isLeft)
+      assert(((A2(): A).checkedCast[A2]: Checked[A]) == Right(A2()))
+
+      val s: AnyRef = "Hej!"
+      val string = s.checkedCast[String]
+      string shouldEqual Right("Hej!")
+      //assert(123.cast[String] == Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
+      assert(null.asInstanceOf[String | Null].checkedCast[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
+      assertDoesNotCompile("null.cast[String]")
+      assertDoesNotCompile("string.cast[java.lang.Integer]")
+      assertDoesNotCompile("A1().cast[A2]")
+
+    "ifCast" in:
+      trait A
+      case class A1() extends A
+      case class A2() extends A
+      assert(((A1(): A).ifCast[A]: Option[A]) == Some(A1()))
+      assert(((A1(): A).ifCast[A2]: Option[A2]) == None)
+      assert(((A2(): A).ifCast[A2]: Option[A2]) == Some(A2()))
   }
 
   "Boolean" - {

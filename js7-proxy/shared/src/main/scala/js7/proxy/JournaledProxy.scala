@@ -114,8 +114,7 @@ object JournaledProxy:
                     .evalTap(_ => delayer.sleep)
 
     def isTorn(t: Throwable) =
-      checkedCast[ProblemException](t)
-        .map(_.problem)
+      t.checkedCast[ProblemException].map(_.problem)
         .exists: problem =>
           problem.is(OldEventIdProblem) || problem.is(UnknownEventIdProblem) ||
             problem.is(EventSeqTornProblem)

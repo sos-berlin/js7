@@ -8,7 +8,6 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
@@ -115,7 +114,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     if !it.hasNext then
       Checked.unit
     else
-      checkedCast[Map[OrderId, Order[Order.State]]](idToOrder)
+      idToOrder.checkedCast[Map[OrderId, Order[Order.State]]]
         .flatMap: idToOrder_ =>
           var iToO = idToOrder_
           var problem: Problem | Null = null

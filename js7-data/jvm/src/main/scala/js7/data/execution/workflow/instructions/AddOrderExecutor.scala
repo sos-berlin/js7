@@ -2,8 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.semigroup.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax.RichOption
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
@@ -27,7 +26,7 @@ extends EventInstructionExecutor:
         order.state match
           case _: Order.Ready =>
             for
-              controllerState <- checkedCast[ControllerState](state)
+              controllerState <- state.checkedCast[ControllerState]
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
               planId <- addOrder.planId.fold_(Checked(order.planId), PlanId.evalPlanIdExpr(_, scope))
