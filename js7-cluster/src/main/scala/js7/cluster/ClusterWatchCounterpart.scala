@@ -7,11 +7,10 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
-import js7.base.log.LogLevel.Debug
+import js7.base.log.LogLevel.Warn
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.problem.Checked
+import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.:=
@@ -21,6 +20,7 @@ import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
+import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterModuleShuttingDownProblem
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
@@ -48,6 +48,7 @@ extends Service.StoppableByRequest:
     Random.nextLong(Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds)
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
+  private val hasConfirmedSomething = Atomic(false)
   private val _requested = Atomic(None: Option[Requested])
 
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
@@ -119,12 +120,13 @@ extends Service.StoppableByRequest:
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
         lock.lock:
-          logger.traceIOWithResult("check",
+          logger.logIOWithResult(
+            if PekkoHttpClient.logHeartbeat then LogLevel.Trace else LogLevel.None,
+            "check",
             s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
             // macOS `less` displays 🩶 with wrong width
             result = (a: Checked[ClusterWatchConfirmation]) =>
               if isHeartbeat && a.isRight then s"💚 $a" else a,
-            marker = if isHeartbeat then Logger.Heartbeat else null,
             body =
               check2(
                 clusterWatchId, request,
@@ -145,30 +147,32 @@ extends Service.StoppableByRequest:
           testEventPublisher.publish(TestWaitingForConfirmation(request))))
         .*>(requested
           .untilConfirmed
-          .timeoutAndFail(timing.clusterWatchReactionTimeout)(new RequestTimeoutException))
-        .onErrorRestartLoop(()):
-          case (_: RequestTimeoutException, _, retry) =>
+          .timeoutTo(timing.clusterWatchReactionTimeout, IO.left(MyRequestTimeoutProblem)))
+        .recoverFromProblemAndRetry(()):
+          case (MyRequestTimeoutProblem, _, retry) =>
             shuttingDown.tryGet.flatMap:
               case Some(()) => IO.left(ClusterModuleShuttingDownProblem)
               case None =>
                 SyncDeadline.usingNow:
-                  sym.onWarn()
-                  logger.warn(s"$sym Still trying to get a confirmation from " +
+                  if hasConfirmedSomething.get then
+                    sym.escalate(Warn)
+                  else
+                    sym.escalate()
+                  logger.log(sym.logLevel, s"$sym Still trying to get a confirmation from ${
                     clusterWatchId.fold("any ClusterWatch")(id =>
-                      id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
-                    s" for ${request.toShortString} for ${since.elapsed.pretty}...")
-                .*>(retry(()))
-
-          case (t, _, _) => IO.raiseError(t)
+                      id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)"))
+                  } for ${request.toShortString} for ${since.elapsed.pretty}...")
+                *> retry(())
         .flatTap:
           case Left(problem @ ClusterModuleShuttingDownProblem) =>
-            IO(logger.log(sym.relievedLogLevel min Debug,
+            IO(logger.log(sym.relievedLogLevel min LogLevel.Debug,
               s"⚠️  ${request.toShortString} => $problem · after ${since.elapsed.pretty}"))
 
           case Left(problem) =>
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
+            hasConfirmedSomething := true
             testEventPublisher.publish(TestConfirmed(request, confirmation))
             SyncDeadline.usingNow:
               logger.log(sym.relievedLogLevel,
@@ -341,6 +345,8 @@ object ClusterWatchCounterpart:
       s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"
 
   private class RequestTimeoutException extends Exception
+
+  private final val MyRequestTimeoutProblem = Problem("ClusterWatch request timed out")
 
   final case class TestWaitingForConfirmation(request: ClusterWatchRequest)
 

@@ -26,7 +26,7 @@ final class Fs2PubSub[F[_], A <: AnyRef] private(topic: Topic[F, A])
 
 
 object Fs2PubSub:
-  
+
   def resource[F[_], A <: AnyRef](using F: Concurrent[F] & Sync[F])
   : Resource[F, Fs2PubSub[F, A]] =
     for
