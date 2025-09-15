@@ -4,12 +4,13 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.utils.CatsUtils.unlessM
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.RichCheckedF
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption, foldMap}
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode.*
@@ -47,27 +48,17 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
   private val activeClusterNodeIO = IO { _activeClusterNode.checked }
   private val appointNodesLock = AsyncLock()
 
-  def start(clusterState: ClusterState, eventId: EventId): IO[Checked[Unit]] =
-    clusterState match
-      case ClusterState.Empty => IO.right(Completed)
-      case clusterState: HasNodes =>
-        common.requireValidLicense.flatMapT: _ =>
-          startActiveClusterNode(clusterState, eventId)
+  private def start(clusterState: ClusterState, eventId: EventId): IO[Checked[Unit]] =
+    clusterState.ifHasNodes.foldMap: clusterState =>
+      common.requireValidLicense.flatMapT: _ =>
+        startActiveClusterNode(clusterState, eventId)
+      .flatMapT: _ =>
+        unlessM(S.callExpliclitlyAfterAggregateInitialisation):
+          afterAggregateInitialisation
 
   def stop: IO[Unit] =
     IO.defer:
       _activeClusterNode.toOption.fold(IO.unit)(_.stop)
-
-  def beforeJournalingStarts: IO[Checked[Unit]] =
-    _activeClusterNode.toOption match
-      case None => IO.right(Completed)
-      case Some(o) => o.beforeJournalingStarts
-
-  def afterJournalingStarted: IO[Checked[Completed]] =
-    automaticallyAppointConfiguredBackupNode.flatMapT: _ =>
-      _activeClusterNode.toOption match
-        case None => IO.right(Completed)
-        case Some(o) => o.onRestartActiveNode
 
   def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId,
     extraEvent: Option[ItemAttachedToMe] = None)
@@ -77,26 +68,29 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
     .flatMapT:
       appointNodes2(_, extraEvent)
 
+  def afterAggregateInitialisation: IO[Checked[Unit]] =
+    automaticallyAppointConfiguredBackupNode.flatMapT: _ =>
+      _activeClusterNode.toOption.foldMap:
+        _.emitClusterActiveNodeRestarted
+
   private def automaticallyAppointConfiguredBackupNode: IO[Checked[Unit]] =
-    IO.defer:
-      clusterConf.maybeClusterSetting match
-        case None => IO.right(Completed)
-        case Some(setting) =>
-          journal.clusterState.flatMap:
-            case _: ClusterState.HasNodes => IO.right(Completed)
-            case ClusterState.Empty =>
-              appointNodes2(setting)
-                .handleError(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
-                .map:
-                  case Left(ClusterNodesAlreadyAppointed) =>
-                    Right(Completed)
+    clusterConf.maybeClusterSetting.foldMap: setting =>
+      journal.clusterState.flatMap:
+        case _: ClusterState.HasNodes => IO.right(Completed)
+        case ClusterState.Empty =>
+          logger.debugIO:
+            appointNodes2(setting)
+              .handleError(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
+              .map:
+                case Left(ClusterNodesAlreadyAppointed) =>
+                  Right(())
 
-                  case Left(problem) =>
-                    Left(problem.withPrefix(
-                      "Configured cluster node appointment failed, maybe due to failed access to ClusterWatch:"))
+                case Left(problem) =>
+                  Left(problem.withPrefix("Configured cluster node appointment failed, " +
+                    "maybe due to failed access to ClusterWatch:"))
 
-                  case Right(completed) =>
-                    Right(completed)
+                case Right(()) =>
+                  Right(())
 
   private def appointNodes2(setting: ClusterSetting, extraEvent: Option[ItemAttachedToMe] = None)
   : IO[Checked[Unit]] =
@@ -146,7 +140,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
       _activeClusterNode.toOption.fold_(IO.left(ClusterNodeIsNotActiveProblem),
         _.executeClusterWatchConfirm(cmd))
 
-  def onTerminatedUnexpectedly: IO[Checked[Completed]] =
+  def onTerminatedUnexpectedly: IO[Checked[Unit]] =
     _activeClusterNode.io.flatMap:
       _.onTerminatedUnexpectedly
 
@@ -178,13 +172,11 @@ object WorkingClusterNode:
     common: ClusterCommon,
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
-    (implicit
-      nodeNameToPassword: NodeNameToPassword[S],
-      ioRuntime: IORuntime)
+    (using NodeNameToPassword[S], IORuntime)
   : ResourceIO[WorkingClusterNode[S]] =
     for
-      _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
-        common.requireValidLicense.map(_.orThrow))
+      _ <- Resource.eval:
+        beforeJournalingStarts(recovered.state, common)
       journal <- FileJournal.service(recovered, clusterConf.journalConf, Some(eventIdGenerator))
       workingClusterNode <- Resource.make(
         acquire = IO.defer:
@@ -199,3 +191,19 @@ object WorkingClusterNode:
             .void
     yield
       workingClusterNode
+
+
+  private def beforeJournalingStarts[S <: ClusterableState[S]](state: S, common: ClusterCommon)
+    (using NodeNameToPassword[S])
+  : IO[Unit] =
+    state.clusterState match
+      case clusterState: ClusterState.Coupled =>
+        common.requireValidLicense.flatMapT: _ =>
+          common.inhibitActivationOfPeer(state).flatMapT:
+            case Some(otherFailedOver) =>
+              IO.left(Problem.pure:
+                s"While activating this node, the other node has failed-over: $otherFailedOver")
+            case None =>
+              IO.right(())
+        .map(_.orThrow)
+      case _ => IO.unit

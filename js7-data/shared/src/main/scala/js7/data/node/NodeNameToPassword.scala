@@ -4,9 +4,5 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.data.event.SnapshotableState
 
-trait NodeNameToPassword[S <: SnapshotableState[S]]
-extends (NodeName => Checked[Option[SecretString]])
-
-
-object NodeNameToPassword {
-}
+type NodeNameToPassword[S <: SnapshotableState[S]] =
+  NodeName => Checked[Option[SecretString]]

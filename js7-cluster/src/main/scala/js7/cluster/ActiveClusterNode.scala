@@ -5,7 +5,7 @@ import cats.syntax.monoid.*
 import fs2.Stream
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsExtensions.{tryIt, untry}
+import js7.base.catsutils.CatsExtensions.{ifFalse, tryIt, untry}
 import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onlyNewest}
@@ -49,13 +49,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,
   clusterConf: ClusterConf):
+//TODO extends Service
 
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
   private val clusterStateLock = AsyncLock(logMinor = true)
   private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = new FiberVar[Unit]
   private val fetchingAcksTerminatedUnexpectedlyPromise =
-    Deferred.unsafe[IO, Try[Checked[Completed]]]
+    Deferred.unsafe[IO, Try[Checked[Unit]]]
   private val startingBackupNode = Atomic(false)
   private val sendingClusterStartBackupNode = SetOnce[FiberIO[Unit]]
   @volatile private var stopAcknowledgingRequested = false
@@ -136,24 +137,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
         ).void)
 
-  def beforeJournalingStarts: IO[Checked[Unit]] =
-    IO.defer:
-      logger.trace("beforeJournalingStarts")
-      journal.clusterState flatMap:
-        case clusterState: Coupled =>
-          // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
-          // peer may have activated itself.
-          common
-            .inhibitActivationOfPeer(clusterState, passiveNodeUserAndPassword)
-            .map:
-              case Some(otherFailedOver) =>
-                Left(Problem.pure(
-                  s"While activating this node, the other node has failed-over: $otherFailedOver"))
-              case None =>
-                Right(Completed)
-        case _ =>
-          IO.right(Completed)
-
   private[cluster] def changePassiveUri(
     passiveUri: Uri,
     extraEvent: Option[ItemAttachedToMe] = None)
@@ -191,14 +174,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 case _ =>
                   IO.right(())
 
-  private[cluster] def onRestartActiveNode: IO[Checked[Completed]] =
-    clusterStateLock.lock(
+  private[cluster] def emitClusterActiveNodeRestarted: IO[Checked[Unit]] =
+    clusterStateLock.lock:
       persist():
-        case _: ActiveShutDown =>
-          Right(Some(ClusterActiveNodeRestarted))
-        case _ =>
-          Right(None)
-      .rightAs(Completed))
+        case _: ActiveShutDown => Right(Some(ClusterActiveNodeRestarted))
+        case _ => Right(None)
+      .rightAs(())
 
   def executeCommand(command: ClusterCommand): IO[Checked[ClusterCommand.Response]] =
     command match
@@ -384,7 +365,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
     logger.traceIO:
       clusterState match
         case clusterState: NodesAppointed =>
-          IO.unlessA(startingBackupNode.getAndSet(true)):
+          IO(startingBackupNode.getAndSet(true)).ifFalse:
             startSendingClusterStartBackupNode(clusterState)
           .as(Completed)
 
@@ -443,7 +424,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
     passiveId: NodeId,
     passiveUri: Uri,
     timing: ClusterTiming)
-  : IO[Checked[Completed]] =
+  : IO[Checked[Unit]] =
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap:
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
@@ -482,7 +463,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                         .as(Left(problem))
                 .map(_.flatMap: allowed =>
                   if !allowed then
-                    Right(Completed)
+                    Checked.unit
                   else
                     Left(missingHeartbeatProblem))
               case _ =>
@@ -491,7 +472,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         case o =>
           IO.pure(o)
       .tryIt.flatTap(tried => IO { tried match
-        case Success(Right(Completed)) =>
+        case Success(Right(())) =>
           if !stopAcknowledgingRequested && !stopRequested then
             logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
 
@@ -522,7 +503,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         isFetchingAcks := false)
 
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
-  : IO[Checked[Completed]] =
+  : IO[Checked[Unit]] =
     logger.debugIOWithResult:
       HttpClient.liftProblem:
         Stream.resource:
@@ -563,7 +544,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 Stream.exec:
                   journal.onPassiveNodeHasAcknowledged(eventId = eventId)
         .head.compile.last // The first problem, if any
-        .map(_.toLeft(Completed))
+        .map(_.toLeft(()))
       .map(_.flatten)
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): IO[Checked[EventId]] =
@@ -659,7 +640,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         else
           Right(hasNodes.setting.clusterWatchId contains clusterWatchId)
 
-  def onTerminatedUnexpectedly: IO[Checked[Completed]] =
+  def onTerminatedUnexpectedly: IO[Checked[Unit]] =
     fetchingAcksTerminatedUnexpectedlyPromise.get.untry
 
   private def persist()(toEvents: ClusterState => Checked[Option[ClusterEvent]])

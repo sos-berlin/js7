@@ -12,6 +12,7 @@ import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDriven, EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
+import scala.reflect.ClassTag
 
 sealed trait ClusterState
 extends EventDriven[ClusterState, ClusterEvent]
@@ -30,6 +31,11 @@ with EventDrivenState[ClusterState, ClusterEvent]:
   def isNonEmptyActive(id: NodeId): Boolean
 
   def isEmptyOrActive(id: NodeId): Boolean
+
+  def ifHasNodes: Option[HasNodes] =
+    this match
+      case hasNodes: HasNodes => Some(hasNodes)
+      case _ => None
 
   final def applyKeyedEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     compilable(keyedEvent.key: NoKey)

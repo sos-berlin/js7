@@ -276,12 +276,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
       become("activating")(activating)
       unstashAll()
-      clusterNode.beforeJournalingStarts
-        .map(_.orThrow)
-        .tryIt
-        .map(Internal.Activated.apply)
-        .unsafeToFuture()
-        .pipeTo(self)
+      self ! Internal.Activated
 
     case msg => notYetReady(msg)
 
@@ -307,12 +302,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     persistedEventId = controllerState.eventId
 
   private def activating: Receive =
-    case Internal.Activated(Failure(t)) =>
-      logger.error(s"Activation of this cluster node failed because: ${t.toStringWithCauses}")
-      if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
-      throw t.appendCurrentStackTrace
-
-    case Internal.Activated(Success(())) =>
+    case Internal.Activated =>
       // `become` must be called early, before any persist!
       become("becomingReady")(becomingReady)
 
@@ -334,7 +324,10 @@ extends Stash, JournalingActor[ControllerState, Event]:
           yield
             coll
       ) { persisted =>
-        clusterNode.afterJournalingStarted
+        // Now, controllerState.controllerMetaState.controllerId is required for
+        // automaticallyAppointConfiguredBackupNode
+
+        clusterNode.afterAggregateInitialisation
           .catchIntoChecked
           .map(Internal.Ready.apply)
           .unsafeToFuture()
@@ -411,7 +404,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       logger.error(s"Appointment of configured cluster backup-node failed: $problem")
       throw problem.throwable.appendCurrentStackTrace
 
-    case Internal.Ready(Right(Completed)) =>
+    case Internal.Ready(Right(())) =>
       logger.info(s"${controllerState().controllerId} is ready\n" + "─" * 80)
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode
@@ -1443,10 +1436,10 @@ private[controller] object ControllerOrderKeeper:
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class NoticeIsDue(noticeId: NoticeId) extends DeadLetterSuppression
     final case class PlanIsDue(planId: PlanId) extends DeadLetterSuppression
-    final case class Activated(recovered: Try[Unit])
-    final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]])
+    case object Activated
+    final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Unit]])
       extends DeadLetterSuppression
-    final case class Ready(outcome: Checked[Completed])
+    final case class Ready(outcome: Checked[Unit])
     case object ContinueShutdown extends DeadLetterSuppression
     case object StillShuttingDown extends DeadLetterSuppression
     final case class ShutDown(shutdown: ControllerCommand.ShutDown)

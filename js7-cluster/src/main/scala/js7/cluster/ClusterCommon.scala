@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.{IO, Outcome, Resource, ResourceIO}
+import cats.syntax.all.*
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
@@ -12,14 +13,16 @@ import js7.base.system.startup.Halt.haltJava
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
+import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, ScalaUtils, SetOnce}
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
-import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
+import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
+import js7.data.event.ClusterableState
+import js7.data.node.NodeNameToPassword
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
@@ -104,6 +107,16 @@ private[cluster] final class ClusterCommon private(
                 logger.log(delayer.relievedLogLevel,
                   s"◼️ $name command canceled after ${since.elapsed.pretty}")
               case _ => IO.unit
+
+  def inhibitActivationOfPeer[S <: ClusterableState[S]](aggregate: S)(using NodeNameToPassword[S])
+  : IO[Checked[Option[FailedOver]]] =
+    locally:
+      for
+        clusterState <- (aggregate.clusterState).checkedCast[Coupled]
+        maybeUserAndPassword <- aggregate.clusterNodeToUserAndPassword(clusterState.activeId)
+      yield
+        inhibitActivationOfPeer(clusterState, maybeUserAndPassword)
+    .sequence
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
   : IO[Option[FailedOver]] =

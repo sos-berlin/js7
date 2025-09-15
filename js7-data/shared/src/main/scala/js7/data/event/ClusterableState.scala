@@ -3,6 +3,8 @@ package js7.data.event
 import cats.syntax.traverse.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichOrNull
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 
 /** A JournaledState with snapshot, JournalState and ClusterState. */
@@ -16,8 +18,14 @@ extends SnapshotableState[S]:
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId]
 
+  final def clusterNodeToUserAndPassword(ourNodeId: NodeId)(using NodeNameToPassword[S])
+  : Checked[Option[UserAndPassword]] =
+    clusterState.checkedCast[HasNodes].flatMap: clusterState =>
+      val otherNodeId = clusterState.setting.other(clusterState.activeId)
+      clusterNodeToUserAndPassword(ourNodeId, otherNodeId)
+
   final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)
-    (implicit nodeNameToPassword: NodeNameToPassword[S])
+    (using nodeNameToPassword: NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
     for
       nodeName <- clusterNodeIdToName(otherNodeId)
@@ -26,7 +34,8 @@ extends SnapshotableState[S]:
         maybePassword.traverse(password =>
           for userId <- clusterNodeToUserId(ourNodeId) yield
             UserAndPassword(userId, password))
-    yield maybeUserAndPassword
+    yield
+      maybeUserAndPassword
 
 
 object ClusterableState:
@@ -35,3 +44,5 @@ object ClusterableState:
     implicit final val implicitClusterableStateCompanion: Companion[S] = this
 
     def empty: S
+
+    def callExpliclitlyAfterAggregateInitialisation = false

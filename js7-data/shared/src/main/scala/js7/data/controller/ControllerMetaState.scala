@@ -24,7 +24,7 @@ final case class ControllerMetaState(
 
 object ControllerMetaState:
   val Undefined: ControllerMetaState = ControllerMetaState(
-    ControllerId("UNDEFINED-CONTROLLER-ID"),
+    ControllerId.Undefined,
     Timestamp.ofEpochMilli(0),
     Timezone("UTC"))
 

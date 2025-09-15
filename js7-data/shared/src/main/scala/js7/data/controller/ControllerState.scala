@@ -26,7 +26,7 @@ import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, 
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
-import js7.data.controller.ControllerState.{DummyClusterNodeName, WorkflowToOrders, logger}
+import js7.data.controller.ControllerState.{WorkflowToOrders, logger}
 import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -134,7 +134,7 @@ extends
     controllerId.toString
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
-    Right(DummyClusterNodeName)
+    controllerMetaState.controllerId.toUserId.map(o => NodeName(o.string))
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
     controllerId.check.map: _ =>
@@ -955,6 +955,10 @@ extends
 
   private val logger = Logger[this.type]
 
+  // Required because controllerMetaState.controllerId must be initialized first.
+  // Controller will call afterAggregateInitialisation.
+  override val callExpliclitlyAfterAggregateInitialisation = true
+
   val Undefined: ControllerState = ControllerState(
     EventId.BeforeFirst,
     SnapshotableState.Standards.empty,
@@ -1024,8 +1028,6 @@ extends
       KeyedSubtype[PlanSchemaEvent],
       KeyedSubtype[PlanEvent],
       KeyedSubtype.singleEvent[ServerMeteringEvent])
-
-  private val DummyClusterNodeName = NodeName("DummyControllerNodeName")
 
   object implicits:
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
