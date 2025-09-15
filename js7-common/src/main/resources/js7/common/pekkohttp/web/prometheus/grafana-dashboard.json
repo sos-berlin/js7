@@ -165,34 +165,51 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Order count"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "text",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Committed heap"
+              "options": "Heap"
             },
             "properties": [
               {
                 "id": "unit",
                 "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": " "
+              "options": "JVM time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": " "
             },
             "properties": [
               {
@@ -272,25 +289,11 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_CallMeter_Process_Running{host=\"$host\"}",
-          "hide": false,
+          "hide": true,
           "instant": true,
           "legendFormat": "Processes",
           "range": false,
           "refId": "processCount"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "java_lang_Memory_HeapMemoryUsage_committed{host=\"$host\"} ",
-          "hide": false,
-          "instant": true,
-          "legendFormat": "Committed heap",
-          "range": false,
-          "refId": "heapCommitted"
         },
         {
           "datasource": {
@@ -321,6 +324,20 @@
           "refId": "Processes"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "java_lang_Memory_HeapMemoryUsage_committed{host=\"$host\"} ",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "Heap",
+          "range": false,
+          "refId": "heapCommitted"
+        },
+        {
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_EngineState_ClusterStateCode{host=\"$host\"}",
@@ -344,9 +361,37 @@
           "expr": "0",
           "hide": false,
           "instant": true,
-          "legendFormat": " ",
+          "legendFormat": " ",
           "range": false,
           "refId": "clusterStateFiller"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "js7_EngineState_JVMRunningSeconds{host=\"$host\"}",
+          "hide": true,
+          "instant": true,
+          "legendFormat": "JVM time",
+          "range": false,
+          "refId": "JVMRunningSeconds"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "js7_Journal_OperatingSeconds{host=\"$host\"}",
+          "hide": true,
+          "instant": true,
+          "legendFormat": "Total",
+          "range": false,
+          "refId": "OperatingSeconds"
         }
       ],
       "type": "stat"
@@ -546,7 +591,7 @@
           "useBackend": false
         }
       ],
-      "title": "CPU time",
+      "title": "CPU usage",
       "type": "timeseries"
     },
     {
@@ -601,7 +646,7 @@
                 "0": {
                   "color": "transparent",
                   "index": 0,
-                  "text": "Empty"
+                  "text": "no cluster"
                 },
                 "1": {
                   "color": "dark-yellow",
@@ -614,7 +659,7 @@
                   "text": "PreparedToBeCoupled"
                 },
                 "3": {
-                  "color": "dark-green",
+                  "color": "semi-dark-green",
                   "index": 3,
                   "text": "Coupled"
                 },
@@ -642,6 +687,7 @@
               "type": "value"
             }
           ],
+          "max": 7,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
@@ -649,23 +695,11 @@
               {
                 "color": "text",
                 "value": 0
-              },
-              {
-                "color": "dark-green",
-                "value": 3
               }
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "ClusterState"
-            },
-            "properties": []
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
@@ -679,7 +713,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -1555,7 +1589,7 @@
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 20,
+            "fillOpacity": 25,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1770,7 +1804,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "super-light-yellow",
+                  "fixedColor": "dark-yellow",
                   "mode": "fixed"
                 }
               }
@@ -1830,7 +1864,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "semi-dark-blue",
+                  "fixedColor": "dark-blue",
                   "mode": "fixed"
                 }
               }
@@ -1875,7 +1909,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-orange",
+                  "fixedColor": "yellow",
                   "mode": "fixed"
                 }
               }
@@ -1905,7 +1939,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "semi-dark-red",
+                  "fixedColor": "green",
                   "mode": "fixed"
                 }
               }
@@ -2228,6 +2262,30 @@
                 "value": {
                   "fixedColor": "blue",
                   "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "commits (persists)"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
                 }
               }
             ]
@@ -3940,6 +3998,6 @@
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 63,
+  "version": 74,
   "weekStart": ""
 }
