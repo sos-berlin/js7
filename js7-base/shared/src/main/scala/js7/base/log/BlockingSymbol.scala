@@ -1,6 +1,7 @@
 package js7.base.log
 
 import js7.base.log.BlockingSymbol.*
+import js7.base.log.LogLevel.Warn
 
 /** Escalating symbols ⚪🟡🟠🔴 to show the patient retries after a temporary blocking failure.*/
 final class BlockingSymbol:
@@ -28,6 +29,11 @@ final class BlockingSymbol:
   def escalate(): Unit =
     escalateUpTo(3)
 
+  def escalate(minLevel: LogLevel, maxLevel: LogLevel = Warn): Unit =
+    val min = logLevelToIndex(minLevel)
+    val max = logLevelToIndex(maxLevel)
+    _index = (_index + 1).max(min).min(max)
+
   def escalateUpTo(limit: Int): Unit =
     if _index < limit then
       _index += 1
@@ -42,11 +48,7 @@ final class BlockingSymbol:
     if _index < 3 then logLevel else LogLevel.Info
 
   def logLevel: LogLevel =
-    _index match
-      case 0 => LogLevel.None
-      case 1 => LogLevel.Debug
-      case 2 => LogLevel.Info
-      case 3 => LogLevel.Warn
+    indexToLogLevel(_index)
 
   override def toString: String =
     symbol
@@ -57,3 +59,19 @@ final class BlockingSymbol:
 
 object BlockingSymbol:
   private val symbols = Array("⚪", "🟡", "🟠", "🔴")
+
+  private def indexToLogLevel(index: Int): LogLevel =
+    index match
+      case 0 => LogLevel.None
+      case 1 => LogLevel.Debug
+      case 2 => LogLevel.Info
+      case 3 => LogLevel.Warn
+
+  private def logLevelToIndex(level: LogLevel): Int =
+    level match
+      case LogLevel.None => 0
+      case LogLevel.Trace => 0
+      case LogLevel.Debug => 1
+      case LogLevel.Info => 2
+      case LogLevel.Warn => 3
+      case LogLevel.Error => 3

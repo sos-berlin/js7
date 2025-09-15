@@ -9,9 +9,7 @@ HOW TO ADD OWN SETTINGS
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration monitorInterval="10" shutdownHook="disable">
   <loggers>
-    <logger level="trace" name="js7">
-      <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
-    </logger>
+    <logger level="trace" name="js7"/>
   </loggers>
 </configuration>
 
@@ -140,8 +138,6 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
       <appenderRef ref="web.log"/>
     </logger-->
 
-    <logger level="debug" name="js7">
-      <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
-    </logger>
+    <logger level="debug" name="js7"/>
   </loggers>
 </configuration>

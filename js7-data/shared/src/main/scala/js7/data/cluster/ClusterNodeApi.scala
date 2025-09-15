@@ -45,7 +45,8 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,
-    keepAlive: Option[FiniteDuration])
+    keepAlive: Option[FiniteDuration],
+    dontLog: Boolean = false)
   : IO[Stream[IO, ClusterWatchRequest]]
 
   def executeClusterCommand(command: ClusterCommand): IO[command.Response]

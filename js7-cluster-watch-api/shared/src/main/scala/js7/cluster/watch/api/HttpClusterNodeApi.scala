@@ -97,11 +97,13 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   final def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,
-    keepAlive: Option[FiniteDuration])
+    keepAlive: Option[FiniteDuration],
+    dontLog: Boolean = false)
   : IO[Stream[IO, ClusterWatchRequest]] =
     retryIfSessionLost:
       httpClient.getDecodedLinesStream[ClusterWatchRequest](
         uris.clusterWatchMessages(clusterWatchId, keepAlive),
+        dontLog = dontLog,
         responsive = true)
 
   final def executeClusterCommand(cmd: ClusterCommand): IO[cmd.Response] =

@@ -28,6 +28,7 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.Missing.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.{Atomic, LineSplitterPipe, Missing}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
@@ -501,9 +502,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
                   if !dontLog then
                     if isJson && chunk.data == HttpHeartbeatByteString then
-                      logger.trace(Logger.Heartbeat, s"$arrow$prefix $string 🩶")
+                      if logHeartbeat then
+                        logger.trace(s"$arrow$prefix $string 🩶")
                     else
-                      logger.trace(Logger.Stream, s"$arrow$prefix $string")
+                      logger.trace(s"$arrow$prefix $string")
                   chunk
                 .mapError: t =>
                   logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
@@ -582,16 +584,19 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 object PekkoHttpClient:
   val HttpHeartbeatByteArray: ByteArray = ByteArray("\n")
   val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
+  val logHeartbeat = sys.props.asSwitch("js7.log.heartbeat")
 
   def resource(
     uri: Uri,
     uriPrefixPath: String,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = "")
-    (implicit actorSystem: ActorSystem)
+    (using actorSystem: ActorSystem)
   : ResourceIO[PekkoHttpClient] =
-    Resource.fromAutoCloseable(IO(new PekkoHttpClient.Standard(
-      uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
+    Resource.fromAutoCloseable:
+      IO:
+        new PekkoHttpClient.Standard(
+          uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)
     //Resource.make(
     //  acquire = IO(new PekkoHttpClient.Standard(
     //    uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))(

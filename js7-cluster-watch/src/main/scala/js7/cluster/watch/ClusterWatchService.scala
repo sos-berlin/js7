@@ -128,7 +128,9 @@ extends MainService, Service.StoppableByRequest:
         Stream
           .eval(nodeApi
             .retryUntilReachable():
-              nodeApi.clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))
+              nodeApi.clusterWatchRequestStream(clusterWatchId,
+                keepAlive = Some(keepAlive),
+                dontLog = !PekkoHttpClient.logHeartbeat)
                 /*.map(_.interruptWhenF(untilStopRequested))*/)
             .attempt.evalMap:
               case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>

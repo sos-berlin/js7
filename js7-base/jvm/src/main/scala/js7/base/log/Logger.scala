@@ -41,16 +41,20 @@ object Logger extends AdHocLogger:
 
   def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, Unit] =
     Resource(F.delay:
-      initialize(name) -> F.delay:
-        shutdown())
+      (initialize(name): Unit) ->
+        F.delay:
+          shutdown())
 
-  def initialize(name: String, suppressInfo: Boolean = false): Unit =
+  def initialize(name: String, suppressInfo: Boolean = false): Boolean =
+    var initialized = false
     ifNotInitialized:
       Log4j.initialize(name)
+      initialized = true
     if !initLogged.getAndSet(true) then
       if !suppressInfo then
         StartUp.logStartUpLine(name)
       Tests.log()
+    initialized
 
   def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
     Log4j.shutdown(fast = fast, suppressLogging = suppressLogging)
@@ -70,8 +74,6 @@ object Logger extends AdHocLogger:
   val Java: Marker = MarkerFactory.getMarker("Java")
   //val Repo: Marker = MarkerFactory.getMarker("Repo")
   val SignatureVerified: Marker = MarkerFactory.getMarker("SignatureVerified")
-  val Heartbeat: Marker = MarkerFactory.getMarker("Heartbeat")
-  val Stream: Marker = MarkerFactory.getMarker("Stream")
 
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])
@@ -128,15 +130,6 @@ object Logger extends AdHocLogger:
 
       inline def isEnabled(level: LogLevel, marker: Marker): Boolean =
         logger.underlying.isEnabled(level, marker)
-
-      inline def log(level: LogLevel, message: => String): Unit =
-        logger.underlying.log(level, message)
-
-      inline def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
-        logger.underlying.log(level, message, throwable)
-
-      inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
-        logger.underlying.log(level, marker, message)
 
       def infoCall[A](body: => A)(using src: sourcecode.Name): A =
         infoCall[A](src.value)(body)
@@ -348,6 +341,25 @@ object Logger extends AdHocLogger:
         (using F: Sync[F])
       : Stream[F, A] =
         logStream[F, A](logger, LogLevel.Trace, function, args)(stream)
+
+      inline def log(level: LogLevel, message: => String): Unit =
+        logger.underlying.log(level, message)
+
+      inline def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
+        logger.underlying.log(level, message, throwable)
+
+      inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
+        logger.underlying.log(level, marker, message)
+
+      def logIOWithResult[A](
+        level: LogLevel,
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A],
+        marker: Marker | Null = null,
+        body: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, level, function, args, result, marker = marker)(body)
 
       def logStart(logLevel: LogLevel, function: String, args: => Any = ""): Unit =
         Logger.logStart(logger, logLevel, marker = null, function, args)
