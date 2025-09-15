@@ -237,6 +237,14 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       assert(1.some.merge(non)(_ + _) == 1.some)   // Cats .map2 would return None
       assert(non.merge(2.some)(_ + _) == 2.some)   // Cats .map2 would return None
       assert(1.some.merge(2.some)(_ + _) == 3.some)      // Like Cats .map2
+
+    "foldMap" in:
+      assert("A".some.foldMap(_ + "*") == "A*")
+      assert(none[String].foldMap(_ + "*") == "")
+
+      assert(Monoid[Int].empty == 0)
+      assert(1.some.foldMap(_ + 3) == 4)
+      assert(none[Int].foldMap(_ + 3) == 0)
   }
 
   "Throwable" - {
@@ -455,6 +463,10 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
         assert(List(1, 2, 3).foldMap(_.toString) == "123")
 
         assert(List(1, 2, 3).foldMap(_ => ()) == ())
+
+        assert(("A".some: IterableOnce[String]).foldMap(_ + "*") == "A*")
+        assert((None: IterableOnce[String]).foldMap(_ + "*") == "")
+        assert(none[String].foldMap(_ + "*") == "")
 
       "IO" in:
         val touched = mutable.Buffer.empty[Int]

@@ -154,6 +154,12 @@ object ScalaUtils:
           case Left(a) => a
           case _       => throw new NoSuchElementException(s"Either.left.get on: ${leftProjection.e}")
 
+
+    extension [A](option: Option[A])
+      def foldMap[B: Monoid as B](f: A => B): B =
+        option.fold(B.empty)(f)
+
+
     implicit final class RichOption[A](private val option: Option[A]) extends AnyVal:
       /** Like Scala's `fold`, but with proper result type derivation. */
       def fold_[B](ifNone: => B, ifSome: A => B): B =
@@ -497,7 +503,6 @@ object ScalaUtils:
               body(a, bracket.middle)
               a = iterator.next()
             body(a, bracket.last)
-
 
     implicit final class RichIterables[A](private val iterables: IterableOnce[IterableOnce[A]])
     extends AnyVal:
