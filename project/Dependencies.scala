@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object Dependencies
 {
   val bouncyCastleVersion = "1.81"
-  val pekkoVersion = "1.1.5"
+  val pekkoVersion = "1.2.0"
   val pekkoHttpVersion = "1.2.0"
   val slf4jVersion = "2.0.17"  // See also plugins.sbt
   val log4jVersion = "2.24.3"  // See also plugins.sbt
@@ -22,7 +22,7 @@ object Dependencies
   val circeGenericExtrasVersion = "0.14.4"
   val scalaTestVersion = "3.2.19"
   val scalaTestCheckVersion = "3.2.14.0"
-  val scalaCheckVersion= "1.18.1"
+  val scalaCheckVersion= "1.19.0"
   val sourcecodeVersion = "0.4.2"
   val disciplineVersion = "1.7.0"
   val disciplineScalaTestVersion = "2.3.0"
@@ -56,7 +56,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.4"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.5"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
