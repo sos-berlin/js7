@@ -12,10 +12,11 @@ import js7.agent.tests.OrderAgentTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.Admission
+import js7.base.catsutils.CatsEffectExtensions.recoverFromProblemAndRetry
 import js7.base.configutils.Configs.*
 import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.{CorrelId, CorrelIdWrapped}
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{headL, toListL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -73,18 +74,22 @@ final class OrderAgentTest extends OurTestSuite:
             .closeWithCloser
 
           assert(agentClient
-            .commandExecute:
-              DedicateAgentDirector(agentPath, Seq(subagentId), controllerId, controllerRunId)
+            .commandExecute(
+              DedicateAgentDirector(agentPath, Seq(subagentId), controllerId, controllerRunId))
             .await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login().await(99.s)
 
           // Without Login, this registers all anonymous clients
-          assert(agentClient
-            .commandExecute:
+          assert:
+            agentClient.commandExecute:
               DedicateAgentDirector(agentPath, Seq(subagentId), controllerId, controllerRunId)
-            .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response])
+            .recoverFromProblemAndRetry(0):
+              case (problem, i, retry) if i < 10 =>
+                logger.warn(s"$DedicateAgentDirector ($i): $problem")
+                retry(i + 1).delayBy(100.ms)
+            .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response]
 
           agentClient
             .commandExecute(
@@ -201,6 +206,7 @@ final class OrderAgentTest extends OurTestSuite:
     }
 
 private object OrderAgentTest:
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
   private val controllerId = ControllerId("CONTROLLER")
