@@ -419,7 +419,7 @@ object ClusterNode:
                     .orThrow)
                 .map:
                   case None /*Other node has not failed-over*/ =>
-                    logger.info(s"The other $passiveId is up and still passive, " +
+                    logger.info(s"✔︎ The other $passiveId is up and still passive, " +
                       "so this node remains the active cluster node")
                     None
 
@@ -439,7 +439,7 @@ object ClusterNode:
                   passiveClusterNode.run(ourRecovered.state))
 
         case _ =>
-          logger.info("Remaining the active cluster node, not coupled with passive node")
+          logger.info("✔︎ Remaining the active cluster node, not coupled with passive node")
           Prepared(
             currentPassiveReplicatedState = IO.none,
             untilRecovered = activationInhibitor.startActive.as(Right(recovered)))

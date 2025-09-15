@@ -14,7 +14,7 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
 
   private val hook = newMaybeVirtualThread(s"JavaShutdownHook-$name"):
     shutdown = true
-    logger.debugCall(s"⚡️ Shutdown hook '$name'", ""):
+    logger.debugCall(s"❌ Shutdown hook '$name'", ""):
       onShutdown()
       // End may not be logged if log4j has been shutdown
 

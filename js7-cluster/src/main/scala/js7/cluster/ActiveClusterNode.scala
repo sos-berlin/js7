@@ -110,13 +110,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
     initialClusterState match
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
         logger.info:
-          s"↘ Requesting the passive node's acknowledgement for the last recovered event (${
-            EventId.toString(eventId)})"
+          s"Requesting the passive node's acknowledgement for the last recovered event (${
+            EventId.toString(eventId)}) ..."
         awaitAcknowledgement(clusterState.passiveUri, eventId)
           .flatMapT: ackEventId =>
             // In case of ClusterWatchRegistered, check journal.currentState.eventId too
             if ackEventId == eventId || ackEventId == journal.unsafeAggregate().eventId then
-              logger.info("↙ Passive node acknowledged the recovered state")
+              logger.info("✔︎ Passive node acknowledged the recovered state")
               IO.right(Completed)
             else
               IO.left(Problem:

@@ -51,7 +51,7 @@ done
 
 sessionTokenFile="$data/work/session-token"
 if [ ! -f "$sessionTokenFile" ]; then
-  echo "Invalid argument --data-directory=$data (or missing file $data/work/session-token)"
+  echo "Missing file $$sessionTokenFile"
   exit 1
 fi
 

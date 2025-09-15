@@ -317,6 +317,25 @@ object Logger extends AdHocLogger:
       : Resource[F, A] =
         logResource[F, A](logger, LogLevel.Trace, function, args)(resource)
 
+      //def loggingResource[F[_], A](logLevel: LogLevel)
+      //  (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
+      //: Resource[F, Unit] =
+      //  loggingResource(logLevel, function = s"${src.value}: Resource[${tag.tag}]")(using F)
+
+      /** Maybe not useful. */
+      private def loggingResource[F[_]](
+        logLevel: LogLevel, function: String, args: => Any = "")
+        (using F: Sync[F])
+      : Resource[F, Unit] =
+        Resource
+          .makeCase(
+            acquire = F.delay:
+              logger.isEnabled(logLevel) ?
+                new StartReturnLogContext(logger, logLevel, marker = null, function, args))(
+            release = (maybeCtx, exitCase) => F.delay:
+              for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome))
+          .void
+
       def infoStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
         (using F: Sync[F])
       : Stream[F, A] =
@@ -425,7 +444,7 @@ object Logger extends AdHocLogger:
       (resource: Resource[F, A])
       (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
     : Resource[F, A] =
-      logResource[F, A](logger, logLevel, s"${src.value} :Resource[${tag.tag}]"):
+      logResource[F, A](logger, logLevel, s"${src.value}: Resource[${tag.tag}]"):
         resource
 
     private def logResource[F[_], A](
@@ -435,13 +454,13 @@ object Logger extends AdHocLogger:
     : Resource[F, A] =
       for
         a <- Resource.applyFull[F, A]: cancelable =>
-          logF(logger, logLevel, function + ".acquire", args):
+          logF(logger, logLevel, function/* + ".acquire"*/, args):
             cancelable:
               resource.allocatedCase
           .map: (a, release) =>
             a ->
               (exitCase =>
-                logF[F, Unit](logger, logLevel, function + ".release", args):
+                logF[F, Unit](logger, logLevel, function/* + ".release"*/, args):
                   release(exitCase)
                 .pipeIf(F eq ioSync):
                   _.asInstanceOf[IO[Unit]]
@@ -451,19 +470,6 @@ object Logger extends AdHocLogger:
         //_ <- loggingResource[F](logger, logLevel, function + ".use", args)
       yield
         a
-
-    private def loggingResource[F[_]](
-      logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
-      (using F: Sync[F])
-    : Resource[F, Unit] =
-      Resource
-        .makeCase(
-          acquire = F.delay:
-            logger.isEnabled(logLevel) ?
-              new StartReturnLogContext(logger, logLevel, marker = null, function, args))(
-          release = (maybeCtx, exitCase) => F.delay:
-            for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome))
-        .void
 
     private def logStream[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
@@ -488,6 +494,8 @@ object Logger extends AdHocLogger:
                 exitCase.toOutcome[F],
                 result =
                   s"$chunks chunks, ${itemsPerSecondString(startedAt.elapsed, n, "elems")}"))
+  end syntax
+
 
   private final class StartReturnLogContext(
     logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
@@ -507,6 +515,7 @@ object Logger extends AdHocLogger:
 
     inline def logReturn(symbol: String, inline result: AnyRef): Unit =
       Logger.logReturn(logger, logLevel, marker, function, "", duration, symbol, result)
+
 
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
     function: String, args: => Any = "")

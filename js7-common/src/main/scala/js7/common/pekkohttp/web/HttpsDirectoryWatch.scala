@@ -50,6 +50,7 @@ extends Service.StoppableByRequest:
         .compile.drain
     .onErrorTap(t => IO(logger.error(t.toStringWithCauses, t)))
 
+  override def toString = s"HttpsDirectoryWatch(${files.mkString(", ")})"
 
 private object HttpsDirectoryWatch:
   private val logger = Logger[this.type]

@@ -140,9 +140,11 @@ extends Service.StoppableByRequest:
       Delayer.continually():
         IO:
           val orderIds = orderIdToJobDriver.unsafeToMap.keys
-          sym.onInfo()
-          logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
-            orderIds.toVector.sorted.mkStringLimited(3)}")
+          if orderIds.nonEmpty then
+            sym.onInfo()
+            logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
+              orderIds.toArray.sorted.mkStringLimited(3)}")
+        .uncancelable
       .background.surround:
         body
       .productR:
@@ -454,20 +456,21 @@ object DedicatedSubagent:
     subagentConf: SubagentConf)
     (using ioRuntime: IORuntime)
   : ResourceIO[DedicatedSubagent] =
-    for
-      _ <- OutErrStatistics.registerMXBean
-      fileValueState <- Resource.fromAutoCloseable(IO:
-        FileValueState(subagentConf.valueDirectory))
-      service <- Service.resource:
-        for
-          eventIdSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
-          persistedQueue = PersistedQueue(eventIdSignal)
-        yield
-          DedicatedSubagent(
-            subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-            jobLauncherConf, subagentConf, persistedQueue, fileValueState)
-    yield
-      service
+    logger.debugResource:
+      for
+        _ <- OutErrStatistics.registerMXBean
+        fileValueState <- Resource.fromAutoCloseable(IO:
+          FileValueState(subagentConf.valueDirectory))
+        service <- Service.resource:
+          for
+            eventIdSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
+            persistedQueue = PersistedQueue(eventIdSignal)
+          yield
+            DedicatedSubagent(
+              subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
+              jobLauncherConf, subagentConf, persistedQueue, fileValueState)
+      yield
+        service
 
 
   private final class Processing(

@@ -219,46 +219,47 @@ object Subagent:
       .orThrow
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
 
-    for
-      _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
-      pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
-      actorSystem <- Pekkos.actorSystemResource(conf.name, config)
-      sessionRegister <- SessionRegister.resource(SubagentSession(_), config)
-      systemSessionToken <- sessionRegister
-        .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
-      // Stop Subagent _after_ web service to allow Subagent to execute last commands!
-      subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
-      directorRouteVariable = new DirectorRouteVariable
-      webServer <- SubagentWebServer.service(
-        subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
-        (using actorSystem, ioRuntime)
-      _ <- provideUriFile(conf, webServer.localHttpUri)
-      // For BlockingInternalJob (thread-blocking Java jobs)
-      iox <- Resource.eval(environment[IOExecutor])
-      blockingInternalJobEC <-
-        unlimitedExecutionContextResource[IO](
-          s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
-      clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
-      jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock, pidFile).orThrow
-      signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
-        .orThrow
-        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
-      journal <- MemoryJournal.resource(
-        SubagentState.empty,
-        size = config.getInt("js7.journal.memory.event-count"),
-        waitingFor = "JS7 Agent Director",
-        infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
-      subagent <- Service.resource:
-        new Subagent(
-          webServer, directorRouteVariable,
-          ForDirector(
-            _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
-          journal, signatureVerifier,
-          conf, jobLauncherConf, testEventBus)
-      _ <- Resource.eval(subagentDeferred.complete(subagent))
-    yield
-      logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
-      subagent
+    logger.debugResource:
+      for
+        _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
+        pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
+        actorSystem <- Pekkos.actorSystemResource(conf.name, config)
+        sessionRegister <- SessionRegister.resource(SubagentSession(_), config)
+        systemSessionToken <- sessionRegister
+          .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
+        // Stop Subagent _after_ web service to allow Subagent to execute last commands!
+        subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
+        directorRouteVariable = new DirectorRouteVariable
+        webServer <- SubagentWebServer.service(
+          subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
+          (using actorSystem, ioRuntime)
+        _ <- provideUriFile(conf, webServer.localHttpUri)
+        // For BlockingInternalJob (thread-blocking Java jobs)
+        iox <- Resource.eval(environment[IOExecutor])
+        blockingInternalJobEC <-
+          unlimitedExecutionContextResource[IO](
+            s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
+        clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
+        jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock, pidFile).orThrow
+        signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
+          .orThrow
+          .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
+        journal <- MemoryJournal.resource(
+          SubagentState.empty,
+          size = config.getInt("js7.journal.memory.event-count"),
+          waitingFor = "JS7 Agent Director",
+          infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+        subagent <- Service.resource:
+          new Subagent(
+            webServer, directorRouteVariable,
+            ForDirector(
+              _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
+            journal, signatureVerifier,
+            conf, jobLauncherConf, testEventBus)
+        _ <- Resource.eval(subagentDeferred.complete(subagent))
+      yield
+        logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
+        subagent
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): ResourceIO[Path] =
     provideFile[IO](conf.workDirectory / "http-uri")

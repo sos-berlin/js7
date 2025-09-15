@@ -72,7 +72,7 @@ object OurIORuntime:
     Resource.defer:
       // Do not log for the initial IORuntime, before logging has been initialized.
       if Logger.isInitialized then
-        logger.traceResource(s"$indexedLabel Resource[,IORuntime]"):
+        logger.traceResource(s"$indexedLabel Resource[IORuntime]"):
           resource
       else
         resource

@@ -36,7 +36,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
     autoClosing(ac)(_ => body(allocatedThing))
 
   def toAllocatedString =
-    s"Allocated[,$label]($allocatedThing)"
+    s"Allocated[$label]($allocatedThing)"
 
   override def toString: String =
     allocatedThing.toString

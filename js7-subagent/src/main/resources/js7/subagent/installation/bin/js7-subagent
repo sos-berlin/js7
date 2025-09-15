@@ -132,8 +132,7 @@ while true; do
   log "PID $pid"
 
   terminate() {
-    echo "⚡️ $1"
-    log "$1: ShutDown JS7 Subagent"
+    log "❌ $1: Shutdown JS7 Subagent"
 
     if [ "$SHELL" = "/bin/bash" ]; then
       "$JS7_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
