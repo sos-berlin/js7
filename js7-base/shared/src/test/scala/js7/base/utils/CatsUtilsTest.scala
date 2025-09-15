@@ -2,6 +2,7 @@ package js7.base.utils
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
+import cats.effect.IO
 import cats.instances.int.*
 import cats.instances.string.*
 import cats.syntax.traverse.*
@@ -14,6 +15,22 @@ import js7.base.utils.CatsUtils.*
   * @author Joacim Zschimmer
   */
 final class CatsUtilsTest extends OurAsyncTestSuite:
+
+  "whenM" in :
+    for
+      a <- whenM(false)(IO("*"))
+      _ = assert(a == "")
+      a <- whenM(true)(IO("*"))
+      _ = assert(a == "*")
+    yield succeed
+
+  "unlessM" in :
+    for
+      a <- unlessM(false)(IO("*"))
+      _ = assert(a == "*")
+      a <- unlessM(true)(IO("*"))
+      _ = assert(a == "")
+    yield succeed
 
   "combine" in:
     assert(combine(1, 2, 3, 4) == 10)

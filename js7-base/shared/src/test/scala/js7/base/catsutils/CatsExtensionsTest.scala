@@ -2,10 +2,10 @@ package js7.base.catsutils
 
 import cats.effect.SyncIO
 import js7.base.catsutils.CatsExtensions.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.util.{Failure, Success, Try}
 
-final class CatsExtensionsTest extends AnyFreeSpec:
+final class CatsExtensionsTest extends OurAsyncTestSuite:
 
   "tryIt Right" in:
     assert(SyncIO(7).tryIt.unsafeRunSync() == Success(7))
@@ -41,18 +41,42 @@ final class CatsExtensionsTest extends AnyFreeSpec:
     assert(SyncIO(none).flatTapSome(i => SyncIO { i + 1; count = 2 }).unsafeRunSync() == None)
     assert(count == 1)
 
-  "ifTrue" in:
-    var n = 0
-    SyncIO(false).ifTrue(SyncIO(n += 1)).unsafeRunSync()
-    assert(n == 0)
+  "ifTrue, ifFalse" - {
+    "ifTrue Unit" in:
+      var v = 0
+      for
+        () <- SyncIO(true).ifTrue(SyncIO(v += 1))
+        _ = assert(v == 1)
+        () <- SyncIO(false).ifTrue(SyncIO(v += 1))
+        _ = assert(v == 1)
+      yield
+        succeed
 
-    SyncIO(true).ifTrue(SyncIO(n += 1)).unsafeRunSync()
-    assert(n == 1)
+    "ifTrue Monoid" in:
+      for
+        a <- SyncIO(true).ifTrue(SyncIO("*"))
+        _ = assert(a == "*")
+        a <- SyncIO(false).ifTrue(SyncIO("*"))
+        _ = assert(a == "")
+      yield
+        succeed
 
-  "ifFalse" in:
-    var n = 0
-    SyncIO(true).ifFalse(SyncIO(n += 1)).unsafeRunSync()
-    assert(n == 0)
+    "ifFalse Unit" in:
+      var v = 0
+      for
+        () <- SyncIO(true).ifFalse(SyncIO(v += 1))
+        _ = assert(v == 0)
+        () <- SyncIO(false).ifFalse(SyncIO(v += 1))
+        _ = assert(v == 1)
+      yield
+        succeed
 
-    SyncIO(false).ifFalse(SyncIO(n += 1)).unsafeRunSync()
-    assert(n == 1)
+    "ifFalse Monoid" in:
+      for
+        a <- SyncIO(true).ifFalse(SyncIO("*"))
+        _ = assert(a == "")
+        a <- SyncIO(false).ifFalse(SyncIO("*"))
+        _ = assert(a == "*")
+      yield
+        succeed
+  }

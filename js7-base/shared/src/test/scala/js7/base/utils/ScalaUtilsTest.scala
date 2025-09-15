@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.Monoid
 import cats.effect.{IO, SyncIO}
 import cats.instances.either.*
 import cats.instances.list.*

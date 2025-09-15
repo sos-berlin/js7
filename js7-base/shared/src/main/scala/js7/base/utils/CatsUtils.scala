@@ -49,6 +49,21 @@ object CatsUtils:
         catch case e: IllegalArgumentException =>
           throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
 
+  /** Return `body` if `condition` is true, else returns `Monoid[A] empty`. */
+  inline def whenM[F[_], A](inline condition: Boolean)(inline body: F[A])
+    (using inline F: Applicative[F], inline A: Monoid[A])
+  : F[A] =
+    if condition then
+      body
+    else
+      F.pure(A.empty)
+
+  /** Return `body` if `condition` is false, else returns `Monoid[A] empty`. */
+  inline def unlessM[F[_], A](inline condition: Boolean)(inline body: F[A])
+    (using inline F: Applicative[F], inline A: Monoid[A])
+  : F[A] =
+    whenM(!condition)(body)
+
   object syntax:
     implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal:
       /** Compiles iff A == B or A extends B. */

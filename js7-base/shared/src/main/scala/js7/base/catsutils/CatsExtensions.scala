@@ -50,12 +50,34 @@ object CatsExtensions:
 
 
   extension [F[_]](underlying: F[Boolean])
-    /** Iff `this` monad yields true, return `whenTrue`. */
-    def ifTrue(whenTrue: => F[Unit])(using F: Monad[F]): F[Unit] =
+    /** Iff `this` monad yields true, return `body`, else return F unit. */
+    def ifTrue(body: => F[Unit])(using F: Monad[F]): F[Unit] =
       underlying.flatMap:
-        if(_) whenTrue else F.unit
+        if _ then
+          body
+        else
+          F.unit
 
-    /** Iff `this` monad yields false, return `whenFalse`. */
-    def ifFalse(whenFalse: => F[Unit])(using F: Monad[F]): F[Unit] =
+    /** Iff `this` monad yields true, return `body`, else return `Monoid[A] empty`. */
+    def ifTrue[A](body: => F[A])(using F: Monad[F], A: Monoid[A]): F[A] =
       underlying.flatMap:
-        if(_) F.unit else whenFalse
+        if _ then
+          body
+        else
+          F.pure(A.empty)
+
+    /** Iff `this` monad yields false, return `body`, else return F unit. */
+    def ifFalse(body: => F[Unit])(using F: Monad[F]): F[Unit] =
+      underlying.flatMap: bool =>
+        if !bool then
+          body
+        else
+          F.unit
+
+    /** Iff `this` monad yields false, return `body`, else return `Monoid[A] empty`. */
+    def ifFalse[A](body: => F[A])(using F: Monad[F], A: Monoid[A]): F[A] =
+      underlying.flatMap: bool =>
+        if !bool then
+          body
+        else
+          F.pure(A.empty)
