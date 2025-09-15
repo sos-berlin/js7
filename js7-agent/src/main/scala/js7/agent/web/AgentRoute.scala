@@ -42,7 +42,6 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
 
   protected val agentState = clusterNode.currentState
   protected def eventWatch = clusterNode.recoveredExtract.eventWatch
-  protected def pekkoAskTimeout = agentConfiguration.pekkoAskTimeout
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem
 

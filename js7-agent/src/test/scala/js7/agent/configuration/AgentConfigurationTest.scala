@@ -40,15 +40,13 @@ final class AgentConfigurationTest extends OurTestSuite:
         AgentConfiguration(
           subagentConf,
           findTimeIntervalLimit = 1096.days,
-          pekkoAskTimeout = 1.hour,
-          clusterConf = {
+          clusterConf =
             val clusterConf = ClusterConf
               .fromConfig(subagentConf.config)
               .orThrow
             clusterConf.copy(
               journalConf = clusterConf.journalConf.copy(
-                slowCheckState = sys.props.asSwitch("js7.test")))
-          },
+                slowCheckState = sys.props.asSwitch("js7.test"))),
           name = AgentConfiguration.DefaultName)
       })
     }

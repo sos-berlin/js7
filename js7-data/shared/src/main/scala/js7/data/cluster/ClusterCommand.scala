@@ -30,10 +30,12 @@ object ClusterCommand:
   extends ClusterCommand:
     type Response = Response.Accepted
 
+
   sealed trait ClusterCouplingCommand extends ClusterCommand:
     def activeId: NodeId
     def passiveId: NodeId
     def token: OneTimeToken
+
 
   final case class ClusterPrepareCoupling(
     activeId: NodeId, passiveId: NodeId, token: OneTimeToken)
@@ -42,6 +44,7 @@ object ClusterCommand:
     assertThat(activeId != passiveId)
     override def toString = s"ClusterPrepareCoupling(activeId=$activeId passiveId=$passiveId)"
 
+
   final case class ClusterCouple(
     activeId: NodeId, passiveId: NodeId, token: OneTimeToken)
   extends ClusterCouplingCommand:
@@ -49,11 +52,13 @@ object ClusterCommand:
     assertThat(activeId != passiveId)
     override def toString = s"ClusterCouple(activeId=$activeId passiveId=$passiveId)"
 
+
   final case class ClusterRecouple(activeId: NodeId, passiveId: NodeId)
   extends ClusterCommand:
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterRecouple(activeId=$activeId passiveId=$passiveId)"
+
 
   final case class ClusterConfirmCoupling(token: OneTimeToken)
   extends ClusterCommand:
@@ -68,6 +73,7 @@ object ClusterCommand:
     assertThat(activeId != passiveId)
     override def toString = s"ClusterPassiveDown(activeId=$activeId passiveId=$passiveId)"
 
+
   final case class ClusterInhibitActivation(duration: FiniteDuration)
   extends ClusterCommand:
     type Response = ClusterInhibitActivation.Response
@@ -79,7 +85,9 @@ object ClusterCommand:
       deriveCodec[ClusterState.FailedOver]
     implicit val jsonCodec: Codec.AsObject[Response] = deriveCodec
 
+
   sealed trait Response
+
   object Response:
     sealed trait Accepted extends Response
     case object Accepted extends Accepted
@@ -87,6 +95,7 @@ object ClusterCommand:
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
       Subtype.named1[ClusterInhibitActivation.Response]("ClusterInhibitActivation.Response"))
+
 
   implicit val jsonCodec: TypedJsonCodec[ClusterCommand] = TypedJsonCodec[ClusterCommand](
     Subtype(deriveCodec[ClusterStartBackupNode]),

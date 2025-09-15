@@ -41,7 +41,6 @@ import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
 import org.apache.pekko
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
@@ -178,11 +177,11 @@ extends Service.StoppableByRequest:
       .toRight(ClusterNodeIsNotActiveProblem)
 
   def executeCommand(command: ClusterCommand): IO[Checked[ClusterCommand.Response]] =
-    logger.infoIO(s"executeCommand ${command.toShortString}")(
-      command match {
+    logger.infoIO(s"executeCommand ${command.toShortString}"):
+      command match
         case command: ClusterCommand.ClusterStartBackupNode =>
-          IO {
-            prepared.expectingStartBackupCommand match {
+          IO:
+            prepared.expectingStartBackupCommand match
               case None =>
                 if !clusterConf.isBackup then
                   Left(ClusterNodeIsNotBackupProblem)
@@ -193,51 +192,43 @@ extends Service.StoppableByRequest:
                   Left(Problem.pure(s"$command sent to wrong $ownId"))
                 else if command.setting.activeId == ownId then
                   Left(Problem.pure(s"$command must not be sent to the active node"))
-                else {
+                else
                   promise.trySuccess(command)
                   Right(ClusterCommand.Response.Accepted)
-                }
-            }
-          }
 
         case ClusterCommand.ClusterConfirmCoupling(token) =>
-          IO(
-            passiveOrWorkingNode.get() match {
+          IO:
+            passiveOrWorkingNode.get() match
               case Some(Left(passive)) => passive.allocatedThing.confirmCoupling(token)
               case _ => Left(Problem("Not a passive cluster node"))
-            }
-          ).rightAs(ClusterCommand.Response.Accepted)
+          .rightAs(ClusterCommand.Response.Accepted)
 
         case ClusterCommand.ClusterInhibitActivation(duration) =>
-          activationInhibitor.inhibitActivation(duration)
-            .flatMapT(inhibited =>
-              if inhibited then
-                IO.pure(Right(ClusterInhibitActivation.Response(None)))
-              else {
-                workingNodeStarted.get
-                  .dematerialize
-                  .flatMap(_.traverse(_.journal.clusterState))
-                  .map(Some(_))
-                  .timeoutTo(duration /*???*/ - 500.ms, IO.none)
-                  .flatMap {
-                    case None =>
-                      IO.left(Problem.pure(
-                        "ClusterInhibitActivation timed out — please try again"))
+          activationInhibitor.inhibitActivation(duration).flatMap: inhibited =>
+            if inhibited then
+              IO.pure(Right(ClusterInhibitActivation.Response(failedOver = None)))
+            else
+              workingNodeStarted.get
+                .dematerialize
+                .flatMap(_.traverse(_.journal.clusterState))
+                .map(Some(_))
+                .timeoutTo(duration /*???*/ - 500.ms, IO.none)
+                .flatMap:
+                  case None =>
+                    IO.left(Problem.pure("ClusterInhibitActivation timed out — please try again"))
 
-                    case Some(Left(_: ProgramTermination)) =>
-                      // No journal
-                      IO.left(Problem.pure(
-                        "ClusterInhibitActivation command failed due to cluster is being terminated"))
+                  case Some(Left(_: ProgramTermination)) =>
+                    // No journal
+                    IO.left(Problem.pure(
+                      "ClusterInhibitActivation command failed due to cluster is being terminated"))
 
-                    case Some(Right(failedOver: FailedOver)) =>
-                      logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                      IO.right(ClusterInhibitActivation.Response(Some(failedOver)))
+                  case Some(Right(failedOver: FailedOver)) =>
+                    logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
+                    IO.right(ClusterInhibitActivation.Response(Some(failedOver)))
 
-                    case Some(Right(clusterState)) =>
-                      IO.left(Problem.pure("ClusterInhibitActivation command failed " +
-                        s"because node is already active but not failed-over: $clusterState"))
-                  }
-              })
+                  case Some(Right(clusterState)) =>
+                    IO.left(Problem.pure("ClusterInhibitActivation command failed " +
+                      s"because node is already active but not failed-over: $clusterState"))
 
         case _: ClusterCommand.ClusterPrepareCoupling |
              _: ClusterCommand.ClusterCouple |
@@ -251,7 +242,6 @@ extends Service.StoppableByRequest:
           else
             IO.pure(workingClusterNode)
               .flatMapT(_.executeCommand(command))
-      })
 
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): IO[Checked[Unit]] =
     command match
@@ -290,8 +280,7 @@ object ClusterNode:
     (implicit
       S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
-      ioRuntime: IORuntime,
-      pekkoTimeout: Timeout)
+      ioRuntime: IORuntime)
   : ResourceIO[ClusterNode[S]] =
     for
       _ <- Resource.eval(IO:
@@ -318,12 +307,11 @@ object ClusterNode:
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator,
     testEventBus: EventPublisher[Any])
-    (implicit
+    (using
       S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       ioRuntime: IORuntime,
-      actorSystem: ActorSystem,
-      pekkoTimeout: pekko.util.Timeout)
+      actorSystem: ActorSystem)
   : Checked[ResourceIO[ClusterNode[S]]] =
     val checked = recovered.clusterState match
       case Empty =>
@@ -359,7 +347,7 @@ object ClusterNode:
     eventIdGenerator: EventIdGenerator,
     shuttingDown: Deferred[IO, Unit],
     eventBus: EventPublisher[Any])
-    (implicit
+    (using
       S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       ioRuntime: IORuntime,
@@ -392,30 +380,31 @@ object ClusterNode:
           passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
         else
           IO.some(Left(BackupClusterNodeNotAppointed))
-      val untilActiveRecovered = passiveClusterNode.flatMap: passive =>
-        activationInhibitor.startPassive *>
-          passive.run(recovered.state)
+      val untilActiveRecovered =
+        passiveClusterNode.flatMap: passive =>
+          activationInhibitor.startPassive *>
+            passive.run(recovered.state)
 
       Prepared(
         currentPassiveReplicatedState = currentPassiveState,
         untilRecovered = untilActiveRecovered,
         expectingStartBackupCommand = Some(startedPromise))
 
-    def startAsActiveNodeWithBackup(): Prepared[S] =
+    def startAsActiveNodeWithBackup: Prepared[S] =
       recovered.clusterState match
-        case recoveredClusterState: Coupled =>
-          import recoveredClusterState.passiveId
+        case clusterState: Coupled =>
+          import clusterState.passiveId
           logger.info(s"This cluster $ownId was active and coupled before restart - " +
             s"asking $passiveId about its state")
 
           val failedOver: IO[Option[(Recovered[S], PassiveClusterNode[S])]] =
             memoize:
               common.inhibitActivationOfPeer(
-                  recoveredClusterState,
+                  clusterState,
                   recovered.state
                     .clusterNodeToUserAndPassword(
-                      ourNodeId = recoveredClusterState.activeId,
-                      otherNodeId = recoveredClusterState.passiveId)
+                      ourNodeId = clusterState.activeId,
+                      otherNodeId = clusterState.passiveId)
                     .orThrow)
                 .map:
                   case None /*Other node has not failed-over*/ =>
@@ -424,7 +413,7 @@ object ClusterNode:
                     None
 
                   case Some(otherFailedOver) =>
-                    Some(startPassiveAfterFailover(recoveredClusterState, otherFailedOver))
+                    Some(startPassiveAfterFailover(clusterState, otherFailedOver))
 
           Prepared(
             currentPassiveReplicatedState =
@@ -527,7 +516,7 @@ object ClusterNode:
 
       case clusterState: HasNodes =>
         if ownId == clusterState.activeId then
-          startAsActiveNodeWithBackup()
+          startAsActiveNodeWithBackup
         else
           preparePassiveNode(recovered, clusterState)
 
@@ -557,9 +546,11 @@ object ClusterNode:
     def termination: ProgramTermination =
       ProgramTermination.Restart
 
+
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,
     result: Checked[Unit])
+
 
   private final case class Prepared[S <: ClusterableState[S]](
     currentPassiveReplicatedState: IO[Option[Checked[S]]],

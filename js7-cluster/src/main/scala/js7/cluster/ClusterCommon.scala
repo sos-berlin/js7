@@ -23,7 +23,6 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.NodeNameToPassword
-import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
@@ -33,8 +32,7 @@ private[cluster] final class ClusterCommon private(
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any],
-  val activationInhibitor: ActivationInhibitor)
-  (using val journalActorAskTimeout: Timeout):
+  val activationInhibitor: ActivationInhibitor):
 
   import clusterConf.ownId
 
@@ -192,8 +190,7 @@ private[js7] object ClusterCommon:
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
-    testEventPublisher: EventPublisher[Any])(
-    implicit pekkoTimeout: Timeout)
+    testEventPublisher: EventPublisher[Any])
   : ResourceIO[ClusterCommon] =
     for
       activationInhibitor <- ActivationInhibitor.resource

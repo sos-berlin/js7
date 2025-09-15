@@ -3,7 +3,6 @@ package js7.cluster
 import cats.effect.std.Supervisor
 import cats.effect.{IO, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -46,49 +45,48 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
   def tryToActivate(activate: IO[Checked[Boolean]]): IO[Checked[Boolean]] =
     logger.debugIOWithResult:
       _state.updateCheckedWithResult:
-        case Initial | Passive | Active =>
+        case Initial | Active | Passive =>
           activate.flatMap:
             case o @ (Left(_) | Right(false)) => IO:
-              logger.debug(s"tryToActivate: Passive — due to $o")
+              logger.debug(s"🚫 tryToActivate: Passive — because activation function returned $o")
               o.map(Passive -> _)
             case Right(true) =>
               IO:
-                logger.debug("tryToActivate: Active — due to Right(true)")
+                logger.debug("✔︎ tryToActivate: Active — because activation function succeeded")
                 Right(Active -> true)
         case inhibited: Inhibited =>
           IO:
-            logger.info("Activation inhibited")
+            logger.info("🚫 Activation inhibited 🚫")
             Right(inhibited -> false)
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
     */
-  def inhibitActivation(duration: FiniteDuration): IO[Checked[Boolean]] =
+  def inhibitActivation(duration: FiniteDuration): IO[Boolean] =
     logger.debugIOWithResult:
-      _state.updateCheckedWithResult:
-        case state @ (Initial | Passive | _: Inhibited) =>
-          setInhibitionTimer(duration) *>
-            IO:
-              val depth = state match
-                case Inhibited(n) => n + 1
-                case _ => 1
-              Right(Inhibited(depth) -> true)
-
+      _state.updateWithResult:
         case Active =>
-          IO.right(Active -> false)
+          IO.pure(Active -> false)
+
+        case state @ (Initial | Passive | _: Inhibited) =>
+          setInhibitionTimer(duration).as:
+            val depth = state match
+              case Inhibited(n) => n + 1
+              case _ => 1
+            Inhibited(depth) -> true
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
     supervisor.supervise:
-      _state.update:
+      IO.sleep(duration) *>
+        _state.update:
           case Inhibited(1) => IO.pure(Passive)
           case Inhibited(n) => IO.pure(Inhibited(n - 1))
           case state =>
-            // May happend in very race case of race condition
+            // May happen in rare case of race condition
             IO:
               logger.error:
                 s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'"
               state
-      .delayBy(duration)
     .void
 
   @TestOnly
@@ -113,11 +111,12 @@ private[cluster] object ActivationInhibitor:
     logger.debugIO(s"inhibitActivationOfPassiveNode ${setting.passiveUri}"):
       DelayConf.default.runIO: delayer =>
         clusterNodeApi(admission, "inhibitActivationOfPassiveNode")
-          .evalTap(_.loginUntilReachable())
+          .evalTap:
+            _.loginUntilReachable()
           .use:
             _.executeClusterCommand:
               ClusterInhibitActivation(setting.timing.inhibitActivationDuration)
-            .map(_.failedOver)
+          .map(_.failedOver)
           .onErrorRestartLoop(()): (throwable, _, retry) =>
             // TODO Code mit loginUntilReachable usw. zusammenfassen.
             //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
@@ -128,9 +127,10 @@ private[cluster] object ActivationInhibitor:
               logger.debug(msg, t)
             delayer.sleep >> retry(())
 
+
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State
+  private[cluster] case object Active extends State
   private[cluster] case object Passive extends State
   private[cluster] case class Inhibited(depth: Int) extends State:
     assertThat(depth >= 1)
-  private[cluster] case object Active extends State

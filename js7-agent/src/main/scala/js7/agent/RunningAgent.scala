@@ -265,7 +265,7 @@ object RunningAgent:
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
     Resource.suspend(IO:
-      import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
+      import conf.{clusterConf, config, httpsConfig, journalLocation}
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
       val forDirector = subagent.forDirector

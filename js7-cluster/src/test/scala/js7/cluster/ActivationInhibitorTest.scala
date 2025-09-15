@@ -156,7 +156,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive
         inhibited <- inhibitor.inhibitActivation(2.s)
-        _ = assert(inhibited == Right(true))
+        _ = assert(inhibited)
         _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
         b <- succeedingActivation(inhibitor, Right(true))
 
@@ -177,7 +177,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
         // inhibitActivation returns false if state is active" in
         inhibiting <- inhibitor.inhibitActivation(2.s).start
-        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield o == Right(false)
+        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(!o)
       yield
         succeed
 
@@ -194,7 +194,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
         _ <- IO.sleep(1.s)
         _ <- for b <- b.joinStd.timeout(1.ms) yield assert(b == Right(true))
-        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(o == Right(false))
+        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(!o)
         _ <- for s <- inhibitor.state yield assert(s == Some(Active))
 
         _ <- IO.sleep(2.s)
@@ -207,13 +207,13 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive.timeout(1.ms)
         inhibited <- inhibitor.inhibitActivation(2.s).timeout(1.ms)
-        _ = assert(inhibited == Right(true))
+        _ = assert(inhibited)
 
         _ <- IO.sleep(1.s)
         _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
 
         inhibited <- inhibitor.inhibitActivation(2.s).timeout(1.ms)
-        _ = assert(inhibited == Right(true))
+        _ = assert(inhibited)
         _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 2)))
 
         _ <- IO.sleep(1.s + 1.ns)

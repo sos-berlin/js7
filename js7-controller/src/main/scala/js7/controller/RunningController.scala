@@ -244,12 +244,11 @@ object RunningController:
     given ExecutionContext = ioRuntime.compute
     given StandardEventBus[Any] = testEventBus
 
-    implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] =
-      val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
-      _ => result
-
     // Recover and initialize other stuff in parallel
     val clusterNodeResource =
+      given NodeNameToPassword[ControllerState] =
+        val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
+        _ => result
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
         (admission, name, actorSystem) => PekkoHttpControllerApi.resource(
