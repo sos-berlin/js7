@@ -16,7 +16,6 @@ object BuildInfo:
     javaVersion: String,
     javaRuntimeVersion: String)
   =
-    //
     val props =
       val resourceName = "js7/js7-engine.properties"
       try JavaResource(resourceName).toProperties

@@ -107,7 +107,8 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
     inputStream[F].map: in =>
       new InputStreamReader(in, UTF_8)
 
-  def openStream(): InputStream = url.openStream()
+  def openStream(): InputStream =
+    classLoader.getResourceAsStream(path)
 
   /**
    * @throws RuntimeException, if the resource does not exists.

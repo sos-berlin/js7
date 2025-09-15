@@ -6,15 +6,14 @@ import izumi.reflect.Tag
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.service.{MainService, MainServiceTerminationException}
-import js7.base.system.startup.StartUp
 import js7.base.system.startup.StartUp.{logJavaSettings, printlnWithClock}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
+import js7.base.utils
 import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.{BuildInfo, utils}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import scala.concurrent.duration.{Deadline, Duration}
@@ -27,7 +26,7 @@ object ServiceMain:
   /** Returns the return code. */
   def runAsMain[Cnf <: BasicConfiguration, Svc <: MainService](
     args: Seq[String],
-    name: String,
+    productName: String,
     argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,
     suppressTerminationLogging: Boolean = false,
@@ -35,9 +34,6 @@ object ServiceMain:
     (toServiceResource: Cnf => ResourceIO[Svc],
     use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
-    // Log early
-    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-    StartUp.initializeMain()
     IO.defer:
       JavaMainLockfileSupport
         .runMain(args.toVector, useLockFile = useLockFile): commandLineArguments =>
@@ -60,11 +56,12 @@ object ServiceMain:
             ExitCode.Error // Service has already logged an error
           case Right(termination) =>
             if !suppressTerminationLogging then
-              logging.logTermination(name, termination)
+              logging.logTermination(productName, termination)
             termination.toExitCode
     .guarantee:
-      IO.unlessA(suppressLogShutdown)(IO:
-        Logger.shutdown(suppressLogging = suppressTerminationLogging))
+      IO:
+        if !suppressLogShutdown then
+          Logger.shutdown(suppressLogging = suppressTerminationLogging)
 
   def blockingRun[Svc <: MainService](
     timeout: Duration = Duration.Inf)
@@ -88,8 +85,8 @@ object ServiceMain:
   /** For usage after logging system has properly been initialized. */
   private object logging:
     private lazy val logger =
-      Logger.initialize("JS7 Engine") // Just in case it has not yet been initialized
-      Logger.trace(s"❌ Logger has been initialized implicitly")
+      if Logger.initialize("JS7 Engine") then
+        Logger.trace(s"❌ Logger has been initialized implicitly")
       Logger[ServiceMain.type]
 
     def logTermination(name: String, termination: ProgramTermination): ExitCode =
