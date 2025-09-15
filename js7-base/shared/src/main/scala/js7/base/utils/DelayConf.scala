@@ -57,8 +57,8 @@ object DelayConf:
   /* Delay up to 10s.*/
   val default: DelayConf = DelayConf(1.s, 3.s, 6.s, 10.s)
 
-  def apply(delay: FiniteDuration, moreDelayes: FiniteDuration*): DelayConf =
-    DelayConf(NonEmptyList.of(delay, moreDelayes*))
+  def apply(delay: FiniteDuration, moreDelays: FiniteDuration*): DelayConf =
+    DelayConf(NonEmptyList.of(delay, moreDelays*))
 
   def maybe(delays: Seq[FiniteDuration]): Option[DelayConf] =
     NonEmptyList.fromSeq(delays).map(DelayConf(_))

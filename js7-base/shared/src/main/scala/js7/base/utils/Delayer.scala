@@ -82,6 +82,9 @@ final class Delayer[F[_]] private(using F: Async[F])(val since: CatsDeadline, co
 object Delayer:
   private val logger = Logger[this.type]
 
+  def start[F[_]](delay: FiniteDuration, moreDelays: FiniteDuration*)(using F: Async[F]): F[Delayer[F]] =
+    start(DelayConf(delay, moreDelays*))
+
   def start[F[_]](conf: DelayConf)(using F: Async[F]): F[Delayer[F]] =
     F.monotonic
       .map(CatsDeadline.fromMonotonic)
