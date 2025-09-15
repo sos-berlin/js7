@@ -18,21 +18,20 @@ private final class HttpsDirectoryWatch private(
 extends Service.StoppableByRequest:
 
   protected def start =
-    watchDirectories
-      .start
-      .flatMap(watching =>
-        startService(
-          watching.joinWithUnit))
+    watchDirectories.start
+      .flatMap: watching =>
+        startService:
+          watching.joinWithUnit
 
   private def watchDirectories: IO[Unit] =
-    directoryToFilenames
-      .parTraverse { case (dir, files) => observeDirectory(dir, files) }
-      .map(_.combineAll)
+    directoryToFilenames.parFoldMapA: (dir, files) =>
+      observeDirectory(dir, files)
 
   private def directoryToFilenames: Seq[(Path, Set[Path])] =
     files
       .map(path => path.getParent -> path.getFileName)
-      .filter { case (directory, filename) => directory != null && filename != null }
+      .filter: (directory, filename) =>
+        directory != null && filename != null
       .groupMap(_._1)(_._2)
       .view
       .mapValues(_.toSet)

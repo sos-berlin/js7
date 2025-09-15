@@ -142,7 +142,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     returnHeartbeatAs: Option[ByteArray] = None,
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
-    (using s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders, dontLog = dontLog)
@@ -194,7 +194,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   /** HTTP Get with Accept: application/json. */
   final def getWithHeaders[A: Decoder](uri: Uri, headers: List[HttpHeader], dontLog: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[A] =
     get_[A](uri, AcceptJson ::: headers, dontLog = dontLog)
 
@@ -202,7 +202,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     headers: List[HttpHeader] = Nil,
     dontLog: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[A] =
     sendReceive(
       HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers),
@@ -220,7 +220,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false,
     dontLog: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[B] =
     def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
 
@@ -258,7 +258,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   @TestOnly
   final def postJsonStringStream(uri: Uri, data: Stream[IO, String])
-    (using s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[Json] =
     data
       .map(o => ByteString(o) ++ LF)

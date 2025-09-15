@@ -54,7 +54,7 @@ final case class DelayConf(
 
 object DelayConf:
 
-  /* Delay up to 10s.*/
+  /** Delay up to 10s. */
   val default: DelayConf = DelayConf(1.s, 3.s, 6.s, 10.s)
 
   def apply(delay: FiniteDuration, moreDelays: FiniteDuration*): DelayConf =

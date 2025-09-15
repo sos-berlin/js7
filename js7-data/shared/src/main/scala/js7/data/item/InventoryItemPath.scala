@@ -87,4 +87,5 @@ object InventoryItemPath:
             .flatMap(_.checked(path))
             .flatMap(checkedCast[P](_))
             .toDecoderResult(c.history)
-        yield itemPath
+        yield
+          itemPath

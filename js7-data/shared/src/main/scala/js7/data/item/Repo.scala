@@ -48,9 +48,9 @@ extends
 
   def isEmpty: Boolean =
     versionIds.isEmpty && pathToVersionToSignedItems.isEmpty
-    
+
   inline def nonEmpty: Boolean =
-    !isEmpty  
+    !isEmpty
 
   def currentVersionSize: Int =
     currentSignedItems.size

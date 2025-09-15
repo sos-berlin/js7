@@ -102,7 +102,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             .both:
               awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
             .map(_ |+| _)
-            .flatMapT(_ => proceed(initialClusterState).as(Checked.unit))
+            .flatMapT: _ =>
+              proceed(initialClusterState).as(Checked.unit)
 
   private def awaitAcknowledgmentIfCoupled(initialClusterState: HasNodes, eventId: EventId)
   : IO[Checked[Completed]] =

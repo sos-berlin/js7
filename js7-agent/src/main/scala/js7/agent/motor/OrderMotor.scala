@@ -8,7 +8,6 @@ import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, MarkOrder, ReleaseEvents}
 import js7.agent.motor.OrderMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
@@ -116,13 +115,11 @@ extends Service.StoppableByRequest:
             IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
 
   def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
-    cmd match
-      case _: AttachOrder | _: DetachOrder | _: MarkOrder | _: ReleaseEvents =>
-        journal.persist:
-          agentCommandToEventCalc.commandToEventCalc(cmd)
-        .ifPersisted:
-          onPersisted
-        .rightAs(AgentCommand.Response.Accepted)
+    journal.persist:
+      agentCommandToEventCalc.commandToEventCalc(cmd)
+    .ifPersisted:
+      onPersisted
+    .rightAs(AgentCommand.Response.Accepted)
 
   def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
@@ -148,7 +145,7 @@ extends Service.StoppableByRequest:
         if !workflowPathControl.suspended then
           journal.aggregate.flatMap: agentState =>
             enqueue:
-              agentState.orders.view // Slow !!!
+              agentState.orders.view
                 .filter(_.workflowPath == workflowPathControl.workflowPath)
                 .map(_.id)
                 .toVector
@@ -173,7 +170,8 @@ extends Service.StoppableByRequest:
       jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
-  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing): IO[Unit] =
+  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing)
+  : IO[Unit] =
     persisted.keyedEvents.toVector.flatTraverse:
       case KeyedEvent(orderId: OrderId, event) =>
         event.match

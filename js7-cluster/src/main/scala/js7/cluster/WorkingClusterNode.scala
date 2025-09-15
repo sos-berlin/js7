@@ -73,9 +73,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
     extraEvent: Option[ItemAttachedToMe] = None)
   : IO[Checked[Unit]] =
     IO:
-      ClusterSetting.checked(
-        idToUri, activeId, clusterConf.timing,
-        clusterWatchId = None)
+      ClusterSetting.checked(idToUri, activeId, clusterConf.timing, clusterWatchId = None)
     .flatMapT:
       appointNodes2(_, extraEvent)
 
