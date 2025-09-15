@@ -10,9 +10,11 @@ import java.util.concurrent.atomic.AtomicLong
 import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.problem.Checked.RichCheckedF
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.NonFatalInterruptedException
+import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.unused
@@ -115,7 +117,6 @@ object CatsEffectExtensions:
   private val fromFutureDummyCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
 
   extension [A](io: IO[Checked[A]])
-
     /** Catches a Throwable into `Checked[A]`. */
     def catchIntoChecked: IO[Checked[A]] =
       io.attempt.map(either => Checked.fromThrowableEither(either).flatten)
@@ -133,6 +134,21 @@ object CatsEffectExtensions:
         .flatTap:
           case Left(problem) => release.as(Left(problem))
           case Right(_) => IO.unit
+
+    /** @param initial the initial state
+      * @param onProblem a function with three arguments:
+      *                  <br>• the Problem,
+      *                  <br>• the state S, and
+      *                  <br>• a retry function with a new state S as argument.
+      */
+    def recoverFromProblemAndRetry[S](initial: S)
+      (onProblem: (Problem, S, S => IO[Checked[A]]) =>? IO[Checked[A]])
+    : IO[Checked[A]] =
+      io.recoverFromProblemWith: problem =>
+        onProblem.applyOrElse(
+          (problem, initial, state => io.recoverFromProblemAndRetry(state)(onProblem)),
+          default = _ => IO.left(problem))
+
 
   private val trueIO = IO.pure(true)
   private val falseIO = IO.pure(false)

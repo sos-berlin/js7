@@ -2,11 +2,12 @@ package js7.base.catsutils
 
 import cats.effect
 import cats.effect.Resource.ExitCase
-import cats.effect.{Deferred, FiberIO, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.effect.testkit.TestControl
+import cats.effect.{Deferred, FiberIO, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsEffectUtils.FiberCanceledException
+import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -124,6 +125,25 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
     //      .map: outcome =>
     //        assert(outcome == Outcome.Canceled() & canceled.get & cancellation.get)
     //}
+  }
+
+  "IO[Checked[x]]" - {
+    "recoverFromProblemAndRetry" in:
+      IO.left(Problem("PROBLEM"))
+        .recoverFromProblemAndRetry(1): (problem, i, retry) =>
+          if i < 10_000_000 then
+            retry(i + 1)
+          else
+            IO.right(7)
+        .map: result =>
+          assert(result == Right(7))
+
+    "recoverFromProblemAndRetry returning Left" in:
+      IO.left(Problem("PROBLEM"))
+        .recoverFromProblemAndRetry(1): (problem, i, retry) =>
+          IO.left(Problem("OTHER PROBLEM"))
+        .map: checked =>
+          assert(checked == Left(Problem("OTHER PROBLEM")))
   }
 
   "Fiber" - {
