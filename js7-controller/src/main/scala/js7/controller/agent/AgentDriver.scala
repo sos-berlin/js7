@@ -430,7 +430,7 @@ extends Service.StoppableByRequest:
   private def clusterWatchResource: ResourceIO[ClusterWatchService] =
     for
       clients <- clientsResource
-      clusterWatchService <- ClusterWatchService.resource(
+      clusterWatchService <- ClusterWatchService.service(
         clusterWatchId,
         Resource.eval(IO.pure(clients)),
         controllerConfiguration.config,

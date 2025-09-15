@@ -191,17 +191,18 @@ object ClusterWatchService:
     for
       given ActorSystem <- actorSystemResource(name = "ClusterWatch", config)
       _ <- MinimumWebServer.service(conf)
-      service <- resource(
+      service <- service(
         conf.clusterWatchId,
         apisResource = clusterNodeAdmissions
           .traverse(admission => PekkoHttpClient
             .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")
-            .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
+            .flatMap:
+              HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller")),
         config)
     yield
       service
 
-  def resource(
+  def service(
     clusterWatchId: ClusterWatchId,
     apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
     config: Config,

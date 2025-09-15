@@ -17,6 +17,7 @@ import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
@@ -375,11 +376,10 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
         case Some(service) => IO.some(service)
         case None =>
           ClusterWatchService
-            .resource(clusterWatchId, asScala.apisResource, config,
-              onUndecidableClusterNodeLoss = {
-                case Some(prblm) => IO(onUndecidableClusterNodeLoss.accept(prblm))
-                case None => IO.unit
-              })
+            .service(clusterWatchId, asScala.apisResource, config,
+              onUndecidableClusterNodeLoss =
+                _.foldMap: problem =>
+                  IO(onUndecidableClusterNodeLoss.accept(problem)))
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)

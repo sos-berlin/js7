@@ -527,7 +527,7 @@ object DirectoryProvider:
     Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>
-        ClusterWatchService.resource(
+        ClusterWatchService.service(
           clusterWatchId,
           admissions.traverse(PekkoHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig),
