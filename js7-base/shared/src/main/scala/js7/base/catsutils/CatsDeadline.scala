@@ -8,37 +8,37 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-sealed class CatsDeadline private(val sinceZero: FiniteDuration)
+sealed class CatsDeadline private(val monotonic: FiniteDuration)
 extends Ordered[CatsDeadline]:
 
   override def equals(o: Any): Boolean =
     o match
-      case o: CatsDeadline => nanosSinceZero == o.nanosSinceZero
+      case o: CatsDeadline => monotonicNanos == o.monotonicNanos
       case _ => false
 
   override def hashCode: Int =
-    nanosSinceZero.hashCode
+    monotonicNanos.hashCode
 
-  def nanosSinceZero: Long =
-    sinceZero.toNanos
+  def monotonicNanos: Long =
+    monotonic.toNanos
 
   /**
    * Return a deadline advanced (i.e., moved into the future) by the given duration.
    */
   def +(other: FiniteDuration): CatsDeadline =
-    CatsDeadline(sinceZero + other)
+    CatsDeadline(monotonic + other)
 
   /**
    * Return a deadline moved backwards (i.e., towards the past) by the given duration.
    */
   def -(other: FiniteDuration): CatsDeadline =
-    CatsDeadline(sinceZero - other)
+    CatsDeadline(monotonic - other)
 
   /**
    * Calculate time difference between this and the other deadline, where the result is directed (i.e., may be negative).
    */
   def -(other: CatsDeadline): FiniteDuration =
-    sinceZero - other.sinceZero
+    monotonic - other.monotonic
 
   /**
    * Determine whether the deadline lies in the past at the point where this method is called.
@@ -69,10 +69,13 @@ extends Ordered[CatsDeadline]:
    * Calculate time difference between this duration and now; the result is negative if the deadline has passed.
    */
   def timeLeft: IO[FiniteDuration] =
-    for o <- IO.monotonic yield sinceZero - o
+    for o <- IO.monotonic yield monotonic - o
 
   def compare(other: CatsDeadline): Int =
-    (nanosSinceZero - other.nanosSinceZero).compare(0L)
+    (monotonicNanos - other.monotonicNanos).compare(0L)
+
+  def toDeadline: Deadline =
+    Deadline(monotonic)
 
   // ??? If we had access to IORuntime or Scheduler (like a IO.runtime: IO[IORuntime),
   // we could to a reliant calculation ???
@@ -83,7 +86,7 @@ extends Ordered[CatsDeadline]:
    * Then toString calculates the difference to now from two very different clocks.
    */
   override def toString: String =
-    //s"CatsDeadline(\"${sinceZero.pretty}\")" // Only differences between CatsDeadlines are relevant
+    //s"CatsDeadline(\"${monotonic.pretty}\")" // Only differences between CatsDeadlines are relevant
     elapsed
       .map(o => (o.isPositive ?? "+") + o.pretty)
       .syncStep(CatsBlocking.SyncStepMaximum)
@@ -99,7 +102,7 @@ object CatsDeadline:
     for o <- IO.monotonic yield Now(o)
 
   def usingNow[A](body: Now ?=> A): IO[A] =
-    now.flatMap(now => IO(body(using Now(now.sinceZero))))
+    now.flatMap(now => IO(body(using Now(now.monotonic))))
 
   def fromMonotonicNanos(nanos: Long): CatsDeadline =
     fromMonotonic(nanos.ns)

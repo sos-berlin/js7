@@ -119,7 +119,7 @@ private class TestMonotonicClock(sinceZero: FiniteDuration = ZeroDuration) exten
   def now = time
 
   //def +(duration: FiniteDuration): TestMonotonicClock =
-  //  TestMonotonicClock(time.sinceZero + duration)
+  //  TestMonotonicClock(time.monotonic + duration)
 
   def tickUntil(until: Deadline): Unit =
     tick(until - now)

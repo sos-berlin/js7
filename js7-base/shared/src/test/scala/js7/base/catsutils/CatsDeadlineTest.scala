@@ -13,7 +13,7 @@ final class CatsDeadlineTest extends OurAsyncTestSuite:
         d0 <- CatsDeadline.now
         d1 <- CatsDeadline.now.delayBy(1.s)
       yield assert:
-        d0.sinceZero.isZero && d1.sinceZero == 1.s && d1 - d0 == 1.s
+        d0.monotonic.isZero && d1.monotonic == 1.s && d1 - d0 == 1.s
 
   "Zero CatsDeadline" in:
     TestControl.executeEmbed:

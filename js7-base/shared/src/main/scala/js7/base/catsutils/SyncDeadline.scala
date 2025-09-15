@@ -115,7 +115,7 @@ object SyncDeadline:
     SyncDeadline(duration.toNanos)
 
   def fromCatsDeadline(catsDeadline: CatsDeadline): SyncDeadline =
-    fromNanos(catsDeadline.nanosSinceZero)
+    fromNanos(catsDeadline.monotonicNanos)
 
   //implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
   //  def compare(a: SyncDeadline, b: SyncDeadline) = a compare b
