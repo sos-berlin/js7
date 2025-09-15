@@ -106,7 +106,7 @@ final class AgentTest extends OurTestSuite, AgentTester:
 
 object AgentTest:
   private val controllerId = ControllerId("CONTROLLER")
-  private val TestUser = SimpleUser(controllerId.toUserId)
+  private val TestUser = SimpleUser(controllerId.unsafeUserId)
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
 

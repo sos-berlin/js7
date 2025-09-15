@@ -12,12 +12,12 @@ private[command] def releaseEventsExecutor =
     if agentState.meta.isEmpty then // to be sure
       Left(AgentNotDedicatedProblem)
     else
-      val userId = agentState.meta.controllerId.toUserId
-      import cmd.untilEventId
-      val current = agentState.journalState.userIdToReleasedEventId(userId) // Must contain userId
-      if untilEventId < current then
-        Left(ReverseReleaseEventsProblem(
-          requestedUntilEventId = untilEventId, currentUntilEventId = current))
-      else
-        Right:
-          (NoKey <-: JournalEventsReleased(userId, untilEventId)) :: Nil
+      agentState.meta.controllerId.toUserId.flatMap: userId =>
+        import cmd.untilEventId
+        val current = agentState.journalState.userIdToReleasedEventId(userId) // Must contain userId
+        if untilEventId < current then
+          Left(ReverseReleaseEventsProblem(
+            requestedUntilEventId = untilEventId, currentUntilEventId = current))
+        else
+          Right:
+            (NoKey <-: JournalEventsReleased(userId, untilEventId)) :: Nil

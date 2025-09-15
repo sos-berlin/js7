@@ -492,7 +492,7 @@ extends Service.StoppableByRequest:
     SessionApi.resource(IO {
       val agentUserAndPassword = controllerConfiguration.config
         .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
-        .map(password => UserAndPassword(controllerId.toUserId, password))
+        .map(password => UserAndPassword(controllerId.unsafeUserId, password))
       AgentClient(
         Admission(uri, agentUserAndPassword),
         label = agentPath.toString,

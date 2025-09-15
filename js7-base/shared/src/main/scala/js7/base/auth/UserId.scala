@@ -19,7 +19,8 @@ final case class UserId private(string: String) extends GenericString:
 object UserId extends GenericString.Checked_[UserId]:
   val Anonymous: UserId = UserId("Anonymous")
 
-  protected def unchecked(string: String) = new UserId(string)
+  def unchecked(string: String): UserId =
+    new UserId(string)
 
   override def checked(string: String): Checked[UserId] =
     if string.isEmpty then

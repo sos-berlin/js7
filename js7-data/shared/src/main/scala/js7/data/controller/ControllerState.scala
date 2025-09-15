@@ -137,7 +137,8 @@ extends
     Right(DummyClusterNodeName)
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
-    Right(controllerId.toUserId)
+    controllerId.check.map: _ =>
+      controllerId.unsafeUserId
 
   def estimatedSnapshotSize: Int =
     1 +

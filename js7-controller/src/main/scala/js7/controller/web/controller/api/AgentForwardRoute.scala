@@ -46,7 +46,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
               val userAndPassword = controllerConfiguration.config
                 .optionAs[SecretString](
                   "js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
-                .map(UserAndPassword(controllerConfiguration.controllerId.toUserId, _))
+                .map(UserAndPassword(controllerConfiguration.controllerId.unsafeUserId, _))
               forward(agentPath, userAndPassword, request)
 
   private def forward(

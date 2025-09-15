@@ -144,9 +144,9 @@ object AgentMotor:
         // to avoid deletion of journal files due to an empty list, before controller has read the events.
         // The controller has to send ReleaseEvents commands to release obsolete journal files.
         journal.persist: agentState =>
-          val userId = agentState.meta.controllerId.toUserId
-          !agentState.journalState.userIdToReleasedEventId.contains(userId) ?
-            JournalEventsReleased(userId, EventId.BeforeFirst)
+          agentState.meta.controllerId.toUserId.map: userId =>
+            !agentState.journalState.userIdToReleasedEventId.contains(userId) ?
+              JournalEventsReleased(userId, EventId.BeforeFirst)
         .map(_.orThrow)
         .map: (_: Persisted[AgentState, Event]) =>
           for
