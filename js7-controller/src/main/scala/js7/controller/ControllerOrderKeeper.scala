@@ -710,7 +710,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       tried match
         case Success(Left(problem @ ClusterModuleShuttingDownProblem)) if shuttingDown =>
           logger.debug(s"Cluster module terminated with $problem")
-        case Success(checked: Checked[Completed]) =>
+        case Success(checked: Checked[Unit]) =>
           val msg: Any = checked.fold(identity, identity)
           logger.error(s"Cluster module terminated unexpectedly: $msg")
         case Failure(t) =>
