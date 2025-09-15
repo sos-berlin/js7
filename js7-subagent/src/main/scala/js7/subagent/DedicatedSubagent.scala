@@ -9,7 +9,7 @@ import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, 
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
-import js7.base.log.LogLevel.{Info, Warn}
+import js7.base.log.LogLevel.Warn
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.{AsyncMap, SimpleLock}
@@ -46,7 +46,6 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
-import scala.math.Ordered.orderingToOrdered
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -144,13 +143,11 @@ extends Service.StoppableByRequest:
             sym.onInfo()
             logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
               orderIds.toArray.sorted.mkStringLimited(3)}")
-        .uncancelable
       .background.surround:
         body
       .productR:
         IO:
-          if sym.relievedLogLevel >= Info then
-            logger.info(s"🟢 All processes completed")
+          logger.log(sym.relievedLogLevel, s"🟢 All processes completed")
 
   def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
     IO.defer:
@@ -226,7 +223,7 @@ extends Service.StoppableByRequest:
           oToP.parFoldMapA: (orderId, processing) =>
             processing.acknowledged.get *>
               IO(logger.log(sym.relievedLogLevel,
-                s"🟢 Director has acknowledged processing of $orderId"))
+                s"Director has acknowledged processing of $orderId"))
         .productR:
           IO(logger.log(sym.relievedLogLevel,
             s"🟢 Director has acknowledged processing of all orders after ${
@@ -372,7 +369,7 @@ extends Service.StoppableByRequest:
         .map: detachedOrderIds_ =>
           val detachedOrderIds = detachedOrderIds_.flatten: Seq[OrderId]
           if detachedOrderIds.isEmpty then
-            logger.trace(s"🪱 detachProcessedOrders($eventId): no Order detached")
+            () //logger.trace(s"🪱 detachProcessedOrders($eventId): no Order detached")
           else
             logger.debug(s"detachProcessedOrders($eventId): detached ${
               detachedOrderIds.mkString(" ")}")
