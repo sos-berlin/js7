@@ -63,12 +63,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
           "UnsignedSimpleItemAdded" -> 2)))))
 
     locally:
-      // Test combine and |+| //
-      val eventColl1 = controllerInitialized.combine(itemAdded.widen)
-        .calculate(ControllerState.empty, context).orThrow
-
       val eventColl2 = (controllerInitialized.widen |+| itemAdded.widen)
         .calculate(ControllerState.empty, context).orThrow
 
-      assert(eventColl1 == eventColl)
       assert(eventColl2 == eventColl)

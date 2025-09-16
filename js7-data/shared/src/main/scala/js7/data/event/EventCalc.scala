@@ -6,6 +6,7 @@ import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.ScalaUtils.syntax.toEagerSeq
 import js7.data.event.KeyedEvent.NoKey
 import org.jetbrains.annotations.TestOnly
+import scala.annotation.tailrec
 
 /** Calculator for EventColl.
   *
@@ -13,12 +14,6 @@ import org.jetbrains.annotations.TestOnly
   */
 final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
   private val function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]]):
-
-  def combine[S1 >: S <: EventDrivenState[S1, E1], E1 >: E <: Event, Ctx1](
-    other: EventCalc[S1, E1, Ctx & Ctx1])
-  : EventCalc[S1, E1, Ctx & Ctx1] =
-    EventCalc[S1, E1, Ctx & Ctx1]: coll =>
-      widen[S1, E1, Ctx & Ctx1].calculate(coll).flatMap(other.calculate)
 
   @TestOnly
   def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
@@ -29,7 +24,8 @@ final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
   def calculate(aggregate: S, context: Ctx): Checked[EventColl[S, E, Ctx]] =
     calculate[S, E, Ctx](EventColl(aggregate, context))
 
-  /** Returns an EventColl containing the calculated events and aggregate. */
+  /** Returns an EventColl containing the calculated events and aggregate.
+    * <p>Simply calls  `function`. */
   inline def calculate[S1 >: S <: EventDrivenState[S1, E1], E1 >: E <: Event, Ctx1](
     eventColl: EventColl[S1, E1, Ctx & Ctx1])
   : Checked[EventColl[S1, E1, Ctx & Ctx1]] =
@@ -146,20 +142,38 @@ object EventCalc:
   : Timestamp =
     coll.context.now
 
+
   // Monoid //
 
   private sealed trait DummyAggregate extends EventDrivenState[DummyAggregate, Event]
 
-  private val monoidDummy: Monoid[EventCalc[DummyAggregate, Event, TimeCtx]] =
-    type MyEventCalc = EventCalc[DummyAggregate, Event, TimeCtx]
+  private val GenericMonoid: Monoid[EventCalc[DummyAggregate, Event, Any]] =
+    type MyEventCalc = EventCalc[DummyAggregate, Event, Any]
     new Monoid[MyEventCalc]:
       def empty = Empty.asInstanceOf[MyEventCalc]
 
       def combine(a: MyEventCalc, b: MyEventCalc): MyEventCalc =
-        a.combine(b)
+        EventCalc: coll =>
+          a.calculate(coll).flatMap(b.calculate)
+
+      // This implementation of combineAll avoids a hidden flatMap recursion
+      override def combineAll(as: IterableOnce[MyEventCalc]): MyEventCalc =
+        type MyEventColl = EventColl[DummyAggregate, Event, Any]
+        EventCalc[DummyAggregate, Event, Any]: coll =>
+          val it = as.iterator
+
+          @tailrec def loop(coll: MyEventColl): Checked[MyEventColl] =
+            if !it.hasNext then
+              Right(coll)
+            else
+              it.next().function(coll) match
+                case Left(problem) => Left(problem)
+                case Right(coll2) => loop(coll2)
+
+          loop(coll)
 
   given monoid: [S <: EventDrivenState[S, E], E <: Event, Ctx] => Monoid[EventCalc[S, E, Ctx]] =
-    monoidDummy.asInstanceOf
+    GenericMonoid.asInstanceOf
 
   def combineAll[S <: EventDrivenState[S, E], E <: Event, Ctx](
     eventCalcs: IterableOnce[EventCalc[S, E, Ctx]])
