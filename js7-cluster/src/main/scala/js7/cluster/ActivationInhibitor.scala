@@ -48,15 +48,16 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
         case Initial | Active | Passive =>
           activate.flatMap:
             case o @ (Left(_) | Right(false)) => IO:
-              logger.debug(s"🚫 tryToActivate: Passive — because activation function returned $o")
+              logger.debug(s"⛔ tryToActivate: Passive — because activation function returned $o")
               o.map(Passive -> _)
             case Right(true) =>
               IO:
                 logger.debug("✔︎ tryToActivate: Active — because activation function succeeded")
                 Right(Active -> true)
+
         case inhibited: Inhibited =>
           IO:
-            logger.info("🚫 Activation inhibited 🚫")
+            logger.info("⛔ Activation of this cluster node has been inhibited by the peer ⛔")
             Right(inhibited -> false)
 
   /** Tries to inhibit activation for `duration`.
@@ -66,6 +67,7 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
     logger.debugIOWithResult:
       _state.updateWithResult:
         case Active =>
+          logger.debug(s"This node is already active, ❗️ THE PEER MUST NOT ACTIVATE ❗️")
           IO.pure(Active -> false)
 
         case state @ (Initial | Passive | _: Inhibited) =>
@@ -79,13 +81,20 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
     supervisor.supervise:
       IO.sleep(duration) *>
         _state.update:
-          case Inhibited(1) => IO.pure(Passive)
-          case Inhibited(n) => IO.pure(Inhibited(n - 1))
-          case state =>
-            // May happen in rare case of race condition
+          case Inhibited(1) =>
             IO:
-              logger.error:
-                s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'"
+              logger.debug(s"Inhibition timer expired, becoming Passive")
+              Passive
+          case Inhibited(n) =>
+            IO:
+              val updated = Inhibited(n - 1)
+              logger.debug(s"Inhibition timer expired, becoming $updated")
+              updated
+          case state =>
+            // May happen in rare case of race condition (?)
+            IO:
+              logger.error(s"inhibitActivation timeout after ${duration.pretty
+                }: expected Inhibited but got '$state'")
               state
     .void
 

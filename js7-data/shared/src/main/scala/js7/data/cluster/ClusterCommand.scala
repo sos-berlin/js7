@@ -5,6 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.OneTimeToken
@@ -77,6 +78,8 @@ object ClusterCommand:
   final case class ClusterInhibitActivation(duration: FiniteDuration)
   extends ClusterCommand:
     type Response = ClusterInhibitActivation.Response
+    override def toString = s"ClusterInhibitActivation(${duration.pretty})"
+
   object ClusterInhibitActivation:
     final case class Response(failedOver: Option[ClusterState.FailedOver])
     extends ClusterCommand.Response
