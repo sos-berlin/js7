@@ -128,7 +128,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
       assertThat(updatedAggregate eq aggregate)
       this
     else
-      if isIntelliJIdea then foreachLog(logger.trace)
+      if isIntelliJIdea then ()//foreachLog(logger.trace)
       copy(
         timestampedKeyedEvents = timestampedKeyedEvents ++ keyedEvents,
         aggregate = updatedAggregate)
