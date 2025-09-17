@@ -3,6 +3,7 @@ package js7.base.system
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.AnyJsonCodecs.implicits.*
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 final case class SystemInformation(
   hostname: String,
@@ -12,7 +13,7 @@ final case class SystemInformation(
 
 
 object SystemInformation:
-  (MapJsonDecoder, MapJsonEncoder)  // Force import usage for IntelliJ (hidden usage by @JsonCocec)
+  intelliJuseImport((MapJsonDecoder, MapJsonEncoder))
 
   val ForTest: SystemInformation = SystemInformation(hostname = "HOSTNAME")
 

@@ -50,7 +50,7 @@ import scala.util.control.NonFatal
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
-ThisBuild / scalaVersion := "3.7.2"
+ThisBuild / scalaVersion := "3.7.3"
 ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT") && !isMac/*works only with clean*/
 
 val rootDirectory = Paths.get(".").toAbsolutePath
