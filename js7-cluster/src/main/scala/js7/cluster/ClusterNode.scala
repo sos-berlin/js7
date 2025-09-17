@@ -33,7 +33,7 @@ import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveP
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterState, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, JournalPosition, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
@@ -206,29 +206,28 @@ extends Service.StoppableByRequest:
         case ClusterCommand.ClusterInhibitActivation(duration) =>
           activationInhibitor.inhibitActivation(duration).flatMap: inhibited =>
             if inhibited then
-              IO.pure(Right(ClusterInhibitActivation.Response(failedOver = None)))
+              IO.pure(Right(ClusterInhibitActivation.Response(clusterState = None)))
             else
               workingNodeStarted.get
                 .dematerialize
                 .flatMap(_.traverse(_.journal.clusterState))
                 .map(Some(_))
-                .timeoutTo(duration /*???*/ - 500.ms, IO.none)
+                // Because the ActivationInhibter is Active state, workingNodeStarted is expected
+                // to be fill nearly immediately.
+                .timeoutTo(duration /*???*/, IO.none)
                 .flatMap:
                   case None =>
-                    IO.left(Problem.pure("ClusterInhibitActivation timed out — please try again"))
+                    IO.left(Problem.pure:
+                      "ClusterInhibitActivation command timed out — please try again")
 
                   case Some(Left(_: ProgramTermination)) =>
                     // No journal
-                    IO.left(Problem.pure(
-                      "ClusterInhibitActivation command failed due to cluster is being terminated"))
-
-                  case Some(Right(failedOver: FailedOver)) =>
-                    logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                    IO.right(ClusterInhibitActivation.Response(Some(failedOver)))
+                    IO.left(Problem.pure:
+                      "ClusterInhibitActivation command failed due to program termination")
 
                   case Some(Right(clusterState)) =>
-                    IO.left(Problem.pure("ClusterInhibitActivation command failed " +
-                      s"because node is already active but not failed-over: $clusterState"))
+                    logger.debug(s"inhibitActivation(${duration.pretty}) => $clusterState")
+                    IO.right(ClusterInhibitActivation.Response(Some(clusterState)))
 
         case _: ClusterCommand.ClusterPrepareCoupling |
              _: ClusterCommand.ClusterCouple |
@@ -397,7 +396,7 @@ object ClusterNode:
           logger.info(s"This cluster $ownId was active and coupled before restart - " +
             s"asking $passiveId about its state")
 
-          val failedOver: IO[Option[(Recovered[S], PassiveClusterNode[S])]] =
+          val startedAsPassive: IO[Option[(Recovered[S], PassiveClusterNode[S])]] =
             memoize:
               common.inhibitActivationOfPeer(
                   clusterState,
@@ -412,17 +411,24 @@ object ClusterNode:
                       "so this node remains the active cluster node")
                     None
 
-                  case Some(otherFailedOver) =>
-                    Some(startPassiveAfterFailover(clusterState, otherFailedOver))
+                  case Some(peerClusterState: HasNodes) =>
+                    Some(startPassiveBecausePeerIsActive(clusterState, peerClusterState))
+
+                  case Some(ClusterState.Empty) =>
+                    // TODO Maybe this, together with NodesAppointed(?) means the peer's journal
+                    //  has been reset?
+                    throw new RuntimeException(
+                      s"The peer node's ClusterState.Empty does not match our ${
+                        clusterState.toShortString}")
 
           Prepared(
             currentPassiveReplicatedState =
-              failedOver.flatMap:
+              startedAsPassive.flatMap:
                 case None => IO.none
                 case Some((_, passiveClusterNode)) =>
                   passiveClusterNode.state.map(s => Some(Right(s))),
             untilRecovered =
-              failedOver.flatMap:
+              startedAsPassive.flatMap:
                 case None => IO.right(recovered)
                 case Some((ourRecovered, passiveClusterNode)) =>
                   passiveClusterNode.run(ourRecovered.state))
@@ -433,23 +439,27 @@ object ClusterNode:
             currentPassiveReplicatedState = IO.none,
             untilRecovered = activationInhibitor.startActive.as(Right(recovered)))
 
-    def startPassiveAfterFailover(coupled: Coupled, otherFailedOver: FailedOver)
+    def startPassiveBecausePeerIsActive(ourClusterState: Coupled, peerClusterState: HasNodes)
     : (Recovered[S], PassiveClusterNode[S]) =
-      logger.warn(s"The other ${otherFailedOver.activeId} ${otherFailedOver.toShortString}" +
+      logger.warn(s"The other ${peerClusterState.activeId} ${peerClusterState.toShortString}" +
         ", and became active while this node was absent")
-      assertThat(otherFailedOver.idToUri == coupled.idToUri &&
-        otherFailedOver.activeId == coupled.passiveId)
+      assertThat(peerClusterState.idToUri == ourClusterState.idToUri &&
+        peerClusterState.activeId == ourClusterState.passiveId)
       // This restarted, previously failed active cluster node may have written one chunk of events
       // more than the passive node, maybe even an extra snapshot in a new journal file.
       // These extra events are not acknowledged. So we truncate our journal.
-      val ourRecovered = truncateJournalAndRecoverAgain(otherFailedOver) match
-        case None => recovered
-        case Some(truncatedRecovered) =>
-          assertThat(truncatedRecovered.state.clusterState == coupled)
-          assertThat(!recovered.eventWatch.whenStarted.isCompleted)
-          recovered.close() // Should do nothing, because recovered.eventWatch has not been started
-          truncatedRecovered
-      ourRecovered -> newPassiveClusterNode(ourRecovered, otherFailedOver.setting,
+      val ourRecovered = peerClusterState match
+        case peerClusterState: FailedOver =>
+          truncateJournalAndRecoverAgain(peerClusterState) match
+            case None => recovered
+            case Some(truncatedRecovered) =>
+              assertThat(truncatedRecovered.state.clusterState == ourClusterState)
+              assertThat(!recovered.eventWatch.whenStarted.isCompleted)
+              recovered.close() // Should do nothing, because recovered.eventWatch has not been started
+              truncatedRecovered
+        case _: ClusterState =>
+          recovered
+      ourRecovered -> newPassiveClusterNode(ourRecovered, peerClusterState.setting,
         otherFailedOver = true)
 
     def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =

@@ -134,7 +134,8 @@ extends
     controllerId.toString
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
-    controllerMetaState.controllerId.toUserId.map(o => NodeName(o.string))
+    controllerMetaState.controllerId.toUserId.flatMap: o =>
+      NodeName.checked(o.string)
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
     controllerId.check.map: _ =>

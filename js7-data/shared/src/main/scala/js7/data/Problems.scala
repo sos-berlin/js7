@@ -126,6 +126,13 @@ object Problems:
   extends Problem.Coded:
     def arguments = Map1("clusterState", clusterState.getClass.shortClassName)
 
+  final case class ClusterActivationInhibitedByPeerProblem(
+    ownId: NodeId, peerId: NodeId, peerClusterState: ClusterState)
+  extends Problem.Coded:
+    def arguments = Map3(
+      "ownId", ownId.toString,
+      "peerId", peerId.toString,
+      "peerClusterState", peerClusterState.toString)
 
   case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503  // ServiceUnavailable

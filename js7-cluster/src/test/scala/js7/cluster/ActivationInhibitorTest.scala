@@ -225,7 +225,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         succeed
 
   private def startActivationInhibitor: IO[ActivationInhibitor] =
-    ActivationInhibitor.resource.allocated.map(_._1)
+    ActivationInhibitor.resource().allocated.map(_._1)
 
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
   : IO[Checked[Boolean]] =

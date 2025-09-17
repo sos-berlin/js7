@@ -35,14 +35,17 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
+  private final val testSimulateInhibitActivationPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
   sys.props(testAckLossPropertyKey) = "false"
+  sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
     js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
     js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
+    js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
     """
 
   protected override val agentPaths = Nil
@@ -81,6 +84,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
         logger.info("💥 Break connection between cluster nodes 💥")
         sys.props(testHeartbeatLossPropertyKey) = "true"
         sys.props(testAckLossPropertyKey) = "true"
+        sys.props(testSimulateInhibitActivationPropertyKey) = "true"
         sleep(clusterTiming.activeLostTimeout + 1.s)
         // Now, both cluster nodes require confirmation for their ClusterNodeLostEvent
 

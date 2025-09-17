@@ -14,14 +14,18 @@ import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.ActivationInhibitor.*
 import js7.common.http.PekkoHttpClient
+import js7.data.Problems.ClusterActivationInhibitedByPeerProblem
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
-import js7.data.cluster.ClusterState.FailedOver
-import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
+import js7.data.cluster.{ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
+import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NoStackTrace
 
 /** Inhibits activation of cluster node for the specified duration. */
-private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[IO]):
+private[cluster] final class ActivationInhibitor private(
+  supervisor: Supervisor[IO],
+  testFailInhibitActivationWhileTrying: Option[String] = None):
 
   private val _state = AsyncVariable[State](Initial)
 
@@ -75,7 +79,15 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
             val depth = state match
               case Inhibited(n) => n + 1
               case _ => 1
-            Inhibited(depth) -> true
+            val updated = Inhibited(depth)
+            logger.debug(s"Inhibit activation for ${duration.pretty}: $updated")
+            updated -> true
+      .timeoutTo(500.ms/*???*/, IO:
+        // TODO Maybe replace the timeout with a TryingToActivate state?
+        logger.info("⚠️  inhibitActivation: This cluster node seems to be trying to activate, " +
+          "so we reject the request")
+        testFailInhibitActivationWhileTrying.fold(false): key =>
+          throw new InhibitActivationFailsForTestingException)
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
     supervisor.supervise:
@@ -107,17 +119,18 @@ private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[
 private[cluster] object ActivationInhibitor:
   private val logger = Logger[this.type]
 
-  def resource: ResourceIO[ActivationInhibitor] =
+  def resource(testFailInhibitActivationWhileTrying: Option[String] = None)
+  : ResourceIO[ActivationInhibitor] =
     Supervisor[IO].map:
-      new ActivationInhibitor(_)
+      new ActivationInhibitor(_, testFailInhibitActivationWhileTrying)
 
   def inhibitActivationOfPassiveNode(
     setting: ClusterSetting,
     peersUserAndPassword: Option[UserAndPassword],
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi])
-  : IO[Option[FailedOver]] =
+  : IO[Option[ClusterState]] =
     val admission = Admission(setting.passiveUri, peersUserAndPassword)
-    logger.debugIO(s"inhibitActivationOfPassiveNode ${setting.passiveUri}"):
+    logger.infoIO(s"inhibitActivationOfPassiveNode ${setting.passiveUri}"):
       DelayConf.default.runIO: delayer =>
         clusterNodeApi(admission, "inhibitActivationOfPassiveNode")
           .evalTap:
@@ -125,7 +138,7 @@ private[cluster] object ActivationInhibitor:
           .use:
             _.executeClusterCommand:
               ClusterInhibitActivation(setting.timing.inhibitActivationDuration)
-          .map(_.failedOver)
+          .map(_.clusterState)
           .onErrorRestartLoop(()): (throwable, _, retry) =>
             // TODO Code mit loginUntilReachable usw. zusammenfassen.
             //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
@@ -135,6 +148,41 @@ private[cluster] object ActivationInhibitor:
             for t <- throwable.ifStackTrace if PekkoHttpClient.hasRelevantStackTrace(t) do
               logger.debug(msg, t)
             delayer.sleep >> retry(())
+      .map(Result(_))
+    .map(_.peerClusterState)
+
+  /** Asks the peer node to inhibit activation for `duration`.
+    * @return Some(peerClusterState), if the peer responded as an active node,
+    *         <br>
+    *         None otherwise. The peer may inhibit activation.
+    */
+  def tryInhibitActivationOfPeer(
+    ownId: NodeId,
+    peerId: NodeId,
+    admission: Admission,
+    clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
+    timing: ClusterTiming)
+  : IO[Checked[Unit]] =
+    logger.infoIOWithResult(s"tryInhibitActivationOfPeer ${admission.uri}"):
+      clusterNodeApi(admission, "tryInhibitActivationOfPeer")
+        .use: api =>
+          api.login() *>
+            api.executeClusterCommand:
+              ClusterInhibitActivation(timing.inhibitActivationDuration)
+            .map(_.clusterState)
+            .map:
+              case None => Checked.unit
+              case Some(clusterState) =>
+                Left(ClusterActivationInhibitedByPeerProblem(ownId, peerId, clusterState))
+        .handleError: throwable =>
+          // We can only safely check if the peer is active. !!!
+          // All other response mean, we doesn't know for sure.
+          // Then we must allow the call to continue it's (otherwise checked!) activation.
+          // TODO On any error, we assume the peer is not alive or not active.
+          //  We should not be sure about this.
+          logger.info(s"tryInhibitActivationOfPeer ${admission.uri} failed: ${
+            throwable.toStringWithCauses}")
+          Checked.unit
 
 
   private[cluster] sealed trait State
@@ -143,3 +191,15 @@ private[cluster] object ActivationInhibitor:
   private[cluster] case object Passive extends State
   private[cluster] case class Inhibited(depth: Int) extends State:
     assertThat(depth >= 1)
+
+  private final class Result(val peerClusterState: Option[ClusterState]):
+    override def toString =
+      peerClusterState match
+        case None => "✔︎ Activation allowed"
+        case Some(clusterState) =>
+          s"⛔️ Activation inhibited due to peer clusterState=${clusterState.toShortString}"
+
+  final class InhibitActivationFailsForTestingException private[ActivationInhibitor]
+  extends
+    RuntimeException(s"🟪 inhibitActivation fails due to testFailInhibitActivationWhileTrying"),
+    NoStackTrace

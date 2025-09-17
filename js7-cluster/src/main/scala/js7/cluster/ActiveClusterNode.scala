@@ -37,7 +37,7 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSt
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.FileJournal
 import js7.journal.problems.Problems.JournalKilledProblem
 import scala.concurrent.duration.*
@@ -48,7 +48,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   journal: FileJournal[S],
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,
-  clusterConf: ClusterConf):
+  clusterConf: ClusterConf)
+  (using NodeNameToPassword[S]):
 //TODO extends Service
 
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
@@ -446,28 +447,31 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             Kein lock hier, wegen möglichen Deadlocks !!!
            */
           journal.forPossibleFailoverByOtherNode:
-            journal.clusterState.flatMap:
-              case clusterState: Coupled =>
-                val passiveLost = ClusterPassiveLost(passiveId)
-                suspendHeartbeat(forEvent = true):
-                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
-                    journal.onPassiveLost *>
-                      persistWithoutTouchingHeartbeat():
-                        case _: Coupled => Right(Some(passiveLost))
-                        case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                      .map(_.toCompleted)
-                      .rightAs(true)
-                  .recoverFromProblemWith:
-                    case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
-                      journal.kill  // avoid taking a snapshot
-                        .as(Left(problem))
-                .map(_.flatMap: allowed =>
-                  if !allowed then
-                    Checked.unit
-                  else
-                    Left(missingHeartbeatProblem))
-              case _ =>
-                IO.pure(Left(missingHeartbeatProblem))
+            journal.aggregate.flatMap: aggregate =>
+              import aggregate.clusterState
+              clusterState match
+                case clusterState: Coupled =>
+                  val passiveLost = ClusterPassiveLost(passiveId)
+                  suspendHeartbeat(forEvent = true):
+                    common.ifClusterWatchAllowsActivation(ownId, passiveLost, aggregate):
+                      journal.onPassiveLost *>
+                        persistWithoutTouchingHeartbeat():
+                          case _: Coupled => Right(Some(passiveLost))
+                          case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
+                        .map(_.toCompleted)
+                        .rightAs(true)
+                    .recoverFromProblemWith:
+                      case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
+                        journal.kill  // avoid taking a snapshot
+                          .as(Left(problem))
+                  .map(_.flatMap: allowed =>
+                    if !allowed then
+                      Checked.unit
+                    else
+                      Left(missingHeartbeatProblem))
+
+                case _ =>
+                  IO.pure(Left(missingHeartbeatProblem))
 
         case o =>
           IO.pure(o)

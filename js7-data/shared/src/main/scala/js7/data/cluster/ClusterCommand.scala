@@ -1,7 +1,7 @@
 package js7.data.cluster
 
-import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.auth.UserId
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -9,10 +9,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.OneTimeToken
+import js7.data.cluster.ClusterState.FailedOver
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
 import js7.data.node.{NodeId, NodeName}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 
 sealed trait ClusterCommand extends CommonCommand:
   type Response <: ClusterCommand.Response
@@ -81,12 +82,20 @@ object ClusterCommand:
     override def toString = s"ClusterInhibitActivation(${duration.pretty})"
 
   object ClusterInhibitActivation:
-    final case class Response(failedOver: Option[ClusterState.FailedOver])
+    final case class Response(clusterState: Option[ClusterState])
     extends ClusterCommand.Response
 
-    private implicit val x: Codec.AsObject[ClusterState.FailedOver] =
-      deriveCodec[ClusterState.FailedOver]
-    implicit val jsonCodec: Codec.AsObject[Response] = deriveCodec
+    given Encoder.AsObject[Response] = deriveCodec
+
+    private given Codec.AsObject[ClusterState.FailedOver] = deriveCodec[ClusterState.FailedOver]
+
+    given Decoder[Response] = c =>
+      for
+        maybeFailedOver <- c.get[Option[FailedOver]]("failedOver")
+        clusterState <- maybeFailedOver.map(o => Right(Some(o))).getOrElse:
+          c.get[Option[ClusterState]]("clusterState")
+      yield
+        Response(clusterState)
 
 
   sealed trait Response

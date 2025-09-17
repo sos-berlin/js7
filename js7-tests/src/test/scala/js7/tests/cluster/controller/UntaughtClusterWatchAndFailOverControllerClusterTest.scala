@@ -64,6 +64,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testAckLossPropertyKey) = "true"
       sys.props(testHeartbeatLossPropertyKey) = "true"
+      sys.props(testSimulateInhibitActivationPropertyKey) = "true"
 
       backupController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
@@ -125,6 +126,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           logger.info("Start Primary Controller")
           sys.props(testAckLossPropertyKey) = "false"
           sys.props(testHeartbeatLossPropertyKey) = "false"
+          sys.props(testSimulateInhibitActivationPropertyKey) = "false"
           primaryController = primary.newController()
         else
           // The old previously active cannot recoupled and must be restarted (test only).
@@ -136,7 +138,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           logger.info("Start Primary Controller")
           sys.props(testAckLossPropertyKey) = "false"
           sys.props(testHeartbeatLossPropertyKey) = "false"
-
+          sys.props(testSimulateInhibitActivationPropertyKey) = "false"
           //Journal is no longer truncated:
           //? primaryController = primary.newController()
           //? // Controller restarts due to truncated Journal

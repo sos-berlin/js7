@@ -34,14 +34,17 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
+  private final val testSimulateInhibitActivationPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
   sys.props(testAckLossPropertyKey) = "false"
+  sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
     js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
     js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
+    js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
     """
 
   protected override val agentPaths = Nil
@@ -76,8 +79,11 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
     TestAgent(backupDirectorAllocated).useSync(99.s) { backupDirector =>
       // Suppress acknowledge heartbeat, simulating a connection loss between the cluster nodes
       logger.info("💥 Break connection between cluster nodes 💥")
+      // Suppress heartbeat detection in active and in passive node,
+      // and simulate inhinitActivation while trying to activate
       sys.props(testHeartbeatLossPropertyKey) = "true"
       sys.props(testAckLossPropertyKey) = "true"
+      sys.props(testSimulateInhibitActivationPropertyKey) = "true"
       sleep(clusterTiming.activeLostTimeout + 1.s)
       // Now, both cluster nodes require confirmation for their ClusterNodeLostEvent
 
@@ -107,6 +113,7 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 
         sys.props(testHeartbeatLossPropertyKey) = "false"
         sys.props(testAckLossPropertyKey) = "false"
+        sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
         primaryDirector
           .terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))

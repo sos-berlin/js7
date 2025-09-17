@@ -10,7 +10,7 @@ import js7.data.cluster.ClusterCommand.*
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.JournalPosition
 import js7.data.node.{NodeId, NodeName}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class ClusterCommandTest extends OurTestSuite:
   "ClusterStartBackupNode" in:
@@ -90,7 +90,7 @@ final class ClusterCommandTest extends OurTestSuite:
       }""")
 
   "ClusterInhibitActivation.Response" in:
-    testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(FailedOver(
+    val failedOver = FailedOver(
       ClusterSetting(
         Map(
           NodeId("A") -> Uri("https://A"),
@@ -98,10 +98,37 @@ final class ClusterCommandTest extends OurTestSuite:
         activeId = NodeId("A"),
         ClusterTiming(10.s, 20.s),
         None),
-      JournalPosition(0L, 1000)))),
+      JournalPosition(0L, 1000))
+
+    testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(failedOver)),
+      json"""{
+        "TYPE": "ClusterInhibitActivation.Response",
+        "clusterState": {
+          "TYPE": "FailedOver",
+          "setting": {
+            "idToUri": {
+              "A": "https://A",
+              "B": "https://B"
+            },
+            "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
+          },
+          "failedAt": {
+            "fileEventId": 0,
+            "position": 1000
+          }
+        }
+      }""")
+
+    // COMPATIBLE with <v2.8.1 (despite Cluster nodes should be updated simultaneously)
+    testJsonDecoder[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(failedOver)),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",
         "failedOver": {
+          "TYPE": "FailedOver",
           "setting": {
             "idToUri": {
               "A": "https://A",

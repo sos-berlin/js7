@@ -53,7 +53,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
         .whenPFFuture[ClusterWatchCounterpart.TestConfirmed, Unit]:
           _.request match
             case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterCoupled, _, _) =>
-              
+
       withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
         eventWatch.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
@@ -62,6 +62,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testAckLossPropertyKey) = "true"
       sys.props(testHeartbeatLossPropertyKey) = "true"
+      sys.props(testSimulateInhibitActivationPropertyKey) = "true"
 
       primaryController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
@@ -111,6 +112,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         sys.props(testAckLossPropertyKey) = "false"
         sys.props(testHeartbeatLossPropertyKey) = "false"
+        sys.props(testSimulateInhibitActivationPropertyKey) = "false"
         if stopBackup then
           logger.info("Start Backup Controller")
           backupController = backup.newController()

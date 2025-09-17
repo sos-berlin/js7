@@ -21,7 +21,7 @@ extends SnapshotableState[S]:
   final def clusterNodeToUserAndPassword(ourNodeId: NodeId)(using NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
     clusterState.checkedCast[HasNodes].flatMap: clusterState =>
-      val otherNodeId = clusterState.setting.other(clusterState.activeId)
+      val otherNodeId = clusterState.setting.other(ourNodeId)
       clusterNodeToUserAndPassword(ourNodeId, otherNodeId)
 
   final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)

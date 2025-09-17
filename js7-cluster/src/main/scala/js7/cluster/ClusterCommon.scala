@@ -22,7 +22,7 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, SwitchedOve
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
-import js7.data.node.NodeNameToPassword
+import js7.data.node.{NodeId, NodeNameToPassword}
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
@@ -107,29 +107,46 @@ private[cluster] final class ClusterCommon private(
               case _ => IO.unit
 
   def inhibitActivationOfPeer[S <: ClusterableState[S]](aggregate: S)(using NodeNameToPassword[S])
-  : IO[Checked[Option[FailedOver]]] =
+  : IO[Checked[Option[ClusterState]]] =
     locally:
       for
-        clusterState <- (aggregate.clusterState).checkedCast[Coupled]
+        clusterState <- aggregate.clusterState.checkedCast[Coupled]
         maybeUserAndPassword <- aggregate.clusterNodeToUserAndPassword(clusterState.activeId)
       yield
         inhibitActivationOfPeer(clusterState, maybeUserAndPassword)
     .sequence
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
-  : IO[Option[FailedOver]] =
+  : IO[Option[ClusterState]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(
       clusterState.setting, peersUserAndPassword, clusterNodeApi)
 
-  def ifClusterWatchAllowsActivation(
-    clusterState: ClusterState.HasNodes,
-    event: ClusterNodeLostEvent)
+  def ifClusterWatchAllowsActivation[S <: ClusterableState[S]](
+    ownId: NodeId,
+    event: ClusterNodeLostEvent,
+    aggregate: S)
     (body: IO[Checked[Boolean]])
+    (using NodeNameToPassword[S])
   : IO[Checked[Boolean]] =
     logger.traceIOWithResult:
-      activationInhibitor.tryToActivate:
-        activate(clusterState, event):
-          body
+      // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
+      //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
+      IO(aggregate.clusterState.checkedCast[HasNodes]).flatMapT: clusterState =>
+        val peerId = clusterState.setting.other(ownId)
+        IO(aggregate.clusterNodeToUserAndPassword(ownId))
+          .flatMapT: peersUserAndPassword =>
+            val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
+            ActivationInhibitor
+              .tryInhibitActivationOfPeer(
+                ownId, peerId, admission, clusterNodeApi, clusterState.setting.timing)
+              .flatMap:
+                case Left(problem) =>
+                  logger.debug(s"⛔️ $problem")
+                  IO.right(false)
+                case Right(()) =>
+                  activationInhibitor.tryToActivate:
+                    activate(clusterState, event):
+                      body
 
   private def activate(
     clusterState: ClusterState.HasNodes,
@@ -182,6 +199,7 @@ private[cluster] final class ClusterCommon private(
         case ClusterState.Empty => IO.left(Problem.pure(
           "ClusterState:Empty in ifClusterWatchAllowsActivation ??"))
 
+
 private[js7] object ClusterCommon:
   private val logger = Logger[this.type]
 
@@ -193,7 +211,9 @@ private[js7] object ClusterCommon:
     testEventPublisher: EventPublisher[Any])
   : ResourceIO[ClusterCommon] =
     for
-      activationInhibitor <- ActivationInhibitor.resource
+      activationInhibitor <- ActivationInhibitor.resource(
+        testFailInhibitActivationWhileTrying =
+          clusterConf.testFailInhibitActivationWhileTrying)
       common <- Resource.make(
         acquire = IO:
           new ClusterCommon(

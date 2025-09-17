@@ -407,7 +407,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
         .detectPauses(setting.timing.activeLostTimeout)
         .flatMap[IO, Checked[Unit]]:
           case Left(noHeartbeatSince) =>
-            (if isReplicatingHeadOfFile then continuation.clusterState else recoverer.clusterState) match
+            val aggregate =
+              if isReplicatingHeadOfFile then continuation.aggregate else recoverer.result()
+            aggregate.clusterState match
               case clusterState: Coupled if clusterState.passiveId == ownId =>
                 if awaitingCoupledEvent then
                   logger.trace(
@@ -431,7 +433,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver):
+                      common.ifClusterWatchAllowsActivation(ownId, failedOver, aggregate):
                         IO:
                           val file = recoveredJournalFile.file
                           val fileSize =
@@ -464,7 +466,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver):
+                      common.ifClusterWatchAllowsActivation(ownId, failedOver, aggregate):
                         IO:
                           writeFailedOverEvent(out, file, failedOverStamped,
                             eventNumber = recoverer.totalEventCount, failedOverSince,
@@ -722,7 +724,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
   private object Continuation:
     private[PassiveClusterNode] sealed trait Replicatable
     extends Continuation:
-      def clusterState: ClusterState
+      def aggregate: S
       def fileEventId: EventId
       def fileLength: Long
       def firstEventPosition: Option[Long]
@@ -730,17 +732,18 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
       def maybeJournalId: Option[JournalId]
       def maybeRecoveredJournalFile: Option[RecoveredJournalFile[S]]
       final lazy val file = journalLocation.file(fileEventId)
+      final def clusterState: ClusterState = aggregate.clusterState
 
     private[PassiveClusterNode] sealed trait HasRecoveredJournalFile
     extends Continuation.Replicatable:
       def recoveredJournalFile: RecoveredJournalFile[S]
-      def clusterState = recoveredJournalFile.state.clusterState
+      def aggregate: S = recoveredJournalFile.state
       final def maybeJournalId = Some(recoveredJournalFile.journalId)
       final def maybeRecoveredJournalFile = Some(recoveredJournalFile)
 
   private sealed case class NoLocalJournal(fileEventId: EventId)
   extends Continuation.Replicatable:
-    def clusterState = ClusterState.Empty
+    def aggregate: S = S.empty
     def fileLength = 0
     def firstEventPosition = None
     def lastProperEventPosition = -1L  // Invalid value

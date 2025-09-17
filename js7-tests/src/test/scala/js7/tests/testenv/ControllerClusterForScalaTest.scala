@@ -77,8 +77,10 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   protected final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
+  protected final val testSimulateInhibitActivationPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
   sys.props(testAckLossPropertyKey) = "false"
+  sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
   final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
@@ -128,6 +130,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
+            js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
@@ -156,6 +159,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
+            js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"

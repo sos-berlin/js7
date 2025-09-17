@@ -26,6 +26,7 @@ final case class ClusterConf(
   clusterWatchUniquenessMemorySize: Int,
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
+  testFailInhibitActivationWhileTrying: Option[String] = None,
   testDontHaltWhenPassiveLostRejected: Boolean = false,
   suppressFailover: Boolean = false,
   delayConf: DelayConf,
@@ -68,6 +69,8 @@ object ClusterConf:
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
       testAckLoss = config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS")
+      testFailInhibitActivationWhileTrying = config.optionAs[String](
+        "js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION")
       testDontHaltWhenPassiveLostRejected = config.getBoolean(
         "js7.journal.cluster.dont-halt-when-passive-lost-rejected", false)
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
@@ -90,6 +93,7 @@ object ClusterConf:
         clusterWatchUniquenessMemorySize,
         testHeartbeatLoss,
         testAckLoss,
+        testFailInhibitActivationWhileTrying,
         testDontHaltWhenPassiveLostRejected,
         suppressFailover,
         delayConf,
