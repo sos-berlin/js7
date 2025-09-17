@@ -14,7 +14,6 @@ import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
