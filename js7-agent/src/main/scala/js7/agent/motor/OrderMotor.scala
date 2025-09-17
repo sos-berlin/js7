@@ -209,9 +209,9 @@ extends Service.StoppableByRequest:
   private def runOrderPipeline: IO[Unit] =
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .chunks.map: chunk =>
-        chunk.toVector.flatten
-      .evalTapChunk: (orderIds: Seq[OrderId]) =>
-        IO(bean.orderQueueLength -= orderIds.size)
+        val orderIds = chunk.toVector.flatten: Vector[OrderId]
+        bean.orderQueueLength -= orderIds.size
+        orderIds
       .through:
         orderPipeline
       .compile.drain

@@ -200,6 +200,9 @@ extends Service.StoppableByRequest:
           IO.whenA(!triggered && n == workflowJob.processLimit - 1):
             trigger(s"processCount=$n is below Job's processLimit=${workflowJob.processLimit}")
 
+  def orderQueueLength: Int =
+    queue.length
+
   override def toString = s"JobMotor($jobKey)"
 
 

@@ -66,6 +66,9 @@ private final class JobOrderQueue:
   def isEmptyUnsafe: Boolean =
     queue.isEmpty
 
+  def length: Int =
+    queue.length
+
 
 private object JobOrderQueue:
 
@@ -113,6 +116,10 @@ private object JobOrderQueue:
 
     inline def nonEmpty: Boolean =
       !isEmpty
+
+    def length: Int =
+      synchronized:
+        queue.length
 
     override def toString =
       synchronized:

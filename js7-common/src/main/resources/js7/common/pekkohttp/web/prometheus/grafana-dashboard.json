@@ -2265,30 +2265,6 @@
                 }
               }
             ]
-          },
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "commits (persists)"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
           }
         ]
       },
@@ -2973,7 +2949,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Number of active execute instructions – An execute instructionsruns a \"JS7 Order process\"",
+      "description": "Number of active execute instructions – An execute instructions runs a \"JS7 Order process\"",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3097,7 +3073,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -3524,7 +3500,23 @@
           },
           "unit": "s"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average time an Order queues for job execution"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -3750,7 +3742,37 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "dark-red",
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Execute instruction (Order.Processing)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Active execute instructions"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
                   "mode": "fixed"
                 }
               }
@@ -3801,7 +3823,7 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_CallMeter_JobOrderQueue_Entry_Running{host=\"$host\"}",
-          "hide": false,
+          "hide": true,
           "instant": false,
           "legendFormat": "JobMotors order queue length",
           "range": true,
@@ -3813,12 +3835,25 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "js7_JobMotorKeeper_ProcessCount_SUPRESSED{host=\"$host\"}",
-          "hide": true,
+          "expr": "js7_JobMotorKeeper_ProcessCount{host=\"$host\"}",
+          "hide": false,
           "instant": false,
-          "legendFormat": "Execute instruction (Order.Processing)",
+          "legendFormat": "Active execute instructions",
           "range": true,
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_JobMotorKeeper_OrderQueueLength{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "JobMotors order queue length",
+          "range": true,
+          "refId": "orderQueueLength"
         }
       ],
       "title": "Order queue lengths",
@@ -3998,6 +4033,6 @@
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 74,
+  "version": 78,
   "weekStart": ""
 }

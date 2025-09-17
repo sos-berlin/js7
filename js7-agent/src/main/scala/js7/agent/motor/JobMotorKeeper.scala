@@ -178,7 +178,12 @@ private final class JobMotorKeeper(
     registerMBean("JobMotorKeeper"):
       IO:
         new JobMotorKeeperMXBean:
-          def getProcessCount = processLimits.processCount
+          def getOrderQueueLength =
+            jobToMotor.unsafeToMap.values.iterator.map(_.allocatedThing.orderQueueLength).sum
+
+          def getProcessCount =
+            processLimits.processCount
+
           @Nullable def getProcessLimit =
             processLimits.processLimit.fold(null.asInstanceOf[java.lang.Integer])(Int.box)
     .void
@@ -256,6 +261,8 @@ object JobMotorKeeper:
   private val logger = Logger[this.type]
 
   sealed trait JobMotorKeeperMXBean:
+    def getOrderQueueLength: Int
+
     def getProcessCount: Int
     /** @return null means no limit. */
     @Nullable def getProcessLimit: java.lang.Integer
