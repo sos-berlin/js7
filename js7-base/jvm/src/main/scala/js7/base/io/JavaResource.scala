@@ -3,7 +3,7 @@ package js7.base.io
 import cats.effect.kernel.Sync
 import cats.effect.{Resource, SyncIO}
 import io.circe.Decoder
-import java.io.{File, InputStream, InputStreamReader, OutputStream, Reader}
+import java.io.{File, IOException, InputStream, InputStreamReader, OutputStream, Reader}
 import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{CopyOption, Files, Path}
@@ -108,7 +108,9 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
       new InputStreamReader(in, UTF_8)
 
   def openStream(): InputStream =
-    classLoader.getResourceAsStream(path)
+    classLoader.getResourceAsStream(path) match
+      case null => throw new IOException(s"Resource not found: $path")
+      case o => o
 
   /**
    * @throws RuntimeException, if the resource does not exists.
