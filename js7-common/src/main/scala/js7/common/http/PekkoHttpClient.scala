@@ -149,21 +149,22 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     get_[HttpResponse](uri, StreamingJsonHeaders, dontLog = dontLog)
       .map(_
         .entity.withoutSizeLimit.dataBytes
-        .pipeMaybe(idleTimeout): (stream, t) =>
+        .pipeMaybe(idleTimeout): (stream, timeout) =>
           // Because the FS2/Pekko bridge appears not to be cancelable, we use
           // Pekko's idleTimeout instead of FS2's timeoutOnPull
-          stream.idleTimeout(t).recover:
-            case _: TimeoutException => throw IdleTimeoutException(toString, t)
+          stream.idleTimeout(timeout).recoverWith:
+            case _: TimeoutException =>
+              pekko.stream.scaladsl.Source.failed(IdleTimeoutException(uri, timeout))
         .asFs2Stream()
         .pipeIf(logger.isDebugEnabled):
           _.logTiming(_.size, (d, n, _) => IO:
-            if d >= 1.s && n > 10_000_000 then
+            if d >= 1.s && n >= 10_000_000 then
               logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))
         .through:
           LineSplitterPipe()
         // See above Pekko's stream.idleTimout
         //.pipeMaybe(idleTimeout): (stream, t) =>
-        //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(toString, t)))
+        //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(uri, t)))
         .map:
           case HttpHeartbeatByteArray => heartbeatAsChunk
           case o => fs2.Chunk.singleton(o)
@@ -756,14 +757,14 @@ object PekkoHttpClient:
         logger.warn(e.problem.toString))
 
 
-  final class IdleTimeoutException(serverName: String, duration: FiniteDuration)
-  extends ProblemException(HttpIdleTimeoutProblem(serverName, duration))
+  final class IdleTimeoutException private[PekkoHttpClient](uri: Uri, duration: FiniteDuration)
+  extends ProblemException(HttpIdleTimeoutProblem(uri, duration)), NoStackTrace
 
-  final class HttpIdleTimeoutProblem(serverName: String, duration: FiniteDuration)
+  final class HttpIdleTimeoutProblem private[PekkoHttpClient](uri: Uri, duration: FiniteDuration)
   extends Problem.Coded:
     def arguments = Map2(
       "duration", duration.pretty,
-      "serverName", serverName)
+      "uri", uri.toString)
 
   object HttpIdleTimeoutProblem extends Problem.Coded.Companion
 
