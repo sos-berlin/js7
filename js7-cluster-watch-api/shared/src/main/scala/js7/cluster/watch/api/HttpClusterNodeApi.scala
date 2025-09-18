@@ -51,7 +51,8 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None,
-    returnHeartbeatAs: Option[EventId] = None)
+    returnHeartbeatAs: Option[EventId] = None,
+    dontLog: Boolean = false)
   : IO[Stream[IO, Checked[EventId]]] =
     import EventId.given_Codec_Checked
     retryIfSessionLost:
@@ -60,7 +61,8 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
           uris.eventIds(timeout, heartbeat = heartbeat),
           responsive = true,
           returnHeartbeatAs = for h <- returnHeartbeatAs yield ByteArray(h.toString),
-          prefetch = 1000)
+          prefetch = 1000,
+          dontLog = dontLog)
       .map(_
         .mapChunks: chunk =>
           // Only the lastest EventId in chunk

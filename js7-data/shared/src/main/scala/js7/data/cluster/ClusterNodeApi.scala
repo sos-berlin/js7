@@ -40,7 +40,8 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
   def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None,
-    returnHeartbeatAs: Option[EventId] = None)
+    returnHeartbeatAs: Option[EventId] = None,
+    dontLog: Boolean = false)
   : IO[Stream[IO, Checked[EventId]]]
 
   def clusterWatchRequestStream(

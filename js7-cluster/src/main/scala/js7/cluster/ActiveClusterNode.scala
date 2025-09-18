@@ -568,6 +568,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           .map(_.flatten)
         .logWhenItTakesLonger("passive cluster node acknowledgement")
 
+  // TODO Return a Signal[EventId] !
   private def streamEventIds(
     api: ClusterNodeApi,
     heartbeat: FiniteDuration,
@@ -583,7 +584,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           HttpClient.liftProblem:
             api.eventIdStream(
                 heartbeat = Some(heartbeat),
-                returnHeartbeatAs = returnHeartbeatAs)
+                returnHeartbeatAs = returnHeartbeatAs,
+                dontLog = true)
               .map(_.evalMapChunk:
                 case Left(problem) => IO.raiseError(problem.throwable)
                 case Right(eventId) => IO.pure(eventId)),
