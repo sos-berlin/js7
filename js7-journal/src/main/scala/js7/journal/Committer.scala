@@ -173,7 +173,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           // TODO ClusterResetStarted doesn't leave the Coupled state
           noMoreAcks(clusterState.getClass.getSimpleName)
         .productR:
-          waitForAck(eventId = written.eventId, lastStamped = written.lastStamped)
+          waitForAck(
+            eventId = written.eventId, lastStamped = written.lastStamped, n = written.eventCount)
         .map: isAck =>
           written.isAcknowledged = isAck
           written
@@ -441,7 +442,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           //  to change to ClusterState.PassiveLost ?
           IO.False
         else
-          waitForAck(snapshotTaken.eventId, Some(snapshotTaken))
+          waitForAck(snapshotTaken.eventId, Some(snapshotTaken), n = 1)
       .flatMap: isAcknowledged =>
         IO:
           bean.addEventCount(1)
@@ -456,13 +457,13 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     /** Wait for acknowledgement of passive cluster node.
       *
       * On ClusterPassiveLost terminate with false. */
-    private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
+    private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]], n: Int)
     : IO[Boolean] =
       requireClusterAck.get.flatMap: requireAck =>
         if !requireAck then
           IO.False
         else
-          logWaitingForAck(eventId, lastStamped):
+          logWaitingForAck(eventId, lastStamped, n):
             meterAck:
               ackSignal.waitUntil(_ >= eventId).as(true)
                 .addElapsedToAtomicNanos(bean.ackNanos)
@@ -473,7 +474,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               false
           .map(_.merge)
 
-    private def logWaitingForAck[A](eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
+    private def logWaitingForAck[A](
+      eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]], n: Int)
       (body: IO[A])
     : IO[A] =
       IO.defer:
@@ -491,9 +493,10 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                 sym.onWarn()
                 val event = lastStamped.fold(""): stamped =>
                   s" ${stamped.value.event.getClass.simpleScalaName}"
-                logger.warn(s"$sym Waiting for ${elapsed.pretty
-                } for acknowledgement from passive cluster node of events until $eventId${event
-                }, last acknowledged: ${EventId.toString(lastAck)}")
+                logger.warn(s"$sym Waiting for ${
+                  elapsed.pretty} for acknowledgement from passive cluster node of ${
+                  n} events until $eventId${
+                  event}, last acknowledged: ${EventId.toString(lastAck)}")
           .productL:
             whenDeferred(sym.warnLogged):
               IO:

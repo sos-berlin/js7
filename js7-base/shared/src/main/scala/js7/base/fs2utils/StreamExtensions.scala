@@ -333,7 +333,7 @@ object StreamExtensions:
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltOnCompletion: F2[Unit])
     : Stream[F2, O] =
       stream.interruptWhen(haltOnCompletion.attempt)
-        .prefetch // prefetch avoid interruption / cancellation of the downstream
+        .prefetch // prefetch avoids interruption / cancellation of the downstream
 
     def logTiming(
       toCount: O => Long = simpleCount,

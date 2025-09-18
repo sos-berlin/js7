@@ -377,23 +377,20 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    logger.traceIO:
-      val scope = maybeBundleId.fold(Scope.empty)(bundleSubagentProcessCountScope)
-      Stream
-        .repeatEval:
-          stateVar.value
-            .flatMap(directorState => IO:
-              directorState.selectNext(maybeBundleId, scope))
-            .flatTap(o => IO:
-              logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
-        .evalTap:
-          // TODO Do not poll (for each Order)
-          case Right(None) => IO.sleep(reconnectDelayer.next())
-          case _ => IO(reconnectDelayer.reset())
-        .map(_.sequence)
-        .map(Chunk.fromOption)
-        .unchunks
-        .headL
+    val scope = maybeBundleId.fold(Scope.empty)(bundleSubagentProcessCountScope)
+    Stream.repeatEval:
+      stateVar.value.flatMap: directorState =>
+        IO:
+          directorState.selectNext(maybeBundleId, scope)
+            //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
+    .evalTap:
+      // TODO Do not poll (for each Order)
+      case Right(None) => IO.sleep(reconnectDelayer.next())
+      case _ => IO(reconnectDelayer.reset())
+    .map(_.sequence)
+    .map(Chunk.fromOption)
+    .unchunks
+    .headL
 
   private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId) =
     val Key = "js7ClusterSubagentProcessCount"

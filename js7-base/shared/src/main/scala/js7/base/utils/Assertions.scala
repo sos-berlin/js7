@@ -39,4 +39,4 @@ object Assertions:
   private def toMessage(method: String, predicate: sourcecode.Text[Boolean], clue: String)
     (using fullName: sourcecode.FullName, loc: ScalaSourceLocation)
   : String =
-    s"$method(${predicate.source}) failed in ${fullName.value}, $loc${clue.nonEmpty ?? s", $clue"}"
+    s"$method(${predicate.source}) failed in ${fullName.value}, $loc${clue.nonEmpty ?? s" · $clue"}"
