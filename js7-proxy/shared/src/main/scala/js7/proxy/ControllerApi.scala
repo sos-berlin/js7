@@ -209,7 +209,7 @@ extends ControllerApiWithHttp:
         case (t, _, retry)
           if isTemporaryUnreachable(t) && delays.hasNext =>
           if warned.elapsed >= 60.s then
-            logger.warn(t.toStringWithCauses)
+            logger.warn(s"⟲ Will retry after error: ${t.toStringWithCauses}")
             warned = now
           else
             logger.debug(t.toStringWithCauses)
