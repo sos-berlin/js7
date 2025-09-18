@@ -187,25 +187,26 @@ extends Service.StoppableByRequest:
         untilFetchingStopped.complete(()).void
 
   private def observeAndConsumeEvents: IO[Unit] =
-    logger.traceIO(IO.defer:
-      val delay = conf.eventBufferDelay max conf.commitDelay
-      eventFetcher.stream(client, after = adoptedEventId)
-        .pipe(stream =>
-          if delay.isZeroOrBelow then
-            stream.chunks
-          else
-            stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
-        .interruptUpstreamWhen(untilStopRequested)
-        .evalMapChunk: chunk =>
-          // When the other cluster node may have failed-over,
-          // wait until we know that it hasn't (or this node is aborted).
-          // Avoids "Unknown OrderId" failures due to double activation.
-          journal.whenNoFailoverByOtherNode
-            .logWhenItTakesLonger("whenNoFailoverByOtherNode")
-            .as(chunk)
-        .map(_.asSeq)
-        .evalMap(onEventsFetched)
-        .completedL)
+    logger.traceIO:
+      IO.defer:
+        val delay = conf.eventBufferDelay max conf.commitDelay
+        eventFetcher.stream(client, after = adoptedEventId)
+          .pipe: stream =>
+            if delay.isZeroOrBelow then
+              stream.chunks
+            else
+              stream.groupWithin(chunkSize = conf.eventBufferSize, delay)
+          .interruptUpstreamWhen(untilStopRequested)
+          .evalMapChunk: chunk =>
+            // When the other cluster node may have failed-over,
+            // wait until we know that it hasn't (or this node is aborted).
+            // Avoids "Unknown OrderId" failures due to double activation.
+            journal.whenNoFailoverByOtherNode
+              .logWhenItTakesLonger("whenNoFailoverByOtherNode")
+              .as(chunk)
+          .evalMap: chunk =>
+            onEventsFetched(chunk.asSeq)
+          .completedL
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
     onFetchedEventsLock.lock(logger.traceIO(IO.defer:

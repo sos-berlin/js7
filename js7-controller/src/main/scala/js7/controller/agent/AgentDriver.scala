@@ -489,15 +489,15 @@ extends Service.StoppableByRequest:
           .map(NonEmptyList.fromListUnsafe)
 
   private def clientResource(uri: Uri): ResourceIO[AgentClient] =
-    SessionApi.resource(IO {
-      val agentUserAndPassword = controllerConfiguration.config
-        .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
-        .map(password => UserAndPassword(controllerId.unsafeUserId, password))
-      AgentClient(
-        Admission(uri, agentUserAndPassword),
-        label = agentPath.toString,
-        controllerConfiguration.httpsConfig)(using actorSystem)
-    })
+    SessionApi.resource:
+      IO:
+        val agentUserAndPassword = controllerConfiguration.config
+          .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
+          .map(password => UserAndPassword(controllerId.unsafeUserId, password))
+        AgentClient(
+          Admission(uri, agentUserAndPassword),
+          label = agentPath.toString,
+          controllerConfiguration.httpsConfig)(using actorSystem)
 
   private def maybeAgentRunId: IO[Option[AgentRunId]] =
     maybeAgentRefState.map(_.flatMap(_.agentRunId))
