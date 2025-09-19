@@ -11,6 +11,11 @@ object Assertions:
 
   /** Like assertThat, but only if isStrict.
     */
+  def assertIfStrict(predicate: sourcecode.Text[Boolean])
+    (using fullName: sourcecode.FullName, loc: ScalaSourceLocation)
+  : Unit =
+    assertIfStrict(predicate, clue = "")
+
   def assertIfStrict(predicate: sourcecode.Text[Boolean], clue: => String)
     (using fullName: sourcecode.FullName, loc: ScalaSourceLocation)
   : Unit =
