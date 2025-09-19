@@ -233,17 +233,20 @@ extends Service.StoppableByRequest:
       case None =>
         currentClusterWatchId match
           case Some(o) if o.clusterWatchId != confirm.clusterWatchId =>
-            logger.warn(s"❓ ${confirm.clusterWatchId} confirms without a request · currentClusterWatchId=$o => $OtherClusterWatchStillAliveProblem")
+            val problem = OtherClusterWatchStillAliveProblem /*?*/ (
+              rejectedClusterWatchId = confirm.clusterWatchId,
+              requestedClusterWatchId = o.clusterWatchId)
+            logger.warn(s"❓ ${confirm.clusterWatchId
+              } confirms without a request · currentClusterWatchId=$o => $problem")
             // Try to return the same problem when ClusterWatchId does not match,
             // whether _requested.get() contains a Requested or not.
             // So a second ClusterWatch gets always the same problem.
-            Left(OtherClusterWatchStillAliveProblem/*?*/(
-              rejectedClusterWatchId = confirm.clusterWatchId,
-              requestedClusterWatchId = o.clusterWatchId))
+            Left(problem)
 
           case _ =>
-            logger.warn(s"❓ ${confirm.clusterWatchId} confirms without a request => $OtherClusterWatchStillAliveProblem")
-            Left(ClusterWatchRequestDoesNotMatchProblem)
+            val problem = ClusterWatchRequestDoesNotMatchProblem
+            logger.warn(s"❓ ${confirm.clusterWatchId} confirms without a request => $problem")
+            Left(problem)
 
       case value @ Some(requested) =>
         (requested.clusterWatchId, currentClusterWatchId) match
