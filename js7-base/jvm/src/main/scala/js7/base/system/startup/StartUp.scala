@@ -61,7 +61,8 @@ object StartUp:
       cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
       totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
       s" · pid=${ProcessHandle.current.pid} " +
-      (hostname.nonEmpty ?? s"host=$hostname ")
+      (hostname.nonEmpty ?? s"host=$hostname ") +
+      s" · started at $startedAt" // Used as the headline of each log file
     ).trim
 
   def printlnWithClockIgnoringException(line: String): Unit =
