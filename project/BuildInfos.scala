@@ -84,7 +84,8 @@ object BuildInfos
       "commitId" -> commitHash,
       // TODO The version of the Java compiler would be more appropriate:
       "javaVersion" -> sys.props.getOrElse("java.version", ""),
-      "javaRuntimeVersion" -> sys.props.getOrElse("java.runtime.version", ""))
+      "javaRuntimeVersion" -> sys.props.getOrElse("java.runtime.version", ""),
+      "catsEffectVersion" -> Dependencies.catsEffectVersion)
 
     final lazy val buildPropertiesString: String =
       buildInfoMap
