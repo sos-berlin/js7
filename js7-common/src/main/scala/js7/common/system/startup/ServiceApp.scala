@@ -1,7 +1,6 @@
 package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO, ResourceIO}
-import cats.syntax.apply.*
 import js7.base.catsutils.OurApp
 import js7.base.metering.CallMeterLoggingService
 import js7.base.service.{MainService, Service, SimpleMainService}
@@ -40,10 +39,12 @@ trait ServiceApp extends OurApp:
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
       cnf =>
-        CallMeterLoggingService.resource(cnf.config) *>
-          registerStaticMBean("Threads", ThreadsMXBean.Bean) *>
-          registerStaticMBean("AsyncLock", AsyncLockMXBean) *>
-          program(cnf),
+        for
+          _ <- CallMeterLoggingService.resource(cnf.config)
+          _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
+          _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
+          svc <- program(cnf)
+        yield svc,
       use)
 
   protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService](

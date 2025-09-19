@@ -340,9 +340,6 @@ object RunningAgent:
     val empty: TestWiring = TestWiring()
 
 
-  private[agent] final class DirectorTerminatedException(val termination: ProgramTermination)
-  extends RuntimeException
-
   private[agent] final case class DirectorTerminatedProblem(termination: ProgramTermination)
   extends Problem.Coded:
     def arguments = Map1("termination", termination.toString)
