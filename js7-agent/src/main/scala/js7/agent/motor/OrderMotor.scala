@@ -41,7 +41,6 @@ private final class OrderMotor private(
   agentPath: AgentPath,
   subagentKeeper: SubagentKeeper[AgentState],
   journal: FileJournal[AgentState],
-  bean: OrderMotorMXBean.Bean,
   agentConf: AgentConfiguration)
   (using
     clock: AlarmClock,
@@ -53,6 +52,11 @@ extends Service.StoppableByRequest:
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
   private[motor] val jobMotorKeeper =
     new JobMotorKeeper(agentPath, this, subagentKeeper, journal.aggregate, agentConf)
+
+  private object bean extends OrderMotorMXBean:
+    // TODO Delayed orders are not counted because they are hold in fibers. Make a queue for this!
+    val orderQueueLength = Atomic(0)
+    def getOrderQueueLength = orderQueueLength.get
 
   protected def start =
     subagentKeeper.coupleWithOrderMotor(onSubagentEvents)
@@ -212,16 +216,9 @@ extends Service.StoppableByRequest:
         val orderIds = chunk.toVector.flatten: Vector[OrderId]
         bean.orderQueueLength -= orderIds.size
         orderIds
-      .through:
-        orderPipeline
+      .evalMap: orderIds =>
+        continueOrders(orderIds.distinct)
       .compile.drain
-
-  private def orderPipeline: fs2.Pipe[IO, Vector[OrderId], Unit] =
-    _.map: orderIds =>
-      // The last duplicate wins. This makes sure that idToOrder contains the current Order value
-      orderIds.reverse.distinct.reverse
-    .evalMap:
-      continueOrders
 
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
@@ -236,10 +233,10 @@ extends Service.StoppableByRequest:
           EventCalc.combineAll:
             orderIds.view.map: orderId =>
               EventCalc.multiple: (agentState: AgentState) =>
-                agentState.idToOrder.get(orderId)
-                  .filter(o => !o.isDelayed(delayNow))
-                  .toVector.flatMap: _ =>
-                    OrderEventSource.nextEvents(orderId, agentState)
+                if agentState.idToOrder.get(orderId).exists(o => !o.isDelayed(delayNow)) then
+                  OrderEventSource.nextEvents(orderId, agentState)
+                else
+                  Nil
         .ifPersisted:
           onPersisted
         .map(_.orThrow) // TODO throws
@@ -280,9 +277,9 @@ object OrderMotor:
   : ResourceIO[OrderMotor] =
     for
       orderQueue <- Resource.eval(Queue.unbounded[IO, Option[Seq[OrderId]]])
-      bean <- registerMBean[IO]("OrderMotor", new OrderMotorMXBean.Bean)
       orderMotor <- Service.resource:
-        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, bean, agentConf)
+        new OrderMotor(orderQueue, agentPath, subagentKeeper, journal, agentConf)
+      _ <- registerMBean[IO]("OrderMotor", orderMotor.bean)
       _ <- orderMotor.jobMotorKeeper.registerMBeans
     yield
       orderMotor
@@ -306,8 +303,3 @@ object OrderMotor:
 
   private sealed trait OrderMotorMXBean:
     def getOrderQueueLength: Int
-
-  private object OrderMotorMXBean:
-    final class Bean extends OrderMotorMXBean:
-      val orderQueueLength = Atomic(0)
-      def getOrderQueueLength = orderQueueLength.get
