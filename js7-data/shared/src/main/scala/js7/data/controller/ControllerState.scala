@@ -12,6 +12,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
@@ -43,7 +44,7 @@ import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
-import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
@@ -942,6 +943,14 @@ extends
       .view
       .mapValues(_.toSet)
       .toMap)
+
+  def orderToObstacles(orderId: OrderId)(using clock: WallClock): Checked[Set[OrderObstacle]] =
+    ordersToObstacles(Seq(orderId)).map(_.head._2)
+
+  def ordersToObstacles(orderIds: Iterable[OrderId])(using clock: WallClock)
+  : Checked[View[(OrderId, Set[OrderObstacle])]] =
+    new OrderObstacleCalculator(this)
+      .ordersToObstacles(orderIds, clock.now())
 
   /** See also toStringStream! */
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${

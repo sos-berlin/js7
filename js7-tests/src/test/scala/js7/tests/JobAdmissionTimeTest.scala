@@ -49,12 +49,13 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
   override protected def agentTestWiring = RunningAgent.TestWiring(
     alarmClock = Some(clock))
 
-  "Sunday at start of daylight saving time" - {
+  "Sunday at start of daylight-saving time" - {
     "Wait for start of permission period" in:
       val orderId = OrderId("🍊")
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+      sleep(10.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -94,7 +95,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         CancelOrders(orderId :: Nil)
       controller.awaitNextKey[OrderCancelled](orderId)
 
-    "Start order with permission in daylight saving time gap" in:
+    "Start order with permission in daylight-saving time gap" in:
       // Admission is shifted to the next valid local time
       assert(local("2021-03-28T03:00") == local("2021-03-28T04:00"))
       clock := local("2021-03-28T02:59")
@@ -102,6 +103,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       val orderId = OrderId("🔹")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+      sleep(10.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -110,7 +112,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       clock := local("2021-03-28T04:00")
       eventWatch.await[OrderFinished](_.key == orderId)
 
-    "Start order with permission in daylight saving time gap (2)" in:
+    "Start order with permission in daylight-saving time gap (2)" in:
       clock := local("2021-03-28T04:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔶")
@@ -130,7 +132,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.awaitNextKey[OrderCancelled](orderId)
   }
 
-  "Monday after end of daylight saving time" in:
+  "Monday after end of daylight-saving time" in:
     assert(local("2021-10-31T04:00") - local("2021-10-31T03:59") == 1.h + 1.minute)
 
     clock := local("2021-10-31T00:00")

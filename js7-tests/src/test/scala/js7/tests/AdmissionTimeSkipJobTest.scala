@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
@@ -15,6 +16,7 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderObstacle.WaitingForAdmission
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -40,7 +42,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
   protected def items = Seq(singleJobWorkflow, multipleJobsWorkflow)
 
   private implicit val timeZone: ZoneId = AdmissionTimeSkipJobTest.timeZone
-  private lazy val clock = TestAlarmClock(local("2021-09-09T00:00"))
+  private given clock: TestAlarmClock = TestAlarmClock(local("2021-09-09T00:00"))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
@@ -89,42 +91,56 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
   }
 
   "Do not skip if job has a admission time for order date" in:
-    clock.resetTo(local("2021-09-10T00:00")) // Friday
+    clock.resetTo(local("2021-09-03T00:00")) // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-09-03#")  // Friday
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(FRIDAY))
 
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+    sleep(10.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
+    assert(controllerState.orderToObstacles(orderId) == Right(Set:
+      WaitingForAdmission(ts"2021-09-03T15:00:00Z")))
 
-    clock := local("2021-09-10T18:00")
+    clock := local("2021-09-03T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
 
   "Do not skip if OrderId has no order date" in:
-    clock.resetTo(local("2021-09-10T00:00")) // Friday
+    clock := local("2021-09-10T00:00") // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("NO-DATE")
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+    sleep(10.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
+    assert(controllerState.orderToObstacles(orderId) == Right(Set:
+      WaitingForAdmission(ts"2021-09-10T15:00:00Z")))
 
     clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
 
   "Do not skip if OrderId has an invalid order date" in:
-    clock.resetTo(local("2021-09-10T00:00")) // Friday
+    clock := local("2021-09-20T00:00") // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-02-29#invalid")
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == None)
 
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+    sleep(10.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
+    assert(controllerState.orderToObstacles(orderId) == Right(Set:
+      WaitingForAdmission(ts"2021-09-24T15:00:00Z")))
 
-    clock := local("2021-09-10T18:00")
+    clock := local("2021-09-24T17:59")
+    sleep(10.ms)
+    assert(controllerState.orderToObstacles(orderId) == Right(Set:
+      WaitingForAdmission(ts"2021-09-24T15:00:00Z")))
+
+    clock := local("2021-09-24T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
 
