@@ -14,26 +14,26 @@ import js7.data.state.StateView
 import scala.collection.{View, mutable}
 
 final class OrderObstacleCalculator(val stateView: StateView):
+
   // TODO Slow !!!
   def waitingForAdmissionOrderCount(now: Timestamp): Int =
-    ordersToObstacles(stateView.orders.view.map(_.id), now)
+    ordersToObstacles(stateView.idToOrder.keys.view, now)
       .orThrow // no exception expected
-      .count(_._2.exists {
-        case _: WaitingForAdmission => true
-        case _ => false
-      })
+      .count:
+        _._2.exists:
+          case _: WaitingForAdmission => true
+          case _ => false
 
   def ordersToObstacles(orderIds: Iterable[OrderId], now: Timestamp)
   : Checked[View[(OrderId, Set[OrderObstacle])]] =
     val instructionService = new InstructionExecutorService(WallClock.fixed(now))
     orderIds
       .toVector
-      .traverse(orderId =>
+      .traverse: orderId =>
         orderToObstacles(orderId)(using instructionService)
-          .map(obstacles => orderId -> obstacles))
-      .map(_
-        .view
-        .filter(_._2.nonEmpty))
+          .map(obstacles => orderId -> obstacles)
+      .map:
+        _.view.filter(_._2.nonEmpty)
 
   def orderToObstacles(orderId: OrderId)
     (implicit instructionExecutorService: InstructionExecutorService)
@@ -43,8 +43,8 @@ final class OrderObstacleCalculator(val stateView: StateView):
       a <- instructionExecutorService.toObstacles(order, this)
       b = orderStateToObstacles(order)
       c = order.isSuspendedOrStopped.thenSet[OrderObstacle](WaitingForCommand)
-
-    yield a ++ b ++ c ++ workflowSuspendedObstacle(order)
+    yield
+      a ++ b ++ c ++ workflowSuspendedObstacle(order)
 
   private def workflowSuspendedObstacle(order: Order[Order.State]) =
     stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
@@ -72,12 +72,11 @@ final class OrderObstacleCalculator(val stateView: StateView):
   def jobToOrderCount(jobKey: JobKey): Int =
     _jobToOrderCount.computeIfAbsent(
       jobKey,
-      jobKey => stateView
-        .idToWorkflow
-        .get(jobKey.workflowId)
-        .fold(0)(workflow =>
-          stateView.orders.view
-            .count(order =>
-              order.state.isInstanceOf[Processing] &&
-                order.workflowId == jobKey.workflowId &&
-                workflow.positionToJobKey(order.position).contains(jobKey))))
+      jobKey =>
+        stateView.idToWorkflow.get(jobKey.workflowId)
+          .fold(0): workflow =>
+            stateView.orders.view
+              .count(order =>
+                order.state.isInstanceOf[Processing] &&
+                  order.workflowId == jobKey.workflowId &&
+                  workflow.positionToJobKey(order.position).contains(jobKey)))

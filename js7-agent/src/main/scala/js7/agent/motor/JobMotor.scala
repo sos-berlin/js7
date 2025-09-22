@@ -239,4 +239,6 @@ private object JobMotor:
 
   private final case class OrderWithEndOfAdmission(
     order: Order[IsFreshOrReady],
-    endOfAdmission: Option[Timestamp])
+    endOfAdmission: Option[Timestamp]):
+
+    override def toString = s"OrderWithEndOfAdmission(${order.id}, $endOfAdmission)"

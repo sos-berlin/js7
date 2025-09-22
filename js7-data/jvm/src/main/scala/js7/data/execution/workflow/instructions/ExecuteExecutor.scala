@@ -112,8 +112,8 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       if order.isState[IsFreshOrReady] && !order.forceJobAdmission then
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job).isDefined)
-          .flatMap(_
-            .findTimeInterval(clock.now(), limit = FindTimeIntervalLimit, dateOffset = noDateOffset))
+          .flatMap:
+            _.findTimeInterval(clock.now(), limit = FindTimeIntervalLimit, dateOffset = noDateOffset)
           .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
