@@ -12,7 +12,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.SchemeRestriction.MonthRestriction.MonthNames
 import js7.base.time.SchemeRestriction.Unrestricted
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.BitSet
 
@@ -40,18 +40,26 @@ sealed trait SchemeRestriction:
 
 
 object SchemeRestriction:
+  private val AllMonths = BitSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+
+  def months(months: Set[Int]): Checked[SchemeRestriction] =
+    if months == AllMonths then
+      Right(Unrestricted)
+    else
+      MonthRestriction.checked(months)
+
+
   given TypedJsonCodec[SchemeRestriction] = TypedJsonCodec[SchemeRestriction](
     Subtype(Unrestricted),
     Subtype[MonthRestriction])
 
 
-  object Unrestricted extends SchemeRestriction:
+  case object Unrestricted extends SchemeRestriction:
     def isUnrestricted(local: LocalDateTime, dateOffset: JDuration): Boolean =
       true
 
     def skipRestriction(local: LocalDateTime, dateOffset: JDuration) =
       Some(local)
-
 
 
   // MonthRestriction //
@@ -63,6 +71,8 @@ object SchemeRestriction:
     def checked: Checked[this.type] =
       if !months.forall(m => m >= 1 && m <= 12) then
         Left(Problem.pure("Month must be a number between 1 and 12"))
+      else if months.isEmpty || months == AllMonths then
+        Left(Problem.pure("MonthRestriction must contain between 1 and 11 months"))
       else
         Right(this)
 
@@ -88,14 +98,6 @@ object SchemeRestriction:
 
 
   object MonthRestriction:
-    @TestOnly
-    def apply(months: Set[Int]): MonthRestriction =
-      new MonthRestriction(months.to(BitSet)).checked.orThrow
-
-    @TestOnly
-    def apply(months: Int*): MonthRestriction =
-      new MonthRestriction(months.to(BitSet)).checked.orThrow
-
     def checked(months: Set[Int]): Checked[MonthRestriction] =
       new MonthRestriction(months.to(BitSet)).checked
 

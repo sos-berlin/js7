@@ -7,7 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.AdmissionTimeSchemeTest.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.SchemeRestriction.MonthRestriction
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.tester.CirceJsonTester.*
 import scala.concurrent.duration.FiniteDuration
 
@@ -23,7 +23,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
             WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
             DailyPeriod(LocalTime.of(12, 0), 1.h),
             AlwaysPeriod),
-          MonthRestriction(Set(1, 12))))),
+          SchemeRestriction.months(Set(1, 12)).orThrow))),
       json"""{
         "restrictedSchemes": [
           {

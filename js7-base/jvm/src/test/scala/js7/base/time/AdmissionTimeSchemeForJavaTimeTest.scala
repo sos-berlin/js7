@@ -5,8 +5,8 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.SchemeRestriction.MonthRestriction
 import js7.base.time.TimestampForTests.ts
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.concurrent.duration.*
 
 final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
@@ -24,12 +24,12 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
         /*4*/MonthlyLastDatePeriod(-1, LocalTime.of(21, 0), 3.h),
         /*5*/MonthlyDatePeriod(3, LocalTime.of(0, 0), 1.h),
         /*6*/SpecificDatePeriod(LocalDateTime.parse("2023-07-06T12:00"), 1.s))/*May and July*/,
-      MonthRestriction(5, 7)),
+      SchemeRestriction.months(Set(5, 7)).orThrow),
     RestrictedScheme(
       Seq(
         /*7*/MonthlyDatePeriod(1, LocalTime.of(1, 0), 22.h),
         /*8*/MonthlyDatePeriod(1, LocalTime.of(21, 0), 3.h)),
-      MonthRestriction(2)/*February*/)))
+      SchemeRestriction.months(Set(2)).orThrow/*February*/)))
 
   "hasAdmissionPeriodStartForDay" in:
     val scheme = AdmissionTimeScheme(Seq(
@@ -120,7 +120,7 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
           MonthlyDatePeriod(29, LocalTime.of(2, 0), 6.h), // Before dateOffset
           MonthlyDatePeriod(29, LocalTime.of(12, 0), 1.h),
           MonthlyLastWeekdayPeriod(-1, MONDAY, LocalTime.of(1, 0), 1.h)), // Before dateOffset
-        MonthRestriction(2)/*February*/)))
+        SchemeRestriction.months(Set(2)).orThrow/*February*/)))
 
     assert(localIntervals(local("2023-01-01T00:00"), until = local("2034-01-01T00:00")) ==
       Seq(
