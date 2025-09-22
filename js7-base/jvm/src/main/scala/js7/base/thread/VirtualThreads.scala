@@ -10,7 +10,7 @@ object VirtualThreads:
   private val logger = Logger[this.type]
   private var hasVirtualThreads =
     Runtime.version.feature >= 24 && sys.props.asSwitch("js7.virtualThreads")
-  private def DefaultVirtualThreadMaxPoolSize = 999_999  // Should be virtually unlimited
+  private val DefaultVirtualThreadMaxPoolSize = 999_999  // Should be virtually unlimited
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
@@ -18,6 +18,8 @@ object VirtualThreads:
       newThreadPerTaskExecutor <- newThreadPerTaskExecutor
     yield
       () => newThreadPerTaskExecutor(factory)
+
+  logger.debug(s"hasVirtualThreads=$hasVirtualThreads")
 
   def isEnabled: Boolean =
     maybeNewVirtualThreadPerTaskExecutor.isDefined
