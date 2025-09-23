@@ -290,9 +290,9 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
   "findLongTimeInterval" in :
     assert(AdmissionTimeScheme.never
       .findLongTimeInterval(ts"2025-07-02T00:00:00Z", 1.s, dateOffset = 0.h) == None)
-    assert(AdmissionTimeScheme.always
+    assert(AdmissionTimeScheme.allDay
       .findLongTimeInterval(ts"2025-07-02T00:00:00Z", 1.s, dateOffset = 0.h)
-      == Some(TimeInterval.Always))
+      == Some(TimeInterval(ts"2025-07-01T21:00:00Z", 24.h)))
 
     val scheme = AdmissionTimeScheme(Seq(
       DailyPeriod(LocalTime.of(2, 0), 2.h), // Before dateOffset

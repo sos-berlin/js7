@@ -15,7 +15,7 @@ import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -273,8 +273,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       WorkflowPath("DST"),
       Seq(
         Cycle(Schedule(Seq(Scheme(
-          AdmissionTimeScheme(Seq(
-            AlwaysPeriod)),
+          AdmissionTimeScheme.allDay,
           Periodic(1.h, Seq(0.minute, 30.minute))
         )))):
           Workflow.empty),

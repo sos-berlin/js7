@@ -10,14 +10,6 @@ import js7.tester.CirceJsonTester.testJson
 final class AdmissionPeriodTest extends OurTestSuite:
 
   "JSON" - {
-    "Always" in:
-      testJson[AdmissionPeriod](
-        AlwaysPeriod,
-        json"""
-          {
-            "TYPE":  "AlwaysPeriod"
-          }""")
-
     "DailyPlan" in:
       testJson[AdmissionPeriod](
         DailyPeriod(3*3600, 600.s), // 3:00, 10 minutes

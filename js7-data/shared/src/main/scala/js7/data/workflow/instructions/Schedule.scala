@@ -23,12 +23,12 @@ object Schedule:
 
   def continuous(pause: FiniteDuration, limit: Option[Int] = None): Schedule =
     Schedule(Seq(Scheme(
-      AdmissionTimeScheme.always,
+      AdmissionTimeScheme.allDay,
       Continuous(pause, limit = limit))))
 
   def ticking(interval: FiniteDuration): Schedule =
     Schedule(Seq(Scheme(
-      AdmissionTimeScheme.always,
+      AdmissionTimeScheme.allDay,
       Ticking(interval))))
 
 

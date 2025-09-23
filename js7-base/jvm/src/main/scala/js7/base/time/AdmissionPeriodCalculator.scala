@@ -73,9 +73,6 @@ object AdmissionPeriodCalculator:
   def apply(admissionPeriod: AdmissionPeriod, dateOffset: FiniteDuration)
   : AdmissionPeriodCalculator =
     admissionPeriod match
-      case AlwaysPeriod =>
-        AlwaysPeriodCalculator
-
       case period: DailyPeriod =>
         new DailyPeriodCalculator(period, dateOffset.toJava)
 
@@ -96,23 +93,6 @@ object AdmissionPeriodCalculator:
 
       case period: SpecificDatePeriod =>
         new SpecificDatePeriodCalculator(period, dateOffset.toJava)
-
-
-  private[time] case object AlwaysPeriodCalculator extends AdmissionPeriodCalculator:
-    val admissionPeriod = AlwaysPeriod
-    val dateOffset = JDuration.ZERO
-
-    def hasAdmissionPeriodStartForDay(localDate: LocalDate)(using ZoneId) =
-      true
-
-    def toLocalInterval(local: LocalDateTime)(using ZoneId) =
-      Some(LocalInterval.Always)
-
-    def calendarPeriodStartWithoutDateOffset(local: LocalDateTime) =
-      LocalDateTime.MIN // Not used
-
-    final def nextCalendarPeriodStart(local: LocalDateTime) =
-      None
 
 
   private[time] trait DayPeriodCalculator

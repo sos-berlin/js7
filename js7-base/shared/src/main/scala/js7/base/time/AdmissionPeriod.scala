@@ -21,12 +21,6 @@ sealed trait AdmissionPeriod:
   override def toString = s"${getClass.simpleScalaName}($pretty)"
 
 
-case object AlwaysPeriod extends AdmissionPeriod:
-  def pretty = "always"
-
-  override def toString = "Always"
-
-
 final case class DailyPeriod private(secondOfDay: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[DailyPeriod] =
@@ -289,7 +283,7 @@ object AdmissionPeriod:
     f"$hh%02d:$mm%02d" + ((ss != 0) ?? f":$ss%02d")
 
   implicit val jsonCodec: TypedJsonCodec[AdmissionPeriod] = TypedJsonCodec(
-    Subtype(AlwaysPeriod),
+    //Subtype(AlwaysPeriod),
     Subtype(deriveCodec[WeekdayPeriod].checked(_.checked)),
     Subtype(deriveCodec[DailyPeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyDatePeriod].checked(_.checked)),

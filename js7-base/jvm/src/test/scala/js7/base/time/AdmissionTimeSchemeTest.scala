@@ -21,8 +21,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
         RestrictedScheme(
           Seq(
             WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
-            DailyPeriod(LocalTime.of(12, 0), 1.h),
-            AlwaysPeriod),
+            DailyPeriod(LocalTime.of(12, 0), 1.h)),
           SchemeRestriction.months(Set(1, 12)).orThrow))),
       json"""{
         "restrictedSchemes": [
@@ -36,8 +35,6 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
                 "TYPE": "DailyPeriod",
                 "secondOfDay": 43200,
                 "duration": 3600
-              }, {
-                "TYPE": "AlwaysPeriod"
               }
             ],
             "restriction": {
@@ -51,8 +48,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
     testJson(
       AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
-        DailyPeriod(LocalTime.of(12, 0), 1.h),
-        AlwaysPeriod)),
+        DailyPeriod(LocalTime.of(12, 0), 1.h))),
       json"""{
         "periods": [
           {
@@ -63,22 +59,9 @@ final class AdmissionTimeSchemeTest extends OurTestSuite:
             "TYPE": "DailyPeriod",
             "secondOfDay": 43200,
             "duration": 3600
-          }, {
-            "TYPE": "AlwaysPeriod"
           }
         ]
       }""")
-
-    testJson(
-      AdmissionTimeScheme.always,
-      json"""{
-        "periods": [
-          {
-            "TYPE": "AlwaysPeriod"
-          }
-        ]
-      }""")
-
 
   "findLocalInterval" - {
     "Empty" in:

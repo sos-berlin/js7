@@ -36,7 +36,7 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
   private val orderId = OrderId("#2024-12-30#")
 
   private val cycle = Cycle(Schedule(Seq(Scheme(
-    AdmissionTimeScheme.always,
+    AdmissionTimeScheme.allDay,
     Schedule.Continuous(0.s, limit = Some(2)))
   ))):
     Workflow.empty

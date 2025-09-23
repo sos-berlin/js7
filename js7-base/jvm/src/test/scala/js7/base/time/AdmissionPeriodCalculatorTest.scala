@@ -6,7 +6,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionPeriod.WeekSeconds
-import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, SpecificDatePeriodCalculator, WeekdayPeriodCalculator, startOfWeek}
+import js7.base.time.AdmissionPeriodCalculator.{DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, SpecificDatePeriodCalculator, WeekdayPeriodCalculator, startOfWeek}
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
@@ -225,25 +225,6 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite:
           dateOffset = 0.s)
         assert(dailyPeriod.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-08-28")))   // Sat
     }
-  }
-
-  "AlwaysPeriod" - {
-    val admissionPeriod = AdmissionPeriodCalculator(AlwaysPeriod, dateOffset = 0.s)
-      .asInstanceOf[AlwaysPeriodCalculator.type]
-
-    "toLocalInterval" in:
-      assert(AlwaysPeriodCalculator.toLocalInterval(localDT("2021-10-01T00:00")) ==
-        Some(LocalInterval.Always))
-
-    "findIntervals" in:
-      val intervals = AlwaysPeriodCalculator
-        .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
-        .toVector
-      assert(intervals == Seq(LocalInterval.Always))
-
-    "nextCalendarPeriodStart (not used)" in:
-      assert(admissionPeriod.nextCalendarPeriodStart(localDT("2021-10-01T00:00")) ==
-        None)
   }
 
   "MonthlyDatePeriod" - {

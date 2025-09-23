@@ -32,8 +32,8 @@ object AdmissionTimeScheme:
     .getOrElse:
       standardDecoder(c)
 
-  val always: AdmissionTimeScheme =
-    AdmissionTimeScheme(AlwaysPeriod :: Nil)
+  val allDay: AdmissionTimeScheme =
+    AdmissionTimeScheme(Seq(DailyPeriod.always))
 
   val never: AdmissionTimeScheme =
     new AdmissionTimeScheme(Nil)

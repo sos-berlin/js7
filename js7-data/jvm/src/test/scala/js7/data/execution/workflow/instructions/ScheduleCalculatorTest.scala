@@ -225,7 +225,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
     given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
     val schedule = Schedule(Seq(Scheme(
-      AdmissionTimeScheme.always,
+      AdmissionTimeScheme.allDay,
       Periodic(1.h, Seq(0.minute, 30.minute)))))
 
     val calculator = ScheduleCalculator(schedule, zoneId, dateOffset = 0.s)
@@ -280,7 +280,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
     // with a "cycle" BranchId without parameters. This should not be possible.
     implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
     val schedule = Schedule(Seq(Scheme(
-      AdmissionTimeScheme.always,
+      AdmissionTimeScheme.allDay,
       Periodic(1.h, Seq(1.minute)))))
     assert(ScheduleCalculator(schedule, zone, dateOffset = 0.s)
       .simulateWithCycleState(CycleState.empty, local("2024-03-25T12:00"), 24.h)

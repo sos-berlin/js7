@@ -98,30 +98,3 @@ object LocalInterval:
         case _ => +1  // Never > Always, Never > Standard
 
     override def toString = "Never"
-
-
-  object Always extends LocalInterval:
-    def contains(local: LocalDateTime)(using ZoneId) =
-      true
-
-    def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId) =
-      true
-
-    def startsBefore(local: LocalDateTime)(using ZoneId) =
-      true
-
-    def endsAfter(local: LocalDateTime)(using ZoneId) =
-      true
-
-    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
-      true // Restriction is not checked, because Always has no start !!!
-
-    def toTimeInterval(using ZoneId): TimeInterval =
-      TimeInterval.Always
-
-    def compare(o: LocalInterval): Int =
-      o match
-        case Always => 0
-        case _ => -1  // Always < 0, Always < Standard
-
-    override def toString = "Always"

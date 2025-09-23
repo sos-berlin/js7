@@ -8,7 +8,7 @@ import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.execution.workflow.instructions.CycleExecutorTest.*
@@ -229,8 +229,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         Seq(
           Cycle(
             Schedule(Seq(Scheme(
-              AdmissionTimeScheme(Seq(
-                AlwaysPeriod)),
+              AdmissionTimeScheme.allDay,
               Periodic(1.h, Seq(0.minute, 30.minute)))))):
             Workflow.empty),
         timeZone = Timezone(zoneId.getId),

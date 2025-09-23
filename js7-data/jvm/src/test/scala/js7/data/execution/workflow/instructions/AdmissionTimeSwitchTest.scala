@@ -27,13 +27,13 @@ final class AdmissionTimeSwitchTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
   private val jobKey = JobKey(WorkflowPath("WORKFLOW") /: Position(1))
 
-  "AdmissionTimeScheme.always" in:
+  "AdmissionTimeScheme.allDay" in:
     Dispatcher.parallel[IO].use: dispatcher =>
       given Dispatcher[IO] = dispatcher
       IO:
         val now = ts"2021-01-01T12:00:00Z"
         given clock: TestAlarmClock = TestAlarmClock(now)
-        val switch = AdmissionTimeSwitch(AdmissionTimeScheme.always, 9999.days, UTC, jobKey,
+        val switch = AdmissionTimeSwitch(AdmissionTimeScheme.allDay, 9999.days, UTC, jobKey,
           onSwitch = _ => IO.unit)
 
         switch.updateAndCheck(IO(sys.error("FAILED"))).await(99.s)
