@@ -56,7 +56,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       sleep(10.ms)
-      assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
@@ -66,7 +66,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 1)
 
       clock := local("2021-03-21T02:59")
-      awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
+      awaitAndAssert(1.s)(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
@@ -87,7 +87,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔸")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
-      assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
@@ -104,7 +104,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       sleep(10.ms)
-      assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
@@ -123,7 +123,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       clock := local("2021-03-28T05:00")
       val orderId = OrderId("🔷")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
-      assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-04-04T03:00")))))
@@ -140,11 +140,11 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
     val orderId = OrderId("♣️")
     controller.api.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    assert(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
     clock := local("2021-11-01T07:59")
-    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
+    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
     clock := local("2021-11-01T08:00")
@@ -158,7 +158,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
     val orderId = OrderId("♠️")
     controller.api.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    assert(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
     // Let the clock skip the permission interval until it is too late.
@@ -169,7 +169,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
     val tooLate = local("2021-11-08T10:00")
     assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, dateOffset = 0.s))
     clock := tooLate  // To late
-    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).isState[Fresh])
+    awaitAndAssert(1.s)(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.idToOrder(orderId).position == Position(0))
     execCmd:
       CancelOrders(orderId :: Nil)
