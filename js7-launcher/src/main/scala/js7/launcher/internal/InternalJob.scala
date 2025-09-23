@@ -5,12 +5,12 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.nio.charset.Charset
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
-import js7.base.time.AlarmClock
-import js7.base.utils.ScalaUtils.{=>?, implicitClass}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
+import js7.base.utils.ScalaUtils.{=>?, implicitClass}
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobConf, JobResourcePath}
 import js7.data.order.Order
@@ -114,6 +114,7 @@ object InternalJob:
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil,
+      admissionTimeScheme: Option[AdmissionTimeScheme] = None,
       isNotRestartable: Boolean = false)
     : Execute.Anonymous =
       Execute(workflowJob(
@@ -121,6 +122,7 @@ object InternalJob:
         processLimit = processLimit,
         timeout = timeout,
         jobResourcePaths = jobResourcePaths,
+        admissionTimeScheme = admissionTimeScheme,
         isNotRestartable = isNotRestartable))
 
     final def workflowJob(
@@ -130,6 +132,7 @@ object InternalJob:
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil,
+      admissionTimeScheme: Option[AdmissionTimeScheme] = None,
       isNotRestartable: Boolean = false)
     : WorkflowJob =
       WorkflowJob(
@@ -139,4 +142,5 @@ object InternalJob:
         processLimit = processLimit,
         timeout = timeout,
         jobResourcePaths = jobResourcePaths,
+        admissionTimeScheme = admissionTimeScheme,
         isNotRestartable = isNotRestartable)

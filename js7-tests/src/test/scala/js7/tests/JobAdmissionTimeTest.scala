@@ -1,9 +1,8 @@
 package js7.tests
 
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
-import java.time.{LocalDateTime, LocalTime, ZoneId}
+import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneId}
 import js7.agent.RunningAgent
-import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -11,24 +10,27 @@ import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{AdmissionTimeScheme, SpecificDatePeriod, TestAlarmClock, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, RestrictedScheme, SchemeRestriction, SpecificDatePeriod, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, waitingForAdmmission}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AddOrder, Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.jobs.TestJob
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.JobAdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import scala.concurrent.duration.*
 
 final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -323,55 +325,106 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         clock := local("2025-06-30T10:30")
         controller.awaitNextKey[OrderFailed](orderId)
 
-    "MonthRestriction JS-2203" in:
-      // Olli's test case: each Monday in November, at 18:30
-      val workflow = json"""{
-        "path": "MONTH",
-        "timeZone": "Europe/Berlin",
-        "instructions": [
-          {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentPath": "AGENT",
-              "executable": {
-                "TYPE": "ScriptExecutable",
-                "script": ":"
-              },
-              "admissionTimeScheme": {
-                "restrictedSchemes": [
-                  {
-                    "restriction": {
-                      "TYPE": "MonthRestriction",
-                      "months": [ 11 ]
-                    },
-                    "periods": [
-                      {
-                        "TYPE": "WeekdayPeriod",
-                        "secondOfWeek": 66600,
-                        "duration": 600
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }""".as(using Workflow.topJsonDecoder).orThrow
+    "MonthRestriction JS-2203" - {
+      val monthWorkflow = Workflow(
+        WorkflowPath("MONTH"),
+        Seq:
+          TestJob.execute(agentPath,
+            arguments = Map("sleep" -> expr"99999"),
+            admissionTimeScheme = Some:
+              AdmissionTimeScheme:
+                Seq:
+                  RestrictedScheme(
+                    Seq:
+                      WeekdayPeriod(DayOfWeek.TUESDAY, LocalTime.of(23, 30), 45.minutes),
+                    SchemeRestriction.months(Set(4, 8, 11)).orThrow)),
+        timeZone = Timezone(zoneId.getId))
 
-      clock := local("2025-09-01T00:00")
-      withItem(workflow): workflow =>
-        controller.resetLastWatchedEventId()
-        val orderId = OrderId("MONTH")
-        addOrder(orderId, workflow.path)
-        assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
-        val obstacles = controllerState.orderToObstacles(orderId)
-        assert(obstacles == Right(Set(WaitingForAdmission(ts"2025-11-03T17:30:00Z"))))
+
+      "Standard" in:
+        // 2025 November //
+        withItem(monthWorkflow): workflow =>
+          controller.resetLastWatchedEventId()
+          val orderId = OrderId("NOVEMBER")
+          clock := local("2025-10-01T00:00")
+          addOrder(orderId, workflow.path)
+          controller.awaitNextKey[OrderAttached](orderId)
+
+          assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+          val obstacles = controllerState.orderToObstacles(orderId)
+          assert(obstacles == Right(Set(WaitingForAdmission(ts"2025-11-04T21:30:00Z"))))
+
+          clock := local("2025-11-04T23:29")
+          sleep(50.ms)
+          assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+
+          clock := local("2025-11-04T23:30")
+          controller.awaitNextKey[OrderProcessingStarted](orderId)
+          assert(controllerState.idToOrder(orderId).state ==
+            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2025-11-04T22:15:00Z")))
+          execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
+          controller.awaitNextKey[OrderCancelled](orderId)
+
+      "Clip LocalInterval at month boundary at start of allowed Month" in:
+        pending
+        // 2026 April, first day is day after Tuesday //
+        withItem(monthWorkflow): workflow =>
+          val orderId = OrderId("APRIL")
+          clock := local("2025-12-01T00:00")
+          addOrder(orderId, workflow.path)
+          controller.awaitNextKey[OrderAttached](orderId)
+
+          assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+          val obstacles = controllerState.orderToObstacles(orderId)
+          assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-03-31T21:00:00Z"))))
+
+          clock := local("2026-03-31T23:59")
+          sleep(50.ms)
+          assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+
+          clock := local("2026-04-01T00:00")
+          controller.awaitNextKey[OrderProcessingStarted](orderId)
+          assert(controllerState.idToOrder(orderId).state ==
+            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-03-31T21:15:00Z")))
+          execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
+          controller.awaitNextKey[OrderCancelled](orderId)
+
+      "Clip LocalInterval at month boundary at end of allowed Month" in:
+        pending
+        // 2026 September, first day is Tuesday //
+        withItem(monthWorkflow): workflow =>
+          val orderId = OrderId("SEPTEMBER")
+          clock := local("2026-08-30T00:00")
+          addOrder(orderId, workflow.path)
+          controller.awaitNextKey[OrderAttached](orderId)
+
+          assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+          val obstacles = controllerState.orderToObstacles(orderId)
+
+          if false then
+            assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-08-31T21:00:00Z"))))
+
+            clock := local("2026-08-31T23:59")
+            sleep(50.ms)
+            assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+
+            clock := local("2026-09-01T00:00")
+            controller.awaitNextKey[OrderProcessingStarted](orderId)
+            assert(controllerState.idToOrder(orderId).state ==
+              Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-08-31T21:15:00Z")))
+          else
+            assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-11-03T21:30:00Z"))))
+
+          execCmd:
+            CancelOrders(orderId :: Nil, CancellationMode.kill())
+          controller.awaitNextKey[OrderCancelled](orderId)
+    }
   }
 
 object JobAdmissionTimeTest:
 
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val zoneId = ZoneId.of("Europe/Mariehamn")
 
   private val mondayAdmissionTimeScheme = AdmissionTimeScheme(Seq(
