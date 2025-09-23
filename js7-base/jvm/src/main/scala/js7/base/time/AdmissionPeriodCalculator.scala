@@ -10,6 +10,7 @@ import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.SchemeRestriction.Unrestricted
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
@@ -26,29 +27,41 @@ sealed trait AdmissionPeriodCalculator:
 
   def nextCalendarPeriodStart(local: LocalDateTime): Option[LocalDateTime]
 
+  @TestOnly
+  final def findLocalIntervals(from: LocalDateTime, until: LocalDateTime)(using ZoneId)
+  : View[LocalInterval] =
+    findLocalIntervals(from, until, Unrestricted)
+
   final def findLocalIntervals(
-    from: LocalDateTime, until: LocalDateTime, restriction: SchemeRestriction = Unrestricted)
+    from: LocalDateTime, until: LocalDateTime, restriction: SchemeRestriction)
     (using ZoneId)
   : View[LocalInterval] =
-    restriction.skipRestriction(from, dateOffset = dateOffset)
-      .fold(View.empty[LocalInterval]): from =>
-        val first = toLocalInterval(from)
-        View.from(first) ++
-          View.unfold(from): local =>
-            for
-              next <- nextCalendarPeriodStart(local) if local < next
-              next <- restriction.skipRestriction(next, dateOffset = dateOffset)
-              localInterval <- toLocalInterval(next)
-            yield
-              localInterval -> next
-          .takeWhile:
-            _.startsBefore(until)
-          .filter:
-            _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
-          // first may be duplicate with the first LocalInterval of the tail
-          .dropWhile(first contains _)
+    findLocalIntervals2(
+      from = restriction.skipRestriction(from, dateOffset = dateOffset),
+      until,
+      restriction)
+
+  private def findLocalIntervals2(
+    from: LocalDateTime, until: LocalDateTime, restriction: SchemeRestriction)
+    (using ZoneId)
+  : View[LocalInterval] =
+    val first = toLocalInterval(from)
+    View.from(first).concat:
+      View.unfold(from): local =>
+        for
+          next <- nextCalendarPeriodStart(local) if local < next
+          skipped = restriction.skipRestriction(next, dateOffset = dateOffset)
+          localInterval <- toLocalInterval(skipped)
+        yield
+          localInterval -> skipped
+      .takeWhile:
+        _.startsBefore(until)
       .filter:
-        _.endsAfter(from)
+        _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
+      // first may be duplicate with the first LocalInterval of the tail
+      .dropWhile(first contains _)
+    .filter:
+      _.endsAfter(from)
 
 
 object AdmissionPeriodCalculator:
