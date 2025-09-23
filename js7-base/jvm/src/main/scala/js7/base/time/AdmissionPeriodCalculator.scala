@@ -56,12 +56,12 @@ sealed trait AdmissionPeriodCalculator:
           localInterval -> skipped
       .takeWhile:
         _.startsBefore(until)
-      .filter:
-        _.isUnrestrictedStart(restriction, dateOffset = dateOffset)
       // first may be duplicate with the first LocalInterval of the tail
       .dropWhile(first contains _)
     .filter:
       _.endsAfter(from)
+    .flatMap:
+      _.clip(restriction, dateOffset = dateOffset)
 
 
 object AdmissionPeriodCalculator:

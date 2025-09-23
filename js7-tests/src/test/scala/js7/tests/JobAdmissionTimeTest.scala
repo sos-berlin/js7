@@ -366,7 +366,6 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           controller.awaitNextKey[OrderCancelled](orderId)
 
       "Clip LocalInterval at month boundary at start of allowed Month" in:
-        pending
         // 2026 April, first day is day after Tuesday //
         withItem(monthWorkflow): workflow =>
           val orderId = OrderId("APRIL")

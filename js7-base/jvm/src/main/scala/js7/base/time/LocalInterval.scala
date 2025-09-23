@@ -4,6 +4,7 @@ import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime, Duration as JDuration}
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.SchemeRestriction.{MonthRestriction, Unrestricted}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
@@ -21,7 +22,7 @@ sealed trait LocalInterval extends Ordered[LocalInterval]:
   /** end < _ */
   def endsAfter(local: LocalDateTime)(using ZoneId): Boolean
 
-  def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean
+  def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[LocalInterval]
 
   def toTimeInterval(using ZoneId): TimeInterval
 
@@ -56,8 +57,8 @@ object LocalInterval:
     def endsAfter(local: LocalDateTime)(using ZoneId): Boolean =
       local.normalize < start.normalize + duration
 
-    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
-      restriction.isUnrestricted(start, dateOffset)
+    def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[Standard] =
+      restriction.clipLocalInterval(this, dateOffset)
 
     def toTimeInterval(using zoneId: ZoneId): TimeInterval =
       TimeInterval(
@@ -67,10 +68,17 @@ object LocalInterval:
     def compare(o: LocalInterval): Int =
       o match
         case Never => -1  // this < Never
-        case Always => +1 // this > Always
+        //case Always => +1 // this > Always
         case o: Standard => start.compare(o.start)
 
     override def toString = s"LocalInterval($start, ${duration.pretty})"
+
+  object Standard:
+    private def startOfNextMonth(dt: LocalDateTime, dateOffset: JDuration): LocalDateTime =
+      dt.minus(dateOffset).toLocalDate
+        .plusMonths(1).withDayOfMonth(1)
+        .atStartOfDay
+        .plus(dateOffset)
 
 
   object Never extends LocalInterval:
@@ -86,8 +94,8 @@ object LocalInterval:
     def endsAfter(local: LocalDateTime)(using ZoneId) =
       false
 
-    def isUnrestrictedStart(restriction: SchemeRestriction, dateOffset: JDuration): Boolean =
-      false
+    def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[LocalInterval] =
+      Some(this) // FIXME oder None ?
 
     def toTimeInterval(using ZoneId): TimeInterval =
       TimeInterval.Never

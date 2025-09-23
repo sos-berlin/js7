@@ -4,14 +4,17 @@ import io.circe
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import java.time.ZoneOffset.UTC
 import java.time.{LocalDateTime, Duration as JDuration}
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.ScalaJsonCodecs.BitSetCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
 import js7.base.time.SchemeRestriction.MonthRestriction.MonthNames
 import js7.base.time.SchemeRestriction.Unrestricted
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.immutable.BitSet
 
 final case class RestrictedScheme(
@@ -37,6 +40,9 @@ sealed trait SchemeRestriction:
 
   private[time] def skipRestriction(local: LocalDateTime, dateOffset: JDuration): LocalDateTime
 
+  private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
+  : Option[LocalInterval.Standard]
+
 
 object SchemeRestriction:
   private val AllMonths = (1 to 12).to(BitSet)
@@ -59,6 +65,10 @@ object SchemeRestriction:
 
     private[time] def skipRestriction(local: LocalDateTime, dateOffset: JDuration): LocalDateTime =
       local
+
+    private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
+    : Option[LocalInterval.Standard] =
+      Some(localInterval)
 
 
   // MonthRestriction //
@@ -87,6 +97,19 @@ object SchemeRestriction:
             .atStartOfDay
             .plus(dateOffset)
 
+    private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
+    : Option[LocalInterval.Standard] =
+     Logger.infoCallWithResult(s"### clipLocalInterval $localInterval"):
+      skippedMonths(localInterval.start.getMonthValue) match
+        case 0 => Some(localInterval)
+        case n =>
+          val start = MonthRestriction.startOfNextMonth(localInterval.start, dateOffset)
+          val skippedSeconds = start.toEpochSecond(UTC) - localInterval.start.toEpochSecond(UTC)
+          val duration = localInterval.duration - skippedSeconds.s
+          if !duration.isPositive then Logger.info(s"### ❌ $start ${duration.pretty}")
+          duration.isPositive ? LocalInterval.Standard(start, duration)
+        // TODO Auch das Ende des Intervals abschneiden
+
     private def skippedMonths(month: Int, findAllowed: Boolean = true): Int =
       val skipped =
         (month until month + 12).indexWhere: m =>
@@ -110,3 +133,9 @@ object SchemeRestriction:
     private[time] val MonthNames =
       Vector("January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December")
+
+    private def startOfNextMonth(dt: LocalDateTime, dateOffset: JDuration): LocalDateTime =
+      dt.minus(dateOffset).toLocalDate
+        .plusMonths(1).withDayOfMonth(1)
+        .atStartOfDay
+        .plus(dateOffset)

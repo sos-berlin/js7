@@ -17,7 +17,7 @@ import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForAdmission
-import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -98,8 +98,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
 
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-    sleep(10.ms)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    sleep(50.ms)
+    assert(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.orderToObstacles(orderId) == Right(Set:
       WaitingForAdmission(ts"2021-09-03T15:00:00Z")))
 
@@ -113,8 +113,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
     val orderId = OrderId("NO-DATE")
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-    sleep(10.ms)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    sleep(50.ms)
+    assert(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.orderToObstacles(orderId) == Right(Set:
       WaitingForAdmission(ts"2021-09-10T15:00:00Z")))
 
@@ -130,13 +130,13 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
 
     controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-    sleep(10.ms)
-    assert(controllerState.idToOrder(orderId).isState[Fresh])
+    sleep(50.ms)
+    assert(controllerState.idToOrder(orderId).state == Order.Fresh())
     assert(controllerState.orderToObstacles(orderId) == Right(Set:
       WaitingForAdmission(ts"2021-09-24T15:00:00Z")))
 
     clock := local("2021-09-24T17:59")
-    sleep(10.ms)
+    sleep(50.ms)
     assert(controllerState.orderToObstacles(orderId) == Right(Set:
       WaitingForAdmission(ts"2021-09-24T15:00:00Z")))
 
