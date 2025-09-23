@@ -198,6 +198,20 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
         0 -> LocalInterval(local("2025-06-09T02:00"), 4.h)))
   }
 
+  "MonthRestriction" - {
+    "MonthRestriction with WeekdayPeriod JS-2203" in:
+      // Olli's testcase
+      val scheme = AdmissionTimeScheme(Seq(
+        RestrictedScheme(
+          Seq(
+            WeekdayPeriod(TUESDAY, LocalTime.of(17, 30), 30.minutes)),
+          SchemeRestriction.months(Set(11)).orThrow)))
+
+      val until = local("2100-01-01T00:00")
+      assert(scheme.findLocalInterval(local("2025-09-01T00:00"), until, dateOffset) ==
+        Some(LocalInterval(local("2025-11-04T17:30"), 30.minutes)))
+  }
+
   private def localIntervals(from: LocalDateTime, until: LocalDateTime)
     (using scheme: AdmissionTimeScheme)
   : Seq[(Int, LocalInterval)] =

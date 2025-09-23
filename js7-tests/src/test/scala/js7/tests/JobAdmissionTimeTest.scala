@@ -3,12 +3,14 @@ package js7.tests
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.{LocalDateTime, LocalTime, ZoneId}
 import js7.agent.RunningAgent
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, SpecificDatePeriod, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -16,7 +18,7 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.OrderObstacle.waitingForAdmmission
+import js7.data.order.OrderObstacle.{WaitingForAdmission, waitingForAdmmission}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -320,6 +322,51 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
 
         clock := local("2025-06-30T10:30")
         controller.awaitNextKey[OrderFailed](orderId)
+
+    "MonthRestriction JS-2203" in:
+      // Olli's test case: each Monday in November, at 18:30
+      val workflow = json"""{
+        "path": "MONTH",
+        "timeZone": "Europe/Berlin",
+        "instructions": [
+          {
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "AGENT",
+              "executable": {
+                "TYPE": "ScriptExecutable",
+                "script": ":"
+              },
+              "admissionTimeScheme": {
+                "restrictedSchemes": [
+                  {
+                    "restriction": {
+                      "TYPE": "MonthRestriction",
+                      "months": [ 11 ]
+                    },
+                    "periods": [
+                      {
+                        "TYPE": "WeekdayPeriod",
+                        "secondOfWeek": 66600,
+                        "duration": 600
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }""".as(using Workflow.topJsonDecoder).orThrow
+
+      clock := local("2025-09-01T00:00")
+      withItem(workflow): workflow =>
+        controller.resetLastWatchedEventId()
+        val orderId = OrderId("MONTH")
+        addOrder(orderId, workflow.path)
+        assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+        val obstacles = controllerState.orderToObstacles(orderId)
+        assert(obstacles == Right(Set(WaitingForAdmission(ts"2025-11-03T17:30:00Z"))))
   }
 
 object JobAdmissionTimeTest:
