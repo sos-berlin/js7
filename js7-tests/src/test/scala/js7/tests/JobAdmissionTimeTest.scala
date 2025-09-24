@@ -336,8 +336,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
                 Seq:
                   RestrictedScheme(
                     Seq:
-                      WeekdayPeriod(DayOfWeek.TUESDAY, LocalTime.of(23, 30), 45.minutes),
-                    SchemeRestriction.months(Set(4, 8, 11)).orThrow)),
+                      WeekdayPeriod(DayOfWeek.TUESDAY, LocalTime.of(23, 30), 45.minutes), SchemeRestriction.months(Set(4, 6, 11)).orThrow)),
         timeZone = Timezone(zoneId.getId))
 
 
@@ -365,8 +364,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
           controller.awaitNextKey[OrderCancelled](orderId)
 
-      "Clip LocalInterval at month boundary at start of allowed Month" in:
-        // 2026 April, first day is day after Tuesday //
+      "Clip LocalInterval at month boundary where allowed Month begins" in:
+        /// 2026 April, first day is day after Tuesday ///
+        // LocalInterval is clipped, such that it starts later at midnight, march -> april
         withItem(monthWorkflow): workflow =>
           val orderId = OrderId("APRIL")
           clock := local("2025-12-01T00:00")
@@ -388,31 +388,29 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
           controller.awaitNextKey[OrderCancelled](orderId)
 
-      "Clip LocalInterval at month boundary at end of allowed Month" in:
-        pending
-        // 2026 September, first day is Tuesday //
+      "Clip LocalInterval at month boundary where allowed Month ends" in:
+        /// 2026 Juni, last day of month is Tuesday ///
+        // LocalInterval is clipped, such that it end at midnight, june -> july
         withItem(monthWorkflow): workflow =>
           val orderId = OrderId("SEPTEMBER")
-          clock := local("2026-08-30T00:00")
+          clock := local("2026-06-30T00:00")
           addOrder(orderId, workflow.path)
           controller.awaitNextKey[OrderAttached](orderId)
 
           assert(controllerState.idToOrder(orderId).state == Order.Fresh())
           val obstacles = controllerState.orderToObstacles(orderId)
 
-          if false then
-            assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-08-31T21:00:00Z"))))
+          assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-06-30T20:30:00Z"))))
 
-            clock := local("2026-08-31T23:59")
-            sleep(50.ms)
-            assert(controllerState.idToOrder(orderId).state == Order.Fresh())
+          clock := local("2026-06-30T23:29")
+          sleep(50.ms)
+          awaitAndAssert(1.s):
+            controllerState.idToOrder(orderId).state == Order.Fresh()
 
-            clock := local("2026-09-01T00:00")
-            controller.awaitNextKey[OrderProcessingStarted](orderId)
-            assert(controllerState.idToOrder(orderId).state ==
-              Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-08-31T21:15:00Z")))
-          else
-            assert(obstacles == Right(Set(WaitingForAdmission(ts"2026-11-03T21:30:00Z"))))
+          clock := local("2026-06-30T23:30")
+          controller.awaitNextKey[OrderProcessingStarted](orderId)
+          assert(controllerState.idToOrder(orderId).state ==
+            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-06-30T21:00:00Z")))
 
           execCmd:
             CancelOrders(orderId :: Nil, CancellationMode.kill())

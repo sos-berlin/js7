@@ -9,7 +9,6 @@ import java.time.{LocalDateTime, Duration as JDuration}
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.ScalaJsonCodecs.BitSetCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.SchemeRestriction.MonthRestriction.MonthNames
@@ -99,16 +98,28 @@ object SchemeRestriction:
 
     private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
     : Option[LocalInterval.Standard] =
-     Logger.infoCallWithResult(s"### clipLocalInterval $localInterval"):
       skippedMonths(localInterval.start.getMonthValue) match
-        case 0 => Some(localInterval)
+        case 0 =>
+          val monthOfStart = localInterval.start.minus(dateOffset).getMonthValue
+          val monthOfEnd = localInterval.end.minus(dateOffset).getMonthValue
+          if monthOfStart != monthOfEnd && !months(monthOfEnd) then
+            // Next month is not allowed. Clip end lf localInterval!
+            val end = MonthRestriction.startOfNextMonth(localInterval.start, dateOffset)
+            val clippedSeconds = localInterval.end.toEpochSecond(UTC) - end.toEpochSecond(UTC)
+            if clippedSeconds <= 0 then
+              Some(localInterval) // No change
+            else
+              val duration = localInterval.duration - clippedSeconds.s
+              duration.isPositive ? LocalInterval.Standard(localInterval.start, duration)
+          else
+            Some(localInterval)
+
         case n =>
+          // This month is not allowed. Clip start of localInterval!
           val start = MonthRestriction.startOfNextMonth(localInterval.start, dateOffset)
           val skippedSeconds = start.toEpochSecond(UTC) - localInterval.start.toEpochSecond(UTC)
           val duration = localInterval.duration - skippedSeconds.s
-          if !duration.isPositive then Logger.info(s"### ❌ $start ${duration.pretty}")
           duration.isPositive ? LocalInterval.Standard(start, duration)
-        // TODO Auch das Ende des Intervals abschneiden
 
     private def skippedMonths(month: Int, findAllowed: Boolean = true): Int =
       val skipped =

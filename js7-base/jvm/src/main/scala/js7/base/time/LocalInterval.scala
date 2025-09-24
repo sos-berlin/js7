@@ -4,7 +4,6 @@ import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime, Duration as JDuration}
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.SchemeRestriction.{MonthRestriction, Unrestricted}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
@@ -36,6 +35,12 @@ object LocalInterval:
 
   final case class Standard(start: LocalDateTime, duration: FiniteDuration)
   extends js7.base.time.LocalInterval:
+    // TODO Does not respect daylight-saving time.
+    // In case, the interval crosses a daylight-saving time boundary,
+    // the end time is shifted by an hour.
+    private[time] def end: LocalDateTime =
+      start.plusNanos(duration.toNanos)
+
     def contains(local: LocalDateTime)(using ZoneId): Boolean =
       // local should already be normalized, just to be sure:
       val normalizedLocal = local.normalize
