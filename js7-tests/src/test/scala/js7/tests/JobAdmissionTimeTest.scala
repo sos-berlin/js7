@@ -18,7 +18,7 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.OrderObstacle.{WaitingForAdmission, waitingForAdmmission}
+import js7.data.order.OrderObstacle.{WaitingForAdmission, waitingForAdmission}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -64,17 +64,17 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controllerState.idToOrder(orderId).state == Order.Fresh()
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-03-21T03:00")))))
 
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-03-21T03:00")))))
       assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 1)
 
       clock := local("2021-03-21T02:59")
       awaitAndAssert(1.s)(controllerState.idToOrder(orderId).state == Order.Fresh())
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-03-21T03:00")))))
 
       clock := local("2021-03-21T03:00")
       controller.await[OrderFinished](_.key == orderId, after = eventId)
@@ -96,7 +96,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controllerState.idToOrder(orderId).state == Order.Fresh()
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-03-28T03:00")))))
       execCmd:
         CancelOrders(orderId :: Nil)
       controller.awaitNextKey[OrderCancelled](orderId)
@@ -114,7 +114,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controllerState.idToOrder(orderId).state == Order.Fresh()
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-03-28T03:00")))))
 
       clock := local("2021-03-28T04:00")
       controller.await[OrderFinished](_.key == orderId)
@@ -134,7 +134,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controllerState.idToOrder(orderId).state == Order.Fresh()
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2021-04-04T03:00")))))
+        Right(Set(waitingForAdmission(local("2021-04-04T03:00")))))
       execCmd:
         CancelOrders(orderId :: Nil)
       controller.awaitNextKey[OrderCancelled](orderId)
@@ -208,7 +208,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         assert(controllerState.idToOrder(aOrderId).isState[Order.Forked])
         assert(controllerState.idToOrder(forkedaOrderId).isState[Order.Ready])
         assert(orderToObstacles(forkedaOrderId) ==
-          Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+          Right(Set(waitingForAdmission(local("2023-06-25T03:00")))))
 
       locally:
         // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
@@ -219,7 +219,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controller.await[OrderFinished](_.key == orderId, after = eventId)
 
       assert(orderToObstacles(forkedaOrderId) ==
-        Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+        Right(Set(waitingForAdmission(local("2023-06-25T03:00")))))
       execCmd:
         CancelOrders(Seq(aOrderId, forkedaOrderId))
       controller.awaitKey[OrderFailed](aOrderId)  // Failed because child order cancelled
@@ -238,7 +238,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       val orderId = OrderId("FORCED-ORDER-1")
       controller.await[OrderAttached](_.key == orderId, after = eventId)
       assert(orderToObstacles(orderId) ==
-        Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+        Right(Set(waitingForAdmission(local("2023-06-25T03:00")))))
       execCmd:
         CancelOrders(Seq(orderId))
       controller.awaitNextKey[OrderCancelled](orderId)
@@ -282,7 +282,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controller.api.addOrder(FreshOrder(orderId, workflow.path))
           .await(99.s).orThrow
         controller.awaitNextKey[OrderAttached](orderId)
-        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T08:00")))))
+        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmission(local("2025-06-30T08:00")))))
 
         clock := local("2025-06-30T09:00")
         controller.awaitNextKey[OrderProcessingStarted](orderId)
@@ -318,7 +318,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         val orderId = OrderId("killAtEndOfAdmissionPeriod-2")
         controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         controller.awaitNextKey[OrderAttached](orderId)
-        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmmission(local("2025-06-30T08:00")))))
+        assert(orderToObstacles(orderId) == Right(Set(waitingForAdmission(local("2025-06-30T08:00")))))
 
         clock := local("2025-06-30T09:00")
         controller.awaitNextKey[OrderProcessingStarted](orderId)
@@ -369,7 +369,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           controller.awaitNextKey[OrderProcessingStarted](orderId)
           assert(controllerState.idToOrder(orderId).state ==
             Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2025-11-04T22:15:00Z")))
-          execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
+          sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
+          execCmd:
+            CancelOrders(orderId :: Nil, CancellationMode.kill())
           controller.awaitNextKey[OrderCancelled](orderId)
 
       "Clip LocalInterval at month boundary where allowed Month begins" in:
@@ -396,7 +398,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           controller.awaitNextKey[OrderProcessingStarted](orderId)
           assert(controllerState.idToOrder(orderId).state ==
             Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-03-31T21:15:00Z")))
-          execCmd(CancelOrders(orderId :: Nil, CancellationMode.kill()))
+          sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
+          execCmd:
+            CancelOrders(orderId :: Nil, CancellationMode.kill())
           controller.awaitNextKey[OrderCancelled](orderId)
 
       "Clip LocalInterval at month boundary where allowed Month ends" in:
@@ -424,6 +428,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           assert(controllerState.idToOrder(orderId).state ==
             Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-06-30T21:00:00Z")))
 
+          sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
           execCmd:
             CancelOrders(orderId :: Nil, CancellationMode.kill())
           controller.awaitNextKey[OrderCancelled](orderId)

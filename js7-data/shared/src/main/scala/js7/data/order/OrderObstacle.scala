@@ -12,7 +12,7 @@ object OrderObstacle:
   def waitingForOtherTime(until: Timestamp): OrderObstacle =
     WaitingForOtherTime(until)
 
-  def waitingForAdmmission(until: Timestamp): OrderObstacle =
+  def waitingForAdmission(until: Timestamp): OrderObstacle =
     WaitingForAdmission(until)
 
   val agentProcessLimitReached: OrderObstacle =
