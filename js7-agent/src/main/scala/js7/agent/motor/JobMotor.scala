@@ -19,7 +19,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
-import js7.base.time.{AlarmClock, TimeInterval, Timestamp}
+import js7.base.time.{AlarmClock, TimeInterval, Timestamp, WallClock}
 import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -41,6 +41,7 @@ private final class JobMotor private(
   subagentKeeper: SubagentKeeper[AgentState],
   queueSignal: SignallingRef[IO, () => String],
   admissionSignal: Signal[IO, Option[TimeInterval]])
+  (using clock: WallClock)
 extends Service.StoppableByRequest:
 
   private val logger = Logger.withPrefix[this.type](jobKey.toString)
@@ -106,7 +107,7 @@ extends Service.StoppableByRequest:
   private lazy val dequeueChunk2: IO[Chunk[OrderWithEndOfAdmission]] =
     queue.lockForRemoval:
       meterDequeue:
-        admissionSignal.get.flatMap: maybeTimeInterval =>
+        currentAdmissionTimeInterval.flatMap: maybeTimeInterval =>
           val endOfAdmission = maybeTimeInterval match
             case Some(o: TimeInterval.Standard) => Some(o.end)
             case _ => None
@@ -125,6 +126,11 @@ extends Service.StoppableByRequest:
           .map: builder =>
             Chunk.from(builder.result)
     .uncancelable
+
+  private def currentAdmissionTimeInterval: IO[Option[TimeInterval]] =
+    // TODO AdmissionTimeSwitcher should do this
+    clock.nowIO.flatMap: now =>
+      admissionSignal.get.map(_.filter(_.contains(now)))
 
   private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
     import orderWithEndOfAdmission.{endOfAdmission, order}
