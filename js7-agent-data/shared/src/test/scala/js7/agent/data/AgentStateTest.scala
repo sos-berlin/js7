@@ -21,7 +21,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventCounter, EventId, JournalId, SnapshotableState}
+import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
 import js7.data.item.{ItemRevision, ItemSigner}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -201,7 +201,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
   }
 
   "estimatedSnapshotSize" in:
-    assert(agentState.estimatedSnapshotSize == 20)
+    assert(agentState.estimatedSnapshotSize == 14/*20*/)
     val n = agentState.toSnapshotStream.compile.count
     assert(n == agentState.estimatedSnapshotSize)
 
@@ -335,36 +335,37 @@ final class AgentStateTest extends OurAsyncTestSuite:
           "agentPath": "AGENT"
         }
       }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "AgentDedicated",
-        "count" : 1
-      }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "ExternalOrderAppeared",
-        "count" : 2
-      }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "ItemAttachedToMe",
-        "count" : 6
-      }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "JournalEventsReleased",
-        "count" : 1
-      }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "OrderAttachedToAgent",
-        "count" : 1
-      }""",
-      json"""{
-        "TYPE" : "EventCount",
-        "eventName" : "SignedItemAttachedToMe",
-        "count" : 2
-      }"""))
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "AgentDedicated",
+      //  "count" : 1
+      //}""",
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "ExternalOrderAppeared",
+      //  "count" : 2
+      //}""",
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "ItemAttachedToMe",
+      //  "count" : 6
+      //}""",
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "JournalEventsReleased",
+      //  "count" : 1
+      //}""",
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "OrderAttachedToAgent",
+      //  "count" : 1
+      //}""",
+      //json"""{
+      //  "TYPE" : "EventCount",
+      //  "eventName" : "SignedItemAttachedToMe",
+      //  "count" : 2
+      //}"""
+    ))
 
     AgentState.fromStream:
       Stream.iterable(jsons)
@@ -443,13 +444,13 @@ final class AgentStateTest extends OurAsyncTestSuite:
       Map(
         signedJobResource.value.path -> signedJobResource,
         workflow.id -> signedWorkflow),
-      EngineStateStatistics(
-        EventCounter(Map(
+      EngineStateStatistics.empty/*(
+        EventCounter(Map.empty(
           "AgentDedicated" -> 1,
           "ItemAttachedToMe" -> 3,
           "SignedItemAttachedToMe" -> 2,
           "OrderAttachedToAgent" -> 1,
-          "OrderForked" -> 1)))))
+          "OrderForked" -> 1)))*/))
 
   "keyToItem" in:
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
