@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.{BoardPath, PlannableBoard}
 import js7.data.controller.ControllerEvent.ControllerInitialized
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventCalc, EventColl, EventCounter, NoKeyEvent, TimeCtx}
+import js7.data.event.{EventCalc, EventColl, NoKeyEvent, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.plan.{PlanSchema, PlanSchemaId}
@@ -57,10 +57,10 @@ final class ControllerEventCalcTest extends OurTestSuite:
         PlanSchema.Global.path -> PlanSchema.Global.toInitialItemState,
         planSchema.path -> planSchema.toInitialItemState,
         board.path -> board.toInitialItemState),
-      statistics = EngineStateStatistics(
+      statistics = EngineStateStatistics.empty/*(
         eventCounter = EventCounter(Map(
           "ControllerInitialized" -> 1,
-          "UnsignedSimpleItemAdded" -> 2)))))
+          "UnsignedSimpleItemAdded" -> 2)))*/))
 
     locally:
       val eventColl2 = (controllerInitialized.widen |+| itemAdded.widen)
