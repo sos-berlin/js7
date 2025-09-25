@@ -61,7 +61,7 @@ final class AdmissionTimeSwitch(
               case o: TimeInterval.Standard => o
               case o: TimeInterval.Always => o
               case o: TimeInterval.Never =>
-                throw new AssertionError(s"NonEmptyTimeInterval expected: $o")
+                throw new AssertionError(s"NonEmptyTimeInterval expected, but not: $o")
 
   def findCurrentTimeInterval(now: Timestamp): Option[TimeInterval] =
     admissionTimeScheme.findLongTimeInterval(

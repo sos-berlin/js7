@@ -143,7 +143,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
         IO.right(Accepted)
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT STOPS NOW", restart = restart)
+        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW", restart = restart)
 
       case Batch(wrappedCommands) =>
         // Execute one command after the other
