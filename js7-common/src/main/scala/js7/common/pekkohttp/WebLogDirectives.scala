@@ -12,8 +12,10 @@ import js7.base.metering.CallMeter
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.http.HttpMXBean
 import js7.common.http.PekkoHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
 import js7.common.pekkohttp.WebLogDirectives.*
 import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
@@ -51,11 +53,15 @@ trait WebLogDirectives extends ExceptionHandling:
     mapInnerRoute: inner =>
       var t = 0L
       mapRequest: request =>
+        HttpMXBean.Bean.serverRequestActiveCount += 1
+        HttpMXBean.Bean.serverRequestTotal += 1
+        // TODO Count streamed bytes, in and out
         t = System.nanoTime()
         request
       .apply:
         mapRouteResult: result =>
           requestCallMeter.addNanos(System.nanoTime() - t)
+          HttpMXBean.Bean.serverRequestActiveCount -= 1
           result
         .apply:
           inner

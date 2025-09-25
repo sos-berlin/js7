@@ -11,6 +11,7 @@ import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
+import js7.common.http.HttpMXBean
 
 trait ServiceApp extends OurApp:
   self =>
@@ -43,6 +44,7 @@ trait ServiceApp extends OurApp:
           _ <- CallMeterLoggingService.resource(cnf.config)
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
           _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
+          _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
           svc <- program(cnf)
         yield svc,
       use)

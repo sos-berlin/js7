@@ -6,6 +6,7 @@ import fs2.Stream
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
@@ -25,6 +26,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.Missing.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -342,6 +344,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
     (implicit sessionTokenIO: IO[Option[SessionToken]])
   : IO[HttpResponse] =
+   HttpMXBeanUtils.clientRequestResource.surround:
     withCheckedAgentUri(request): request =>
       sessionTokenIO.flatMap: sessionToken =>
         if closed then
@@ -482,17 +485,21 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     msgArrow: String, lastArrow: String, errArrow: String, dontLog: Boolean)
     (message: M)
   : M =
-    if !logger.isTraceEnabled then
-      message
-    else
-      message.entity match
-        case chunked: Chunked =>
-          lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
-          lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
-          message.withEntity:
-            chunked.copy(
-              chunks = chunked.chunks
-                .map: chunk =>
+    val byteTotal: AtomicLong =
+      if message.isRequest then
+        HttpMXBean.Bean.clientSentByteTotal
+      else
+        HttpMXBean.Bean.clientReceivedByteTotal
+    message.entity match
+      case chunked: Chunked =>
+        lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
+        message.withEntity:
+          chunked.copy(
+            chunks =
+              chunked.chunks.map: chunk =>
+                byteTotal += chunk.data.size
+                if !dontLog && !logger.isTraceEnabled then
                   def arrow = if chunk.isLastChunk then lastArrow else msgArrow
                   def string =
                     if isUtf8 then
@@ -501,18 +508,28 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     else
                       s"${chunk.data.length} bytes"
 
-                  if !dontLog then
-                    if isJson && chunk.data == HttpHeartbeatByteString then
-                      if logHeartbeat then
-                        logger.trace(s"$arrow$prefix $string 🩶")
-                    else
-                      logger.trace(s"$arrow$prefix $string")
-                  chunk
-                .mapError: t =>
-                  logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
-                  t)
-          .asInstanceOf[M]
-        case _ => message
+                  if isJson && chunk.data == HttpHeartbeatByteString then
+                    if logHeartbeat then
+                      logger.trace(s"$arrow$prefix $string 🩶")
+                  else
+                    logger.trace(s"$arrow$prefix $string")
+                chunk
+              .mapError: t =>
+                logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
+                t)
+        .asInstanceOf[M]
+
+      case entity: HttpEntity.Strict =>
+        byteTotal += entity.data.size
+        message
+
+      case entity: HttpEntity.Default =>
+        byteTotal += entity.contentLength
+        message
+
+      case entity: HttpEntity.CloseDelimited =>
+        //byteTotal += ?? —— CloseDelimited is not used
+        message
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
