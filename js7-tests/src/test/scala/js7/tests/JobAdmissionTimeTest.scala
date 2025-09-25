@@ -17,7 +17,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, waitingForAdmission}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.{StringConstant, expr}
@@ -257,6 +257,64 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
     }
 
   "killAtEndOfAdmissionPeriod" - {
+    "No AdmissionPeriod" in:
+      controller.resetLastWatchedEventId()
+      val workflow = Workflow(
+        WorkflowPath("killAtEndOfAdmissionPeriod-NoAdmissionPeriod"),
+        Seq:
+          Execute(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+            s"""#!/usr/bin/env bash
+               |set -euo pipefail
+               |echo Hej!
+               |while true; do :
+               |  sleep 0.1
+               |done
+               |exit 1
+               |""".stripMargin),
+            killAtEndOfAdmissionPeriod = true)),
+        timeZone = Timezone(zoneId.getId))
+      withItem(workflow): workflow =>
+        val orderId = OrderId("killAtEndOfAdmissionPeriod-NoAdmissionPeriod")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path))
+          .await(99.s).orThrow
+        val event = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
+        assert(event == OrderProcessingStarted(Some(subagentId), endOfAdmissionPeriod = None))
+        execCmd:
+          CancelOrders(orderId :: Nil, CancellationMode.kill())
+        controller.awaitNextKey[OrderTerminated](orderId)
+
+    "❗️ AdmissionTimeScheme.allDay ENDS LAST DAY OF SUMMER TIME" in:
+      controller.resetLastWatchedEventId()
+      val workflow = Workflow(
+        WorkflowPath("killAtEndOfAdmissionPeriod-allDay"),
+        Seq:
+          Execute(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+            s"""#!/usr/bin/env bash
+               |set -euo pipefail
+               |echo Hej!
+               |while true; do :
+               |  sleep 0.1
+               |done
+               |exit 1
+               |""".stripMargin),
+            admissionTimeScheme = Some(AdmissionTimeScheme.allDay),
+            killAtEndOfAdmissionPeriod = true)),
+        timeZone = Timezone(zoneId.getId))
+      withItem(workflow): workflow =>
+        clock := local("2025-01-06T12:00")
+        val orderId = OrderId("killAtEndOfAdmissionPeriod-allDay")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path))
+          .await(99.s).orThrow
+        val event = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
+        assert(event == OrderProcessingStarted(Some(subagentId),
+          // TODO TimeInterval ends last day of summertime. THIS IS NOT EXPECTED.
+          endOfAdmissionPeriod = Some(ts"2025-10-26T21:00:00Z")))
+        execCmd:
+          CancelOrders(orderId :: Nil, CancellationMode.kill())
+        controller.awaitNextKey[OrderTerminated](orderId)
+
     "single AdmissionPeriod" in:
       controller.resetLastWatchedEventId()
       val workflow = Workflow(
@@ -265,13 +323,13 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           Execute(WorkflowJob(agentPath,
             ShellScriptExecutable(
             s"""#!/usr/bin/env bash
-              |set -euo pipefail
-              |echo Hej!
-              |while true; do :
-              |  sleep 0.1
-              |done
-              |exit 1
-              |""".stripMargin),
+               |set -euo pipefail
+               |echo Hej!
+               |while true; do :
+               |  sleep 0.1
+               |done
+               |exit 1
+               |""".stripMargin),
             admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
               WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))),
             killAtEndOfAdmissionPeriod = true)),
@@ -301,13 +359,13 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           Execute(WorkflowJob(agentPath,
             ShellScriptExecutable(
             s"""#!/usr/bin/env bash
-              |set -euo pipefail
-              |echo Hej!
-              |while true; do :
-              |  sleep ${delay.toBigDecimalSeconds}
-              |done
-              |exit 1
-              |""".stripMargin),
+               |set -euo pipefail
+               |echo Hej!
+               |while true; do :
+               |  sleep ${delay.toBigDecimalSeconds}
+               |done
+               |exit 1
+               |""".stripMargin),
             admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
               WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h),
               SpecificDatePeriod(LocalDateTime.parse("2025-06-30T10:00"), 30.minutes)))),
