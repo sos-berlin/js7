@@ -1,5 +1,6 @@
 package js7.base.time
 
+import cats.effect.IO
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 trait WallClock:
@@ -8,6 +9,9 @@ trait WallClock:
 
   final def now(): Timestamp =
     Timestamp.ofEpochMilli(epochMilli())
+
+  final def nowIO: IO[Timestamp] =
+    IO(now())
 
   protected def productPrefix: String =
     getClass.simpleScalaName

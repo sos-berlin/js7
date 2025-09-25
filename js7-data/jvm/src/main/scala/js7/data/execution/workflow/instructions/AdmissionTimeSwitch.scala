@@ -11,7 +11,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Mutable state for calculating the current or next admission time. */
-final class AdmissionTimeSwitch(
+private final class AdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
   findTimeIntervalLimit: FiniteDuration,
   zone: ZoneId,

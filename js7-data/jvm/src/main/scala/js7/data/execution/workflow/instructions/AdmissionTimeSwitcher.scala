@@ -5,7 +5,7 @@ import cats.effect.std.Dispatcher
 import cats.effect.{IO, ResourceIO}
 import fs2.concurrent.{Signal, SignallingRef}
 import java.time.ZoneId
-import js7.base.catsutils.CatsEffectUtils.unlessDeferred
+import js7.base.catsutils.CatsExtensions.*
 import js7.base.log.Logger
 import js7.base.service.Service
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
@@ -41,8 +41,9 @@ extends
 
   protected def start =
     // First Signal will be duplicated by selectTimeInterval — TODO optimise this
-    currentAdmissionTimeSignal.set:
-      admissionTimeSwitch.findCurrentTimeInterval(clock.now())
+    clock.nowIO.flatMap: now =>
+      currentAdmissionTimeSignal.set:
+        admissionTimeSwitch.findCurrentTimeInterval(now)
     *>
       startService:
         selectTimeIntervalAgainAndAgain.start.flatMap: fiber =>
@@ -54,7 +55,7 @@ extends
     selectTimeInterval(IO.defer(selectTimeIntervalAgainAndAgain))
 
   private def selectTimeInterval(onPermissionStartOrEnd: IO[Unit]): IO[Unit] =
-    unlessDeferred(isStopping): // clock.sleepUntil may be not cancelable
+    IO(isStopping).ifFalse: // clock.sleepUntil may be not cancelable
       admissionTimeSwitch.updateAndCheck:
         onPermissionStartOrEnd
       .flatMap: maybeTimeInterval =>
