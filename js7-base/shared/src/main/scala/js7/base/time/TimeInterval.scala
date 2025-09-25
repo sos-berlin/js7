@@ -61,7 +61,7 @@ object TimeInterval:
     private[TimeInterval] def tryCombineStandard(that: Standard): Option[Standard] =
       Standard.tryCombine2(this, that) orElse Standard.tryCombine2(that, this)
 
-    override def toString = s"TimeInterval($start, ${duration.pretty})"
+    override def toString = s"TimeInterval($start..$end ${duration.pretty})"
 
   object Standard:
     private def tryCombine2(a: Standard, b: Standard): Option[Standard] =
