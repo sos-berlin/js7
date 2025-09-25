@@ -50,7 +50,7 @@ extends Service.StoppableByRequest:
 
   def start =
     startService:
-      runPipeline *>
+      pipeline.compile.drain *>
         IO:
           val n = processCount.get
           if n > 0 then logger.debug(s"❗️processCount=$n when stopping")
@@ -80,31 +80,30 @@ extends Service.StoppableByRequest:
       IO.whenA(_):
         IO(logger.debug(s"$unnecessary$orderId removed from queue"))
 
-  private def runPipeline: IO[Unit] =
+  private def pipeline: fs2.Stream[IO, Unit] =
     queueSignal.discrete.merge:
-      admissionSignal.discrete.map(o => () => s"admission $o")
+      admissionSignal.discrete.map(o => () => s"Admission $o")
     .evalMap: signalReason =>
-      dequeue.map(signalReason -> _)
+      dequeueChunk.map(signalReason -> _)
     .filter: (signalReason, chunk) =>
       chunk.nonEmpty || locally:
         logger.trace:
-          s"""🪱 runPipeline: No Order is processable despite signal "${signalReason()}""""
+          s"""🪱 pipeline: No Order is processable despite signal "${signalReason()}""""
         false
     .map(_._2)
     .unchunks
     .evalMap: o =>
       startOrderProcess(o).startAndForget // TODO How to cancel this?
     .interruptWhenF(untilStopRequested)
-    .compile.drain
 
-  private val dequeue: IO[Chunk[OrderWithEndOfAdmission]] =
+  private val dequeueChunk: IO[Chunk[OrderWithEndOfAdmission]] =
     IO.defer:
       if queue.isEmptyUnsafe/*fast lane*/ then
         emptyChunk
       else
-        dequeue2
+        dequeueChunk2
 
-  private lazy val dequeue2: IO[Chunk[OrderWithEndOfAdmission]] =
+  private lazy val dequeueChunk2: IO[Chunk[OrderWithEndOfAdmission]] =
     queue.lockForRemoval:
       meterDequeue:
         admissionSignal.get.flatMap: maybeTimeInterval =>
