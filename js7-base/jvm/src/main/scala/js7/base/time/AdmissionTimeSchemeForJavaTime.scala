@@ -60,7 +60,7 @@ object AdmissionTimeSchemeForJavaTime:
         boundary:
           while it.hasNext do
             val b = it.next()
-            result.combine(b) match
+            result.tryCombine(b) match
               case Some(combined) => result = combined
               case None => boundary.break()
         result
