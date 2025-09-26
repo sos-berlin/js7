@@ -8,106 +8,59 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
 
-sealed trait LocalInterval extends Ordered[LocalInterval]:
+final case class LocalInterval(start: LocalDateTime, duration: FiniteDuration):
+  // TODO Does not respect daylight-saving time.
+  // In case, the interval crosses a daylight-saving time boundary,
+  // the end time is shifted by an hour.
+  private[time] def end: LocalDateTime =
+    start.plusNanos(duration.toNanos)
 
-  def contains(local: LocalDateTime)(using ZoneId): Boolean
+  def contains(local: LocalDateTime)(using ZoneId): Boolean =
+    // local should already be normalized, just to be sure:
+    val normalizedLocal = local.normalize
+    val normalizedStart = start.normalize
+    !normalizedStart.isAfter(normalizedLocal)
+      && (normalizedStart + duration).isAfter(normalizedLocal)
 
   @TestOnly
-  def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean
+  def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean =
+    // start and end should already be normalized, just to be sure:
+    val normalizedStart = start.normalize
+    val normalizedEnd = end.normalize
+    val normalizedThisStart = this.start.normalize
+    normalizedThisStart < normalizedEnd
+      && normalizedStart < (normalizedThisStart + duration)
 
   /** _ < start */
-  def startsBefore(local: LocalDateTime)(using ZoneId): Boolean
+  def startsBefore(local: LocalDateTime)(using ZoneId): Boolean =
+    start.normalize < local.normalize
 
   /** end < _ */
-  def endsAfter(local: LocalDateTime)(using ZoneId): Boolean
+  def endsAfter(local: LocalDateTime)(using ZoneId): Boolean =
+    local.normalize < start.normalize + duration
 
-  def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[LocalInterval]
+  def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[LocalInterval] =
+    restriction.clipLocalInterval(this, dateOffset)
 
-  def toTimeInterval(using ZoneId): TimeInterval
+  def toTimeInterval(using zoneId: ZoneId): TimeInterval.Standard =
+    TimeInterval.Standard(
+      JavaTimestamp.ofZoned(ZonedDateTime.of(start, zoneId)),
+      duration)
+
+  def compare(o: LocalInterval): Int =
+    start.compare(o.start)
+
+  override def toString =
+    s"LocalInterval($start, ${duration.pretty})"
 
 
 object LocalInterval:
-  implicit val eq: Eq[LocalInterval] = Eq.fromUniversalEquals
+  given Eq[LocalInterval] = Eq.fromUniversalEquals
 
-  def apply(start: LocalDateTime, duration: FiniteDuration): LocalInterval =
-    Standard(start, duration)
+  given Ordering[LocalInterval] = Ordering.by(_.start)
 
-
-  final case class Standard(start: LocalDateTime, duration: FiniteDuration)
-  extends js7.base.time.LocalInterval:
-    // TODO Does not respect daylight-saving time.
-    // In case, the interval crosses a daylight-saving time boundary,
-    // the end time is shifted by an hour.
-    private[time] def end: LocalDateTime =
-      start.plusNanos(duration.toNanos)
-
-    def contains(local: LocalDateTime)(using ZoneId): Boolean =
-      // local should already be normalized, just to be sure:
-      val normalizedLocal = local.normalize
-      val normalizedStart = start.normalize
-      !normalizedStart.isAfter(normalizedLocal)
-        && (normalizedStart + duration).isAfter(normalizedLocal)
-
-    def contains(start: LocalDateTime, end: LocalDateTime)(using ZoneId): Boolean =
-      // start and end should already be normalized, just to be sure:
-      val normalizedStart = start.normalize
-      val normalizedEnd = end.normalize
-      val normalizedThisStart = this.start.normalize
-      normalizedThisStart < normalizedEnd
-        && normalizedStart < (normalizedThisStart + duration)
-
-    def startsBefore(local: LocalDateTime)(using ZoneId): Boolean =
-      start.normalize < local.normalize
-
-    def endsAfter(local: LocalDateTime)(using ZoneId): Boolean =
-      local.normalize < start.normalize + duration
-
-    def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[Standard] =
-      restriction.clipLocalInterval(this, dateOffset)
-
-    def toTimeInterval(using zoneId: ZoneId): TimeInterval =
-      TimeInterval(
-        JavaTimestamp.ofZoned(ZonedDateTime.of(start, zoneId)),
-        duration)
-
-    def compare(o: LocalInterval): Int =
-      o match
-        case Never => -1  // this < Never
-        //case Always => +1 // this > Always
-        case o: Standard => start.compare(o.start)
-
-    override def toString = s"LocalInterval($start, ${duration.pretty})"
-
-  object Standard:
-    private def startOfNextMonth(dt: LocalDateTime, dateOffset: JDuration): LocalDateTime =
-      dt.minus(dateOffset).toLocalDate
-        .plusMonths(1).withDayOfMonth(1)
-        .atStartOfDay
-        .plus(dateOffset)
-
-
-  object Never extends LocalInterval:
-    def contains(local: LocalDateTime)(using ZoneId) =
-      false
-
-    def contains(start: LocalDateTime, normalizedEnd: LocalDateTime)(using ZoneId) =
-      false
-
-    def startsBefore(local: LocalDateTime)(using ZoneId) =
-      false
-
-    def endsAfter(local: LocalDateTime)(using ZoneId) =
-      false
-
-    def clip(restriction: SchemeRestriction, dateOffset: JDuration): Option[LocalInterval] =
-      Some(this) // FIXME oder None ?
-
-    def toTimeInterval(using ZoneId): TimeInterval =
-      TimeInterval.Never
-
-    def compare(o: LocalInterval): Int =
-      o match
-        case Never => 0
-        case _ => +1  // Never > Always, Never > Standard
-
-    override def toString = "Never"
+  private def startOfNextMonth(dt: LocalDateTime, dateOffset: JDuration): LocalDateTime =
+    dt.minus(dateOffset).toLocalDate
+      .plusMonths(1).withDayOfMonth(1)
+      .atStartOfDay
+      .plus(dateOffset)

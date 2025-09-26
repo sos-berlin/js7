@@ -39,8 +39,8 @@ sealed trait SchemeRestriction:
 
   private[time] def skipRestriction(local: LocalDateTime, dateOffset: JDuration): LocalDateTime
 
-  private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
-  : Option[LocalInterval.Standard]
+  private[time] def clipLocalInterval(localInterval: LocalInterval, dateOffset: JDuration)
+  : Option[LocalInterval]
 
 
 object SchemeRestriction:
@@ -65,8 +65,8 @@ object SchemeRestriction:
     private[time] def skipRestriction(local: LocalDateTime, dateOffset: JDuration): LocalDateTime =
       local
 
-    private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
-    : Option[LocalInterval.Standard] =
+    private[time] def clipLocalInterval(localInterval: LocalInterval, dateOffset: JDuration)
+    : Option[LocalInterval] =
       Some(localInterval)
 
 
@@ -96,8 +96,8 @@ object SchemeRestriction:
             .atStartOfDay
             .plus(dateOffset)
 
-    private[time] def clipLocalInterval(localInterval: LocalInterval.Standard, dateOffset: JDuration)
-    : Option[LocalInterval.Standard] =
+    private[time] def clipLocalInterval(localInterval: LocalInterval, dateOffset: JDuration)
+    : Option[LocalInterval] =
       skippedMonths(localInterval.start.getMonthValue) match
         case 0 =>
           val monthOfStart = localInterval.start.minus(dateOffset).getMonthValue
@@ -110,7 +110,7 @@ object SchemeRestriction:
               Some(localInterval) // No change
             else
               val duration = localInterval.duration - clippedSeconds.s
-              duration.isPositive ? LocalInterval.Standard(localInterval.start, duration)
+              duration.isPositive ? LocalInterval(localInterval.start, duration)
           else
             Some(localInterval)
 
@@ -119,7 +119,7 @@ object SchemeRestriction:
           val start = MonthRestriction.startOfNextMonth(localInterval.start, dateOffset)
           val skippedSeconds = start.toEpochSecond(UTC) - localInterval.start.toEpochSecond(UTC)
           val duration = localInterval.duration - skippedSeconds.s
-          duration.isPositive ? LocalInterval.Standard(start, duration)
+          duration.isPositive ? LocalInterval(start, duration)
 
     private def skippedMonths(month: Int, findAllowed: Boolean = true): Int =
       val skipped =
