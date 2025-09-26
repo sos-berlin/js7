@@ -80,7 +80,7 @@ object AdmissionTimeSwitcher:
   : ResourceIO[AdmissionTimeSwitcher] =
     for
       admissionSignal <- Resource.eval:
-        SignallingRef[IO].of[Option[TimeInterval]](Some(TimeInterval.Never/*unused*/))
+        SignallingRef[IO].of[Option[TimeInterval]](None)
       service <- Service.resource:
         new AdmissionTimeSwitcher(
           admissionSignal, admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)

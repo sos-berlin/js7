@@ -2,7 +2,7 @@ package js7.base.time
 
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.TimeInterval.{Always, Never}
+import js7.base.time.TimeInterval.Always
 import js7.base.time.TimestampForTests.ts
 import scala.concurrent.duration.*
 
@@ -39,17 +39,6 @@ final class TimeIntervalTest extends OurTestSuite:
 
     testCombine(Always, timeInterval, Some(Always))
     testCombine(Always, Always, Some(Always))
-    testCombine(Always, Never, Some(Always))
-
-    testCombine(Never, timeInterval, None)
-    testCombine(Never, Never, None)
-
-  "Never" in:
-    assert(!Never.contains(Timestamp.now))
-    assert(!Never.contains(Timestamp.now - 100*365*24.h))
-    assert(!Never.contains(Timestamp.now + 100*365*24.h))
-    assert(Never.endsBefore(Timestamp.Epoch))
-    assert(Never.endsBefore(Timestamp.now + 100*365*24.h))
 
   "Always" in:
     assert(Always.contains(Timestamp.now))

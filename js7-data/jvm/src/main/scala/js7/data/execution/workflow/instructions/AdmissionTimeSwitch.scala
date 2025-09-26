@@ -4,7 +4,7 @@ import cats.effect.std.Dispatcher
 import cats.effect.{IO, Ref}
 import java.time.ZoneId
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, NonEmptyTimeInterval, TimeInterval, Timestamp}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.JobKey
 import org.jetbrains.annotations.TestOnly
@@ -36,7 +36,7 @@ private final class AdmissionTimeSwitch(
   /** Update the state with the current or next admission time and set a _fiber.
    * @return The now effective AdmissionTimeInterval or None. */
   def updateAndCheck(onAdmissionStart: IO[Unit])
-  : IO[Option[NonEmptyTimeInterval]] =
+  : IO[Option[TimeInterval]] =
     clock.lockIO: now =>
       findCurrentTimeInterval(now) match
         case None =>
@@ -45,7 +45,7 @@ private final class AdmissionTimeSwitch(
 
         case Some(interval) =>
           IO.unlessA(_nextTime.contains(interval.start)):
-            onSwitch((interval != TimeInterval.Never) ? interval) *>
+            onSwitch(Some(interval)) *>
               // Also start a fiber if clock has been adjusted
               IO.whenA(now < interval.start):
                 _nextTime = Some(interval.start)
@@ -57,13 +57,9 @@ private final class AdmissionTimeSwitch(
                   cancelSchedule.getAndSet(cancel).flatten
           .as:
             // Has admission now?
-            interval.contains(now) ? interval.match
-              case o: TimeInterval.Standard => o
-              case o: TimeInterval.Always => o
-              case o: TimeInterval.Never =>
-                throw new AssertionError(s"NonEmptyTimeInterval expected, but not: $o")
+            interval.contains(now) ? interval
 
-  def findCurrentTimeInterval(now: Timestamp): Option[TimeInterval] =
+  def findCurrentTimeInterval(now: Timestamp): Option[TimeInterval.Standard] =
     admissionTimeScheme.findLongTimeInterval(
       now, limit = findTimeIntervalLimit, dateOffset = ExecuteExecutor.noDateOffset)
 

@@ -21,8 +21,6 @@ sealed trait TimeInterval:
     TimeInterval.tryCombine(this, other)
 
 
-type NonEmptyTimeInterval = TimeInterval.Standard | TimeInterval.Always
-
 object TimeInterval:
 
   def apply(start: Timestamp, duration: FiniteDuration): TimeInterval =
@@ -36,8 +34,6 @@ object TimeInterval:
       case (a: Standard, b: Standard) => a.tryCombineStandard(b)
       case (Always, _) => Some(Always)
       case (_, Always) => Some(Always)
-      case (Never, _) => None
-      case (_, Never) => None
 
 
   final case class Standard(start: Timestamp, duration: FiniteDuration)
@@ -71,24 +67,6 @@ object TimeInterval:
         Some(Standard(a.start, duration = a.end.max(b.end) - a.start))
       else
         None
-
-
-  type Never = Never.type
-  object Never extends TimeInterval:
-    val start: Timestamp = Timestamp.Epoch
-    val end: Timestamp = Timestamp.Epoch
-    val duration: FiniteDuration = Duration.Zero
-
-    def contains(timestamp: Timestamp) =
-      false
-
-    def startsBefore(timestamp: Timestamp) =
-      false
-
-    def endsBefore(timestamp: Timestamp) =
-      true
-
-    override def toString = "Never"
 
 
   // TODO Only used for AdmissionTimeSwitcher. Move Always to AdmissionTimeSwitcher!

@@ -34,7 +34,7 @@ object AdmissionTimeSchemeForJavaTime:
      * Shifts the interval when daylight saving time skips an hour. */
     def findTimeIntervals(
       from: Timestamp, until: Timestamp, dateOffset: FiniteDuration)(using ZoneId)
-    : View[(Int, TimeInterval)] =
+    : View[(Int, TimeInterval.Standard)] =
       findLocalIntervals(from.toLocalDateTime, until.toLocalDateTime, dateOffset)
         .map: (periodIndex, localInterval) =>
           periodIndex -> localInterval.toTimeInterval
@@ -52,7 +52,7 @@ object AdmissionTimeSchemeForJavaTime:
     /** Like findTimeInterval, but combines seamless following or overlapping TimeIntervals. */
     def findLongTimeInterval(
       from: Timestamp, limit: FiniteDuration, dateOffset: FiniteDuration)(using ZoneId)
-    : Option[TimeInterval] =
+    : Option[TimeInterval.Standard] =
       val timeIntervals = findTimeIntervals(from, from + limit, dateOffset).map(_._2)
       val it = timeIntervals.iterator
       it.hasNext.thenSome:
