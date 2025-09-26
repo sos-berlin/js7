@@ -46,10 +46,10 @@ extends
         admissionTimeSwitch.findCurrentTimeInterval(now)
     *>
       startService:
-        selectTimeIntervalAgainAndAgain.start.flatMap: fiber =>
-          untilStopRequested *>
-            fiber.cancel *>
-            admissionTimeSwitch.cancelDelay
+        selectTimeIntervalAgainAndAgain.background.surround:
+          untilStopRequested
+        *>
+          admissionTimeSwitch.cancelDelay
 
   private val selectTimeIntervalAgainAndAgain: IO[Unit] =
     selectTimeInterval(IO.defer(selectTimeIntervalAgainAndAgain))
