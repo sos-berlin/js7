@@ -251,18 +251,33 @@ object MonthlyLastWeekdayPeriod:
     ).checked.orThrow
 
 
-final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
+final case class SpecificDatePeriod private(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
 extends AdmissionPeriod:
+  // TODO duration may be cross a daylight-saving time boundary, which may not be respected
+  //  by MonthRestriction#clipLocalInterval.
+  def checked: Checked[this.type] =
+    if !duration.isPositive then
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+
   override def pretty: String =
     val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
     s"$ts, ${duration.pretty}"
 
 object SpecificDatePeriod:
   @TestOnly
+  def apply(secondsSinceLocalEpoch: Long, duration: FiniteDuration): SpecificDatePeriod =
+    new SpecificDatePeriod(secondsSinceLocalEpoch, duration).checked.orThrow
+
+  @TestOnly
   def apply(localDateTime: LocalDateTime, duration: FiniteDuration): SpecificDatePeriod =
-    new SpecificDatePeriod(
+    apply(
       localDateTime.toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
       duration)
+
+  def checked(secondsSinceLocalEpoch: Long, duration: FiniteDuration): Checked[SpecificDatePeriod] =
+    SpecificDatePeriod(secondsSinceLocalEpoch, duration).checked
 
 
 object AdmissionPeriod:
@@ -290,6 +305,6 @@ object AdmissionPeriod:
     Subtype(deriveCodec[MonthlyLastDatePeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyWeekdayPeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyLastWeekdayPeriod].checked(_.checked)),
-    Subtype(deriveCodec[SpecificDatePeriod]))
+    Subtype(deriveCodec[SpecificDatePeriod].checked(_.checked)))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
