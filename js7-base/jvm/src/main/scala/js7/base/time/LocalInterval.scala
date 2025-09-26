@@ -4,11 +4,14 @@ import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime, Duration as JDuration}
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Assertions.assertThat
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
 
 final case class LocalInterval(start: LocalDateTime, duration: FiniteDuration):
+  assertThat(!duration.isNegative)
+
   // TODO Does not respect daylight-saving time.
   // In case, the interval crosses a daylight-saving time boundary,
   // the end time is shifted by an hour.
