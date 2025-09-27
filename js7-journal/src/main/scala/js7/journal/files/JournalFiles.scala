@@ -115,7 +115,7 @@ object JournalFiles:
         JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
 
       def deleteJournal(ignoreFailure: Boolean = false): Unit =
-        logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
+        logger.warn("DELETE JOURNAL FILES DUE TO RESET")
         JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
 
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit =
