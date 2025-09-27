@@ -83,9 +83,13 @@ extends MainService, Service.StoppableByRequest:
   val untilTerminated: IO[Termination] =
     memoize:
       agentCommandExecutorDeferred.get.flatMap:
+        case Left(DirectorTerminatedProblem(termination)) =>
+          IO.pure(termination)
+
         case Left(problem) =>
           logger.debug(s"❓ untilTerminated: $problem")
           IO.pure(DirectorTermination(/*???*/))
+
         case Right(Allocated(agentCommandExecutor, _)) =>
           agentCommandExecutor.untilTerminated.map: termination =>
             termination.copy(
@@ -100,7 +104,8 @@ extends MainService, Service.StoppableByRequest:
     logger.debugIO("untilActivated handling"):
       clusterNode.untilActivated.flatMap:
         case Left(termination) =>
-          agentCommandExecutorDeferred.complete(Left(DirectorTerminatedProblem(termination)))
+          agentCommandExecutorDeferred.complete:
+            Left(DirectorTerminatedProblem(DirectorTermination.fromProgramTermination(termination)))
         case Right(workingClusterNode) =>
           AgentCommandExecutor.service(forDirector, workingClusterNode, clock, conf, actorSystem)
             .toAllocated
@@ -340,6 +345,6 @@ object RunningAgent:
     val empty: TestWiring = TestWiring()
 
 
-  private[agent] final case class DirectorTerminatedProblem(termination: ProgramTermination)
+  private[RunningAgent] final case class DirectorTerminatedProblem(termination: DirectorTermination)
   extends Problem.Coded:
     def arguments = Map1("termination", termination.toString)
