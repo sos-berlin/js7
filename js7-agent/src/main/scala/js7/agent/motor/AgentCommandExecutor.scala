@@ -205,7 +205,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
           IO.left(Problem.pure("Director is shutting down"))
         else
           agentMotor.flatMapSome: agentMotor =>
-            agentMotor.resetAllSubagents
+            agentMotor.resetBareSubagents
           *>
             journal.persist:
               _.clusterState.isSubtypeOf[ClusterState.Coupled] ?

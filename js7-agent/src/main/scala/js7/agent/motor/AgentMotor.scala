@@ -106,7 +106,7 @@ extends Service.StoppableByRequest:
 
       case _ => IO.left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}"))
 
-  def resetAllSubagents: IO[Unit] =
+  def resetBareSubagents: IO[Unit] =
     journal.aggregate.flatMap: agentState =>
       subagentKeeper.resetAllSubagents(except = agentState.meta.directors.toSet)
 

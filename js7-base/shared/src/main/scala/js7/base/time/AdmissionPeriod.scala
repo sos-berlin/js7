@@ -35,7 +35,7 @@ extends AdmissionPeriod:
     "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 
 object DailyPeriod:
-  val always: DailyPeriod = DailyPeriod(0, 24.h).checked.orThrow
+  val always: DailyPeriod = new DailyPeriod(0, 24.h).checked.orThrow
 
   @TestOnly
   def apply(secondOfDay: Int, duration: FiniteDuration): DailyPeriod =
