@@ -30,7 +30,7 @@ final class PgpTest extends OurTestSuite:
       assert(PgpSigner.checked(secretKeyResource.readAs[ByteArray], SecretString(invalidPassword)) ==
         Left(Problem(
           // TODO Weird Problem message for an invalid password))
-          "org.bouncycastle.openpgp.PGPException: checksum mismatch at in checksum of 20 bytes")))
+          "org.bouncycastle.openpgp.PGPException: checksum mismatch in checksum of 20 bytes")))
 
   "Empty Verfier" in:
     val verifier = PgpSignatureVerifier.checked(Nil).orThrow

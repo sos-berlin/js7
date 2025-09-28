@@ -363,6 +363,7 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
+      catsEffect ++
       catsEffectTesting ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % testWhenIntelliJ ++

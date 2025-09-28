@@ -5,8 +5,8 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val bouncyCastleVersion = "1.81"
-  val pekkoVersion = "1.2.0"
+  val bouncyCastleVersion = "1.82"
+  val pekkoVersion = "1.2.1"
   val pekkoHttpVersion = "1.2.0"
   val slf4jVersion = "2.0.17"  // See also plugins.sbt
   val log4jVersion = "2.24.3"  // See also plugins.sbt
@@ -31,9 +31,9 @@ object Dependencies
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"
-  val reactorVersion = "3.7.7"
-  val vavrVersion = "0.10.6"
-  val jnaVersion = "5.17.0"
+  val reactorVersion = "3.7.11"
+  val vavrVersion = "0.10.7"
+  val jnaVersion = "5.18.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
@@ -47,9 +47,10 @@ object Dependencies
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-16" % scalaTestCheckVersion ::
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
-  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5" :: slf4j :: Nil
+  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
-  val catsEffectTesting   = List(
+  val catsEffect          = "org.typelevel" %% "cats-effect" % catsEffectVersion
+  val catsEffectTesting   = catsEffect +: List(
     "org.typelevel" %% "cats-effect-testkit" % catsEffectTestingVersion % Test,
     "org.typelevel" %% "cats-effect-testing-scalatest" % "1.6.0" % Test)
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
