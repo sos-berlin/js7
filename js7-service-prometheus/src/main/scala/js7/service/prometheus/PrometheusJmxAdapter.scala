@@ -5,6 +5,7 @@ import io.prometheus.metrics.exporter.common.PrometheusScrapeHandler
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import java.io.IOException
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{NoSuchFileException, Path}
 import js7.base.data.ByteSeqOutputStream
 import js7.base.io.file.FileUtils.syntax.*
@@ -14,6 +15,7 @@ import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest}
 import org.apache.pekko.util.ByteString
+import org.jetbrains.annotations.TestOnly
 
 final class PrometheusJmxAdapter(configDir: Option[Path] = None):
 
@@ -38,6 +40,7 @@ final class PrometheusJmxAdapter(configDir: Option[Path] = None):
   def metricsByteString(): ByteString =
     meter:
       val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
+      outputStream.writeBytes(HeadlineBytes)
       textWriter.write(outputStream, registry.scrape())
       lastSize = outputStream.size()
       outputStream.byteSeq[ByteString]
@@ -56,3 +59,11 @@ object PrometheusJmxAdapter:
   private val DefaultYamlConfig = """
    |excludeObjectNames: ["cats.effect.*:type=*"]
    |""".stripMargin
+
+  private val HeadlineBytes =
+    s"""### Experimental metrics for Prometheus ###
+       |
+       |""".stripMargin.getBytes(UTF_8)
+
+  @TestOnly
+  val Headline = new String(HeadlineBytes, UTF_8)

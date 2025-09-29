@@ -8,4 +8,4 @@ final class PrometheusJmxAdapterTest extends OurTestSuite:
     val adapter = new PrometheusJmxAdapter
     val string = adapter.metricsByteString().utf8String
     Logger[PrometheusJmxAdapterTest].info(string)
-    assert(string.startsWith("# HELP"))
+    assert(string.startsWith(PrometheusJmxAdapter.Headline + "# HELP"))
