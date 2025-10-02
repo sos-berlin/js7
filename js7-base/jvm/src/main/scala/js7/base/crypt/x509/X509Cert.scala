@@ -74,7 +74,7 @@ object X509Cert
       val certificate = CertificateFactory.getInstance("X.509")
         .generateCertificate(byteArray.toInputStream)
         .asInstanceOf[X509Certificate]
-      certificate.checkValidity()  // throws
+      // QUICK FIX certificate.checkValidity()  // throws
       X509Cert(certificate)
     }
 
