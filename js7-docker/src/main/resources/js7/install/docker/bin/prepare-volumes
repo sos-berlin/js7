@@ -31,3 +31,8 @@ chmod -R +x volumes/subagent-*/config/executables/*
 
 build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
+
+mkdir -p metrics/volumes
+ln -snf ../build/metrics/docker-compose.yaml metrics/
+ln -snf ../../volumes/prometheus metrics/volumes/prometheus
+ln -snf ../../volumes/grafana metrics/volumes/grafana

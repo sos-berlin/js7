@@ -16,8 +16,8 @@ services:
     container_name: js7-controller
     hostname: js7-controller
     command: ["js7-controller", "--arg0=js7-controller", "-J-Xmx200m"]
-    networks:
-      - default
+    #networks:
+    #  - default
     ports:
       - "127.0.0.1:4443:4443"
       - "127.0.0.1:4444:4444"
@@ -43,8 +43,8 @@ services:
     hostname: js7-backup-controller
     command: ["js7-controller", "--arg0=js7-backup-controller", "-J-Xmx200m"]
     #cpus: 8
-    networks:
-      - default
+    #networks:
+    #  - default
     #ports:
     #Does not work for Docker 2.2.3.0 macOS:  - "127.0.0.2:4444:4444"
     working_dir: /home/js7
@@ -242,30 +242,6 @@ services:
     profiles:
       - dontStart # Non-existent profile
 
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    hostname: prometheus
-    #cpus: 1
-    user: 1000:1000 # The volumes/prometheus directory will be accessed with this UID:GID
-    volumes:
-      - ./volumes/prometheus/config/private:/var/opt/prometheus/private:ro
-      - ./volumes/prometheus/etc:/etc/prometheus:ro
-      - ./volumes/prometheus/data:/prometheus:delegates
-    ports:
-      - "127.0.0.1:9090:9090"
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    hostname: grafana
-    #cpus: 1
-    user: 1000:1000 # The volumes/grafana directory will be accessed with this UID:GID
-    ports:
-      - "0.0.0.0:3000:3000" # Publicly accessible !!!
-    #environment:
-    #  - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - ./volumes/grafana/:/var/lib/grafana
-    restart: unless-stopped
+networks:
+  default:
+    name: js7

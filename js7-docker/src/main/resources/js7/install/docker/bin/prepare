@@ -50,7 +50,9 @@ build/bin/prepare-volumes
 docker compose down --remove-orphans
 echo "docker compose build"
 docker compose build --quiet
-docker compose up --no-start
+docker compose up --detach #--no-start
 
-echo
-echo Start with: docker compose start
+docker compose -f metrics/docker-compose.yaml up --detach
+
+#echo
+#echo Start with: docker compose start
