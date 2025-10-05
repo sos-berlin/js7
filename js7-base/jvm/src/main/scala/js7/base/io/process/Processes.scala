@@ -14,7 +14,6 @@ import js7.base.io.process.StartRobustly.startRobustly
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
-import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
 object Processes:
@@ -53,7 +52,6 @@ object Processes:
   def directShellCommandArguments(argument: String): Seq[String] =
     OS.directShellCommandArguments(argument)
 
-  @TestOnly
   def runProcess(commandLine: String): String =
     import scala.sys.process.*
     logger.debug(commandLine)

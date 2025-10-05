@@ -10,6 +10,7 @@ import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteArray
 import js7.base.metering.CallMeterLoggingService
+import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.*
@@ -38,6 +39,12 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   protected final lazy val ioRuntime: IORuntime =
     if !afterAllMayBeCalled then
       throw new IllegalStateException("IORuntime used, but beforeAll() has not yet executed")
+    else if false then
+      // Experimental
+      val rt = IORuntime.global
+      OurIORuntime.register[SyncIO](rt, label = getClass.shortClassName)
+        .allocated.run()
+      rt
     else
       val allocated =
         OurIORuntime.resource[SyncIO](
@@ -50,7 +57,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
         stopCallMeterService =
           CallMeterLoggingService.resource(logEvery = 1.minute).void
             .allocated.map(_._2)
-            .unsafeRunSync()(using allocated.allocatedThing)
+            .unsafeRunSyncX()(using allocated.allocatedThing)
 
       allocated.allocatedThing
 
@@ -61,7 +68,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   override protected def afterAll(): Unit =
     try
       stopCallMeterService.foreach: stop =>
-        stop.unsafeRunSync()(using ioRuntime)
+        stop.unsafeRunSyncX()(using ioRuntime)
       _ioRuntime.get.map(_.release).foreach(_.run())
     finally
       super.afterAll()

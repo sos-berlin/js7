@@ -46,7 +46,7 @@ object CallMeterLoggingService:
   def resource(logEvery: FiniteDuration): ResourceIO[CallMeterLoggingService] =
     resource(Conf(logEvery = logEvery))
 
-  def resource(conf: Conf): ResourceIO[CallMeterLoggingService] =
+  private def resource(conf: Conf): ResourceIO[CallMeterLoggingService] =
     Service.resource(IO(CallMeterLoggingService(conf)))
 
 

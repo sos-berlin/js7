@@ -114,16 +114,14 @@ object OurIORuntime:
           .setFailureReporter(reportFailure)
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
-      _ <- OurIORuntimeRegister.register(ioRuntime)
-      _ <- registerStandardResources[F](ioRuntime, label)
+      _ <- register[F](ioRuntime, label)
     yield
       ioRuntime
 
-  private def registerStandardResources[F[_]](ioRuntime: IORuntime, label: String)
-    (using F: Sync[F])
-  : Resource[F, Unit] =
-    val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+  def register[F[_]](ioRuntime: IORuntime, label: String)(using F: Sync[F]): Resource[F, Unit] =
     for
+      _ <- OurIORuntimeRegister.register(ioRuntime)
+      env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       _ <- env.registerPure[F, IORuntime](ioRuntime)
       _ <- env.register[F, IOExecutor](IOExecutor.resource(label))
     yield
