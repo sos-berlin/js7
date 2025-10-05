@@ -56,14 +56,16 @@ extends JournalWriter(S, file, bean, after = after, append = false):
   private def writeSnapshotStream(snapshotStream: fs2.Stream[fs2.Pure, Any]): IO[Unit] =
     snapshotStream
       .filter:
-        case SnapshotEventId(_) => false // JournalHeader contains already the EventId
+        case SnapshotEventId(_) => false // JournalHeader already contains the EventId
         case _ => true
       .mapParallelBatch(): snapshotObject =>
         //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         snapshotObject.asJson(using S.snapshotObjectJsonCodec).toByteArray
-      .foreach: byteArray =>
+      .chunks
+      .foreach: chunk =>
         IO.blocking:
-          writeSnapshot(byteArray)
+          chunk.foreach: byteArray =>
+            writeSnapshot(byteArray)
       .compile
       .drain
 
