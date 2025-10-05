@@ -13,6 +13,7 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestampCompanion
 import js7.base.time.Timestamp
 import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate)
@@ -21,7 +22,9 @@ extends X509CertInterface:
   import x509Certificate.*
 
   lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)
-  lazy val signerId = SignerId(signersDistinguishedName.toString)
+
+  @TestOnly
+  private[x509] lazy val signerId = SignerId(signersDistinguishedName.toString)
 
   lazy val fingerprint: ByteArray =
     val md = MessageDigest.getInstance("SHA-1")
@@ -45,7 +48,8 @@ extends X509CertInterface:
     "X.509 certificate " +
       getSubjectX500Principal + " · " +
       (isCA ?? "CA, ") +
-      "fingerprint=" + fingerprint.toHexRaw +
+      notBefore + "..." + notAfter +
+      " fingerprint=" + fingerprint.toHexRaw +
       (getKeyUsage != null) ?? (" keyUsage=" + keyUsageToString(getKeyUsage)) +
       (getExtendedKeyUsage != null) ??
         (" extendedKeyUsage=" +

@@ -41,7 +41,7 @@ extends SignatureVerifier:
   def publicKeyOrigin: String =
     "(GenericSignatureVerifier)"
 
-  override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
+  def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     for
       verifier <- typeToVerifier.rightOr(signature.typeName,
         Problem(s"No trusted public key for signature type '${signature.typeName}'"))

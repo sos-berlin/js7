@@ -1,7 +1,8 @@
 package js7.service.pgp
 
-import cats.implicits.toBifunctorOps
+import cats.syntax.bifunctor.*
 import cats.syntax.show.*
+import cats.syntax.traverse.*
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -66,7 +67,7 @@ extends SignatureVerifier:
     if !pgpSignature.verify() then
       Left(TamperedWithSignedMessageProblem)
     else
-      Right(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
+      publicKey.getUserIDs.asScala.toVector.traverse(SignerId.checked)
 
   override def toString = s"PgpSignatureVerifier(origin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
 
