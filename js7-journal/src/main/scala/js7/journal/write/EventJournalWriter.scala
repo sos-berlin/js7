@@ -1,6 +1,6 @@
 package js7.journal.write
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.IO
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
@@ -29,7 +29,6 @@ final class EventJournalWriter(
   protected val simulateSync: Option[FiniteDuration],
   append: Boolean = true,
   initialEventCount: Int = 0)
-  (implicit protected val ioRuntime: IORuntime)
 extends
   JournalWriter(
     journalLocation.S,
@@ -63,15 +62,24 @@ extends
       isActiveNode = true)
 
   def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false)
-  : PositionAnd[EventId] =
+  : IO[PositionAnd[EventId]] =
     // TODO Rollback writes in case of error (with seek?)
-    if !eventsStarted then throw new IllegalStateException
-    val ta = transaction && stampedEvents.lengthIs > 1
-    if ta then jsonWriter.write(TransactionByteArray)
-    super.writeEvents(stampedEvents)
-    if ta then jsonWriter.write(CommitByteArray)
-    statistics.countEventsToBeCommitted(stampedEvents.size)
-    fileLengthAndEventId
+    IO.defer:
+      if !eventsStarted then throw new IllegalStateException
+      val ta = transaction && stampedEvents.lengthIs > 1
+      IO.whenA(ta):
+        IO.blocking:
+          jsonWriter.write(TransactionByteArray)
+      .productR:
+        super.writeEvents(stampedEvents)
+      .productR:
+        IO.whenA(ta):
+          IO.blocking:
+            jsonWriter.write(CommitByteArray)
+      .productR:
+        IO:
+          statistics.countEventsToBeCommitted(stampedEvents.size)
+          fileLengthAndEventId
 
   // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit =
@@ -105,9 +113,8 @@ private[journal] object EventJournalWriter:
     observer: JournalingObserver | Missing = Missing,
     bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
     append: Boolean = false)
-    (using IORuntime)
   : EventJournalWriter =
-    new EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId,
+    EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId,
       observer getOrElse JournalingObserver.Dummy(journalLocation),
       bean,
       simulateSync = None, append = append)

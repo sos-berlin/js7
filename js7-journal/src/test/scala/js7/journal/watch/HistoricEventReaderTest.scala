@@ -3,6 +3,8 @@ package js7.journal.watch
 import cats.effect.unsafe.IORuntime
 import js7.base.io.file.FileUtils.*
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.await
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.{JournalHeader, Stamped}
 import js7.journal.data.JournalLocation
@@ -25,12 +27,12 @@ final class HistoricEventReaderTest extends OurTestSuite:
       autoClosing(EventJournalWriter.forTest(journalLocation, after = After, journalId)) { writer =>
         writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = After))
         writer.beginEventSection(sync = false)
-        writer.writeEvents(TestEvents)
+        writer.writeEvents(TestEvents).await(99.s)
         writer.endEventSection(sync = false)
       }
 
       val historicEventReader = new HistoricEventReader(journalLocation, journalId,
-        fileEventId = After, journalLocation.file(After), JournalEventWatch.TestConfig, ioRuntime)
+        fileEventId = After, journalLocation.file(After), JournalEventWatch.TestConfig)
 
       autoClosing(historicEventReader) { reader =>
         assert(reader.eventsAfter(After + 5) == None)

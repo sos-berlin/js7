@@ -150,7 +150,7 @@ object JournalActor:
       callersItem: CallersItem)
 
     case object TakeSnapshot
-    case object GetJournalActorState
+    case object GetJournalActorState // Test only!
     case object GetJournaledState
     case object GetIsHaltedFunction
 

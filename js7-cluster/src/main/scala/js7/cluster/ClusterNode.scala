@@ -59,8 +59,7 @@ final class ClusterNode[S <: ClusterableState[S]: Tag] private(
   val recoveredExtract: Recovered.Extract,
   implicit val actorSystem: ActorSystem)
   (implicit S: ClusterableState.Companion[S],
-    nodeNameToPassword: NodeNameToPassword[S],
-    ioRuntime: IORuntime)
+    nodeNameToPassword: NodeNameToPassword[S])
 extends Service.StoppableByRequest:
   clusterNode =>
 

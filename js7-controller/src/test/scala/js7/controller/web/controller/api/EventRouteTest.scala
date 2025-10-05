@@ -1,10 +1,9 @@
 package js7.controller.web.controller.api
 
-import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.{HoconStringInterpolator, RichConfig}
-import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -176,8 +175,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
     "/event DefaultDelay" in:
       val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis):
-        eventCollector.addStamped(stamped)
+      (IO.sleep(100.ms) *> IO(eventCollector.addStamped(stamped))).unsafeRunAndForget()
       val stampedSeq = getEvents("/event?timeout=1&after=180")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + defaultDelay)
@@ -185,8 +183,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
     "/event?delay=0 MinimumDelay" in:
       val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis):
-        eventCollector.addStamped(stamped)
+      (IO.sleep(100.ms) *> IO(eventCollector.addStamped(stamped))).unsafeRunAndForget()
       val stampedSeq = getEvents("/event?delay=0&timeout=1&after=190")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.MinimumDelay)
@@ -194,8 +191,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
     "/event?delay=0.2" in:
       val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis):
-        eventCollector.addStamped(stamped)
+      (IO.sleep(100.ms) *> IO(eventCollector.addStamped(stamped))).unsafeRunAndForget()
       val stampedSeq = getEvents("/event?delay=0.2&timeout=1&after=200")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + 200.millis)

@@ -1,6 +1,5 @@
 package js7.journal.watch
 
-import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
@@ -23,8 +22,7 @@ private[watch] final class CurrentEventReader(
   firstEventPositionAndFileEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
   val isActiveNode: Boolean,
-  protected val config: Config,
-  protected val ioRuntime: IORuntime)
+  protected val config: Config)
 extends EventReader:
   protected def isHistoric = false
   protected def firstEventPosition = firstEventPositionAndFileEventId.position

@@ -5,6 +5,7 @@ import js7.base.catsutils.SyncDeadline
 import scala.collection.AbstractIterator
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
+// TODO Replace by Delayer ?
 /** Returns an endless sequence of durations usable to delay operation. */
 final class DelayIterator(durations: Seq[FiniteDuration])(using scheduler: Scheduler)
 extends AbstractIterator[FiniteDuration]:

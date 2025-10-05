@@ -499,6 +499,7 @@ lazy val `js7-controller` = project
     `js7-common`,
     `js7-agent-client`,
     `js7-cluster-watch`,
+    `js7-journal` % "test->test",
     `js7-data`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
@@ -820,6 +821,7 @@ lazy val `js7-tests` = project
     `js7-data`.jvm % "test->test",
     `js7-base`.jvm,
     `js7-provider`,
+    `js7-journal` % "test->test",
     `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test",
     `js7-docker` % "test",

@@ -76,7 +76,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
 
     autoClosing(
       JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
@@ -96,14 +96,14 @@ final class JournalReaderTest extends OurAsyncTestSuite:
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
 
     autoClosing(
       EventJournalWriter(journalLocation,
         fileEventId = EventId.BeforeFirst, after = EventId.BeforeFirst, journalId,
         observer = JournalingObserver.Dummy(journalLocation), simulateSync = None)
     ): writer =>
-      writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
+      writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil).await(99.s)
       //Without: writer.endEventSection(sync = false)
 
     autoClosing(
@@ -149,9 +149,9 @@ final class JournalReaderTest extends OurAsyncTestSuite:
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
-        writer.writeEvents(first :: Nil)
-        writer.writeEvents(ta, transaction = true)
-        writer.writeEvents(last :: Nil)
+        writer.writeEvents(first :: Nil).await(99.s)
+        writer.writeEvents(ta, transaction = true).await(99.s)
+        writer.writeEvents(last :: Nil).await(99.s)
         writer.endEventSection(sync = false)
 
       autoClosing(

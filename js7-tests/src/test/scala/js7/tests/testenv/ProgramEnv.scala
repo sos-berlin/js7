@@ -105,7 +105,7 @@ object ProgramEnv:
 
     def journalLocation: JournalLocation
 
-    def recoverState(using IORuntime): S =
+    def recoverState: S =
       StateRecoverer
         .recover[S](journalLocation, Js7Configuration.defaultConfig)
         .state

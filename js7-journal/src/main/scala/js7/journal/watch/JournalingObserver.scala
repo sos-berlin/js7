@@ -1,6 +1,6 @@
 package js7.journal.watch
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.IO
 import com.typesafe.scalalogging.Logger
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -29,7 +29,7 @@ private[journal] trait JournalingObserver:
 
   protected[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit
 
-  protected[journal] def releaseEvents(untilEventId: EventId)(using IORuntime): Unit
+  protected[journal] def releaseEvents(untilEventId: EventId): IO[Unit]
 
   final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int)
   : Unit =
@@ -63,12 +63,13 @@ private[journal] object JournalingObserver:
     : Unit =
       ()
 
-    protected[journal] def releaseEvents(untilEventId: EventId)(using IORuntime): Unit =
-      // Without a JournalingObserver, we can delete all previous journal files (for Agent)
-      val until = untilEventId
-      for j <- journalLocation.listJournalFiles if j.fileEventId < until do
-        val file = j.file
-        //assertThat(file != eventWriter.file)
-        try delete(file)
-        catch case NonFatal(t) =>
-          logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")
+    protected[journal] def releaseEvents(untilEventId: EventId): IO[Unit] =
+      IO:
+        // Without a JournalingObserver, we can delete all previous journal files (for Agent)
+        val until = untilEventId
+        for j <- journalLocation.listJournalFiles if j.fileEventId < until do
+          val file = j.file
+          //assertThat(file != eventWriter.file)
+          try delete(file)
+          catch case NonFatal(t) =>
+            logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")

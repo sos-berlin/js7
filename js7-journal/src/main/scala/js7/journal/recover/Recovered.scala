@@ -1,6 +1,5 @@
 package js7.journal.recover
 
-import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import com.typesafe.config.Config
 import js7.data.cluster.ClusterState
@@ -62,7 +61,7 @@ object Recovered:
     recoveredJournalFile: RecoveredJournalFile[S],
     totalRunningSince: Deadline,
     config: Config)
-    (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
+    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     new Recovered(
       journalLocation,
@@ -75,7 +74,7 @@ object Recovered:
     journalLocation: JournalLocation,
     totalRunningSince: Deadline,
     config: Config)
-    (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
+    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     new Recovered(
       journalLocation,

@@ -1,7 +1,6 @@
 package js7.journal.write
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
@@ -11,7 +10,6 @@ import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
-import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toMB
 import js7.common.jsonseq.PositionAnd
@@ -37,7 +35,6 @@ extends AutoCloseable:
 
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
-  protected def ioRuntime: IORuntime
 
   private val logger = Logger.withPrefix[this.type](file.getFileName.toString)
 
@@ -64,36 +61,35 @@ extends AutoCloseable:
     flush(sync = sync)
     _eventsStarted = true
 
-  def writeEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
+  def writeEvent(stamped: Stamped[KeyedEvent[Event]]): IO[Unit] =
     writeEvents(stamped :: Nil)
 
-  protected final def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
-    _eventCount += stampedEvents.size
-    for stamped <- stampedEvents do
-      if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
-        s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
-          s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
-      _lastEventId = stamped.eventId
-    import S.keyedEventJsonCodec
-    if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
-    then
-      writeJsonInParallel(stampedEvents)
-    else
-      writeJsonSerially(stampedEvents)
+  protected final def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): IO[Unit] =
+    IO.defer:
+      _eventCount += stampedEvents.size
+      for stamped <- stampedEvents do
+        if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
+          s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
+            s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
+        _lastEventId = stamped.eventId
+      import S.keyedEventJsonCodec
+      if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
+      then
+        writeJsonInParallel(stampedEvents)
+      else
+        writeJsonSerially(stampedEvents)
 
-  private def writeJsonSerially[A: Encoder](seq: Seq[A]): Unit =
-    for a <- seq do jsonWriter.write(serialize(a))
+  private def writeJsonSerially[A: Encoder](seq: Seq[A]): IO[Unit] =
+    IO.blocking:
+      for a <- seq do jsonWriter.write(serialize(a))
 
-  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
-    // TODO Try to call it asynchronously (in JournalActor)
-    given IORuntime = ioRuntime
+  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): IO[Unit] =
     Stream.iterable[IO, A](seq)
       .mapParallelBatch():
         serialize[A]
       .foreach: byteArray =>
         IO(jsonWriter.write(byteArray))
       .compile.drain
-      .unsafeRunSyncX() /*Blocking !!!*/
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try a.asJson.toByteArray

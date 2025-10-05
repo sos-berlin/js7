@@ -1,6 +1,5 @@
 package js7.journal.write
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import io.circe.syntax.EncoderOps
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -31,8 +30,8 @@ final class SnapshotJournalWriter(
   bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
-  (using protected val ioRuntime: IORuntime)
-extends JournalWriter(S, file, bean, after = after, append = false):
+extends
+  JournalWriter(S, file, bean, after = after, append = false):
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
@@ -89,7 +88,7 @@ object SnapshotJournalWriter:
     journalLocation: JournalLocation,
     after: EventId,
     bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy)
-    (using IORuntime) =
+  : SnapshotJournalWriter =
     new SnapshotJournalWriter(
       journalLocation.S,
       journalLocation.file(after),
@@ -107,7 +106,6 @@ object SnapshotJournalWriter:
     bean: FileJournalMXBean.Bean,
     syncOnCommit: Boolean = false,
     simulateSync: Option[FiniteDuration] = None)
-    (using IORuntime)
   : IO[(fileSize: Long, firstEvent: PositionAnd[EventId])] =
     val tmpFile = JournalLocation.toTemporaryFile(file)
     Resource
@@ -136,10 +134,12 @@ object SnapshotJournalWriter:
             // Write a SnapshotTaken event to increment EventId to
             // get a new (EventId-based) filename for the next journal file
             w.beginEventSection(sync = false)
-            val firstEventPositionAndEventId = w.fileLengthAndEvenId
-            w.writeEvent(snapshotTaken)
-            w.flush(sync = syncOnCommit)
-            (w.fileLength, firstEventPositionAndEventId)
+            w.fileLengthAndEvenId
+        .flatMap: firstEventPositionAndEventId =>
+          w.writeEvent(snapshotTaken) *>
+            IO.blocking:
+              w.flush(sync = syncOnCommit)
+              (w.fileLength, firstEventPositionAndEventId)
       .flatTap: _ =>
         IO.blocking:
           Files.move(tmpFile, file, ATOMIC_MOVE)

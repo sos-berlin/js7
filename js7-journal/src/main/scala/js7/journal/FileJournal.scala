@@ -2,7 +2,6 @@ package js7.journal
 
 import cats.effect.kernel.{DeferredSink, DeferredSource}
 import cats.effect.std.Queue
-import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Ref, ResourceIO}
 import cats.syntax.flatMap.*
 import fs2.concurrent.SignallingRef
@@ -22,6 +21,7 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -39,7 +39,6 @@ import js7.journal.watch.{JournalEventWatch, JournalingObserver}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.language.unsafeNulls
 import scala.util.control.NonFatal
-import js7.base.utils.Atomic.extensions.*
 
 /** Writes events in an anytime recoverable way to a journal.
   * <ul>
@@ -58,8 +57,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   protected val eventIdGenerator: EventIdGenerator,
   protected val bean: FileJournalMXBean.Bean)
   (using
-    protected val S: SnapshotableState.Companion[S],
-    protected val ioRuntime: IORuntime)
+    protected val S: SnapshotableState.Companion[S])
 extends
   Service.StoppableByRequest,
   Committer[S],
@@ -249,17 +247,18 @@ extends
         state <- state.value
         requireAck <- requireClusterAck.get
         lastAck <- ackSignal.get
-        _ <- IO:
+        _ <- IO.defer:
           val committed = state.committed
           val clusterState = committed.clusterState
-          if clusterState == ClusterState.Empty ||
-            requireAck
-              // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
-              // requireClusterAck. We must not delete the file when cluster is being decoupled.
-              && (clusterState.isInstanceOf[ClusterState.Coupled] ||
-              clusterState.isInstanceOf[ClusterState.ActiveShutDown])
-              && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAck)
-          then
+          IO.whenA(
+            clusterState == ClusterState.Empty ||
+              requireAck
+                // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
+                // requireClusterAck. We must not delete the file when cluster is being decoupled.
+                && (clusterState.isInstanceOf[ClusterState.Coupled] ||
+                clusterState.isInstanceOf[ClusterState.ActiveShutDown])
+                && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAck)
+          ):
             val eventId =
               if clusterState == ClusterState.Empty then
                 committed.eventId
@@ -269,12 +268,14 @@ extends
                 // because after restart, the passive node continues reading the journal file
                 // (only to get end-of-file). Subtract 1 to avoid this.
                 (lastAck - 1) max EventId.BeforeFirst
-            releaseObsoleteEventsUntil(
-              committed.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds))
-            releaseEventIdsAfterClusterCoupledAck = None
+            releaseObsoleteEventsUntil:
+              committed.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds)
+            .productR:
+              IO:
+                releaseEventIdsAfterClusterCoupledAck = None
       yield ()
 
-  private def releaseObsoleteEventsUntil(untilEventId: EventId): Unit =
+  private def releaseObsoleteEventsUntil(untilEventId: EventId): IO[Unit] =
     val committedState = state.get.committed
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${committedState.journalState}, clusterState=${committedState.clusterState}")
     // min lastJournalHeader.eventId, in case it's a JournalObserver.Dummy
@@ -349,7 +350,6 @@ object FileJournal:
     recovered: Recovered[S],
     conf: JournalConf,
     eventIdGenerator: Option[EventIdGenerator] = None)
-    (using IORuntime)
   : ResourceIO[FileJournal[S]] =
     for
       bean <- registerMBean[IO]("Journal", new FileJournalMXBean.Bean)

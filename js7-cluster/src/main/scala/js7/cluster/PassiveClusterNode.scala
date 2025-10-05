@@ -153,37 +153,38 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
     * Returns also a `IO` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): IO[Checked[Recovered[S]]] =
-    CorrelId.bindNew(logger.debugIO:
-      common.requireValidLicense
-        .flatMapT(_ => IO.defer:
-          val recoveredClusterState = recoveredState.clusterState
-          logger.debug(s"recoveredClusterState=$recoveredClusterState")
-          assertThat(!stopped)  // Single-use only
+    CorrelId.bindNew:
+      logger.debugIO:
+        common.requireValidLicense.flatMapT: _ =>
+          IO.defer:
+            val recoveredClusterState = recoveredState.clusterState
+            logger.debug(s"recoveredClusterState=$recoveredClusterState")
+            assertThat(!stopped)  // Single-use only
 
-          // Delete obsolete journal files left by last run
-          if journalConf.deleteObsoleteFiles then
-            for f <- recovered.recoveredJournalFile do
-              val eventId = f.fileEventId/*release files before the recovered file*/
-              eventWatch.releaseEvents:
-                recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds)
-
-          for o <- recovered.recoveredJournalFile do
-            cutJournalFile(o.file, o.length, o.eventId)
-
-          // Other node failed-over while this node was active but lost?
-          // Then FailedOver event will be replicated.
-          IO.unlessA(otherFailed):
-            backgroundNotifyActiveNodeAboutRestart(recoveredClusterState)
-          *>
-            replicateJournalFiles(recoveredClusterState)
-              .guarantee(IO:
-                stopped = true)
-              .guarantee(activeApiCache.clear)
-              .flatTap:
-                case Left(PassiveClusterNodeResetProblem) => IO(
-                  journalLocation.deleteJournal(ignoreFailure = true))
-                case _ => IO.unit
-        ))
+            // Delete obsolete journal files left by last run
+            IO.whenA(journalConf.deleteObsoleteFiles):
+              recovered.recoveredJournalFile.foldMap: f =>
+                val eventId = f.fileEventId/*release files before the recovered file*/
+                eventWatch.releaseEvents:
+                  recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds)
+            .productR:
+              IO:
+                for o <- recovered.recoveredJournalFile do
+                  cutJournalFile(o.file, o.length, o.eventId)
+            .productR:
+              // Other node failed-over while this node was active but lost?
+              // Then FailedOver event will be replicated.
+              IO.unlessA(otherFailed):
+                backgroundNotifyActiveNodeAboutRestart(recoveredClusterState)
+              *>
+                replicateJournalFiles(recoveredClusterState)
+                  .guarantee(IO:
+                    stopped = true)
+                  .guarantee(activeApiCache.clear)
+                  .flatTap:
+                    case Left(PassiveClusterNodeResetProblem) => IO(
+                      journalLocation.deleteJournal(ignoreFailure = true))
+                    case _ => IO.unit
 
   private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState)
   : IO[Unit] =
@@ -307,8 +308,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
       val recoverer = new FileSnapshotableStateRecoverer(
         journalFileForInfo = file.getFileName,
         continuation.maybeJournalId)
-      def releaseEvents(): Unit =
-        if journalConf.deleteObsoleteFiles then
+
+      def releaseEvents: IO[Unit] =
+        IO.whenA(journalConf.deleteObsoleteFiles):
           eventWatch.releaseEvents:
             recoverer.journalState
               .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds)
@@ -521,109 +523,117 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
             if isSnapshotTaken then
               ensureEqualState(continuation, recoverer.result())
             recoverer.put(journalRecord)  // throws on invalid event
-            if isSnapshotTaken then
-              _currentState = IO(recoverer.result())
-              for tmpFile <- maybeTmpFile do
-                val journalId = recoverer.fileJournalHeader.map(_.journalId) getOrElse
-                  sys.error(s"Missing JournalHeader in replicated journal file '$file'")
-                for o <- continuation.maybeJournalId if o != journalId do
-                  sys.error(s"Received JournalId '$journalId' does not match expected '$o'")
-                replicatedFirstEventPosition := replicatedFileLength
-                // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
-                isReplicatingHeadOfFile = false
-                out.close()
-                move(tmpFile, file, ATOMIC_MOVE)
-                journalLocation.updateSymbolicLink(file)
-                logger.info(s"Snapshot '${file.getFileName}' (${
-                  EventId.toString(continuation.fileEventId)}) replicated - ${
-                  bytesPerSecondString(startedAt.elapsed, size(file))}")
-                out = FileChannel.open(file, APPEND)
-                // replicatedLength is between EventHeader and SnapshotTaken
-                eventWatch.onJournalingStarted(file, journalId,
-                  firstEventPositionAndFileEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
-                  flushedLengthAndEventId = PositionAnd(fileLength, recoverer.eventId),
-                  isActiveNode = false)
-                releaseEvents()
-            //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
-            replicatedFileLength = fileLength
-            bean.fileSize = fileLength
-            if recoverer.isInCommittedEventsSection then
-              lastProperEventPosition = fileLength
-            if isReplicatingHeadOfFile then
-              Stream.emit(Right(()))
-            else
-              if recoverer.isInCommittedEventsSection then
-                // An open transaction may be rolled back, so we do not notify about these events
-                eventWatch.onFileWritten(fileLength)
-                journalRecord match
-                  case Stamped(eventId, _, _) => eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
-                  case _ =>
-              journalRecord match
-                case JournalSeparators.Commit =>
-                  eventWatch.onEventsCommitted(PositionAnd(fileLength, recoverer.eventId), 1)
-                  Stream.emit(Right(()))
 
-                case Stamped(_, _, KeyedEvent(_, event)) =>
-                  bean.addEventCount(1)
-                  event match
-                    case _: JournalEventsReleased =>
-                      releaseEvents()
-                      Stream.emit(Right(()))
-
-                    case clusterEvent: ClusterEvent =>
-                      // TODO Use JournalLogging
-                      logger.info(clusterEventAndStateToString(clusterEvent, recoverer.clusterState))
-                      clusterEvent match
-                        case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
-                          Stream.eval(
-                            tryEndlesslyToSendClusterPrepareCoupling
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
-
-                        case _: ClusterFailedOver =>
-                          // Now, this node has switched from still-active (but failed for the other node) to passive.
-                          // It's time to recouple.
-                          // ClusterPrepareCoupling command requests an event acknowledgement.
-                          // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
-                          // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
-                          if !otherFailed then
-                            logger.error("Replicated unexpected FailedOver event")  // Should not happen
-                          dontActivateBecauseOtherFailedOver = false
-                          Stream.eval(
-                            tryEndlesslyToSendClusterPrepareCoupling
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
-
-                        case switchedOver: ClusterSwitchedOver =>
-                          // Notify ClusterWatch before starting heartbeating
-                          val clusterState = recoverer.clusterState.asInstanceOf[ClusterState.HasNodes]
-                          Stream.eval(common
-                            .clusterWatchSynchronizer(clusterState)
-                            .flatMap(_.applyEvent(switchedOver, clusterState))
-                            .map(_.toUnit))
-
-                        case ClusterCouplingPrepared(activeId) =>
-                          assertThat(activeId != ownId)
-                          Stream.eval(
-                            sendClusterCouple
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
-
-                        case ClusterCoupled(activeId) =>
-                          assertThat(activeId != ownId)
-                          awaitingCoupledEvent = false
-                          releaseEvents()
-                          Stream.emit(Right(()))
-
-                        case ClusterResetStarted =>
-                          assertThat(activeId != ownId)
-                          Stream.eval(IO
-                            .sleep(1.s) // Allow event acknowledgment !!!
-                            .as(Left(PassiveClusterNodeResetProblem)))
-
-                        case _ =>
-                          Stream.emit(Right(()))
+            Stream.exec:
+              IO.whenA(isSnapshotTaken):
+                IO.defer:
+                  _currentState = IO(recoverer.result())
+                  maybeTmpFile.foldMap: tmpFile =>
+                    val journalId = recoverer.fileJournalHeader.map(_.journalId) getOrElse
+                      sys.error(s"Missing JournalHeader in replicated journal file '$file'")
+                    for o <- continuation.maybeJournalId if o != journalId do
+                      sys.error(s"Received JournalId '$journalId' does not match expected '$o'")
+                    replicatedFirstEventPosition := replicatedFileLength
+                    // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
+                    isReplicatingHeadOfFile = false
+                    out.close()
+                    move(tmpFile, file, ATOMIC_MOVE)
+                    journalLocation.updateSymbolicLink(file)
+                    logger.info(s"Snapshot '${file.getFileName}' (${
+                      EventId.toString(continuation.fileEventId)}) replicated - ${
+                      bytesPerSecondString(startedAt.elapsed, size(file))}")
+                    out = FileChannel.open(file, APPEND)
+                    // replicatedLength is between EventHeader and SnapshotTaken
+                    eventWatch.onJournalingStarted(file, journalId,
+                      firstEventPositionAndFileEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
+                      flushedLengthAndEventId = PositionAnd(fileLength, recoverer.eventId),
+                      isActiveNode = false)
+                    releaseEvents
+              .productR:
+                IO:
+                  //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
+                  replicatedFileLength = fileLength
+                  bean.fileSize = fileLength
+                  if recoverer.isInCommittedEventsSection then
+                    lastProperEventPosition = fileLength
+            .append:
+              if isReplicatingHeadOfFile then
+                Stream.emit(Right(()))
+              else
+                if recoverer.isInCommittedEventsSection then
+                  // An open transaction may be rolled back, so we do not notify about these events
+                  eventWatch.onFileWritten(fileLength)
+                  journalRecord match
+                    case Stamped(eventId, _, _) => eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
                     case _ =>
-                      Stream.emit(Right(()))
-                case _ =>
-                  Stream.emit(Right(()))
+                journalRecord match
+                  case JournalSeparators.Commit =>
+                    eventWatch.onEventsCommitted(PositionAnd(fileLength, recoverer.eventId), 1)
+                    Stream.emit(Right(()))
+
+                  case Stamped(_, _, KeyedEvent(_, event)) =>
+                    bean.addEventCount(1)
+                    event match
+                      case _: JournalEventsReleased =>
+                        Stream.exec:
+                          releaseEvents
+                        .as(Right(()))
+
+                      case clusterEvent: ClusterEvent =>
+                        // TODO Use JournalLogging
+                        logger.info(clusterEventAndStateToString(clusterEvent, recoverer.clusterState))
+                        clusterEvent match
+                          case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
+                            Stream.eval(
+                              tryEndlesslyToSendClusterPrepareCoupling
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                          case _: ClusterFailedOver =>
+                            // Now, this node has switched from still-active (but failed for the other node) to passive.
+                            // It's time to recouple.
+                            // ClusterPrepareCoupling command requests an event acknowledgement.
+                            // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
+                            // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
+                            if !otherFailed then
+                              logger.error("Replicated unexpected FailedOver event")  // Should not happen
+                            dontActivateBecauseOtherFailedOver = false
+                            Stream.eval(
+                              tryEndlesslyToSendClusterPrepareCoupling
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                          case switchedOver: ClusterSwitchedOver =>
+                            // Notify ClusterWatch before starting heartbeating
+                            val clusterState = recoverer.clusterState.asInstanceOf[ClusterState.HasNodes]
+                            Stream.eval(common
+                              .clusterWatchSynchronizer(clusterState)
+                              .flatMap(_.applyEvent(switchedOver, clusterState))
+                              .map(_.toUnit))
+
+                          case ClusterCouplingPrepared(activeId) =>
+                            assertThat(activeId != ownId)
+                            Stream.eval(
+                              sendClusterCouple
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                          case ClusterCoupled(activeId) =>
+                            assertThat(activeId != ownId)
+                            awaitingCoupledEvent = false
+                            Stream.exec:
+                              releaseEvents
+                            .as(Right(()))
+
+                          case ClusterResetStarted =>
+                            assertThat(activeId != ownId)
+                            Stream.eval(IO
+                              .sleep(1.s) // Allow event acknowledgment !!!
+                              .as(Left(PassiveClusterNodeResetProblem)))
+
+                          case _ =>
+                            Stream.emit(Right(()))
+                      case _ =>
+                        Stream.emit(Right(()))
+                  case _ =>
+                    Stream.emit(Right(()))
         .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
         .takeThrough(_ => !shouldActivate(recoverer.clusterState))
         .recoverWith:

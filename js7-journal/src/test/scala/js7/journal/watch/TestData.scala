@@ -6,6 +6,8 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
+import js7.base.thread.CatsBlocking.syntax.await
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
@@ -48,7 +50,7 @@ private[watch] object TestData:
         writer.writeSnapshot(ByteArray(journalLocation.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(after + 1, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(after + 1, NoKey <-: SnapshotTaken)).await(99.s)
       writer.file
 
   def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
@@ -58,8 +60,8 @@ private[watch] object TestData:
     autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)): writer =>
       writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
-      writer.writeEvents(stampedEvents.take(1))
-      writer.writeEvents(stampedEvents.slice(1, 3), transaction = true)
-      writer.writeEvents(stampedEvents.drop(3))
+      writer.writeEvents(stampedEvents.take(1)).await(99.s)
+      writer.writeEvents(stampedEvents.slice(1, 3), transaction = true).await(99.s)
+      writer.writeEvents(stampedEvents.drop(3)).await(99.s)
       writer.endEventSection(sync = false)
       writer.file

@@ -1,6 +1,5 @@
 package js7.journal.recover
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
@@ -60,7 +59,7 @@ object StateRecoverer:
   private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]](journalLocation: JournalLocation, config: Config)
-    (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
+    (using S: SnapshotableState.Companion[S])
   : ResourceIO[Recovered[S]] =
     Resource.fromAutoCloseable(IO(
       StateRecoverer.recover[S](journalLocation, config)))
@@ -69,7 +68,7 @@ object StateRecoverer:
     journalLocation: JournalLocation,
     config: Config,
     runningSince: Deadline = now)
-    (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
+    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     val file = journalLocation.currentFile.toOption
     val fileJournaledStateRecoverer = new FileSnapshotableStateRecoverer(

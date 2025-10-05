@@ -1,7 +1,6 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsDeadline
@@ -17,8 +16,7 @@ private[journal] final class HistoricEventReader(
   protected val expectedJournalId: JournalId,
   val fileEventId: EventId,
   protected val journalFile: Path,
-  protected val config: Config,
-  protected val ioRuntime: IORuntime)
+  protected val config: Config)
 extends AutoCloseable, EventReader:
 
   protected def isHistoric = true

@@ -127,6 +127,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
 
     "Written but not flushed" in:
       eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("TEST") ~ "VERSION")))
+        .await(99.s)
       sleep(100.ms)
       assert(observed.isEmpty)
 
@@ -210,7 +211,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(eventId + 1, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(eventId + 1, NoKey <-: SnapshotTaken)).await(99.s)
       writer.lastWrittenEventId
     }
 

@@ -7,6 +7,8 @@ import java.nio.file.Files.createTempDirectory
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.CatsBlocking.syntax.await
+import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
@@ -46,8 +48,8 @@ extends AutoCloseable:
     deleteDirectoryRecursively(directory)
 
   @TestOnly
-  def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit =
-    eventWriter.writeEvent(stamped)
+  def addStamped(stamped: Stamped[AnyKeyedEvent])(using IORuntime): Unit =
+    eventWriter.writeEvent(stamped).await(99.s)
     eventWriter.flush(sync = false)
     eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
 

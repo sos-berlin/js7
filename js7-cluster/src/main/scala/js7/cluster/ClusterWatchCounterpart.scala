@@ -1,7 +1,6 @@
 package js7.cluster
 
 import cats.effect.kernel.DeferredSource
-import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Outcome, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
@@ -39,7 +38,6 @@ final class ClusterWatchCounterpart private(
   timing: ClusterTiming,
   shuttingDown: DeferredSource[IO, Unit],
   testEventPublisher: EventPublisher[Any])
-  (implicit ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
 
   import clusterConf.ownId
@@ -165,8 +163,9 @@ extends Service.StoppableByRequest:
                 *> retry(())
         .flatTap:
           case Left(problem @ ClusterModuleShuttingDownProblem) =>
-            IO(logger.log(sym.relievedLogLevel min LogLevel.Debug,
-              s"⚠️  ${request.toShortString} => $problem · after ${since.elapsed.pretty}"))
+            SyncDeadline.usingNow: now ?=>
+              logger.log(sym.relievedLogLevel min LogLevel.Debug,
+                s"⚠️  ${request.toShortString} => $problem · after ${since.elapsed.pretty}")
 
           case Left(problem) =>
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
@@ -193,7 +192,9 @@ extends Service.StoppableByRequest:
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): IO[Checked[Unit]] =
     IO(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
-      .flatMapT(_ => IO(takeRequest(confirm)))
+      .flatMapT: _ =>
+        SyncDeadline.usingNow:
+          takeRequest(confirm)
       .flatMapT: requested =>
         val confirmation = toConfirmation(confirm)
         (requested.request.maybeEvent, confirmation) match
@@ -228,7 +229,8 @@ extends Service.StoppableByRequest:
         confirm.clusterWatchRunId)
 
   // Recursive in case of (wrong) concurrent access to this._requested
-  @tailrec private def takeRequest(confirm: ClusterWatchConfirm): Checked[Requested] =
+  @tailrec private def takeRequest(confirm: ClusterWatchConfirm)(using SyncDeadline.Now)
+  : Checked[Requested] =
     _requested.get() match
       case None =>
         currentClusterWatchId match
@@ -320,7 +322,6 @@ object ClusterWatchCounterpart:
     timing: ClusterTiming,
     shuttingDown: DeferredSource[IO, Unit],
     testEventPublisher: EventPublisher[Any])
-    (using IORuntime)
   : ResourceIO[ClusterWatchCounterpart] =
     for
       pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]

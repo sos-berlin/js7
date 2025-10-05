@@ -1,7 +1,6 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import com.typesafe.config.Config
 import fs2.Stream
@@ -46,7 +45,6 @@ extends AutoCloseable:
   : IO[Boolean]
   /** Must be constant if `isHistoric`. */
   protected def config: Config
-  protected def ioRuntime: IORuntime
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   protected lazy val journalIndex = new JournalIndex(PositionAnd(firstEventPosition, fileEventId),

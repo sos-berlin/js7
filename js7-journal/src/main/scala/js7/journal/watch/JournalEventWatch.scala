@@ -1,20 +1,18 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import fs2.Stream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.Path
-import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.CatsEffectExtensions.{left, startAndForget}
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -25,7 +23,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, CloseableIterator, SetOnce}
+import js7.base.utils.{Atomic, CloseableIterator, SetOnce, UnsafeMutex}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
@@ -46,7 +44,6 @@ final class JournalEventWatch(
   val journalLocation: JournalLocation,
   config: Config,
   announceNextFileEventId: Option[EventId] = None)
-  (using ioRuntime: IORuntime)
 extends AutoCloseable,
   RealEventWatch,
   FileEventWatch,
@@ -55,11 +52,10 @@ extends AutoCloseable,
   logger.debug(
     s"new JournalEventWatch($journalLocation, announceNextFileEventId=$announceNextFileEventId)")
 
-  protected val scheduler = ioRuntime.scheduler
-
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
   private val releaseEventsDelay =
     config.getDuration("js7.journal.release-events-delay").toFiniteDuration max 0.s
+  private val releaseEventsMutex = UnsafeMutex[IO]
 
   // Read journal file names from directory while constructing
   @volatile private var fileEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
@@ -159,7 +155,7 @@ extends AutoCloseable,
         journalLocation,
         expectedJournalId,
         firstEventPositionAndFileEventId, flushedLengthAndEventId,
-        isActiveNode = isActiveNode, config, ioRuntime)
+        isActiveNode = isActiveNode, config)
       maybeCurrentEventReader = Some(currentEventReader)
       logger.debug(s"currentEventReader=$currentEventReader")
       for (eventId, promise) <- announcedEventReaderPromise do
@@ -181,21 +177,23 @@ extends AutoCloseable,
       announcedEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
 
-  def releaseEvents(untilEventId: EventId)(using ioRuntime: IORuntime): Unit =
-    val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
-    if delay.isZeroOrBelow then
-      releaseEventsNow(untilEventId)
-    else
-      logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")
-      ioRuntime.scheduler.scheduleOnce(delay):
+  def releaseEvents(untilEventId: EventId): IO[Unit] =
+    IO.defer:
+      val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
+      if delay.isZeroOrBelow then
         releaseEventsNow(untilEventId)
+      else
+        logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")
+        releaseEventsNow(untilEventId).delayBy(delay).startAndForget
 
-  private def releaseEventsNow(untilEventId: EventId): Unit =
-    logger.debug(s"releaseEventsNow($untilEventId)")
-    // Delete only journal files before the file containing `untilFileEventId`
-    val untilFileEventId = eventIdToFileEventId(untilEventId)
-    deleteJournalFiles(untilFileEventId)
-    deleteGarbageFiles(untilFileEventId)
+  private def releaseEventsNow(untilEventId: EventId): IO[Unit] =
+    releaseEventsMutex.lock:
+      IO.blocking:
+        logger.debug(s"releaseEventsNow($untilEventId)")
+        // Delete only journal files before the file containing `untilFileEventId`
+        val untilFileEventId = eventIdToFileEventId(untilEventId)
+        deleteJournalFiles(untilFileEventId)
+        deleteGarbageFiles(untilFileEventId)
 
   private def eventIdToFileEventId(eventId: EventId): EventId =
     maybeCurrentEventReader match
@@ -387,7 +385,7 @@ extends AutoCloseable,
       _eventReader.get() match
         case null =>
           val r = new HistoricEventReader(journalLocation, journalIdOnce.orThrow,
-            fileEventId = fileEventId, file, config, ioRuntime)
+            fileEventId = fileEventId, file, config)
           if _eventReader.compareAndSet(null, r) then
             logger.debug(s"Using $r")
             r

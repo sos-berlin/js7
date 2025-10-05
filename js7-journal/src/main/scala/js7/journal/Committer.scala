@@ -269,13 +269,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         (aggregate, applied)
 
     private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Written]] =
-      IO.blocking:
-        // TODO parallelize JSON serialization properly!
-        chunk.map: applied =>
-          import applied.{commitOptions, stampedKeyedEvents}
-          val positionAndEventId =
-            meterJsonWrite:
-              eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
+      // TODO JSON-parallelize all chunks!
+      chunk.traverse: applied =>
+        import applied.{commitOptions, stampedKeyedEvents}
+        meterJsonWrite:
+          eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
+        .map: positionAndEventId =>
           Written.fromApplied(applied, positionAndEventId)
       .flatTap: chunk =>
         IO.blocking:
@@ -409,7 +408,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       Resource.make(
         acquire =
           IO.blocking:
-            val eventWriter = new EventJournalWriter(
+            val eventWriter = EventJournalWriter(
               journalLocation,
               fileEventId = fileEventId,
               after = snapshotTaken.eventId,

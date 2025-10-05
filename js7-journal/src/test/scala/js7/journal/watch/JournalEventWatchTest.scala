@@ -86,7 +86,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) ==
           JournalSeparators.EventHeader :: Nil)
 
-        writer.writeEvents(MyEvents2)
+        writer.writeEvents(MyEvents2).await(99.s)
         //?eventWatch.onFileWritten(writer.fileLength)
         //?eventWatch.onEventsCommitted(writer.fileLengthAndEventId, n = MyEvents2.length)
         assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) ==
@@ -107,22 +107,22 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           .when(EventRequest.singleClass[MyEvent](after = 220L, timeout = Some(10.ms)))
           .await(99.s) == EventSeq.Empty(220L))
 
-        eventWatch.releaseEvents(untilEventId = 0L)
+        eventWatch.releaseEvents(untilEventId = 0L).await(99.s)
         assert(journalLocation.listJournalFiles.map(_.file)
           == Vector(journalLocation.file(0L), journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.releaseEvents(untilEventId = 110L)
+        eventWatch.releaseEvents(untilEventId = 110L).await(99.s)
         assert(journalLocation.listJournalFiles.map(_.file)
           == Vector(journalLocation.file(0L), journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.releaseEvents(untilEventId = 120L)
+        eventWatch.releaseEvents(untilEventId = 120L).await(99.s)
         assert(journalLocation.listJournalFiles.map(_.file)
           == Vector(journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
 
-        eventWatch.releaseEvents(untilEventId = 220L)
+        eventWatch.releaseEvents(untilEventId = 220L).await(99.s)
         assert(journalLocation.listJournalFiles.map(_.file)
           == Vector(journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
@@ -135,7 +135,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)
 
         val events = Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: A1) :: Nil
-        writer.writeEvents(events)
+        writer.writeEvents(events).await(99.s)
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)  // Not flushed, so nothing has been read
 
         writer.flush(sync = false)
@@ -161,7 +161,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         val anyFuture = eventWatch
           .when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s)))
           .unsafeToFuture()
-        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
+        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict: @unchecked
@@ -177,13 +177,13 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           .when(EventRequest.singleClass[BEvent](after = 1000L, timeout = Some(30.s)))
           .unsafeToFuture()
 
-        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
+        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict: @unchecked
         assert(anyEvents == Stamped(1001L, "1" <-: A1) :: Nil)
 
-        writer.writeEvents(Stamped(1002L, "2" <-: B1) :: Nil)
+        writer.writeEvents(Stamped(1002L, "2" <-: B1) :: Nil).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict: @unchecked
@@ -203,7 +203,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           Stamped(3L, "1" <-: A2) ::
           Stamped(4L, "2" <-: A2) ::
           Stamped(5L, "1" <-: B2) :: Nil
-        writer.writeEvents(stampedSeq)
+        writer.writeEvents(stampedSeq).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
 
@@ -237,7 +237,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
               Stamped(1L, "1" <-: A1) ::
               Stamped(2L, "1" <-: B1) ::
               Stamped(3L, "1" <-: A2) :: Nil
-            writer.writeEvents(stampedSeq)
+            writer.writeEvents(stampedSeq).await(99.s)
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
@@ -252,7 +252,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             val stampedSeq =
               Stamped(4L, "2" <-: A2) ::
               Stamped(5L, "1" <-: B2) :: Nil
-            writer.writeEvents(stampedSeq)
+            writer.writeEvents(stampedSeq).await(99.s)
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
@@ -267,13 +267,13 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         assert(stampeds.isEmpty)
 
         val stampedSeq = Seq(Stamped(1L, "1" <-: A1), Stamped(2L, "2" <-: B1), Stamped(3L, "3" <-: A1))
-        writer.writeEvents(stampedSeq)
+        writer.writeEvents(stampedSeq).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
         awaitAndAssert { stampeds.size == 2 }
         assert(stampeds == Seq(Stamped(1L, "1" <-: A1), Stamped(3L, "3" <-: A1)))
 
-        writer.writeEvents(Seq(Stamped(4L, "4" <-: A1)))
+        writer.writeEvents(Seq(Stamped(4L, "4" <-: A1))).await(99.s)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         awaitAndAssert { stampeds.size == 3 }
@@ -297,7 +297,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
     "stream after=(unknown EventId)" in:
       withJournalLocation { journalLocation =>
         withJournal(journalLocation, lastEventId = EventId(100)) { (writer, eventWatch) =>
-          writer.writeEvents(MyEvents1)
+          writer.writeEvents(MyEvents1).await(99.s)
           writer.flush(sync = false)
           writer.onCommitted(writer.fileLengthAndEventId, MyEvents1.length)
 
@@ -395,14 +395,14 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
       assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.prettyVersion)
       assert(jsons(1) == JournalSeparators.EventHeader)
 
-      writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil)
+      writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil).await(99.s)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, n = 2)
       awaitAndAssert { jsons.size == 4 }
       assert(jsons(2).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(1L, "1" <-: A1)))
       assert(jsons(3).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(2L, "2" <-: B1)))
 
-      writer.writeEvents(Stamped(3L, "3" <-: A1) :: Nil)
+      writer.writeEvents(Stamped(3L, "3" <-: A1) :: Nil).await(99.s)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, 1)
       awaitAndAssert { jsons.size == 5 }
