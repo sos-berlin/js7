@@ -4,7 +4,6 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.functor.*
-import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.Stream
 import js7.base.catsutils.CatsExtensions.*

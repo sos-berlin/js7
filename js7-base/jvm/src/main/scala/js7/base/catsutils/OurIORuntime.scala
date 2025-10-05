@@ -90,11 +90,11 @@ object OurIORuntime:
 
     for
       _ <- logAllocation[F](label, threads)
-      (compute, shutdownCompute) <-
+      (compute, poller, shutdownCompute) <-
         Resource.eval(F.delay:
           computeExecutor match
             case Some(ec) =>
-              toExecutionContext(ec) -> (() => ())
+              (toExecutionContext(ec), null, () => ())
             case None =>
               IORuntime.createWorkStealingComputeThreadPool(
                 threads = threads,
@@ -109,9 +109,11 @@ object OurIORuntime:
 
       ioRuntime <- Resource.pure:
         val builder = IORuntime.builder()
-          .setCompute(/*labeledExecutionContext(computeLabel)*/(compute), shutdownCompute)
-          .setBlocking(/*labeledExecutionContext(blockingLabel)*/(blockingEC), shutdownBlocking)
+          .setCompute(compute, shutdownCompute)
+          .setBlocking(blockingEC, shutdownBlocking)
           .setFailureReporter(reportFailure)
+          .pipeIf(poller != null):
+            _.addPoller(poller, shutdown = () => ())
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
       _ <- register[F](ioRuntime, label)

@@ -28,11 +28,8 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
     // can be used for a second call.
     val m = memoize(IO.sleep(10.ms).as(3))
     for
-      // cancel: 1 is returned despite the computation is awaited (?)
+      // cancel: the computed result 3 is returned
       x <- m.timeoutTo(1.ms, IO.pure(1))
-      _ = assert(x == 1)
-      // cancel again: now, the computed result 3 is returned
-      x <- m.timeoutTo(1.ms, IO.pure(2))
       _ = assert(x == 3)
       // don't cancel
       x <- m

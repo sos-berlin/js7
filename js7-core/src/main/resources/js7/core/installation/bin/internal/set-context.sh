@@ -49,7 +49,6 @@ fi
 standardJavaOptions=()
 standardJavaOptions+=("-Dfile.encoding=UTF-8")
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
-standardJavaOptions+=("-Dcats.effect.warnOnNonMainThreadDetected=false") # TODO Before Cats Effect 3.6
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 if [[ "$JAVA_VERSION_MAJOR" -ge 24 ]]; then
   standardJavaOptions+=("--sun-misc-unsafe-memory-access=allow") # TODO Before Scala 3.8

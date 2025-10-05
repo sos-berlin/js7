@@ -4,7 +4,6 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
-import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.util.concurrent.ExecutorService
 import js7.base.catsutils.CatsEffectExtensions.joinStd
