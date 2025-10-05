@@ -19,7 +19,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Labeled
-import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable, takeThrough}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction, RichThrowable, takeThrough}
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
@@ -48,29 +48,25 @@ extends SignatureVerifier:
     signature.signerIdOrCertificate match
       case Left(signerId) =>
         DistinguishedName.checked(signerId.string)
-          .flatMap(dn =>
+          .flatMap: dn =>
             signerDNToTrustedCertificate.rightOr(dn,
-              Problem(s"The signature's SignerId is unknown: ${signerId.string}")))
-          .flatMap(trustedCertificate =>
+              Problem(s"The signature's SignerId is unknown: ${signerId.string}"))
+          .flatMap: trustedCertificate =>
             verifySignature(document, signature, trustedCertificate)
-              .map(_ :: Nil))
+              .map(_ :: Nil)
 
       case Right(signerCert) =>
         catchNonFatalFlatten:
-          // We have to try each of the installed trusted certificates !!!
-          val checkedSignedIds =
+          verifySignature(document, signature, signerCert).flatMap: signerId =>
+            // Each of the installed and not expired trusted certificates must match
             trustedRootCertificates.iterator.map: rootCert =>
-              for
-                signerId <- verifySignature(document, signature, signerCert)
-                _ <- verifySignersCertificate(signerCert, rootCert.x509Certificate.getPublicKey)
-              yield
-                signerId
-            .takeThrough(_.isLeft)
-            .toVector
-          checkedSignedIds.lastOption match
-            case None => Left(MessageSignedByUnknownProblem)
-            case Some(left @ Left(_)) => left.map/*for typing only*/(Seq(_))
-            case Some(Right(_)) => Right(checkedSignedIds.flatMap(_.toOption))
+              verifySignersCertificate(signerCert, rootCert.x509Certificate.getPublicKey)
+            .takeThrough(_.isLeft) // up to and including the first problem
+            .toVector.lastOption // only the last one may be a problem
+            .getOrElse:
+              Left(MessageSignedByUnknownProblem)
+            .rightAs:
+              signerId:: Nil
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert)
   : Checked[SignerId] =
@@ -82,12 +78,12 @@ extends SignatureVerifier:
       if !verified then
         Left(TamperedWithSignedMessageProblem)
       else
-        Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
+        SignerId.checked(cert.x509Certificate.getSubjectX500Principal.toString)
 
-  private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey)
+  private def verifySignersCertificate(signatureCertificate: X509Cert, rootPublicKey: PublicKey)
   : Checked[Unit] =
     try
-      signatureCertificate.x509Certificate.verify(publicKey)
+      signatureCertificate.x509Certificate.verify(rootPublicKey)
       Right(())
     catch case NonFatal(t) =>
       t match
