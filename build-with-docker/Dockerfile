@@ -1,4 +1,4 @@
-FROM almalinux:9
+FROM almalinux:10
 
 ENV LANG=C.UTF-8
 

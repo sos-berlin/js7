@@ -1,4 +1,4 @@
-FROM almalinux:9
+FROM almalinux:10
 
 # Directory structure according to the Filesystem Hierarchy Standard, https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.pdf
 #   /opt/js7-VERSION/bin/
