@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.time.TestScheduler.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
@@ -97,7 +98,7 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
     tasks.result()
 
   private def syncLockClock[A](body: => A): A =
-    clockLock.lock(IO(body)).unsafeRunSync()
+    clockLock.lock(IO(body)).unsafeRunSyncX()
 
   private def logTasks(indent: Boolean = false): Unit =
     logger.whenTraceEnabled:

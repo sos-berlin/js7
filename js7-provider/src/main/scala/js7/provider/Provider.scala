@@ -8,11 +8,10 @@ import fs2.Stream
 import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.catsutils.CatsEffectExtensions.completed
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
-import js7.base.generic.{Completed, SecretString}
+import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -20,7 +19,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction, continueWithLast}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichPartialFunction, continueWithLast}
 import js7.base.utils.{Atomic, ProgramTermination}
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.common.pekkohttp.web.MinimumWebServer
@@ -54,7 +53,8 @@ final class Provider(
   controllerApi: ControllerApi,
   protected val conf: ProviderConfiguration)
   (using protected val IORuntime: IORuntime)
-extends Observing, MainService, Service.StoppableByRequest:
+extends
+  Observing, MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
 
@@ -79,12 +79,13 @@ extends Observing, MainService, Service.StoppableByRequest:
     else
       stream.compile.drain
 
-  override protected def stop =
-    IO(close()) *> super.stop
+  //override protected def stop =
+  //  IO(close()) *> super.stop
 
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
-  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): IO[Checked[Completed]] =
+  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None)
+  : IO[Checked[Unit]] =
     for
       localEntries <- readDirectory
       checkedDiff <- controllerDiff(localEntries)
@@ -118,39 +119,38 @@ extends Observing, MainService, Service.StoppableByRequest:
   private def readLocalItems(files: Seq[Path]): IO[Checked[Seq[InventoryItem]]] =
     IO(typedSourceReader.readItems(files))
 
-  def updateControllerConfiguration(versionId: Option[VersionId] = None): IO[Checked[Completed]] =
+  def updateControllerConfiguration(versionId: Option[VersionId] = None): IO[Checked[Unit]] =
     for
       _ <- loginUntilReachable
       last = lastEntries.get()
       currentEntries <- readDirectory
-      checkedCompleted <- toItemDiff(PathSeqDiffer.diff(currentEntries, last))
+      checked <- toItemDiff(PathSeqDiffer.diff(currentEntries, last))
         .traverse(
           execute(versionId, _))
         .map(_.flatten)
     yield
-      checkedCompleted.flatMap(completed =>
+      checked.flatMap: _ =>
         if !lastEntries.compareAndSet(last, currentEntries) then
           val problem = Problem.pure("Provider has been concurrently used")
           logger.debug(problem.toString)
           Left(problem)
         else
-          Right(completed))
+          Right(())
 
-  protected lazy val loginUntilReachable: IO[Completed] =
+  protected lazy val loginUntilReachable: IO[Unit] =
     IO.defer:
       if httpControllerApi.hasSession then
-        IO.completed
+        IO.unit
       else
-        httpControllerApi.loginUntilReachable(retryLoginDurations)
-          .map { completed =>
+        httpControllerApi.loginUntilReachable(retryLoginDurations).void
+          .map: x =>
             logger.info("Logged-in at Controller")
-            completed
-          }
+            x
 
   private def execute(versionId: Option[VersionId], diff: InventoryItemDiff_)
-  : IO[Checked[Completed]] =
+  : IO[Checked[Unit]] =
     if diff.isEmpty && versionId.isEmpty then
-      IO(Checked.completed)
+      IO(Checked.unit)
     else
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
@@ -160,7 +160,7 @@ extends Observing, MainService, Service.StoppableByRequest:
     itemSigner: ItemSigner[SignableItem],
     versionId: VersionId,
     diff: InventoryItemDiff_)
-  : IO[Checked[Completed]] =
+  : IO[Checked[Unit]] =
     val addVersion = Stream.iterable(
       diff.containsVersionedItem ? AddVersion(versionId))
 
@@ -176,6 +176,7 @@ extends Observing, MainService, Service.StoppableByRequest:
     val remove = Stream.iterable(diff.removed).map(ItemOperation.Remove(_))
 
     controllerApi.updateItems(addVersion ++ addOrChange ++ remove)
+      .rightAs(())
 
   private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit =
     logger.info(s"Version ${versionId.string}")

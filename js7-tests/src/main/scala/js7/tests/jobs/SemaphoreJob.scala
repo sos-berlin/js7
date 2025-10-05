@@ -10,6 +10,7 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.data.order.OrderOutcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
@@ -86,8 +87,9 @@ object SemaphoreJob:
         .unsafeRunSyncX()
 
     def continue(n: Int = 1)(using IORuntime): Unit =
-      val count = semaphore.flatMap(_.count).unsafeRunSyncX()
-      logger.debug(s"$name.continue($n) count=$count")
+      if isTest then
+        val count = semaphore.flatMap(_.count).unsafeRunSyncX()
+        logger.debug(s"$name.continue($n) count=$count")
       semaphore
         .flatMap(_.releaseN(n))
         .unsafeRunSyncX()
