@@ -12,7 +12,7 @@ fi
 
 declare JAVA_HOME
 declare -a classpath=()
-. <(egrep "^JAVA_VERSION=" "$JAVA_HOME/release")
+. <(grep -E "^JAVA_VERSION=" "$JAVA_HOME/release")
 JAVA_VERSION_MAJOR="$(echo "$JAVA_VERSION" | awk -F . '{print $1}')"
 
 if [ "$(uname -o)" == "Cygwin" ]; then

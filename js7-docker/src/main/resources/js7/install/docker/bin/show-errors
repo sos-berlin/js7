@@ -3,6 +3,6 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-egrep -w "ERROR|WARN|JS7 Controller terminates" \
+grep -Ew "ERROR|WARN|JS7 Controller terminates" \
   volumes/{controller,backup-controller,subagent-1a,subagent-1b,subagent-1c,subagent-2a,provider}/data/logs/stdouterr.log \
   | sort -k 3 | uniq -f 2 | sort

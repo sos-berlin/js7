@@ -2,8 +2,8 @@
 set -euo pipefail
 
 cat logs/test.log \
-  | egrep -- "-Controller-.* - :| TEST | ERROR | WARN  | info  " \
-  | egrep -v "AgentEventsObserved|SubagentEventsObserved| info  .* js7.journal.Journal - Event " \
+  | grep -E -- "-Controller-.* - :| TEST | ERROR | WARN  | info  " \
+  | grep -Ev "AgentEventsObserved|SubagentEventsObserved| info  .* js7.journal.Journal - Event " \
   | sed -E 's/(js7.journal.Journal - :).{32}(.*$)/\1 \2/'  \
   | sed -E 's/ \[[^]]*] / /' \
   | sed -E 's/ js7\.[^ ]* / /' \

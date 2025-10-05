@@ -8,6 +8,6 @@ elif [[ -t 0 ]]; then
   a+=(logs/test.log)
 fi
 
-exec egrep --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[@]}" |
-  egrep -vw --line-buffered "AgentEventsObserved" |
+exec grep -E --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[@]}" |
+  grep -Evw --line-buffered "AgentEventsObserved" |
   sed -l 's/ trace .*Journal - ://'
