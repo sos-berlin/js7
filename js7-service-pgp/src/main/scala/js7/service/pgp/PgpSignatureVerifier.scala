@@ -30,7 +30,7 @@ extends SignatureVerifier:
   import PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
-  def companion: PgpSignatureVerifier.type =
+  def provider: PgpSignatureVerifier.type =
     PgpSignatureVerifier
 
   registerBouncyCastle()
@@ -77,7 +77,7 @@ extends SignatureVerifier:
         .flatMap(_.asScala.map(k => "  " + pgpPublicKeyToShortString(k)))
 
 
-object PgpSignatureVerifier extends SignatureVerifier.Companion:
+object PgpSignatureVerifier extends SignatureVerifier.Provider:
   protected type MySignature = PgpSignature
   protected type MySignatureVerifier = PgpSignatureVerifier
 

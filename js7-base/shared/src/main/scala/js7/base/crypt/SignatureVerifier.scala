@@ -14,7 +14,7 @@ trait SignatureVerifier:
 
   protected type MySignature <: Signature
 
-  def companion: SignatureVerifier.Companion:
+  def provider: SignatureVerifier.Provider:
     type MySignature = self.MySignature
 
   @TestOnly
@@ -27,7 +27,7 @@ trait SignatureVerifier:
   def verify(document: ByteArray, signature: MySignature): Checked[Seq[SignerId]]
 
   final def verify(signed: SignedString): Checked[Seq[SignerId]] =
-    companion.genericSignatureToSignature(signed.signature)
+    provider.genericSignatureToSignature(signed.signature)
       .flatMap(signature => verify(ByteArray(signed.string), signature))
 
   final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
@@ -35,7 +35,7 @@ trait SignatureVerifier:
 
 
 object SignatureVerifier:
-  trait Companion:
+  trait Provider:
     self =>
 
     protected type MySignature <: Signature   // = MySignatureVerifier#MySignature

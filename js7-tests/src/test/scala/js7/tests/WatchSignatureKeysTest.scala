@@ -19,6 +19,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
+import js7.base.time.WallClock
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.Labeled
@@ -69,7 +70,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow
   private lazy val itemSigner = new ItemSigner(signer, ControllerState.signableItemJsonCodec)
   override protected lazy val verifier =
-    X509SignatureVerifier.checked(Seq(Labeled(aCertAndKey.certificate, "verifier"))).orThrow
+    X509SignatureVerifier.Provider(WallClock).checked(Seq(Labeled(aCertAndKey.certificate, "verifier"))).orThrow
 
   private lazy val controllersKeyDirectory =
     directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys"
@@ -78,7 +79,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
   private lazy val subagentsKeyDirectory = directoryProvider
     .bareSubagentToDirectory(bareSubagentId) / "config" / "private" / "trusted-x509-keys"
 
-  private val nextVersion: () => VersionId = 
+  private val nextVersion: () => VersionId =
     Iterator.from(1).map(i => VersionId(s"V$i")).next
 
   override def beforeAll() =

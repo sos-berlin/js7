@@ -21,6 +21,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.time.WallClock
 import js7.base.utils.Labeled
 import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
@@ -68,7 +69,7 @@ final class X509Test extends OurTestSuite:
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
 
-      val verifier = X509SignatureVerifier.checked(
+      val verifier = x509SignatureVerifierProvider.checked(
         Seq(Labeled(certificateBytes, "X509Test")),
         origin = certificateFile.toString).orThrow
       val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
@@ -157,7 +158,7 @@ final class X509Test extends OurTestSuite:
           .await(999.s)
         logger.info(itemsPerSecondString(t.elapsed, n, "signs"))
 
-        val verifier = X509SignatureVerifier.checked(
+        val verifier = x509SignatureVerifierProvider.checked(
             Seq(ca.certificateFile.labeledByteArray),
             origin = ca.certificateFile.toString)
           .orThrow
@@ -177,9 +178,10 @@ final class X509Test extends OurTestSuite:
 object X509Test:
   private val logger = Logger[this.type]
 
+  private val x509SignatureVerifierProvider = X509SignatureVerifier.Provider(WallClock)
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
   : Checked[Seq[SignerId]] =
-    lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
+    lazy val verifier = x509SignatureVerifierProvider.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
     if verified.isRight then
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))

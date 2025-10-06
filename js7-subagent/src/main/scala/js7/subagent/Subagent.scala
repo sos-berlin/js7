@@ -241,7 +241,7 @@ object Subagent:
             s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
         clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
         jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock, pidFile).orThrow
-        signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
+        signatureVerifier <- DirectoryWatchingSignatureVerifier.Provider(clock).prepare(config)
           .orThrow
           .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
         journal <- MemoryJournal.resource(

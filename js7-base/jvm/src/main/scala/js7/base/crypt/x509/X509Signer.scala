@@ -9,6 +9,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.WallClock
 import js7.base.utils.Labeled
 
 final class X509Signer private(
@@ -51,17 +52,17 @@ object X509Signer extends DocumentSigner.Companion:
     }.map(new X509Signer(_, algorithm, signerId))
 
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
-    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest")
+    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest", WallClock)
       .orThrow
 
-  private def newSignerAndVerifier(signerId: SignerId, origin: String)
+  private def newSignerAndVerifier(signerId: SignerId, origin: String, clock: WallClock)
   : Checked[(X509Signer, X509SignatureVerifier)] =
     withTemporaryDirectory("X509Signer"): dir =>
       val openssl = new Openssl(dir)
       for
         certWithPrivateKey <- openssl.generateCertWithPrivateKey("X509Signer", s"/${signerId.string}")
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
-        verifier <- X509SignatureVerifier.checked(
+        verifier <- X509SignatureVerifier.Provider(clock).checked(
           Seq(Labeled(certWithPrivateKey.certificate, s"signer=$signerId")),
           origin)
       yield signer -> verifier

@@ -20,7 +20,7 @@ extends SignatureVerifier:
 
   protected type MySignature = SillySignature
 
-  def companion: SillySignatureVerifier.type =
+  def provider: SillySignatureVerifier.type =
     SillySignatureVerifier
 
   @TestOnly
@@ -38,7 +38,7 @@ extends SignatureVerifier:
     s"$typeName(origin=$publicKeyOrigin)" :: Nil
 
 
-object SillySignatureVerifier extends SignatureVerifier.Companion:
+object SillySignatureVerifier extends SignatureVerifier.Provider:
   protected type MySignature = SillySignature
   protected type MySignatureVerifier = SillySignatureVerifier
 

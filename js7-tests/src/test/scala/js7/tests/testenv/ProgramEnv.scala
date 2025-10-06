@@ -37,7 +37,7 @@ trait ProgramEnv extends AutoCloseable:
   private var _currentProgram = none[Program]
 
   private lazy val trustedSignatureKeysDir =
-    "private/" + verifier.companion.recommendedKeyDirectoryName
+    "private/" + verifier.provider.recommendedKeyDirectoryName
 
   def close() =
     try deleteDirectoryRecursively(directory)
@@ -64,13 +64,13 @@ trait ProgramEnv extends AutoCloseable:
     if !suppressSignatureKeys then
       for (key, i) <- verifier.publicKeys.zipWithIndex do
         val file = configDir / trustedSignatureKeysDir /
-          s"key-${i + 1}${verifier.companion.filenameExtension}"
+          s"key-${i + 1}${verifier.provider.filenameExtension}"
         logger.trace(s"$file := key")
         file := key
 
     configDir / confFilename ++= s"""
      |js7.configuration.trusted-signature-keys {
-     |  ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
+     |  ${verifier.provider.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
      |}
      |""".stripMargin
 

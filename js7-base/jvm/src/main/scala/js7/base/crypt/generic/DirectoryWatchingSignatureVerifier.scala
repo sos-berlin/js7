@@ -12,7 +12,7 @@ import java.nio.file.Files.exists
 import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.catsutils.CatsEffectExtensions.catchAsChecked
-import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.*
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.collectAndFlushOnSilence
@@ -25,6 +25,7 @@ import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.WallClock
 import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
@@ -32,17 +33,18 @@ import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class DirectoryWatchingSignatureVerifier private(
-  companionToDirectory: Map[SignatureVerifier.Companion, Path],
+  companionToDirectory: Map[SignatureVerifier.Provider, Path],
   settings: DirectoryWatchSettings,
-  onUpdated: () => Unit)
-extends SignatureVerifier, Service.StoppableByCancel:
+  onUpdated: () => Unit,
+  val provider: DirectoryWatchingSignatureVerifier.Provider)
+extends
+  SignatureVerifier, Service.StoppableByCancel:
+
+  import provider.State
 
   @volatile private var state = State(Map.empty)
 
   protected type MySignature = GenericSignature
-
-  def companion: DirectoryWatchingSignatureVerifier.type =
-    DirectoryWatchingSignatureVerifier
 
   def publicKeys: Seq[String] =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier#publicKeys")
@@ -60,7 +62,7 @@ extends SignatureVerifier, Service.StoppableByCancel:
             companion -> (directory -> directoryState)
       .flatMap: companionToDir =>
         IO.defer:
-          state = State(
+          state = provider.State(
             companionToDir
               .map:
                 case (companion, (directory, directoryState)) =>
@@ -82,7 +84,7 @@ extends SignatureVerifier, Service.StoppableByCancel:
               .map(_.combineAll)
 
   private def watchDirectory(
-    companion: SignatureVerifier.Companion,
+    provider: SignatureVerifier.Provider,
     directory: Path,
     directoryState: DirectoryState)
   : IO[Unit] =
@@ -90,7 +92,7 @@ extends SignatureVerifier, Service.StoppableByCancel:
       .stream(directory, directoryState, settings, isRelevantFile)
       .collectAndFlushOnSilence(settings.directorySilence)
       .evalTap(events => IO(logger.info:
-        s"Rereading signature keys of ${companion.typeName} type due to ${
+        s"Rereading signature keys of ${provider.typeName} type due to ${
           events.asSeq.mkString(", ")}"))
       .foreach: _ =>
         rereadDirectory(directory)
@@ -116,26 +118,26 @@ extends SignatureVerifier, Service.StoppableByCancel:
             logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
   private def toVerifier(
-    companion: SignatureVerifier.Companion,
+    provider: SignatureVerifier.Provider,
     directory: Path,
     directoryState: DirectoryState)
   : Checked[SignatureVerifier] =
     val files = directoryState.files.toVector
     val checked = catchNonFatal(
-      companion.ignoreInvalid(
+      provider.ignoreInvalid(
         files.map(file => directory.resolve(file).labeledByteArray),
         origin = directory.toString))
 
     checked match
       case Left(problem) =>
-        logger.error(s"${companion.typeName} signature keys are not readable: $problem")
+        logger.error(s"${provider.typeName} signature keys are not readable: $problem")
 
       case Right(verifier) =>
         logger.info("Trusting signature keys:")
         for o <- verifier.publicKeysToStrings do logger.info(s"  $o")
         if files.isEmpty then
           logger.warn(
-            s"  No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
+            s"  No public key files for signature verifier '${provider.typeName}' in directory '$directory'")
 
     checked
 
@@ -155,77 +157,86 @@ extends SignatureVerifier, Service.StoppableByCancel:
     s"DirectoryWatchingSignatureVerifier(${companionToDirectory.keys.map(_.typeName).mkString(" ")})"
 
 
-object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
-  private val configPath = "js7.configuration.trusted-signature-keys"
+object DirectoryWatchingSignatureVerifier:
   private val logger = Logger[this.type]
-
-  protected type MySignature = GenericSignature
-  protected type MySignatureVerifier = DirectoryWatchingSignatureVerifier
-
-  def typeName = "(generic)"
-
-  def filenameExtension: String =
-    throw new NotImplementedError
-
-  def recommendedKeyDirectoryName: String =
-    throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
-
-  def checkedResource(config: Config, onUpdated: () => Unit)
-  : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
-    prepare(config).map(_.toResource(onUpdated))
-
-  def prepare(config: Config): Checked[Prepared] =
-    config.getObject(configPath).asScala.toMap  // All Config key-values
-      .map: (typeName, v) =>
-        checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
-          .map(Paths.get(_))
-          .flatMap: directory =>
-            SignatureServices.nameToSignatureVerifierCompanion
-              .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-              .flatMap: companion =>
-                if !exists(directory) then
-                  Left(Problem.pure:
-                    s"Signature key directory '$directory' for '$typeName' does not exist")
-                else
-                  Right(companion -> directory)
-      .toVector
-      .sequence
-      .map(_.toMap)
-      .flatMap: companionToDirectory =>
-        if companionToDirectory.isEmpty then
-          Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
-        else
-          for settings <- DirectoryWatchSettings.fromConfig(config) yield
-            new Prepared(companionToDirectory, settings)
-
-  final class Prepared(
-    companionToDirectory: Map[SignatureVerifier.Companion, Path],
-    settings: DirectoryWatchSettings):
-
-    def toResource(onUpdated: () => Unit)
-    : ResourceIO[DirectoryWatchingSignatureVerifier] =
-      Service.resource:
-        new DirectoryWatchingSignatureVerifier(companionToDirectory, settings, onUpdated)
-
-  @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
-    throw new NotImplementedError("DirectoryWatchingSignatureVerifier.checked?")
-
-  @deprecated("Not implemented", "")
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
-    throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
-
-  def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
-    Right(signature)
-
-  private final case class State(
-    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]]):
-
-    // Failing verifiers are omitted !!!
-    val genericVerifier = new GenericSignatureVerifier(
-      companionToVerifier.values
-        .collect { case Right(o) => o }
-        .toVector)
+  private val configPath = "js7.configuration.trusted-signature-keys"
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")
+
+
+  final class Provider(clock: WallClock) extends SignatureVerifier.Provider:
+    protected type MySignature = GenericSignature
+    protected type MySignatureVerifier = DirectoryWatchingSignatureVerifier
+
+    private val genericSignatureVerifierContext = GenericSignatureVerifier.Provider(clock)
+    import genericSignatureVerifierContext.signatureServiceRegister
+
+    def typeName = "(generic)"
+
+    def filenameExtension: String =
+      throw new NotImplementedError
+
+    def recommendedKeyDirectoryName: String =
+      throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
+
+    def checkedResource(config: Config, onUpdated: () => Unit)
+    : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
+      prepare(config).map(_.toResource(onUpdated))
+
+    def prepare(config: Config): Checked[Prepared] =
+      config.getObject(configPath).asScala.toMap  // All Config key-values
+        .map: (typeName, v) =>
+          checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
+            .map(Paths.get(_))
+            .flatMap: directory =>
+              signatureServiceRegister.nameToSignatureVerifierProvider
+                .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
+                .flatMap: companion =>
+                  if !exists(directory) then
+                    Left(Problem.pure:
+                      s"Signature key directory '$directory' for '$typeName' does not exist")
+                  else
+                    Right(companion -> directory)
+        .toVector
+        .sequence
+        .map(_.toMap)
+        .flatMap: companionToDirectory =>
+          if companionToDirectory.isEmpty then
+            Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
+          else
+            for settings <- DirectoryWatchSettings.fromConfig(config) yield
+              new Prepared(companionToDirectory, settings)
+
+    final class Prepared(
+      companionToDirectory: Map[SignatureVerifier.Provider, Path],
+      settings: DirectoryWatchSettings):
+
+      def toResource(onUpdated: () => Unit)
+      : ResourceIO[DirectoryWatchingSignatureVerifier] =
+        Service.resource:
+          DirectoryWatchingSignatureVerifier(companionToDirectory, settings, onUpdated,
+            Provider.this)
+
+    @deprecated("Not implemented", "")
+    def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+      throw new NotImplementedError("DirectoryWatchingSignatureVerifier.checked?")
+
+    @deprecated("Not implemented", "")
+    def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+      throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
+
+    def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
+      Right(signature)
+
+
+    private[DirectoryWatchingSignatureVerifier] final case class State(
+      companionToVerifier: Map[SignatureVerifier.Provider, Checked[SignatureVerifier]]):
+
+      // Failing verifiers are omitted !!!
+      val genericVerifier = GenericSignatureVerifier(
+        companionToVerifier.values
+          .collect:
+            case Right(o) => o
+          .toVector,
+        genericSignatureVerifierContext)

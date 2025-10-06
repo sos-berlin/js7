@@ -260,7 +260,7 @@ object RunningController:
       Resource.both(
         /*CorrelId.bindNew*/ (clusterNodeResource),
         CorrelId.bindNew:
-          itemVerifierResource(config, testEventBus))
+          itemVerifierResource(config, testEventBus, alarmClock))
 
     resources.flatMap { (clusterNode, itemVerifier) =>
       import clusterNode.actorSystem
@@ -388,9 +388,10 @@ object RunningController:
 
   private def itemVerifierResource(
     config: Config,
-    testEventBus: StandardEventBus[Any])
+    testEventBus: StandardEventBus[Any],
+    clock: WallClock)
   : ResourceIO[SignedItemVerifier[SignableItem]] =
-    DirectoryWatchingSignatureVerifier
+    DirectoryWatchingSignatureVerifier.Provider(clock)
       .checkedResource(
         config,
         onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))

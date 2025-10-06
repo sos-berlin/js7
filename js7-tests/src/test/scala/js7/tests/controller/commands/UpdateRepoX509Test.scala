@@ -16,6 +16,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.WallClock
 import js7.data.controller.ControllerState.{signableItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{SignableItem, VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -32,7 +33,7 @@ final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest
   override protected lazy val verifier =
     runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
-    X509SignatureVerifier.checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
+    X509SignatureVerifier.Provider(WallClock).checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
 
   private lazy val workDir = createTempDirectory("UpdateRepoX509Test")
   private lazy val privateKeyFile = workDir / "test.key"

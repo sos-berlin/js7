@@ -9,11 +9,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
+import js7.base.time.WallClock
 
 /**
   * @author Joacim Zschimmer
   */
 final class GenericSignatureVerifierTest extends OurTestSuite:
+
   "Directory of public keys (recommended usage)" in:
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>
       val messages = List("MESSAGE-1", "Message-2")
@@ -28,10 +30,10 @@ final class GenericSignatureVerifierTest extends OurTestSuite:
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
-      val verifier = GenericSignatureVerifier.checked(config"""
+      val provider = GenericSignatureVerifier.Provider(WallClock).checked(config"""
         js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}""""
       ).orThrow
-      assert(verifier.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))
-      assert(verifier.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
-      assert(verifier.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))
+      assert(provider.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))
+      assert(provider.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
+      assert(provider.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))
     }

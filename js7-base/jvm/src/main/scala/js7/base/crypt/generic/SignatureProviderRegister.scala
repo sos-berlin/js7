@@ -5,15 +5,16 @@ import js7.base.crypt.x509.{X509SignatureVerifier, X509Signer}
 import js7.base.crypt.{DocumentSigner, SignatureService, SignatureVerifier}
 import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
+import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.RichIterable
 
-object SignatureServices:
+final class SignatureProviderRegister(clock: WallClock):
 
   private val logger = Logger[this.type]
 
-  private val standardVerifiers: Seq[SignatureVerifier.Companion] =
+  private val standardVerifierProviders: Seq[SignatureVerifier.Provider] =
     Vector(
-      X509SignatureVerifier,
+      X509SignatureVerifier.Provider(clock),
       SillySignatureVerifier)
 
   private lazy val standardSigners: Seq[DocumentSigner.Companion] =
@@ -21,15 +22,14 @@ object SignatureServices:
       X509Signer,
       SillySigner)
 
-  private lazy val services: Seq[SignatureService] =
-    findServices[SignatureService] { (logLine, _) =>
+  private lazy val providers: Seq[SignatureService] =
+    findServices[SignatureService]: (logLine, _) =>
       logger.debug(logLine)
-    }
 
-  lazy val nameToSignatureVerifierCompanion: Map[String, SignatureVerifier.Companion] =
-    (standardVerifiers ++ services.map(_.verifierCompanion))
+  lazy val nameToSignatureVerifierProvider: Map[String, SignatureVerifier.Provider] =
+    (standardVerifierProviders ++ providers.map(_.verifierProvider))
       .toKeyedMap(_.typeName)
 
   lazy val nameToDocumentSignerCompanion: Map[String, DocumentSigner.Companion] =
-    (standardSigners ++ services.flatMap(_.maybeSignerCompanion))
+    (standardSigners ++ providers.flatMap(_.maybeSignerCompanion))
       .toKeyedMap(_.typeName)

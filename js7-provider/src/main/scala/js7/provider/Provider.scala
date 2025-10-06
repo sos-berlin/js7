@@ -10,13 +10,14 @@ import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.As.*
-import js7.base.crypt.generic.SignatureServices
+import js7.base.crypt.generic.SignatureProviderRegister
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
+import js7.base.time.WallClock
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichPartialFunction, continueWithLast}
@@ -251,7 +252,7 @@ object Provider:
     val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
     val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
     val password = SecretString(conf.config.getString(s"$configPath.password"))
-    SignatureServices.nameToDocumentSignerCompanion
+    SignatureProviderRegister(WallClock).nameToDocumentSignerCompanion
       .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
       .flatMap(companion => companion.checked(keyFile.byteArray, password))
       .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
