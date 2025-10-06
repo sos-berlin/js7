@@ -1,4 +1,4 @@
-package js7.common.configuration
+package js7.base.config
 
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.BuildInfo
@@ -7,7 +7,8 @@ import js7.base.io.JavaResource
 import js7.base.utils.Tests.isTest
 import scala.jdk.CollectionConverters.*
 
-object Js7Configuration:
+object Js7Config:
+
   val defaultConfig: Config =
     val map = Map(
       "js7.version" -> BuildInfo.version,
@@ -16,7 +17,7 @@ object Js7Configuration:
       "js7.test" -> isTest.toString)
     ConfigFactory
       .parseMap(map.asJava)
-      .withFallback(
-        Configs.loadResource(
-          JavaResource("js7/common/configuration/js7.conf")))
+      .withFallback:
+        Configs.loadResource:
+          JavaResource("js7/base/config/js7.conf")
       .resolve()

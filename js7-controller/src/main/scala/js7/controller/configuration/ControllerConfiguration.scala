@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.ZoneId
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.*
 import js7.base.io.JavaResource
@@ -14,7 +15,7 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{BasicConfiguration, CommonConfiguration, Js7Configuration}
+import js7.common.configuration.{BasicConfiguration, CommonConfiguration}
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
@@ -92,7 +93,7 @@ object ControllerConfiguration:
 
   lazy val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/controller/configuration/controller.conf"))
-    .withFallback(Js7Configuration.defaultConfig)
+    .withFallback(Js7Config.defaultConfig)
 
   def fromCommandLine(
     commandLineArguments: CommandLineArguments,

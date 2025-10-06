@@ -6,6 +6,7 @@ import fs2.Stream
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, prependOne}
@@ -23,7 +24,6 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.common.configuration.Js7Configuration
 import js7.common.http.PekkoHttpUtils.*
 import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
@@ -82,7 +82,7 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s
         js7.web.server.shutdown-delay = 500ms"""
-      .withFallback(Js7Configuration.defaultConfig)
+      .withFallback(Js7Config.defaultConfig)
 
     PekkoWebServer.service(webServerBindings, config): routeBinding =>
       PekkoWebServer.BoundRoute.simple:

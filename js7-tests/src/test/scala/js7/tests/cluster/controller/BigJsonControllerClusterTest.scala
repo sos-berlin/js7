@@ -1,13 +1,15 @@
 package js7.tests.cluster.controller
 
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import js7.base.auth.Admission
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.common.configuration.Js7Configuration
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -23,8 +25,6 @@ import js7.proxy.ControllerApi
 import js7.tests.cluster.controller.BigJsonControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 
 final class BigJsonControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
 
@@ -72,7 +72,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
 object BigJsonControllerClusterTest:
   private val agentPath = AgentPath("AGENT")
   private val bigStringSize = 9_000_000 max
-    Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow + 1000
+    Js7Config.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow + 1000
 
   // Function, to keep heap small (for proper a heap dump)
   private def bigString = "+" * bigStringSize

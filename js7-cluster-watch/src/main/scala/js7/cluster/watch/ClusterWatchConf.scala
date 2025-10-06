@@ -3,6 +3,7 @@ package js7.cluster.watch
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import js7.base.convert.AsJava.StringAsPath
@@ -12,7 +13,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.data.cluster.ClusterWatchId
 import scala.jdk.CollectionConverters.*
@@ -45,7 +46,7 @@ object ClusterWatchConf:
       .withFallback(parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "cluster-watch.conf", secret = false))
       .withFallback(clusterWatchDefaultConfig)
-      .withFallback(Js7Configuration.defaultConfig)
+      .withFallback(Js7Config.defaultConfig)
       .resolve
 
     val uris = args.seqAs[Uri]("--cluster-node-uri=")

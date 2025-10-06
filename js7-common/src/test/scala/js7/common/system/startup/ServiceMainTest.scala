@@ -2,25 +2,26 @@ package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO}
 import com.typesafe.config.Config
+import js7.base.config.Js7Config
 import js7.base.service.Service.StoppableByRequest
 import js7.base.service.{MainService, MainServiceTerminationException, Service}
 import js7.base.system.startup.Js7ReturnCodes
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ProgramTermination
-import js7.common.configuration.{BasicConfiguration, Js7Configuration}
+import js7.common.configuration.BasicConfiguration
 import js7.common.system.startup.ServiceMainTest.*
 
 final class ServiceMainTest extends OurAsyncTestSuite:
 
   "Normal run" in:
-    val conf = TestConf(Js7Configuration.defaultConfig)
+    val conf = TestConf(Js7Config.defaultConfig)
     for
       exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(_ => TestService.resource)
     yield
       assert(exitCode == ExitCode(0))
 
   "MainServiceTerminationException is properly handled" in:
-    val conf = TestConf(Js7Configuration.defaultConfig)
+    val conf = TestConf(Js7Config.defaultConfig)
     for
       exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(_ => TerminatingService.resource)
     yield

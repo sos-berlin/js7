@@ -2,8 +2,8 @@ package js7.journal.test
 
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
-import js7.common.configuration.Js7Configuration
 import js7.journal.data.JournalLocation
 
 /**
@@ -20,7 +20,7 @@ private[journal] object TestData:
     js7.journal.slow-check-state = true
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITING FOR OLD EVENTS !
-  """.withFallback(Js7Configuration.defaultConfig)
+  """.withFallback(Js7Config.defaultConfig)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])

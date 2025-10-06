@@ -7,13 +7,13 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
+import js7.base.config.Js7Config
 import js7.base.crypt.SignatureVerifier
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.common.configuration.Js7Configuration
 import js7.data.event.SnapshotableState
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
@@ -107,5 +107,5 @@ object ProgramEnv:
 
     def recoverState: S =
       StateRecoverer
-        .recover[S](journalLocation, Js7Configuration.defaultConfig)
+        .recover[S](journalLocation, Js7Config.defaultConfig)
         .state

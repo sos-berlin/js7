@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.OurIORuntime
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -24,7 +25,6 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
-import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
@@ -224,7 +224,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
     OurIORuntime
       .resource[SyncIO](
         s"${getClass.simpleScalaName}-${clusterWatchId.string}",
-        Js7Configuration.defaultConfig)
+        Js7Config.defaultConfig)
       .use: ioRuntime =>
         given IORuntime = ioRuntime
         SyncIO:

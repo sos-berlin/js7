@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
@@ -22,7 +23,6 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.common.configuration.Js7Configuration
 import js7.common.http.PekkoHttpUtils.*
 import js7.common.pekkohttp.web.PekkoWebServerHttpsChangeTest.*
 import js7.common.pekkohttp.web.data.WebServerBinding
@@ -76,7 +76,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
         js7.web.server.shutdown-delay = 500ms
         js7.directory-watcher.watch-delay = 10ms
         js7.directory-watcher.directory-silence = 10ms
-      """.withFallback(Js7Configuration.defaultConfig)
+      """.withFallback(Js7Config.defaultConfig)
 
     PekkoWebServer.service(webServerBindings, config): routeBinding =>
       PekkoWebServer.BoundRoute.simple:

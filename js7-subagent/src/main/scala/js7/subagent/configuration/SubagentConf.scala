@@ -5,6 +5,7 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig, parseConfigIfExists}
 import js7.base.convert.AsJava.asAbsolutePath
@@ -18,7 +19,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.launcher.configuration.JobLauncherConf
@@ -122,7 +123,7 @@ object SubagentConf:
 
   val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/subagent/configuration/subagent.conf"))
-    .withFallback(Js7Configuration.defaultConfig)
+    .withFallback(Js7Config.defaultConfig)
 
   def fromCommandLine(
     args: CommandLineArguments,

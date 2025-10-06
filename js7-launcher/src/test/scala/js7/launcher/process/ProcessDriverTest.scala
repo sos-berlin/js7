@@ -7,6 +7,7 @@ import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Files.createTempDirectory
 import js7.base.catsutils.Environment.environment
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileDeleter.tryDeleteFiles
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -21,7 +22,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Stopwatch}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.common.configuration.Js7Configuration
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.unlimitedExecutionContextResource
 import js7.data.job.{CommandLine, JobKey, RelativePathExecutable}
@@ -50,7 +50,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
     js7.job.execution.kill-command-for-windows = [ "taskkill", "/pid", "$$pid" ]
     js7.job.execution.used-error-line-length = 4096
     js7.job.execution.worry-about-stdout-after-termination = 100ms
-    """.withFallback(Js7Configuration.defaultConfig)
+    """.withFallback(Js7Config.defaultConfig)
 
   private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler

@@ -2,16 +2,17 @@ package js7.provider.configuration
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.parseConfigIfExists
+import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.web.data.WebServerPort
 import scala.jdk.CollectionConverters.*
-import js7.base.convert.AsJava.StringAsPath
 
 /**
   * @author Joacim Zschimmer
@@ -48,7 +49,7 @@ object ProviderConfiguration:
       .withFallback(addConfig)
       .withFallback(parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "provider.conf", secret = false))
-      .withFallback(Js7Configuration.defaultConfig)
+      .withFallback(Js7Config.defaultConfig)
       .withFallback(Configs.loadResource(DefaultConfigResource))
       .resolve
     new ProviderConfiguration(

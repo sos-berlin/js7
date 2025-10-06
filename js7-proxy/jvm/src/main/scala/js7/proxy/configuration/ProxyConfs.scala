@@ -1,16 +1,16 @@
 package js7.proxy.configuration
 
 import com.typesafe.config.Config
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.io.JavaResource
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.common.configuration.Js7Configuration
 import js7.common.http.configuration.RecouplingStreamReaderConfs
 
 object ProxyConfs:
   val defaultConfig: Config = Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"))
-    .withFallback(Js7Configuration.defaultConfig)
+    .withFallback(Js7Config.defaultConfig)
   lazy val default: ProxyConf = fromConfig(defaultConfig)
 
   def fromConfig(config: Config): ProxyConf =

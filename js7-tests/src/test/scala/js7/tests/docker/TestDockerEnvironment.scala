@@ -8,6 +8,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
 import js7.agent.TestAgent
 import js7.base.catsutils.OurIORuntime
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.{HoconStringInterpolator, configMonoid}
 import js7.base.generic.SecretString
@@ -20,7 +21,6 @@ import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.Js7Configuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
@@ -156,7 +156,7 @@ object TestDockerEnvironment:
     def providerResource: ResourceIO[Provider] =
       val controllerUri = s"http://localhost:$controllerPort"
       for
-        given IORuntime <- OurIORuntime.resource[IO]("Provider", Js7Configuration.defaultConfig)
+        given IORuntime <- OurIORuntime.resource[IO]("Provider", Js7Config.defaultConfig)
         _ <- providerEnv
         provider <- Provider.resource:
           ProviderConfiguration.fromCommandLine(

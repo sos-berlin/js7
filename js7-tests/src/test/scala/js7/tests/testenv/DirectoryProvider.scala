@@ -10,6 +10,7 @@ import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.orIfNone
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.fs2utils.StreamExtensions.+:
@@ -33,7 +34,6 @@ import js7.base.utils.{Allocated, Atomic, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
 import js7.cluster.watch.ClusterWatchService
-import js7.common.configuration.Js7Configuration
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -530,5 +530,5 @@ object DirectoryProvider:
         ClusterWatchService.service(
           clusterWatchId,
           admissions.traverse(PekkoHttpControllerApi.resource(_, httpsConfig)),
-          config.withFallback(Js7Configuration.defaultConfig),
+          config.withFallback(Js7Config.defaultConfig),
           onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss))

@@ -3,13 +3,13 @@ package js7.common.pekkoutils
 import cats.effect.{IO, Resource, ResourceIO, Sync}
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.config.Js7Config
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.configuration.Js7Configuration
 import org.apache.pekko.actor.{ActorContext, ActorPath, ActorRef, ActorRefFactory, ActorSystem, ChildActorPath, Props, RootActorPath, Terminated}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.Uri
@@ -32,7 +32,7 @@ object Pekkos:
     logger.debugCall("newActorSystem", name):
       val myConfig = ConfigFactory.systemProperties
         .withFallback(config)
-        .withFallback(Js7Configuration.defaultConfig)
+        .withFallback(Js7Config.defaultConfig)
         .resolve
 
       ActorSystem(

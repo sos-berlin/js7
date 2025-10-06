@@ -5,6 +5,7 @@ import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
+import js7.base.config.Js7Config.defaultConfig
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
@@ -21,7 +22,6 @@ import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.HttpClusterNodeApi
-import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos.actorSystemResource
