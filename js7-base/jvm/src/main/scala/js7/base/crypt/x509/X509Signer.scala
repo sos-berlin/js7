@@ -1,5 +1,6 @@
 package js7.base.crypt.x509
 
+import com.typesafe.config.{Config, ConfigFactory}
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.{KeyFactory, PrivateKey, Signature}
 import js7.base.crypt.x509.X509Algorithm.SHA512withRSA
@@ -9,7 +10,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.WallClock
+import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.Labeled
 
 final class X509Signer private(
@@ -52,17 +53,29 @@ object X509Signer extends DocumentSigner.Companion:
     }.map(new X509Signer(_, algorithm, signerId))
 
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
-    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest", WallClock)
-      .orThrow
+    newSignerAndVerifier(
+      SignerId("CN=SIGNER"),
+      "forTest",
+      clock = WallClock,
+      config = ConfigFactory.empty
+    ).orThrow
 
-  private def newSignerAndVerifier(signerId: SignerId, origin: String, clock: WallClock)
+  private[x509] def newSignerAndVerifier(
+    signerId: SignerId,
+    origin: String,
+    notBefore: Option[Timestamp] = None,
+    notAfter: Option[Timestamp] = None,
+    clock: WallClock,
+    config: Config)
   : Checked[(X509Signer, X509SignatureVerifier)] =
     withTemporaryDirectory("X509Signer"): dir =>
       val openssl = new Openssl(dir)
       for
-        certWithPrivateKey <- openssl.generateCertWithPrivateKey("X509Signer", s"/${signerId.string}")
+        certWithPrivateKey <- openssl.generateCertWithPrivateKey(
+          "X509Signer", s"/${signerId.string}", notBefore = notBefore, notAfter = notAfter)
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
-        verifier <- X509SignatureVerifier.Provider(clock).checked(
+        verifier <- X509SignatureVerifier.Provider(clock, config).checked(
           Seq(Labeled(certWithPrivateKey.certificate, s"signer=$signerId")),
           origin)
-      yield signer -> verifier
+      yield
+        signer -> verifier

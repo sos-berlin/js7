@@ -1,5 +1,6 @@
 package js7.service.pgp
 
+import com.typesafe.config.ConfigFactory
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.configutils.Configs.*
 import js7.base.crypt.SignedString
@@ -30,7 +31,7 @@ final class GenericSignatureVerifierTest extends OurTestSuite:
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
-      val provider = GenericSignatureVerifier.Provider(WallClock).checked(config"""
+      val provider = GenericSignatureVerifier.Provider(WallClock, ConfigFactory.empty).checked(config"""
         js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}""""
       ).orThrow
       assert(provider.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))

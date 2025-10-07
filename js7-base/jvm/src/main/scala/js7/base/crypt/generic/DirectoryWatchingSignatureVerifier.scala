@@ -165,12 +165,14 @@ object DirectoryWatchingSignatureVerifier:
     s"String expected as value of configuration key $configKey")
 
 
-  final class Provider(clock: WallClock) extends SignatureVerifier.Provider:
+  final class Provider(clock: WallClock, config: Config)
+  extends SignatureVerifier.Provider:
+
     protected type MySignature = GenericSignature
     protected type MySignatureVerifier = DirectoryWatchingSignatureVerifier
 
-    private val genericSignatureVerifierContext = GenericSignatureVerifier.Provider(clock)
-    import genericSignatureVerifierContext.signatureServiceRegister
+    private val genericSignatureVerifierContext = GenericSignatureVerifier.Provider(clock, config)
+    import genericSignatureVerifierContext.signatureProviderRegister
 
     def typeName = "(generic)"
 
@@ -182,15 +184,15 @@ object DirectoryWatchingSignatureVerifier:
 
     def checkedResource(config: Config, onUpdated: () => Unit)
     : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
-      prepare(config).map(_.toResource(onUpdated))
+      prepare.map(_.toResource(onUpdated))
 
-    def prepare(config: Config): Checked[Prepared] =
+    def prepare: Checked[Prepared] =
       config.getObject(configPath).asScala.toMap  // All Config key-values
         .map: (typeName, v) =>
           checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
             .map(Paths.get(_))
             .flatMap: directory =>
-              signatureServiceRegister.nameToSignatureVerifierProvider
+              signatureProviderRegister.nameToSignatureVerifierProvider
                 .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
                 .flatMap: companion =>
                   if !exists(directory) then

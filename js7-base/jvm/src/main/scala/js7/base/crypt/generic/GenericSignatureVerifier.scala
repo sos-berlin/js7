@@ -60,11 +60,13 @@ object GenericSignatureVerifier:
   private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger[this.type]
 
-  final class Provider(clock: WallClock) extends SignatureVerifier.Provider:
+  final class Provider(clock: WallClock, config: Config)
+  extends SignatureVerifier.Provider:
+
     protected type MySignature = GenericSignature
     protected type MySignatureVerifier = GenericSignatureVerifier
 
-    val signatureServiceRegister = SignatureProviderRegister(clock)
+    val signatureProviderRegister = SignatureProviderRegister(clock, config)
 
     def typeName = "(generic)"
 
@@ -80,7 +82,7 @@ object GenericSignatureVerifier:
           checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
             .map(Paths.get(_))
             .flatMap: directory =>
-              signatureServiceRegister.nameToSignatureVerifierProvider
+              signatureProviderRegister.nameToSignatureVerifierProvider
                 .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
                 .flatMap: companion =>
                   if !exists(directory) then

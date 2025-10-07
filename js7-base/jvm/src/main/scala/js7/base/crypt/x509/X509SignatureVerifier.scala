@@ -3,10 +3,12 @@ package js7.base.crypt.x509
 import cats.Show
 import cats.instances.vector.*
 import cats.syntax.traverse.*
+import com.typesafe.config.Config
 import java.security.cert.X509Certificate
 import java.security.{PublicKey, Signature}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.auth.DistinguishedName
+import js7.base.config.Js7Config
 import js7.base.crypt.x509.X509Cert.CertificatePem
 import js7.base.crypt.x509.X509SignatureVerifier.logger
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
@@ -19,7 +21,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Labeled
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction, RichThrowable, takeThrough}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction, RichThrowable, takeThrough}
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
@@ -76,7 +78,13 @@ extends SignatureVerifier:
       if !verified then
         Left(TamperedWithSignedMessageProblem)
       else
-        SignerId.checked(cert.x509Certificate.getSubjectX500Principal.toString)
+        // In case we want to check the certificate's expiry not only at first encountering:
+        // - Then we should not check notBefore at the first encountering
+        // - Include also X509Cert.removeDuplicates
+        //Checked.when(!provider.allowExpired):
+        //  cert.checkExpiry(provider.clock.now())
+        //.flatMap: _ =>
+          SignerId.checked(cert.x509Certificate.getSubjectX500Principal.toString)
 
   private def verifySignersCertificate(signatureCertificate: X509Cert, rootPublicKey: PublicKey)
   : Checked[Unit] =
@@ -96,7 +104,9 @@ object X509SignatureVerifier:
   private val logger = Logger[this.type]
 
 
-  final class Provider(clock: WallClock) extends SignatureVerifier.Provider:
+  final class Provider(val clock: WallClock, config: Config)
+  extends SignatureVerifier.Provider:
+
     protected type MySignature = X509Signature
     protected type MySignatureVerifier = X509SignatureVerifier
 
@@ -106,19 +116,22 @@ object X509SignatureVerifier:
     val filenameExtension = ".pem"
     val recommendedKeyDirectoryName = "trusted-x509-keys"
 
-    implicit val x509CertificateShow: Show[X509Certificate] =
-      _.getIssuerX500Principal.toString
+    private[X509SignatureVerifier] val allowExpired =
+      config.withFallback(Js7Config.defaultConfig)
+        .getBoolean("js7.configuration.allow-expired-certificates")
+
+    given Show[X509Certificate] = _.getIssuerX500Principal.toString
 
     def checked(pems: Seq[Labeled[ByteArray]], origin: String): Checked[X509SignatureVerifier] =
       pems.toVector
-        .traverse(labeledPem => X509Cert.fromPem(labeledPem.value.utf8String))
+        .traverse(labeledPem => X509Cert.fromPem(labeledPem.value.utf8String, checkExpiry()))
         .flatMap(_
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map(toVerifier(_, origin)))
 
     def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier =
       val certs = pems.flatMap: labeledPem =>
-        X509Cert.fromPem(labeledPem.value.utf8String) match
+        X509Cert.fromPem(labeledPem.value.utf8String, checkExpiry()) match
           case Left(problem) =>
             logger.error(s"Ignoring X.509 certificate '${labeledPem.label}' due to: $problem")
             None
@@ -140,7 +153,7 @@ object X509SignatureVerifier:
         s"Trusting signatures signed with a certificate which is signed with root $o"
       for o <- signerDNToTrustedCertificate.values do logger.debug:
         s"Trusting signatures signed with $o"
-      new X509SignatureVerifier(
+      X509SignatureVerifier(
         trustedCertificates,
         rootCertificates,
         signerDNToTrustedCertificate,
@@ -152,4 +165,9 @@ object X509SignatureVerifier:
 
     def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] =
       assertThat(signature.typeName == typeName)
-      X509Signature.fromGenericSignature(signature)
+      X509Signature.fromGenericSignature(signature, checkExpiry())
+
+    private def checkExpiry() =
+      !allowExpired ? clock.now()
+
+  end Provider

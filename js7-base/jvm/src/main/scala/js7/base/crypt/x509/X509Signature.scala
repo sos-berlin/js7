@@ -6,6 +6,7 @@ import js7.base.crypt.x509.X509Signature.*
 import js7.base.crypt.{GenericSignature, Signature, SignerId}
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 
 private[x509] final case class X509Signature(
   byteArray: ByteArray,
@@ -32,7 +33,8 @@ extends Signature:
 object X509Signature:
   val TypeName = "X509"
 
-  def fromGenericSignature(signature: GenericSignature): Checked[X509Signature] =
+  def fromGenericSignature(signature: GenericSignature, checkExpiry: Option[Timestamp])
+  : Checked[X509Signature] =
     for
       signatureBytes <- ByteArray.fromMimeBase64(signature.signatureString)
       algorithm <- signature.algorithm match
@@ -41,6 +43,6 @@ object X509Signature:
       signerIdOrCertificate <-
         (signature.signerId, signature.signerCertificate) match
           case (Some(signerId), None) => Right(Left(signerId))
-          case (None, Some(cert)) => X509Cert.fromPem(cert) map Right.apply
+          case (None, Some(cert)) => X509Cert.fromPem(cert, checkExpiry) map Right.apply
           case _ => Left(Problem.pure("X.509 signature requires either a signerId or a signerCertificate"))
     yield new X509Signature(signatureBytes, algorithm, signerIdOrCertificate)

@@ -252,7 +252,7 @@ object Provider:
     val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
     val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
     val password = SecretString(conf.config.getString(s"$configPath.password"))
-    SignatureProviderRegister(WallClock).nameToDocumentSignerCompanion
+    SignatureProviderRegister(WallClock, conf.config).nameToDocumentSignerCompanion
       .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
       .flatMap(companion => companion.checked(keyFile.byteArray, password))
       .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))

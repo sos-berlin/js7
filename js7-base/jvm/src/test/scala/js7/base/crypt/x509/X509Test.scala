@@ -2,6 +2,7 @@ package js7.base.crypt.x509
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import com.typesafe.config.ConfigFactory
 import fs2.{Chunk, Stream}
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -21,7 +22,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.WallClock
+import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.Labeled
 import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
@@ -64,7 +65,7 @@ final class X509Test extends OurTestSuite:
       runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
-      val signerCert = X509Cert.fromPem(certificateBytes.utf8String).orThrow
+      val signerCert = X509Cert.fromPem(certificateBytes.utf8String, checkExpiry = Some(Timestamp.now)).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
@@ -80,7 +81,7 @@ final class X509Test extends OurTestSuite:
     withTemporaryDirectory("X509Test-"): dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
-      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow
+      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray, checkExpiry = Some(Timestamp.now)).orThrow
       logger.info(caCert.toLongString)
       assert(caCert.isCA)
 
@@ -178,7 +179,9 @@ final class X509Test extends OurTestSuite:
 object X509Test:
   private val logger = Logger[this.type]
 
-  private val x509SignatureVerifierProvider = X509SignatureVerifier.Provider(WallClock)
+  private val x509SignatureVerifierProvider =
+    X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty)
+
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
   : Checked[Seq[SignerId]] =
     lazy val verifier = x509SignatureVerifierProvider.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
@@ -191,7 +194,7 @@ object X509Test:
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
 
   private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature =
-    val cert = X509Cert.fromPem(signersCertificateFile.contentString).orThrow
+    val cert = X509Cert.fromPem(signersCertificateFile.contentString, checkExpiry = Some(Timestamp.now)).orThrow
     logger.info(cert.toLongString)
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
 

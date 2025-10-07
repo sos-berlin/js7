@@ -20,7 +20,7 @@ final class X509CertTest extends OurAsyncTestSuite:
       val certificateFile = dir / "signer.crt"
       runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2  -nodes -subj '/L=Berlin/CN=TESTER' " +
         s"-keyout '$privateKeyFile' -out '$certificateFile'")
-      val cert = X509Cert.fromPem(certificateFile.contentString).orThrow
+      val cert = X509Cert.fromPem(certificateFile.contentString, Some(Timestamp.now)).orThrow
       assert(cert.signerId == SignerId("CN=TESTER, L=Berlin"))
       assert(cert.signersDistinguishedName == DistinguishedName("CN=TESTER, L=Berlin"))
       assert(cert.signersDistinguishedName == DistinguishedName("CN = TESTER ,  L = Berlin "))

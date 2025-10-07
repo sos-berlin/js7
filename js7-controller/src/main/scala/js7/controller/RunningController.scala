@@ -391,7 +391,7 @@ object RunningController:
     testEventBus: StandardEventBus[Any],
     clock: WallClock)
   : ResourceIO[SignedItemVerifier[SignableItem]] =
-    DirectoryWatchingSignatureVerifier.Provider(clock)
+    DirectoryWatchingSignatureVerifier.Provider(clock, config)
       .checkedResource(
         config,
         onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))

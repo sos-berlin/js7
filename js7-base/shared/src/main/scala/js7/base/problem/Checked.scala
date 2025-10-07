@@ -100,6 +100,12 @@ object Checked:
     catch
       case e: ProblemException => Left(e.problem)
 
+  def when[A](condition: Boolean)(check: => Checked[Unit]): Checked[Unit] =
+    if condition then
+      check
+    else
+      Checked.unit
+
 
   extension [F[_]](underlying: sourcecode.Text[F[Checked[?]]])(using loc: ScalaSourceLocation)
     def ignoreProblem(logLevel: LogLevel)(using F: Monad[F]): F[Unit] =

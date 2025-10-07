@@ -1,5 +1,6 @@
 package js7.tests.controller.commands
 
+import com.typesafe.config.ConfigFactory
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createTempDirectory
 import js7.base.Problems.TamperedWithSignedMessageProblem
@@ -33,7 +34,7 @@ final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest
   override protected lazy val verifier =
     runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
-    X509SignatureVerifier.Provider(WallClock).checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
+    X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty).checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
 
   private lazy val workDir = createTempDirectory("UpdateRepoX509Test")
   private lazy val privateKeyFile = workDir / "test.key"

@@ -1,6 +1,7 @@
 package js7.tests
 
 import cats.effect.IO
+import com.typesafe.config.ConfigFactory
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempDirectory, delete}
@@ -19,7 +20,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
-import js7.base.time.WallClock
+import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.Labeled
@@ -62,15 +63,16 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
   protected val items = Nil
 
   private lazy val workDir = createTempDirectory("WatchSignatureKeysTest")
-  private lazy val openssl = new Openssl(workDir)
-  private lazy val aCertAndKey = openssl
-    .generateCertWithPrivateKey("TEST", s"/$aSignerId")
+  private lazy val openssl = Openssl(workDir)
+  private lazy val aCertAndKey = openssl.generateCertWithPrivateKey("TEST", s"/$aSignerId")
     .orThrow
   override protected lazy val signer =
     X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow
-  private lazy val itemSigner = new ItemSigner(signer, ControllerState.signableItemJsonCodec)
+  private lazy val itemSigner = ItemSigner(signer, ControllerState.signableItemJsonCodec)
   override protected lazy val verifier =
-    X509SignatureVerifier.Provider(WallClock).checked(Seq(Labeled(aCertAndKey.certificate, "verifier"))).orThrow
+    X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty)
+      .checked(Seq(Labeled(aCertAndKey.certificate, "verifier")))
+      .orThrow
 
   private lazy val controllersKeyDirectory =
     directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys"
@@ -128,8 +130,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
 
   "Change signature PEM file at Controller" - {
     val signerId = SignerId("CN=WatchSignatureKeysTest-B")
-    lazy val bCertAndKey = openssl
-      .generateCertWithPrivateKey("TEST", s"/$signerId")
+    lazy val bCertAndKey = openssl.generateCertWithPrivateKey("TEST", s"/$signerId")
       .orThrow
     lazy val bItemSigner =
       val bSigner = X509Signer.checked(bCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
@@ -139,7 +140,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       val v = nextVersion()
       val whenUpdated = whenControllerAndAgentUpdated()
 
-      X509Cert.fromPem(bCertAndKey.certificatePem).orThrow
+      X509Cert.fromPem(bCertAndKey.certificatePem, Some(Timestamp.now)).orThrow
       controllersKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       agentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       subagentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
@@ -158,8 +159,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
 
   "Change signature PEM file slowly" in:
     val signerId = SignerId("CN=WatchSignatureKeysTest-C")
-    lazy val cCertAndKey = openssl
-      .generateCertWithPrivateKey("TEST", s"/$signerId")
+    lazy val cCertAndKey = openssl.generateCertWithPrivateKey("TEST", s"/$signerId")
       .orThrow
     lazy val cItemSigner =
       val cSigner = X509Signer.checked(cCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
@@ -170,7 +170,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     val subagentUpdated = idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
       .when[Subagent.ItemSignatureKeysUpdated]
 
-    X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
+    X509Cert.fromPem(cCertAndKey.certificatePem, Some(Timestamp.now)).orThrow // Check
     val pem = ByteArray(cCertAndKey.certificatePem).toArray
 
     autoClosing(new FileOutputStream((controllersKeyDirectory / "key-1.pem").toFile)) { controllerFile =>

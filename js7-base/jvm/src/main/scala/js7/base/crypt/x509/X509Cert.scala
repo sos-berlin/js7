@@ -9,7 +9,8 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.time.JavaTimestamp.specific.RichJavaTimestampCompanion
+import js7.base.problem.Checked.catchNonFatal
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
 import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.*
@@ -41,6 +42,10 @@ extends X509CertInterface:
   val notAfter: Timestamp =
     Timestamp.fromJavaUtilDate(getNotAfter)
 
+  def checkExpiry(now: Timestamp): Checked[Unit] =
+    catchNonFatal:
+      x509Certificate.checkValidity(now.toJavaUtilDate)
+
   private def containsCA(strings: java.util.Set[String] | Null) =
     nullToNone(strings).fold(false)(_.contains(MayActAsCA))
 
@@ -70,15 +75,18 @@ object X509Cert:
   val CertificatePem: Pem = Pem("CERTIFICATE")
   val PrivateKeyPem: Pem = Pem("PRIVATE KEY")
 
-  def fromPem(pem: String): Checked[X509Cert] =
-    CertificatePem.fromPem(pem) flatMap fromByteArray
+  def fromPem(pem: String, checkExpiry: Option[Timestamp]): Checked[X509Cert] =
+    CertificatePem.fromPem(pem).flatMap:
+      fromByteArray(_, checkExpiry = checkExpiry)
 
-  def fromByteArray(byteArray: ByteArray): Checked[X509Cert] =
-    Checked.catchNonFatal:
+  def fromByteArray(byteArray: ByteArray, checkExpiry: Option[Timestamp]): Checked[X509Cert] =
+    catchNonFatal:
       val certificate = CertificateFactory.getInstance("X.509")
         .generateCertificate(byteArray.toInputStream)
         .asInstanceOf[X509Certificate]
-      // QUICK FIX certificate.checkValidity()  // throws
+      for ts <- checkExpiry do
+        // throws CertificateExpiredException or CertificateNotYetValidException
+        certificate.checkValidity(ts.toJavaUtilDate)
       X509Cert(certificate)
 
   /** Remove X509Cert with duplicate DN, keep the currently valid one. */

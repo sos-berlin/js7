@@ -2,6 +2,9 @@ package js7.base.crypt.x509
 
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
+import java.time.ZoneOffset.UTC
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import js7.base.auth.Pem
 import js7.base.crypt.x509.Openssl.*
 import js7.base.crypt.x509.X509Cert.PrivateKeyPem
@@ -15,6 +18,8 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 
 final class Openssl(dir: Path):
@@ -140,12 +145,17 @@ final class Openssl(dir: Path):
       def checked(privateKey: ByteArray, password: SecretString): Nothing =
         throw new NotImplementedError
 
-  def generateCertWithPrivateKey(name: String, distinguishedName: String)
+  def generateCertWithPrivateKey(
+    name: String,
+    distinguishedName: String,
+    notBefore: Option[Timestamp] = None,
+    notAfter: Option[Timestamp] = None)
   : Checked[CertWithPrivateKey] =
     val privateFile = dir / s"$name.private-key.pem"
     val certFile = dir / s"$name.certificate.pem"
 
-    opensslReq(distinguishedName, privateFile, certFile, ca = false)
+    opensslReq(distinguishedName, privateFile, certFile, ca = false,
+      notBefore = notBefore, notAfter = notAfter)
 
     val p12File = dir / s"$name.certificate.p12"
     runProcess:
@@ -158,21 +168,29 @@ final class Openssl(dir: Path):
     for privateKey <- PrivateKeyPem.fromPem(privateFile.contentString) yield
       CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray, p12File)
 
-  private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean) =
+  private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean,
+    notBefore: Option[Timestamp] = None,
+    notAfter: Option[Timestamp] = None) =
     runProcess:
-      s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes " +
+      s"$openssl req -x509 -newkey rsa:1024 -sha512 -nodes " +
         s"-subj '$distinguishedName' " +
         s"-keyout ${quote(privateFile)} " +
         s"-out ${quote(certFile)} " +
         (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}")
+        // TODO Doesn't work with Almalinux 10:
+        + notBefore.fold(""): ts =>
+          s" -not_before ${toTimestampString(ts)}"
+        + notAfter.fold(""): ts =>
+          s" -not_after ${toTimestampString(ts)}"
 
 
 object Openssl:
   private val logger = Logger[this.type]
-
+  private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss'Z'")
   private val p12Password = "jobscheduler"
   private val useHomebrew = isMac
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
+
   lazy val openssl: String =
     val openssl =
       if useHomebrew && exists(homebrewOpenssl) then
@@ -190,9 +208,13 @@ object Openssl:
     lazy val certificatePem: String =
       X509Cert.CertificatePem.toPem(certificate)
 
+  private def toTimestampString(ts: Timestamp): String =
+    dateTimeFormatter.format(ZonedDateTime.ofInstant(ts.toInstant, UTC))
+
   // For Windows
   def quote(path: Path): String =
     "'" + path.toString.replace("\\", "\\\\") + "'"
+
 
 final case class OpensslSignature(base64: String) extends Signature:
   def toGenericSignature: GenericSignature =
