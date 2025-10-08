@@ -7,7 +7,7 @@ commonDnPart="/DC=sh/DC=js7/DC=docker-example"
 # Low key sizes for faster example generation. For production one may use 4096.
 caKeySize=2048
 keySize=2048
-validity=366
+validity=36530 # 100 years
 password=jobscheduler
 client=""
 install=false
