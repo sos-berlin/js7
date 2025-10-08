@@ -89,7 +89,7 @@ final class Openssl(dir: Path):
     final class Signer(name: String) extends DocumentSigner:
       type MySignature = OpensslSignature
       val companion: Signer.type = Signer
-      val signerId: SignerId = SignerId(s"CN=$name")
+      val signerId: SignerId = SignerId.mayThrow(s"CN=$name")
       private val privateKeyFile = dir / s"$name.private-key"
 
       val certificateFile: Path =

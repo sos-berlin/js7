@@ -269,7 +269,7 @@ private[agent] abstract class CommandQueue(
             (problem is ShuttingDownProblem) ||
             (problem is ServiceStoppedProblem)
 
-        val (repeatables, toBeDequeued) =
+        val (isRepeatable, toBeDequeued) =
           responses.partition: r =>
             r.response.left.exists(isRepeatableProblem)
           .pipe: (a, b) =>
@@ -277,7 +277,7 @@ private[agent] abstract class CommandQueue(
 
         queue.dequeueAll(toBeDequeued)
 
-        if repeatables.nonEmpty then
+        if isRepeatable.nonEmpty then
           delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
 
         onQueueableResponded(responses.view.map(_.queueable).toSet) *>
@@ -297,10 +297,13 @@ private[agent] abstract class CommandQueue(
 
               case QueueableResponse(queueable, Left(problem)) =>
                 // MarkOrder(FreshOnly) fails if order has started !!!
-                if repeatables(queueable) then
+                if isRepeatable(queueable) then
                   logger.debug(s"⟲ Agent rejected ${queueable.toShortString}: $problem")
                 else
                   logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
+                // TODO AttachSignedItem(workflow) scheitert, wenn Signatur abglehnt wird.
+                //  Dann scheitern auch nachfolgende AttachOrder, und die Aufträge sollen scheitern!
+                //
                 // Agent's state does not match controller's state ???
                 None
 

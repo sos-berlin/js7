@@ -58,14 +58,18 @@ final class X509Test extends OurTestSuite:
         s"-keyout ${quote(privateKeyFile)} -out ${quote(certificateFile)} ")
       assertPemFile("CERTIFICATE", certificateFile)
 
-      runProcess(s"""sh -c "openssl x509 -pubkey -noout -in ${quote(certificateFile)} >${quote(publicKeyFile)}"""")
+      runProcess:
+        s"sh -c 'openssl x509 -pubkey -noout -in ${quote(certificateFile)} >${quote(publicKeyFile)}'"
       assertPemFile("PUBLIC KEY", publicKeyFile)
 
-      runProcess(s"$openssl dgst -sha512 -sign ${quote(privateKeyFile)} -out ${quote(signatureFile)} ${quote(documentFile)}")
-      runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
+      runProcess(s"$openssl dgst -sha512 -sign ${quote(privateKeyFile)} " +
+        s"-out ${quote(signatureFile)} ${quote(documentFile)}")
+      runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} " +
+        s"-signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
-      val signerCert = X509Cert.fromPem(certificateBytes.utf8String, checkExpiry = Some(Timestamp.now)).orThrow
+      val signerCert =
+        X509Cert.fromPem(certificateBytes.utf8String, checkExpiry = Some(Timestamp.now)).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
@@ -74,66 +78,74 @@ final class X509Test extends OurTestSuite:
         Seq(Labeled(certificateBytes, "X509Test")),
         origin = certificateFile.toString).orThrow
       val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
-      assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
-      assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
+      assert(verifier.verifyString(documentFile.contentString, signature) ==
+        Right(SignerId("CN=SIGNER") :: Nil))
+      assert(verifier.verifyString(documentFile.contentString + "X", signature) ==
+        Left(TamperedWithSignedMessageProblem))
 
   "Sign with certificate and verify signature and certificate against Root" in:
     withTemporaryDirectory("X509Test-"): dir =>
-      val openssl = new Openssl(dir)
-      val ca = new openssl.Root("Root")
-      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray, checkExpiry = Some(Timestamp.now)).orThrow
+      val openssl = Openssl(dir)
+      val ca = openssl.Root("Root")
+      val caCert = X509Cert.fromByteArray(
+        ca.certificateFile.byteArray,
+        checkExpiry = Some(Timestamp.now)
+      ).orThrow
       logger.info(caCert.toLongString)
       assert(caCert.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
 
-      val signer = new ca.Signer("SIGNER")
+      val signer = ca.Signer("SIGNER")
       val signatureFile = signer.signFile(documentFile)
 
       assert:
-        verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile))
-          == Right(Seq(SignerId("CN=SIGNER")))
+        verify(ca.certificateFile, documentFile,
+          toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
+        ) == Right(Seq(SignerId("CN=SIGNER")))
 
-      val alienSigner = new ca.Signer("ALIEN-SIGNER")
+      val alienSigner = ca.Signer("ALIEN-SIGNER")
       val alienSignatureFile = alienSigner.signFile(documentFile)
       assert:
-        verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId))
-          == Left(TamperedWithSignedMessageProblem)
+        verify(signer.certificateFile, documentFile,
+          toSignatureWithSignerId(alienSignatureFile, signer.signerId)
+        ) == Left(TamperedWithSignedMessageProblem)
       assert:
-        verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId))
-          == Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER"))
+        verify(signer.certificateFile, documentFile,
+          toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)
+        ) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER"))
 
-      val root2 = new openssl.Root("Root-2")
+      val root2 = openssl.Root("Root-2")
       assert:
-        verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile))
-          == Left(TamperedWithSignedMessageProblem)
+        verify(root2.certificateFile, documentFile,
+          toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
+        ) == Left(TamperedWithSignedMessageProblem)
 
   "Verification against root certificate requires the critical CA contraint" in:
     pending // openssl 1.1.1i always generates certificates with CA, so this test will fail !!!
-    withTemporaryDirectory("X509Test-") { dir =>
-      val openssl = new Openssl(dir)
-      val ca = new openssl.Root("Root", suppressCAContraint = true)
+    withTemporaryDirectory("X509Test-"): dir =>
+      val openssl = Openssl(dir)
+      val ca = openssl.Root("Root", suppressCAContraint = true)
       // openssl 1.1.1i generates always CA certificates !!!
       // assert(!X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
 
-      val signer = new ca.Signer("SIGNER")
+      val signer = ca.Signer("SIGNER")
       val signatureFile = signer.signFile(documentFile)
 
       val cert = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
       assert(verify(ca.certificateFile, documentFile, cert) == Left(MessageSignedByUnknownProblem))
-    }
 
   if sys.props.contains("test.speed") then
     "Speed test" in:
       val n = 10_000
       withTemporaryDirectory("X509Test-"): dir =>
-        val openssl = new Openssl(dir)
-        val ca = new openssl.Root("Root")
-        val signer = new ca.Signer("SIGNER")
+        val openssl = Openssl(dir)
+        val ca = openssl.Root("Root")
+        val signer = ca.Signer("SIGNER")
 
         var t = now
         val signedStrings = Stream
@@ -182,19 +194,26 @@ object X509Test:
   private val x509SignatureVerifierProvider =
     X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty)
 
-  def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
+  private def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
   : Checked[Seq[SignerId]] =
-    lazy val verifier = x509SignatureVerifierProvider.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
+    lazy val verifier = x509SignatureVerifierProvider.checked(
+      Seq(certificateFile.labeledByteArray),
+      origin = certificateFile.toString
+    ).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
     if verified.isRight then
-      assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
+      assert(verifier.verifyString(documentFile.contentString + "X", signature) ==
+        Left(TamperedWithSignedMessageProblem))
     verified
 
   private def toSignatureWithSignerId(signatureFile: Path, signerId: SignerId): X509Signature =
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
 
-  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature =
-    val cert = X509Cert.fromPem(signersCertificateFile.contentString, checkExpiry = Some(Timestamp.now)).orThrow
+  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path)
+  : X509Signature =
+    val cert = X509Cert.fromPem(
+      signersCertificateFile.contentString,
+      checkExpiry = Some(Timestamp.now)).orThrow
     logger.info(cert.toLongString)
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
 

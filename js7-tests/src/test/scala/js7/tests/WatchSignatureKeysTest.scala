@@ -74,10 +74,8 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       .checked(Seq(Labeled(aCertAndKey.certificate, "verifier")))
       .orThrow
 
-  private lazy val controllersKeyDirectory =
-    directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys"
-  private lazy val agentsKeyDirectory =
-    directoryProvider.agentEnvs.head.configDir / "private" / "trusted-x509-keys"
+  private lazy val controllersKeyDirectory = directoryProvider.controllerEnv.trustedX509KeyDir
+  private lazy val agentsKeyDirectory = directoryProvider.agentEnvs.head.trustedX509KeyDir
   private lazy val subagentsKeyDirectory = directoryProvider
     .bareSubagentToDirectory(bareSubagentId) / "config" / "private" / "trusted-x509-keys"
 
