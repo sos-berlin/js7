@@ -323,11 +323,11 @@ object ScalaUtils:
         throwable
 
 
-    implicit final class RichOrNull[A <: AnyRef](private val a: A | Null) extends AnyVal:
-      def checkedCast[B <: A : ClassTag]: Checked[B] =
+    extension [A <: AnyRef](a: A | Null)
+      def checkedSubtype[B <: A : ClassTag]: Checked[B] =
         ScalaUtils.checkedCast[B](a)
 
-      def ifCast[B <: A : ClassTag]: Option[B] =
+      def ifSubtype[B <: A : ClassTag]: Option[B] =
         val A = implicitClass[B]
         a != null && A.isAssignableFrom(a.getClass) thenSome
           a.asInstanceOf[B]

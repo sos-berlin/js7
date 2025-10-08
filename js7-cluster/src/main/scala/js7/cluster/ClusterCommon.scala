@@ -110,7 +110,7 @@ private[cluster] final class ClusterCommon private(
   : IO[Checked[Option[ClusterState]]] =
     locally:
       for
-        clusterState <- aggregate.clusterState.checkedCast[Coupled]
+        clusterState <- aggregate.clusterState.checkedSubtype[Coupled]
         maybeUserAndPassword <- aggregate.clusterNodeToUserAndPassword(clusterState.activeId)
       yield
         inhibitActivationOfPeer(clusterState, maybeUserAndPassword)
@@ -131,7 +131,7 @@ private[cluster] final class ClusterCommon private(
     logger.traceIOWithResult:
       // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
       //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
-      IO(aggregate.clusterState.checkedCast[HasNodes]).flatMapT: clusterState =>
+      IO(aggregate.clusterState.checkedSubtype[HasNodes]).flatMapT: clusterState =>
         val peerId = clusterState.setting.other(ownId)
         IO(aggregate.clusterNodeToUserAndPassword(ownId))
           .flatMapT: peersUserAndPassword =>

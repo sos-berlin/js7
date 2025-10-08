@@ -853,30 +853,32 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
   }
 
   "Any" - {
-    "cast" in:
+    "checkedSubtype" in:
       trait A
       case class A1() extends A
       case class A2() extends A
-      assert(((A1(): A).checkedCast[A]: Checked[A]) == Right(A1()))
-      assert(((A1(): A).checkedCast[A2]: Checked[A2]).isLeft)
-      assert(((A2(): A).checkedCast[A2]: Checked[A]) == Right(A2()))
+      assert(((A1(): A).checkedSubtype[A]: Checked[A]) == Right(A1()))
+      assert(((A1(): A).checkedSubtype[A2]: Checked[A2]).isLeft)
+      assert(((A2(): A).checkedSubtype[A2]: Checked[A]) == Right(A2()))
 
       val s: AnyRef = "Hej!"
-      val string = s.checkedCast[String]
+      val string = s.checkedSubtype[String]
       string shouldEqual Right("Hej!")
       //assert(123.cast[String] == Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
-      assert(null.asInstanceOf[String | Null].checkedCast[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
+      assert(null.asInstanceOf[String | Null].checkedSubtype[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
       assertDoesNotCompile("null.cast[String]")
       assertDoesNotCompile("string.cast[java.lang.Integer]")
       assertDoesNotCompile("A1().cast[A2]")
 
-    "ifCast" in:
+    "ifSubtype" in:
       trait A
       case class A1() extends A
       case class A2() extends A
-      assert(((A1(): A).ifCast[A]: Option[A]) == Some(A1()))
-      assert(((A1(): A).ifCast[A2]: Option[A2]) == None)
-      assert(((A2(): A).ifCast[A2]: Option[A2]) == Some(A2()))
+      assert(((A1(): A).ifSubtype[A]: Option[A]) == Some(A1()))
+      assert(((A1(): A).ifSubtype[A2]: Option[A2]) == None)
+      assert(((A2(): A).ifSubtype[A2]: Option[A2]) == Some(A2()))
+      "A1().ifSubtype[A]" shouldNot compile
+      "A1().ifSubtype[A2]" shouldNot compile
   }
 
   "Boolean" - {

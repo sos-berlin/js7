@@ -26,7 +26,7 @@ extends EventInstructionExecutor:
         order.state match
           case _: Order.Ready =>
             for
-              controllerState <- state.checkedCast[ControllerState]
+              controllerState <- state.checkedSubtype[ControllerState]
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
               planId <- addOrder.planId.fold_(Checked(order.planId), PlanId.evalPlanIdExpr(_, scope))

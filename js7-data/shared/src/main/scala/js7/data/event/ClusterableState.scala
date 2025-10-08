@@ -3,7 +3,7 @@ package js7.data.event
 import cats.syntax.traverse.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichOrNull
+import js7.base.utils.ScalaUtils.syntax.checkedSubtype
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 
@@ -20,7 +20,7 @@ extends SnapshotableState[S]:
 
   final def clusterNodeToUserAndPassword(ourNodeId: NodeId)(using NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
-    clusterState.checkedCast[HasNodes].flatMap: clusterState =>
+    clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
       val otherNodeId = clusterState.setting.other(ourNodeId)
       clusterNodeToUserAndPassword(ourNodeId, otherNodeId)
 

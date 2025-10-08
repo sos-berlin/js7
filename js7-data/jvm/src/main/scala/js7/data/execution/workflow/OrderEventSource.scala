@@ -114,7 +114,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     if !it.hasNext then
       Checked.unit
     else
-      idToOrder.checkedCast[Map[OrderId, Order[Order.State]]]
+      idToOrder.checkedSubtype[Map[OrderId, Order[Order.State]]]
         .flatMap: idToOrder_ =>
           var iToO = idToOrder_
           var problem: Problem | Null = null
