@@ -60,19 +60,25 @@ object X509Signer extends DocumentSigner.Companion:
       config = ConfigFactory.empty
     ).orThrow
 
+  /**
+    * @param days Days until the certificate expires
+    * @param notBefore Only macOS Homebrew openssl
+    * @param notAfter Only macOS Homebrew openssl
+    */
   private[x509] def newSignerAndVerifier(
     signerId: SignerId,
     origin: String,
-    notBefore: Option[Timestamp] = None,
-    notAfter: Option[Timestamp] = None,
     clock: WallClock,
-    config: Config)
+    config: Config,
+    days: Option[Int] = None,
+    notBefore: Option[Timestamp] = None,
+    notAfter: Option[Timestamp] = None)
   : Checked[(X509Signer, X509SignatureVerifier)] =
     withTemporaryDirectory("X509Signer"): dir =>
       val openssl = new Openssl(dir)
       for
         certWithPrivateKey <- openssl.generateCertWithPrivateKey(
-          "X509Signer", s"/${signerId.string}", notBefore = notBefore, notAfter = notAfter)
+          "X509Signer", s"/${signerId.string}", days = days, notBefore = notBefore, notAfter = notAfter)
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
         verifier <- X509SignatureVerifier.Provider(clock, config).checked(
           Seq(Labeled(certWithPrivateKey.certificate, s"signer=$signerId")),

@@ -26,6 +26,7 @@ import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.Labeled
 import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
 final class X509Test extends OurTestSuite:
@@ -44,6 +45,7 @@ final class X509Test extends OurTestSuite:
       Left(TamperedWithSignedMessageProblem))
 
   "Sign with certificate and verify" in:
+    given clock: WallClock = WallClock.fixed(Timestamp.now + 1.minute)
     withTemporaryDirectory("X509Test-"): dir =>
       val privateKeyFile = dir / "SIGNER.key"
       val certificateFile = dir / "SIGNER.crt"
@@ -54,7 +56,7 @@ final class X509Test extends OurTestSuite:
       val document = "TEXT EXAMPLE"
       dir / "document" := document
 
-      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER' " +
+      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 1 -nodes -subj '/CN=SIGNER' " +
         s"-keyout ${quote(privateKeyFile)} -out ${quote(certificateFile)} ")
       assertPemFile("CERTIFICATE", certificateFile)
 
@@ -69,7 +71,7 @@ final class X509Test extends OurTestSuite:
 
       val certificateBytes = certificateFile.byteArray
       val signerCert =
-        X509Cert.fromPem(certificateBytes.utf8String, checkExpiry = Some(Timestamp.now)).orThrow
+        X509Cert.fromPem(certificateBytes.utf8String, checkExpiry = Some(clock.now())).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
@@ -84,12 +86,13 @@ final class X509Test extends OurTestSuite:
         Left(TamperedWithSignedMessageProblem))
 
   "Sign with certificate and verify signature and certificate against Root" in:
+    given clock: WallClock = WallClock.fixed(Timestamp.now + 1.minute)
     withTemporaryDirectory("X509Test-"): dir =>
       val openssl = Openssl(dir)
-      val ca = openssl.Root("Root")
+      val ca = openssl.Root("Root", days = 1) // Expires after one day
       val caCert = X509Cert.fromByteArray(
         ca.certificateFile.byteArray,
-        checkExpiry = Some(Timestamp.now)
+        checkExpiry = Some(clock.now())
       ).orThrow
       logger.info(caCert.toLongString)
       assert(caCert.isCA)
@@ -101,9 +104,16 @@ final class X509Test extends OurTestSuite:
       val signatureFile = signer.signFile(documentFile)
 
       assert:
-        verify(ca.certificateFile, documentFile,
-          toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
-        ) == Right(Seq(SignerId("CN=SIGNER")))
+        val signature = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
+        verify(ca.certificateFile, documentFile, signature) == Right(Seq(SignerId("CN=SIGNER")))
+
+      assert:
+        // After two days, signer.certificateFile has expired
+        val checked = toCheckedSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
+          (using WallClock.fixed(Timestamp.now + 2.days))
+        checked.isLeft &&
+          checked.left.toOption.get.toString.startsWith:
+            "java.security.cert.CertificateExpiredException: NotAfter: "
 
       val alienSigner = ca.Signer("ALIEN-SIGNER")
       val alienSignatureFile = alienSigner.signFile(documentFile)
@@ -116,7 +126,7 @@ final class X509Test extends OurTestSuite:
           toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)
         ) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER"))
 
-      val root2 = openssl.Root("Root-2")
+      val root2 = openssl.Root("Root-2", days = 1)
       assert:
         verify(root2.certificateFile, documentFile,
           toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
@@ -124,9 +134,10 @@ final class X509Test extends OurTestSuite:
 
   "Verification against root certificate requires the critical CA contraint" in:
     pending // openssl 1.1.1i always generates certificates with CA, so this test will fail !!!
+    given WallClock = WallClock.fixed(Timestamp.now + 1.minute)
     withTemporaryDirectory("X509Test-"): dir =>
       val openssl = Openssl(dir)
-      val ca = openssl.Root("Root", suppressCAContraint = true)
+      val ca = openssl.Root("Root", suppressCAContraint = true, days = 1)
       // openssl 1.1.1i generates always CA certificates !!!
       // assert(!X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
@@ -141,10 +152,11 @@ final class X509Test extends OurTestSuite:
 
   if sys.props.contains("test.speed") then
     "Speed test" in:
+      given WallClock = WallClock.fixed(Timestamp.now + 1.minute)
       val n = 10_000
       withTemporaryDirectory("X509Test-"): dir =>
         val openssl = Openssl(dir)
-        val ca = openssl.Root("Root")
+        val ca = openssl.Root("Root", days = 1)
         val signer = ca.Signer("SIGNER")
 
         var t = now
@@ -191,10 +203,11 @@ final class X509Test extends OurTestSuite:
 object X509Test:
   private val logger = Logger[this.type]
 
-  private val x509SignatureVerifierProvider =
-    X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty)
+  private def x509SignatureVerifierProvider(using clock: WallClock) =
+    X509SignatureVerifier.Provider(clock, ConfigFactory.empty)
 
   private def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
+    (using WallClock)
   : Checked[Seq[SignerId]] =
     lazy val verifier = x509SignatureVerifierProvider.checked(
       Seq(certificateFile.labeledByteArray),
@@ -210,12 +223,19 @@ object X509Test:
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, signerId)
 
   private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path)
+    (using clock: WallClock)
   : X509Signature =
-    val cert = X509Cert.fromPem(
+    toCheckedSignatureWithTrustedCertificate(signatureFile, signersCertificateFile).orThrow
+
+  private def toCheckedSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path)
+    (using clock: WallClock)
+  : Checked[X509Signature] =
+    X509Cert.fromPem(
       signersCertificateFile.contentString,
-      checkExpiry = Some(Timestamp.now)).orThrow
-    logger.info(cert.toLongString)
-    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, cert)
+      checkExpiry = Some(clock.now())
+    ).map: cert =>
+      logger.info(cert.toLongString)
+      X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, cert)
 
   /** Reverse Openssl's base64 encoding. */
   private def toSignatureBytes(signatureFile: Path) =

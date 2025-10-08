@@ -32,7 +32,7 @@ final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest
   protected val agentPaths = Nil
   protected val items = Nil
   override protected lazy val verifier =
-    runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
+    runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 1 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
     X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty).checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
 

@@ -67,12 +67,13 @@ final class Openssl(dir: Path):
   //  if ca then caConstraintFile else noCaConstraintFile
 
   // suppressCAContraint does not work since openssl 1.1.1i !!!
-  final class Root(name: String, suppressCAContraint: Boolean = false):
+  final class Root(name: String, days: Int, suppressCAContraint: Boolean = false):
     root =>
     val privateKeyFile: Path = dir / s"$name.private-key"
     val certificateFile: Path = dir / s"$name.crt"
 
-    opensslReq(s"/CN=$name", privateKeyFile, certificateFile, ca = !suppressCAContraint)
+    opensslReq(s"/CN=$name", privateKeyFile, certificateFile, ca = !suppressCAContraint,
+      days = Some(days))
 
     private def newCertificate(csrFile: Path, name: String): Path =
       val certFile = dir / s"$name.crt"
@@ -82,7 +83,7 @@ final class Openssl(dir: Path):
           s" -CA ${quote(root.certificateFile)}" +
           s" -CAkey ${quote(privateKeyFile)}" +
           s" -CAcreateserial" +
-          s" -days 2 -sha512 -out ${quote(certFile)}"
+          s" -days $days -sha512 -out ${quote(certFile)}"
       assertPemFile("CERTIFICATE", certFile)
       certFile
 
@@ -148,6 +149,7 @@ final class Openssl(dir: Path):
   def generateCertWithPrivateKey(
     name: String,
     distinguishedName: String,
+    days: Option[Int] = None,
     notBefore: Option[Timestamp] = None,
     notAfter: Option[Timestamp] = None)
   : Checked[CertWithPrivateKey] =
@@ -155,7 +157,7 @@ final class Openssl(dir: Path):
     val certFile = dir / s"$name.certificate.pem"
 
     opensslReq(distinguishedName, privateFile, certFile, ca = false,
-      notBefore = notBefore, notAfter = notAfter)
+      days = days, notBefore = notBefore, notAfter = notAfter)
 
     val p12File = dir / s"$name.certificate.p12"
     runProcess:
@@ -169,6 +171,7 @@ final class Openssl(dir: Path):
       CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray, p12File)
 
   private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean,
+    days: Option[Int] = None,
     notBefore: Option[Timestamp] = None,
     notAfter: Option[Timestamp] = None) =
     runProcess:
@@ -177,6 +180,7 @@ final class Openssl(dir: Path):
         s"-keyout ${quote(privateFile)} " +
         s"-out ${quote(certFile)} " +
         (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}")
+        + days.fold("")(o => s" -days $o")
         // TODO Doesn't work with Almalinux 10:
         + notBefore.fold(""): ts =>
           s" -not_before ${toTimestampString(ts)}"

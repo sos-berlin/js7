@@ -18,7 +18,7 @@ final class X509CertTest extends OurAsyncTestSuite:
     withTemporaryDirectory("X509CertTest-"): dir =>
       val privateKeyFile = dir / "signer.key"
       val certificateFile = dir / "signer.crt"
-      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2  -nodes -subj '/L=Berlin/CN=TESTER' " +
+      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 1 -nodes -subj '/L=Berlin/CN=TESTER' " +
         s"-keyout '$privateKeyFile' -out '$certificateFile'")
       val cert = X509Cert.fromPem(certificateFile.contentString, Some(Timestamp.now)).orThrow
       assert(cert.signerId == SignerId("CN=TESTER, L=Berlin"))

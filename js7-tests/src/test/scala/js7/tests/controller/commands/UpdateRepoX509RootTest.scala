@@ -30,7 +30,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
   //override protected def verifier = verifier_
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")
   private lazy val openssl = new Openssl(workDir)
-  private lazy val root = new openssl.Root("Root")
+  private lazy val root = new openssl.Root("Root", days = 1)
 
   protected override def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
@@ -88,7 +88,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
     val itemFile = workDir / "workflow.json"
     val item: SignableItem = workflow.withVersion(v4)
     itemFile := item.asJson
-    val alienRoot = new openssl.Root("ALIEN-ROOT")
+    val alienRoot = new openssl.Root("ALIEN-ROOT", days = 1)
     val alienSigner = new alienRoot.Signer("ALIEN")
     val alienSignatureFile = alienSigner.signFile(itemFile)
     val alienSignedString = SignedString(

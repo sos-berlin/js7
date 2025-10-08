@@ -12,14 +12,15 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.CatsBlocking
 import js7.base.utils.CatsBlocking.BlockingIOResource
+import js7.base.utils.{CatsBlocking, Missing}
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -37,7 +38,7 @@ import js7.tests.ExpiredSignatureCertificateTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.TimeoutException
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 final class ExpiredSignatureCertificateTest extends OurTestSuite:
 
@@ -50,44 +51,80 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
 
   private val nextVersionId = Iterator.from(1).map(i => VersionId(i.toString))
 
-  "All clocks are between notBefore and notAfter" in:
-    val now = ts"2050-10-01T12:00:00Z"
-    val Right(events) = runMyTest(
-      controllerTS = now, directorTS = now, bareSubagentTS = now,
-      notBefore = now - 1.s, notAfter = now + 1.s): @unchecked
-    assert(events.contains(OrderFinished()))
+  if isMac then
+    // Requires macOS Homebrew openssl //
+    "openssl -not_before= and -not_after=" - {
+      "All clocks are between notBefore and notAfter" in:
+        val now = ts"2050-10-01T12:00:00Z"
+        val Right(events) = runMyTest(
+          controllerTS = now, directorTS = now, bareSubagentTS = now,
+          notBefore = now - 1.s, notAfter = now + 1.s): @unchecked
+        assert(events.contains(OrderFinished()))
 
-  "Clock of Controller is after notAfter" in:
-    val now = ts"2050-10-01T12:00:00Z"
-    val checked = runMyTest(
-      controllerTS = now + 2.s, directorTS = now, bareSubagentTS = now,
-      notBefore = now - 1.s, notAfter = now + 1.s)
-    assert(checked == Left(Problem("The signature's SignerId is unknown: CN=SIGNER")))
+      "Clock of Controller is after notAfter" in:
+        val now = ts"2050-10-01T12:00:00Z"
+        val checked = runMyTest(
+          controllerTS = now + 2.s, directorTS = now, bareSubagentTS = now,
+          notBefore = now - 1.s, notAfter = now + 1.s)
+        assert(checked == Left(Problem("The signature's SignerId is unknown: CN=SIGNER")))
 
-  "Clock of Director is after notAfter" in:
-    val now = ts"2050-10-01T12:00:00Z"
-    // TODO Timeout, because Controller doesn't check failed AgentCommand.AttachSignedItem
-    //  nor AgentCommand.AttachOrder, and the order freezes in Attaching.
-    intercept[TimeoutException]:
-      runMyTest(
-        controllerTS = now, directorTS = now + 2.s, bareSubagentTS = now,
-        notBefore = now - 1.s, notAfter = now + 1.s,
-        timeout = 5.s)
+      "Clock of Director is after notAfter" in:
+        val now = ts"2050-10-01T12:00:00Z"
+        // TODO Timeout, because Controller doesn't check failed AgentCommand.AttachSignedItem
+        //  nor AgentCommand.AttachOrder, and the order freezes in Attaching.
+        intercept[TimeoutException]:
+          runMyTest(
+            controllerTS = now, directorTS = now + 2.s, bareSubagentTS = now,
+            notBefore = now - 1.s, notAfter = now + 1.s,
+            timeout = 5.s)
 
-  "Clock of bare Subagent is after notAfter" in:
-    val now = ts"2050-10-01T12:00:00Z"
-    val Right(events) = runMyTest(
-      controllerTS = now, directorTS = now, bareSubagentTS = now + 2.s,
-      notBefore = now - 1.s, notAfter = now + 1.s): @unchecked
-    assert(events.contains(OrderProcessed(OrderOutcome.Disrupted:
-      Problem("The signature's SignerId is unknown: CN=SIGNER"))))
+      "Clock of bare Subagent is after notAfter" in:
+        val now = ts"2050-10-01T12:00:00Z"
+        val Right(events) = runMyTest(
+          controllerTS = now, directorTS = now, bareSubagentTS = now + 2.s,
+          notBefore = now - 1.s, notAfter = now + 1.s): @unchecked
+        assert(events.contains(OrderProcessed(OrderOutcome.Disrupted:
+          Problem("The signature's SignerId is unknown: CN=SIGNER"))))
+    }
+  end if
+
+  "openssl -days=1" - {
+    "Not expired" in:
+      val now = Timestamp.now + 1.minute
+      val Right(events) = runMyTest(
+        controllerTS = now, directorTS = now, bareSubagentTS = now, days = 1): @unchecked
+      assert(events.contains(OrderFinished()))
+
+    "Clock of Controller is after certificate's expiry" in:
+      val now = Timestamp.now + 1.minute
+      val checked = runMyTest(
+        controllerTS = now + 2.days, directorTS = now, bareSubagentTS = now, days = 1)
+      assert(checked == Left(Problem("The signature's SignerId is unknown: CN=SIGNER")))
+
+    "Clock of Director is after certificate's expiry, Order stalls" in:
+      val now = Timestamp.now + 1.minute
+      // TODO Timeout, because Controller doesn't check failed AgentCommand.AttachSignedItem
+      //  nor AgentCommand.AttachOrder, and the order freezes in Attaching.
+      intercept[TimeoutException]:
+        runMyTest(
+          controllerTS = now, directorTS = now + 2.days, bareSubagentTS = now, days = 1,
+          timeout = 5.s)
+
+    "Clock of bare Subagent is after certificate's expiry" in:
+      val now = Timestamp.now + 1.minute
+      val Right(events) = runMyTest(
+        controllerTS = now, directorTS = now, bareSubagentTS = now + 2.days, days = 1): @unchecked
+      assert(events.contains(OrderProcessed(OrderOutcome.Disrupted:
+        Problem("The signature's SignerId is unknown: CN=SIGNER"))))
+  }
 
   private def runMyTest(
     controllerTS: Timestamp,
     directorTS: Timestamp,
     bareSubagentTS: Timestamp,
-    notBefore: Timestamp,
-    notAfter: Timestamp,
+    days: Int | Missing = Missing,
+    notBefore: Timestamp | Missing = Missing,
+    notAfter: Timestamp | Missing = Missing,
     timeout: FiniteDuration = 99.s
   ): Checked[Seq[OrderEvent]] =
     val now = ts"2050-10-01T12:00:00Z"
@@ -104,8 +141,9 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
             """
         ).blockingUse(timeout): bareSubagentEnv =>
           val aCertAndKey = Openssl(workDir).generateCertWithPrivateKey("TEST", s"/$aSignerId",
-              notBefore = Some(notBefore),
-              notAfter = Some(notAfter))
+              days = days.toOption,
+              notBefore = notBefore.toOption,
+              notAfter = notAfter.toOption)
             .orThrow
           val itemSigner = ItemSigner(
             X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow,

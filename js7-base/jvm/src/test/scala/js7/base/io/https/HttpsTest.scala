@@ -54,7 +54,7 @@ final class HttpsTest extends OurTestSuite:
 
   "Read PKCS #12" in:
     withTemporaryDirectory("HttpsTest-") { dir =>
-      val cmd = s"$openssl req -batch -x509 -newkey rsa:1024 -days 2 -nodes -subj '/CN=localhost' " +
+      val cmd = s"$openssl req -batch -x509 -newkey rsa:1024 -days 1 -nodes -subj '/CN=localhost' " +
         s"-out '$dir/TEST.crt' -keyout '$dir/TEST.key'"
       val rc = cmd.!(nullLogger)
       assert(rc == 0)
