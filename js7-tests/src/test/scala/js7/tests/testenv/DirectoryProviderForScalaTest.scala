@@ -15,6 +15,7 @@ import js7.controller.RunningController
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentItem
+import js7.subagent.Subagent
 import org.jetbrains.annotations.TestOnly
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
@@ -65,6 +66,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, H
   protected def controllerTestWiring: RunningController.TestWiring =
     RunningController.TestWiring.empty
   protected def agentTestWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty
+  protected def subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty
   protected lazy val controllerHttpPort = findFreeTcpPort().some
   protected lazy val controllerHttpsPort = none[Int]
   protected lazy val controllerAdmission = Admission(

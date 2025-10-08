@@ -2,7 +2,6 @@ package js7.tests
 
 import java.time.DayOfWeek.{FRIDAY, THURSDAY}
 import java.time.{LocalTime, ZoneId}
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -22,6 +21,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.tests.AdmissionTimeSkipJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -47,8 +47,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   "Skip job if it has no admission time for order date" - {
     "Single job" in:

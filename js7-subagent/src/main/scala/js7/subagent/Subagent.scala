@@ -7,8 +7,8 @@ import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.catsutils.Environment
-import js7.base.catsutils.Environment.environment
+import js7.base.catsutils.{Environment, OurIORuntimeRegister}
+import js7.base.catsutils.Environment.{TaggedResource, environment}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -24,11 +24,11 @@ import js7.base.service.{MainService, Service}
 import js7.base.stream.Numbered
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
-import js7.base.time.{AlarmClock, Timestamp}
+import js7.base.time.{AlarmClock, Timestamp, WallClock}
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.flattenToString
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination, ScalaUtils, SetOnce}
+import js7.base.utils.{Allocated, Missing, ProgramTermination, ScalaUtils, SetOnce}
 import js7.base.web.Uri
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.SessionRegister
@@ -208,7 +208,7 @@ extends MainService, Service.StoppableByRequest:
 object Subagent:
   private val logger = Logger[this.type]
 
-  def service(conf: SubagentConf, testEventBus: StandardEventBus[Any])
+  def service(conf: SubagentConf, testWiring: TestWiring)
     (using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     import conf.config
@@ -220,7 +220,9 @@ object Subagent:
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
 
     logger.debugResource:
+      import testWiring.testEventBus
       for
+        _ <- OurIORuntimeRegister.toEnvironment(ioRuntime).registerMultiple(testWiring.envResources)
         _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
         pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
         actorSystem <- Pekkos.actorSystemResource(conf.name, config)
@@ -239,7 +241,8 @@ object Subagent:
         blockingInternalJobEC <-
           unlimitedExecutionContextResource[IO](
             s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
-        clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
+        clock <- Environment.getOrRegister[AlarmClock]:
+          AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
         jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock, pidFile).orThrow
         signatureVerifier <- DirectoryWatchingSignatureVerifier.Provider(clock, config)
           .prepare.orThrow
@@ -281,9 +284,22 @@ object Subagent:
   case object ItemSignatureKeysUpdated
 
 
-  final case class TestWiring(
-    testEventBus: StandardEventBus[Any] = StandardEventBus(),
-    envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)
+  final case class TestWiring private(
+    testEventBus: StandardEventBus[Any],
+    envResources: Seq[Environment.TaggedResource[IO, ?]])
 
   object TestWiring:
     val empty: TestWiring = TestWiring()
+
+    def apply(
+      testEventBus: StandardEventBus[Any] = StandardEventBus(),
+      envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil,
+      clock: AlarmClock | Missing = Missing)
+    : TestWiring =
+      new TestWiring(
+        testEventBus,
+        envResources ++
+          clock.toOption.toSeq.flatMap: alarmClock =>
+            Seq(
+              TaggedResource.eval(IO.pure[AlarmClock](alarmClock)),
+              TaggedResource.eval(IO.pure[WallClock](alarmClock))))

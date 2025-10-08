@@ -2,7 +2,6 @@ package js7.tests
 
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneId}
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -25,6 +24,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AddOrder, Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.subagent.jobs.TestJob
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.JobAdmissionTimeTest.*
@@ -50,8 +50,8 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
   private given zoneId: ZoneId = JobAdmissionTimeTest.zoneId
   private given clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   "Sunday at start of daylight-saving time" - {
     "Wait for start of permission period" in:

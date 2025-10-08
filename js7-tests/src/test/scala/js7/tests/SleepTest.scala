@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.effect.unsafe.IORuntime
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
@@ -19,6 +18,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Sleep
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.tests.SleepTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -40,8 +40,8 @@ final class SleepTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   protected def agentPaths = Seq(agentPath)
   protected def items = Nil

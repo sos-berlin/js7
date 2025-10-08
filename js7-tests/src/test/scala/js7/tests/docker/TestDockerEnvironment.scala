@@ -229,7 +229,7 @@ object TestDockerEnvironment:
             Configs.loadSecretResource(javaResource(s"${subagentId.string}/config/private/private.conf")),
             config"js7.web.server.auth.loopback-is-public = true"),
           isClusterBackup = subagentIsClusterBackup(subagentId)
-        ).testAgentResource)
+        ).testAgentResource())
       .flatTap: _ =>
         Resource.eval(IO:
           provideSubagentFiles(subagentId))

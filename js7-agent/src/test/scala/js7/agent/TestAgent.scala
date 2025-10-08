@@ -30,6 +30,7 @@ import js7.base.web.Uri
 import js7.common.system.startup.ServiceMain
 import js7.core.command.CommandMeta
 import js7.journal.watch.StrictEventWatch
+import js7.subagent.Subagent
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
@@ -151,6 +152,7 @@ object TestAgent:
   def start(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty,
     terminateProcessesWith: Option[ProcessSignal] = None)
   : IO[TestAgent] =
     CorrelId.bindNew:
@@ -160,7 +162,7 @@ object TestAgent:
             .registerMultiple(testWiring.envResources)
         .flatMap: ioRuntime =>
           given IORuntime = ioRuntime
-          RunningAgent.withSubagent(conf, testWiring).evalOn(ioRuntime.compute)
+          RunningAgent.withSubagent(conf, testWiring, subagentTestWiring).evalOn(ioRuntime.compute)
         .toAllocated
         .map(new TestAgent(_, terminateProcessesWith))
 
@@ -187,10 +189,11 @@ object TestAgent:
   def resource(
     conf: AgentConfiguration,
     terminateProcessesWith: Option[ProcessSignal] = None,
-    testWiring: TestWiring = TestWiring.empty)
+    testWiring: TestWiring = TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[TestAgent] =
-    RunningAgent.withSubagent(conf, testWiring)
+    RunningAgent.withSubagent(conf, testWiring, subagentTestWiring)
       .flatMap: agent =>
         Resource.makeCase(
           acquire = IO(new TestAgent(new Allocated(agent, agent.terminate().void))))(

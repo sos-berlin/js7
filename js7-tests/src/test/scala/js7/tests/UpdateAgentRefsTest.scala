@@ -114,7 +114,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
   }
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in:
-    agentEnv.testAgentResource.useSync(99.s): agent =>
+    agentEnv.testAgentResource().useSync(99.s): agent =>
       val eventId = eventWatch.lastAddedEventId
       val versionId = VersionId("AGAIN")
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))

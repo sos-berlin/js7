@@ -1,6 +1,6 @@
 package js7.agent
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import com.typesafe.config.ConfigUtil
@@ -228,27 +228,30 @@ object RunningAgent:
 
   def withSubagent(
     conf: AgentConfiguration,
-    testWiring: TestWiring = TestWiring.empty)
+    testWiring: TestWiring = TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
     for
-      subagent <- subagentService(conf)
+      subagent <- subagentService(conf, subagentTestWiring)
       director <- service(subagent, conf, testWiring)
     yield
       director
 
   def restartableDirector(
     conf: AgentConfiguration,
-    testWiring: TestWiring = TestWiring.empty)
+    testWiring: TestWiring = TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RestartableDirector] =
     for
-      subagent <- subagentService(conf)
+      subagent <- subagentService(conf, subagentTestWiring)
       director <- RestartableDirector.service(subagent, conf, testWiring)
     yield
       director
 
-  private def subagentService(conf: AgentConfiguration)(using ioRuntime: IORuntime)
+  private def subagentService(conf: AgentConfiguration, testWiring: Subagent.TestWiring)
+    (using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     Resource.suspend:
       IO:
@@ -258,7 +261,7 @@ object RunningAgent:
             if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
             conf.createDirectories()
             conf.journalLocation.deleteJournalIfMarked().orThrow)
-          subagent <- Subagent.service(conf.subagentConf, testEventBus)
+          subagent <- Subagent.service(conf.subagentConf, testWiring)
         yield
           subagent
     .evalOn(ioRuntime.compute)
@@ -274,20 +277,19 @@ object RunningAgent:
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
       val forDirector = subagent.forDirector
-      val clock = testWiring.alarmClock getOrElse:
-        AlarmClock(
-          Some(config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration)
-        )(using ioRuntime.scheduler)
-      val eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
-      implicit val nodeNameToPassword: NodeNameToPassword[AgentState] =
+      given NodeNameToPassword[AgentState] =
         nodeName =>
           Right(config.optionAs[SecretString]:
             "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string))
 
       val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       for
-        _ <- env.registerPure[IO, AlarmClock](clock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, WallClock](clock, ignoreDuplicate = true)
+        clock <- Environment.getOrRegister[AlarmClock]:
+          given Scheduler = ioRuntime.scheduler
+          AlarmClock.resource(
+            Some(config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration))
+        _ <- Environment.getOrRegister[WallClock](Resource.pure(clock))
+        eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
         _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
         //_ <- Environment.registerPure(testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]])
         clusterNode <- ClusterNode.recoveringResource[AgentState](
@@ -336,7 +338,6 @@ object RunningAgent:
 
 
   final case class TestWiring(
-    alarmClock: Option[AlarmClock] = None,
     eventIdGenerator: Option[EventIdGenerator] = None,
     commandHandler: Option[CommandHandler] = None,
     envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)

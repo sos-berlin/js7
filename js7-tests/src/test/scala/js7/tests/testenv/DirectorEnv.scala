@@ -18,6 +18,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.data.JournalLocation
+import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
 import scala.annotation.unused
 
@@ -112,12 +113,17 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
     yield
       agent
 
-  def testAgentResource: ResourceIO[TestAgent] =
+  def testAgentResource(
+    testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
+  : ResourceIO[TestAgent] =
     for
       ioRuntime <- ioRuntimeResource
       testAgent <-
         given IORuntime = ioRuntime
-        TestAgent.resource(agentConf).evalOn(ioRuntime.compute)
+        TestAgent.resource(
+            agentConf, testWiring = testWiring, subagentTestWiring = subagentTestWiring)
+          .evalOn(ioRuntime.compute)
     yield
       testAgent
 

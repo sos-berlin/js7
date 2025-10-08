@@ -2,7 +2,6 @@ package js7.tests
 
 import fs2.Stream
 import java.time.ZoneId
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
@@ -24,6 +23,7 @@ import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.tests.CalendarTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -50,8 +50,8 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   "Reject invalid Calendar" in:
     // Falsches Datumsformat

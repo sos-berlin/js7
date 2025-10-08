@@ -76,7 +76,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
     controller.awaitNextKey[SubagentShutdown](subagentId)
     controller.awaitNextKey[AgentShutDown](agentPath)
 
-    agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
+    agentEnv.testAgentResource().useSync(99.s): restartedAgent =>
       controller.awaitNextKey[OrderProcessingStarted](simpleOrderId)
       controller.awaitNextKey[OrderStdoutWritten](simpleOrderId)
       execCmd:

@@ -74,6 +74,8 @@ final class DirectoryProvider(
   agentPorts: Seq[Int] = Nil,
   directorEnvToAgentRef: DirectorEnv => AgentRef =
     a => AgentRef(a.agentPath, Vector(a.localSubagentId)),
+  agentTestWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty,
+  subagentTestWiring: Subagent.TestWiring = Subagent.TestWiring.empty,
   isBackup: Boolean = false,
   primarySubagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
@@ -279,7 +281,7 @@ extends HasCloser:
   : A =
     val agentAllocatedSeq = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
-      .map(_.testAgentResource)
+      .map(_.testAgentResource(agentTestWiring, subagentTestWiring))
       .parTraverse:
         _.toAllocated
       .await(99.s)
@@ -298,17 +300,22 @@ extends HasCloser:
     .await(99.s)
     result
 
-  def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+  def startAgents(
+    testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = subagentTestWiring)
   : IO[Seq[TestAgent]] =
-    agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
+    agentEnvs.parTraverse: a =>
+      startAgent(a.agentPath, testWiring, subagentTestWiring)
 
   def startAgent(
     agentPath: AgentPath,
-    testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+    testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty,
+    subagentTestWiring: Subagent.TestWiring = subagentTestWiring)
   : IO[TestAgent] =
     TestAgent.start(
       agentToEnv(agentPath).agentConf,
-      testWiring)
+      testWiring,
+      subagentTestWiring)
 
   def startBareSubagents(): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
@@ -383,7 +390,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
-    testWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
+    testWiring: Subagent.TestWiring = subagentTestWiring)
   : ResourceIO[Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
@@ -391,7 +398,7 @@ extends HasCloser:
         suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys,
         extraConfig = config)
-      subagent <- env.subagentResource(testWiring.envResources)
+      subagent <- env.subagentResource(testWiring)
     yield
       subagent
 

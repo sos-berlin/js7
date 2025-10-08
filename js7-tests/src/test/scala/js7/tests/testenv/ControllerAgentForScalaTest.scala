@@ -48,8 +48,8 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   protected given IORuntime = ioRuntime
 
-  protected final lazy val agents: Seq[TestAgent] = directoryProvider.startAgents(agentTestWiring)
-    .await(99.s)
+  protected final lazy val agents: Seq[TestAgent] =
+    directoryProvider.startAgents(agentTestWiring, subagentTestWiring).await(99.s)
   protected final lazy val agent: TestAgent = agents.head
 
   protected final lazy val idToAllocatedSubagent: Map[SubagentId, Allocated[IO, Subagent]] =

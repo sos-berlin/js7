@@ -1,7 +1,6 @@
 package js7.tests
 
 import java.time.ZoneId
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
@@ -17,6 +16,7 @@ import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.tests.RetryDelayTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.TimeoutException
@@ -43,8 +43,8 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   "Retry with delay" in:
     val workflow = Workflow(

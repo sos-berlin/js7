@@ -3,7 +3,6 @@ package js7.tests
 import cats.syntax.option.*
 import fs2.Stream
 import java.time.ZoneId
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -30,6 +29,7 @@ import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, I
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.subagent.Subagent
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ControlWorkflowPathSkipTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
@@ -58,8 +58,8 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
 
   "Skip the only Job" in:

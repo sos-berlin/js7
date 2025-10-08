@@ -44,16 +44,16 @@ final class AgentShutdownAndRecoupleClusterTest extends ControllerClusterTester:
 
         directorEnvResource(0).useSync(99.s): primaryEnv =>
           directorEnvResource(1).useSync(99.s): backupEnv =>
-            backupEnv.testAgentResource.useSync(99.s): backupDirector =>
-              primaryEnv.testAgentResource.useSync(99.s): primaryDirector =>
+            backupEnv.testAgentResource().useSync(99.s): backupDirector =>
+              primaryEnv.testAgentResource().useSync(99.s): primaryDirector =>
                 primaryDirector.eventWatch.awaitNext[ClusterNodesAppointed]()
                 primaryDirector.eventWatch.awaitNext[ClusterWatchRegistered]()
                 primaryDirector.eventWatch.awaitNext[ClusterCoupled]()
                 primaryDirector.terminate().await(99.s)
                 backupDirector.terminate().await(99.s)
 
-            backupEnv.testAgentResource.useSync(99.s): backupDirector =>
-              primaryEnv.testAgentResource.useSync(99.s): primaryDirector =>
+            backupEnv.testAgentResource().useSync(99.s): backupDirector =>
+              primaryEnv.testAgentResource().useSync(99.s): primaryDirector =>
                 primaryDirector.eventWatch.awaitNext[ClusterActiveNodeShutDown]()
                 primaryDirector.eventWatch.awaitNext[ClusterCoupled]()
 

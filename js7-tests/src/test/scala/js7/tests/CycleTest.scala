@@ -5,7 +5,6 @@ import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.time.{LocalDateTime, LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
-import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
@@ -35,6 +34,7 @@ import js7.data.workflow.instructions.{Break, Cycle, EmptyInstruction, Fail, For
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.Subagent
 import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -67,8 +67,8 @@ with ControllerAgentForScalaTest with ScheduleTester:
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    alarmClock = Some(clock))
+  override protected def subagentTestWiring = Subagent.TestWiring(
+    clock = clock)
 
   private implicit val zone: ZoneId = CycleTest.zone
 
