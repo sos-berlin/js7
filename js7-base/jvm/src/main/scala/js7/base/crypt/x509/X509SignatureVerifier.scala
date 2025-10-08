@@ -46,7 +46,7 @@ extends SignatureVerifier:
 
   def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] =
     signature.signerIdOrCertificate match
-      case Left(signerId) =>
+      case signerId: SignerId =>
         DistinguishedName.checked(signerId.string)
           .flatMap: dn =>
             signerDNToTrustedCertificate.rightOr(dn,
@@ -55,7 +55,7 @@ extends SignatureVerifier:
             verifySignature(document, signature, trustedCertificate)
               .map(_ :: Nil)
 
-      case Right(signerCert) =>
+      case signerCert: X509Cert =>
         catchNonFatalFlatten:
           verifySignature(document, signature, signerCert).flatMap: signerId =>
             // Each of the installed and not expired trusted certificates must match

@@ -77,7 +77,7 @@ final class X509Test extends OurTestSuite:
       val verifier = x509SignatureVerifierProvider.checked(
         Seq(Labeled(certificateBytes, "X509Test")),
         origin = certificateFile.toString).orThrow
-      val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
+      val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, signerId)
       assert(verifier.verifyString(documentFile.contentString, signature) ==
         Right(SignerId("CN=SIGNER") :: Nil))
       assert(verifier.verifyString(documentFile.contentString + "X", signature) ==
@@ -207,7 +207,7 @@ object X509Test:
     verified
 
   private def toSignatureWithSignerId(signatureFile: Path, signerId: SignerId): X509Signature =
-    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
+    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, signerId)
 
   private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path)
   : X509Signature =
@@ -215,7 +215,7 @@ object X509Test:
       signersCertificateFile.contentString,
       checkExpiry = Some(Timestamp.now)).orThrow
     logger.info(cert.toLongString)
-    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
+    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, cert)
 
   /** Reverse Openssl's base64 encoding. */
   private def toSignatureBytes(signatureFile: Path) =

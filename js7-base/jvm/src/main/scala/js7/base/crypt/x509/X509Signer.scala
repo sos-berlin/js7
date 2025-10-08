@@ -27,7 +27,7 @@ extends DocumentSigner:
     val signature = Signature.getInstance(algorithm.string);
     signature.initSign(x509PrivateKey)
     signature.update(message.unsafeArray)
-    X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm, Left(signerId))
+    X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm, signerId)
 
   override def toString = s"X509Signer($x509PrivateKey)"
 
