@@ -402,7 +402,7 @@ extends HasCloser:
     yield
       subagent
 
-  private def bareSubagentEnvResource(
+  def bareSubagentEnvResource(
     subagentItem: SubagentItem,
     director: SubagentId,
     suffix: String = "",
