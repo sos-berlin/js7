@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import fs2.Stream
 import izumi.reflect.Tag
@@ -30,15 +31,19 @@ import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{EventId, EventRequest, Stamped}
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation
+import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.JournalActor
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.tests.testenv.TestController.*
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 final class TestController(allocated: Allocated[IO, RunningController], admission: Admission):
@@ -148,9 +153,8 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
     import runningController.ioRuntime
     runningController.addOrder(order).await(99.s).orThrow
 
-  def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] =
+  def runOrder(order: FreshOrder, timeout: FiniteDuration = 99.s): Seq[Stamped[OrderEvent]] =
     import runningController.ioRuntime
-    val timeout = 99.s
     logger.debugIO("runOrder", order.id)(IO.defer {
       val eventId = eventWatch.lastAddedEventId
       addOrderBlocking(order)
@@ -168,6 +172,18 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
         .toVector
         .logWhenItTakesLonger(s"runOrder(${order.id})")
     }).await(timeout)
+
+  def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*)(using IORuntime): Unit =
+    val eventId = lastAddedEventId
+    val controllerState = this.controllerState()
+    api.updateItems:
+      Stream.iterable(subagentIdToEnable)
+        .map: (subagentId, enable) =>
+          val subagentItem = controllerState.keyToItem(SubagentItem)(subagentId)
+          AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
+    .await(99.s).orThrow
+    for subagentId <- subagentIdToEnable.map(_._1) do
+      awaitNext[ItemAttached](_.event.key == subagentId, after = eventId)
 
   def untilReady: IO[Unit] =
     runningController.untilReady

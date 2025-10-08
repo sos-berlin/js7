@@ -7,7 +7,6 @@ import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
-import fs2.Stream
 import izumi.reflect.Tag
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
@@ -25,8 +24,6 @@ import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
@@ -165,16 +162,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
       .allocated.await(99.s)
 
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit =
-    val eventId = eventWatch.lastAddedEventId
-    controller.api
-      .updateItems:
-        Stream.iterable(subagentIdToEnable)
-          .map: (subagentId, enable) =>
-            val subagentItem = controllerState.keyToItem(SubagentItem)(subagentId)
-            AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
-      .await(99.s).orThrow
-    for subagentId <- subagentIdToEnable.map(_._1) do
-      eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
+    controller.enableSubagents(subagentIdToEnable*)
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,
