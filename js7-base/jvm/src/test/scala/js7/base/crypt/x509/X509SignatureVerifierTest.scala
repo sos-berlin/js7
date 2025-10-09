@@ -111,4 +111,4 @@ final class X509SignatureVerifierTest extends OurTestSuite:
 
 
 object X509SignatureVerifierTest:
-  private val ExpectedDefaultAllowExpired = false
+  private val ExpectedDefaultAllowExpired = true

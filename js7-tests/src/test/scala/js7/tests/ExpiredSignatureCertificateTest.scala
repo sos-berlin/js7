@@ -348,7 +348,7 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
 object ExpiredSignatureCertificateTest:
 
   private val logger = Logger[this.type]
-  private val ExpectedDefaultAllowExpired = false
+  private val ExpectedDefaultAllowExpired = true
   private val agentPath = AgentPath("AGENT")
   private val directorsSubagentId = toLocalSubagentId(agentPath)
   private val aSignerId = SignerId("CN=SIGNER")
