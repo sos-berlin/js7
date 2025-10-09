@@ -55,7 +55,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
 
   "UpdateRepo with openssl-generated root certificate" - {
     val v2 = VersionId("2")
-    lazy val signer = new root.Signer("CERTIFIED-SIGNER")
+    lazy val signer = root.Signer("CERTIFIED-SIGNER", days = 1)
     lazy val itemFile = workDir / "workflow.json"
     lazy val signatureFile = signer.signFile(itemFile)
 
@@ -89,7 +89,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
     val item: SignableItem = workflow.withVersion(v4)
     itemFile := item.asJson
     val alienRoot = new openssl.Root("ALIEN-ROOT", days = 1)
-    val alienSigner = new alienRoot.Signer("ALIEN")
+    val alienSigner = alienRoot.Signer("ALIEN", days = 1)
     val alienSignatureFile = alienSigner.signFile(itemFile)
     val alienSignedString = SignedString(
       itemFile.contentString,

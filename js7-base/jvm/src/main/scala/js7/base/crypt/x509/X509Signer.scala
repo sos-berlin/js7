@@ -16,20 +16,25 @@ import js7.base.utils.Labeled
 final class X509Signer private(
   x509PrivateKey: PrivateKey,
   val algorithm: X509Algorithm,
-  val signerId: SignerId)
+  val signerIdOrCertificate: SignerId | X509Cert)
 extends DocumentSigner:
 
   protected type MySignature = X509Signature
 
-  def companion: DocumentSigner.Companion {type MySignature = X509Signature} = X509Signer
+  //def companion: DocumentSigner.Companion {type MySignature = X509Signature} = X509Signer
 
   def sign(message: ByteArray): X509Signature =
     val signature = Signature.getInstance(algorithm.string);
     signature.initSign(x509PrivateKey)
     signature.update(message.unsafeArray)
-    X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm, signerId)
+    X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm, signerIdOrCertificate)
 
-  override def toString = s"X509Signer($x509PrivateKey)"
+  override def toLongString = s"X509Signer(${
+    signerIdOrCertificate match
+      case o: SignerId => o
+      case o: X509Cert => o.toLongString})"
+
+  override def toString = s"X509Signer($signerIdOrCertificate)"
 
 
 object X509Signer extends DocumentSigner.Companion:
@@ -46,15 +51,19 @@ object X509Signer extends DocumentSigner.Companion:
     else
       checked(privateKey, SHA512withRSA, SignerId("???"))
 
-  def checked(privateKey: ByteArray, algorithm: X509Algorithm, signerId: SignerId): Checked[X509Signer] =
+  def checked(
+    privateKey: ByteArray,
+    algorithm: X509Algorithm,
+    signerIdOrCertificate: SignerId | X509Cert)
+  : Checked[X509Signer] =
     Checked.catchNonFatal {
       KeyFactory.getInstance("RSA")
         .generatePrivate(new PKCS8EncodedKeySpec(privateKey.toArray))
-    }.map(new X509Signer(_, algorithm, signerId))
+    }.map(new X509Signer(_, algorithm, signerIdOrCertificate))
 
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
     newSignerAndVerifier(
-      SignerId("CN=SIGNER"),
+      SignerId.mayThrow("CN=SIGNER"),
       "forTest",
       clock = WallClock,
       config = ConfigFactory.empty

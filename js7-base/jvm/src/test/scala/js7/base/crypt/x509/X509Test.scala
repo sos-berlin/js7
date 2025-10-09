@@ -39,7 +39,7 @@ final class X509Test extends OurTestSuite:
     val signature = signer.signString(document)
     val signerIds = verifier.verify(SignedString(document, signature.toGenericSignature)).orThrow
     assert(signerIds == SignerId("CN=SIGNER") :: Nil)
-    assert(signer.signerId == SignerId("CN=SIGNER"))
+    assert(signer.signerIdOrCertificate == SignerId("CN=SIGNER"))
 
     assert(verifier.verify(SignedString(document + "X", signature.toGenericSignature)) ==
       Left(TamperedWithSignedMessageProblem))
@@ -100,7 +100,7 @@ final class X509Test extends OurTestSuite:
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
 
-      val signer = ca.Signer("SIGNER")
+      val signer = ca.Signer("SIGNER", days = 1)
       val signatureFile = signer.signFile(documentFile)
 
       assert:
@@ -115,7 +115,7 @@ final class X509Test extends OurTestSuite:
           checked.left.toOption.get.toString.startsWith:
             "java.security.cert.CertificateExpiredException: NotAfter: "
 
-      val alienSigner = ca.Signer("ALIEN-SIGNER")
+      val alienSigner = ca.Signer("ALIEN-SIGNER", days = 1)
       val alienSignatureFile = alienSigner.signFile(documentFile)
       assert:
         verify(signer.certificateFile, documentFile,
@@ -144,7 +144,7 @@ final class X509Test extends OurTestSuite:
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
 
-      val signer = ca.Signer("SIGNER")
+      val signer = ca.Signer("SIGNER", days = 1)
       val signatureFile = signer.signFile(documentFile)
 
       val cert = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
@@ -157,7 +157,7 @@ final class X509Test extends OurTestSuite:
       withTemporaryDirectory("X509Test-"): dir =>
         val openssl = Openssl(dir)
         val ca = openssl.Root("Root", days = 1)
-        val signer = ca.Signer("SIGNER")
+        val signer = ca.Signer("SIGNER", days = 1)
 
         var t = now
         val signedStrings = Stream

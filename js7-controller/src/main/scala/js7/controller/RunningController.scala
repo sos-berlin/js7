@@ -150,10 +150,12 @@ extends MainService, Service.StoppableByRequest:
       .flatMapT(itemUpdater.updateItems)
       .evalOn(ioRuntime.compute)
 
+  @TestOnly
   def updateItemsAsSystemUser(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     sessionRegister.systemUser
       .flatMapT(updateItems(_, operations))
 
+  @TestOnly
   private def updateItems(user: SimpleUser, operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)

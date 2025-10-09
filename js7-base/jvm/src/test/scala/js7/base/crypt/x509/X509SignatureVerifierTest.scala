@@ -3,6 +3,7 @@ package js7.base.crypt.x509
 import com.typesafe.config.ConfigFactory
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.SignerId
+import js7.base.crypt.x509.X509SignatureVerifierTest.*
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isMac
@@ -66,7 +67,7 @@ final class X509SignatureVerifierTest extends OurTestSuite:
 
   "openssl -days=" - {
     "Not expired" in :
-      val ts = Timestamp.now
+      val ts = Timestamp.now + 1.minute
       assert:
         signAndVerifiy(ts, days = 1, allowExpired = false).isRight
       assert:
@@ -83,7 +84,6 @@ final class X509SignatureVerifierTest extends OurTestSuite:
         signAndVerifiy(ts, days = 1, allowExpired = true).isRight
   }
 
-
   private def signAndVerifiy(
     now: Timestamp,
     days: Int | Missing = Missing,
@@ -96,8 +96,8 @@ final class X509SignatureVerifierTest extends OurTestSuite:
       .newSignerAndVerifier(
         signerId, "X509SignatureVerifierTest",
         WallClock.fixed(now),
-        if allowExpired then
-          config"js7.configuration.allow-expired-certificates = yes"
+        if allowExpired != ExpectedDefaultAllowExpired then
+          config"js7.configuration.allow-expired-certificates = $allowExpired"
         else
           ConfigFactory.empty,
         days = days.toOption,
@@ -108,3 +108,7 @@ final class X509SignatureVerifierTest extends OurTestSuite:
         val signature = signer.sign(document)
         val signerIds = verifier.verify(document, signature).orThrow
         assert(signerIds == Seq(signerId))
+
+
+object X509SignatureVerifierTest:
+  private val ExpectedDefaultAllowExpired = false

@@ -9,7 +9,7 @@ trait DocumentSigner:
 
   protected type MySignature <: Signature
 
-  def companion: DocumentSigner.Companion { type MySignature = DocumentSigner.this.MySignature }
+  //def companion: DocumentSigner.Companion { type MySignature = DocumentSigner.this.MySignature }
 
   def sign(document: ByteArray): MySignature
 
@@ -18,6 +18,9 @@ trait DocumentSigner:
 
   final def toSignedString(document:String): SignedString =
     SignedString(document, signString(document).toGenericSignature)
+
+  def toLongString: String =
+    toString
 
 
 object DocumentSigner:

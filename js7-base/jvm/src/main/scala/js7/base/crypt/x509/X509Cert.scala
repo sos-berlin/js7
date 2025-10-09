@@ -9,7 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.problem.Checked.catchNonFatal
+import js7.base.problem.Checked.catchNonFatalDontLog
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
 import js7.base.utils.Nulls.nullToNone
@@ -42,17 +42,13 @@ extends X509CertInterface:
   val notAfter: Timestamp =
     Timestamp.fromJavaUtilDate(getNotAfter)
 
-  def checkExpiry(now: Timestamp): Checked[Unit] =
-    catchNonFatal:
-      x509Certificate.checkValidity(now.toJavaUtilDate)
-
   private def containsCA(strings: java.util.Set[String] | Null) =
     nullToNone(strings).fold(false)(_.contains(MayActAsCA))
 
   def toLongString =
     "X.509 certificate " +
       getSubjectX500Principal + " · " +
-      (isCA ?? "CA, ") +
+      (isCA ?? "CA ") +
       notBefore + "..." + notAfter +
       " fingerprint=" + fingerprint.toHexRaw +
       (getKeyUsage != null) ?? (" keyUsage=" + keyUsageToString(getKeyUsage)) +
@@ -80,10 +76,11 @@ object X509Cert:
       fromByteArray(_, checkExpiry = checkExpiry)
 
   def fromByteArray(byteArray: ByteArray, checkExpiry: Option[Timestamp]): Checked[X509Cert] =
-    catchNonFatal:
+    catchNonFatalDontLog:
       val certificate = CertificateFactory.getInstance("X.509")
         .generateCertificate(byteArray.toInputStream)
         .asInstanceOf[X509Certificate]
+      // TODO Maybe check expiry only later, when the certificate is actually used?
       for ts <- checkExpiry do
         // throws CertificateExpiredException or CertificateNotYetValidException
         certificate.checkValidity(ts.toJavaUtilDate)

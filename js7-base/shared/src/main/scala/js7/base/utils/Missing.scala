@@ -8,6 +8,7 @@ type Missing = Missing.type
 object Missing:
 
   extension [A](underlying: A | Missing)
+    // TODO Use unique names to avoid application to simple A
 
     def toOption: Option[A] =
       underlying match
@@ -33,3 +34,13 @@ object Missing:
       underlying match
         case Missing =>
         case a: A @unchecked => body(a)
+
+    def notMissingOrThrow: A =
+      underlying match
+        case Missing => throw new NoSuchElementException("Missing")
+        case a: A @unchecked => a
+
+    def notMissingOrThrow(name: String): A =
+      underlying match
+        case Missing => throw new NoSuchElementException(s"$name is Missing")
+        case a: A @unchecked => a

@@ -25,27 +25,6 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 final class Openssl(dir: Path):
   // See https://legacy.thomas-leister.de/eine-eigene-openssl-ca-erstellen-und-zertifikate-ausstellen/
 
-  private lazy val systemOpensslCnf: String =
-    val OpensslDir = """OPENSSLDIR: "(.*)"""".r
-
-    val opensslCnf = runProcess(s"$openssl version -a")
-      .split('\n')
-      .collectFirst { case OpensslDir(dir) => dir }
-      .map: dir =>
-        lazy val cygwinOpensslCnf = Paths.get("""c:\cygwin64""") / dir / "openssl.cnf"
-        lazy val winGitOpensslCnf = Paths.get("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
-        if isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf) then
-          cygwinOpensslCnf.contentString
-        else if isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf) then
-          winGitOpensslCnf.contentString
-        else
-          (Paths.get(dir) / "openssl.cnf").contentString
-      .getOrElse:
-        sys.error(s"Missing OPENSSLDIR in output of: $openssl version -a")
-
-    logger.debug(s"Using system openssl.cnf $opensslCnf")
-    opensslCnf
-
   // In openssl 1.1.1i this has already be done, so this will no longer be required !!!
   private lazy val caConstraintFile =
     val f = dir / "openssl-ca.cnf"
@@ -75,19 +54,27 @@ final class Openssl(dir: Path):
     opensslReq(s"/CN=$name", privateKeyFile, certificateFile, ca = !suppressCAContraint,
       days = Some(days))
 
+    val certWithPrivateKey: CertWithPrivateKey =
+      CertWithPrivateKey(
+        privateKey = privateKeyFile.byteArray,
+        certificate = certificateFile.byteArray,
+        p12File = toP12File(name, privateKeyFile = privateKeyFile, certFile = certificateFile))
+
     private def newCertificate(csrFile: Path, name: String): Path =
       val certFile = dir / s"$name.crt"
       runProcess:
         s"$openssl x509 -req" +
           s" -in ${quote(csrFile)}" +
-          s" -CA ${quote(root.certificateFile)}" +
           s" -CAkey ${quote(privateKeyFile)}" +
+          s" -CA ${quote(certificateFile)}" +
           s" -CAcreateserial" +
           s" -days $days -sha512 -out ${quote(certFile)}"
       assertPemFile("CERTIFICATE", certFile)
       certFile
 
-    final class Signer(name: String) extends DocumentSigner:
+    final class Signer(name: String, days: Int) extends DocumentSigner:
+      signerSelf =>
+
       type MySignature = OpensslSignature
       val companion: Signer.type = Signer
       val signerId: SignerId = SignerId.mayThrow(s"CN=$name")
@@ -96,18 +83,20 @@ final class Openssl(dir: Path):
       val certificateFile: Path =
         runProcess:
           s"$openssl genrsa -out ${quote(privateKeyFile)} 1024"
-        val certificateRequestFile = dir / s"$name.csr"
-        runProcess:
-          s"$openssl req -new" +
-            s" -subj '/${signerId.string}'" +
-            s" -key ${quote(privateKeyFile)}" +
-            s" -out ${quote(certificateRequestFile)}"
-        val certFile = root.newCertificate(certificateRequestFile, name)
-        delete(certificateRequestFile)
-        certFile
+        withTemporaryFile(name, ".csr"): certificateRequestFile =>
+          runProcess:
+            s"$openssl req -new" +
+              s" -subj '/${signerId.string}'" +
+              s" -days=$days" +
+              s" -key ${quote(privateKeyFile)}" +
+              s" -out ${quote(certificateRequestFile)}"
+          root.newCertificate(certificateRequestFile, name)
 
-      def certificateString: String =
+      lazy val certificateString: String =
         certificateFile.contentString
+
+      private lazy val cert: X509Cert =
+        X509Cert.fromPem(certificateString, checkExpiry = None).orThrow
 
       def sign(document: ByteArray): OpensslSignature =
         withTemporaryFile("openssl-", ".tmp"): file =>
@@ -115,7 +104,7 @@ final class Openssl(dir: Path):
           val signatureFile = signFile(file)
           val signature = signatureFile.contentString
           delete(signatureFile)
-          OpensslSignature(signature)
+          OpensslSignature(signature, certificateString)
 
       /** Return a signature file (binary). */
       def signFile(documentFile: Path): Path =
@@ -137,6 +126,10 @@ final class Openssl(dir: Path):
         delete(signatureFile)
         base64SignatureFile
 
+      override def toLongString = s"Openssl.Signer(${cert.toLongString})"
+
+      override def toString = s"Openssl.Signer($cert)"
+
     object Signer extends DocumentSigner.Companion:
       protected type MySignature = OpensslSignature
       protected type MyMessageSigner = Signer
@@ -145,6 +138,7 @@ final class Openssl(dir: Path):
 
       def checked(privateKey: ByteArray, password: SecretString): Nothing =
         throw new NotImplementedError
+  end Root
 
   def generateCertWithPrivateKey(
     name: String,
@@ -153,22 +147,26 @@ final class Openssl(dir: Path):
     notBefore: Option[Timestamp] = None,
     notAfter: Option[Timestamp] = None)
   : Checked[CertWithPrivateKey] =
-    val privateFile = dir / s"$name.private-key.pem"
+    val privateKeyFile = dir / s"$name.private-key.pem"
     val certFile = dir / s"$name.certificate.pem"
 
-    opensslReq(distinguishedName, privateFile, certFile, ca = false,
+    opensslReq(distinguishedName, privateKeyFile, certFile, ca = false,
       days = days, notBefore = notBefore, notAfter = notAfter)
 
+    val p12File = toP12File(name, privateKeyFile = privateKeyFile, certFile = certFile)
+
+    for privateKey <- PrivateKeyPem.fromPem(privateKeyFile.contentString) yield
+      CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray, p12File)
+
+  private def toP12File(name: String, privateKeyFile: Path, certFile: Path): Path =
     val p12File = dir / s"$name.certificate.p12"
     runProcess:
       s"openssl pkcs12 -export" +
-        s" -inkey $privateFile" +
+        s" -inkey $privateKeyFile" +
         s" -in $certFile" +
         s" -out $p12File" +
         s" -passout 'pass:$p12Password'"
-
-    for privateKey <- PrivateKeyPem.fromPem(privateFile.contentString) yield
-      CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray, p12File)
+    p12File
 
   private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean,
     days: Option[Int] = None,
@@ -181,7 +179,7 @@ final class Openssl(dir: Path):
         s"-out ${quote(certFile)} " +
         (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}")
         + days.fold("")(o => s" -days $o")
-        // TODO Doesn't work with Almalinux 10:
+        // TODO Works with macOS Homebrew openssl, but not with Almalinux 10
         + notBefore.fold(""): ts =>
           s" -not_before ${toTimestampString(ts)}"
         + notAfter.fold(""): ts =>
@@ -205,12 +203,39 @@ object Openssl:
     logger.info(s"Using $version, $openssl")
     quote(openssl)
 
+  /** Content of Openssl's default openssl.cnf. */
+  private lazy val systemOpensslCnf: String =
+    val OpensslDir = """OPENSSLDIR: "(.*)"""".r
+
+    val opensslCnf = runProcess(s"$openssl version -a")
+      .split('\n')
+      .collectFirst { case OpensslDir(dir) => dir }
+      .map: dir =>
+        lazy val cygwinOpensslCnf = Paths.get("""c:\cygwin64""") / dir / "openssl.cnf"
+        lazy val winGitOpensslCnf = Paths.get("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
+        if isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf) then
+          cygwinOpensslCnf.contentString
+        else if isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf) then
+          winGitOpensslCnf.contentString
+        else
+          (Paths.get(dir) / "openssl.cnf").contentString
+      .getOrElse:
+        sys.error(s"Missing OPENSSLDIR in output of: $openssl version -a")
+
+    logger.debug(s"Using system openssl.cnf:\n$opensslCnf")
+    opensslCnf
+
   def assertPemFile(typ: String, file: Path): Unit =
     Pem(typ).fromPem(file.contentString).orThrow
+
 
   final case class CertWithPrivateKey(privateKey: ByteArray, certificate: ByteArray, p12File: Path):
     lazy val certificatePem: String =
       X509Cert.CertificatePem.toPem(certificate)
+
+    lazy val x509Cert: X509Cert =
+      X509Cert.fromPem(certificatePem, checkExpiry = None).orThrow
+
 
   private def toTimestampString(ts: Timestamp): String =
     dateTimeFormatter.format(ZonedDateTime.ofInstant(ts.toInstant, UTC))
@@ -220,6 +245,7 @@ object Openssl:
     "'" + path.toString.replace("\\", "\\\\") + "'"
 
 
-final case class OpensslSignature(base64: String) extends Signature:
+final case class OpensslSignature(base64: String, signerCert: String) extends Signature:
   def toGenericSignature: GenericSignature =
-    GenericSignature(X509Signer.typeName, base64)
+    GenericSignature(X509Signer.typeName, base64, algorithm = Some("SHA512withRSA"),
+      signerCertificate = Some(signerCert))

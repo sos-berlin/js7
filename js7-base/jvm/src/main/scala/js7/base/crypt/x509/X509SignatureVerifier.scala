@@ -110,8 +110,6 @@ object X509SignatureVerifier:
     protected type MySignature = X509Signature
     protected type MySignatureVerifier = X509SignatureVerifier
 
-    private val logger = Logger[this.type]
-
     val typeName: String = X509Signature.TypeName
     val filenameExtension = ".pem"
     val recommendedKeyDirectoryName = "trusted-x509-keys"
@@ -150,9 +148,9 @@ object X509SignatureVerifier:
       //.filterNot(_.isCA)
       val rootCertificates = trustedCertificates.filter(_.isCA)
       for o <- rootCertificates do logger.debug:
-        s"Trusting signatures signed with a certificate which is signed with root $o"
+        s"Trusting signatures signed with a certificate which is signed with root ${o.toLongString}"
       for o <- signerDNToTrustedCertificate.values do logger.debug:
-        s"Trusting signatures signed with $o"
+        s"Trusting signatures signed with ${o.toLongString}"
       X509SignatureVerifier(
         trustedCertificates,
         rootCertificates,
