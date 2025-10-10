@@ -13,7 +13,7 @@ containerDir=/var/opt/js7/feed
 
 docker run \
   --volume="$hostDir":$containerDir \
-  --network=js7_default \
+  --network=js7 \
   --interactive \
   --rm \
   --name=js7-feed \
