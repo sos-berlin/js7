@@ -164,8 +164,8 @@ object FileUtils:
       def directoryContentsAs[C](factory: collection.Factory[Path, C]): C =
         autoClosing(Files.list(delegate)) { _.asScala.to(factory) }
 
-      def toFs2Path: fs2.io.file.Path =
-        fs2.io.file.Path.fromNioPath(delegate)
+      //def toFs2Path: fs2.io.file.Path =
+      //  fs2.io.file.Path.fromNioPath(delegate)
 
   import syntax.*
 
