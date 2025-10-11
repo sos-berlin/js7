@@ -45,7 +45,7 @@ final class DirectoryWatchingSignatureVerifier private(
   (implicit iox: IOExecutor)
 extends SignatureVerifier with AutoCloseable
 {
-  @volatile private var state = State(Map.empty)
+  @volatile private var state = State(Map.empty, allowExpiredCert = settings.allowExpiredCert)
 
   private var runningFuture = CancelableFuture.successful(())
   private val started = Atomic(false)
@@ -60,6 +60,8 @@ extends SignatureVerifier with AutoCloseable
 
   def publicKeyOrigin = "(DirectoryWatchingSignatureVerifier)"
 
+  def allowExpiredCert = settings.allowExpiredCert
+
   def maybeProblem: Option[Problem] =
     Problem.combineAllOption(
       state.companionToVerifier.values.collect { case Left(problem) => problem })
@@ -73,7 +75,8 @@ extends SignatureVerifier with AutoCloseable
         .map { case (companion, directory) =>
           val checkedVerifier = readDirectory(directory).flatMap(toVerifier(companion, directory, _))
           companion -> checkedVerifier
-        })
+        },
+      allowExpiredCert = settings.allowExpiredCert)
 
     val companionToDirectoryState =
       for ((companion, directory) <- companionToDirectory) yield
@@ -176,7 +179,8 @@ extends SignatureVerifier with AutoCloseable
         .sequence
         .map { updated =>
           // Update state atomically:
-          state = State(state.companionToVerifier ++ updated)
+          state = State(state.companionToVerifier ++ updated,
+            allowExpiredCert = settings.allowExpiredCert)
 
           try onUpdated()
           catch { case NonFatal(t) =>
@@ -194,7 +198,8 @@ extends SignatureVerifier with AutoCloseable
     val checked = catchNonFatal(
       companion.ignoreInvalid(
         files.map(file => directory.resolve(file).labeledByteArray),
-        origin = directory.toString))
+        origin = directory.toString,
+        allowExpiredCert = settings.allowExpiredCert))
 
     checked match {
       case Left(problem) =>
@@ -219,7 +224,8 @@ extends SignatureVerifier with AutoCloseable
   private def isRelevantFile(file: Path) =
     !file.getFileName.startsWith(".")
 
-  override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
+  override def verify(document: ByteArray, signature: GenericSignature)
+  : Checked[Seq[SignerId]] =
     state.genericVerifier.verify(document, signature)
 
   override def publicKeysToStrings =
@@ -278,24 +284,26 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
       }
 
   @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.checked?")
 
   @deprecated("Not implemented", "")
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
 
-  def genericSignatureToSignature(signature: GenericSignature) =
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean) =
     Right(signature)
 
   private final case class State(
-    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]])
+    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]],
+    allowExpiredCert: Boolean)
   {
     // Failing verifiers are omitted !!!
     val genericVerifier = new GenericSignatureVerifier(
       companionToVerifier.values
         .collect { case Right(o) => o }
-        .toVector)
+        .toVector,
+      allowExpiredCert = allowExpiredCert)
   }
 
   final case class Settings(
@@ -303,7 +311,8 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     pollTimeout: FiniteDuration,
     retryDelays: Seq[FiniteDuration],
     directorySilence: FiniteDuration,
-    logDelays: Seq[FiniteDuration])
+    logDelays: Seq[FiniteDuration],
+    allowExpiredCert: Boolean)
   object Settings {
     def fromConfig(config: Config): Checked[Settings] =
       for {
@@ -319,8 +328,10 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
         logDelays <- catchNonFatal(config.getDurationList(
           "js7.configuration.trusted-signature-key-settings.log-delays")
           .asScala.map(_.toFiniteDuration).toVector)
+        allowExpiredCert <- catchNonFatal(config.getBoolean(
+          "js7.configuration.allow-expired-certificates"))
       } yield
-        Settings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays)
+        Settings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays, allowExpiredCert)
   }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(

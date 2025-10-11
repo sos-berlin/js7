@@ -66,15 +66,17 @@ object X509Cert
   val CertificatePem = Pem("CERTIFICATE")
   val PrivateKeyPem = Pem("PRIVATE KEY")
 
-  def fromPem(pem: String): Checked[X509Cert] =
-    CertificatePem.fromPem(pem) flatMap fromByteArray
+  def fromPem(pem: String, allowExpiredCert: Boolean): Checked[X509Cert] =
+    CertificatePem.fromPem(pem).flatMap(fromByteArray(_, allowExpiredCert = allowExpiredCert))
 
-  def fromByteArray(byteArray: ByteArray): Checked[X509Cert] =
+  def fromByteArray(byteArray: ByteArray, allowExpiredCert: Boolean): Checked[X509Cert] =
     Checked.catchNonFatal {
       val certificate = CertificateFactory.getInstance("X.509")
         .generateCertificate(byteArray.toInputStream)
         .asInstanceOf[X509Certificate]
-      // QUICK FIX certificate.checkValidity()  // throws
+      if (!allowExpiredCert) {
+        certificate.checkValidity() // throws
+      }
       X509Cert(certificate)
     }
 

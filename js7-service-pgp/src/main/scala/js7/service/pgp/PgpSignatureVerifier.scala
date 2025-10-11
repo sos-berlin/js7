@@ -32,6 +32,8 @@ extends SignatureVerifier
   protected type MySignature = PgpSignature
   def companion = PgpSignatureVerifier
 
+  def allowExpiredCert = false
+
   registerBouncyCastle()
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
@@ -40,7 +42,8 @@ extends SignatureVerifier
   def publicKeys = publicKeyRingCollection.toArmoredString :: Nil
 
   /** Returns `Right(message)` iff signature matches the message. */
-  def verify(document: ByteArray, signature: PgpSignature): Checked[Seq[SignerId]] =
+  def verify(document: ByteArray, signature: PgpSignature)
+  : Checked[Seq[SignerId]] =
     for {
       pgpSignature <- toMutablePGPSignature(signature)
       publicKey <- findPublicKeyInKeyRing(pgpSignature)
@@ -87,16 +90,21 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   private val logger = Logger(getClass)
 
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String): Checked[PgpSignatureVerifier] =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String,
+    allowExpiredCert: Boolean = false)
+  : Checked[PgpSignatureVerifier] =
     readPublicKeyRingCollection(publicKeys)
       .map(new PgpSignatureVerifier(_, origin))
 
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String): PgpSignatureVerifier =
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String,
+    allowExpiredCert: Boolean = false)
+  : PgpSignatureVerifier =
     new PgpSignatureVerifier(
       readOrIgnorePublicKeyRingCollection(publicKeys),
       origin)
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean = false)
+  : Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)
     if (signature.signerId.isDefined)
       Left(Problem("PGP signature does not accept a signerId"))

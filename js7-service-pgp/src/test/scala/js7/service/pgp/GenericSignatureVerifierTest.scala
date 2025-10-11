@@ -30,8 +30,9 @@ final class GenericSignatureVerifierTest extends OurTestSuite
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
       val verifier = GenericSignatureVerifier.checked(config"""
-        js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}""""
-      ).orThrow
+        js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}"
+        js7.configuration.allow-expired-certificates = false
+      """).orThrow
       assert(verifier.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))
       assert(verifier.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
       assert(verifier.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))

@@ -18,6 +18,8 @@ trait SignatureVerifier {
     type MySignature = self.MySignature
   }
 
+  def allowExpiredCert: Boolean
+
   @TestOnly
   def publicKeys: Seq[String]
 
@@ -25,13 +27,16 @@ trait SignatureVerifier {
 
   def publicKeysToStrings: Seq[String]
 
-  def verify(document: ByteArray, signature: MySignature): Checked[Seq[SignerId]]
+  def verify(document: ByteArray, signature: MySignature)
+  : Checked[Seq[SignerId]]
 
   final def verify(signed: SignedString): Checked[Seq[SignerId]] =
-    companion.genericSignatureToSignature(signed.signature)
-      .flatMap(signature => verify(ByteArray(signed.string), signature))
+    companion.genericSignatureToSignature(signed.signature, allowExpiredCert = allowExpiredCert)
+      .flatMap(signature =>
+        verify(ByteArray(signed.string), signature))
 
-  final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
+  final def verifyString(document: String, signature: MySignature)
+  : Checked[Seq[SignerId]] =
     verify(ByteArray(document), signature)
 }
 
@@ -49,12 +54,17 @@ object SignatureVerifier
 
     def recommendedKeyDirectoryName: String
 
-    def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "(unknown source)")
+    def checked(
+      publicKeys: Seq[Labeled[ByteArray]],
+      origin: String = "(unknown source)",
+      allowExpiredCert: Boolean)
     : Checked[MySignatureVerifier]
 
-    def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): MySignatureVerifier
+    def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean)
+    : MySignatureVerifier
 
-    def genericSignatureToSignature(signature: GenericSignature): Checked[MySignature]
+    def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean)
+    : Checked[MySignature]
 
     override def toString =
       s"""${getClass.simpleScalaName}("$typeName")"""

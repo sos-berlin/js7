@@ -64,8 +64,9 @@ final class X509Test extends OurTestSuite
       val certificateBytes = certificateFile.byteArray
       val verifier = X509SignatureVerifier.checked(
         Seq(Labeled(certificateBytes, "X509Test")),
-        origin = certificateFile.toString).orThrow
-      val signerCert = X509Cert.fromPem(certificateBytes.utf8String).orThrow
+        origin = certificateFile.toString,
+        allowExpiredCert = false).orThrow
+      val signerCert = X509Cert.fromPem(certificateBytes.utf8String, allowExpiredCert = false).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
@@ -79,7 +80,7 @@ final class X509Test extends OurTestSuite
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
-      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow
+      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray, allowExpiredCert = false).orThrow
       logger.info(caCert.toLongString)
       assert(caCert.isCA)
 
@@ -153,7 +154,8 @@ final class X509Test extends OurTestSuite
 
         val verifier = X509SignatureVerifier.checked(
             Seq(ca.certificateFile.labeledByteArray),
-            origin = ca.certificateFile.toString)
+            origin = ca.certificateFile.toString,
+            allowExpiredCert = false)
           .orThrow
         for (_ <- 1 to 10) {
           t = now
@@ -173,7 +175,11 @@ object X509Test
   private val logger = Logger[this.type]
 
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
-    lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
+    lazy val verifier = X509SignatureVerifier.checked(
+      Seq(certificateFile.labeledByteArray),
+      origin = certificateFile.toString,
+      allowExpiredCert = false
+    ).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
     if (verified.isRight) {
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
@@ -185,7 +191,7 @@ object X509Test
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
 
   private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature = {
-    val cert = X509Cert.fromPem(signersCertificateFile.contentString).orThrow
+    val cert = X509Cert.fromPem(signersCertificateFile.contentString, allowExpiredCert = false).orThrow
     logger.info(cert.toLongString)
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
   }
