@@ -27,6 +27,6 @@ trait OurApp extends IOAppWithCpuStarvationCheck:
   protected def initialize(): Unit =
     if !initialized.getAndSet(true) then
       StartUp.initializeMain()
-      StartUp.printlnWithClock(s"JS7 $productName ${BuildInfo.longVersion}")
+      StartUp.printlnWithClock(s"JS7 $productName ${BuildInfo.prettyVersion}")
       Log4j.earlyInitializeForProduction()
       Logger.initialize(productName)
