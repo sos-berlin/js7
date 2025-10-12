@@ -59,7 +59,7 @@ private object SinglePortPekkoWebServer:
     Resource.suspend:
       memoize: /*saves the `revision` counter for multiple allocations*/
         IO:
-          // The revision counter is saved in this memoized IO, see end of this io.
+          // The revision counter is saved in this memoized IO
           val revision = Atomic(1)
 
           def makeBoundRoute(): (BoundRoute, Deferred[IO, Deadline]) =
@@ -77,37 +77,37 @@ private object SinglePortPekkoWebServer:
     shutdownTimeout: FiniteDuration,
     shutdownDelay: FiniteDuration,
     httpsClientAuthRequired: Boolean)
-    (implicit actorSystem: ActorSystem)
+    (using actorSystem: ActorSystem)
   : ResourceIO[SinglePortPekkoWebServer] =
-    Service.resource(IO.defer {
+    Service.resource(IO.defer:
       val pekkoHttp = Http(actorSystem)
 
-      def bindHttps(https: WebServerBinding.Https): IO[Binding] = {
-        logger.info(
-          s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
+      def bindHttps(https: WebServerBinding.Https): IO[Binding] =
+        logger.info:
+          s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}"
         bind(
           https,
           Some(ConnectionContext.https(
             loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
             clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
-      }
 
       def bind(
         binding: WebServerBinding,
         httpsConnectionContext: Option[HttpsConnectionContext] = None)
       : IO[Binding] =
-        IO.defer {
+        IO.defer:
           val serverBuilder = pekkoHttp
             .newServerAt(
               interface = binding.address.getAddress.getHostAddress,
               port = binding.address.getPort)
-            .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
-            .withSettings(
-              ServerSettings(actorSystem)
-                .withParserSettings(
-                  ParserSettings(actorSystem)
-                    .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
-                    .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
+            .pipe: o =>
+              httpsConnectionContext.fold(o):
+                o.enableHttps
+            .withSettings:
+              ServerSettings(actorSystem).withParserSettings:
+                ParserSettings(actorSystem)
+                  .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
+                  .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)
 
           val (boundRoute, terminatingPromise) = makeBoundRoute()
           val bindingString = s"${binding.scheme}://${binding.address.show}"
@@ -115,31 +115,24 @@ private object SinglePortPekkoWebServer:
           for
             routeDelegator <- DelayedRouteDelegator.start(binding, boundRoute, bindingString)
             pekkoBinding <-
-              IO
-                .fromFuture(IO:
-                  // fromFuture is uncancelable!
-                  val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
-                  whenBound)
-                .flatTap: binding =>
-                  IO
-                    .fromFuture(IO.pure(binding.whenTerminationSignalIssued))
-                    .flatMap(terminatingPromise.complete)
-                    .startAndForget
+              IO.fromFuture: // fromFuture is uncancelable!
+                IO(serverBuilder.bind(routeDelegator.webServerRoute))
+              .flatTap: binding =>
+                IO.fromFuture(IO.pure(binding.whenTerminationSignalIssued))
+                  .flatMap(terminatingPromise.complete)
+                  .startAndForget
           yield
             // An info line will be logged by DelayedRouteDelegator
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
             logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
             Binding(binding, pekkoBinding, shutdownTimeout, shutdownDelay, terminatingPromise)
-        }
 
-      webServerBinding
-        .match {
-          case o: WebServerBinding.Http => bind(o)
-          case o: WebServerBinding.Https => bindHttps(o)
-        }
-        .map(binding =>
-          new SinglePortPekkoWebServer(binding))
-    })
+      webServerBinding.match
+        case o: WebServerBinding.Https => bindHttps(o)
+        case o: WebServerBinding.Http => bind(o)
+      .map: binding =>
+        new SinglePortPekkoWebServer(binding)
+    )
 
   /** Returns 503 ServiceUnavailable until the Route is provided. */
   private final class DelayedRouteDelegator(boundRoute: BoundRoute):

@@ -4,6 +4,7 @@ import java.util.Objects.requireNonNull
 import js7.base.log.Logger
 import scala.util.control.{ControlThrowable, NonFatal}
 
+// TODO Use scala.util.Using instead of this
 /** Wie java try(AutoCloseable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
 object AutoClosing:
