@@ -17,14 +17,10 @@ final class OrderProvider private(
   httpControllerApi: HttpControllerApi,
   conf: ProviderConfiguration)
 extends
-  Service.StoppableByRequest:
+  Service.Trivial:
 
   private lazy val typedSourceReader = new TypedSourceReader(conf.orderGeneratorsDirectory,
     new ScheduledOrderGeneratorReader(ZoneId.systemDefault) :: Nil)
-
-  protected def start =
-    startService:
-      untilStopRequested
 
   def replaceOrderGenerators: Checked[Unit] =
     typedSourceReader

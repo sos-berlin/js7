@@ -32,7 +32,8 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   clock: WallClock,
   semaphore: Semaphore[IO])
   (implicit protected val S: JournaledState.Companion[S])
-extends Journal[S], Service.StoppableByRequest:
+extends
+  Journal[S], Service.Trivial:
 
   val journalId: JournalId = JournalId.random()
 
@@ -68,9 +69,6 @@ extends Journal[S], Service.StoppableByRequest:
       queue.tornEventId
 
     override def toString = "MemoryJournal.EventWatch"
-
-  protected def start =
-    startService(untilStopRequested) // Nothing to do
 
   def aggregate: IO[S] =
     IO(_aggregate)

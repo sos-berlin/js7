@@ -59,7 +59,7 @@ private final class RemoteSubagentDriver[S <: SubagentDirectorState[S]] private(
   controllerId: ControllerId,
   protected val conf: RemoteSubagentDriver.Conf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
-extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
+extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   protected type State = S
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
@@ -76,11 +76,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   protected def isShuttingDown = shuttingDown
 
-  protected def start =
-    startService:
-      untilStopRequested *> onStop
-
-  private def onStop =
+  protected def release =
     IO.both(dispatcher.shutdown, stopEventListener)
       .*>(api.tryLogout.void)
       .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")

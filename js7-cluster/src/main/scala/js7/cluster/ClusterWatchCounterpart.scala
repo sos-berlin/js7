@@ -38,7 +38,7 @@ final class ClusterWatchCounterpart private(
   timing: ClusterTiming,
   shuttingDown: DeferredSource[IO, Unit],
   testEventPublisher: EventPublisher[Any])
-extends Service.StoppableByRequest:
+extends Service.Trivial:
 
   import clusterConf.ownId
 
@@ -52,10 +52,6 @@ extends Service.StoppableByRequest:
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
   @volatile private var currentClusterWatchId: Option[CurrentClusterWatchId] = None
-
-  protected def start =
-    startService:
-      untilStopRequested
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =

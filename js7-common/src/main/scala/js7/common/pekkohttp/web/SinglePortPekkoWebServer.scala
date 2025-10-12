@@ -33,13 +33,9 @@ import scala.util.{Failure, Success, Try}
  */
 private final class SinglePortPekkoWebServer private(binding: Binding)
   (implicit protected val actorSystem: ActorSystem)
-extends Service.StoppableByRequest:
+extends Service.TrivialReleasable:
 
-  protected def start =
-    startService(
-      untilStopRequested *> onStop)
-
-  private def onStop: IO[Unit] =
+  protected def release: IO[Unit] =
     binding.stop
 
   override def toString = s"SinglePortPekkoWebServer($binding)"

@@ -93,7 +93,7 @@ final class RunningController private(
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
   (implicit val ioRuntime: IORuntime)
-extends MainService, Service.StoppableByRequest:
+extends Service.TrivialReleasable, MainService:
 
   protected type Termination = ProgramTermination
 
@@ -103,10 +103,8 @@ extends MainService, Service.StoppableByRequest:
   val untilTerminated: IO[ProgramTermination] =
     IO.fromFutureDummyCancelable(IO.pure(terminated))
 
-  protected def start =
-    startService(
-      untilStopRequested *>
-        shutdown(ShutDown()).void)
+  protected def release =
+    shutdown(ShutDown()).void
 
   def shutdown(cmd: ShutDown): IO[ProgramTermination] =
     IO.defer:

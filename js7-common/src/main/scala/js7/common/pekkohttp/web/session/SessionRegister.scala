@@ -43,7 +43,7 @@ import scala.util.chaining.scalaUtilChainingOps
 final class SessionRegister[S <: Session: Tag] private[session](
   newSession: SessionInit => S,
   config: Config)
-extends Service.StoppableByRequest:
+extends Service.TrivialReleasable:
 
   private val componentName = config.getString("js7.component.name")
   private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
@@ -61,10 +61,7 @@ extends Service.StoppableByRequest:
   val systemUser: IO[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser))
 
-  protected def start =
-    startService(untilStopRequested *> onStop)
-
-  private def onStop =
+  protected def release =
     //??? if scheduledCleanUp != null then scheduledCleanUp.cancel()
     cell.flatMap(_.get).flatMap(state => IO:
       state.logOpenSessions())
