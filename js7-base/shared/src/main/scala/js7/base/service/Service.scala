@@ -17,7 +17,7 @@ trait Service:
   service =>
 
   private val started = Atomic(false)
-  private val stopped = Deferred.unsafe[IO, Try[Unit]]
+  private[Service] val stopped = Deferred.unsafe[IO, Try[Unit]]
 
   protected def start: IO[Started]
   protected def stop: IO[Unit]
@@ -102,6 +102,9 @@ object Service:
   private val defaultRestartDelayConf: DelayConf =
     RestartAfterFailureService.defaultRestartConf
 
+  inline def apply[Svc <: Service](newService: => Svc): ResourceIO[Svc] =
+    resource(newService)
+
   def resource[Svc <: Service](newService: => Svc): ResourceIO[Svc] =
     resource(IO(newService))
 
@@ -134,10 +137,34 @@ object Service:
       def run =
         body.map(ProgramTermination.fromUnitOrExitCode)
 
+
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 
   trait StoppableByCancel extends StoppableByRequest:
     override protected[service] val stoppableByCancel = true
+
+
+  /** A trivial Service which doesn't start, run or stop.
+    *
+    * Nothing is logged.
+    */
+  trait Trivial extends Service:
+    protected final def start =
+      stopped.complete(Success(())).as(Started)
+
+    protected final def stop =
+      IO.unit
+
+
+  /** A trivial Service which doesn't start or run, but has a release routine.
+    */
+  trait TrivialReleasable extends Releasable[IO], StoppableByRequest:
+    protected def release: IO[Unit]
+
+    protected final def start =
+      startService:
+        untilStopRequested.guarantee:
+          release
 
 
   /** Marker type to ensure call of `startService`. */
@@ -147,11 +174,7 @@ object Service:
   private val Started: Started = new Started
 
 
-  //type Empty = Empty.type
-  //object Empty extends Service:
-  //  def resource: ResourceIO[Empty] =
-  //    Service.resource(IO.pure(Empty))
-  //
-  //  protected lazy val start = startService(IO.unit)
-  //
-  //  protected def stop = IO.unit
+  type Empty = Empty.type
+  object Empty extends Trivial:
+    val service: ResourceIO[Empty] =
+      Service.resource(Empty)

@@ -123,6 +123,15 @@ final class ServiceTest extends OurAsyncTestSuite:
           case x => fail(x.toString)
   }
 
+  "Service.Trivial" in:
+    final class TestService(val i: Int) extends Service.Trivial
+
+    Service.resource(TestService(7)).use: testService =>
+      // The trivial service starts and stops in background. So it take a little time.
+      testService.untilStopped.timeout(1.s) *>
+        IO(assert(testService.i == 7))
+
+
   private class MyService(setRunning: Boolean => Unit)
   extends Service.StoppableByRequest:
     val running = Deferred.unsafe[IO, Unit]
