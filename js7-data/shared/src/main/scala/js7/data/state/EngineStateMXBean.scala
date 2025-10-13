@@ -1,6 +1,6 @@
 package js7.data.state
 
-import cats.effect.ResourceIO
+import cats.effect.{IO, Resource, ResourceIO}
 import java.lang.management.ManagementFactory
 import java.util.Map as JMap
 import js7.base.system.MBeanUtils.registerStaticMBean
@@ -39,7 +39,12 @@ object EngineStateMXBean:
 
   // "inline" hides method from JMX
   inline def register: ResourceIO[EngineStateMXBean] =
-    registerStaticMBean("EngineState", bean)
+    for
+      bean <- registerStaticMBean("EngineState", bean)
+      _ <- Resource.onFinalize(IO:
+        bean.setEngineState(StateView.empty))
+    yield
+      bean
 
   private final class Bean private[EngineStateMXBean] extends EngineStateMXBean:
     protected var stateView: StateView = StateView.empty

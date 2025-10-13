@@ -375,11 +375,11 @@ object RunningController:
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
-        // Stop Journal before before web server to allow receiving acknowledges
+        _ <- EngineStateMXBean.register
+        // Stop Journal before web server to allow stopping Journal to receive acknowledges
         _ <- Resource.onFinalize(clusterNode.workingClusterNode.fold(_ => IO.unit,
           _.journal.stop))
         runningController <- runningControllerResource(webServer, sessionRegister)
-        _ <- EngineStateMXBean.register
       yield
         runningController
     }

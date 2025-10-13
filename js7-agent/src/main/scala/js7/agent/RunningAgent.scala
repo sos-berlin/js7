@@ -316,6 +316,7 @@ object RunningAgent:
     // Return RunningAgent, even if cluster node has not yet activated
 
     for
+      _ <- EngineStateMXBean.register
       runningAgent <- Resource.eval(IO:
         RunningAgent(forDirector, clusterNode, testEventBus, conf, clock, actorSystem))
       _ <- forDirector.subagent.registerDirectorRoute:
@@ -331,7 +332,6 @@ object RunningAgent:
               Set(AgentDirectorPermission)),
             forDirector.sessionRegister
           ).agentRoute
-      _ <- EngineStateMXBean.register
       agent <- Service.resource(runningAgent)
     yield
       agent
