@@ -1,8 +1,10 @@
 package js7.base.utils.typeclasses
 
 import cats.{Eq, Monoid}
+import org.jetbrains.annotations.TestOnly
 import scala.language.implicitConversions
 
+// TODO Use Alleycats Empty instead?
 trait IsEmpty[A]:
 
   def isEmpty(a: A): Boolean
@@ -39,20 +41,33 @@ object IsEmpty:
       inline def ??(replacementForEmpty: => A): A =
         ifEmpty(replacementForEmpty)
 
-      def ifEmpty[A1 >: A](replacementForEmpty: => A1): A1 =
+      // !? isn't a good symbol, use mapNonEmpty instead
+      @TestOnly private[typeclasses] inline def !?(replacement: => A): A =
+        if a.nonEmpty then
+          replacement
+        else
+          a // empty
+
+      def ifEmpty[B](replacementForEmpty: => B): A | B =
         if a.isEmpty then
           replacementForEmpty
         else
           a
 
-
-    extension [F[+_], A](fa: F[A])
-      /** Applies f to this when this isNonEmpty, otherwise return this. */
-      def whenNonEmpty[A1 >: A](f: F[A] => F[A1])(using IsEmpty[F[A]]): F[A1] =
-        if fa.isEmpty then
-          fa
+      def mapNonEmpty[B](f: A => B): A | B =
+        if a.nonEmpty then
+          f(a)
         else
-          f(fa)
+          a // empty
+
+
+    //extension [F[+_], A](fa: F[A])
+    //  /** Applies f to this when this isNonEmpty, otherwise return this. */
+    //  def mapNonEmpty[B](f: F[A] => F[B])(using IsEmpty[F[A]]): F[A | B] =
+    //    if fa.isEmpty then
+    //      fa
+    //    else
+    //      f(fa)
 
 
   given IsEmpty[String] = _.isEmpty

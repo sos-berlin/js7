@@ -19,7 +19,9 @@ final class IsEmptyTest extends OurTestSuite:
   private val none: Option[Int]= None
   private val some: Option[Int]= Some(1)
 
-  private case class Special(number: Int)
+  private case class Special(number: Int):
+    def map(f: Int => Int): Special = Special(f(number))
+
   private object Special:
     implicit val specialMonoid: Monoid[Special] = new Monoid[Special]:
       val empty = Special(0)
@@ -73,6 +75,9 @@ final class IsEmptyTest extends OurTestSuite:
     assert(nonEmptySpecial.?? == Some(nonEmptySpecial))
 
   "dyadic ??, ifEmpty" in:
+    val properTyped1: String = "A".ifEmpty("B")
+    val properTyped2: String | Int = "".ifEmpty(7)
+
     assert(emptyMap ?? nonEmptyMap == nonEmptyMap)
     assert(emptyMap.ifEmpty(nonEmptyMap) == nonEmptyMap)
     assert(nonEmptyMap.??(Map(7 -> "X")) == nonEmptyMap)
@@ -99,11 +104,6 @@ final class IsEmptyTest extends OurTestSuite:
     ////assert(true ?? false == true)
     //assert(true.ifEmpty(false) == true)
 
-    assert(0 ?? 7 == 7)
-    assert(0.ifEmpty(7) == 7)
-    assert(1 ?? 7 == 1)
-    assert(1.ifEmpty(7) == 1)
-
     assert("" ?? "-" == "-")
     assert("".ifEmpty("-") == "-")
     assert("x" ?? "-" == "x")
@@ -127,10 +127,41 @@ final class IsEmptyTest extends OurTestSuite:
     assert(true ?? "x" == "x")
     assert(false ?? "x" == "")
 
-  "whenNonEmpty" in:
-    locally:
-      val result: Vector[Int] = Vector(1, 2).whenNonEmpty(_ :+ 3)
-      assert(result == Vector(1, 2, 3))
-    locally:
-      val result: Vector[Int] = Vector.empty.whenNonEmpty(_ :+ 3)
-      assert(result == Vector.empty)
+  "dyadic !?, mapNonEmpty" in :
+    val properTyped1: String = "A".mapNonEmpty(_ + "B")
+    val properTyped2: String | Int = "".mapNonEmpty(_.toInt)
+
+    assert(emptyMap !? nonEmptyMap == emptyMap)
+    assert(emptyMap.mapNonEmpty(_ ++ Map(7 -> "X")) == emptyMap)
+    assert(nonEmptyMap.!?(Map(7 -> "X")) == Map(7 -> "X"))
+    assert(nonEmptyMap.mapNonEmpty(_ ++ Map(7 -> "X")) == Map(1 -> "", 7 -> "X"))
+
+    assert("" !? "A" == "")
+    assert("".mapNonEmpty(_ + "A") == "")
+    assert("X" !? "A" == "A")
+    assert("X".mapNonEmpty(_ + "A") == "XA")
+
+    assert(emptySeq !? Seq(7) == emptySeq)
+    assert(emptySeq.mapNonEmpty(_ :+ 7) == emptySeq)
+    assert(nonEmptySeq !? Seq(7) == Seq(7))
+    assert(nonEmptySeq.mapNonEmpty(_ :+ 7) == Seq(1, 7))
+
+    assert(none !? Some(7) == None)
+    assert(none.mapNonEmpty(_.map(_ + 7)) == None)
+    assert(some !? Some(7) == Some(7))
+    assert(some.mapNonEmpty(_.map(_ + 7)) == Some(8))
+
+    //assert(false !? true == true)
+    //assert(false.mapNonEmpty(true) == true)
+    //assert(true !? false == true)
+    //assert(true.mapNonEmpty(false) == true)
+
+    assert(0 !? 7 == 0)
+    assert(0.mapNonEmpty(_ + 7) == 0)
+    assert(1 !? 7 == 7)
+    assert(1.mapNonEmpty(_ + 7) == 8)
+
+    assert(emptySpecial !? Special(7) == emptySpecial)
+    assert(emptySpecial.mapNonEmpty(_.map(_ + 7)) == emptySpecial)
+    assert(nonEmptySpecial !? Special(7) == Special(7))
+    assert(nonEmptySpecial.mapNonEmpty(_.map(_ + 7)) == Special(8))

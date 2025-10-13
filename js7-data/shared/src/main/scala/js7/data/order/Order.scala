@@ -1294,7 +1294,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
     def go(order: Order[DelayingRetry]): Checked[List[OrderGoes | OrderAwoke | OrderMoved]] =
       order.awokeEvents.map:
-        _.whenNonEmpty:
+        _.mapNonEmpty:
           OrderGoes :: _
 
   final case class Broken(problem: Option[Problem])
