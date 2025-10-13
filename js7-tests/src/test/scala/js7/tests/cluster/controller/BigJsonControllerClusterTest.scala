@@ -9,6 +9,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.agent.AgentPath
@@ -48,24 +49,22 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
       val admissions = Nel.of(
         Admission(primaryController.localUri, Some(userAndPassword)),
         Admission(backupController.localUri, Some(userAndPassword)))
-      val controllerApi = new ControllerApi(
-        admissionsToApiResource(admissions)(using primaryController.actorSystem))
+      ControllerApi.resource(
+        admissionsToApiResource(admissions)(using primaryController.actorSystem)
+      ).blockingUse(99.s): controllerApi =>
+        val orderId = OrderId("BIG-ORDER")
+        controllerApi
+          .addOrders(Stream(FreshOrder(orderId, workflow.path, Map(
+            "ARG" -> StringValue(bigString)))))
+          .await(99.s).orThrow
+        val event = eventWatch.await[OrderTerminated](_.key == orderId)
+        assert(event.head.value.event == OrderFinished())
 
-      val orderId = OrderId("BIG-ORDER")
-      controllerApi
-        .addOrders(Stream(FreshOrder(orderId, workflow.path, Map(
-          "ARG" -> StringValue(bigString)))))
-        .await(99.s).orThrow
-      val event = eventWatch.await[OrderTerminated](_.key == orderId)
-      assert(event.head.value.event == OrderFinished())
+        val controllerState = controllerApi.controllerState.await(99.s).orThrow
+        assert(controllerState.clusterState.asInstanceOf[ClusterState.Coupled].setting.activeId ==
+          NodeId("Primary"))
 
-      val controllerState = controllerApi.controllerState.await(99.s).orThrow
-      assert(controllerState.clusterState.asInstanceOf[ClusterState.Coupled].setting.activeId ==
-        NodeId("Primary"))
-
-      assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
-
-      controllerApi.stop.await(99.s)
+        assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
     }
 
 

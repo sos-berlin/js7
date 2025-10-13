@@ -141,33 +141,30 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       Stamped(0L,
         bigOrder.toOrderAdded(workflow.id.versionId, bigOrder.arguments): KeyedEvent[OrderEvent]))
     logger.info(s"Adding $n big orders")
-    runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
+    runControllerAndBackup(): (_, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
-      val api = new ControllerApi(
+      ControllerApi.resource:
         PekkoHttpControllerApi
           .resource(
             Admission(primaryController.localUri, Some(primaryUserAndPassword)),
             name = "JournaledProxy")
-          .map(Nel.one))
-      val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
-      val logLine = measureTimeOfSingleRun(n, "orders"):
-        api.addOrders(
-          Stream.iterable(orderIds)
-            .map(orderId => bigOrder.copy(id = orderId))
-        ).await(199.s).orThrow
-      logger.info(logLine.toString)
-      val proxy = api.startProxy().await(99.s)
-      try
-        waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
-        assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
-      finally proxy.stop.await(99.s)
+          .map(Nel.one)
+      .blockingUse(99.s): api =>
+        val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
+        val logLine = measureTimeOfSingleRun(n, "orders"):
+          api.addOrders:
+            Stream.iterable(orderIds)
+              .map(orderId => bigOrder.copy(id = orderId))
+          .await(199.s).orThrow
+        logger.info(logLine.toString)
+        api.controllerProxy().blockingUse(99.s): proxy =>
+          waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
+          assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
 
-      locally:
-        meterTakeSnapshot(n, api)
-        val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
-        assert(state.idToOrder.size == n)
-      api.stop.await(99.s)
-    }
+        locally:
+          meterTakeSnapshot(n, api)
+          val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
+          assert(state.idToOrder.size == n)
 
   "addOrder, long stream containing an invalid item returns proper error message" in:
     // The server must be able to respond with an error even if the posted stream has not completedly processed.

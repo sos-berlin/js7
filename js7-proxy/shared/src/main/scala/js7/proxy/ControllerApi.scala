@@ -227,4 +227,8 @@ object ControllerApi:
     apisResource: ResourceIO[Nel[HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerApi] =
-    Resource.make(IO { new ControllerApi(apisResource, proxyConf) })(_.stop)
+    // Don't use any other Resource here, because public ControllerApi#stop is called directly,
+    // which can't release outer Resources.
+    Resource.make(
+      acquire = IO(ControllerApi(apisResource, proxyConf)))(
+      release = _.stop)

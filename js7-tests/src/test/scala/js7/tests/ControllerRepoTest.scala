@@ -1,7 +1,11 @@
 package js7.tests
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.fs2utils.StreamExtensions.{mapParallelBatch, prependOne}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
@@ -10,13 +14,14 @@ import js7.base.problem.Checked.*
 import js7.base.problem.ProblemException
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
-import js7.base.thread.Futures.implicits.*
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.Atomic
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -37,11 +42,6 @@ import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.tests.testenv.{DirectoryProvider, TestController}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.{mapParallelBatch, prependOne}
-import js7.base.utils.Atomic
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
@@ -121,7 +121,7 @@ final class ControllerRepoTest extends OurTestSuite:
         }
 
         // Recovery
-        provider.runController() { controller =>
+        provider.runController(): controller =>
           // V2
           // Previously defined workflow is still known
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
@@ -151,21 +151,20 @@ final class ControllerRepoTest extends OurTestSuite:
           runOrder(controller, AWorkflowPath ~ V3, OrderId("A-3"))
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-2"))
 
-          sys.props.get("test.speed").foreach(_.split(" +") match {
-            case Array(nString) =>
-              val (a, b) = nString.span(_ != '*')
-              val (n, itemCount) = (a.toInt, b.drop(1).toInt)
-              testSpeed(controller.localUri, Some(userAndPassword), n, itemCount)
+          sys.props.get("test.speed").foreach:
+            _.split(" +") match
+              case Array(nString) =>
+                val (a, b) = nString.span(_ != '*')
+                val (n, itemCount) = (a.toInt, b.drop(1).toInt)
+                testSpeed(controller.localUri, Some(userAndPassword), n, itemCount)
 
-            case Array(nString, uri, userId, password) =>
-              // Fails because JS7 does not know our signature !!!
-              val (a, b) = nString.span(_ != '/')
-              val (n, bundleFactor) = (a.toInt, b.drop(1).toInt)
-              testSpeed(Uri(uri), Some(UserId(userId) -> SecretString(password)), n, bundleFactor)
+              case Array(nString, uri, userId, password) =>
+                // Fails because JS7 does not know our signature !!!
+                val (a, b) = nString.span(_ != '/')
+                val (n, bundleFactor) = (a.toInt, b.drop(1).toInt)
+                testSpeed(Uri(uri), Some(UserId(userId) -> SecretString(password)), n, bundleFactor)
 
-            case _ => sys.error("Invalid number of arguments in property ControllerRepoTest")
-          })
-        }
+              case _ => sys.error("Invalid number of arguments in property ControllerRepoTest")
       }
 
       def runOrder(controller: TestController, workflowId: WorkflowId, orderId: OrderId): Unit =
@@ -184,19 +183,15 @@ final class ControllerRepoTest extends OurTestSuite:
         val genStopwatch = new Stopwatch
         val operations = generateAddItemOperations(itemCount)
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
-        actorSystemResource(name = "ControllerRepoTest-SPEED")
-          .use(actorSystem => IO {
-            val apiResource  = resource(Admission(uri, credentials))(using actorSystem)
-            val controllerApi = new ControllerApi(apiResource map Nel.one)
-            for _ <- 1 to n do {
+        actorSystemResource(name = "ControllerRepoTest-SPEED").blockingUse(1.h): actorSystem =>
+          val apiResource = resource(Admission(uri, credentials))(using actorSystem)
+          ControllerApi.resource(apiResource map Nel.one).blockingUse(99.s): controllerApi =>
+            for _ <- 1 to n do
               val t = now
               controllerApi.updateItems(Stream.iterable(operations))
-                .unsafeToFuture()
-                .await(99.s)
-                .orThrow
+                .await(99.s).orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "items"))
-            }
-            locally {
+            locally:
               val t = now
               val workflowPath = WorkflowPath(s"WORKFLOW-1")
               controllerApi.addOrders(
@@ -204,31 +199,19 @@ final class ControllerRepoTest extends OurTestSuite:
                   .flatMap(i => Stream(
                     FreshOrder(OrderId(s"SPEED-DISTRIBUTED-$i"), WorkflowPath(s"WORKFLOW-$i")),
                     FreshOrder(OrderId(s"SPEED-SAME-$i"), workflowPath))))
-                .unsafeToFuture()
                 .await(99.s)
                 .orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "orders"))
-            }
-            locally {
+            locally:
               val t = now
               controllerApi.executeCommand(TakeSnapshot)
-                .unsafeToFuture()
-                .await(99.s)
-                .orThrow
+                .await(99.s).orThrow
               logInfo(s"Snapshot taken in ${t.elapsed.pretty}")
-            }
-            locally {
+            locally:
               val t = now
               controllerApi.updateItems(deleteItemOperations(itemCount))
-                .unsafeToFuture()
-                .await(99.s)
-                .orThrow
+                .await(99.s).orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "deletions"))
-            }
-            controllerApi.stop.await(99.s)
-          })
-          .unsafeToFuture()
-          .await(1.h)
 
       def generateAddItemOperations(n: Int): Seq[ItemOperation] =
         val workflow0 = Workflow.of(
