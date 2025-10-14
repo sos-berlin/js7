@@ -40,21 +40,18 @@ final case class SecretString(string: String):
 object SecretString:
   val empty: SecretString = SecretString("")
 
-  object implicits:
-    // Import explicitly, it's secret.
-
-    private val jsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
-    private val jsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
-    implicit val jsonCodec: Codec[SecretString] = Codec.from(jsonDecoder, jsonEncoder)
-  val jsonCodec: Codec[SecretString] = implicits.jsonCodec
+  /** Import explicitly, the JSON Encoder reveals the secret. */
+  val jsonCodec: Codec[SecretString] = Codec.from(
+    decodeA = _.as[String] map SecretString.apply,
+    encodeA = o => Json.fromString(o.string))
 
   implicit val StringAsSecretString: As[String, SecretString] =
     As(SecretString.apply)
 
   /**
-    * Special implementation to defend agains timing attacks.
+    * Special implementation to defend against timing attacks.
     *
-    * @see [[https://codahale.com/a-lesson-in-timing-attacks/]]
+    * @see [[https://en.wikipedia.org/wiki/Timing_attack]]
     */
   def timingAttackSecureEqual(a: String, b: String): Boolean =
     @tailrec def xor(i: Int, result: Int): Int =
@@ -62,4 +59,5 @@ object SecretString:
         result
       else
         xor(i + 1, result | (a(i) ^ b(i)))
+
     a.length == b.length && xor(0, 0) == 0
