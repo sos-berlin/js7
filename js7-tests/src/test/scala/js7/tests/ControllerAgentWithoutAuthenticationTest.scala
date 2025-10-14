@@ -101,11 +101,10 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
       TestAgent.blockingRun(agentConfiguration, 99.s) { _ =>
         RunningController.blockingRun(controllerConfiguration, 99.s) { runningController =>
           val testController = new TestController(
-            new Allocated(runningController, IO.unit),
+            Allocated(runningController, IO.unit),
             Admission(
               runningController.localUri,
-              Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))))
-          )
+              Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))))
           testController.waitUntilReady()
 
           testController.updateItemsAsSystemUser(Stream(

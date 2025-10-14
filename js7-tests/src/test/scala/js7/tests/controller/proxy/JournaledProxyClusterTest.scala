@@ -83,13 +83,12 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
           whenFinished.await(99.s)  // Await order termination before shutting down the JS7
 
   "JControllerProxy with Flux" in:
-    runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
+    runControllerAndBackup(): (_, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
       val admissions = List(JAdmission.of(s"http://127.0.0.1:$primaryControllerPort", primaryCredentials)).asJava
       val tester = new JControllerFluxTester(admissions, JHttpsConfig.empty)
       tester.test()
       tester.close()
-    }
 
   "updateItems" in:
     val versionId = VersionId("MY-VERSION")
@@ -171,12 +170,12 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
     val n = 100_000_000/*bytes*/ / bigOrder.length
     logger.info(s"Adding $n orders")
     val orders = Stream.range(0, n).map(_ => bigOrder)
-    runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
+    runControllerAndBackup(): (_, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
       logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
       val httpClient = new PekkoHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
         name = "JournaledProxy")
-      autoClosing(httpClient) { _ =>
+      autoClosing(httpClient): _ =>
         val api = new HttpControllerApi.Standard(
           Admission(primaryController.localUri, Some(primaryUserAndPassword)),
           httpClient)
@@ -194,8 +193,6 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
               .map(_ => Completed)
           ).await(99.s)
           assert(response == Left(Problem("JSON ParsingFailure: expected json value got '¿{\"id...' (line 1, column 1)")))
-      }
-    }
 
   private def calculateNumberOf[A: Encoder: Tag](n: Int, sample: A): Int =
     if sys.props.contains("test.speed") && sys.runtime.maxMemory >= 16_000_000_000L then
