@@ -85,21 +85,12 @@ extends ControllerApiWithHttp:
     logger.debugStream:
       JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf)
 
-  def startProxy(
-    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
-    eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
-  : IO[ControllerProxy] =
-    logger.traceIO:
-      proxyResource(proxyEventBus, eventBus)
-        .allocated // Caller must stop the ControllerProxy
-        .map(_._1)
-
-  def proxyResource(
+  def controllerProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : ResourceIO[ControllerProxy] =
     /*CorrelId.bindIfEmpty???*/(logger.debugResource:
-      ControllerProxy.resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
+      ControllerProxy.service(this, apisResource, proxyEventBus, eventBus, proxyConf))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
   : IO[Checked[Accepted]] =

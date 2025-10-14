@@ -17,6 +17,7 @@ import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
@@ -46,7 +47,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
       eventBus.subscribe[Event]: e =>
         currentState = e.state
       val api = new ControllerApi(apiResource map Nel.one)
-      api.startProxy(proxyEventBus, eventBus).flatMap: proxy =>
+      api.controllerProxy(proxyEventBus, eventBus).blockingUse(99.s): proxy =>
         PekkoWebServer
           .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState.nn)))
           .use: _ =>
@@ -60,7 +61,8 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
                   .fold(identity, identity)
                 Left(())
               .andWait(1.s)
-      .guarantee(api.stop)
+      .guarantee:
+        api.stop
     }
 
 

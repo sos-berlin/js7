@@ -7,14 +7,13 @@ import fs2.concurrent.Topic
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
-import js7.base.utils.Collections.emptyToNone
-import js7.base.utils.Nulls.nullToNone
+import js7.base.utils.Nulls.{notNullOr, nullToNone}
+import js7.base.utils.typeclasses.IsEmpty.syntax.mapNonEmpty
 import js7.data.event.{Event, EventId, SnapshotableState}
 import js7.proxy.JournaledProxy.*
 import js7.proxy.JournaledProxyService.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.EventAndState
-import js7.base.utils.Nulls.notNullOr
 
 private final class JournaledProxyService[S <: SnapshotableState[S]] private[JournaledProxyService](
   underlyingStream: Stream[IO, EventAndState[Event, S]],
@@ -95,14 +94,14 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
     nullToNone(_currentState).fold("")(o => s"${o.name}")
 
   override def toString =
-    s"JournaledProxyService[$S]${emptyToNone(name).fold("")(o => s"($o)")}"
+    s"JournaledProxyService[$S]${name.mapNonEmpty(o => s"($o)")}"
 
 
 private object JournaledProxyService:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]](
+  def service[S <: SnapshotableState[S]](
     baseStream: Stream[IO, EventAndState[Event, S]],
     proxyConf: ProxyConf,
     onEvent: EventAndState[Event, S] => Unit)
@@ -113,7 +112,7 @@ private object JournaledProxyService:
       topic <- Resource.make(
         acquire = Topic[IO, EventAndState[Event, S]])(
         release = _.close.void)
-      journaledProxy <- Service.resource:
-        new JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor)
+      journaledProxy <- Service:
+        JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor)
     yield
       journaledProxy

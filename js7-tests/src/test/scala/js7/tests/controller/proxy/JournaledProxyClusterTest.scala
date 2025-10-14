@@ -26,6 +26,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.HttpClient
 import js7.common.http.PekkoHttpClient
@@ -57,7 +58,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
   private implicit def implicitActorSystem: ActorSystem = actorSystem
 
   "JournaledProxy[ControllerState]" in:
-    runControllerAndBackup() { (_, primaryController, _, _, backupController, _, _) =>
+    runControllerAndBackup(): (_, primaryController, _, _, backupController, _, _) =>
       primaryController.waitUntilReady()
       val controllerApiResources = Nel
         .of(
@@ -68,19 +69,18 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
             Admission(backupController.localUri, Some(backupUserAndPassword)),
             name = "JournaledProxy-Backup"))
         .sequence
-      val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
-      try
-        val whenProcessed = proxy.eventBus.when[OrderProcessed]
-        val whenFinished = proxy.eventBus.when[OrderFinished]
-        primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
-        val processed = whenProcessed.await(99.s)
-        assert(processed.stampedEvent.value.event == OrderProcessed(OrderOutcome.succeededRC0))
-        assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
+      ControllerApi.resource(controllerApiResources).blockingUse(99.s): api =>
+        api.controllerProxy().blockingUse(99.s): proxy =>
+          val whenProcessed = proxy.eventBus.when[OrderProcessed]
+          val whenFinished = proxy.eventBus.when[OrderFinished]
+          primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
-        whenFinished.await(99.s)  // Await order termination before shutting down the JS7
-      finally proxy.stop.await(99.s)
-    }
+          val processed = whenProcessed.await(99.s)
+          assert(processed.stampedEvent.value.event == OrderProcessed(OrderOutcome.succeededRC0))
+          assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
+
+          whenFinished.await(99.s)  // Await order termination before shutting down the JS7
 
   "JControllerProxy with Flux" in:
     runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
@@ -100,38 +100,36 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       }""").orThrow.withoutSource
     val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("WORKFLOW-XXXXX") ~ versionId))
     logger.info(s"Adding $n Workflows")
-    runControllerAndBackup() { (primary, primaryController, _, _, _, _, _) =>
+
+    runControllerAndBackup(): (primary, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
       val controllerApiResource = PekkoHttpControllerApi.resource(
         Admission(primaryController.localUri, Some(primaryUserAndPassword)),
         name = "JournaledProxy")
-      val api = new ControllerApi(controllerApiResource map Nel.one)
-      val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
-      val sw = new Stopwatch
-      val operations = Stream.iterable(workflowPaths)
-        .mapParallelBatch(): path =>
-          ItemOperation.AddOrChangeSigned(
-            primary.toSignedString(workflow.copy(id = path ~ versionId)))
-        .compile.toList.await(99.s)
-      logger.info(sw.itemsPerSecondString(n, "signatures"))
-      val logLine = measureTimeOfSingleRun(n, "workflows"):
-        api.updateItems(Stream.iterable(AddVersion(versionId) :: operations))
-          .await(999.s).orThrow
-      logger.info(logLine.toString)
-      // TODO Await Event
-      val proxy = api.startProxy().await(99.s)
-      try
-        awaitAndAssert(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
-        assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
-          workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
-      finally proxy.stop.await(99.s)
 
-      locally:
-        meterTakeSnapshot(n, api)
-        val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
-        assert(state.repo.currentVersionSize == n + 1)
-      api.stop.await(99.s)
-    }
+      ControllerApi.resource(controllerApiResource map Nel.one).blockingUse(99.s): api =>
+        val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
+        val sw = new Stopwatch
+        val operations = Stream.iterable(workflowPaths)
+          .mapParallelBatch(): path =>
+            ItemOperation.AddOrChangeSigned(
+              primary.toSignedString(workflow.copy(id = path ~ versionId)))
+          .compile.toList.await(99.s)
+        logger.info(sw.itemsPerSecondString(n, "signatures"))
+        val logLine = measureTimeOfSingleRun(n, "workflows"):
+          api.updateItems(Stream.iterable(AddVersion(versionId) :: operations))
+            .await(999.s).orThrow
+        logger.info(logLine.toString)
+        // TODO Await Event
+        api.controllerProxy().blockingUse(99.s): proxy =>
+          awaitAndAssert(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
+          assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
+            workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
+
+        locally:
+          meterTakeSnapshot(n, api)
+          val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
+          assert(state.repo.currentVersionSize == n + 1)
 
   "addOrders" in:
     val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path,

@@ -20,16 +20,9 @@ final class ControllerProxy private[ControllerProxy](
   val eventBus: JournaledStateEventBus[ControllerState],
   api: ControllerApi)
 extends
-  Service.StoppableByRequest, JournaledProxy[ControllerState]:
+  Service.Trivial, JournaledProxy[ControllerState]:
 
   export journaledProxy.*
-
-  protected def start =
-    startService(untilStopRequested)
-
-  // Make public
-  override def stop: IO[Unit] =
-    super.stop
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     api.addOrders(orders)
@@ -43,7 +36,7 @@ extends
 
 object ControllerProxy:
 
-  private[proxy] def resource(
+  private[proxy] def service(
     api: ControllerApi,
     apisResource: ResourceIO[Nel[HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
@@ -51,11 +44,11 @@ object ControllerProxy:
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerProxy] =
     for
-      journaledProxy <- JournaledProxy.resource(
+      journaledProxy <- JournaledProxyService.service(
         JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
         proxyConf,
         eventBus.publish)
-      controllerProxy <- Service.resource:
-        new ControllerProxy(journaledProxy, eventBus, api)
+      controllerProxy <- Service:
+        ControllerProxy(journaledProxy, eventBus, api)
     yield
       controllerProxy

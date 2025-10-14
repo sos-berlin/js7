@@ -1,5 +1,6 @@
 package js7.proxy.javaapi
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import io.vavr.control.Either as VEither
 import java.util.Objects.requireNonNull
@@ -11,6 +12,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -32,10 +34,13 @@ import reactor.core.publisher.Flux
   * Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
 final class JControllerProxy private[proxy](
-  asScala: ControllerProxy,
+  allocatedControllerProxy: Allocated[IO, ControllerProxy],
   val api: JControllerApi,
   val controllerEventBus: JControllerEventBus)
   (using ioRuntime: IORuntime):
+
+  private def asScala: ControllerProxy =
+    allocatedControllerProxy.allocatedThing
 
   private val prefetch = api.config.getInt("js7.web.server.prefetch")
 
@@ -48,8 +53,7 @@ final class JControllerProxy private[proxy](
 
   @Nonnull
   def stop(): CompletableFuture[Void] =
-    asScala.stop
-      .map(_ => Void)
+    allocatedControllerProxy.release.as(Void)
       .unsafeToCompletableFuture()
 
   @Nonnull

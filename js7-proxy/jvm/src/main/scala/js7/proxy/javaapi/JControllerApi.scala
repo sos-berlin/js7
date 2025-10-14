@@ -16,7 +16,7 @@ import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
@@ -96,9 +96,11 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
     @Nonnull controllerEventBus: JControllerEventBus)
   : CompletableFuture[JControllerProxy] =
-    runIO(asScala
-      .startProxy(proxyEventBus.asScala, controllerEventBus.asScala)
-      .map(new JControllerProxy(_, this, controllerEventBus)))
+    runIO:
+      asScala.controllerProxy(proxyEventBus.asScala, controllerEventBus.asScala)
+        .toAllocated
+        .map: allocated =>
+          new JControllerProxy(allocated, this, controllerEventBus)
 
   @Nonnull
   def clusterAppointNodes(

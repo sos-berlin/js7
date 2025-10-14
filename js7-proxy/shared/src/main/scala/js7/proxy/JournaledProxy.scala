@@ -52,14 +52,6 @@ object JournaledProxy:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]](
-    baseStream: Stream[IO, EventAndState[Event, S]],
-    proxyConf: ProxyConf,
-    onEvent: EventAndState[Event, S] => Unit)
-    (using SnapshotableState.Companion[S])
-  : ResourceIO[JournaledProxy[S]] =
-    JournaledProxyService.resource[S](baseStream, proxyConf, onEvent)
-
   def stream[S <: JournaledState[S]](
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],
     fromEventId: Option[EventId],

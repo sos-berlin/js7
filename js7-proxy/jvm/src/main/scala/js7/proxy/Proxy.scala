@@ -22,7 +22,7 @@ extends MainService, Service.StoppableByCancel:
 
   protected def start =
     startService:
-      controllerApi.proxyResource().surround:
+      controllerApi.controllerProxy().surround:
         untilStopRequested
 
 

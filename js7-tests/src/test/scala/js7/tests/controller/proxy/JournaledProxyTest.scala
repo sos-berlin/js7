@@ -14,6 +14,8 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.*
+import js7.base.utils.Lazy
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
@@ -64,7 +66,8 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
       name = "JournaledProxyTest")
     .map(Nel.one))
 
-  private lazy val proxy = api.startProxy().await(99.s)
+  private val proxyLazy = Lazy(controller.api.controllerProxy().toAllocated.await(99.s))
+  private lazy val proxy = proxyLazy.value.allocatedThing
 
   override def beforeAll() =
     super.beforeAll()
@@ -73,7 +76,8 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
 
   override def afterAll() =
     api.stop.await(99.s)
-    proxy.stop.await(99.s)
+    proxyLazy.foreach: allocated =>
+      allocated.release.await(99.s)
     close()
     super.afterAll()
 

@@ -18,6 +18,8 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Lazy
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
@@ -39,8 +41,8 @@ import js7.launcher.internal.InternalJob
 import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
@@ -62,7 +64,12 @@ final class ForkListTest
   protected val items = Seq(atControllerWorkflow, atAgentWorkflow, mixedAgentsWorkflow,
     errorWorkflow, failingChildOrdersWorkflow, joinFailingChildOrdersWorkflow,
     indexWorkflow, exampleWorkflow)
-  private lazy val proxy = controller.api.startProxy().await(99.s)
+  private val proxyLazy = Lazy(controller.api.controllerProxy().toAllocated.await(99.s))
+  private lazy val proxy = proxyLazy.value.allocatedThing
+
+  override def afterAll() =
+    proxyLazy.foreach: allocated =>
+      allocated.release.await(99.s)
 
   "Events and Order.Forked snapshot" in:
     val workflowId = atControllerWorkflow.id

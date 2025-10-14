@@ -28,16 +28,17 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
   private given IORuntime = ioRuntime
 
   "JournaledProxy accesses a switching Cluster" in:
-    withControllerAndBackup() { (primary, _, backup, _, _) =>
+    withControllerAndBackup(): (primary, _, backup, _, _) =>
       val backupController = backup.newController()
 
-      lazy val proxy = controllerApi.startProxy().await(99.s)
+      lazy val (proxy, releaseProxy) = controllerApi.controllerProxy().allocated.await(99.s)
       var lastEventId = EventId.BeforeFirst
 
       def runOrder(orderId: OrderId): Unit =
         val whenFinished = proxy.stream()
           .find:
-            case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
+            case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) =>
+              true
             case _ => false
           .timeoutOnPull(99.s)
           .headL.unsafeToFuture()
@@ -45,8 +46,8 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
         whenFinished.await(99.s)
 
       try
-        primary.runController() { primaryController =>
-          primaryController.eventWatch.await[ClusterCoupled]()
+        primary.runController(): primaryController =>
+          primaryController.await[ClusterCoupled]()
 
           val admissions = List(
             Admission(primaryController.localUri, Some(primaryUserAndPassword)),
@@ -61,31 +62,27 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
 
           // SWITCH-OVER
 
-          lastEventId = primaryController.eventWatch.lastAddedEventId
-          primaryController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
-          primaryController.terminated.await(99.s)
-        }
+          lastEventId = primaryController.lastAddedEventId
+          primaryController.execCmd:
+            ClusterSwitchOver()
 
-        // Try to confuse controllerApi about the active controller and start primary controller again
-        primary.runController(dontWaitUntilReady = true) { primaryController =>
-          backupController.eventWatch.await[ControllerReady](after = lastEventId)
-          primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
+        // Try to confuse controllerApi about which controller is active,
+        // and start the primary controller again
+        primary.runController(dontWaitUntilReady = true): primaryController =>
+          backupController.await[ControllerReady](after = lastEventId)
+          primaryController.await[ClusterCoupled](after = lastEventId)
           runOrder(OrderId("ORDER-ON-BACKUP-1"))
 
           // RESTART BACKUP
           lastEventId = backupController.eventWatch.lastAddedEventId
           backupController.terminate().await(99.s)
 
-          backup.runController() { backupController2 =>
+          backup.runController(): backupController2 =>
             runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
-            backupController2.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
-              .await(99.s).orThrow
-            backupController2.terminated.await(99.s)
-          }
+            backupController2.execCmd:
+              ShutDown(clusterAction = Some(ClusterAction.Failover))
 
-          primaryController.eventWatch.await[ClusterFailedOver](after = lastEventId)
+          primaryController.await[ClusterFailedOver](after = lastEventId)
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))
-        }
       finally
-        proxy.stop.unsafeToFuture().await(99.s)
-    }
+        releaseProxy.await(99.s)
