@@ -30,6 +30,7 @@ object Instructions:
     Subtype[StickySubagent],
     Subtype[AddOrder],
     Subtype[Options],
+    Subtype[Say],
     Subtype[Stop],
     Subtype[Sleep],
     Subtype[BreakOrder],

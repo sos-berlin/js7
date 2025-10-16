@@ -868,6 +868,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderActorEvent
 
 
+  /** TEST ONLY — EXPERIMENTAL */
+  final case class OrderSaid(value: Value)
+  extends OrderActorEvent
+
+
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],

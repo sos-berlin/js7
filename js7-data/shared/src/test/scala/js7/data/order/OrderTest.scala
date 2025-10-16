@@ -533,6 +533,7 @@ final class OrderTest extends OurTestSuite:
       OrderStickySubagentLeaved,
       OrderStickySubagentEntered(agentPath),
 
+      OrderSaid(StringValue("Said"): Value),
       OrderSleeping(ts"2024-12-18T00:00:00Z"),
       OrderTransferred(workflowId /: Position(0)),
 
@@ -589,6 +590,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderResumptionMarked, _             , _, _                      ) => _.isInstanceOf[Fresh]
           case (_: OrderResumed     , IsSuspended(true) , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
           case (_: OrderOutcomeAdded, _                 , _, _                      ) => _.isInstanceOf[Fresh]
+          case (_: OrderSaid        , _                 , _, IsAttached | IsDetached) => _.isInstanceOf[Fresh]
           case (_: OrderTransferred , _                 , _, IsDetached             ) => _.isInstanceOf[Fresh]
           case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken])
 
@@ -628,6 +630,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderOrderAdded       , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderStickySubagentEntered, IsSuspended(false), _        , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded     , _                 , _            , _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderSaid             , _                 , _            , IsAttached | IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderSleeping         , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Sleeping]
           case (_: OrderTransferred      , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken])

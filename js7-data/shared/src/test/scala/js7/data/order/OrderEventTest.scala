@@ -1064,6 +1064,14 @@ final class OrderEventTest extends OurTestSuite:
         "TYPE": "OrderPromptAnswered"
       }""")
 
+  "OrderSaid" in :
+    testJson[OrderEvent](OrderSaid(StringValue("SAID")),
+      json"""
+      {
+        "TYPE": "OrderSaid",
+        "value": "SAID"
+      }""")
+
   "OrderSleeping" in:
     testJson[OrderEvent](OrderSleeping(ts"2024-12-18T12:00:00Z"),
       json"""
