@@ -1110,6 +1110,14 @@ final class OrderEventTest extends OurTestSuite:
         }
       }""")
 
+  "OrderWaitingForAdmission" in :
+    testJson[OrderEvent](OrderWaitingForAdmission(ts"2024-12-18T12:00:00Z"),
+      json"""
+      {
+        "TYPE": "OrderWaitingForAdmission",
+        "until": 1734523200000
+      }""")
+
   if sys.props contains "test.speed" then "Speed" in:
     val n = 10000
     val event: Stamped[KeyedEvent[OrderEvent]] =

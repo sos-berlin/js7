@@ -23,7 +23,7 @@ import js7.data.event.EventDriven
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
-import js7.data.order.OrderEvent.{OrderMoved, *}
+import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.plan.PlanId
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -243,7 +243,8 @@ extends
 
       case OrderMoved(to, _) =>
         check(
-          (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] || isState[Sleeping])
+          (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
+            isState[Sleeping] || isState[WaitingForAdmission])
             && isDetachedOrAttached,
           withPosition(to).copy(
             isResumed = false,
@@ -628,6 +629,16 @@ extends
           Right(copy(
             planId = planId))
 
+      case OrderSaid(value) =>
+        check(isState[IsFreshOrReady] && isDetachedOrAttached,
+          this)
+
+      case OrderWaitingForAdmission(until) =>
+        check(isState[Ready] && isDetachedOrAttached,
+          copy(
+            state = WaitingForAdmission(until)))
+  end applyEvent
+
   /** An Order being transferred back to Controller, should fail after failure. */
   def shouldFail: Boolean =
     isFailed && isFailable
@@ -809,6 +820,7 @@ extends
       || isState[DelayingRetry]
       || isState[DelayedAfterError]
       || isState[Sleeping]
+      || isState[WaitingForAdmission]
       || (isState[Fresh] && maybeDelayedUntil.isDefined)
 
   private def isMarkable =
@@ -1154,7 +1166,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       Subtype(Deleted),
       Subtype(deriveCodec[Prompting]),
       Subtype(deriveCodec[Sleeping]),
-      Subtype(deriveCodec[Broken]))
+      Subtype(deriveCodec[Broken]),
+      Subtype(deriveCodec[WaitingForAdmission]))
 
   sealed trait IsDetachable extends State:
     private[Order] final def isDetachable = true
@@ -1272,7 +1285,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
 
   // COMPATIBLE with v2.7.1
-  sealed trait IsDelayingRetry extends IsStarted, IsDetachable, IsGoCommandable, IsTransferable:
+  sealed trait IsDelayingRetry
+  extends IsStarted, IsDetachable, IsGoCommandable, IsTransferable:
     def until: Timestamp
 
 
@@ -1350,6 +1364,19 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
   extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
+
+
+  final case class WaitingForAdmission(until: Timestamp)
+  extends IsStarted, /*IsDetachable?, */IsControllerOnly, IsGoCommandable, IsResettable,
+    IsTransferableButResetChangedInstruction:
+
+    type Self = WaitingForAdmission
+    def go(order: Order[WaitingForAdmission])
+    : Checked[List[OrderGoes | OrderStarted | OrderCycleStarted | OrderAwoke | OrderMoved]] =
+      Right:
+        List(OrderGoes, OrderMoved(order.position / BranchId.AdmissionTime % 0))
+
+    override private[Order] def maybeDelayedUntil = Some(until)
 
 
   // COMPATIBLE with v2.3, only used for JSON deserialization

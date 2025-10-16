@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.{Duration, Instant, ZonedDateTime}
+import java.time.{Duration, Instant, ZoneId, ZonedDateTime}
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
@@ -53,3 +53,8 @@ object JavaTimeConverters:
       new FiniteDuration(-o.negated.toNanos, NANOSECONDS).toCoarsest
     else
       new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest
+
+
+  extension (zoneId: ZoneId)
+    def toTimezone: Timezone =
+      Timezone.mayThrow(zoneId.getId)

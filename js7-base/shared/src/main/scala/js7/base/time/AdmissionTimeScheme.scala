@@ -3,8 +3,10 @@ package js7.base.time
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
+import java.time.LocalTime
 import js7.base.time.SchemeRestriction.Unrestricted
 import scala.annotation.targetName
+import scala.concurrent.duration.FiniteDuration
 
 final case class AdmissionTimeScheme(restrictedSchemes: Seq[RestrictedScheme])
 
@@ -37,6 +39,9 @@ object AdmissionTimeScheme:
 
   val never: AdmissionTimeScheme =
     new AdmissionTimeScheme(Nil)
+
+  def daily(localTime: LocalTime, duration: FiniteDuration): AdmissionTimeScheme =
+    AdmissionTimeScheme(Seq(DailyPeriod(localTime, duration)))
 
   @targetName("fromPeriods")
   def apply(periods: Seq[AdmissionPeriod]): AdmissionTimeScheme =

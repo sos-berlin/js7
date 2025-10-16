@@ -1,6 +1,7 @@
 package js7.base.generic
 
 import io.circe.{Codec, Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
+import java.time.ZoneId
 import java.util.Objects.requireNonNull
 import javax.annotation.Nullable
 import js7.base.circeutils.CirceUtils.toDecoderResult
@@ -60,6 +61,10 @@ object GenericString:
     @TestOnly @throws[RuntimeException]
     final def apply(string: String): A =
       mayThrow(string)
+
+    @TestOnly @throws[RuntimeException]
+    final def fromZoneId(zoneId: ZoneId): A =
+      mayThrow(zoneId.toString)
 
     /** @throws RuntimeException. */
     @throws[RuntimeException]

@@ -63,6 +63,7 @@ object BranchId:
   val ConsumeNotices: Named = BranchId("consumeNotices")
   val StickySubagent: Named = BranchId("stickySubagent")
   val Options: Named = BranchId("options")
+  val AdmissionTime: Named = BranchId("admissionTime")
 
   /** Set of BranchIds an Order is movable through. */
   private[BranchId] val NoMoveBoundary = Set[BranchId](Then, Else, Try_, Catch_, Cycle/*???*/, Options)

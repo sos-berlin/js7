@@ -44,7 +44,7 @@ object DailyPeriod:
 
   @TestOnly
   def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
-    new DailyPeriod((localTime.toSecondOfDay), duration)
+    new DailyPeriod(localTime.toSecondOfDay, duration)
       .checked.orThrow
 
   def checked(localTime: LocalTime, duration: FiniteDuration): Checked[DailyPeriod] =

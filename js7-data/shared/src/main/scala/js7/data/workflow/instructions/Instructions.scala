@@ -8,6 +8,7 @@ import js7.data.workflow.Instruction
   */
 object Instructions:
   implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
+    Subtype[AdmissionTime],
     Subtype[Execute],
     Subtype.named1[ExplicitEnd]("End"),
     Subtype[ImplicitEnd],  // Serialized for easier external use of Workflow

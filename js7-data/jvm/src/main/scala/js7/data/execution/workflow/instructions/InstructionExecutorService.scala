@@ -40,6 +40,7 @@ final class InstructionExecutorService(val clock: WallClock):
       StopExecutor(this),
       BreakOrderExecutor(this),
       CycleExecutor(this),
+      AdmissionTimeExecutor(this),
       SleepExecutor(this),
       SayExecutor(this),
       BreakExecutor(this)

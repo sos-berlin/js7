@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import ExecuteExecutor.*
 import cats.instances.either.*
 import cats.instances.option.*
 import cats.syntax.traverse.*
@@ -11,7 +10,7 @@ import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
+import js7.data.execution.workflow.instructions.ExecuteExecutor.*
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached}
@@ -145,7 +144,7 @@ object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
-  private val FindTimeIntervalLimit = 1096.days // TODO Use AgentConfiguration.findTimeIntervalLimit
+  private[instructions] val FindTimeIntervalLimit = 1096.days // TODO Use AgentConfiguration.findTimeIntervalLimit
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
     orderId.string match

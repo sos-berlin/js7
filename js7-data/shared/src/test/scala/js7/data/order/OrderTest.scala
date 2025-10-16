@@ -16,8 +16,8 @@ import js7.data.board.{BoardPath, NoticeKey, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, Sleeping, State, Stopped, StoppedWhileFresh, WaitingForLock}
-import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderPriorityChanged, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSleeping, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, Sleeping, State, Stopped, StoppedWhileFresh, WaitingForAdmission, WaitingForLock}
+import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderPriorityChanged, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSaid, OrderSleeping, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred, OrderWaitingForAdmission}
 import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -393,6 +393,13 @@ final class OrderTest extends OurTestSuite:
             "until": 1734523200000
           }""")
 
+      "WaitingForAdmission" in:
+        testJson[State](WaitingForAdmission(ts"2024-12-18T12:00:00Z"),
+          json"""{
+            "TYPE": "WaitingForAdmission",
+            "until": 1734523200000
+          }""")
+
       "Cancelled" in:
         testJson[State](Cancelled,
           json"""{
@@ -535,6 +542,7 @@ final class OrderTest extends OurTestSuite:
 
       OrderSaid(StringValue("Said"): Value),
       OrderSleeping(ts"2024-12-18T00:00:00Z"),
+      OrderWaitingForAdmission(ts"2024-12-18T00:00:00Z"),
       OrderTransferred(workflowId /: Position(0)),
 
       OrderBroken(),
@@ -632,6 +640,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderOutcomeAdded     , _                 , _            , _                      ) => _.isInstanceOf[Ready]
           case (_: OrderSaid             , _                 , _            , IsAttached | IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderSleeping         , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Sleeping]
+          case (_: OrderWaitingForAdmission, _               , _            , IsDetached | IsAttached) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderTransferred      , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken])
 
@@ -716,6 +725,41 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderFailed      , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderStopped     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]
           case (_: OrderBroken      , _                 , _, _                                  ) => _.isInstanceOf[Broken])
+
+    "Sleeping" in:
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Sleeping(ts"2025-10-15T12:00:00Z"),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
+        cancelMarkedAllowed[Sleeping] orElse
+        suspendMarkedAllowed[Sleeping] orElse
+        priorityChangedAllowed[Sleeping] orElse
+        detachingAllowed[Sleeping] orElse
+        planAttached[Sleeping] orElse:
+          case (_: OrderAwoke           , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderMoved           , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderStateReset      , _                 , _, _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderOutcomeAdded    , _                 , _, _                      ) => _.isInstanceOf[Sleeping]
+          case (_: OrderSuspensionMarked, IsSuspended(_)    , _, _                      ) => _.isInstanceOf[Sleeping]
+          case (_: OrderResumptionMarked, IsSuspended(_)    , _, _                      ) => _.isInstanceOf[Sleeping]
+          case (_: OrderGoMarked        , _                 , _, IsAttached             ) => _.isInstanceOf[Sleeping]
+          case (_: OrderGoes            , _                 , _, _                      ) => _.isInstanceOf[Sleeping]
+          case (_: OrderTransferred     , _                 , _, IsDetached             ) => _.isInstanceOf[Sleeping]
+          case (_: OrderBroken          , _                 , _, _                      ) => _.isInstanceOf[Broken])
+
+    "WaitingForAdmission" in:
+      checkAllEvents(Order(orderId, workflowId /: Position(0), WaitingForAdmission(ts"2025-10-15T12:00:00Z"),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
+        cancelMarkedAllowed[WaitingForAdmission] orElse
+        suspendMarkedAllowed[WaitingForAdmission] orElse
+        priorityChangedAllowed[WaitingForAdmission] orElse
+        planAttached[WaitingForAdmission] orElse:
+          case (_: OrderMoved           , _             , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderStateReset      , _             , _, _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderOutcomeAdded    , _             , _, _                      ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderSuspensionMarked, IsSuspended(_), _, _                      ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderGoMarked        , _             , _, IsAttached             ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderGoes            , _             , _, _                      ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderTransferred     , _             , _, IsDetached             ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderBroken          , _             , _, _                      ) => _.isInstanceOf[Broken])
 
     "Prompting" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Prompting(StringValue("QUESTION")),
