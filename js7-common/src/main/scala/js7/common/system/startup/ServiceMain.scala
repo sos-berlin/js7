@@ -52,8 +52,9 @@ object ServiceMain:
             use(conf, _)
       .attempt.map:
         case Left(throwable) =>
-          logger.debug(s"Already logged: ❓${throwable.toStringWithCauses}")
-          ExitCode.Error // Service has already logged an error
+          // Service has already logged an error (not always)
+          logger.error(s"${throwable.toStringWithCauses}")
+          ExitCode.Error
         case Right(termination) =>
           if !suppressTerminationLogging then
             logging.logTermination(productName, termination)
