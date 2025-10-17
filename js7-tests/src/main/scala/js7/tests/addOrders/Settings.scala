@@ -1,7 +1,7 @@
 package js7.tests.addOrders
 
-import com.typesafe.config.ConfigFactory
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.config.Js7Config
 import js7.base.generic.SecretString
 import js7.base.utils.CatsUtils.*
 import js7.base.web.Uri
@@ -14,7 +14,7 @@ private final case class Settings(
   orderCount: Int,
   admissions: Nel[Admission])
 extends BasicConfiguration:
-  val config = ConfigFactory.empty
+  val config = Js7Config.defaultConfig
 
   val name = "TestAddOrders"
 

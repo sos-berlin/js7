@@ -1,5 +1,6 @@
 package js7.base.catsutils
 
+import cats.effect.IOApp
 import cats.effect.unsafe.IORuntime
 import js7.base.BuildInfo
 import js7.base.log.{Log4j, Logger}
@@ -8,7 +9,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isStrict
 
-trait OurApp extends IOAppWithCpuStarvationCheck:
+trait OurApp extends IOApp:
 
   private val initialized = Atomic(false)
 

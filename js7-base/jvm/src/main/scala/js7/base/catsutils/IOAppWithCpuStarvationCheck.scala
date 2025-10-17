@@ -9,6 +9,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
+// Unused, because we have our Responsivenessmeter !!!
 private transparent trait IOAppWithCpuStarvationCheck extends IOApp:
 
   override def runtimeConfig: IORuntimeConfig =
