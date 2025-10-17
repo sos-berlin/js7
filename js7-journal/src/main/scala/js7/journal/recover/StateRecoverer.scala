@@ -99,7 +99,7 @@ object StateRecoverer:
       case None =>
         // An active cluster node will start a new journal
         // A passive cluster node will provide the JournalId later
-        Recovered.noJournalFile(journalLocation, runningSince, config)
+        Recovered.noJournalFile(journalLocation, config, runningSince)
 
   def recoverFile[S <: SnapshotableState[S]](file: Path)(using S: SnapshotableState.Companion[S])
   : S =

@@ -72,8 +72,8 @@ object Recovered:
 
   def noJournalFile[S <: SnapshotableState[S]](
     journalLocation: JournalLocation,
-    totalRunningSince: Deadline,
-    config: Config)
+    config: Config,
+    totalRunningSince: Deadline = Deadline.now)
     (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     new Recovered(

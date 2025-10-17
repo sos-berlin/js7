@@ -41,7 +41,7 @@ trait ServiceApp extends OurApp:
         suppressLogShutdown = suppressLogShutdown)(
       cnf =>
         for
-          _ <- CallMeterLoggingService.resource(cnf.config)
+          _ <- CallMeterLoggingService.service(cnf.config)
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
           _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)

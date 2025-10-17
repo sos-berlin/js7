@@ -40,13 +40,13 @@ object CallMeterLoggingService:
 
   private val logger = Logger[this.type]
 
-  def resource(config: Config): ResourceIO[CallMeterLoggingService] =
-    resource(Conf.fromConfig(config))
+  def service(config: Config): ResourceIO[CallMeterLoggingService] =
+    service(Conf.fromConfig(config))
 
-  def resource(logEvery: FiniteDuration): ResourceIO[CallMeterLoggingService] =
-    resource(Conf(logEvery = logEvery))
+  def service(logEvery: FiniteDuration): ResourceIO[CallMeterLoggingService] =
+    service(Conf(logEvery = logEvery))
 
-  private def resource(conf: Conf): ResourceIO[CallMeterLoggingService] =
+  private def service(conf: Conf): ResourceIO[CallMeterLoggingService] =
     Service.resource(IO(CallMeterLoggingService(conf)))
 
 

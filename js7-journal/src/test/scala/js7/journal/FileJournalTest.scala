@@ -24,7 +24,6 @@ import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import org.scalatest.Assertion
-import scala.concurrent.duration.Deadline
 
 final class FileJournalTest extends OurAsyncTestSuite:
 
@@ -127,10 +126,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
         dir <- temporaryDirectoryResource[IO]("FileJournalTest-")
         journalLocation = JournalLocation(TestState, dir / "test")
         journal <- FileJournal.service(
-          Recovered.noJournalFile[TestState](
-            journalLocation,
-            Deadline.now,
-            myConfig),
+          Recovered.noJournalFile[TestState](journalLocation, myConfig),
           JournalConf.fromConfig(myConfig))
       yield
         journal

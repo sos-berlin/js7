@@ -85,9 +85,9 @@ extends EventInstructionExecutor:
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
     for
       workflow <- state.keyToItem(Workflow).checked(order.workflowId)
-      pair <- toCalendarAndScheduleCalculator(workflow, cycle, state)
+      (_, calculator) <- toCalendarAndScheduleCalculator(workflow, cycle, state)
     yield
-      pair._2
+      calculator
 
   private def toCalendarAndScheduleCalculator(
     workflow: Workflow,

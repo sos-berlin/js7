@@ -55,7 +55,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
 
       if isIntelliJIdea then
         stopCallMeterService =
-          CallMeterLoggingService.resource(logEvery = 1.minute).void
+          CallMeterLoggingService.service(logEvery = 1.minute).void
             .allocated.map(_._2)
             .unsafeRunSyncX()(using allocated.allocatedThing)
 
