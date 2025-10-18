@@ -113,7 +113,8 @@ extends
         logger.info("Starting a new empty journal")
       logger.whenTraceEnabled:
         logger.debug("Logger isTraceEnabled=true")
-      assertIsRecoverable(state.get.uncommitted)
+      if conf.slowCheckState then
+        assertIsRecoverable(state.get.uncommitted)
 
       val tmpFile = JournalLocation.toTemporaryFile:
         journalLocation.file(after = state.get.committed.eventId)
@@ -299,16 +300,14 @@ extends
   private[journal] def isRequiringClusterAcknowledgement: IO[Boolean] =
     requireClusterAck.get
 
-  protected def assertIsRecoverable(aggregate: S, keyedEvents: Seq[AnyKeyedEvent] = Nil)
-  : Unit =
-    if conf.slowCheckState then
-      assertEqualSnapshotState("Recovered", aggregate, aggregate.toRecovered, keyedEvents)
+  protected def assertIsRecoverable(aggregate: S, keyedEvents: Iterable[AnyKeyedEvent] = Nil): Unit =
+    assertEqualSnapshotState("Recovered", aggregate, aggregate.toRecovered, keyedEvents)
 
   protected def assertEqualSnapshotState(
     what: String,
     aggregate: S,
     couldBeRecoveredState: S,
-    keyedEvents: Seq[AnyKeyedEvent] = Nil)
+    keyedEvents: Iterable[AnyKeyedEvent] = Nil)
   : Unit =
     if couldBeRecoveredState != aggregate then
       val msg = s"$what does not match actual '$S'"

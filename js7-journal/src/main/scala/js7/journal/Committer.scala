@@ -256,7 +256,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       catchNonFatalFlatten:
         queueEntry.eventCalc.calculate(state.uncommitted, TimeCtx(clock.now()))
       .map: coll =>
-        if coll.hasEvents then
+        if conf.slowCheckState && coll.hasEvents then
           assertIsRecoverable(state.uncommitted, coll.keyedEvents)
         val stamped = coll.timestampedKeyedEvents.map: o =>
           eventIdGenerator.stamp(o.keyedEvent, timestampMillis = o.maybeMillisSinceEpoch)
