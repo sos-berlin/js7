@@ -387,6 +387,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.stream(activeNodeApi, after = continuation.fileLength)
+        .through:
+          meterHeartbeatDelay
         .interruptWhenF(shutdown.get)
         // TODO Aktiver kann JournalFileIsNotReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
@@ -728,6 +730,17 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
     val stamped = eventIdGenerator.stamp(NoKey <-: failedOver)
     logger.debug(stamped.toString)
     stamped
+
+  /** Update bean passiveHeartbeatDelay. */
+  private def meterHeartbeatDelay[O]: fs2.Pipe[IO, O, O] =
+    _.chunks
+      .zip:
+        Stream.duration[IO].sliding(2).map(d => d(1) - d(0))
+      .map: (chunk, elapsed) =>
+        bean.passiveHeartbeatDelay = (elapsed - clusterConf.timing.heartbeat) max ZeroDuration
+        chunk
+      .unchunks // unchanged chunks
+
 
   private sealed trait Continuation
 

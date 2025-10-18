@@ -1,31 +1,57 @@
 package js7.journal
 
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.base.time.ScalaTime.*
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 sealed trait FileJournalMXBean:
-  def getFileSize: Long
-  def getEventTotal: Long
-  def getCommitTotal: Long
-  def getPersistTotal: Long
-  def getPersistSecondsTotal: Double
-  def getFlushTotal: Long
-  def getEventCalcSecondsTotal: Double
-  def getJsonWriteSecondsTotal: Double
-  def getAckSecondsTotal: Double
-  def getOperatingSeconds: Double
+  this: FileJournalMXBean.Bean =>
+
+  def getFileSize: Long =
+    fileSize
+
+  def getEventTotal: Long =
+    eventTotal.get
+
+  def getPersistTotal: Long =
+    persistTotal.get
+
+  def getPersistSecondsTotal: Double =
+    persistNanos.get / 1_000_000_000.0
+
+  def getCommitTotal: Long =
+    commitTotal.get
+
+  def getFlushTotal: Long =
+    flushTotal.get
+
+  def getEventCalcSecondsTotal: Double =
+    eventCalcNanos.get / 1_000_000_000.0
+
+  def getJsonWriteSecondsTotal: Double =
+    jsonWriteNanos.get / 1_000_000_000.0
+
+  def getAckSecondsTotal: Double =
+    ackNanos.get / 1_000_000_000.0
+
+  def getOperatingSeconds: Double =
+    (totalOperatingTimeUntilStart.get + sinceStart.elapsed).toDoubleSeconds
+
+  def getPassiveHeartbeatDelay: java.lang.Double | Null =
+    passiveHeartbeatDelay match
+      case null => null
+      case d: FiniteDuration => d.toDoubleSeconds
 
 
 object FileJournalMXBean:
 
   final class Bean extends FileJournalMXBean:
-    private val sinceStart = Deadline.now
+    protected val sinceStart = Deadline.now
     private[journal] val totalOperatingTimeUntilStart = Atomic(ZeroDuration)
 
     var fileSize = 0L
-    private val eventTotal = Atomic(0L)
+    protected val eventTotal = Atomic(0L)
     private[journal] val persistTotal = Atomic(0L)
     private[journal] val persistNanos = Atomic(0L)
     private[journal] val commitTotal = Atomic(0L)
@@ -33,40 +59,10 @@ object FileJournalMXBean:
     private[journal] val eventCalcNanos = Atomic(0L)
     private[journal] val jsonWriteNanos = Atomic(0L)
     private[journal] val ackNanos = Atomic(0L)
-
-    def getFileSize: Long =
-      fileSize
+    private[js7] var passiveHeartbeatDelay: FiniteDuration | Null = null
 
     def addEventCount(n: Int): Unit =
       eventTotal += n
-
-    def getEventTotal: Long =
-      eventTotal.get
-
-    def getPersistTotal =
-      persistTotal.get
-
-    def getPersistSecondsTotal =
-      persistNanos.get / 1_000_000_000.0
-
-    def getCommitTotal: Long =
-      commitTotal.get
-
-    def getFlushTotal: Long =
-      flushTotal.get
-
-    def getEventCalcSecondsTotal =
-      eventCalcNanos.get / 1_000_000_000.0
-
-    def getJsonWriteSecondsTotal =
-      jsonWriteNanos.get / 1_000_000_000.0
-
-    def getAckSecondsTotal =
-      ackNanos.get / 1_000_000_000.0
-
-    def getOperatingSeconds: Double =
-      (totalOperatingTimeUntilStart.get + sinceStart.elapsed).toDoubleSeconds
-
 
     private inline def ifPersisted[A <: AnyRef](inline a: A): A =
       if isUsed then a else null.asInstanceOf[A]
