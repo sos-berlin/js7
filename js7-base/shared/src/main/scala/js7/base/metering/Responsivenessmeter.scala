@@ -12,6 +12,7 @@ import js7.base.service.Service
 import js7.base.system.MBeanUtils
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import scala.annotation.threadUnsafe
 import scala.concurrent.duration.*
 import scala.math.Ordering.Implicits.infixOrderingOps
 
@@ -21,20 +22,16 @@ extends
 
   import conf.{initialDelay, logLevel, meterInterval, slowThreshold}
 
-  private val callback = Ref.unsafe[IO, MeterCallback]((_, _, _) => IO.unit)
+  private val callback = Ref.unsafe[IO, MeterCallback](meterCallback)
   private var lastDelay = ZeroDuration
-  private var lastDelaySticks = false
   private var stickUntil = Deadline.now
-  private var wasSlow = false
+  private var isSlow = false
 
   val bean: ResponsivenessMXBean =
     new ResponsivenessMXBean:
       def getDelaySeconds =
-        lastDelaySticks = false
+        stickUntil = Deadline.now
         lastDelay.toDoubleSeconds
-
-      val getThresholdSeconds =
-        conf.slowThreshold.toDoubleSeconds
 
   /** Because Journal is not available in js7-base, we go over a callback. */
   def onMetered(callback: MeterCallback): IO[Unit] =
@@ -44,41 +41,38 @@ extends
     startService:
       IO.sleep(initialDelay) *>
         MBeanUtils.registerMBean[IO]("InternalResponsiveness", bean).surround:
-          locally:
-            for
-              start <- IO.monotonic
-              _ <- IO.sleep(meterInterval)
-              end <- IO.monotonic
-              delay = end - (start + meterInterval)
-              _ =
-                if lastDelaySticks then
-                  if lastDelay < delay then
-                    lastDelay = delay
-                else
-                  lastDelaySticks = true
-                  lastDelay = delay
-              _ <- onMetered(delay)
-            yield ()
-          .foreverM
+          meter.foreverM
+
+  private val meter =
+    for
+      start <- IO.monotonic
+      _ <- IO.sleep(meterInterval)
+      end <- IO.monotonic
+      _ <-
+        val delay = end - (start + meterInterval)
+        if stickUntil < Deadline.now then
+          if lastDelay < delay then
+            lastDelay = delay
+        else
+          lastDelay = delay
+        stickUntil = Deadline.now + stickDuration
+        onMetered(delay)
+    yield ()
 
   private def onMetered(delay: FiniteDuration): IO[Unit] =
     IO.defer:
-      if delay > slowThreshold then
-        wasSlow = true
-        onMetered2(delay, tooLong = true)
-      else
-        val wasSlow_ = wasSlow
-        wasSlow = false
-        IO.whenA(wasSlow_):
-          onMetered2(delay, tooLong = false)
+      val wasSlow = isSlow
+      isSlow = slowThreshold < delay
+      IO.whenA(isSlow | wasSlow):
+        callback.get.flatMap(_(delay, isSlow, conf))
 
-  private def onMetered2(delay: FiniteDuration, tooLong: Boolean): IO[Unit] =
-    IO.defer:
-      if tooLong then
+  @threadUnsafe lazy
+  val meterCallback: MeterCallback = (delay, slow, conf) =>
+    IO:
+      if slow then
         logger.log(logLevel, s"🐌 InternalResponseTime was ${delay.pretty}")
       else
         logger.log(logLevel min LogLevel.Info, s"✔ InternalResponseTime was ${delay.pretty}")
-      callback.get.flatMap(_(delay, tooLong, conf))
 
 
 object Responsivenessmeter:
@@ -127,4 +121,3 @@ object Responsivenessmeter:
 
   sealed trait ResponsivenessMXBean:
     def getDelaySeconds: Double
-    def getThresholdSeconds: Double

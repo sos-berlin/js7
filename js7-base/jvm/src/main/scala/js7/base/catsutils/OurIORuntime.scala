@@ -1,6 +1,6 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Resource, Sync, SyncIO}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
@@ -125,6 +125,7 @@ object OurIORuntime:
       _ <- OurIORuntimeRegister.register(ioRuntime)
       env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       _ <- env.registerPure[F, IORuntime](ioRuntime)
+      _ <- env.registerPure[F, Scheduler](ioRuntime.scheduler)
       _ <- env.register[F, IOExecutor](IOExecutor.resource(label))
     yield
       ()

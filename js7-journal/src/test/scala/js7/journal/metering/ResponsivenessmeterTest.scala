@@ -74,7 +74,8 @@ object ResponsivenessmeterTest:
     def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)
 
-    def withEventId(eventId: EventId) = copy(eventId = eventId)
+    protected def withEventId_(eventId: EventId) =
+      copy(eventId = eventId)
 
     def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
       keyedEvent match

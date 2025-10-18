@@ -2,6 +2,7 @@ package js7.common.system.startup
 
 import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{ExitCode, IO, ResourceIO}
+import cats.implicits.catsSyntaxApplicativeByName
 import js7.base.catsutils.OurApp
 import js7.base.metering.{CallMeterLoggingService, Responsivenessmeter}
 import js7.base.service.{MainService, Service, SimpleMainService}
@@ -9,18 +10,21 @@ import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ThreadsMXBean
 import js7.base.utils.AsyncLock.AsyncLockMXBean
 import js7.base.utils.ProgramTermination
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichJavaClass}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.http.HttpMXBean
+import js7.common.system.startup.ServiceApp.*
 import scala.concurrent.duration.Duration
 
 trait ServiceApp extends OurApp:
   self =>
 
   override def runtimeConfig: IORuntimeConfig =
-    super.runtimeConfig.copy(
-      cpuStarvationCheckInitialDelay = Duration.Inf /*Because we have our Responsivenessmeter*/)
+    super.runtimeConfig
+      .pipeIf(useOwnResponsivenessmeter):
+        _.copy(
+          cpuStarvationCheckInitialDelay = Duration.Inf)
 
   protected final def runProgramAsService[Cnf <: BasicConfiguration](
     args: List[String],
@@ -48,7 +52,7 @@ trait ServiceApp extends OurApp:
       cnf =>
         for
           _ <- CallMeterLoggingService.service(cnf.config)
-          _ <- Responsivenessmeter.service(cnf.config)
+          _ <- Responsivenessmeter.service(cnf.config).whenA(useOwnResponsivenessmeter)
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
           _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
@@ -77,3 +81,7 @@ trait ServiceApp extends OurApp:
     SimpleMainService.resource(program, label = self.toString)
 
   override def toString = getClass.shortClassName
+
+
+object ServiceApp:
+  private val useOwnResponsivenessmeter = true
