@@ -3,7 +3,7 @@ services:
     image: prom/prometheus
     container_name: prometheus
     hostname: prometheus
-    cpus: 0.5
+    cpus: 1
     user: 1000:1000 # The volumes/prometheus directory will be accessed with this UID:GID
     volumes:
       - ./volumes/prometheus/config/private:/var/opt/prometheus/private:ro
@@ -17,7 +17,7 @@ services:
     image: grafana/grafana
     container_name: grafana
     hostname: grafana
-    cpus: 0.5
+    cpus: 2
     user: 1000:1000 # The volumes/grafana directory will be accessed with this UID:GID
     ports:
       - "0.0.0.0:3000:3000" # Publicly accessible !!!
