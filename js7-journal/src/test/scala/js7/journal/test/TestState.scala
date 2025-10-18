@@ -55,7 +55,7 @@ extends SnapshotableState[TestState]:
       case keyedEvent =>
         applyStandardEvent(keyedEvent)
 
-  def withEventId(eventId: EventId): TestState =
+  protected def withEventId_(eventId: EventId): TestState =
     copy(eventId = eventId)
 
   def withStandards(standards: SnapshotableState.Standards) =

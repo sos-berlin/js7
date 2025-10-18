@@ -12,7 +12,13 @@ extends EventDrivenState[S, Event]:
 
   def companion: JournaledState.Companion[S]
 
-  def withEventId(eventId: EventId): S
+  protected def withEventId_(eventId: EventId): S
+
+  final def withEventId(eventId: EventId): S =
+    if eventId == this.eventId then
+      this
+    else
+      withEventId_(eventId)
 
   def eventId: EventId
 

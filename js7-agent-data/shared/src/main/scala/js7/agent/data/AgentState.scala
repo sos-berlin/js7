@@ -121,7 +121,7 @@ extends SignedItemContainer,
   private def isWithoutSignature(itemKey: SignableItemKey) =
     !keyToSignedItem.contains(itemKey)
 
-  def withEventId(eventId: EventId): AgentState =
+  protected def withEventId_(eventId: EventId): AgentState =
     copy(eventId = eventId)
 
   def withStandards(standards: SnapshotableState.Standards): AgentState =

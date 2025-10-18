@@ -179,7 +179,7 @@ extends
       statistics.toSnapshotStream
     ).flatten
 
-  def withEventId(eventId: EventId): ControllerState =
+  protected def withEventId_(eventId: EventId): ControllerState =
     copy(eventId = eventId)
 
   def withStandards(standards: SnapshotableState.Standards): ControllerState =

@@ -62,7 +62,8 @@ private object ClusterableStateTest:
     def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
       applyStandardEvent(keyedEvent)
 
-    def withEventId(eventId: EventId) = copy(eventId = eventId)
+    protected def withEventId_(eventId: EventId) =
+      copy(eventId = eventId)
 
     def clusterNodeIdToName(nodeId: NodeId) =
       Left(Problem("clusterNodeIdToName not implemented"))

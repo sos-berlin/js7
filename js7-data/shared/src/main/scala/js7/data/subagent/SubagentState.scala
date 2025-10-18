@@ -23,7 +23,7 @@ extends JournaledState[SubagentState], ItemContainer:
 
   def companion: SubagentState.type = SubagentState
 
-  def withEventId(eventId: EventId): SubagentState =
+  protected def withEventId_(eventId: EventId): SubagentState =
     copy(eventId = eventId)
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[SubagentState] =

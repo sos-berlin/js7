@@ -244,7 +244,7 @@ private object FileJournalLegacyTest:
 
     def name = "TestState"
 
-    def withEventId(eventId: EventId) =
+    protected def withEventId_(eventId: EventId) =
       copy(eventId = eventId)
 
     def withStandards(standards: SnapshotableState.Standards) =
