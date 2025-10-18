@@ -43,7 +43,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
     val eventColl: EventColl[ControllerState, NoKeyEvent, TimeCtx] =
       eventCalc.calculate(ControllerState.empty, context).orThrow
 
-    assert(eventColl.keyedEvents == Vector(
+    assert(eventColl.keyedEvents.toVector == Vector(
       NoKey <-: ControllerInitialized(ControllerId("Controller"), initiallyStartedAt),
       NoKey <-: UnsignedSimpleItemAdded(planSchema),
       NoKey <-: UnsignedSimpleItemAdded(board)))

@@ -18,7 +18,7 @@ final class EventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
   @TestOnly
   def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
     calculate(aggregate, context).map: coll =>
-      coll.keyedEvents -> coll.aggregate
+      coll.keyedEvents.toVector -> coll.aggregate
 
   /** Returns an EventColl containing the calculated events and aggregate. */
   def calculate(aggregate: S, context: Ctx): Checked[EventColl[S, E, Ctx]] =

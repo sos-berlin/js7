@@ -9,7 +9,7 @@ import js7.benchmark.OurBenchmark
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, MaybeTimestampedKeyedEvent, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemRevision, VersionId}
@@ -78,11 +78,11 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
   private val myTestCycleExecutor = EventCalcCycleExecutor[ControllerState]
 
   @Benchmark
-  def eventCalcCycleExecutor: (Seq[AnyKeyedEvent], ControllerState) =
+  def eventCalcCycleExecutor: (Seq[MaybeTimestampedKeyedEvent[Event]], ControllerState) =
     val coll = myTestCycleExecutor.toEventCalc(orderId)
       .calculate(controllerState, TimeCtx(ts"2025-03-14T12:00:00Z"))
       .orThrow
-    coll.keyedEvents -> coll.aggregate
+    coll.timestampedKeyedEvents -> coll.aggregate
 
 
 //object EventCalcCycleExecutorBenchmark:

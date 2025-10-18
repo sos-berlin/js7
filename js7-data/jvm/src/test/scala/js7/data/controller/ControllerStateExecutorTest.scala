@@ -149,7 +149,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           orderId <-: OrderDeleted))
         .orThrow
 
-      val firstEvents = executor.coll.keyedEvents
+      val firstEvents = executor.coll.keyedEvents.toVector
       assert:
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
@@ -259,7 +259,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       val executor = Executor(_controllerState)
       val result = executor.applyWithSubsequentEvents:
         EventColl(_controllerState, TimeCtx(ts"2025-04-26T12:00:00Z"))
-          .add(keyedEvents).orThrow.keyedEvents
+          .add(keyedEvents).orThrow.keyedEvents.toVector
       updated = executor.controllerState
       result
 
@@ -584,7 +584,7 @@ object ControllerStateExecutorTest:
         coll <- ControllerStateExecutor.addSubsequentEvents(coll)
       yield
         update(coll)
-        coll.keyedEvents
+        coll.keyedEvents.toVector
 
     def execute[E <: Event, Ctx >: TimeCtx](eventCalc: EventCalc[ControllerState, E, Ctx])
     : Checked[Seq[KeyedEvent[Event]]] =
@@ -594,7 +594,7 @@ object ControllerStateExecutorTest:
         coll <- coll.add(subsequentColl)
       yield
         update(coll)
-        subsequentColl.keyedEvents
+        subsequentColl.keyedEvents.toVector
 
     def applyEvents(keyedEvents: KeyedEvent[Event]*): Unit =
       coll.add(keyedEvents)
@@ -612,7 +612,7 @@ object ControllerStateExecutorTest:
         coll <- coll.add(subsequentEvents)
       yield
         update(coll)
-        subsequentEvents.keyedEvents
+        subsequentEvents.keyedEvents.toVector
 
     private def update(coll: EventColl[ControllerState, Event, TimeCtx]): Unit =
       assert(coll.originalAggregate == this.coll.aggregate) // fails better then eq

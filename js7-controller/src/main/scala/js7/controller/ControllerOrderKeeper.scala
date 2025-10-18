@@ -985,7 +985,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
   : Future[A] =
     persist(
       EventCalc.pure:
-        addSubsequentEvents.calculate(coll).orThrow.keyedEvents,
+        addSubsequentEvents.calculate(coll).orThrow.timestampedKeyedEvents,
       CommitOptions.Transaction
     )(callback)
 

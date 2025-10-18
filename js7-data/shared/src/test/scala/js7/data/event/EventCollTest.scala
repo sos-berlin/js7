@@ -28,7 +28,7 @@ final class EventCollTest extends OurTestSuite:
           coll
       .orThrow
     assert(coll.aggregate == TestState("A,B"))
-    assert(coll.keyedEvents == Vector(
+    assert(coll.keyedEvents.toVector == Vector(
       NoKey <-: Added("A"),
       NoKey <-: Added(",B")))
 
@@ -49,7 +49,7 @@ final class EventCollTest extends OurTestSuite:
       .addEvents(Seq(Added("A"), Added(",B")))
       .orThrow
     assert(coll.aggregate == TestState("A,B"))
-    assert(coll.keyedEvents == Vector(
+    assert(coll.keyedEvents.toVector == Vector(
       NoKey <-: Added("A"),
       NoKey <-: Added(",B")))
 
@@ -89,7 +89,7 @@ final class EventCollTest extends OurTestSuite:
           coll
       .orThrow
     assert(coll.aggregate == TestState("A,B"))
-    assert(coll.keyedEvents == Vector(
+    assert(coll.keyedEvents.toVector == Vector(
       NoKey <-: Added("A"),
       NoKey <-: Added(",B")))
 
@@ -113,7 +113,7 @@ final class EventCollTest extends OurTestSuite:
     val abColl = aColl.addColl(bColl).orThrow
     assert(abColl.originalAggregate == TestState("START:"))
     assert(abColl.aggregate == TestState("START:A,B"))
-    assert(abColl.keyedEvents == Vector(
+    assert(abColl.keyedEvents.toVector == Vector(
       NoKey <-: Added("A"),
       NoKey <-: Added(",B")))
-    assert(abColl.keyedEvents == aColl.keyedEvents ++ bColl.keyedEvents)
+    assert(abColl.keyedEvents.toVector == (aColl.keyedEvents ++ bColl.keyedEvents).toVector)

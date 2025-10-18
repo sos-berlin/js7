@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, toEage
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.EventColl.*
 import js7.data.event.KeyedEvent.NoKey
+import scala.collection.IndexedSeqView
 import scala.reflect.ClassTag
 
 /** EventDrivenState event collection.
@@ -137,8 +138,8 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
     keyedEvents.foreachWithBracket(): (ke, br) =>
       body(s"$br$ke".trim)
 
-  def keyedEvents: Vector[KeyedEvent[E]] =
-    timestampedKeyedEvents.map(_.keyedEvent)
+  def keyedEvents: IndexedSeqView[KeyedEvent[E]] =
+    timestampedKeyedEvents.view.map(_.keyedEvent)
 
   /** Set originalAggregate to aggregate and remove the events. */
   def forward: EventColl[S, E, Ctx] =
@@ -202,4 +203,4 @@ object EventColl:
     context: Ctx)
     (body: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
   : Checked[Vector[KeyedEvent[E]]] =
-    body(EventColl(aggregate, context)).map(_.keyedEvents)
+    body(EventColl(aggregate, context)).map(_.keyedEvents.toVector)
