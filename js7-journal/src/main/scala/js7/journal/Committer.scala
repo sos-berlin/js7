@@ -222,9 +222,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           else if isBeingKilled then
             Left(JournalKilledProblem)
           else
-            applyEvents(state, queueEntry).map: (aggregate, applied) =>
+            applyEvents(state, queueEntry).map: applied =>
               state.copy(
-                uncommitted = aggregate,
+                uncommitted = applied.aggregate,
                 totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
               ) -> applied
       .flatMap:
@@ -252,7 +252,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             .as:
               Chunk.singleton(applied)
 
-    private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[(S, Applied)] =
+    private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[Applied] =
       catchNonFatalFlatten:
         queueEntry.eventCalc.calculate(state.uncommitted, TimeCtx(clock.now()))
       .map: coll =>
@@ -262,11 +262,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           eventIdGenerator.stamp(o.keyedEvent, timestampMillis = o.maybeMillisSinceEpoch)
         val aggregate = stamped.lastOption.fold(coll.aggregate): last =>
           coll.aggregate.withEventId(last.eventId)
-        val applied = Applied(
-          coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1,
-          queueEntry.commitOptions, queueEntry.since, queueEntry.metering,
-          queueEntry.whenApplied, queueEntry.whenPersisted)
-        (aggregate, applied)
+        Applied.fromQueueEntry(queueEntry,
+          coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1)
 
     private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Written]] =
       // TODO JSON-parallelize all chunks!
@@ -549,6 +546,15 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def completeApplied: IO[Unit] =
       whenApplied.complete(Right(persisted))
         .void
+
+  private object Applied:
+    def fromQueueEntry(queueEntry: QueueEntry[S],
+      original: S, stamped: Vector[Stamped[AnyKeyedEvent]], aggregate: S, eventNumber: Long)
+    : Applied =
+      Applied(
+        original, stamped, aggregate, eventNumber = eventNumber,
+        queueEntry.commitOptions, queueEntry.since, queueEntry.metering,
+        queueEntry.whenApplied, queueEntry.whenPersisted)
 
 
   /** Events of an Persist have been written and flushed to the journal file. */

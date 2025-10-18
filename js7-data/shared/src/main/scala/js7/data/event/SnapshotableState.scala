@@ -180,3 +180,4 @@ object SnapshotableState:
 
           case Right(o) =>
             Right(o)
+  end Companion
