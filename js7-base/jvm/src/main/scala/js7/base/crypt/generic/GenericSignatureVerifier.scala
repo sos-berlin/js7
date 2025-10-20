@@ -74,7 +74,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
   def recommendedKeyDirectoryName: String =
     throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
-  def checked(config: Config): Checked[GenericSignatureVerifier] = {
+  def checked(config: Config): Checked[GenericSignatureVerifier] =
     val allowExpiredCert = config.getBoolean("js7.configuration.allow-expired-certificates")
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map: (typeName, v) =>
@@ -118,7 +118,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
   def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("GenericSignatureVerifier.ignoreInvalid?")
 
-  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert = allowExpiredCert)
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean)
   : Checked[GenericSignature] =
     Right(signature)
 

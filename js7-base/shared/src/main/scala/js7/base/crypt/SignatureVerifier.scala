@@ -26,16 +26,13 @@ trait SignatureVerifier:
 
   def publicKeysToStrings: Seq[String]
 
-  def verify(document: ByteArray, signature: MySignature)
-  : Checked[Seq[SignerId]]
+  def verify(document: ByteArray, signature: MySignature): Checked[Seq[SignerId]]
 
   final def verify(signed: SignedString): Checked[Seq[SignerId]] =
     companion.genericSignatureToSignature(signed.signature, allowExpiredCert = allowExpiredCert)
-      .flatMap(signature =>
-        verify(ByteArray(signed.string), signature))
+      .flatMap(signature => verify(ByteArray(signed.string), signature))
 
-  final def verifyString(document: String, signature: MySignature)
-  : Checked[Seq[SignerId]] =
+  final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
     verify(ByteArray(document), signature)
 
 

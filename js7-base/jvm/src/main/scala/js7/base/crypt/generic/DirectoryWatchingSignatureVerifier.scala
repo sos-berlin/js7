@@ -67,7 +67,8 @@ extends SignatureVerifier, Service.StoppableByCancel:
               .map:
                 case (companion, (directory, directoryState)) =>
                   companion -> toVerifier(companion, directory, directoryState)
-              .toMap)
+              .toMap,
+            allowExpiredCert = allowExpiredCert)
 
           startService:
             companionToDir

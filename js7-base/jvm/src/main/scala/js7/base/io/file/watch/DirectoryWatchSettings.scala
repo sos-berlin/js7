@@ -14,7 +14,8 @@ final case class DirectoryWatchSettings(
   pollTimeout: FiniteDuration,
   delayConf: DelayConf,
   directorySilence: FiniteDuration,
-  logDelayConf: DelayConf):
+  logDelayConf: DelayConf,
+  allowExpiredCert: Boolean):
 
   def toWatchOptions(directory: Path, isRelevantFile: Path => Boolean): WatchOptions =
     WatchOptions(
@@ -33,8 +34,10 @@ object DirectoryWatchSettings:
       delayConf <- config.delayConf("js7.directory-watch.retry-delays")
       directorySilence <- config.finiteDuration("js7.directory-watch.directory-silence")
       logDelayConf <- config.delayConf("js7.directory-watch.log-delays")
+      allowExpiredCert = config.getBoolean("js7.configuration.allow-expired-certificates")
     yield
-      DirectoryWatchSettings(watchDelay, pollTimeout, delayConf, directorySilence, logDelayConf)
+      DirectoryWatchSettings(watchDelay, pollTimeout, delayConf, directorySilence, logDelayConf,
+        allowExpiredCert = allowExpiredCert)
 
   def forTest(pollTimeout: FiniteDuration = 60.s): DirectoryWatchSettings =
     DirectoryWatchSettings(
@@ -42,4 +45,5 @@ object DirectoryWatchSettings:
       pollTimeout = pollTimeout,
       delayConf = DelayConf(100.ms),
       directorySilence = 100.ms,
-      logDelayConf = DelayConf(0.s, 10.s))
+      logDelayConf = DelayConf(0.s, 10.s),
+      allowExpiredCert = false)

@@ -63,7 +63,7 @@ final class X509Test extends OurTestSuite:
       runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
-      val signerCert = X509Cert.fromPem(certificateBytes.utf8String, 
+      val signerCert = X509Cert.fromPem(certificateBytes.utf8String,
         allowExpiredCert = false
       ).orThrow
       logger.info(signerCert.toLongString)
@@ -72,7 +72,8 @@ final class X509Test extends OurTestSuite:
 
       val verifier = X509SignatureVerifier.checked(
         Seq(Labeled(certificateBytes, "X509Test")),
-        origin = certificateFile.toString).orThrow
+        origin = certificateFile.toString,
+        allowExpiredCert = false).orThrow
       val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
       assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
@@ -183,7 +184,7 @@ object X509Test:
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature)
   : Checked[Seq[SignerId]] =
     lazy val verifier = X509SignatureVerifier.checked(
-      Seq(certificateFile.labeledByteArray), 
+      Seq(certificateFile.labeledByteArray),
       origin = certificateFile.toString,
       allowExpiredCert = false
     ).orThrow
