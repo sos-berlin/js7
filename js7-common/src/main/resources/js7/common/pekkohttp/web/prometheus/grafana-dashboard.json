@@ -412,6 +412,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 0.01,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -437,7 +438,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "dashed"
             }
           },
           "mappings": [],
@@ -450,8 +451,12 @@
                 "value": 0
               },
               {
+                "color": "super-light-orange",
+                "value": 0.1
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 1
               }
             ]
           },
@@ -475,25 +480,26 @@
           },
           {
             "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "allIsZero",
+                "value": 0
+              }
+            },
+            "properties": []
+          },
+          {
+            "matcher": {
               "id": "byName",
-              "options": "Internal response time threshold"
+              "options": "Active's cluster node heartbeat delay"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "red",
+                  "fixedColor": "purple",
                   "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    10
-                  ],
-                  "fill": "dash"
                 }
               }
             ]
@@ -525,6 +531,7 @@
         {
           "editorMode": "code",
           "expr": "js7_InternalResponsiveness_DelaySeconds{host=\"$host\"}",
+          "hide": false,
           "legendFormat": "Internal response time",
           "range": true,
           "refId": "A",
@@ -539,12 +546,25 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "js7_InternalResponsiveness_ThresholdSeconds{host=\"$host\"}",
-          "hide": false,
+          "expr": "cats_effect_unsafe_metrics_CpuStarvation_CurrentClockDriftMs{host=\"$host\"}",
+          "hide": true,
           "instant": false,
-          "legendFormat": "Internal response time threshold",
+          "legendFormat": "Cats Effect",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_Journal_ActiveHeartbeatDelay{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Active's cluster node heartbeat delay",
+          "range": true,
+          "refId": "C"
         }
       ],
       "title": "Responsiveness",
@@ -716,6 +736,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 0.01,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -837,6 +858,30 @@
                 "value": {
                   "fixedColor": "red",
                   "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "JS7 Engine"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": true,
+                  "viz": true
                 }
               }
             ]
@@ -1034,6 +1079,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 1,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -1746,6 +1792,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -2517,6 +2564,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 0.1,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -2690,6 +2738,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 20,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -2808,6 +2857,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 0.01,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -2913,6 +2963,36 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Heartbeat delay"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Active's heartbeat delay"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
@@ -2988,6 +3068,19 @@
           "legendFormat": "persist",
           "range": true,
           "refId": "persist"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_Journal_ActiveHeartbeatDelay{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Active's heartbeat delay",
+          "range": true,
+          "refId": "activeHeartbeatDelay"
         }
       ],
       "title": "Journal times",
@@ -3010,6 +3103,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -3357,6 +3451,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 10000000,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -3458,6 +3553,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 0.01,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -3677,6 +3773,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -3881,6 +3978,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -4024,6 +4122,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 10000,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -4067,7 +4166,7 @@
               }
             ]
           },
-          "unit": "decbytes"
+          "unit": "Bps"
         },
         "overrides": [
           {
@@ -4168,6 +4267,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -4312,6 +4412,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 10,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -4415,6 +4516,30 @@
                 }
               }
             ]
+          },
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Outgoing requests (client)"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
           }
         ]
       },
@@ -4492,13 +4617,13 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 5,
+  "version": 25,
   "weekStart": ""
 }

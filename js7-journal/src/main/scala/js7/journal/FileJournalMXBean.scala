@@ -38,8 +38,8 @@ sealed trait FileJournalMXBean:
   def getOperatingSeconds: Double =
     (totalOperatingTimeUntilStart.get + sinceStart.elapsed).toDoubleSeconds
 
-  def getPassiveHeartbeatDelay: java.lang.Double | Null =
-    passiveHeartbeatDelay match
+  def getActiveHeartbeatDelay: java.lang.Double | Null =
+    activeHeartbeatDelay match
       case null => null
       case d: FiniteDuration => d.toDoubleSeconds
 
@@ -59,7 +59,7 @@ object FileJournalMXBean:
     private[journal] val eventCalcNanos = Atomic(0L)
     private[journal] val jsonWriteNanos = Atomic(0L)
     private[journal] val ackNanos = Atomic(0L)
-    private[js7] var passiveHeartbeatDelay: FiniteDuration | Null = null
+    private[js7] var activeHeartbeatDelay: FiniteDuration | Null = null
 
     def addEventCount(n: Int): Unit =
       eventTotal += n

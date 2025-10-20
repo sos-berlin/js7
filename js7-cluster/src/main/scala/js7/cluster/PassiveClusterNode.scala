@@ -731,13 +731,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
     logger.debug(stamped.toString)
     stamped
 
-  /** Update bean passiveHeartbeatDelay. */
+  /** Update bean activeHeartbeatDelay. */
   private def meterHeartbeatDelay[O]: fs2.Pipe[IO, O, O] =
     _.chunks
       .zip:
         Stream.duration[IO].sliding(2).map(d => d(1) - d(0))
       .map: (chunk, elapsed) =>
-        bean.passiveHeartbeatDelay = (elapsed - clusterConf.timing.heartbeat) max ZeroDuration
+        bean.activeHeartbeatDelay = (elapsed - clusterConf.timing.heartbeat) max ZeroDuration
         chunk
       .unchunks // unchanged chunks
 
