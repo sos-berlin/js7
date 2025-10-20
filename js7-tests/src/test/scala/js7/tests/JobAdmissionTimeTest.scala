@@ -1,7 +1,7 @@
 package js7.tests
 
-import java.time.DayOfWeek.{MONDAY, SUNDAY}
-import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneId}
+import java.time.DayOfWeek.{MONDAY, SUNDAY, TUESDAY}
+import java.time.{LocalDateTime, LocalTime, ZoneId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -400,9 +400,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
                 Seq:
                   RestrictedScheme(
                     Seq:
-                      WeekdayPeriod(DayOfWeek.TUESDAY, LocalTime.of(23, 30), 45.minutes), SchemeRestriction.months(Set(4, 6, 11)).orThrow)),
+                      WeekdayPeriod(TUESDAY, LocalTime.of(23, 30), 45.minutes),
+                    SchemeRestriction.months(Set(4, 6, 11)).orThrow)),
         timeZone = Timezone(zoneId.getId))
-
 
       "Standard" in:
         // 2025 November //
