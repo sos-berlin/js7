@@ -25,7 +25,8 @@ import scala.jdk.CollectionConverters.*
   * @author Joacim Zschimmer
   */
 final class GenericSignatureVerifier private[generic](
-  verifiers: immutable.Iterable[SignatureVerifier])
+  verifiers: immutable.Iterable[SignatureVerifier],
+  val allowExpiredCert: Boolean)
 extends SignatureVerifier:
 
   private val typeToVerifier = verifiers.toKeyedMap(_.companion.typeName)
@@ -45,7 +46,8 @@ extends SignatureVerifier:
     for
       verifier <- typeToVerifier.rightOr(signature.typeName,
         Problem(s"No trusted public key for signature type '${signature.typeName}'"))
-      typedSignature <- verifier.companion.genericSignatureToSignature(signature)
+      typedSignature <- verifier.companion.genericSignatureToSignature(signature,
+        allowExpiredCert = allowExpiredCert)
       signerIds <- verifier.verify(document, typedSignature)
     yield
       signerIds
@@ -72,7 +74,8 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
   def recommendedKeyDirectoryName: String =
     throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
-  def checked(config: Config): Checked[GenericSignatureVerifier] =
+  def checked(config: Config): Checked[GenericSignatureVerifier] = {
+    val allowExpiredCert = config.getBoolean("js7.configuration.allow-expired-certificates")
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map: (typeName, v) =>
         typeName ->
@@ -93,7 +96,8 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
                       }' in directory '$directory'")
                   companion.checked(
                     files.map(_.labeledByteArray),
-                    origin = directory.toString))
+                    origin = directory.toString,
+                    allowExpiredCert = allowExpiredCert))
       .toVector
       .traverse:
         case (_, Left(p)) => Left(p)
@@ -104,17 +108,18 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
         else
           logVerifiers(verifiers)
           Right:
-            new GenericSignatureVerifier(verifiers)
+            new GenericSignatureVerifier(verifiers, allowExpiredCert = allowExpiredCert)
 
   @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("GenericSignatureVerifier.checked?")
 
   @deprecated("Not implemented", "")
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("GenericSignatureVerifier.ignoreInvalid?")
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert = allowExpiredCert)
+  : Checked[GenericSignature] =
     Right(signature)
 
   private def logVerifiers(verifiers: Seq[SignatureVerifier]): Unit =

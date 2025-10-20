@@ -466,7 +466,8 @@ object RepoTest:
 
   private val itemSigner = new ItemSigner(SillySigner.Default, itemJsonCodec)
   private val signatureVerifier = SillySignatureVerifier.Default
-  private val emptyRepo = Repo.signatureVerifying(signatureVerifier).copy(selfTest = true)
+  private val emptyRepo = Repo.signatureVerifying(signatureVerifier)
+    .copy(selfTest = true)
 
   import itemSigner.sign
 

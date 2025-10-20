@@ -51,10 +51,10 @@ object X509Signer extends DocumentSigner.Companion:
     }.map(new X509Signer(_, algorithm, signerId))
 
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
-    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest")
+    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest", allowExpiredCert = false)
       .orThrow
 
-  private def newSignerAndVerifier(signerId: SignerId, origin: String)
+  private def newSignerAndVerifier(signerId: SignerId, origin: String, allowExpiredCert: Boolean)
   : Checked[(X509Signer, X509SignatureVerifier)] =
     withTemporaryDirectory("X509Signer"): dir =>
       val openssl = new Openssl(dir)
@@ -63,5 +63,6 @@ object X509Signer extends DocumentSigner.Companion:
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
         verifier <- X509SignatureVerifier.checked(
           Seq(Labeled(certWithPrivateKey.certificate, s"signer=$signerId")),
-          origin)
+          origin,
+          allowExpiredCert = allowExpiredCert)
       yield signer -> verifier

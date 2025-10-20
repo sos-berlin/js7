@@ -37,7 +37,7 @@ final class DirectoryWatchingSignatureVerifier private(
   onUpdated: () => Unit)
 extends SignatureVerifier, Service.StoppableByCancel:
 
-  @volatile private var state = State(Map.empty)
+  @volatile private var state = State(Map.empty, allowExpiredCert = settings.allowExpiredCert)
 
   protected type MySignature = GenericSignature
 
@@ -46,6 +46,8 @@ extends SignatureVerifier, Service.StoppableByCancel:
 
   def publicKeys: Seq[String] =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier#publicKeys")
+
+  def allowExpiredCert = settings.allowExpiredCert
 
   def publicKeyOrigin: String =
     "(DirectoryWatchingSignatureVerifier)"
@@ -110,7 +112,8 @@ extends SignatureVerifier, Service.StoppableByCancel:
         .sequence
         .map: updated =>
           // Update state atomically:
-          state = State(state.companionToVerifier ++ updated)
+          state = State(state.companionToVerifier ++ updated,
+            allowExpiredCert = settings.allowExpiredCert)
           try onUpdated()
           catch case NonFatal(t) =>
             logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
@@ -124,7 +127,8 @@ extends SignatureVerifier, Service.StoppableByCancel:
     val checked = catchNonFatal(
       companion.ignoreInvalid(
         files.map(file => directory.resolve(file).labeledByteArray),
-        origin = directory.toString))
+        origin = directory.toString,
+        allowExpiredCert = settings.allowExpiredCert))
 
     checked match
       case Left(problem) =>
@@ -145,7 +149,8 @@ extends SignatureVerifier, Service.StoppableByCancel:
   private def isRelevantFile(file: Path) =
     !file.getFileName.startsWith(".")
 
-  override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
+  override def verify(document: ByteArray, signature: GenericSignature)
+  : Checked[Seq[SignerId]] =
     state.genericVerifier.verify(document, signature)
 
   override def publicKeysToStrings: Seq[String] =
@@ -209,24 +214,26 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
           companionToDirectory, settings, onUpdated)))
 
   @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.checked?")
 
   @deprecated("Not implemented", "")
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean): Checked[GenericSignature] =
     Right(signature)
 
   private final case class State(
-    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]]):
+    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]],
+    allowExpiredCert: Boolean):
 
     // Failing verifiers are omitted !!!
     val genericVerifier = new GenericSignatureVerifier(
       companionToVerifier.values
         .collect { case Right(o) => o }
-        .toVector)
+        .toVector,
+      allowExpiredCert = allowExpiredCert)
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")

@@ -32,7 +32,12 @@ final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest
   override protected lazy val verifier =
     runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
-    X509SignatureVerifier.checked(Seq(certificateFile.labeledByteArray), "UpdateRepoX509Test").orThrow
+    X509SignatureVerifier
+      .checked(
+        Seq(certificateFile.labeledByteArray),
+        "UpdateRepoX509Test",
+        allowExpiredCert = false
+      ).orThrow
 
   private lazy val workDir = createTempDirectory("UpdateRepoX509Test")
   private lazy val privateKeyFile = workDir / "test.key"

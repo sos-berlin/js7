@@ -32,7 +32,8 @@ extends Signature:
 object X509Signature:
   val TypeName = "X509"
 
-  def fromGenericSignature(signature: GenericSignature): Checked[X509Signature] =
+  def fromGenericSignature(signature: GenericSignature, allowExpiredCert: Boolean)
+  : Checked[X509Signature] =
     for
       signatureBytes <- ByteArray.fromMimeBase64(signature.signatureString)
       algorithm <- signature.algorithm match
@@ -41,6 +42,7 @@ object X509Signature:
       signerIdOrCertificate <-
         (signature.signerId, signature.signerCertificate) match
           case (Some(signerId), None) => Right(Left(signerId))
-          case (None, Some(cert)) => X509Cert.fromPem(cert) map Right.apply
+          case (None, Some(cert)) =>
+            X509Cert.fromPem(cert, allowExpiredCert = allowExpiredCert) map Right.apply
           case _ => Left(Problem.pure("X.509 signature requires either a signerId or a signerCertificate"))
     yield new X509Signature(signatureBytes, algorithm, signerIdOrCertificate)

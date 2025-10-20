@@ -18,6 +18,8 @@ extends SignatureVerifier:
 
   def this() = this(SillySignature.Default :: Nil, publicKeyOrigin = "Silly")
 
+  def allowExpiredCert = false
+
   protected type MySignature = SillySignature
 
   def companion: SillySignatureVerifier.type =
@@ -49,15 +51,18 @@ object SillySignatureVerifier extends SignatureVerifier.Companion:
 
   private val SillySignerId = SignerId("Silly")
 
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly"): Checked[SillySignatureVerifier] =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly",
+    allowExpiredCert: Boolean = false)
+  : Checked[SillySignatureVerifier] =
     Right(ignoreInvalid(publicKeys))
 
-  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly") =
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly",
+    allowExpiredCert: Boolean = false) =
     new SillySignatureVerifier(
       publicKeys.map(o => SillySignature(o.value.utf8String)),
       publicKeyOrigin = origin)
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[SillySignature] =
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean = false) = 
     assertThat(signature.typeName == typeName)
     if signature.signerId.isDefined then
       Left(Problem("Silly signature does not accept a signerId"))

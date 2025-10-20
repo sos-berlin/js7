@@ -27,7 +27,8 @@ final class X509SignatureVerifier private[x509](
   trustedCertificates: Seq[X509Cert],
   trustedRootCertificates: Seq[X509Cert],
   signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
-  val publicKeyOrigin: String)
+  val publicKeyOrigin: String,
+  val allowExpiredCert: Boolean)
 extends SignatureVerifier:
 
   protected type MySignature = X509Signature
@@ -109,27 +110,32 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
   implicit val x509CertificateShow: Show[X509Certificate] =
     _.getIssuerX500Principal.toString
 
-  def checked(pems: Seq[Labeled[ByteArray]], origin: String): Checked[X509SignatureVerifier] =
+  def checked(pems: Seq[Labeled[ByteArray]], origin: String, allowExpiredCert: Boolean)
+  : Checked[X509SignatureVerifier] =
     pems.toVector
-      .traverse(labeledPem => X509Cert.fromPem(labeledPem.value.utf8String))
+      .traverse(labeledPem => X509Cert.fromPem(labeledPem.value.utf8String, allowExpiredCert = allowExpiredCert))
       .flatMap(_
         .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
-        .map(toVerifier(_, origin)))
+        .map(toVerifier(_, origin, allowExpiredCert = allowExpiredCert)))
 
-  def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier =
+  def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String, 
+    allowExpiredCert: Boolean)
+  : X509SignatureVerifier =
     val certs = pems.flatMap: labeledPem =>
-      X509Cert.fromPem(labeledPem.value.utf8String) match
+      X509Cert.fromPem(labeledPem.value.utf8String, allowExpiredCert = allowExpiredCert) match
         case Left(problem) =>
           logger.error(s"Ignoring X.509 certificate '${labeledPem.label}' due to: $problem")
           None
         case Right(o) => Some(o)
     toVerifier(
       X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
-      origin)
+      origin,
+      allowExpiredCert = allowExpiredCert)
 
   private def toVerifier(
     signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
-    origin: String)
+    origin: String,
+    allowExpiredCert: Boolean)
   : X509SignatureVerifier =
     val trustedCertificates = signerDNToTrustedCertificate.values.toVector
     // Openssl 1.1.1i always sets the CA critical extension
@@ -144,11 +150,13 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
       trustedCertificates,
       rootCertificates,
       signerDNToTrustedCertificate,
-      origin)
+      origin,
+      allowExpiredCert = allowExpiredCert)
 
   private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[?]]) =
     duplicatesToProblem("Duplicate X.509 certificates", duplicates)
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] =
+  def genericSignatureToSignature(signature: GenericSignature, allowExpiredCert: Boolean)
+  : Checked[X509Signature] =
     assertThat(signature.typeName == typeName)
-    X509Signature.fromGenericSignature(signature)
+    X509Signature.fromGenericSignature(signature, allowExpiredCert = allowExpiredCert)

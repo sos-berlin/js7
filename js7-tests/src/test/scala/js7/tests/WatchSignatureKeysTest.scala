@@ -69,7 +69,9 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow
   private lazy val itemSigner = new ItemSigner(signer, ControllerState.signableItemJsonCodec)
   override protected lazy val verifier =
-    X509SignatureVerifier.checked(Seq(Labeled(aCertAndKey.certificate, "verifier"))).orThrow
+    X509SignatureVerifier
+      .checked(Seq(Labeled(aCertAndKey.certificate, "verifier")), allowExpiredCert = false)
+      .orThrow
 
   private lazy val controllersKeyDirectory =
     directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys"
@@ -138,7 +140,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       val v = nextVersion()
       val whenUpdated = whenControllerAndAgentUpdated()
 
-      X509Cert.fromPem(bCertAndKey.certificatePem).orThrow
+      X509Cert.fromPem(bCertAndKey.certificatePem, allowExpiredCert = false).orThrow
       controllersKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       agentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       subagentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
@@ -169,7 +171,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     val subagentUpdated = idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
       .when[Subagent.ItemSignatureKeysUpdated]
 
-    X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
+    X509Cert.fromPem(cCertAndKey.certificatePem, allowExpiredCert = false).orThrow // Check
     val pem = ByteArray(cCertAndKey.certificatePem).toArray
 
     autoClosing(new FileOutputStream((controllersKeyDirectory / "key-1.pem").toFile)) { controllerFile =>
