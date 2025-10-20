@@ -426,7 +426,7 @@ extends Service.StoppableByRequest:
     for
       maybeJobDriver <- IO(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver
-        .fold(IO(logger.debug(s"⚠️ killProcess $orderId => no JobDriver for Order"))):
+        .fold(IO(logger.debug(s"⚠️  killProcess $orderId => no JobDriver for Order"))):
           _.killProcess(orderId, signal)
     yield ()
 

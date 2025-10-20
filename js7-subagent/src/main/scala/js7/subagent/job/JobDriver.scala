@@ -107,7 +107,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
     IO.defer:
       orderToProcess
         .get(orderId)
-        .fold(IO(logger.debug(s"⚠️ killProcess $orderId => no process for Order"))):
+        .fold(IO(logger.debug(s"⚠️  killProcess $orderId => no process for Order"))):
           _.killWithSigkillDelay(signal)
 
   private def orderProcessCount =
