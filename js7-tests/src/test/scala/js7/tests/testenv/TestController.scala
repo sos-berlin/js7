@@ -154,7 +154,9 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
     import runningController.ioRuntime
     runningController.addOrder(order).await(99.s).orThrow
 
-  def runOrder(order: FreshOrder, timeout: FiniteDuration = 99.s): Seq[Stamped[OrderEvent]] =
+  def runOrder(order: FreshOrder, timeout: FiniteDuration = 99.s)
+    (using sourcecode.Enclosing, ScalaSourceLocation)
+  : Seq[Stamped[OrderEvent]] =
     import runningController.ioRuntime
     logger.debugIO("runOrder", order.id)(IO.defer {
       val eventId = eventWatch.lastAddedEventId
