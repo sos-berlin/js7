@@ -3,17 +3,18 @@ package js7.tests
 import java.time.{LocalDateTime, ZoneId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
+import js7.base.test.TestExtensions.autoSome
 import js7.base.time.JavaTimeConverters.{AsScalaInstant, toTimezone}
 import js7.base.time.JavaTimeLiterals.localTime
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timestamp, Timezone}
+import js7.base.time.{AdmissionTimeScheme, MonthlyDatePeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{GoOrder, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.order.Order.WaitingForAdmission
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderGoes, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderSaid, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred, OrderWaitingForAdmission}
-import js7.data.order.{Order, OrderEvent, OrderOutcome}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.instructions.{AdmissionTime, Say}
@@ -58,7 +59,6 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     withItem(standardWorkflow): workflow =>
       val orderId = addOrder(workflow.path)
       controller.awaitNextKey[OrderSaid](orderId)
-
       controller.awaitNextKey[OrderFinished](orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -76,7 +76,6 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     withItem(agentWorkflow): workflow =>
       val orderId = addOrder(workflow.path)
       controller.awaitNextKey[OrderSaid](orderId)
-
       controller.awaitNextKey[OrderFinished](orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -322,6 +321,63 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
           OrderMoved(Position(1)),
           OrderFinished(),
           OrderDeleted))
+
+  "skipIfNoAdmissionStartForOrderDay, skip because day has no admission start" in:
+    clock.resetTo(local("2025-10-20T12:00"))
+    val workflow = Workflow(
+      WorkflowPath.Anonymous,
+      timeZone = zoneId.toTimezone,
+      instructions = Seq:
+        AdmissionTime(
+          AdmissionTimeScheme(Seq:
+            MonthlyDatePeriod(21, localTime"12:00", 1.minute)),
+          skipIfNoAdmissionStartForOrderDay = true
+        ):
+          Workflow.of:
+            Say(expr"'OK'"))
+
+    withItem(workflow): workflow =>
+      val orderId = OrderId("#2025-10-20#ORDER")
+      addOrder(orderId, workflow.path)
+      controller.awaitNextKey[OrderFinished](orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderMoved(Position(1), OrderMoved.NoAdmissionPeriodStart),
+        OrderFinished(),
+        OrderDeleted))
+
+  "skipIfNoAdmissionStartForOrderDay, don't skip because day has admission start" in:
+    clock.resetTo(local("2025-10-21T00:00"))
+    val workflow = Workflow(
+      WorkflowPath.Anonymous,
+      timeZone = zoneId.toTimezone,
+      instructions = Seq:
+        AdmissionTime(
+          AdmissionTimeScheme(Seq:
+            MonthlyDatePeriod(21, localTime"12:00", 1.minute)),
+          skipIfNoAdmissionStartForOrderDay = true
+        ):
+          Workflow.of:
+            Say(expr"'OK'"))
+
+    withItem(workflow): workflow =>
+      val orderId = OrderId("#2025-10-21#ORDER")
+      addOrder(orderId, workflow.path)
+      controller.awaitNextKey[OrderWaitingForAdmission](orderId)
+
+      clock := local("2025-10-21T12:00:00")
+      controller.awaitNextKey[OrderFinished](orderId)
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderWaitingForAdmission(local("2025-10-21T12:00:00")),
+        OrderMoved(Position(0) / BranchId.AdmissionTime % 0),
+        OrderSaid("OK"),
+        OrderMoved(Position(1)),
+        OrderFinished(),
+        OrderDeleted))
 
 
 object AdmissionTimeTest:

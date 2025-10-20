@@ -11,6 +11,7 @@ import js7.data.workflow.{Instruction, Workflow}
 
 final case class AdmissionTime(
   admissionTimeScheme: AdmissionTimeScheme,
+  skipIfNoAdmissionStartForOrderDay: Boolean,
   block: Workflow,
   sourcePos: Option[SourcePos])
 extends
@@ -54,10 +55,14 @@ object AdmissionTime:
 
   def apply(
     admissionTimeScheme: AdmissionTimeScheme,
-    sourcePos: Option[SourcePos] = None)
+    skipIfNoAdmissionStartForOrderDay: Boolean = false)
     (block: Workflow)
   : AdmissionTime =
-    new AdmissionTime(admissionTimeScheme, block, sourcePos)
+    new AdmissionTime(
+      admissionTimeScheme,
+      skipIfNoAdmissionStartForOrderDay = skipIfNoAdmissionStartForOrderDay,
+      block,
+      sourcePos = None)
 
 
   given Codec.AsObject[AdmissionTime] = deriveCodec

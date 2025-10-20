@@ -12,21 +12,23 @@ final class AdmissionTimeTest extends OurTestSuite:
   "JSON" in:
     import Instructions.jsonCodec
     testJson[Instruction](
-      AdmissionTime(AdmissionTimeScheme(Seq(DailyPeriod(3600, 1.minute)))):
+      AdmissionTime(AdmissionTimeScheme(
+        Seq(DailyPeriod(3600, 1.minute))),
+        skipIfNoAdmissionStartForOrderDay = true):
         Workflow.empty,
       json"""{
         "TYPE": "AdmissionTime",
-         "admissionTimeScheme": {
-           "periods": [
-             {
-               "TYPE": "DailyPeriod",
-               "duration": 60,
-               "secondOfDay": 3600
-             }
-           ]
-         },
-         "block": {
-           "instructions": []
-         }
-       }"""
-    )
+        "admissionTimeScheme": {
+          "periods": [
+            {
+              "TYPE": "DailyPeriod",
+                "duration": 60,
+                "secondOfDay": 3600
+            }
+          ]
+        },
+        "skipIfNoAdmissionStartForOrderDay": true,
+        "block": {
+          "instructions": []
+        }
+      }""")

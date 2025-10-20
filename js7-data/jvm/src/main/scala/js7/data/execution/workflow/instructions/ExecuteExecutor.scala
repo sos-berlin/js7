@@ -5,6 +5,7 @@ import cats.instances.option.*
 import cats.syntax.traverse.*
 import java.time.{LocalDate, ZoneId}
 import js7.base.problem.Checked
+import js7.base.time.AdmissionTimeScheme
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
@@ -35,23 +36,24 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
         workflow <- state.idToWorkflow.checked(order.workflowId)
         given ZoneId <- workflow.timeZone.toZoneId
         job <- state.workflowJob(order.workflowPosition)
-        events <- skippedReason(order, job).map: reason =>
-          // If order should start, change nextMove function, too!
-          //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-          Right:
-            (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
-        .getOrElse:
-          if !order.isProcessable then
-            Right(Nil)
-          else
-            attach(order, job.agentPath)
-              .getOrElse:
-                Right:
-                  checkSubagentBundle(order, state) match
-                    case Right(()) => Nil
-                    case Left(problem) =>
-                      (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
-                        :: Nil
+        events <-
+          skippedReason(order, job).map: reason =>
+            // If order should start, change nextMove function, too!
+            //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
+            Right:
+              (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
+          .getOrElse:
+            if !order.isProcessable then
+              Right(Nil)
+            else
+              attach(order, job.agentPath)
+                .getOrElse:
+                  Right:
+                    checkSubagentBundle(order, state) match
+                      case Right(()) => Nil
+                      case Left(problem) =>
+                        (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
+                          :: Nil
       yield
         events
     .orElse:
@@ -121,30 +123,29 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       else
         Set.empty
 
-  private def skippedReason(order: Order[Order.State], job: WorkflowJob)(using zoneId: ZoneId)
-  : Option[OrderMoved.Reason] =
-    isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
-      OrderMoved.NoAdmissionPeriodStart
-
-  private def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
-    order: Order[Order.State],
-    job: WorkflowJob)
-    (using ZoneId)
-  : Boolean =
-    !order.forceJobAdmission &&
-      job.skipIfNoAdmissionStartForOrderDay &&
-      job.admissionTimeScheme.fold(false): admissionTimeScheme =>
-        orderIdToDate(order.id)
-          .fold(false): localDate =>
-            !admissionTimeScheme
-              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)
-
 
 object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
   private[instructions] val FindTimeIntervalLimit = 1096.days // TODO Use AgentConfiguration.findTimeIntervalLimit
+
+  private def skippedReason(order: Order[Order.State], job: WorkflowJob)(using ZoneId)
+  : Option[OrderMoved.Reason] =
+    (!order.forceJobAdmission && isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
+      order.id, job.admissionTimeScheme, job.skipIfNoAdmissionStartForOrderDay
+    )) ? OrderMoved.NoAdmissionPeriodStart
+
+  def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
+    orderId: OrderId,
+    admissionTimeScheme: Option[AdmissionTimeScheme],
+    skipIfNoAdmissionStartForOrderDay: Boolean)
+    (using ZoneId)
+  : Boolean =
+    skipIfNoAdmissionStartForOrderDay &&
+      admissionTimeScheme.fold(false): admissionTimeScheme =>
+        orderIdToDate(orderId).fold(false): localDate =>
+          !admissionTimeScheme.hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
     orderId.string match
