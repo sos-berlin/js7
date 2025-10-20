@@ -151,11 +151,15 @@ final class CheckedTest extends OurAsyncTestSuite:
     assert((Left(Problem("X")): Checked[String]).onProblem(_ => flag = true) == none)
     assert(flag)
 
-  "onProblemHandle" in:
-    assert(Right(1).onProblemHandle(_ => throw new NotImplementedError) == 1)
-    var flag = false
-    assert(Left(Problem("X")).onProblemHandle { _ => flag = true; 7 } == 7)
-    assert(flag)
+  "handleProblem" in:
+    assert(Right(1).handleProblem(_ => throw new NotImplementedError) == 1)
+    assert(Left[Problem, Int](Problem("X")).handleProblem(_ => 7) == 7)
+
+  "recoverProblem" in:
+    assert(Right(1).recoverProblem(_ => throw new NotImplementedError) == Right(1))
+    assert(Left(Problem("X")).recoverProblem(_ => Left(Problem("Y"))) ==
+      Left(Problem("Y")))
+    assert(Left(Problem("X")).recoverProblem(_ => Right(7)) == Right(7))
 
   "handleProblem in IO" in:
     val left: Checked[Int] = Left(Problem("PROBLEM"))

@@ -252,7 +252,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
               coll <- coll.add(order.id <-: orderDeleted)
               coll <- coll.addChecked(coll.aggregate.maybePlanFinished(order.planId, clock.now()))
             yield coll
-          .onProblemHandle: problem =>
+          .handleProblem: problem =>
             logger.error(s"maybeOrderDeleted: ${order.id}: $problem")
             Vector.empty
         case _ => Vector.empty

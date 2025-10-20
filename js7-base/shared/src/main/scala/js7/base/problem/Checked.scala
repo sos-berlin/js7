@@ -12,6 +12,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Problem.*
 import js7.base.scalasource.ScalaSourceLocation
 import js7.base.scalasource.ScalaSourceLocation.sourceCodeToString
+import js7.base.utils.ScalaUtils.=>?
 import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import scala.annotation.unused
 import scala.collection.immutable.VectorBuilder
@@ -135,10 +136,15 @@ object Checked:
           None
         case Right(a) =>  Some(a)
 
-    def onProblemHandle[B >: A](f: Problem => B): B =
+    def handleProblem[B](f: Problem => B): A | B =
       underlying match
         case Left(problem) => f(problem)
         case Right(a) => a
+
+    def recoverProblem[B](f: Problem =>? Checked[B]): Checked[A | B] =
+      underlying match
+        case Left(problem) => f.applyOrElse(problem, _ => underlying)
+        case o => o
 
     def toEitherThrowable: Either[Throwable, A] =
       underlying match

@@ -300,7 +300,8 @@ extends SubagentDriver, Service.StoppableByRequest:
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     subagent.killProcess(orderId, signal)
       // TODO Stop postQueuedCommand loop for this OrderId
-      .map(_.onProblemHandle(problem => logger.error(s"killProcess $orderId => $problem")))
+      .handleProblem: problem =>
+        logger.error(s"killProcess $orderId => $problem")
 
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
     logger.debugIO("emitSubagentCouplingFailed", maybeProblem):

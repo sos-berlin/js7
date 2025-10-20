@@ -140,7 +140,7 @@ extends UnsignedSimpleItemState:
       updatePlans(updatedPlan :: Nil)
 
   private def isDiscardableIgnoringProblem(plan: Plan): Boolean =
-    isDiscardable(plan).onProblemHandle: problem =>
+    isDiscardable(plan).handleProblem: problem =>
       logger.error(s"${plan.id} unknownPlanIsOpenFunction failed: $problem")
       false
 
