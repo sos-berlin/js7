@@ -17,23 +17,23 @@ import scala.concurrent.duration.*
 import scala.math.Ordering.Implicits.infixOrderingOps
 
 final class Responsivenessmeter private(conf: Responsivenessmeter.Conf)
-extends
-  Service.StoppableByCancel:
+extends Service.StoppableByCancel:
 
   import conf.{initialDelay, logLevel, meterInterval, slowThreshold}
 
-  private val callback = Ref.unsafe[IO, MeterCallback](meterCallback)
+  private val callback = Ref.unsafe[IO, MeterCallback](meterCallbackDefault)
   private var lastDelay = ZeroDuration
   private var stickUntil = Deadline.now
   private var isSlow = false
 
   val bean: ResponsivenessMXBean =
     new ResponsivenessMXBean:
+      /** Maximum delay since the last read, not longer than stickDuration ago. */
       def getDelaySeconds =
         stickUntil = Deadline.now
         lastDelay.toDoubleSeconds
 
-  /** Because Journal is not available in js7-base, we go over a callback. */
+  /** Because Journal is not available in js7-base, we use a callback. */
   def onMetered(callback: MeterCallback): IO[Unit] =
     this.callback.set(callback)
 
@@ -50,12 +50,13 @@ extends
       end <- IO.monotonic
       _ <-
         val delay = end - (start + meterInterval)
-        if stickUntil < Deadline.now then
+        if Deadline.now < stickUntil then // bean not read and value not expired?
           if lastDelay < delay then
-            lastDelay = delay
+            lastDelay = delay // maximum
+            stickUntil = Deadline.now + stickDuration
         else
           lastDelay = delay
-        stickUntil = Deadline.now + stickDuration
+          stickUntil = Deadline.now + stickDuration
         onMetered(delay)
     yield ()
 
@@ -67,10 +68,10 @@ extends
         callback.get.flatMap(_(delay, isSlow, conf))
 
   @threadUnsafe lazy
-  val meterCallback: MeterCallback = (delay, slow, conf) =>
+  val meterCallbackDefault: MeterCallback = (delay, slow, conf) =>
     IO:
       if slow then
-        logger.log(logLevel, s"🐌 InternalResponseTime was ${delay.pretty}")
+        logger.log(logLevel, s"🐌 Internal response time was ${delay.pretty}")
       else
         logger.log(logLevel min LogLevel.Info, s"✔ InternalResponseTime was ${delay.pretty}")
 
