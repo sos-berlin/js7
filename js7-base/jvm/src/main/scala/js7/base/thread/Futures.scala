@@ -4,6 +4,7 @@ import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.StackTraces.*
 import scala.collection.BuildFrom
 import scala.concurrent.*
@@ -82,14 +83,14 @@ object Futures:
         */
       def await(duration: Option[FiniteDuration])
         (using A: Tag[A],
-          src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+          src: sourcecode.Enclosing, loc: ScalaSourceLocation)
       : A =
         duration match
           case Some(o) => await(o)
           case None => awaitInfinite
 
       // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
-      def awaitInfinite(using Tag[A], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+      def awaitInfinite(using Tag[A], sourcecode.Enclosing, ScalaSourceLocation)
       : A =
         logger.traceCall[A](makeBlockingWaitingString[A]):
           Await.ready(delegate, Duration.Inf).value.get match
@@ -98,7 +99,7 @@ object Futures:
 
 
       def await(duration: FiniteDuration)
-        (using A: Tag[A], enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+        (using A: Tag[A], enc: sourcecode.Enclosing, loc: ScalaSourceLocation)
       : A =
         inline def name = makeBlockingWaitingString[A]
         logger.traceCall[A](name):
@@ -124,7 +125,7 @@ object Futures:
       def awaitInfinite(using
         ec: ExecutionContext,
         bf: BuildFrom[M[Future[A]], A, M[A]],
-        A: Tag[M[A]], src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+        A: Tag[M[A]], src: sourcecode.Enclosing, loc: ScalaSourceLocation)
       : M[A] =
         Future.sequence(future)(using bf, ec).awaitInfinite
 
@@ -134,10 +135,9 @@ object Futures:
   def makeBlockingWaitingString[A](using
     A: Tag[A],
     src: sourcecode.Enclosing,
-    file: sourcecode.FileName,
-    line: sourcecode.Line)
+    loc: ScalaSourceLocation)
   : String =
-    s"await[${A.tag}] in ${src.value} at ${file.value}:${line.value}"
+    s"await[${A.tag}] in ${src.value} at $loc"
 
   final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 

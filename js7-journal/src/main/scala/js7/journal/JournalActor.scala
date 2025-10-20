@@ -8,6 +8,7 @@ import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
@@ -99,10 +100,10 @@ extends Actor, Stash:
       // asynchronously at any time.
       sender() ! (() => journal.isHalted)
 
-  private def runAsync(body: IO[Unit])(using file: sourcecode.FileName, line: sourcecode.Line): Unit =
+  private def runAsync(body: IO[Unit])(using loc: ScalaSourceLocation): Unit =
     body.onError: throwable =>
       IO:
-        logger.error(s"${throwable.toStringWithCauses} while in ${file.value}:${line.value}", throwable)
+        logger.error(s"${throwable.toStringWithCauses} while in $loc", throwable)
         stop(self)
     .unsafeRunAndForget()
 

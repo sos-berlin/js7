@@ -11,6 +11,7 @@ import js7.base.exceptions.StandardPublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -523,21 +524,21 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
 
     "checked for LazyList (unknown size, maybe infinite)" in:
       val seq = LazyList(1, 2, 3)
-      given sourcecode.Line = 999
-      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in ScalaUtilsTest.scala:999")))
+      given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
+      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
-      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in ScalaUtilsTest.scala:999")))
+      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in TEST.scala:999")))
 
     "checked for Vector (known size)" in:
       val seq = Vector(1, 2, 3)
-      given sourcecode.Line = 999
-      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in ScalaUtilsTest.scala:999")))
+      given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
+      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
-      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in ScalaUtilsTest.scala:999")))
+      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in TEST.scala:999")))
   }
 
   "Iterator" - {

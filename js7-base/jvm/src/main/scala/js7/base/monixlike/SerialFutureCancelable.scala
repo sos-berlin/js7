@@ -1,6 +1,7 @@
 package js7.base.monixlike
 
 import js7.base.monixlike.FutureCancelableBlocking.blockingCancel
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.{Atomic, CancelableFuture}
 import scala.annotation.targetName
 import scala.concurrent.Future
@@ -37,21 +38,16 @@ extends FutureCancelable:
     state.getAndSet(FutureCancelable.empty).cancelToFuture()
 
   @targetName("set")
-  def :=(future: CancelableFuture[?])
-    (using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
-  : this.type =
+  def :=(future: CancelableFuture[?])(using sourcecode.Enclosing, ScalaSourceLocation): this.type =
     this := (() => future.cancelToFuture())
 
   @targetName("set")
-  def :=(cancelable: () => Future[Unit])
-    (using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+  def :=(cancelable: () => Future[Unit])(using sourcecode.Enclosing, ScalaSourceLocation)
   : this.type =
     this := FutureCancelable(cancelable)
 
   @targetName("set")
-  def :=(cancelable: FutureCancelable)
-    (using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
-  : this.type =
+  def :=(cancelable: FutureCancelable)(using sourcecode.Enclosing, ScalaSourceLocation): this.type =
     if canceled then
       cancelable.blockingCancel()
     else

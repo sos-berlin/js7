@@ -1,6 +1,7 @@
 package js7.base.problem
 
 import js7.base.log.Logger
+import js7.base.scalasource.ScalaSourceLocation
 import scala.collection.immutable.Map.Map2
 
 object Problems:
@@ -23,11 +24,10 @@ object Problems:
         "key", key.toString)
 
   object UnknownKeyProblem:
-    def apply(typ: => String, key: Any)
-      (using filename: sourcecode.FileName, line: sourcecode.Line)
+    def apply(typ: => String, key: Any)(using loc: ScalaSourceLocation)
     : UnknownKeyProblem =
       val problem = new UnknownKeyProblem(typ, key)
-      logger.debug(s"❓${filename.value}:${line.value} $problem")
+      logger.debug(s"❓$loc $problem")
       problem
 
 

@@ -440,7 +440,7 @@ object StreamExtensions:
       parallelism: Int = sys.runtime.availableProcessors,
       prefetch: Int = 0)
       (f: A => B)
-      //(using file: sourcecode.FileName, line: sourcecode.Line)
+      //(using loc: ScalaSourceLocation)
     : Stream[IO, B] =
       stream
         .pipeIf(prefetch > 0):

@@ -7,6 +7,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.problem.Checked
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
@@ -77,14 +78,14 @@ trait EventWatch:
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using IORuntime, sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[KeyedEvent[E]]]
 
   @TestOnly
   def awaitAsync[E <: Event](
     eventRequest: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean)
-    (using sourcecode.FileName, sourcecode.Line)
+    (using ScalaSourceLocation)
   : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   @TestOnly
@@ -92,7 +93,7 @@ trait EventWatch:
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (using sourcecode.FileName, sourcecode.Line)
+    (using ScalaSourceLocation)
   : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   def lastAddedEventId: EventId

@@ -13,6 +13,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel

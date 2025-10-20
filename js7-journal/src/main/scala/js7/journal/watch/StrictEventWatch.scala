@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import izumi.reflect.Tag
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
@@ -64,7 +65,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
-    (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using IORuntime, Tag[E], sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[KeyedEvent[E]]] =
     val r = await(predicate, after = after, timeout)
     _lastWatchedEventId = r.head.eventId
@@ -77,7 +78,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E],
-      sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+      sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[KeyedEvent[E]]] =
     underlying.await(predicate, after, timeout)
 
@@ -88,7 +89,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
-    (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using IORuntime, Tag[E], sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[E]] =
     val events = awaitKey(key, predicate, after = after, timeout)
     _lastWatchedEventId = events.head.eventId
@@ -103,7 +104,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E],
-      sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+      sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[E]] =
     val E = implicitClass[E]
     if E eq classOf[Nothing] then
@@ -160,7 +161,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, ClassTag[E], Tag[E],
-      sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+      sourcecode.Enclosing, ScalaSourceLocation)
   : Expect[E] =
     val eventId = lastAddedEventId
     Expect(await(predicate, after = eventId, timeout))

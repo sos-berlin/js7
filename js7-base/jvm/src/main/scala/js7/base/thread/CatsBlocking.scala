@@ -7,6 +7,7 @@ import cats.syntax.traverse.*
 import izumi.reflect.Tag
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -28,7 +29,7 @@ object CatsBlocking:
     extension [A](io: IO[A])
       def await(duration: Duration, dontLog: Boolean = false)
         (using A: Tag[A], rt: IORuntime,
-          src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+          src: sourcecode.Enclosing, loc: ScalaSourceLocation)
       : A =
         inline def name = makeBlockingWaitingString[A]
         try
@@ -48,13 +49,13 @@ object CatsBlocking:
           throw t
 
       def awaitInfinite(using
-        Tag[A], IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+        Tag[A], IORuntime, sourcecode.Enclosing, ScalaSourceLocation)
       : A =
         await(Duration.Inf)
 
     extension [F[_], A](iterable: F[IO[A]])
       def await(duration: FiniteDuration)(using
-        rt: IORuntime, t: Traverse[F], A: Tag[A], file: sourcecode.FileName, line: sourcecode.Line)
+        rt: IORuntime, t: Traverse[F], A: Tag[A], loc: ScalaSourceLocation)
       : F[A] =
         inline def name = makeBlockingWaitingString
         iterable
@@ -64,7 +65,7 @@ object CatsBlocking:
           .unsafeRunSyncX()
 
       def awaitInfinite(using IORuntime, Traverse[F], Tag[F[A]],
-        sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+        sourcecode.Enclosing, ScalaSourceLocation)
       : F[A] =
         iterable.sequence.unsafeToFuture().awaitInfinite
 

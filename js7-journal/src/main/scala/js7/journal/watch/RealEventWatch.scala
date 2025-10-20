@@ -12,6 +12,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.problem.Checked
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -299,7 +300,7 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
-    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+    (using IORuntime, sourcecode.Enclosing, ScalaSourceLocation)
   : Vector[Stamped[KeyedEvent[E]]] =
     awaitAsync[E](predicate, after, timeout)
       .await(timeout + 1.s, dontLog = true/*awaitAsync logs*/)
@@ -309,7 +310,7 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
-    (using sourcecode.FileName, sourcecode.Line)
+    (using ScalaSourceLocation)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
     awaitAsync[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
 
@@ -317,11 +318,11 @@ trait RealEventWatch extends EventWatch:
   final def awaitAsync[E <: Event](
     eventRequest: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean)
-    (using file: sourcecode.FileName, line: sourcecode.Line)
+    (using loc: ScalaSourceLocation)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
     lazy val label = s"awaitAsync[${
       eventRequest.eventClasses.view.map(_.shortClassName).toVector.sorted.mkString(" | ")
-      }] in ${file.value}:${line.value}"
+      }] in $loc"
     logger.debugIO(label):
       import eventRequest.{after, timeout}
       when[E](eventRequest, predicate).map:

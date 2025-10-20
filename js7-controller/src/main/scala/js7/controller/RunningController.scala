@@ -21,6 +21,7 @@ import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
@@ -167,7 +168,7 @@ extends Service.TrivialReleasable, MainService:
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
 
   @TestOnly
-  def waitUntilReady()(using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line): Unit =
+  def waitUntilReady()(using sourcecode.Enclosing, ScalaSourceLocation): Unit =
     untilReady.await(99.s)
 
   def untilReady: IO[Unit] =

@@ -16,6 +16,7 @@ import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.Nulls.nullToNone
@@ -539,7 +540,7 @@ object ScalaUtils:
         catch case _: IndexOutOfBoundsException =>
           None
 
-      def checked(i: Int)(using filename: sourcecode.FileName, line: sourcecode.Line): Checked[A] =
+      def checked(i: Int)(using loc: ScalaSourceLocation): Checked[A] =
         try
           Right(seq(i))
         catch case t: IndexOutOfBoundsException =>
@@ -547,7 +548,7 @@ object ScalaUtils:
             val range = seq.knownSize match
               case -1 => ""
               case n => s" 0...${n - 1}"
-            Problem(s"Index $i is out of bounds$range in ${filename.value}:${line.value}")
+            Problem(s"Index $i is out of bounds$range in $loc")
 
     extension [A](vector: Vector[A])
       /** Insert into an ordered sequence. */
@@ -558,7 +559,7 @@ object ScalaUtils:
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: MapOps[K, V, ?, ?])
     extends AnyVal:
-      def checked(key: K)(using K: Tag[K], x: sourcecode.FileName, y: sourcecode.Line): Checked[V] =
+      def checked(key: K)(using K: Tag[K], loc: ScalaSourceLocation): Checked[V] =
         rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
