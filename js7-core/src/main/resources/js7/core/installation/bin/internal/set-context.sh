@@ -52,7 +52,9 @@ standardJavaOptions+=("-Dfile.encoding=UTF-8")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 if [[ "$JAVA_VERSION_MAJOR" -ge 24 ]]; then
   standardJavaOptions+=("--sun-misc-unsafe-memory-access=allow") # TODO Before Scala 3.8
-  standardJavaOptions+=("-XX:+UnlockExperimentalVMOptions" "-XX:+UseCompactObjectHeaders")
+fi
+if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
+  standardJavaOptions+=("-XX:+UseCompactObjectHeaders")
 fi
 standardJavaOptions+=("-XX:+UseStringDeduplication")
 
