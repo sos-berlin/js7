@@ -225,6 +225,23 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.awaitKey[OrderFailed](aOrderId)  // Failed because child order cancelled
     }
 
+  "forceJobAdmission starts job event if admission time disallows this" in:
+    controller.resetLastWatchedEventId()
+
+    val workflow = Workflow(WorkflowPath("forceJobAdmission"),
+      Seq:
+        Execute(WorkflowJob(agentPath, EmptyJob.executable(),
+          admissionTimeScheme = Some(sundayAdmissionTimeScheme))),
+      timeZone = Timezone.fromZoneId(zoneId))
+
+    withItem(workflow): workflow =>
+      clock := local("2025-10-21T00:00") // Tuesday, no admission tme
+      val orderId = OrderId("🌶️")
+      addOrder:
+        FreshOrder(orderId, workflow.path, forceJobAdmission = true)
+      controller.awaitNextKey[OrderProcessingStarted](orderId)
+      controller.awaitNextKey[OrderFinished](orderId)
+
   "forceJobAdmission in AddOrder instruction" in:
     clock := local("2023-06-22T00:00")
 
