@@ -57,6 +57,10 @@ extends
       .filter:
         case SnapshotEventId(_) => false // JournalHeader already contains the EventId
         case _ => true
+      .chunkN(1000)
+      .evalTap: _ =>
+        IO.cede // After each chunk of 1000 objects: don't let other fibers starve
+      .unchunks
       .mapParallelBatch(): snapshotObject =>
         //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         snapshotObject.asJson(using S.snapshotObjectJsonCodec).toByteArray
