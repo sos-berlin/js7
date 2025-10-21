@@ -18,10 +18,11 @@ extends EventInstructionExecutor:
     if !order.isState[IsFreshOrReady] then
       Right(Nil)
     else
-      for
-        scope <- state.toOrderScope(order)
-        value <- instr.what.eval(using scope)
-      yield
-        (order.id <-: OrderSaid(value)) ::
-          (order.id <-: OrderMoved(order.position.increment)) ::
-          Nil
+      start(order).getOrElse:
+        for
+          scope <- state.toOrderScope(order)
+          value <- instr.what.eval(using scope)
+        yield
+          (order.id <-: OrderSaid(value)) ::
+            (order.id <-: OrderMoved(order.position.increment)) ::
+            Nil
