@@ -13,8 +13,10 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Stopwatch, TestWallClock, WallClock}
+import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{AnyKeyedEvent, EventCalc, EventId, SnapshotableState, Stamped}
 import js7.journal.FileJournalTest.*
@@ -24,13 +26,17 @@ import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import org.scalatest.Assertion
+import scala.concurrent.duration.FiniteDuration
 
 final class FileJournalTest extends OurAsyncTestSuite:
+
+  override protected def testTimeout: FiniteDuration =
+    if sys.props.contains("test.speed") then 999.s else 99.s
 
   private given IORuntime = ioRuntime
 
   "Persist" in:
-    testJournal(): journal =>
+    testJournal(TestWallClock(ts"1970-01-01T00:00:00.001Z")): journal =>
       for
         persisted <-
           journal.persist:
@@ -88,6 +94,42 @@ final class FileJournalTest extends OurAsyncTestSuite:
       yield
         assertion
 
+  "Big snapshot" in:
+    val objectSize = 10_000
+    val bigEvent = TestEvent.Added("+" * objectSize)
+
+    def run(n: Int): IO[Assertion] =
+      testJournal(WallClock): journal =>
+        for
+          persisted <-
+            journal.persist: _ =>
+              (1 to n).iterator.map: i =>
+                val str = i.toString
+                str <-: bigEvent
+            .orThrow
+
+          _ <- journal.aggregate.map: aggr =>
+            assert(aggr.keyToAggregate.size == n)
+
+          (writeDuration, _) <- journal.takeSnapshot.timed
+          _ <- IO:
+            info_(s"Snapshot write: ${Stopwatch.itemsPerSecondString(writeDuration, n, "objects")}")
+
+          (readDuration, recovered) <-
+            IO:
+              StateRecoverer.recover[TestState](journal.journalLocation, config)
+            .timed
+          _ <- IO:
+            info_(s"Snapshot read: ${Stopwatch.itemsPerSecondString(readDuration, n, "objects")}")
+            assert(recovered.state.keyToAggregate.size == n)
+            assert(recovered.state == journal.unsafeAggregate())
+        yield
+          succeed
+
+    run(10_000) *>
+      sys.props.get("test.speed").map(_.toInt).foldMap: n =>
+        run(n)
+
   "Massive parallel" - {
     "test empty EventCalc" in:
       run(
@@ -102,7 +144,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
         i => (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
 
     def run(n: Int, persistLimit: Int, toEvents: Int => Seq[AnyKeyedEvent]): IO[Assertion] =
-      testJournal(config"""
+      testJournal(TestWallClock(ts"1970-01-01T00:00:00.001Z"), config"""
         js7.journal.concurrent-persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
       ): journal =>
@@ -115,11 +157,10 @@ final class FileJournalTest extends OurAsyncTestSuite:
             succeed
   }
 
-  private def testJournal(config: Config = ConfigFactory.empty)
+  private def testJournal(clock: WallClock, config: Config = ConfigFactory.empty)
     (tester: FileJournal[TestState] => IO[Assertion])
   : IO[Assertion] =
     val myConfig = config.withFallback(FileJournalTest.config)
-    val clock = TestWallClock(ts"1970-01-01T00:00:00.001Z")
     locally:
       for
         _ <- Environment.registerPure[WallClock](clock)
