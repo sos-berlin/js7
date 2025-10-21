@@ -326,7 +326,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     weHave(order) &&
       order.isCancelable(mode) &&
       // If workflow End is reached unsuspended, the order is finished normally
-      ((!order.isStarted || !instruction(order.workflowPosition).isInstanceOf[End])
+      (!order.isStarted
+        || !instruction(order.workflowPosition).isInstanceOf[End]
         || state.isSuspendedOrStopped(order)
         || order.isState[Broken])
 
