@@ -26,39 +26,48 @@ extends EventInstructionExecutor:
     if !order.isState[IsFreshOrReady] && !order.isState[Order.WaitingForAdmission] then
       Right(Nil)
     else
-      detach(order).getOrElse:
-        start(order).getOrElse:
-          for
-            workflow <- state.idToWorkflow.checked(order.workflowId)
-            given ZoneId <- workflow.timeZone.toZoneId
-          yield
-            // TODO Result of findTimeInterval could be cached for the workflow position,
-            //  to avoid re-evaluation for each order.
+      for
+        workflow <- state.idToWorkflow.checked(order.workflowId)
+        given ZoneId <- workflow.timeZone.toZoneId
+        events <-
+          if order.forceJobAdmission then
+            Right:
+              (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
+          else
             skippedReason(order, instr).map: reason =>
-              //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-              (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
+              Right:
+                //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
+                (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
             .getOrElse:
+              // TODO Result of findTimeInterval could be cached for the workflow position,
+              //  to avoid re-evaluation for each order.
               val now = clock.now()
               instr.admissionTimeScheme
                 .findTimeInterval(now, limit = FindTimeIntervalLimit, dateOffset = noDateOffset)
               match
                 case None =>
-                  List(
+                  Right(List(
                     order.id <-:
                       OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No more admission time"))),
-                    order.id <-: OrderFailedIntermediate_())
+                    order.id <-: OrderFailedIntermediate_()))
 
                 case Some(interval) =>
                   if interval.contains(now) then
-                    (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
+                    Right:
+                      (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
                   else
-                    val start = interval.start
-                    order.state match
-                      case state @ Order.WaitingForAdmission(until) if until == start =>
-                        logger.trace(s"🪱 Useless execution of toEvents: ${order.id} $state")
-                        Nil
-                      case _ =>
-                        (order.id <-: OrderWaitingForAdmission(start)) :: Nil
+                    detach(order).getOrElse:
+                      start(order).getOrElse:
+                        Right:
+                          val start = interval.start
+                          order.state match
+                            case state @ Order.WaitingForAdmission(until) if until == start =>
+                              logger.trace(s"🪱 Useless execution of toEvents: ${order.id} $state")
+                              Nil
+                            case _ =>
+                              (order.id <-: OrderWaitingForAdmission(start)) :: Nil
+      yield
+        events
 
   override def subworkflowEndToPosition(parentPos: Position) =
     Some(parentPos.increment)
@@ -79,7 +88,7 @@ object AdmissionTimeExecutor:
 
   private def skippedReason(order: Order[Order.State], instr: AdmissionTime)(using ZoneId)
   : Option[OrderMoved.Reason] =
-    ExecuteExecutor.isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
-      order.id, Some(instr.admissionTimeScheme),
+    ExecuteExecutor.skippedBecauseOrderDayHasNoAdmissionPeriodStart(
+      order, Some(instr.admissionTimeScheme),
       skipIfNoAdmissionStartForOrderDay = instr.skipIfNoAdmissionStartForOrderDay
     ) ? OrderMoved.NoAdmissionPeriodStart

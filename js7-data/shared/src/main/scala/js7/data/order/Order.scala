@@ -843,6 +843,7 @@ extends
       || isState[FailedWhileFresh]
       || isState[DelayingRetry]
       || isState[DelayedAfterError]
+      || isState[WaitingForAdmission]
       || isState[Stopped]
       || isState[Failed]
       || isState[Broken]

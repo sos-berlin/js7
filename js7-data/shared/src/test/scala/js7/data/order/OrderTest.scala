@@ -759,6 +759,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderGoMarked        , _             , _, IsAttached             ) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderGoes            , _             , _, _                      ) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderTransferred     , _             , _, IsDetached             ) => _.isInstanceOf[WaitingForAdmission]
+          case (OrderCancelled          , _             , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken          , _             , _, _                      ) => _.isInstanceOf[Broken])
 
     "Prompting" in:

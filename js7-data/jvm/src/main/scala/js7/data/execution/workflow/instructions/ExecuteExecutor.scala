@@ -132,19 +132,19 @@ object ExecuteExecutor:
 
   private def skippedReason(order: Order[Order.State], job: WorkflowJob)(using ZoneId)
   : Option[OrderMoved.Reason] =
-    (!order.forceJobAdmission && isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
-      order.id, job.admissionTimeScheme, job.skipIfNoAdmissionStartForOrderDay
+    (!order.forceJobAdmission && skippedBecauseOrderDayHasNoAdmissionPeriodStart(
+      order, job.admissionTimeScheme, job.skipIfNoAdmissionStartForOrderDay
     )) ? OrderMoved.NoAdmissionPeriodStart
 
-  def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
-    orderId: OrderId,
+  def skippedBecauseOrderDayHasNoAdmissionPeriodStart(
+    order: Order[Order.State],
     admissionTimeScheme: Option[AdmissionTimeScheme],
     skipIfNoAdmissionStartForOrderDay: Boolean)
     (using ZoneId)
   : Boolean =
-    skipIfNoAdmissionStartForOrderDay &&
+    !order.forceJobAdmission && skipIfNoAdmissionStartForOrderDay &&
       admissionTimeScheme.fold(false): admissionTimeScheme =>
-        orderIdToDate(orderId).fold(false): localDate =>
+        orderIdToDate(order.id).fold(false): localDate =>
           !admissionTimeScheme.hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
