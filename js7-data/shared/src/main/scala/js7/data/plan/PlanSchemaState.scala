@@ -202,15 +202,17 @@ extends UnsignedSimpleItemState:
 
   private def updatePlans(plans: Iterable[Plan]): PlanSchemaState =
     val (removablePlans, updatedPlans) = plans.partition(isDiscardableIgnoringProblem)
-    removablePlans.foreach(logRemovedPlan)
-    logger.whenTraceEnabled(updatedPlans.foreach(logUpdatedPlan))
+    logUpdatedAndRemovedPlans(updatedPlans, removablePlans)
     copy(toPlan = toPlan
       -- removablePlans.map(_.planKey)
       ++ updatedPlans.map(o => o.id.planKey -> o))
 
-  private def logUpdatedPlan(plan: Plan): Unit =
-    if !toPlan.contains(plan.planKey) then
-      logger.trace(s"Add $plan")
+  private def logUpdatedAndRemovedPlans(updated: Iterable[Plan], removed: Iterable[Plan]) =
+    logger.whenTraceEnabled:
+      updated.foreach: plan =>
+        if !toPlan.contains(plan.planKey) then
+          logger.trace(s"Add $plan")
+      removed.foreach(logRemovedPlan)
 
   private def logRemovedPlan(plan: Plan): Unit =
     logger.trace(s"Remove $plan")
