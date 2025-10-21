@@ -43,7 +43,7 @@ final class OrderEventTest extends OurTestSuite:
         priority = Order.DefaultPriority,
         Some(OrderWatchPath("ORDER-WATCH") / ExternalOrderName("ORDER-NAME")),
         deleteWhenTerminated = true,
-        forceJobAdmission = true,
+        forceAdmission = true,
         innerBlock = Position(1) / "then",
         startPosition = Some(Position(1) / "then" % 2),
         stopPositions = Set(Position(1) / "then" % 9, Label("LABEL"))),
@@ -64,21 +64,22 @@ final class OrderEventTest extends OurTestSuite:
           "name": "ORDER-NAME"
         },
         "deleteWhenTerminated": true,
-        "forceJobAdmission": true,
+        "forceAdmission": true,
         "innerBlock": [ 1, "then" ],
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 1, "then", 9 ], "LABEL" ]
       }""")
 
     testJsonDecoder[OrderEvent](
-      OrderAdded(WorkflowPath("WORKFLOW") ~ "VERSION"),
+      OrderAdded(WorkflowPath("WORKFLOW") ~ "VERSION", forceAdmission = true),
       json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
           "path": "WORKFLOW",
           "versionId": "VERSION"
-        }
+        },
+        "forceJobAdmission": true
       }""")
 
   "OrderOrderAdded" in:
@@ -91,7 +92,7 @@ final class OrderEventTest extends OurTestSuite:
         startPosition = Some(Position(1) / "then" % 2),
         stopPositions = Set(Position(1) / "then" % 9, Label("LABEL")),
         deleteWhenTerminated = true,
-        forceJobAdmission = true),
+        forceAdmission = true),
       json"""
       {
         "TYPE": "OrderOrderAdded",
@@ -107,13 +108,14 @@ final class OrderEventTest extends OurTestSuite:
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 1, "then", 9 ], "LABEL"],
         "deleteWhenTerminated": true,
-        "forceJobAdmission": true
+        "forceAdmission": true
       }""")
 
     testJsonDecoder[OrderEvent](
       OrderOrderAdded(
         OrderId("ORDER-ID"),
-        WorkflowPath("WORKFLOW") ~ "VERSION"),
+        WorkflowPath("WORKFLOW") ~ "VERSION",
+        forceAdmission = true),
       json"""
       {
         "TYPE": "OrderOrderAdded",
@@ -121,7 +123,8 @@ final class OrderEventTest extends OurTestSuite:
         "workflowId": {
           "path": "WORKFLOW",
           "versionId": "VERSION"
-        }
+        },
+        "forceJobAdmission": true
       }""")
 
   "OrderAttachable" in:
@@ -152,7 +155,7 @@ final class OrderEventTest extends OurTestSuite:
         isSuspended = true,
         isResumed = true,
         deleteWhenTerminated = true,
-        forceJobAdmission = true,
+        forceAdmission = true,
         List(Order.StickySubagent(
           AgentPath("AGENT"),
           Some(SubagentBundleId("SUBAGENT-BUNDLE")))),
@@ -200,7 +203,7 @@ final class OrderEventTest extends OurTestSuite:
         "isSuspended": true,
         "isResumed": true,
         "deleteWhenTerminated": true,
-        "forceJobAdmission": true,
+        "forceAdmission": true,
         "stickySubagents": [{
           "agentPath": "AGENT",
           "subagentBundleId": "SUBAGENT-BUNDLE"
@@ -219,7 +222,8 @@ final class OrderEventTest extends OurTestSuite:
         agentPath = AgentPath("AGENT"),
         stickySubagents = List(Order.StickySubagent(
           AgentPath("AGENT"),
-          Some(SubagentBundleId("SUBAGENT-BUNDLE"))))),
+          Some(SubagentBundleId("SUBAGENT-BUNDLE")))),
+        forceAdmission = true),
       json"""
       {
         "TYPE": "OrderAttachedToAgent",
@@ -242,7 +246,8 @@ final class OrderEventTest extends OurTestSuite:
         "stickySubagents": [{
           "agentPath": "AGENT",
           "subagentSelectionId": "SUBAGENT-BUNDLE"
-        }]
+        }],
+        "forceJobAdmission": true
       }""")
 
   "OrderAttached" in:

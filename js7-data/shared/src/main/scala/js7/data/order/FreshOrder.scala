@@ -32,7 +32,7 @@ final case class FreshOrder(
   scheduledFor: Option[Timestamp] = None,
   priority: BigDecimal = Order.DefaultPriority,
   deleteWhenTerminated: Boolean = false,
-  forceJobAdmission: Boolean = false,
+  forceAdmission: Boolean = false,
   innerBlock: BranchPath = BranchPath.empty,
   startPosition: Option[PositionOrLabel] = None,
   stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -50,7 +50,7 @@ extends
     id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, planId, scheduledFor, priority,
       externalOrderKey,
       deleteWhenTerminated = deleteWhenTerminated,
-      forceJobAdmission = forceJobAdmission,
+      forceAdmission = forceAdmission,
       innerBlock, startPosition, stopPositions)
 
   override def toString =
@@ -58,7 +58,7 @@ extends
       scheduledFor.fold("")(o => s" scheduledFor=$o")}${
       (priority != Order.DefaultPriority) ?? s" priority=$priority"}${
       deleteWhenTerminated ?? " deleteWhenTerminated"}${
-      forceJobAdmission ?? " forceJobAdmission"}${
+      forceAdmission ?? " forceAdmission"}${
       innerBlock.ifNonEmpty.fold("")(o => s"innerBlock=$o")}${
       startPosition.fold("")(o => s" start=$o")}${
       stopPositions.ifNonEmpty.fold("")(o => s" stop=${o.mkString(" ")}")}${
@@ -74,13 +74,13 @@ object FreshOrder:
     scheduledFor: Option[Timestamp] = None,
     priority: BigDecimal = Order.DefaultPriority,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty[PositionOrLabel])
   : FreshOrder =
     checked(id, workflowPath, arguments, planId, scheduledFor, priority,
-      deleteWhenTerminated, forceJobAdmission,
+      deleteWhenTerminated, forceAdmission,
       innerBlock, startPosition, stopPositions
     ).orThrow
 
@@ -93,13 +93,13 @@ object FreshOrder:
     scheduledFor: Option[Timestamp] = None,
     priority: BigDecimal = Order.DefaultPriority,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : FreshOrder =
     new FreshOrder(id, workflowPath, arguments, planId, scheduledFor, priority,
-      deleteWhenTerminated, forceJobAdmission,
+      deleteWhenTerminated, forceAdmission,
       innerBlock, startPosition, stopPositions)
 
   def checked(
@@ -110,7 +110,7 @@ object FreshOrder:
     scheduledFor: Option[Timestamp] = None,
     priority: BigDecimal = Order.DefaultPriority,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -120,7 +120,7 @@ object FreshOrder:
       _ <- scheduledFor.traverse(_.checkFiniteDurationCompatible)
     yield
       new FreshOrder(checkedId, workflowPath, arguments, planId, scheduledFor, priority,
-        deleteWhenTerminated, forceJobAdmission,
+        deleteWhenTerminated, forceAdmission,
         innerBlock, startPosition, stopPositions)
 
   implicit val jsonEncoder: Encoder.AsObject[FreshOrder] =
@@ -132,7 +132,7 @@ object FreshOrder:
       "scheduledFor" -> o.scheduledFor.asJson,
       "priority" -> ((o.priority != Order.DefaultPriority) ? o.priority).asJson,
       "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
-      "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
+      "forceAdmission" -> o.forceAdmission.?.asJson,
       "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
       "startPosition" -> o.startPosition.asJson,
       "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
@@ -146,13 +146,14 @@ object FreshOrder:
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
       priority <- c.getOrElse[BigDecimal]("priority")(Order.DefaultPriority)
       deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
-      forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
+      forceAdmission <- c.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
+        c.getOrElse[Boolean]("forceAdmission")(false)
       innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
       startPosition <- c.get[Option[PositionOrLabel]]("startPosition")
       stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       order <-
         checked(id, workflowPath, arguments, planId, scheduledFor, priority,
-          deleteWhenTerminated, forceJobAdmission,
+          deleteWhenTerminated, forceAdmission,
           innerBlock, startPosition, stopPositions
         ).toDecoderResult(c.history)
     yield order

@@ -42,7 +42,7 @@ extends EventInstructionExecutor:
                 startPosition = addOrder.startPosition,
                 stopPositions = addOrder.stopPositions,
                 deleteWhenTerminated = addOrder.deleteWhenTerminated,
-                forceJobAdmission = addOrder.forceJobAdmission)
+                forceAdmission = addOrder.forceAdmission)
               keyedEvents <- controllerState
                 .checkPlanAcceptsOrders(
                   planId,

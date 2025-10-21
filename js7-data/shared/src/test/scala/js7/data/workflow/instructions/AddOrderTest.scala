@@ -22,7 +22,7 @@ final class AddOrderTest extends OurTestSuite:
         startPosition = Some(Position(1) / "then" % 2),
         stopPositions = Set(Position(2), Label("LABEL")),
         deleteWhenTerminated = true,
-        forceJobAdmission = true),
+        forceAdmission = true),
       json"""
       {
         "TYPE": "AddOrder",
@@ -36,14 +36,15 @@ final class AddOrderTest extends OurTestSuite:
         "startPosition": [ 1, "then", 2] ,
         "stopPositions": [ [2], "LABEL" ],
         "deleteWhenTerminated": true,
-        "forceJobAdmission": true
+        "forceAdmission": true
       }""")
 
     testJsonDecoder[Instruction](
-      AddOrder(expr"'ORDER-ID'", WorkflowPath("WORKFLOW")),
+      AddOrder(expr"'ORDER-ID'", WorkflowPath("WORKFLOW"), forceAdmission = true),
       json"""
       {
         "TYPE": "AddOrder",
         "orderId": "'ORDER-ID'",
-        "workflowPath": "WORKFLOW"
+        "workflowPath": "WORKFLOW",
+        "forceJobAdmission": true
       }""")

@@ -114,7 +114,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull planId: PlanId,
     @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
-    @Nonnull forceJobAdmission: Boolean,
+    @Nonnull forceAdmission: Boolean,
     @Nonnull startPosition: Optional[JPositionOrLabel],
     @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
   : JFreshOrder =
@@ -125,11 +125,11 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
-      forceJobAdmission = forceJobAdmission,
+      forceAdmission = forceAdmission,
       startPosition = startPosition.toScala.map(_.asScala),
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 
-  /*** Contruct a FreshOrder.
+  /*** Construct a FreshOrder.
     *
     * @param id
     * @param workflowPath
@@ -138,7 +138,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     * @param priority use 0 as default. Higher value is higher priority.
     * @param planId
     * @param deleteWhenTerminated
-    * @param forceJobAdmission
+    * @param forceAdmission
     * @param innerBlock
     * @param startPosition
     * @param stopPositions
@@ -153,7 +153,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull priority: java.math.BigDecimal,
     @Nonnull planId: PlanId,
     @Nonnull deleteWhenTerminated: Boolean,
-    @Nonnull forceJobAdmission: Boolean,
+    @Nonnull forceAdmission: Boolean,
     @Nonnull innerBlock: JBranchPath,
     @Nonnull startPosition: Optional[JPositionOrLabel],
     @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
@@ -166,7 +166,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       priority = priority,
       deleteWhenTerminated = deleteWhenTerminated,
-      forceJobAdmission = forceJobAdmission,
+      forceAdmission = forceAdmission,
       innerBlock = innerBlock.asScala,
       startPosition = startPosition.toScala.map(_.asScala),
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))

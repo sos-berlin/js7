@@ -30,7 +30,7 @@ extends EventInstructionExecutor:
         workflow <- state.idToWorkflow.checked(order.workflowId)
         given ZoneId <- workflow.timeZone.toZoneId
         events <-
-          if order.forceJobAdmission then
+          if order.forceAdmission then
             Right:
               (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
           else

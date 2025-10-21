@@ -185,9 +185,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       CancelOrders(orderId :: Nil)
     controller.awaitNextKey[OrderCancelled](orderId)
 
-  "forceJobAdmission in AddOrder command" in:
+  "forceAdmission in AddOrder command" in:
     // Test only inheritance to forked child orders
-    val workflow = Workflow(WorkflowPath("forceJobAdmission"),
+    val workflow = Workflow(WorkflowPath("forceAdmission"),
       Seq(
         Fork.forTest(Seq(
           "FORKED" -> Workflow.of(
@@ -211,10 +211,10 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           Right(Set(waitingForAdmission(local("2023-06-25T03:00")))))
 
       locally:
-        // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
+        // Engine chooses this order due to forceAdmission despite it is not the first one in queue
         val orderId = OrderId("🥨")
         val eventId = controller.lastAddedEventId
-        controller.api.addOrder(FreshOrder(orderId, workflow.path, forceJobAdmission = true))
+        controller.api.addOrder(FreshOrder(orderId, workflow.path, forceAdmission = true))
           .await(99.s).orThrow
         controller.await[OrderFinished](_.key == orderId, after = eventId)
 
@@ -225,10 +225,10 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.awaitKey[OrderFailed](aOrderId)  // Failed because child order cancelled
     }
 
-  "forceJobAdmission starts job event if admission time disallows this" in:
+  "forceAdmission starts job event if admission time disallows this" in:
     controller.resetLastWatchedEventId()
 
-    val workflow = Workflow(WorkflowPath("forceJobAdmission"),
+    val workflow = Workflow(WorkflowPath("forceAdmission"),
       Seq:
         Execute(WorkflowJob(agentPath, EmptyJob.executable(),
           admissionTimeScheme = Some(sundayAdmissionTimeScheme))),
@@ -238,14 +238,14 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       clock := local("2025-10-21T00:00") // Tuesday, no admission tme
       val orderId = OrderId("🌶️")
       addOrder:
-        FreshOrder(orderId, workflow.path, forceJobAdmission = true)
+        FreshOrder(orderId, workflow.path, forceAdmission = true)
       controller.awaitNextKey[OrderProcessingStarted](orderId)
       controller.awaitNextKey[OrderFinished](orderId)
 
-  "forceJobAdmission in AddOrder instruction" in:
+  "forceAdmission in AddOrder instruction" in:
     clock := local("2023-06-22T00:00")
 
-    val startingWorkflow1 = Workflow(WorkflowPath("forceJobAdmission-1"), Seq(
+    val startingWorkflow1 = Workflow(WorkflowPath("forceAdmission-1"), Seq(
       AddOrder(StringConstant("FORCED-ORDER-1"), sundayWorkflow.path)))
     withItem(startingWorkflow1) { _ =>
       val eventId = controller.lastAddedEventId
@@ -261,8 +261,8 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
       controller.awaitNextKey[OrderCancelled](orderId)
     }
 
-    val startingWorkflow2 = Workflow(WorkflowPath("forceJobAdmission-2"), Seq(
-      AddOrder(StringConstant("FORCED-ORDER-2"), sundayWorkflow.path, forceJobAdmission = true)))
+    val startingWorkflow2 = Workflow(WorkflowPath("forceAdmission-2"), Seq(
+      AddOrder(StringConstant("FORCED-ORDER-2"), sundayWorkflow.path, forceAdmission = true)))
     withItem(startingWorkflow2) { _ =>
       val eventId = controller.lastAddedEventId
       controller.api.addOrder(FreshOrder(OrderId("STARTING-ORDER-2"), startingWorkflow2.path))

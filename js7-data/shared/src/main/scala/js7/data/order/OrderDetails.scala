@@ -19,7 +19,7 @@ trait OrderDetails:
   // This must be constant. In a future nested workflow, this must be the original workflow.
   def workflowPath: WorkflowPath
 
-  //def forceJobAdmission: Boolean
+  //def forceAdmission: Boolean
   //def innerBlock: BranchPath
   //def startPosition: Option[PositionOrLabel]
   //def stopPositions: Set[PositionOrLabel]

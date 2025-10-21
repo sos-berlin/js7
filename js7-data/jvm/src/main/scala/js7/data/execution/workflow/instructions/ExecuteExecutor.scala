@@ -110,7 +110,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
     yield
-      if order.isState[IsFreshOrReady] && !order.forceJobAdmission then
+      if order.isState[IsFreshOrReady] && !order.forceAdmission then
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job).isDefined)
           .flatMap:
@@ -132,7 +132,7 @@ object ExecuteExecutor:
 
   private def skippedReason(order: Order[Order.State], job: WorkflowJob)(using ZoneId)
   : Option[OrderMoved.Reason] =
-    (!order.forceJobAdmission && skippedBecauseOrderDayHasNoAdmissionPeriodStart(
+    (!order.forceAdmission && skippedBecauseOrderDayHasNoAdmissionPeriodStart(
       order, job.admissionTimeScheme, job.skipIfNoAdmissionStartForOrderDay
     )) ? OrderMoved.NoAdmissionPeriodStart
 
@@ -142,7 +142,7 @@ object ExecuteExecutor:
     skipIfNoAdmissionStartForOrderDay: Boolean)
     (using ZoneId)
   : Boolean =
-    !order.forceJobAdmission && skipIfNoAdmissionStartForOrderDay &&
+    !order.forceAdmission && skipIfNoAdmissionStartForOrderDay &&
       admissionTimeScheme.fold(false): admissionTimeScheme =>
         orderIdToDate(order.id).fold(false): localDate =>
           !admissionTimeScheme.hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)

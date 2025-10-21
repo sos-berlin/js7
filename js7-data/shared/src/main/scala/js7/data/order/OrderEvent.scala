@@ -66,7 +66,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def priority: BigDecimal
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
-    def forceJobAdmission: Boolean
+    def forceAdmission: Boolean
     def innerBlock: BranchPath
     def startPosition: Option[Position]
     def stopPositions: Set[PositionOrLabel]
@@ -92,7 +92,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     priority: BigDecimal = Order.DefaultPriority,
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -111,7 +111,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         externalOrderKey,
         scheduledFor,
         (priority != Order.DefaultPriority) ? priority,
-        forceJobAdmission ? "forceJobAdmission",
+        forceAdmission ? "forceAdmission",
         innerBlock.nonEmpty ? innerBlock,
         startPosition,
         stopPositions.nonEmpty ? startPosition.mkString("{", ", ", "}"),
@@ -130,7 +130,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "planId" -> o.planId.asJson,
         "priority" -> ((o.priority != Order.DefaultPriority) ? o.priority).asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
-        "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
+        "forceAdmission" -> o.forceAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
         "startPosition" -> o.startPosition.asJson,
         "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
@@ -144,13 +144,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         planId <- c.getOrElse[PlanId]("planId")(PlanId.Global/*COMPATIBLE with v2.7.3*/)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
-        forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
+        forceAdmission <- c.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
+          c.getOrElse[Boolean]("forceAdmission")(false)
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       yield
         OrderAdded(workflowId, arguments, planId, scheduledFor, priority, externalOrderKey,
-          deleteWhenTerminated, forceJobAdmission,
+          deleteWhenTerminated, forceAdmission,
           innerBlock, startPosition, stopPositions)
 
 
@@ -162,7 +163,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     planId: PlanId = PlanId.Global,
     priority: BigDecimal = Order.DefaultPriority,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -186,7 +187,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "planId" -> (!o.planId.isGlobal ? o.planId).asJson,
         "priority" -> ((o.priority != Order.DefaultPriority) ? o.priority).asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
-        "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
+        "forceAdmission" -> o.forceAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
         "startPosition" -> o.startPosition.asJson,
         "stopPositions" -> o.stopPositions.??.asJson)
@@ -202,10 +203,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
-        forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
+        forceAdmission <- c.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
+          c.getOrElse[Boolean]("forceAdmission")(false)
       yield
         OrderOrderAdded(orderId, workflowId, arguments, planId, priority,
-          deleteWhenTerminated, forceJobAdmission,
+          deleteWhenTerminated, forceAdmission,
           innerBlock, startPosition, stopPositions)
 
 
@@ -225,7 +227,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     isSuspended: Boolean = false,
     isResumed: Boolean = false,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false,
+    forceAdmission: Boolean = false,
     stickySubagents: List[Order.StickySubagent] = Nil,
     innerBlock: BranchPath = BranchPath.empty,
     stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -238,6 +240,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     override def toShortString = "OrderAttachedToAgent"
 
+  object OrderAttachedToAgent:
+    given Codec.AsObject[OrderAttachedToAgent] = deriveRenamingCodec(Map(
+      "externalOrderKey" -> "externalOrder",
+      "forceJobAdmission" -> "forceAdmission"))
 
   final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent
@@ -917,8 +923,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),
-    Subtype(deriveRenamingCodec[OrderAttachedToAgent](Map(
-      "externalOrderKey" -> "externalOrder"))),
+    Subtype[OrderAttachedToAgent],
     Subtype(OrderDetachable),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]),

@@ -54,7 +54,7 @@ final case class Order[+S <: Order.State](
   isSuspended: Boolean = false,
   isResumed: Boolean = false,
   deleteWhenTerminated: Boolean = false,
-  forceJobAdmission: Boolean = false,
+  forceAdmission: Boolean = false,
   stickySubagents: List[StickySubagent] = Nil,
   innerBlock: BranchPath = BranchPath.empty,
   stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -82,7 +82,7 @@ extends
         attachedState = attachedState,
         parent = Some(id),
         stickySubagents = stickySubagents,
-        forceJobAdmission = forceJobAdmission)
+        forceAdmission = forceAdmission)
 
   def workflowId: WorkflowId =
     workflowPosition.workflowId
@@ -952,7 +952,7 @@ extends
             isSuspended = isSuspended,
             isResumed = isResumed,
             deleteWhenTerminated = deleteWhenTerminated,
-            forceJobAdmission = forceJobAdmission,
+            forceAdmission = forceAdmission,
             stickySubagents,
             innerBlock, stopPositions))
         case _ =>
@@ -1040,7 +1040,7 @@ extends
       scheduledFor,
       externalOrder,
       innerBlock.nonEmpty ? innerBlock,
-      forceJobAdmission ? "forceJobAdmission",
+      forceAdmission ? "forceAdmission",
       deleteWhenTerminated ? "delete",
       arguments.nonEmpty ? s"${arguments.size} arguments"
     ).flatten.mkString("Order(", ", ", ")")
@@ -1058,7 +1058,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       event.externalOrderKey.map(ExternalOrderLink.added),
       priority = event.priority,
       deleteWhenTerminated = event.deleteWhenTerminated,
-      forceJobAdmission = event.forceJobAdmission,
+      forceAdmission = event.forceAdmission,
       innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
 
@@ -1076,7 +1076,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       isSuspended = event.isSuspended,
       isResumed = event.isResumed,
       deleteWhenTerminated = event.deleteWhenTerminated,
-      forceJobAdmission = event.forceJobAdmission,
+      forceAdmission = event.forceAdmission,
       stickySubagents = event.stickySubagents,
       innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
@@ -1488,7 +1488,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
-      "forceJobAdmission" -> order.forceJobAdmission.?.asJson,
+      "forceAdmission" -> order.forceAdmission.?.asJson,
       "isResumed" -> order.isResumed.?.asJson,
       "stickySubagents" -> (order.stickySubagents.nonEmpty ? order.stickySubagents).asJson,
       "innerBlock" -> (order.innerBlock.nonEmpty ? order.innerBlock).asJson,
@@ -1514,7 +1514,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
-      forceJobAdmission <- cursor.getOrElse[Boolean]("forceJobAdmission")(false)
+      forceAdmission <- cursor.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
+        cursor.getOrElse[Boolean]("forceAdmission")(false)
       innerBlock <- cursor.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       stickySubagents <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
@@ -1528,7 +1529,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
         isSuspended = isSuspended,
         isResumed = isResumed,
         deleteWhenTerminated = deleteWhenTerminated,
-        forceJobAdmission = forceJobAdmission,
+        forceAdmission = forceAdmission,
         stickySubagents,
         innerBlock, stopPositions)
 

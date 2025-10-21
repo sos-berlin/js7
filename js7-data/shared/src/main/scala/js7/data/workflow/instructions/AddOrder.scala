@@ -2,6 +2,7 @@ package js7.data.workflow.instructions
 
 import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
+import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
@@ -16,7 +17,7 @@ final case class AddOrder(
   startPosition: Option[Position] = None,
   stopPositions: Set[PositionOrLabel] = Set.empty,
   deleteWhenTerminated: Boolean = false,
-  forceJobAdmission: Boolean = false,
+  forceAdmission: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends Instruction.NoInstructionBlock:
 
@@ -26,4 +27,6 @@ extends Instruction.NoInstructionBlock:
 
 object AddOrder:
   import BranchPath.syntax.jsonCodec
-  implicit val jsonCodec: Codec.AsObject[AddOrder] = ConfiguredCodec.derive(useDefaults = true)
+
+  given Codec.AsObject[AddOrder] = deriveRenamingCodec(Map(
+    "forceJobAdmission" -> "forceAdmission"))

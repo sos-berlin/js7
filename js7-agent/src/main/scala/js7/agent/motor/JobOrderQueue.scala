@@ -20,7 +20,7 @@ private final class JobOrderQueue:
       synchronized:
         orders.foreach: order =>
           val metering = entryMeter.startMetering()
-          if order.forceJobAdmission then
+          if order.forceAdmission then
             forceAdmissionQueue.enqueue(order, metering)
           queue.enqueue(order, metering).foreach: removedEntry =>
             entryMeter.stopMetering(removedEntry.metering)

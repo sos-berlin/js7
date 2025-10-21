@@ -9,7 +9,8 @@ import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Label, Position}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
+
 /**
   * @author Joacim Zschimmer
   */
@@ -34,7 +35,7 @@ final class FreshOrderTest extends OurTestSuite:
         Some(Timestamp.parse("2017-03-07T12:00:00Z")),
         priority = BigDecimal("1.23"),
         deleteWhenTerminated = true,
-        forceJobAdmission = true,
+        forceAdmission = true,
         innerBlock = Position(1) / BranchId.Then,
         startPosition = Some(Position(1) / BranchId.Then % 2),
         stopPositions = Set(Position(9) / BranchId.Catch_ % 0, Label("LABEL"))),
@@ -51,10 +52,19 @@ final class FreshOrderTest extends OurTestSuite:
         "scheduledFor": 1488888000000,
         "priority": 1.23,
         "deleteWhenTerminated": true,
-        "forceJobAdmission": true,
+        "forceAdmission": true,
         "innerBlock": [ 1, "then" ],
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 9, "catch", 0 ], "LABEL" ]
+      }""")
+
+    testJsonDecoder(
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW"), forceAdmission = true),
+      json"""{
+        "id": "ORDER-ID",
+        "workflowPath": "WORKFLOW",
+        "planId": [],
+        "forceJobAdmission": true
       }""")
 
   "checked" in:

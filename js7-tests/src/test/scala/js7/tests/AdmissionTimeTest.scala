@@ -203,7 +203,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
-  "skipIfNoAdmissionStartForOrderDay, don't skip due to forceJobAdmission" in :
+  "skipIfNoAdmissionStartForOrderDay, don't skip due to forceAdmission" in :
     clock.resetTo(local("2025-10-21T00:00"))
     val workflow = Workflow(
       WorkflowPath.Anonymous,
@@ -220,11 +220,11 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
     withItem(workflow): workflow =>
       val orderId = OrderId("#2025-10-21#SKIP-FORCE")
       addOrder:
-        FreshOrder(orderId, workflow.path, forceJobAdmission = true)
+        FreshOrder(orderId, workflow.path, forceAdmission = true)
       controller.awaitNextKey[OrderFinished](orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-        OrderAdded(workflow.id, forceJobAdmission = true, deleteWhenTerminated = true),
+        OrderAdded(workflow.id, forceAdmission = true, deleteWhenTerminated = true),
         OrderMoved(Position(0) / BranchId.AdmissionTime % 0),
         OrderStarted,
         OrderSaid("OK"),
@@ -232,17 +232,17 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
-  "Order forceJobAdmission" in:
+  "Order forceAdmission" in:
     clock.resetTo(local("2025-10-21T00:00"))
     withItem(standardWorkflow): workflow =>
       val orderId = nextOrderId()
       addOrder:
-        FreshOrder(orderId, workflow.path, forceJobAdmission = true)
+        FreshOrder(orderId, workflow.path, forceAdmission = true)
       controller.awaitNextKey[OrderSaid](orderId)
       controller.awaitNextKey[OrderFinished](orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-        OrderAdded(workflow.id, forceJobAdmission = true, deleteWhenTerminated = true),
+        OrderAdded(workflow.id, forceAdmission = true, deleteWhenTerminated = true),
         OrderMoved(Position(0) / BranchId.AdmissionTime % 0),
         OrderStarted,
         OrderSaid("OK"),

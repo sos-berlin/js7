@@ -89,8 +89,8 @@ final class OrderTest extends OurTestSuite:
             stickySubagents = List(
               Order.StickySubagent(
                 AgentPath("AGENT"),
-                Some(SubagentBundleId("SUBAGENT-BUNDLE"))))
-          ),
+                Some(SubagentBundleId("SUBAGENT-BUNDLE")))),
+              forceAdmission = true),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -134,7 +134,30 @@ final class OrderTest extends OurTestSuite:
             "stickySubagents": [{
               "agentPath": "AGENT",
               "subagentBundleId": "SUBAGENT-BUNDLE"
-            }]
+            }],
+            "forceAdmission": true
+          }""")
+
+      "until v2.8.1" in:
+        testJsonDecoder[Order[State]](
+          Order(
+            OrderId("ID"),
+            WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
+            Ready(),
+            forceAdmission = true),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Ready"
+            },
+            "forceJobAdmission": true
           }""")
 
       "until v2.7.1" in:
