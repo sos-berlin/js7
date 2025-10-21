@@ -171,21 +171,22 @@ object OurIORuntime:
       throwable.toStringWithCauses}"
 
     throwable match
+      case throwable: OutOfMemoryError =>
+        // Hopefully, we have still a little memory available
+        logger.error(msg, throwable.nullIfNoStackTrace)
+        throwable.printStackTrace(System.err)
+        haltJava(s"💥 HALT DUE TO $throwable (heap size is ${toKiBGiB(sys.runtime.maxMemory)})",
+          restart = true)
+
       //case _: pekko.stream.StreamTcpException | _: org.apache.pekko.http.scaladsl.model.EntityStreamException =>
       //  // TODO Not sure how to handle or ignore an unexpectedly closed connection while reading a stream.
       //  // "Entity stream truncation. The HTTP parser was receiving an entity when the underlying connection was closed unexpectedly."
       //  // Maybe, letting the thread die is normal Pekko behaviour, and the original Pekko thread pool does not log this ???
       //  logger.warn(msg, throwable.nullIfNoStackTrace)
 
-      case NonFatal(_) =>
+      case NonFatal(_) | _: InterruptedException =>
         // Different to Monix, Cats Effect seems to call reportFailure for some irrelevant exceptions ???
         logger.debug(s"WARN 💥 $msg", throwable.nullIfNoStackTrace)
-
-      case throwable: OutOfMemoryError =>
-        logger.error(msg, throwable.nullIfNoStackTrace)
-        throwable.printStackTrace(System.err)
-        haltJava(s"💥 HALT DUE TO $throwable (heap size is ${toKiBGiB(sys.runtime.maxMemory)})",
-          restart = true)
 
       case throwable =>
         logger.error(msg, throwable.nullIfNoStackTrace)
