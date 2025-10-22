@@ -62,9 +62,6 @@ final class PekkoHttpControllerApiTest extends OurTestSuite, ControllerAgentForS
   "overview" in:
     assert(api.overview.await(99.s).version == BuildInfo.prettyVersion)
 
-  "ordersOverview" in:
-    assert(api.ordersOverview.await(99.s).count == 2)
-
   "logout" in:
     assert(controller.sessionRegister.count.await(99.s) == 2)
     api.logout().await(99.s)

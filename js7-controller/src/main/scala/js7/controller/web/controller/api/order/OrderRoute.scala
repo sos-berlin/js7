@@ -20,7 +20,6 @@ import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.controller.OrderApi
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.order.OrderRoute.*
 import js7.core.command.CommandMeta
@@ -40,19 +39,19 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-trait OrderRoute
-  extends ControllerRouteProvider, EntitySizeLimitProvider:
+trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
+
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
   : IO[Checked[command.Response]]
-  protected def orderApi: OrderApi
+  
   protected def actorSystem: ActorSystem
 
   private given IORuntime = ioRuntime
   private given ActorSystem = actorSystem
 
   final lazy val orderRoute: Route =
-    authorizedUser(ValidUserPermission) { user =>
-      post {
+    authorizedUser(ValidUserPermission): user =>
+      post:
         pathEnd:
           withSizeLimit(entitySizeLimit):
             entity(as[HttpEntity]): httpEntity =>
@@ -70,18 +69,6 @@ trait OrderRoute
           pathPrefix("DeleteOrdersWhenTerminated"):
             pathEnd:
               deleteOrdersWhenTerminated(user)
-      } ~
-        get:
-          pathEnd:
-            parameter("return".?):
-              case None =>
-                complete(orderApi.ordersOverview.unsafeToFuture()) // TODO Should be streamed
-              case _ =>
-                complete(Problem.pure("Parameter return is not supported here"))
-          ~
-            matchOrderId: orderId =>
-              singleOrder(orderId)
-    }
 
   private def addOrdersNdjson(httpEntity: HttpEntity, user: SimpleUser) =
     completeIO:
@@ -149,14 +136,6 @@ trait OrderRoute
               .flatMap:
                 executeCommand(_, CommandMeta(user))
               .mapmap(o => o: ControllerCommand.Response)
-
-  private def singleOrder(orderId: OrderId): Route =
-    completeIO:
-      orderApi.order(orderId).mapmap:
-        case Some(o) =>
-          o: ToResponseMarshallable
-        case None =>
-          Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
 
 
 object OrderRoute:

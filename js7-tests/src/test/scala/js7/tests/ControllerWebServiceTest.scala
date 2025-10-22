@@ -303,17 +303,6 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
         assert(response.utf8String.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
     }
-
-    testGet("controller/api/order",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""{
-        "count": 1
-      }""")
-
-    "controller/api/order/ORDER-ID" in:
-      val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-      val order = httpClient.getWithHeaders[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers).await(99.s)
-      assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
   }
 
   "(await OrderFinished)" in:

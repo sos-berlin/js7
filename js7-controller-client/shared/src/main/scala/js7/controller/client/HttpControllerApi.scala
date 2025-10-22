@@ -14,7 +14,7 @@ import js7.controller.client.HttpControllerApi.*
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{EventApi, EventId, JournalInfo}
-import js7.data.order.{FreshOrder, OrderId, OrdersOverview}
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.session.HttpSessionApi
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
@@ -77,9 +77,6 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def deleteOrdersWhenTerminated(orderIds: Seq[OrderId]): IO[Completed] =
     executeCommand(DeleteOrdersWhenTerminated(orderIds))
       .map((_: ControllerCommand.Response.Accepted) => Completed)
-
-  final def ordersOverview: IO[OrdersOverview] =
-    httpClient.get[OrdersOverview](uris.order.overview)
 
   final def journalInfo: IO[JournalInfo] =
     httpClient.get[JournalInfo](uris.api("/journalInfo"))

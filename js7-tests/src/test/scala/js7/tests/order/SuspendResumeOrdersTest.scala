@@ -17,6 +17,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
@@ -951,16 +952,17 @@ final class SuspendResumeOrdersTest
         OrderOutcomeAdded(OrderOutcome.Failed(Some("FAILURE"))),
         OrderFailed(Position(2) / try_(1) % 0)))
 
-    assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
-      order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
-      Order.Failed,
-      historicOutcomes = Vector(
-        HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
-        HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))),
-        HistoricOutcome(Position(2) / Try_ % 0, OrderOutcome.Failed(Some("FAILURE"))),
-        HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.Caught),
-        HistoricOutcome(Position(2) / try_(1) % 0, OrderOutcome.Failed(Some("FAILURE")))),
-      deleteWhenTerminated = true))))
+    assert(controller.api.controllerState.map(_.flatMap(_.idToOrder.checked(order.id))).await(99.s) ==
+      Right(Order(
+        order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
+        Order.Failed,
+        historicOutcomes = Vector(
+          HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
+          HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))),
+          HistoricOutcome(Position(2) / Try_ % 0, OrderOutcome.Failed(Some("FAILURE"))),
+          HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.Caught),
+          HistoricOutcome(Position(2) / try_(1) % 0, OrderOutcome.Failed(Some("FAILURE")))),
+        deleteWhenTerminated = true)))
 
   "Resume when Failed" in:
     val order = FreshOrder(OrderId("🟫"), failingWorkflow.path)

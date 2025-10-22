@@ -18,7 +18,6 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
-import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
@@ -45,7 +44,6 @@ import scala.concurrent.duration.Deadline
 final class ControllerRoute(
   routeBinding: RouteBinding,
   protected val controllerConfiguration: ControllerConfiguration,
-  protected val orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
   protected val itemUpdater: ItemUpdater,
   protected val clusterNode: ClusterNode[ControllerState],

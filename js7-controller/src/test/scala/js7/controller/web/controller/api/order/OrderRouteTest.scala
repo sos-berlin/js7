@@ -1,10 +1,7 @@
 package js7.controller.web.controller.api.order
 
-import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
-import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
-import org.apache.pekko.http.scaladsl.model.headers.{Accept, Location}
-import org.apache.pekko.http.scaladsl.server.Route
+import cats.effect.{Deferred, IO}
+import cats.effect.unsafe.IORuntime
 import io.circe.syntax.*
 import io.circe.{Encoder, Json}
 import js7.base.problem.{Checked, Problem}
@@ -13,23 +10,24 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
-import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.http.PekkoHttpUtils.*
-import js7.controller.OrderApi
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import js7.controller.web.controller.api.order.OrderRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders}
-import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import cats.effect.IO
-import cats.effect.Deferred
-import cats.effect.unsafe.IORuntime
-import js7.common.pekkoutils.PekkoForExplicitNulls.header3
+import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
+import org.apache.pekko.http.scaladsl.model.headers.{Accept, Location}
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
   * @author Joacim Zschimmer
@@ -38,10 +36,6 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
 
   protected def whenShuttingDown = Deferred.unsafe
   protected def actorSystem = system
-  protected val orderApi = new OrderApi:
-    def order(orderId: OrderId) = IO(Right(TestOrders.get(orderId)))
-    def orders = IO(Right(TestOrders.values.toVector))
-    def orderCount = IO(Right(TestOrders.values.size))
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     (command match {
@@ -55,19 +49,6 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
       orderRoute
 
   private given IORuntime = ioRuntime
-
-  // OrdersOverview
-  "/controller/api/order" in:
-    Get("/controller/api/order") ~> Accept(`application/json`) ~> route ~> check:
-      assert(responseAs[OrdersOverview] == OrdersOverview(count = TestOrders.size))
-
-  // Order
-  for (uri <- List(
-       "/controller/api/order//PATH/ORDER-1",
-       "/controller/api/order/%2FPATH%2FORDER-1"))
-    s"$uri" in:
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check:
-        assert(status == OK && responseAs[Order[Order.State]] == TestOrders.values.head)
 
   "POST invalid order" in:
     val order = FreshOrder.unchecked(OrderId("ORDER|🔷"), WorkflowPath("WORKFLOW"))

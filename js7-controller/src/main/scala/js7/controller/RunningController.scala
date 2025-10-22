@@ -82,7 +82,6 @@ final class RunningController private(
   val eventWatch: StrictEventWatch,
   val webServer: PekkoWebServer,
   val recoveredEventId: EventId,
-  val orderApi: OrderApi,
   val controllerState: IO[ControllerState],
   commandExecutor: ControllerCommandExecutor,
   itemUpdater: ItemUpdater,
@@ -328,7 +327,6 @@ object RunningController:
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(clusterNode, currentOrderKeeperActor))
 
-      val orderApi = new MainOrderApi(controllerState)
       val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
       import clusterNode.recoveredExtract
 
@@ -336,7 +334,7 @@ object RunningController:
       : ResourceIO[ControllerWebServer] =
         for
           webServer <- ControllerWebServer.resource(
-            orderApi, commandExecutor, itemUpdater, clusterNode,
+            commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
             recoveredExtract.eventWatch,
             conf, sessionRegister)
@@ -362,7 +360,6 @@ object RunningController:
             recoveredExtract.eventWatch.strict,
             webServer,
             recoveredEventId = recoveredExtract.eventId,
-            orderApi,
             controllerState.map(_.orThrow),
             commandExecutor, itemUpdater,
             whenReady.future, untilOrderKeeperTerminated.unsafeToFuture(),

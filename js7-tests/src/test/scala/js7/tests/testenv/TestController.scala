@@ -23,10 +23,10 @@ import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.controller.RunningController
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.ControllerIsShuttingDownProblem
-import js7.controller.{OrderApi, RunningController}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
@@ -85,9 +85,6 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
 
   def recoveredEventId: EventId =
     runningController.recoveredEventId
-
-  def orderApi: OrderApi =
-    runningController.orderApi
 
   def controllerState(): ControllerState =
     import runningController.ioRuntime

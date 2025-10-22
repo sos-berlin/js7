@@ -46,12 +46,12 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
           s"--data-directory=$dataDirectory",
           s"https://localhost:$httpsPort",
           "?",
-          "/order"),
+          "/"),
         output += _)
       .map: exitCode =>
         assert(exitCode == ExitCode.Success)
-        assert(output(0).contains("\"version\":"))
-        assert(output(1).contains("\"count\":0"))
+        assert(output(0).contains(""""version":"""))
+        assert(output(1).contains(""""id":"Controller""""))
 
   "main with Controller URI only checks whether Controller is responding (it is not)" in:
     val unusedPort = 0
