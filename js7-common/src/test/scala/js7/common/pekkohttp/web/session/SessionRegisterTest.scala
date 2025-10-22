@@ -96,22 +96,21 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
 
   "Session timeout" in:
     TestControl.executeEmbed:
-      SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
-        .use: sessionRegister =>
-          assert(sessionRegister.count.await(99.s) == 0)
-          for
-            sessionToken <- sessionRegister.login(AUser, Some(Js7Version))
-            eternal <- sessionRegister.login(BUser, Some(Js7Version), isEternalSession = true)
-            _ <- sessionRegister.count.map(n => assert(n == 2))
-            session <- sessionRegister.session(sessionToken, Right(Anonymous))
-            _ = assert(session.isRight)
-            _ <- IO.sleep(SessionRegister.TestTimeout + 1.s)
-            session <- sessionRegister.session(sessionToken, Right(Anonymous))
-            _ = assert(session.isLeft/*timed out*/)
-            session <- sessionRegister.session(eternal, Right(Anonymous))
-            _ = assert(session.isRight)
-            _ <- sessionRegister.count.map(n => assert(n == 1))
-          yield succeed
+      SessionRegister.service(MySession.apply, SessionRegister.TestConfig).use: sr =>
+        for
+          _ <- sr.count.map(n => assert(n == 0))
+          sessionToken <- sr.login(AUser, Some(Js7Version))
+          eternal <- sr.login(BUser, Some(Js7Version), isEternalSession = true)
+          _ <- sr.count.map(n => assert(n == 2))
+          session <- sr.session(sessionToken, Right(Anonymous))
+          _ = assert(session.isRight)
+          _ <- IO.sleep(SessionRegister.TestTimeout + 1.s)
+          checked <- sr.session(sessionToken, Right(Anonymous))
+          _ = assert(checked.isLeft/*timed out*/)
+          checked <- sr.session(eternal, Right(Anonymous))
+          _ = assert(checked.isRight)
+          _ <- sr.count.map(n => assert(n == 1))
+        yield succeed
 
   "Non-matching version are still not checked" in:
     sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s): SessionToken

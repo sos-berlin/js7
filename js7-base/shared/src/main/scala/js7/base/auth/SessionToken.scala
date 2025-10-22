@@ -5,8 +5,9 @@ import js7.base.generic.SecretString
 import js7.base.utils.Atomic
 import scala.util.control.NonFatal
 
-/**
-  * @author Joacim Zschimmer
+/** Identifies a session.
+  *
+  * OWASP calls this Session ID.
   */
 final case class SessionToken(secret: SecretString):
 
