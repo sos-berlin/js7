@@ -257,7 +257,7 @@ extends Service.StoppableByRequest:
     IO
       .race(
         untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
-        client.retryIfSessionLost:
+        client.loginAndRetryIfSessionLost:
           client.commandExecute(command)
             // We don't allow cancellation because we cannot know whether
             // the command has or will be executed.

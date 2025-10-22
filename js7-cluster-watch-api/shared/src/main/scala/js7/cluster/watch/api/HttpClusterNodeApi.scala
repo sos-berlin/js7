@@ -42,7 +42,7 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     idleTimeout: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    retryIfSessionLost:
+    loginAndRetryIfSessionLost:
       httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
         uris.events(request, heartbeat = heartbeat),
         responsive = true,
@@ -55,7 +55,7 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     dontLog: Boolean = false)
   : IO[Stream[IO, Checked[EventId]]] =
     import EventId.given_Codec_Checked
-    retryIfSessionLost:
+    loginAndRetryIfSessionLost:
       httpClient
         .getDecodedLinesStream[Checked[EventId]](
           uris.eventIds(timeout, heartbeat = heartbeat),
@@ -102,7 +102,7 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     keepAlive: Option[FiniteDuration],
     dontLog: Boolean = false)
   : IO[Stream[IO, ClusterWatchRequest]] =
-    retryIfSessionLost:
+    loginAndRetryIfSessionLost:
       httpClient.getDecodedLinesStream[ClusterWatchRequest](
         uris.clusterWatchMessages(clusterWatchId, keepAlive),
         dontLog = dontLog,

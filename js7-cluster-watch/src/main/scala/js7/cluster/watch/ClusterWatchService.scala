@@ -151,7 +151,7 @@ extends MainService, Service.StoppableByRequest:
     private def respond(request: ClusterWatchRequest, confirmed: Checked[Confirmed]): IO[Unit] =
       HttpClient
         .liftProblem:
-          nodeApi.retryIfSessionLost:
+          nodeApi.loginAndRetryIfSessionLost:
             nodeApi.executeClusterWatchingCommand:
               ClusterWatchConfirm(
                 request.requestId, clusterWatchId, clusterWatchRunId,

@@ -83,7 +83,7 @@ private[cluster] final class ClusterCommon private(
       apiResource
         .use: api =>
           api
-            .retryIfSessionLost:
+            .loginAndRetryIfSessionLost:
               api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
                 couplingTokenProvider.resource.use: token =>
                   api.executeClusterCommand(toCommand(token))

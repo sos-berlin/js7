@@ -97,7 +97,7 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
 
   private def fetchClusterNodeState(api: Api): IO[Checked[ClusterNodeState]] =
     HttpClient.liftProblem:
-      api.retryIfSessionLost:
+      api.loginAndRetryIfSessionLost:
         api.clusterNodeState
     .flatTap: checked =>
       IO(logger.trace(s"${api.baseUri} => ${checked.merge}"))

@@ -46,7 +46,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =
     liftProblem:
-      retryIfSessionLost:
+      loginAndRetryIfSessionLost:
         httpClient
           .post[Numbered[SubagentCommand], SubagentCommand.Response](
             commandUri,
@@ -68,7 +68,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
     serverMetering: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    retryIfSessionLost:
+    loginAndRetryIfSessionLost:
       httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
         Uri:
           eventUri.string +

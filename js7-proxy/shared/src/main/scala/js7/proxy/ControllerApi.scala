@@ -181,7 +181,7 @@ extends ControllerApiWithHttp:
       else
         liftProblem:
           apiResource.use: api =>
-            api.retryIfSessionLost:
+            api.loginAndRetryIfSessionLost:
               body(api)
 
   private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
@@ -190,7 +190,7 @@ extends ControllerApiWithHttp:
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
       apiResource.use: api =>
-        api.retryIfSessionLost(body(api))
+        api.loginAndRetryIfSessionLost(body(api))
           .tryIt.map:
             case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
               Failure(t)  // Trigger onErrorRestartLoop

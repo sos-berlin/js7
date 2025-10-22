@@ -98,7 +98,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
-    retryIfSessionLost:
+    loginAndRetryIfSessionLost:
       liftProblem:
         getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
           agentUris.controllersEvents(

@@ -32,6 +32,10 @@ trait SessionApi:
   def clearSession(): Unit
 
   // overrideable
+  def loginAndRetryIfSessionLost[A](body: IO[A]): IO[A] =
+    body
+
+  // overrideable
   def retryIfSessionLost[A](body: IO[A]): IO[A] =
     body
 
@@ -124,17 +128,21 @@ object SessionApi:
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    override def retryIfSessionLost[A](body: IO[A]): IO[A] =
+    override def loginAndRetryIfSessionLost[A](body: IO[A]): IO[A] =
       login(onlyIfNotLoggedIn = true) *>
-        body.recoverWith:
-          case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) =>
-            renewSession(problem) *>
-              body
-        .flatMap: // A may be a Checked, Left[Problem]
-          case Left(problem: Problem) if problem.is(InvalidSessionTokenProblem) =>
-            renewSession(problem) *>
-              body
-          case o => IO.pure(o)
+        retryIfSessionLost:
+          body
+
+    override def retryIfSessionLost[A](body: IO[A]): IO[A] =
+      body.recoverWith:
+        case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) =>
+          renewSession(problem) *>
+            body
+      .flatMap: // A may be a Checked, Left[Problem]
+        case Left(problem: Problem) if problem.is(InvalidSessionTokenProblem) =>
+          renewSession(problem) *>
+            body
+        case o => IO.pure(o)
 
     private def renewSession(problem: Problem)
     : IO[Completed] =
