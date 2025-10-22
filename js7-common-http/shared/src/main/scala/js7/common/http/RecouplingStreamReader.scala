@@ -11,7 +11,6 @@ import js7.base.fs2utils.StreamExtensions.{+:, interruptUpstreamWhen}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
@@ -47,13 +46,8 @@ abstract class RecouplingStreamReader[
         var logged = false
         lazy val msg = s"$api reports: $problem"
         if inUse && !stopRequested && !coupledApiVar.isStopped then
-          if problem is InvalidSessionTokenProblem then
-          //if problem.toString.startsWith("InvalidSessionToken: ") then
-            sym.onDebug()
-            logger.debug(s"$sym $msg")
-          else
-            sym.onWarn()
-            logger.warn(s"$sym $msg")
+          sym.onWarn()
+          logger.warn(s"$sym $msg")
           logged = true
         for throwable <- problem.throwableOption.flatMap(_.ifStackTrace) do
           if api.hasRelevantStackTrace(throwable) then
