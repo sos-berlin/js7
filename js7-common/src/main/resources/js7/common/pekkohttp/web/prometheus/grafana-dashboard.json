@@ -863,25 +863,61 @@
             ]
           },
           {
-            "__systemRef": "hideSeriesFrom",
             "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "JS7 Engine"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
+              "id": "byName",
+              "options": "Computer"
             },
             "properties": [
               {
-                "id": "custom.hideFrom",
+                "id": "color",
                 "value": {
-                  "legend": false,
-                  "tooltip": true,
-                  "viz": true
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "JS7 Engine"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Load average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "System load average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-yellow",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -938,9 +974,22 @@
           "range": true,
           "refId": "process",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "java_lang_OperatingSystem_SystemLoadAverage{host=\"$host\"}",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "System load average",
+          "range": true,
+          "refId": "A"
         }
       ],
-      "title": "CPU usage",
+      "title": "CPU load",
       "type": "timeseries"
     },
     {
@@ -4617,13 +4666,13 @@
     ]
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 25,
+  "version": 41,
   "weekStart": ""
 }
