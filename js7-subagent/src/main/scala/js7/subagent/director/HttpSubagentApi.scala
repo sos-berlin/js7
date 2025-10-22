@@ -45,8 +45,8 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =
-    liftProblem:
-      loginAndRetryIfSessionLost:
+    loginAndRetryIfSessionLost:
+      liftProblem:
         httpClient
           .post[Numbered[SubagentCommand], SubagentCommand.Response](
             commandUri,

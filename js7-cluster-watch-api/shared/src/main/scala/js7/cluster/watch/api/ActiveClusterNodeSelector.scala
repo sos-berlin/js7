@@ -13,7 +13,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.HttpClient
 import js7.data.Problems.NoActiveClusterNodeProblem
 import js7.data.cluster.ClusterNodeState
 import scala.math.Ordered.orderingToOrdered
@@ -96,10 +95,7 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
               api
 
   private def fetchClusterNodeState(api: Api): IO[Checked[ClusterNodeState]] =
-    HttpClient.liftProblem:
-      api.loginAndRetryIfSessionLost:
-        api.clusterNodeState
-    .flatTap: checked =>
+    api.clusterNodeState.flatTap: checked =>
       IO(logger.trace(s"${api.baseUri} => ${checked.merge}"))
 
   private def logNonActive(list: List[ApiWithNodeState], n: Int): Unit =

@@ -1,12 +1,12 @@
 package js7.data.cluster
 
+import cats.effect.IO
+import fs2.Stream
 import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.data.event.{Event, EventId, JournalPosition}
-import cats.effect.IO
-import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 trait ClusterNodeApi
@@ -14,7 +14,7 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   def clusterState: IO[Checked[ClusterState]]
 
-  def clusterNodeState: IO[ClusterNodeState]
+  def clusterNodeState: IO[Checked[ClusterNodeState]]
 
   /** Stream for a journal file.
    *
@@ -28,7 +28,7 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
-  : IO[Stream[IO, ByteArray]]
+  : IO[Checked[Stream[IO, ByteArray]]]
 
   //NOT USED
   //def journalLengthStream(

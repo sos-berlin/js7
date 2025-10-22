@@ -62,7 +62,7 @@ trait HttpClient:
     (implicit s: IO[Option[SessionToken]])
   : IO[/*StatusCode*/Int]
 
-  def liftProblem[A](io: IO[A]): IO[Checked[A]] =
+  inline def liftProblem[A](inline io: IO[A]): IO[Checked[A]] =
     HttpClient.liftProblem(io)
 
 

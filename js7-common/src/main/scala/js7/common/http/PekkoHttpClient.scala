@@ -278,6 +278,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           dontLog = false)
       .flatMap(unmarshal[Json](POST, uri))
 
+  @TestOnly
   final def postWithHeaders[A: Encoder, B: Decoder](
     uri: Uri,
     data: A,
@@ -332,6 +333,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         dontLog = dontLog)
     yield response
 
+  @TestOnly
   final def postRaw(
     uri: Uri,
     headers: List[HttpHeader],

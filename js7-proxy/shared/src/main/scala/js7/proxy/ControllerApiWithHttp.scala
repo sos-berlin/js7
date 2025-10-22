@@ -8,6 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
+import org.jetbrains.annotations.TestOnly
 
 trait ControllerApiWithHttp:
   protected def apiResource(implicit src: sourcecode.Enclosing)
@@ -33,7 +34,9 @@ trait ControllerApiWithHttp:
         api.get[Json](uriTail)
       ).map(_.map(_.compactPrint)))
 
+  @TestOnly
   def httpGetRawLinesStream(uriTail: String): IO[Checked[fs2.Stream[IO, ByteArray]]] =
     apiResource.use: api =>
-      HttpClient.liftProblem:
-        api.getRawLinesStream(uriTail)
+      //loginAndRetryIfSessionLost <-- NOT AVAILABLE HERE
+        HttpClient.liftProblem:
+          api.getRawLinesStream(uriTail)

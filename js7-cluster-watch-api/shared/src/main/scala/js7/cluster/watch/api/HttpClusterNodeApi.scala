@@ -30,11 +30,14 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   private lazy val uris = ClusterNodeUris(prefixedUri)
 
   final def clusterState: IO[Checked[ClusterState]] =
-    liftProblem(
-      httpClient.get[ClusterState](uris.clusterState))
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        httpClient.get[ClusterState](uris.clusterState)
 
-  final def clusterNodeState: IO[ClusterNodeState] =
-    httpClient.get[ClusterNodeState](uris.clusterNodeState)
+  final def clusterNodeState: IO[Checked[ClusterNodeState]] =
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        httpClient.get[ClusterNodeState](uris.clusterNodeState)
 
   final def eventStream[E <: Event](
     request: EventRequest[E],
@@ -78,11 +81,13 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
-  : IO[Stream[IO, ByteArray]] =
-    httpClient.getRawLinesStream(
-      uris.journal(journalPosition, heartbeat = heartbeat,
-        timeout = timeout, markEOF = markEOF, returnAck = returnAck),
-      returnHeartbeatAs = returnHeartbeatAs)
+  : IO[Checked[Stream[IO, ByteArray]]] =
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        httpClient.getRawLinesStream(
+          uris.journal(journalPosition, heartbeat = heartbeat,
+            timeout = timeout, markEOF = markEOF, returnAck = returnAck),
+          returnHeartbeatAs = returnHeartbeatAs)
 
   /** Stream for the growing flushed (and maybe synced) length of a journal file.
     * @param journalPosition start of observation
@@ -92,10 +97,10 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     journalPosition: JournalPosition,
     timeout: FiniteDuration,
     markEOF: Boolean = false)
-  : IO[Stream[IO, Long]] =
+  : IO[Checked[Stream[IO, Long]]] =
     journalStream(journalPosition,
       timeout = Some(timeout), markEOF = markEOF, returnAck = true
-    ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
+    ).map(_.map(_.map(_.utf8String.stripSuffix("\n").toLong)))
 
   final def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,
@@ -109,11 +114,14 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
         responsive = true)
 
   final def executeClusterCommand(cmd: ClusterCommand): IO[cmd.Response] =
-    httpClient.post[ClusterCommand, ClusterCommand.Response](uris.command, cmd)
-      .map(_.asInstanceOf[cmd.Response])
+    loginAndRetryIfSessionLost:
+      httpClient.post[ClusterCommand, ClusterCommand.Response](uris.command, cmd)
+        .map(_.asInstanceOf[cmd.Response])
 
-  final def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): IO[Unit] =
-    httpClient.post[ClusterWatchingCommand, Unit](uris.command, cmd)
+  final def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): IO[Checked[Unit]] =
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        httpClient.post[ClusterWatchingCommand, Unit](uris.command, cmd)
 
   override def toString = s"HttpClusterNodeApi($prefixedUri)"
 

@@ -80,17 +80,28 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
             logger.log(sym.relievedLogLevel, s"💥$toString => $throwable")))
 
   final def commandExecute(command: AgentCommand): IO[Checked[command.Response]] =
-    liftProblem:
-      post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
-        .map(_.asInstanceOf[command.Response])
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
+          .map(_.asInstanceOf[command.Response])
+
+  @TestOnly
+  final def commandExecuteWithoutLogin(command: AgentCommand): IO[Checked[command.Response]] =
+    retryIfSessionLost:
+      liftProblem:
+        post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
+          .map(_.asInstanceOf[command.Response])
 
   final def executeSubagentCommand(command: SubagentCommand): IO[Checked[command.Response]] =
-    liftProblem:
-      post[SubagentCommand, SubagentCommand.Response](
-        uri = agentUris.subagentUris.command, command
-      ).map(_.asInstanceOf[command.Response])
+    loginAndRetryIfSessionLost:
+      liftProblem:
+        post[SubagentCommand, SubagentCommand.Response](
+          uri = agentUris.subagentUris.command, command
+        ).map(_.asInstanceOf[command.Response])
 
-  final def overview: IO[AgentOverview] = get[AgentOverview](agentUris.overview)
+  final def overview: IO[AgentOverview] =
+    loginAndRetryIfSessionLost:
+      get[AgentOverview](agentUris.overview)
 
   final def agentEventStream(
     request: EventRequest[Event],

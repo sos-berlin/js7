@@ -73,12 +73,12 @@ final class OrderAgentTest extends OurTestSuite:
           val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
             .closeWithCloser
 
-          assert(agentClient
-            .commandExecute(
-              DedicateAgentDirector(agentPath, Seq(subagentId), controllerId, controllerRunId))
+          assert:
+            agentClient.commandExecuteWithoutLogin:
+              DedicateAgentDirector(agentPath, Seq(subagentId), controllerId, controllerRunId)
             .await(99.s) ==
-            Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
-              "The resource requires authentication, which was not supplied with the request")))
+              Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
+                "The resource requires authentication, which was not supplied with the request"))
           agentClient.login().await(99.s)
 
           // Without Login, this registers all anonymous clients

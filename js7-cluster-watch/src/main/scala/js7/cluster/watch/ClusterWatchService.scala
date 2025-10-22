@@ -11,11 +11,12 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
+import js7.base.problem.Checked.RichCheckedF
 import js7.base.service.{MainService, Service}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.mkString
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichThrowable}
 import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
@@ -149,24 +150,20 @@ extends MainService, Service.StoppableByRequest:
         .flatMap(respond(request, _))
 
     private def respond(request: ClusterWatchRequest, confirmed: Checked[Confirmed]): IO[Unit] =
-      HttpClient
-        .liftProblem:
-          nodeApi.loginAndRetryIfSessionLost:
-            nodeApi.executeClusterWatchingCommand:
-              ClusterWatchConfirm(
-                request.requestId, clusterWatchId, clusterWatchRunId,
-                manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
-                problem = confirmed.left.toOption)
-            .void
-        .map:
-          case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
-            // Already confirmed by this or another ClusterWatch
-            logger.info(s"❓$nodeApi $problem")
-          case Left(problem) =>
-            logger.warn(s"❓$nodeApi $problem")
-          case Right(()) =>
-        .handleError: t =>
-          logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      nodeApi.executeClusterWatchingCommand:
+        ClusterWatchConfirm(
+          request.requestId, clusterWatchId, clusterWatchRunId,
+          manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
+          problem = confirmed.left.toOption)
+      .rightAs(())
+      .handleProblemWith:
+        case problem @ ClusterWatchRequestDoesNotMatchProblem =>
+          // Already confirmed by this or another ClusterWatch
+          IO(logger.info(s"❓$nodeApi $problem"))
+        case problem =>
+          IO(logger.warn(s"❓$nodeApi $problem"))
+      .handleError: t =>
+        logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)
 
   end NodeServer
 

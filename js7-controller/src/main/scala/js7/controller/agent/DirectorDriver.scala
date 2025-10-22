@@ -257,16 +257,15 @@ extends Service.StoppableByRequest:
     IO
       .race(
         untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
-        client.loginAndRetryIfSessionLost:
-          client.commandExecute(command)
-            // We don't allow cancellation because we cannot know whether
-            // the command has or will be executed.
-            // This is especially important when the Director is switching over.
-            // After failure, we don't know whether the Director has executed the command.
-            // FIXME? After an "unknown" error, we should send the command again, endlessly,
-            //  because this seems the only way to know.
-            //  Bad when Director is not reachable.
-            .uncancelable)
+        client.commandExecute(command)
+          // We don't allow cancellation because we cannot know whether
+          // the command has or will be executed.
+          // This is especially important when the Director is switching over.
+          // After failure, we don't know whether the Director has executed the command.
+          // FIXME? After an "unknown" error, we should send the command again, endlessly,
+          //  because this seems the only way to know.
+          //  Bad when Director is not reachable.
+          .uncancelable)
       .map:
         case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
         case Right(o) => o

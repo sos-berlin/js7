@@ -80,31 +80,29 @@ private[cluster] final class ClusterCommon private(
     clusterConf.delayConf.runIO: delayer =>
       val name = toCommand(OneTimeToken("TOKEN")).toShortString
       val since = now
-      apiResource
-        .use: api =>
-          api
-            .loginAndRetryIfSessionLost:
-              api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
-                couplingTokenProvider.resource.use: token =>
-                  api.executeClusterCommand(toCommand(token))
-            .map((_: ClusterCommand.Response) => ())
-            .onErrorRestartLoop(()): (throwable, _, retry) =>
-              logger.log(delayer.logLevel,
-                s"${delayer.symbol} $name command failed with ${throwable.toStringWithCauses}")
-              if !throwable.isInstanceOf[java.net.SocketException]
-                && throwable.getStackTrace.nonEmpty
-              then logger.debug(throwable.toString, throwable)
-              // TODO ClusterFailed event?
-              // TODO Handle heartbeat timeout?
-              delayer.sleep *> retry(())
-            .guaranteeCase:
-              case Outcome.Succeeded(_) => IO:
-                logger.log(delayer.relievedLogLevel,
-                  s"🟢 $name command succeeded after ${since.elapsed.pretty}")
-              case Outcome.Canceled() => IO:
-                logger.log(delayer.relievedLogLevel,
-                  s"◼️ $name command canceled after ${since.elapsed.pretty}")
-              case _ => IO.unit
+      apiResource.use: api =>
+        api.loginUntilReachable(onlyIfNotLoggedIn = true)
+          .productR:
+            couplingTokenProvider.resource.use: token =>
+              api.executeClusterCommand(toCommand(token))
+          .map((_: ClusterCommand.Response) => ())
+          .onErrorRestartLoop(()): (throwable, _, retry) =>
+            logger.log(delayer.logLevel,
+              s"${delayer.symbol} $name command failed with ${throwable.toStringWithCauses}")
+            if !throwable.isInstanceOf[java.net.SocketException]
+              && throwable.getStackTrace.nonEmpty
+            then logger.debug(throwable.toString, throwable)
+            // TODO ClusterFailed event?
+            // TODO Handle heartbeat timeout?
+            delayer.sleep *> retry(())
+          .guaranteeCase:
+            case Outcome.Succeeded(_) => IO:
+              logger.log(delayer.relievedLogLevel,
+                s"🟢 $name command succeeded after ${since.elapsed.pretty}")
+            case Outcome.Canceled() => IO:
+              logger.log(delayer.relievedLogLevel,
+                s"◼️ $name command canceled after ${since.elapsed.pretty}")
+            case _ => IO.unit
 
   def inhibitActivationOfPeer[S <: ClusterableState[S]](aggregate: S)(using NodeNameToPassword[S])
   : IO[Checked[Option[ClusterState]]] =

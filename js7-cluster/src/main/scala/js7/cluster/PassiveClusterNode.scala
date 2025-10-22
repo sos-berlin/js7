@@ -37,7 +37,6 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.{OneTimeToken, SetOnce}
-import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
@@ -124,8 +123,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
         .use(api => api
           .login(onlyIfNotLoggedIn = true)
           .productR:
-            api.loginAndRetryIfSessionLost:
-              api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId))
+            api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId))
           .void
           .handleError(throwable => logger.debug(
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
@@ -366,19 +364,18 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
           clusterConf.recouplingStreamReader):
 
           def getStream(api: ClusterNodeApi, position: Long) =
-            HttpClient.liftProblem(
-              api
-                .journalStream(
-                  JournalPosition(continuation.fileEventId, position),
-                  heartbeat = Some(setting.timing.heartbeat),
-                  returnHeartbeatAs = Some(StampedHeartbeatByteArray),
-                  markEOF = true)
-                .map(_
-                  .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
-                    PositionAnd(
-                      s.position + (if line == StampedHeartbeatByteArray then 0 else line.length),
-                      line)
-                  .drop(1)))
+            api
+              .journalStream(
+                JournalPosition(continuation.fileEventId, position),
+                heartbeat = Some(setting.timing.heartbeat),
+                returnHeartbeatAs = Some(StampedHeartbeatByteArray),
+                markEOF = true)
+              .mapmap(_
+                .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
+                  PositionAnd(
+                    s.position + (if line == StampedHeartbeatByteArray then 0 else line.length),
+                    line)
+                .drop(1))
 
           def stopRequested = stopped
 

@@ -12,12 +12,12 @@ import js7.base.problem.Checked.*
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.{AsyncLock, Atomic}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTest
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.base.version.Js7Versions.checkNonMatchingVersion
 import js7.base.version.Version
 import js7.base.web.HttpClient.HttpException
@@ -109,18 +109,19 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
   protected final def snapshotAs[S <: SnapshotableState[S]](uri: Uri)
     (using S: SnapshotableState.Companion[S])
   : IO[S] =
-    IO.defer:
-      val startedAt = now
-      httpClient.getRawLinesStream(uri)
-        .map(_
-          .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
-            logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
-          .mapParallelBatch():
-            _.parseJsonAs(using S.snapshotObjectJsonCodec).orThrow
-          .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
-            logger.debug:
-              s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
-        .flatMap(S.fromStream)
+    loginAndRetryIfSessionLost:
+      IO.defer:
+        val startedAt = now
+        httpClient.getRawLinesStream(uri)
+          .map(_
+            .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
+              logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
+            .mapParallelBatch():
+              _.parseJsonAs(using S.snapshotObjectJsonCodec).orThrow
+            .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
+              logger.debug:
+                s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
+          .flatMap(S.fromStream)
 
 
 object HttpSessionApi:

@@ -38,24 +38,30 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
       else Uri(baseUri.string.stripSuffix("/") + "/controller"))
 
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): IO[B] =
-    httpClient.post[A, B](baseUri /? uriTail, data)
+    loginAndRetryIfSessionLost:
+      httpClient.post[A, B](baseUri /? uriTail, data)
 
   final def postStream[A: Encoder, B: Decoder](uriTail: String, stream: Stream[IO, A]): IO[B] =
-    httpClient.postStream[A, B](baseUri /? uriTail, stream)
+    loginAndRetryIfSessionLost:
+      httpClient.postStream[A, B](baseUri /? uriTail, stream)
 
   @TestOnly
   final def postJsonStringStream(uriTail: String, stream: Stream[IO, String]): IO[Json] =
-    httpClient.postJsonStringStream(baseUri /? uriTail, stream)
+    loginAndRetryIfSessionLost:
+      httpClient.postJsonStringStream(baseUri /? uriTail, stream)
 
   final def get[B: Decoder](uriTail: String): IO[B] =
-    httpClient.get[B](baseUri /? uriTail)
+    loginAndRetryIfSessionLost:
+      httpClient.get[B](baseUri /? uriTail)
 
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, ByteArray]] =
-    httpClient.getRawLinesStream(baseUri /? uriTail)
+    loginAndRetryIfSessionLost:
+      httpClient.getRawLinesStream(baseUri /? uriTail)
 
   final def executeCommand[C <: ControllerCommand](command: C): IO[command.Response] =
-    httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
-      .map(_.asInstanceOf[command.Response])
+    loginAndRetryIfSessionLost:
+      httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
+        .map(_.asInstanceOf[command.Response])
 
   //final def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[command.Response] =
@@ -63,28 +69,32 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   //    .map(_.asInstanceOf[command.Response])
 
   final def overview: IO[ControllerOverview] =
-    httpClient.get[ControllerOverview](uris.overview)
+    loginAndRetryIfSessionLost:
+      httpClient.get[ControllerOverview](uris.overview)
 
   final def addOrder(order: FreshOrder): IO[Boolean] =
     val uri = uris.order.add
-    httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
-      .map(_ == 201/*Created*/)
+    loginAndRetryIfSessionLost:
+      httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
+        .map(_ == 201/*Created*/)
 
   final def addOrders(orders: Seq[FreshOrder]): IO[Completed] =
-    httpClient.postDiscardResponse(uris.order.add, orders)
-      .map((_: Int) => Completed)
+    loginAndRetryIfSessionLost:
+      httpClient.postDiscardResponse(uris.order.add, orders)
+        .map((_: Int) => Completed)
 
   final def deleteOrdersWhenTerminated(orderIds: Seq[OrderId]): IO[Completed] =
     executeCommand(DeleteOrdersWhenTerminated(orderIds))
       .map((_: ControllerCommand.Response.Accepted) => Completed)
 
   final def journalInfo: IO[JournalInfo] =
-    httpClient.get[JournalInfo](uris.api("/journalInfo"))
-
-  override def toString = s"HttpControllerApi($baseUri)"
+    loginAndRetryIfSessionLost:
+      httpClient.get[JournalInfo](uris.api("/journalInfo"))
 
   final def snapshot(eventId: Option[EventId] = None): IO[ControllerState] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
+
+  override def toString = s"HttpControllerApi($baseUri)"
 
 
 object HttpControllerApi:
