@@ -129,8 +129,9 @@ extends ControllerApiWithHttp:
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     logger.debugIO:
-      untilReachable(_.postStream[FreshOrder, Json]("controller/api/order", orders))
-        .map(_.flatMap(_.checkedAs[AddOrders.Response]))
+      untilReachable:
+        _.postStream[FreshOrder, Json]("controller/api/order", orders)
+      .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): IO[Checked[Boolean]] =
