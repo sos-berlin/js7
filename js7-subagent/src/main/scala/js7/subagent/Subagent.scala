@@ -226,7 +226,7 @@ object Subagent:
         _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
         pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
         actorSystem <- Pekkos.actorSystemResource(conf.name, config)
-        sessionRegister <- SessionRegister.resource(SubagentSession(_), config)
+        sessionRegister <- SessionRegister.service(SubagentSession(_), config)
         systemSessionToken <- sessionRegister
           .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         // Stop Subagent _after_ web service to allow Subagent to execute last commands!

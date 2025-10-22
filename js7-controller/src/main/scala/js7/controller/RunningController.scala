@@ -368,7 +368,7 @@ object RunningController:
             actorSystem)
 
       for
-        sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
+        sessionRegister <- SessionRegister.service(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
         _ <- EngineStateMXBean.register

@@ -87,7 +87,7 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
 
   "Session timeout" in:
     TestControl.executeEmbed:
-      SessionRegister.resource(MySession.apply, SessionRegister.TestConfig)
+      SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
         .use: sessionRegister =>
           assert(sessionRegister.count.await(99.s) == 0)
           for

@@ -47,7 +47,7 @@ extends Service.TrivialReleasable:
 
   private val componentName = config.getString("js7.component.name")
   private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
-  private val cleanupInterval = sessionTimeout / 4
+  private val cleanupInterval = (sessionTimeout / 4) max 1.s
 
   private val cell = AtomicCell[IO].of(State(Map.empty)).unsafeMemoize
 
@@ -71,15 +71,16 @@ extends Service.TrivialReleasable:
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
     provideSessionTokenFile(user, sessionTokenFile)
-      .flatTap(sessionToken => provideFile[IO](headersFile)
-        .*>(Resource.eval(IO {
-          createFile(headersFile, operatingSystem.secretFileAttributes*)
-          headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
-        })))
+      .flatTap: sessionToken =>
+        provideFile[IO](headersFile) *>
+          Resource.eval:
+            IO.blocking:
+              createFile(headersFile, operatingSystem.secretFileAttributes *)
+              headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
 
   private def provideSessionTokenFile(user: SimpleUser, file: Path): ResourceIO[SessionToken] =
-    provideFile[IO](file)
-      .flatMap(file => Resource.eval(createSystemSession(user, file)))
+    provideFile[IO](file).flatMap: file =>
+      Resource.eval(createSystemSession(user, file))
 
   private def createSystemSession(user: SimpleUser, file: Path): IO[SessionToken] =
     for
@@ -91,7 +92,8 @@ extends Service.TrivialReleasable:
         logger.debug(s"SessionToken for internal ${user.id} has been placed in file $file")
       checkedSession <- session(token, Right(user))
       _ <- deferredSystemSession.complete(checkedSession)
-    yield token
+    yield
+      token
 
   def login(
     user: SimpleUser,
@@ -99,8 +101,8 @@ extends Service.TrivialReleasable:
     token: Option[SessionToken] = None,
     isEternalSession: Boolean = false)
   : IO[SessionToken] =
-    cell
-      .flatMap(_.modify: state =>
+    cell.flatMap:
+      _.modify: state =>
         token
           .fold(state)(oldToken => state
             .delete(oldToken, " deleted due to Login"))
@@ -131,51 +133,47 @@ extends Service.TrivialReleasable:
                   .foreach: problem =>
                     logger.error(problem.toString)
 
-            updated -> session)
-       .flatMap: session =>
-         IO
-           .unlessA(isEternalSession):
-             session.touch(sessionTimeout) *> cleanUp.scheduleNext
-           .as(session.sessionToken)
+            updated -> session
+    .flatMap: session =>
+      IO.unlessA(isEternalSession):
+        session.touch(sessionTimeout) *> cleanUp.scheduleNext
+      .as(session.sessionToken)
 
   def logout(sessionToken: SessionToken): IO[Completed] =
-    cell
-      .flatMap(_.update(_
-        .delete(sessionToken, ": Logout")))
-      .as(Completed)
+    cell.flatMap:
+      _.update:
+        _.delete(sessionToken, ": Logout")
+    .as(Completed)
 
   private[session] def session(token: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]): IO[Checked[S]] =
-    cell
-      .flatMap(_.get).map: state =>
-        (state.tokenToSession.get(token), idsOrUser) match
-          case (None, _) =>
-            val users = idsOrUser.fold(_.mkString("|"), _.id)
-            logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
-            Left(InvalidSessionTokenProblem)
+    cell.flatMap(_.get).map: state =>
+      (state.tokenToSession.get(token), idsOrUser) match
+        case (None, _) =>
+          val users = idsOrUser.fold(_.mkString("|"), _.id)
+          logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
+          Left(InvalidSessionTokenProblem)
 
-          case (Some(session), Right(user))
-            if !user.id.isAnonymous && user.id != session.currentUser.id =>
-            tryUpdateLatelyAuthenticatedUser(user, session)
+        case (Some(session), Right(user))
+          if !user.id.isAnonymous && user.id != session.currentUser.id =>
+          tryUpdateLatelyAuthenticatedUser(user, session)
 
-          case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
-            logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
-              s"'${userIds.mkString(", ")}' do not include Sessions's ${session.currentUser.id}")
-            Left(InvalidSessionTokenProblem)
+        case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
+          logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
+            s"'${userIds.mkString(", ")}' do not include Sessions's ${session.currentUser.id}")
+          Left(InvalidSessionTokenProblem)
 
-          case (Some(session), _) =>
-            Right(session)
-      .flatTapT: session =>
-        handleTimeout(session)
-          .map: timedOutAndDeleted =>
-            if timedOutAndDeleted then
-              Left(InvalidSessionTokenProblem)
-            else
-              Right(())
-      .flatTapT: session =>
-        IO
-          .unlessA(session.isEternal):
-            session.touch(sessionTimeout)
-          .as(Right(()))
+        case (Some(session), _) =>
+          Right(session)
+    .flatTapT: session =>
+      handleTimeout(session).map: timedOutAndDeleted =>
+        if timedOutAndDeleted then
+          Left(InvalidSessionTokenProblem)
+        else
+          Right(())
+    .flatTapT: session =>
+      IO.unlessA(session.isEternal):
+        session.touch(sessionTimeout)
+      .as(Right(()))
 
   @TestOnly
   private[js7] def count: IO[Int] =
@@ -278,7 +276,7 @@ object SessionRegister:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: Session: Tag](newSession: SessionInit => S, config: Config)
+  def service[S <: Session: Tag](newSession: SessionInit => S, config: Config)
   : ResourceIO[SessionRegister[S]] =
     Service.resource:
       new SessionRegister[S](newSession, config)

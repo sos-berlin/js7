@@ -20,7 +20,7 @@ object MinimumWebServer:
   : ResourceIO[PekkoWebServer] =
     for
       given IORuntime <- Resource.eval(environment[IORuntime])
-      sessionRegister <- SessionRegister.resource(SimpleSession(_), conf.config)
+      sessionRegister <- SessionRegister.service(SimpleSession(_), conf.config)
       webServer <- PekkoWebServer.simple(conf):
         routeBinding => MinimumRoute(sessionRegister, routeBinding, conf).webServerRoute
     yield
