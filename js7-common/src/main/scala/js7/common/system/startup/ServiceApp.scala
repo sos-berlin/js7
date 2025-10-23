@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{ExitCode, IO, ResourceIO}
 import cats.implicits.catsSyntaxApplicativeByName
 import js7.base.catsutils.OurApp
-import js7.base.metering.{CallMeterLoggingService, Responsivenessmeter}
+import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ThreadsMXBean
@@ -52,7 +52,7 @@ trait ServiceApp extends OurApp:
       cnf =>
         for
           _ <- CallMeterLoggingService.service(cnf.config)
-          _ <- Responsivenessmeter.service(cnf.config).whenA(useOwnResponsivenessmeter)
+          _ <- ResponsivenessMeter.service(cnf.config).whenA(useOwnResponsivenessmeter)
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
           _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)

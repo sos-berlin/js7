@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
-import js7.base.metering.Responsivenessmeter.*
+import js7.base.metering.ResponsivenessMeter.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.service.Service
@@ -16,7 +16,7 @@ import scala.annotation.threadUnsafe
 import scala.concurrent.duration.*
 import scala.math.Ordering.Implicits.infixOrderingOps
 
-final class Responsivenessmeter private(conf: Responsivenessmeter.Conf)
+final class ResponsivenessMeter private(conf: ResponsivenessMeter.Conf)
 extends Service.StoppableByCancel:
 
   import conf.{initialDelay, logLevel, meterInterval, slowThreshold}
@@ -51,8 +51,8 @@ extends Service.StoppableByCancel:
       _ <-
         val delay = end - (start + meterInterval)
         if Deadline.now < stickUntil then // bean not read and value not expired?
-          if lastDelay < delay then
-            lastDelay = delay // maximum
+          if lastDelay < delay then // new maximum?
+            lastDelay = delay
             stickUntil = Deadline.now + stickDuration
         else
           lastDelay = delay
@@ -75,17 +75,19 @@ extends Service.StoppableByCancel:
       else
         logger.log(logLevel min LogLevel.Info, s"✔ InternalResponseTime was ${delay.pretty}")
 
+  override def toString = "ResponsivenessMeter"
 
-object Responsivenessmeter:
+
+object ResponsivenessMeter:
   private val logger = Logger[this.type]
   private val stickDuration = 1.minute
 
-  def service(config: Config): ResourceIO[Responsivenessmeter] =
+  def service(config: Config): ResourceIO[ResponsivenessMeter] =
     service(Conf.fromConfig(config).orThrow)
 
-  def service(conf: Conf): ResourceIO[Responsivenessmeter] =
+  def service(conf: Conf): ResourceIO[ResponsivenessMeter] =
     for
-      service <- Service(Responsivenessmeter(conf))
+      service <- Service(ResponsivenessMeter(conf))
     yield
       service
 

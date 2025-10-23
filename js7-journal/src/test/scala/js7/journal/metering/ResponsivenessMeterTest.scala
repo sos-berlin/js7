@@ -9,7 +9,7 @@ import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.LogLevel.Info
-import js7.base.metering.Responsivenessmeter
+import js7.base.metering.ResponsivenessMeter
 import js7.base.problem.Checked
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
@@ -20,41 +20,41 @@ import js7.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, K
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.metering.ResponsivenessEvent.InternalResponseTime
-import js7.journal.metering.ResponsivenessmeterTest.*
+import js7.journal.metering.ResponsivenessMeterTest.*
 import js7.journal.recover.Recovered
 import js7.journal.watch.EventWatch
 import js7.journal.{FileJournal, metering}
 
-final class ResponsivenessmeterTest extends OurAsyncTestSuite:
+final class ResponsivenessMeterTest extends OurAsyncTestSuite:
 
   "test" in:
-    temporaryDirectoryResource[IO]("ResponsivenessmeterTest-").use: dir =>
+    temporaryDirectoryResource[IO]("ResponsivenessMeterTest-").use: dir =>
       slowResponsivenessDetector(dir).use: (detector, eventWatch) =>
         eventWatch.awaitAsync[InternalResponseTime](_ => true, after = EventId.BeforeFirst, timeout = 99.s)
           .productR:
             IO:
               assert(detector.bean.getDelaySeconds > 0.0)
 
-  private def slowResponsivenessDetector(dir: Path): ResourceIO[(Responsivenessmeter, EventWatch)] =
+  private def slowResponsivenessDetector(dir: Path): ResourceIO[(ResponsivenessMeter, EventWatch)] =
     for
       recovered =
         val loc = JournalLocation(MyAggregate, dir / "test")
         Recovered.noJournalFile[MyAggregate](loc, config)
       journal <- FileJournal.service[MyAggregate](recovered, JournalConf.fromConfig(config))
-      service <- Responsivenessmeter.service(
-        Responsivenessmeter.Conf(
+      service <- ResponsivenessMeter.service(
+        ResponsivenessMeter.Conf(
           initialDelay = 0.s,
           meterInterval = 10.ms,
           slowThreshold = 1.ms,
           logLevel = Info,
           emitEvents = true,
           eventInterval = None))
-      _ <- Resource.eval(service.onMetered(Responsiveness.onMetered(journal)))
+      _ <- Resource.eval(service.onMetered(ResponsivenessEventEmitter.onMetered(journal)))
     yield
       service -> recovered.eventWatch
 
 
-object ResponsivenessmeterTest:
+object ResponsivenessMeterTest:
   private val config = Js7Config.defaultConfig
 
 

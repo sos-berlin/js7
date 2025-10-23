@@ -2,15 +2,15 @@ package js7.journal.metering
 
 import cats.effect.IO
 import js7.base.log.Logger
-import js7.base.metering.Responsivenessmeter
+import js7.base.metering.ResponsivenessMeter
 import js7.base.problem.Checked.RichCheckedF
 import js7.journal.Journal
 import js7.journal.metering.ResponsivenessEvent.InternalResponseTime
 
-object Responsiveness:
+object ResponsivenessEventEmitter:
   private val logger = Logger[this.type]
 
-  def onMetered(journal: Journal[?]): Responsivenessmeter.MeterCallback =
+  def onMetered(journal: Journal[?]): ResponsivenessMeter.MeterCallback =
     (delay, tooLong, conf) =>
       import conf.emitEvents
       IO.whenA(emitEvents):
