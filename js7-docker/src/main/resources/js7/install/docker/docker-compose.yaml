@@ -30,7 +30,7 @@ services:
       - ./volumes/controller/data/cache:/var/opt/js7/controller/data/cache:delegated
       - ./volumes/controller/data/logs:/var/opt/js7/controller/data/logs:delegated
       - ./volumes/controller/data/state:/var/opt/js7/controller/data/state:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   backup-controller:
@@ -55,7 +55,7 @@ services:
       - ./volumes/backup-controller/data/cache:/var/opt/js7/controller/data/cache:delegated
       - ./volumes/backup-controller/data/logs:/var/opt/js7/controller/data/logs:delegated
       - ./volumes/backup-controller/data/state:/var/opt/js7/controller/data/state:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   subagent-1a:
@@ -73,7 +73,7 @@ services:
       - ./volumes/subagent-1a/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-1a/data/state:/var/opt/js7/agent/data/state:delegated
       - ./volumes/subagent-1a/data/work:/var/opt/js7/agent/data/work:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   subagent-1b:
@@ -91,7 +91,7 @@ services:
       - ./volumes/subagent-1b/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-1b/data/state:/var/opt/js7/agent/data/state:delegated
       - ./volumes/subagent-1b/data/work:/var/opt/js7/agent/data/work:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   subagent-1c:
@@ -109,7 +109,7 @@ services:
       - ./volumes/subagent-1c/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-1c/data/state:/var/opt/js7/agent/data/state:delegated
       - ./volumes/subagent-1c/data/work:/var/opt/js7/agent/data/work:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   subagent-2a:
@@ -127,7 +127,7 @@ services:
       - ./volumes/subagent-2a/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-2a/data/state:/var/opt/js7/agent/data/state:delegated
       - ./volumes/subagent-2a/data/work:/var/opt/js7/agent/data/work:delegated
-    stop_grace_period: 10s
+    stop_grace_period: 15s
     restart: unless-stopped
 
   cluster-watch:
@@ -150,6 +150,7 @@ services:
       - ./volumes/cluster-watch/data/cache:/var/opt/js7/cluster-watch/data/cache:delegated
       - ./volumes/cluster-watch/data/logs:/var/opt/js7/cluster-watch/data/logs:delegated
       - ./volumes/cluster-watch/data/state:/var/opt/js7/cluster-watch/data/state:delegated
+    stop_grace_period: 15s
     restart: unless-stopped
 
   cluster-watch-b:
@@ -172,6 +173,7 @@ services:
       - ./volumes/cluster-watch-b/data/cache:/var/opt/js7/cluster-watch/data/cache:delegated
       - ./volumes/cluster-watch-b/data/logs:/var/opt/js7/cluster-watch/data/logs:delegated
       - ./volumes/cluster-watch-b/data/state:/var/opt/js7/cluster-watch/data/state:delegated
+    stop_grace_period: 15s
     restart: unless-stopped
     depends_on:
       - cluster-watch # Delay start of this cluster-watch-b and give way to the other cluster-watch
@@ -215,6 +217,7 @@ services:
       - ./volumes/proxy/data/logs:/var/opt/js7/proxy/data/logs:delegated
       - ./volumes/proxy/data/state:/var/opt/js7/proxy/data/state:delegated
     restart: unless-stopped
+    stop_grace_period: 15s
 
   proxy-b:
     image: js7
@@ -237,6 +240,7 @@ services:
       - ./volumes/proxy-b/data/logs:/var/opt/js7/proxy/data/logs:delegated
       - ./volumes/proxy-b/data/state:/var/opt/js7/proxy/data/state:delegated
     restart: unless-stopped
+    stop_grace_period: 15s
     depends_on:
       - proxy # Delay start of this proxy-b and give way to the other proxy
     profiles:

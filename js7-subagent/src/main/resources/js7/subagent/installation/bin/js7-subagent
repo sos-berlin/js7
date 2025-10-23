@@ -13,7 +13,6 @@ httpPort=127.0.0.1:4444
 httpsPort=4443
 agentOptions=()
 javaOptions=()
-terminateCommand='{ "TYPE": "ShutDown", "processSignal": "SIGKILL" }'
 execOptions=()
 
 for arg in "$@"; do :
@@ -133,9 +132,10 @@ while true; do
 
   terminate() {
     log "❌ $1: Shutdown JS7 Subagent"
+    t=$(monotonicMillis)
 
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JS7_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
+      "$JS7_HOME/bin/js7-shutdown" --SIGTERM --data-directory="$data" &
     else
       "$java" -Xmx50m \
         "${logJavaOptions[@]}" \
@@ -143,12 +143,13 @@ while true; do
         -classpath "$classpathString" \
         js7.agent.client.main.SubagentClientMain \
         --data-directory="$data" \
-        "$terminateCommand" \
+        '{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }' \
         >/dev/null &
     fi
 
     wait $pid
     returnCode=$?
+    echo "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
   }
 
   returnCode=""

@@ -65,6 +65,10 @@ timestamp() {
   echo "${t:0:23}"
 }
 
+monotonicMillis() {
+  awk '{ print int($1*1000) }' /proc/uptime
+}
+
 log() {
   if [ $# -eq 0 ]; then
     echo

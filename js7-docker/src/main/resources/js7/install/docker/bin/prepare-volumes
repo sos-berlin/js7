@@ -8,9 +8,9 @@ mkdir -p -m 700 volumes/{controller,backup-controller,proxy,proxy-b,cluster-watc
 mkdir -p volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1a,subagent-1b,subagent-1c,subagent-2a}/data/{cache,logs,state,work}
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/{subagent-1a,subagent-1b,subagent-1c,subagent-2a}/config/executables
+
 mkdir -p -m 700 volumes/prometheus/config/private
-mkdir -p -m 700 volumes/prometheus/etc
-mkdir -p -m 700 volumes/prometheus/data
+mkdir -p -m 700 volumes/prometheus/{etc,data}
 mkdir -p -m 700 volumes/grafana
 
 cp -Rrnv build/volumes/* volumes || true
@@ -32,7 +32,7 @@ chmod -R +x volumes/subagent-*/config/executables/*
 build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
 
-mkdir -p metrics/volumes
 ln -snf ../build/metrics/docker-compose.yaml metrics/
-ln -snf ../../volumes/prometheus metrics/volumes/prometheus
-ln -snf ../../volumes/grafana metrics/volumes/grafana
+# Docker expectes volumes in same directory as docker-compose.yaml
+mkdir -p metrics/volumes
+ln -snf ../../volumes/{prometheus,grafana} metrics/volumes/

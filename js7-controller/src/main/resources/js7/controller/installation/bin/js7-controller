@@ -126,10 +126,12 @@ while true; do
 
   terminate() {
     log "❌ $1: Shutdown JS7 Controller"
+    t=$(monotonicMillis)
 
     "$JS7_HOME/bin/js7-shutdown" --data-directory="$data" &
     wait $pid
     returnCode=$?
+    echo "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
   }
 
   returnCode=
