@@ -1,7 +1,7 @@
 package js7.base.fs2utils
 
 import cats.effect.Resource.ExitCase
-import cats.effect.std.{AtomicCell, Queue}
+import cats.effect.std.AtomicCell
 import cats.effect.{Concurrent, Deferred, IO, Ref, Sync, Temporal}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
@@ -10,7 +10,7 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.concurrent.Signal
-import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
+import fs2.{Chunk, Pull, RaiseThrowable, Stream}
 import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
@@ -35,7 +35,7 @@ object StreamExtensions:
     def grouped(size: Int): Iterator[Chunk[A]] =
       if size <= 0 then
         throw new IllegalArgumentException(s"Chunk.grouped size must be positive: $size")
-      val myGroupSize = size // size is a name in Iterater superclass, too
+      val myGroupSize = size // size is a name in Iterator superclass, too
       var remainder = chunk
 
       new Iterator[Chunk[A]]:
@@ -372,68 +372,6 @@ object StreamExtensions:
 
 
   extension[A](stream: Stream[IO, A])
-
-    /** Mirror the source Stream as long as the source keeps emitting items,
-     * otherwise if timeout passes without the source emitting anything new
-     * then the Stream will start emitting the last item repeatedly.
-     *
-     * — <i>Description taken from Monix Observable</i>
-     */
-    def echoRepeated(delay: FiniteDuration): Stream[IO, A] =
-      for
-        queue <- Stream.eval(Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 0))
-        _ <- Stream.supervise:
-          stream.chunks
-            .filter(_.nonEmpty) // The processing below requires non-empty chunks
-            .attempt
-            .enqueueNoneTerminated(queue)
-            .compile.drain
-        firstOrEnd <- Stream.eval(queue.take)
-        chunk <- firstOrEnd match
-          case None /*end*/ => Stream.empty
-          case Some(Left(error)) => Stream.raiseError[IO](error)
-          case Some(Right(firstChunk)) =>
-            for
-              // We assured above that firstChunk.isNonEmpty
-              lastRef <- Stream.eval(Ref.of[IO, A](firstChunk.last.get))
-              chunk <- Stream
-                .emit(firstChunk)
-                .append(Stream
-                  .eval:
-                    queue.take
-                      .timeoutTo(delay, lastRef.get.map(last => Some(Right(Chunk(last)))))
-                      .flatTap(_
-                        // Update lastRef:
-                        // combine Option and Either, then return the last element of the Chunk
-                        .flatMap(_.toOption)
-                        .flatMap(_.last)
-                        .fold(IO.none)(lastRef.set))
-                  .repeat
-                  .unNoneTerminate
-                  .rethrow)
-            yield chunk
-        a <- Stream.chunk(chunk)
-      yield a
-
-    //def evalStream[F[_]](s: F[Stream[F, A]])(using F: Sync[F]) =
-    //  Stream.eval(s).flatten
-
-    // TODO ---> Try fs2.keepAlive <---
-    def insertHeartbeatsOnSlowUpstream(delay: FiniteDuration, heartbeat: A): Stream[IO, A] =
-      for
-        queue <- Stream.eval:
-          Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 1)
-        _ <- Stream.supervise:
-          stream.chunks.attempt.enqueueNoneTerminated(queue).compile.drain
-        a <-
-          Stream
-            .eval:
-              queue.take.timeoutTo(delay, IO.some(Right(Chunk(heartbeat))))
-            .repeat
-            .unNoneTerminate
-            .rethrow
-            .unchunks
-      yield a
 
     def mapParallelBatch[B](
       batchSizeMin: Int = DefaultBatchSizeMin,
