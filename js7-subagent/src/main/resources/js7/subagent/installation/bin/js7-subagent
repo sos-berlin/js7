@@ -101,29 +101,30 @@ if [ -f "$config/log4j2.xml" ]; then :
   stderrLogJavaOptions+=("-Dlog4j2.configurationFile=classpath:js7/log4j2.xml,classpath:js7/log4j2-stderr.xml,$config/log4j2.xml")
 fi
 
+[ -d "$data/cache" ] || mkdir "$data/cache"
+if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
+  javaOptions+=(
+    -XX:SharedArchiveFile="$data/cache/js7.jsa"
+    -XX:+AutoCreateSharedArchive
+    -Xlog:cds=error)
+fi
+
 agentOptions+=("--config-directory=$config")
 agentOptions+=("--data-directory=$data")
 [ -z "$httpPort" ] || agentOptions+=("--http-port=$httpPort")
 [ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort")
 
 while true; do
-  loopJavaOptions=()
-
-  [ -d "$data/cache" ] || mkdir "$data/cache"
-  if [[ "$JAVA_VERSION_MAJOR" -ge 19 ]]; then
-    loopJavaOptions+=("-XX:SharedArchiveFile=$data/cache/js7.jsa" -XX:+AutoCreateSharedArchive)
-  fi
-
   execute=(
     "$java"
     "${javaOptions[@]}"
     "${logJavaOptions[@]}"
-    "${loopJavaOptions[@]}"
     "${standardJavaOptions[@]}"
     -classpath "$classpathString"
     js7.agent.main.AgentMain
     "${agentOptions[@]}")
 
+  ## Start Subagent ##
   log "${execute[@]}"
   exec "${execOptions[@]}" "${execute[@]}" &
 

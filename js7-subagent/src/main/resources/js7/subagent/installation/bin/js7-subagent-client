@@ -27,15 +27,11 @@ for arg in "$@"; do :
   esac
 done
 
-if [[ "$JAVA_VERSION_MAJOR" -ge 19 ]]; then
-  jsaFile="$data/cache/js7.jsa"
-  myJsaFile="$data/cache/SubagentClient.jsa"
-  if [[ -f "$jsaFile" ]]; then
-    standardJavaOptions+=("-XX:SharedArchiveFile=$jsaFile")
-    [[ ! -f "$myJsaFile" ]] || rm "$myJsaFile"
-  else
-    standardJavaOptions+=("-XX:SharedArchiveFile=$myJsaFile" -XX:+AutoCreateSharedArchive)
-  fi
+if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
+  standardJavaOptions+=(
+  -XX:SharedArchiveFile="$data/cache/SubagentClient.jsa"
+  -XX:+AutoCreateSharedArchive
+  -Xlog:cds=error)
 fi
 
 execute=("$java" -Xmx50m "${javaOptions[@]}" "${standardJavaOptions[@]}")
