@@ -52,13 +52,14 @@ object BuildInfos
       info
     } else if (!versionIsTagged || isSnapshot.value) {
       val info = new Untagged(version.value, branch = branch.value,
-        committedAt = committedAt.value, commitHash = shortCommitHash.value)
+        committedAt = committedAt.value, commitHash = git.gitHeadCommit.value.getOrElse(""))
       if (!info.isSnapshot) println(s"❗ Commit is not tagged with v${version.value} ❗")
       info
     } else
       new Tagged(version.value, branch = branch.value,
-        commitHash = shortCommitHash.value)
+        commitHash = git.gitHeadCommit.value.getOrElse(""))
   }
+
 
   sealed trait Info {
     /** Version as configured in source.
@@ -137,13 +138,13 @@ object BuildInfos
 
   /** Version is not properly tagged or it's a SNAPSHOT version. */
   final class Untagged(
-    val version: String, val
-    branch: String,
+    val version: String,
+    val branch: String,
     val committedAt: Option[Instant],
     val commitHash: String)
   extends Info with Branch {
     val longVersion =
-      s"$version+${committedAt.fold("")(o => toSemverDate(o) + ".")}$commitHash"
+      s"$version${committedAt.fold("")(o => "+" + toSemverDate(o))}"
 
     val buildId: String =
       longVersion

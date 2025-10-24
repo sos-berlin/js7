@@ -3,9 +3,10 @@ set -euo pipefail
 
 uid="${uid:-1000}"
 
-chown root:root -R /opt/js7-[1-9]*
-chmod o-w -R /opt/js7-[1-9]*
-ln -s /opt/js7-[1-9]* /opt/js7
+ls -l /opt
+chown root:root -R /opt/js7-[0-9]*
+chmod o-w -R /opt/js7-[0-9]*
+ln -s /opt/js7-[0-9]* /opt/js7
 
 mkdir -p /var/opt/js7/{provider,proxy,proxy-b,cluster-watch,cluster-watch-b,controller,agent}/data &&\
 mkdir -p /var/opt/js7/testControllerAgent
