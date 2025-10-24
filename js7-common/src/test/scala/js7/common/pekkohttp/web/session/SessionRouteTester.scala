@@ -6,8 +6,8 @@ import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.{Allocated, Lazy}
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
@@ -51,8 +51,10 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
         B-USER = "plain:B-PASSWORD"
       }""")
 
-  protected final lazy val sessionRegister =
-    SessionRegister.forTest(SimpleSession.apply, SessionRegister.TestConfig)
+  private val sessionRegisterLazy = Lazy[Allocated[IO, SessionRegister[SimpleSession]]]:
+    SessionRegister.service(SimpleSession.apply, SessionRegister.TestConfig)
+      .toAllocated.await(99.s)
+  protected final lazy val sessionRegister = sessionRegisterLazy.value.allocatedThing
 
   protected def route =
     Route.seal(

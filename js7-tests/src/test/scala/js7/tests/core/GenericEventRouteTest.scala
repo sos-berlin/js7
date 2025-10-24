@@ -17,10 +17,10 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Tests.isIntelliJIdea
+import js7.base.utils.{Allocated, Lazy}
 import js7.base.web.Uri
 import js7.base.web.Uris.{encodePath, encodeQuery}
 import js7.common.http.PekkoHttpClient
@@ -104,8 +104,10 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
 
   protected lazy val gateKeeper = new GateKeeper(WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
-  protected final lazy val sessionRegister = SessionRegister.forTest(
-    SimpleSession.apply, SessionRegister.TestConfig)
+  private val sessionRegisterLazy = Lazy[Allocated[IO, SessionRegister[SimpleSession]]]:
+    SessionRegister.service(SimpleSession(_), SessionRegister.TestConfig)
+      .toAllocated.await(99.s)
+  protected final lazy val sessionRegister = sessionRegisterLazy.value.allocatedThing
   protected val whenShuttingDown = Deferred.unsafe
 
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
@@ -139,6 +141,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
     try
       allocatedServer.release.await(99.s)
       Pekkos.terminateAndWait(actorSystem, 99.s)
+      sessionRegisterLazy.foreach(_.release.await(99.s))
     finally
       super.afterAll()
 

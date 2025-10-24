@@ -9,7 +9,8 @@ import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.HasCloser
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.{HasCloser, Lazy}
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkohttp.WebLogDirectives
@@ -39,8 +40,14 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
     WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
-  protected final lazy val sessionRegister = SessionRegister.forTest[SubagentSession](
-    SubagentSession.apply, SessionRegister.TestConfig)
+  private val sessionRegisterLazy = Lazy:
+    SessionRegister
+      .service[SubagentSession](SubagentSession.apply, SessionRegister.TestConfig)
+      .toAllocated
+      .await(99.s)
+
+  protected final lazy val sessionRegister =
+    sessionRegisterLazy.value.allocatedThing
 
   override def testConfig: Config =
     config"pekko.loglevel = warning"
@@ -64,6 +71,7 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
   protected final def actorRefFactory: ActorRefFactory = system
 
   override protected def afterAll() =
+    sessionRegisterLazy.foreach(_.release.await(99.s))
     closer.close()
     cleanUp()
     super.afterAll()

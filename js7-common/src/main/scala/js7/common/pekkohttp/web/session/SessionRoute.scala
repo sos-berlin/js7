@@ -1,10 +1,9 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.server.Directive1
-import org.apache.pekko.http.scaladsl.server.Directives.*
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
-import js7.base.generic.Completed
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
@@ -15,8 +14,8 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.unauthorized
 import js7.common.pekkohttp.web.session.SessionRoute.*
 import js7.data.problems.InvalidLoginProblem
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.http.scaladsl.server.Directive1
+import org.apache.pekko.http.scaladsl.server.Directives.*
 
 /**
   * @author Joacim Zschimmer
@@ -55,7 +54,7 @@ trait SessionRoute extends RouteProvider:
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
-          .map((_: Completed) => Right(SessionCommand.Response.Accepted))
+          .as(Right(SessionCommand.Response.Accepted))
 
   private def authenticateOrUseHttpUser(
     idsOrUser: Either[Set[UserId], SimpleUser],

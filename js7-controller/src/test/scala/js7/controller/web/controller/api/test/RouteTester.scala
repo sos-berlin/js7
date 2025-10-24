@@ -3,6 +3,7 @@ package js7.controller.web.controller.api.test
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -36,8 +37,8 @@ trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
       SimpleUser.apply),
     isLoopback = true)
 
-  protected final lazy val sessionRegister =
-    SessionRegister.forTest(SimpleSession.apply, SessionRegister.TestConfig)
+  protected final lazy val (sessionRegister, releaseSessionRegister) =
+    SessionRegister.service(SimpleSession.apply, SessionRegister.TestConfig).allocated.await(99.s)
 
   override final def testConfig = config
 
@@ -59,6 +60,7 @@ trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
     super.beforeAll()
 
   override def afterAll() =
+    releaseSessionRegister.await(99.s)
     try
       cleanUp()
     finally

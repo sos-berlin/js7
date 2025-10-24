@@ -12,10 +12,9 @@ import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
-import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsEffectExtensions.{False, startAndLogError}
 import js7.base.catsutils.UnsafeMemoizable.{memoize, unsafeMemoize}
 import js7.base.configutils.Configs.*
-import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
@@ -35,12 +34,13 @@ import js7.common.auth.SecretStringGenerator
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkohttp.web.session.SessionRegister.*
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.*
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[S <: Session: Tag] private[session](
+final class SessionRegister[S <: Session: Tag] private(
   newSession: SessionInit => S,
   config: Config)
 extends Service.TrivialReleasable:
@@ -139,13 +139,13 @@ extends Service.TrivialReleasable:
         session.touch(sessionTimeout) *> cleanUp.scheduleNext
       .as(session.sessionToken)
 
-  def logout(sessionToken: SessionToken): IO[Completed] =
+  def logout(sessionToken: SessionToken): IO[Unit] =
     cell.flatMap:
       _.update:
         _.delete(sessionToken, ": Logout")
-    .as(Completed)
 
-  private[session] def session(token: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]): IO[Checked[S]] =
+  private[session] def session(token: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser])
+  : IO[Checked[S]] =
     cell.flatMap(_.get).map: state =>
       (state.tokenToSession.get(token), idsOrUser) match
         case (None, _) =>
@@ -281,13 +281,11 @@ object SessionRegister:
     Service.resource:
       new SessionRegister[S](newSession, config)
 
-  // Does not stop the Actor !!!
   @TestOnly
-  def forTest[S <: Session: Tag](newSession: SessionInit => S, config: Config)
-  : SessionRegister[S] =
-    new SessionRegister[S](newSession, config)
+  val TestTimeout: FiniteDuration = 1.minute
 
+  @TestOnly
   val TestConfig: Config = config"""
     js7.component.name = "JS7 TEST"
-    js7.auth.session.timeout = 1 minute
+    js7.auth.session.timeout = ${TestTimeout.toMillis} milliseconds
     """

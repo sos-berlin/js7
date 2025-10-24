@@ -5,18 +5,20 @@ import cats.effect.testkit.TestControl
 import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import js7.base.generic.{Completed, SecretString}
+import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.test.{OurAsyncTestSuite}
+import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.BlockingIOResource
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.{Allocated, Lazy}
 import js7.base.version.Version
 import js7.common.pekkohttp.web.session.RouteProviderTest.MySession
 import js7.common.pekkohttp.web.session.SessionRegisterTest.*
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
-import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
@@ -25,13 +27,20 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
+  private val sessionRegisterLazy = Lazy[Allocated[IO, SessionRegister[MySession]]]:
+    SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
+      .toAllocated.await(99.s)
+  private lazy val sessionRegister = sessionRegisterLazy.value.allocatedThing
+
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
-  private lazy val sessionRegister =
-    SessionRegister.forTest(MySession.apply, SessionRegister.TestConfig)
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
+  protected override def afterAll(): Unit =
+    for o <- sessionRegisterLazy do o.release.await(99.s)
+    super.afterAll()
+
   "Logout unknown SessionToken" in:
-    assert(sessionRegister.logout(unknownSessionToken).await(99.s) == Completed)
+    assert(sessionRegister.logout(unknownSessionToken).await(99.s) == ())
 
   "session(unknown)" in:
     assert(sessionRegister.session(unknownSessionToken, Right(Anonymous)).await(99.s).isLeft)
@@ -62,27 +71,27 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in:
     val mySystem = newActorSystem("SessionRegisterTest", executionContext = ioRuntime.compute)
-    val mySessionRegister =
-      SessionRegister.forTest(MySession.apply, SessionRegister.TestConfig)
-    val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
-      .await(99.s)
+    SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
+      .blockingUse(99.s): mySessionRegister =>
+        val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
+          .await(99.s)
 
-    mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
+        mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
+        assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
-    // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser/*changed*/)
+        // Late authentication: change session's user from SimpleUser.Anonymous to AUser
+        assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
+        assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser)
+        assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
+        assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
+        assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser)
 
-    Pekkos.terminateAndWait(mySystem, 10.s)
-    succeed
+        Pekkos.terminateAndWait(mySystem, 10.s)
+        succeed
 
   "logout" in:
-    assert(sessionRegister.logout(sessionToken).await(99.s) == Completed)
+    assert(sessionRegister.logout(sessionToken).await(99.s) == ())
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
 
   "Session timeout" in:
@@ -96,7 +105,7 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
             _ <- sessionRegister.count.map(n => assert(n == 2))
             session <- sessionRegister.session(sessionToken, Right(Anonymous))
             _ = assert(session.isRight)
-            _ <- IO.sleep(TestSessionTimeout + 1.s)
+            _ <- IO.sleep(SessionRegister.TestTimeout + 1.s)
             session <- sessionRegister.session(sessionToken, Right(Anonymous))
             _ = assert(session.isLeft/*timed out*/)
             session <- sessionRegister.session(eternal, Right(Anonymous))
@@ -112,7 +121,6 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
 
 private object SessionRegisterTest:
 
-  private val TestSessionTimeout = 1.hour
   private val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())
   private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty())

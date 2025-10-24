@@ -6,9 +6,11 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Lazy
 import js7.common.auth.IdToUser
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -36,10 +38,16 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
   protected def whenShuttingDown = Deferred.unsafe
   protected val config = config"js7.web.server.verbose-error-messages = on"
 
-  protected lazy val sessionRegister =
-    SessionRegister.forTest(SimpleSession.apply, SessionRegister.TestConfig)
+  private val sessionRegisterLazy = Lazy:
+    SessionRegister.service(SimpleSession.apply, SessionRegister.TestConfig)
+      .toAllocated.await(99.s)
+  protected lazy val sessionRegister = sessionRegisterLazy.value.allocatedThing
 
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
+
+  override protected def afterAll() =
+    for o <- sessionRegisterLazy do o.release.await(99.s)
+    super.afterAll()
 
   protected lazy val gateKeeper = new GateKeeper(
     WebServerBinding.localhostHttp(port = 1),
