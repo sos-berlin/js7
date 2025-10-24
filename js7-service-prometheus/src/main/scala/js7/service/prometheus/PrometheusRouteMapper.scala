@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.CommonConfiguration
 import js7.common.web.serviceprovider.{RouteMapper, RouteServiceContext}
 
-final class PrometheusRouteMapper(protected val conf: CommonConfiguration)
+private[prometheus] final class PrometheusRouteMapper(protected val conf: CommonConfiguration)
 extends RouteMapper, PrometheusMetricsRoute:
 
   PrometheusRouteMapper  // Force logging
@@ -17,7 +17,7 @@ extends RouteMapper, PrometheusMetricsRoute:
   override def toString = getClass.simpleScalaName
 
 
-object PrometheusRouteMapper:
+private[prometheus] object PrometheusRouteMapper:
   private val logger = Logger[this.type]
 
   logger.info("Providing /metrics web service for Prometheus")

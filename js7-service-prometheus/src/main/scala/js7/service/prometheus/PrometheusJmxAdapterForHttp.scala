@@ -11,7 +11,7 @@ import scala.collection.mutable
 import scala.jdk.OptionConverters.RichOptional
 
 // Not used !!!
-object PrometheusJmxAdapterForHttp:
+private[prometheus] object PrometheusJmxAdapterForHttp:
   private val logger = Logger[this.type]
 
   final class PekkoPromtheusExchange(request: HttpRequest) extends PrometheusHttpExchange:

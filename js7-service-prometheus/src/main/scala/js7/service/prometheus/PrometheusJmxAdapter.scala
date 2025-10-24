@@ -17,7 +17,7 @@ import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest}
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 
-final class PrometheusJmxAdapter(configDir: Option[Path] = None):
+private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = None):
 
   private val registry = new PrometheusRegistry
   private val jmxCollector =
@@ -53,7 +53,7 @@ final class PrometheusJmxAdapter(configDir: Option[Path] = None):
     exchange.metricsByteString
 
 
-object PrometheusJmxAdapter:
+private[prometheus] object PrometheusJmxAdapter:
   private val logger = Logger[this.type]
   private val meter = CallMeter("PrometheusJmxAdapter")
   private val DefaultYamlConfig = """
