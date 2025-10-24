@@ -1,16 +1,12 @@
 package js7.common.http
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import io.circe.Json
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
-import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import org.apache.pekko
-import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
@@ -26,40 +22,28 @@ trait TextApi:
 
   implicit private def implicitSessionToken: IO[Option[SessionToken]] = IO(sessionToken)
 
-  def executeCommand(command: String)(using IORuntime): Unit =
-    val response = awaitResult(
-      httpClient.post[Json, Json](uri = commandUri, command.parseJsonOrThrow))
-    printer.doPrint(response.compactPrint)
+  def executeCommand(command: String): IO[Unit] =
+    httpClient.post[Json, Json](uri = commandUri, command.parseJsonOrThrow)
+      .flatMap: response =>
+        IO(printer.doPrint(response.compactPrint))
 
-  def getApi(uri: String)(using IORuntime): Unit =
+  def getApi(uri: String): IO[Unit] =
     val u = if uri == "?" then "" else uri
-    val whenResponded = httpClient.get[Json](apiUri(u))
-    val response = awaitResult(whenResponded)
-    printer.doPrint(response)
+    httpClient.get[Json](apiUri(u)).flatMap: response =>
+      IO(printer.doPrint(response))
 
-  def requireIsResponding()(using IORuntime): Unit =
-    try
-      val whenResponded = httpClient.get[Json](apiUri(""))
-      awaitResult(whenResponded)
-      print(s"$serverName is responding")
-    catch
+  def requireIsResponding: IO[Unit] =
+    httpClient.get[Json](apiUri("")).flatMap: _ =>
+      IO(printer.doPrint(s"$serverName is responding"))
+    .onError:
       case ConnectionLost(t) =>
-        print(s"$serverName is not responding: ${t.toStringWithCauses}")
-        throw t
+        IO(print(s"$serverName is not responding: ${t.toStringWithCauses}"))
 
-  def checkIsResponding()(using IORuntime): Boolean =
-    try
-      requireIsResponding()
-      true
-    catch
-      case ConnectionLost(_) => false
+  def checkIsResponding: IO[Boolean] =
+    requireIsResponding.as(true)
+      .recoverWith:
+        case ConnectionLost(t) => IO.pure(false)
 
-  protected final def awaitResult[A](io: IO[A])(using IORuntime): A =
-    try Await.result(io.unsafeToFuture(), 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
-    catch
-      case t: Throwable =>
-        t.appendCurrentStackTrace
-        throw t
 
   protected object printer:
     def doPrint(json: Json): Unit =

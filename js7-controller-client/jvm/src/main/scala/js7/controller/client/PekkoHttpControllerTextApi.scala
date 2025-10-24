@@ -1,19 +1,17 @@
 package js7.controller.client
 
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Path
+import cats.effect.{IO, ResourceIO}
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
-import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
+import js7.base.service.Service
 import js7.base.session.SessionApi
-import js7.base.utils.HasCloser
 import js7.base.web.Uri
+import js7.common.configuration.BasicConfiguration
 import js7.common.http.{PekkoHttpClient, TextApi}
-import js7.common.pekkoutils.ProvideActorSystem
-import js7.controller.client.PekkoHttpControllerTextApi.*
+import js7.common.pekkoutils.Pekkos
 import js7.data.session.HttpSessionApi
-import scala.concurrent.ExecutionContext
+import org.apache.pekko.actor.ActorSystem
 
 /**
   * @author Joacim Zschimmer
@@ -22,18 +20,19 @@ private[controller] final class PekkoHttpControllerTextApi(
   protected val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
-  configDirectory: Option[Path] = None)
-  (using protected val executionContext: ExecutionContext)
-extends HasCloser,
-  ProvideActorSystem, TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword:
+  conf : BasicConfiguration)
+  (using protected val actorSystem: ActorSystem)
+extends
+  TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword,
+  Service.TrivialReleasable:
 
-  protected val config = config"pekko.log-dead-letters = 0"
+  protected val config = config"pekko.log-dead-letters = 0".withFallback(conf.config)
 
   protected val name = "PekkoHttpControllerTextApi"
 
   protected def uriPrefixPath = "/controller"
 
-  private val controllerUris = ControllerUris(Uri(s"$baseUri/controller"))
+  private val controllerUris = ControllerUris(baseUri)
 
   protected def httpClient = this
 
@@ -48,24 +47,29 @@ extends HasCloser,
   protected lazy val httpsConfig =
     HttpsConfig(
       keyStoreRef = None,
-      trustStoreRefs = configDirectory
-        .flatMap(dir =>
-          KeyStoreRef.clientFromConfig(configDirectoryToConfig(dir), configDirectory = dir)
-            .toOption)
+      trustStoreRefs =
+        conf.maybeConfigDirectory.flatMap: dir =>
+          KeyStoreRef.clientFromConfig(config, configDirectory = dir).toOption
         .map(TrustStoreRef.fromKeyStore)
         .toSeq)
 
-  closer.onClose { super.close() }
-
-  override def close(): Unit =
-    logOpenSession()
-    closer.close()
+  def release =
+    IO:
+      logOpenSession()
+      super.close()
 
 
 object PekkoHttpControllerTextApi:
-  // Like ControllerConfiguration.configDirectoryToConfig
-  private def configDirectoryToConfig(configDirectory: Path): Config =
-    ConfigFactory
-      .empty
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
-      .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
+
+  def resource(
+    controllerUri: Uri,
+    userAndPassword: Option[UserAndPassword],
+    print: String => Unit,
+    conf: BasicConfiguration)
+  : ResourceIO[PekkoHttpControllerTextApi] =
+    for
+      given ActorSystem <- Pekkos.actorSystemResource(name = "PekkoHttpControllerTextApi")
+      result <- Service:
+        new PekkoHttpControllerTextApi(controllerUri, userAndPassword, print, conf)
+    yield
+      result

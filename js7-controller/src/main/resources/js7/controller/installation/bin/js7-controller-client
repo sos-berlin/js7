@@ -22,22 +22,33 @@ for arg in "$@"; do :
       a="${arg#-J}"
       javaOptions+=("$a")
       ;;
+    --config-directory=*)
+      config="${arg#*=}"
+      args+=("$arg")
+      ;;
+    --data-directory=*)
+      data="${arg#*=}"
+      args+=("$arg")
+      ;;
     *)
       args+=("$arg")
   esac
 done
 
-uri="$(cat data/work/http-uri)"
-uri="${uri%/controller}"
+if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
+  standardJavaOptions+=(
+    -XX:SharedArchiveFile="$data/cache/SubagentClient.jsa"
+    -XX:+AutoCreateSharedArchive
+    -Xlog:cds=error)
+fi
 
 execute=(
   "$java"
   "${javaOptions[@]}"
-  -Dlog4j2.configurationFile=classpath:js7/log4j2-stderr.xml
+  "-Dlog4j2.configurationFile=classpath:js7/log4j2.xml,classpath:js7/log4j2-stderr.xml,$config/log4j2.xml"
   "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   js7.controller.client.main.ControllerClientMain
-  "$uri"
   "${args[@]}")
 
 exec "${execute[@]}"

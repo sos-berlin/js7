@@ -43,9 +43,8 @@ for arg in "$@"; do :
   esac
 done
 
-exec /opt/js7/bin/js7-client --data-directory="$data" "{ $jsonFields }" || {
+exec /opt/js7/bin/js7-http-client --data-directory="$data" "{ $jsonFields }" || {
   # Fallback, send a SIGTERM signal. THIS MAY KILL THE USER'S PROCESSES.
-  # This may be not applicable for each user.
   if [[ -f "$data/state/lock" ]]; then
     pid=$(cat "$data/state/lock")
     echo "kill $pid"

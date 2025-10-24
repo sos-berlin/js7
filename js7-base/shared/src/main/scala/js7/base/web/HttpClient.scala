@@ -36,8 +36,8 @@ trait HttpClient:
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]]
 
-  def get[A: Decoder](uri: Uri, dontLog: Boolean = false)
-    (using IO[Option[SessionToken]]): IO[A]
+  def get[A: Decoder](uri: Uri, dontLog: Boolean = false)(using IO[Option[SessionToken]])
+  : IO[A]
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)
     (using IO[Option[SessionToken]])

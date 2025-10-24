@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config="$HOME/config"
+data="$HOME/data"
+
+exec /opt/js7/bin/js7-subagent-client \
+  --config-directory="$config" \
+  --data-directory="$data" \
+  -J-XX:+ExitOnOutOfMemoryError \
+  -J-XX:+HeapDumpOnOutOfMemoryError \
+  -J-XX:HeapDumpPath="$data/logs/OutOfMemoryError.hprof" \
+  "$@"

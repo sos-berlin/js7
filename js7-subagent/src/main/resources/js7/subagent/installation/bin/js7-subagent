@@ -133,7 +133,6 @@ while true; do
   terminate() {
     log "❌ $1: Shutdown JS7 Subagent"
     t=$(monotonicMillis)
-
     if [ "$SHELL" = "/bin/bash" ]; then
       "$JS7_HOME/bin/js7-shutdown" --SIGTERM --data-directory="$data" &
     else
@@ -143,10 +142,8 @@ while true; do
         -classpath "$classpathString" \
         js7.agent.client.main.SubagentClientMain \
         --data-directory="$data" \
-        '{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }' \
-        >/dev/null &
+        '{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }' &
     fi
-
     wait $pid
     returnCode=$?
     echo "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"

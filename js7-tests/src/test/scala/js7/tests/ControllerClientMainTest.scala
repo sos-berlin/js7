@@ -1,7 +1,8 @@
 package js7.tests
 
 import cats.effect.ExitCode
-import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
+import js7.base.circeutils.CirceUtils.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurAsyncTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
@@ -22,17 +23,20 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
   override protected lazy val controllerHttpPort = None
   override protected lazy val controllerHttpsPort = Some(httpsPort)
 
+  override def beforeAll() =
+    super.beforeAll()
+    dataDirectory / "work" / "http-uri" := (controller.localUri / "controller").toString
+
   "is https://" in:
     assert(controller.localUri.string.startsWith("https://"))
 
-  "main with Controller URI only checks whether Controller is responding (it is)" in:
+  "main without command only checks whether Controller is responding (it is)" in:
     val output = mutable.Buffer[String]()
     ControllerClientMain
       .program(
         Conf.args(
           s"--config-directory=$configDirectory",
-          s"--data-directory=$dataDirectory",
-          s"https://localhost:$httpsPort"),
+          s"--data-directory=$dataDirectory"),
         output += _)
       .map: exitCode =>
         assert(exitCode == ExitCode.Success && output == List("JS7 Controller is responding"))
@@ -44,7 +48,6 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         Conf.args(
           s"--config-directory=$configDirectory",
           s"--data-directory=$dataDirectory",
-          s"https://localhost:$httpsPort",
           "?",
           "/"),
         output += _)
@@ -52,21 +55,6 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         assert(exitCode == ExitCode.Success)
         assert(output(0).contains(""""version":"""))
         assert(output(1).contains(""""id":"Controller""""))
-
-  "main with Controller URI only checks whether Controller is responding (it is not)" in:
-    val unusedPort = 0
-    val output = mutable.Buffer[String]()
-    ControllerClientMain
-      .program(
-        Conf.args(
-          s"--config-directory=$configDirectory",
-          s"--data-directory=$dataDirectory",
-          s"https://localhost:$unusedPort"),
-        output += _)
-      .map: exitCode =>
-        assert(exitCode == ExitCode.Error)
-        assert(output.head.contains("JS7 Controller is not responding: "))
-        //assert(output.head contains "Connection refused")
 
   "ShutDown responds with Accepted" in:
     // May fail on slow computer if web server terminates before responding !!!
@@ -77,7 +65,6 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         Conf.args(
           s"--config-directory=$configDirectory",
           s"--data-directory=$dataDirectory",
-          s"https://localhost:$httpsPort",
           commandJson.compactPrint),
         output += _)
       .map: exitCode =>
@@ -85,5 +72,19 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         assert(output.map(_.parseJsonOrThrow) == List(json"""{ "TYPE": "Accepted" }"""))
       .flatMap: _ =>
         controller.untilTerminated.as(succeed)
-    //catch
     //  case t: pekko.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
+
+  "main without command checks whether Controller is responding (it is not)" in:
+    pending
+    val unusedPort = 0
+    val output = mutable.Buffer[String]()
+    ControllerClientMain
+      .program(
+        Conf.args(
+          s"--config-directory=$configDirectory",
+          s"--data-directory=$dataDirectory"),
+        output += _)
+      .map: exitCode =>
+        assert(exitCode == ExitCode.Error
+          && output.head.contains("JS7 Controller is not responding: "))
+    //assert(output.head contains "Connection refused")

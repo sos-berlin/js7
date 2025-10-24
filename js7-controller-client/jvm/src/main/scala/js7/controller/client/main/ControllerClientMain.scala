@@ -1,52 +1,46 @@
 package js7.controller.client.main
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO}
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import js7.base.auth.SessionToken
+import js7.base.config.Js7Config
+import js7.base.configutils.Configs.parseConfigIfExists
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
-import js7.base.utils.AutoClosing.autoClosing
+import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.common.system.startup.ServiceApp
+import js7.common.system.startup.SimpleServiceProgram
 import js7.controller.client.PekkoHttpControllerTextApi
-import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*
 
 /**
  * @author Joacim Zschimmer
  */
-object ControllerClientMain extends ServiceApp:
-
-  private given IORuntime = runtime
-  private given ExecutionContext = runtime.compute
-
-  def run(args: List[String]): IO[ExitCode] =
-    runProgramAsService(args, Conf.fromCommandLine)(program)
+object ControllerClientMain extends SimpleServiceProgram[ControllerClientMain.Conf]:
 
   protected def program(conf: Conf): IO[ExitCode] =
     program(conf, println)
 
   def program(conf: Conf, print: String => Unit): IO[ExitCode] =
-    IO.interruptible:
-      import conf.{controllerUri, dataDirectory, maybeConfigDirectory, operations}
-      val sessionToken = SessionToken(SecretString:
-        Files.readAllLines(dataDirectory.resolve("work/session-token"))
-          .asScala.mkString)
-      autoClosing(PekkoHttpControllerTextApi(controllerUri, None, print, maybeConfigDirectory)):
-        textApi =>
-          textApi.setSessionToken(sessionToken)
-          if operations.isEmpty then
-            ExitCode(if textApi.checkIsResponding() then 0 else 1)
-          else
-            operations.foreach:
-              case StringCommand(command) => textApi.executeCommand(command)
-              case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
-              case Get(uri) => textApi.getApi(uri)
-            ExitCode(0)
+    IO.defer:
+      import conf.{operations, readWorkFile}
+      val controllerUri = Uri.mayThrow(readWorkFile("http-uri"))
+      val sessionToken = SessionToken(SecretString(readWorkFile("session-token")))
+      PekkoHttpControllerTextApi.resource(controllerUri, None, print, conf).use: textApi =>
+        textApi.setSessionToken(sessionToken)
+        if operations.isEmpty then
+          textApi.checkIsResponding.map: is =>
+            if is then ExitCode.Success else ExitCode.Error
+        else
+          operations.foldMap:
+            case StringCommand(command) => textApi.executeCommand(command)
+            case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
+            case Get(uri) => textApi.getApi(uri)
+          .as(ExitCode(0))
 
   sealed trait Operation
   final case class StringCommand(command: String) extends Operation
@@ -55,27 +49,37 @@ object ControllerClientMain extends ServiceApp:
 
 
   final case class Conf(
-    controllerUri: Uri,
-    override val maybeConfigDirectory: Option[Path],
+    configDirectory: Path,
     dataDirectory: Path,
     operations: Seq[Operation])
   extends BasicConfiguration:
-    val config: Config = ConfigFactory.empty
+    override def maybeConfigDirectory = Some(configDirectory)
+
+    val config: Config =
+      // Like ControllerConfiguration.configDirectoryToConfig
+      ConfigFactory.parseMap:
+        Map(
+          "js7.config-directory" -> configDirectory.toString,
+          "js7.data-directory" -> dataDirectory.toString
+        ).asJava
+      .withFallback(ConfigFactory.systemProperties)
+      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
+      .withFallback(Js7Config.defaultConfig)
 
     val name = "ControllerClient"
 
-  object Conf:
-    def args(args: String*): Conf =
-      CommandLineArguments.parse(args)(fromCommandLine)
+    def readWorkFile(file: String): String =
+      dataDirectory.resolve(s"work/$file").contentString.trim
 
+  object Conf extends BasicConfiguration.Companion[Conf]:
     def fromCommandLine(args: CommandLineArguments): Conf =
-      val controllerUri = Uri(args.keylessValue(0))
-      val configDirectory = args.optionAs[Path]("--config-directory=")
+      val configDirectory = args.as[Path]("--config-directory=")
       val dataDirectory = args.as[Path]("--data-directory=")
-      val operations = args.keylessValues.tail.map:
+      val operations = args.keylessValues.map:
         case url if url.startsWith("?") || url.startsWith("/") => Get(url)
         case "-" => StdinCommand
         case command => StringCommand(command)
       if operations.count(_ == StdinCommand) > 1 then
         throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      Conf(controllerUri, configDirectory, dataDirectory, operations)
+      Conf(configDirectory, dataDirectory, operations)

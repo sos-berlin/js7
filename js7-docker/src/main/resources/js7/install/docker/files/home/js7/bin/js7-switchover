@@ -24,9 +24,9 @@ else
 fi
 
 if [ -f "$config/controller.conf" ]; then
-  exec /opt/js7/bin/js7-client --data-directory="$data" "$cmd"
+  exec /opt/js7/bin/js7-http-client --data-directory="$data" "$cmd"
 else
-  # js7-client does not work for ClusterSwitchOver.
+  # js7-http-client does not work for ClusterSwitchOver.
   # SubagentClientMain sends the command to the Agent web service (not Subagent web service):
   exec /opt/js7/bin/js7-subagent-client "$cmd"
 fi
