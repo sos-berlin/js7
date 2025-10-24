@@ -25,7 +25,7 @@ trait OurApp extends IOApp:
   override protected def blockedThreadDetectionEnabled =
     super.blockedThreadDetectionEnabled || isStrict
 
-  protected def initialize(): Unit =
+  private def initialize(): Unit =
     if !initialized.getAndSet(true) then
       StartUp.initializeMain()
       StartUp.printlnWithClock(s"JS7 $productName ${BuildInfo.prettyVersion}")

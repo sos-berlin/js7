@@ -157,6 +157,8 @@ object Service:
 
 
   /** A trivial Service which doesn't start or run, but has a release routine.
+    *
+    * It's more like an `AutoCloseable` as a `Service`.
     */
   trait TrivialReleasable extends Releasable[IO], StoppableByRequest:
     protected def release: IO[Unit]
