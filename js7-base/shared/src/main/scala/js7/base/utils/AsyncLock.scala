@@ -95,7 +95,7 @@ object AsyncLock:
       for
         onAcquired <- logAcquisition(acquirer)
         _ <- mutex.resource
-        _ <- AsyncLockMXBean.locked.countConcurrency[IO]
+        _ <- Bean.locked.countConcurrency[IO]
         _ <- Resource.eval(onAcquired)
       yield ()
 
@@ -171,10 +171,10 @@ object AsyncLock:
               fiber.cancel
 
         for
-          _ <- AsyncLockMXBean.queued.countConcurrency[IO]
+          _ <- Bean.queued.countConcurrency[IO]
           _ <- logWaitingResource(acquirer_, nr)
           _ <- if logMinor then logAcquisitionResource else Resource.unit
-          _ <- Resource.onFinalize(IO(AsyncLockMXBean.usedTotal += 1))
+          _ <- Resource.onFinalize(IO(Bean.usedTotal += 1))
         yield
           acquired = true
           // Return an IO to be called after the lock has been acquired
@@ -296,7 +296,7 @@ object AsyncLock:
     def getQueuedCount: Int
     def getUsedTotal: Long
 
-  object AsyncLockMXBean extends AsyncLockMXBean:
+  object Bean extends AsyncLockMXBean:
     // locked and queued may be inconsistent while updated
     private[AsyncLock] val locked = Atomic(0)
     private[AsyncLock] val queued = Atomic(0)

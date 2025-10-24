@@ -73,7 +73,7 @@ extends Service.StoppableByCancel:
       if slow then
         logger.log(logLevel, s"🐌 Internal response time was ${delay.pretty}")
       else
-        logger.log(logLevel min LogLevel.Info, s"✔ InternalResponseTime was ${delay.pretty}")
+        logger.log(logLevel min LogLevel.Info, s"✔ Internal response time was ${delay.pretty}")
 
   override def toString = "ResponsivenessMeter"
 

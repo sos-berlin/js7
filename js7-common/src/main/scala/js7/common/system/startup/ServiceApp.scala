@@ -8,8 +8,7 @@ import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ThreadsMXBean
-import js7.base.utils.AsyncLock.AsyncLockMXBean
-import js7.base.utils.ProgramTermination
+import js7.base.utils.{AsyncLock, ProgramTermination}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichJavaClass}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
@@ -22,7 +21,7 @@ trait ServiceApp extends OurApp:
 
   override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig
-      .pipeIf(useOwnResponsivenessmeter):
+      .pipeIf(useOwnResponsivenessMeter):
         _.copy(
           cpuStarvationCheckInitialDelay = Duration.Inf)
 
@@ -52,9 +51,9 @@ trait ServiceApp extends OurApp:
       cnf =>
         for
           _ <- CallMeterLoggingService.service(cnf.config)
-          _ <- ResponsivenessMeter.service(cnf.config).whenA(useOwnResponsivenessmeter)
+          _ <- ResponsivenessMeter.service(cnf.config).whenA(useOwnResponsivenessMeter)
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
-          _ <- registerStaticMBean("AsyncLock", AsyncLockMXBean)
+          _ <- registerStaticMBean("AsyncLock", AsyncLock.Bean)
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
           svc <- program(cnf)
         yield svc,
@@ -84,4 +83,4 @@ trait ServiceApp extends OurApp:
 
 
 object ServiceApp:
-  private val useOwnResponsivenessmeter = true
+  private val useOwnResponsivenessMeter = true
