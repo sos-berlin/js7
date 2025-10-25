@@ -1,11 +1,13 @@
 package js7.base.system.startup
 
 import java.io.File
-import java.time.ZonedDateTime
+import java.lang.management.ManagementFactory
+import java.time.{ZoneId, ZonedDateTime}
 import js7.base.BuildInfo
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.base.system.SystemInformations.totalPhysicalMemory
+import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Once
@@ -15,7 +17,11 @@ import js7.base.utils.ScalaUtils.syntax.*
   * @author Joacim Zschimmer
   */
 object StartUp:
-  val startedAt: Timestamp = Timestamp.now
+
+  val startedAt: Timestamp =
+    try Timestamp.ofEpochMilli(ManagementFactory.getRuntimeMXBean.getStartTime)
+    catch case _: Throwable => Timestamp.now // paranoid
+
   private var _isMain = false
   private val logClasspathOnce = Once()
 
@@ -53,17 +59,21 @@ object StartUp:
 
   /** Log Java version, config and data directory, and classpath. */
   lazy val startUpLine: String =
-    ("Java " + sys.props.getOrElse("java.version", "") + " · " +
-      sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " " +
-      sys.props.getOrElse("java.vm.version", "") + " " +
-      "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
-      sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
-      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
-      totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
-      s" · pid=${ProcessHandle.current.pid} " +
-      (hostname.nonEmpty ?? s"host=$hostname ") +
-      s" · started at $startedAt" // Used as the headline of each log file
-    ).trim
+    "Java " + sys.props.getOrElse("java.version", "") + " · "
+      + sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " "
+      + sys.props.getOrElse("java.vm.version", "")
+      + " (" + toKiBGiB(sys.runtime.maxMemory) + ") · "
+      + sys.props("os.name")
+      + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · "
+      + cpuModel.fold("")(o => s"$o ")
+      + "(" + sys.runtime.availableProcessors + " threads)"
+      + totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o))
+      + " · pid=" + ProcessHandle.current.pid
+      + (hostname.nonEmpty ?? s" host=$hostname")
+      // Show in the headline of each log file:
+      + " · started at " + startedAt
+      + " " + startedAt.toInstant.atZone(ZoneId.systemDefault).getOffset
+      //+ " " + java.time.ZoneId.systemDefault "Europe/Berlin"
 
   def printlnWithClockIgnoringException(line: String): Unit =
     try printlnWithClock(line)
