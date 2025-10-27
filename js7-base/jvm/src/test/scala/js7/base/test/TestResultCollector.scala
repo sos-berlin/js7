@@ -3,7 +3,8 @@ package js7.base.test
 import java.io.IOException
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Paths
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
+import js7.base.log.log4j.Log4j
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.*
 import js7.base.system.JavaHeapDump.dumpHeapTo

@@ -2,7 +2,9 @@ package js7.tests.addOrders
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
-import js7.base.log.{CorrelId, Log4jThreadContextMap, Logger}
+import js7.base.io.yaml.YamlExtensions.yamlAs
+import js7.base.log.log4j.Log4jThreadContextMap
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -11,7 +13,6 @@ import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.addOrders.TestAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.base.io.yaml.YamlExtensions.yamlAs
 
 final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
 

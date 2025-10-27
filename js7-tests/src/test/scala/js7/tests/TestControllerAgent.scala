@@ -12,7 +12,8 @@ import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
+import js7.base.log.log4j.Log4j
 import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRate
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows

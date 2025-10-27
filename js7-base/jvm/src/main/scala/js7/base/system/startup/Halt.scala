@@ -1,6 +1,7 @@
 package js7.base.system.startup
 
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
+import js7.base.log.log4j.Log4j
 import js7.base.system.startup.StartUp.printlnWithClockIgnoringException
 
 /**

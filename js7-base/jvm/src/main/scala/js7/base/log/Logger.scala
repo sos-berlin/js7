@@ -10,6 +10,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Slf4jUtils.syntax.*
+import js7.base.log.log4j.Log4j
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}

@@ -8,6 +8,7 @@ import cats.syntax.traverse.*
 import java.lang.Thread.currentThread
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
+import js7.base.log.log4j.Log4jThreadContextMap
 import js7.base.system.Java17Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*

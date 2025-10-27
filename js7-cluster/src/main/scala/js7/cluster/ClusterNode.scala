@@ -13,8 +13,9 @@ import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.eventbus.EventPublisher
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.log4j.Log4j
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem, ProblemException}

@@ -8,8 +8,8 @@ import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ThreadsMXBean
-import js7.base.utils.{AsyncLock, ProgramTermination}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichJavaClass}
+import js7.base.utils.{AsyncLock, ProgramTermination}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.http.HttpMXBean

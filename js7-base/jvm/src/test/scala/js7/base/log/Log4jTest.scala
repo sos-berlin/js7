@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.Log4jTest.*
+import js7.base.log.log4j.Log4jThreadContextMap
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}

@@ -1,6 +1,7 @@
 package js7.base.log
 
 import java.lang.reflect.Method
+import js7.base.log.{CorrelId, Logger}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.ifFailed
 import js7.base.utils.{Atomic, Once}

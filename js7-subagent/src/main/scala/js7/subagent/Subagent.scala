@@ -7,8 +7,8 @@ import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.catsutils.Environment.{TaggedResource, environment}
+import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -16,8 +16,9 @@ import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.log4j.Log4j
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}

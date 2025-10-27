@@ -16,7 +16,8 @@ import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Log4j, Logger}
+import js7.base.log.log4j.Log4j
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem

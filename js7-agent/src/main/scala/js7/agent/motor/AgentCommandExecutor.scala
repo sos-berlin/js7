@@ -14,7 +14,8 @@ import js7.base.catsutils.CatsEffectExtensions.{catchAsChecked, catchIntoChecked
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, CorrelIdWrapped, Log4j, Logger}
+import js7.base.log.log4j.Log4j
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.system.startup.Halt

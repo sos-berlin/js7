@@ -1,8 +1,9 @@
-package js7.base.log
+package js7.base.log.log4j
 
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.BuildInfo
-import js7.base.log.Log4jThreadContextMap.*
+import js7.base.log.log4j.Log4jThreadContextMap.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.system.startup.StartUp
 import js7.base.utils.Lazy
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
