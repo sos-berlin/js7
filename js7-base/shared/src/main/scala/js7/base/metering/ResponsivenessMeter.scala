@@ -11,7 +11,7 @@ import js7.base.problem.Checked.catchNonFatal
 import js7.base.service.Service
 import js7.base.system.MBeanUtils
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.threadUnsafe
 import scala.concurrent.duration.*
 import scala.math.Ordering.Implicits.infixOrderingOps
@@ -22,16 +22,19 @@ extends Service.StoppableByCancel:
   import conf.{initialDelay, logLevel, meterInterval, slowThreshold}
 
   private val callback = Ref.unsafe[IO, MeterCallback](meterCallbackDefault)
-  private var lastDelay = ZeroDuration
-  private var stickUntil = Deadline.now
+  // longestDelay never expires, otherwise, in case of heavy system overload,
+  // the timeout may elapse without the delay being noticed.
+  // We assume there is only one HTTP reader !!!
+  private var longestDelay = ZeroDuration
   private var isSlow = false
 
   val bean: ResponsivenessMXBean =
     new ResponsivenessMXBean:
-      /** Maximum delay since the last read, not longer than stickDuration ago. */
+      /** Maximum delay since the last read. */
       def getDelaySeconds =
-        stickUntil = Deadline.now
-        lastDelay.toDoubleSeconds
+        val r = longestDelay.toDoubleSeconds
+        longestDelay = ZeroDuration
+        r
 
   /** Because Journal is not available in js7-base, we use a callback. */
   def onMetered(callback: MeterCallback): IO[Unit] =
@@ -50,13 +53,8 @@ extends Service.StoppableByCancel:
       end <- IO.monotonic
       _ <-
         val delay = end - (start + meterInterval)
-        if Deadline.now < stickUntil then // bean not read and value not expired?
-          if lastDelay < delay then // new maximum?
-            lastDelay = delay
-            stickUntil = Deadline.now + stickDuration
-        else
-          lastDelay = delay
-          stickUntil = Deadline.now + stickDuration
+        if longestDelay < delay then
+          longestDelay = delay
         onMetered(delay)
     yield ()
 
@@ -80,7 +78,6 @@ extends Service.StoppableByCancel:
 
 object ResponsivenessMeter:
   private val logger = Logger[this.type]
-  private val stickDuration = 1.minute
 
   def service(config: Config): ResourceIO[ResponsivenessMeter] =
     service(Conf.fromConfig(config).orThrow)
