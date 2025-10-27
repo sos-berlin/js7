@@ -1,4 +1,4 @@
-package js7.base.log
+package js7.base.log.log4j
 
 import java.lang.reflect.Method
 import js7.base.log.{CorrelId, Logger}
@@ -36,7 +36,8 @@ object Log4j:
   def earlyInitializeForProduction(): Unit =
     useAsyncLogger()
     if isInitialized && !earlyInitialized then
-      logger.error("earlyInitializeForProduction but Log4j has already been initialized")
+      logger.error("earlyInitializeForProduction but Log4j has already been initialized",
+        new Exception)
     earlyInitialized = true
 
   private def useAsyncLogger(): Unit =
