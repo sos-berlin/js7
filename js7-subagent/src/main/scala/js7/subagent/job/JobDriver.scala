@@ -74,7 +74,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
       if drivers.nonEmpty then
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
       drivers.foldMap: driver =>
-        driver.kill(signal, processLost = Some(ProcessKilledDueToSubagentShutdownProblem(_)))
+        driver.kill(signal, Some(ProcessKilledDueToSubagentShutdownProblem(_)))
       .handleError: t =>
         logger.error(s"killAllDueToShutdown: ${t.toStringWithCauses}", t)
 
@@ -108,7 +108,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
     IO.defer:
       orderToAlloc.get(orderId)
         .fold(IO(logger.debug(s"⚠️  killProcess $orderId => no process for Order"))):
-          _.allocatedThing.killWithSigkillDelay(signal)
+          _.allocatedThing.kill(signal)
 
   private def orderProcessCount =
     orderToAlloc.size

@@ -169,24 +169,28 @@ private final class JobDriverForOrder private(
 
   private def killInBackground(signal: ProcessSignal): IO[Unit] =
     supervisor.supervise:
-      killWithSigkillDelay(signal)
+      kill(signal)
         .handleError: t =>
           logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
     .void
 
-  def killWithSigkillDelay(signal_ : ProcessSignal): IO[Unit] =
+  /** A SIGTERM is followed by a SIGKILL if the process has not terminated after sigkillDelay. */
+  def kill(
+    signal_ : ProcessSignal,
+    processLost: Option[OrderOutcome.Killed => Problem] = None)
+  : IO[Unit] =
     IO.defer:
       val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
-      kill(signal) *>
+      killOnly(signal, processLost) *>
         IO.whenA(signal != SIGKILL && _orderProcess.get.exists(_.isRight) /*OrderProcess?*/):
           IO.sleep(sigkillDelay).productR:
             IO.defer:
               logger.warn(s"SIGKILL now, because sigkillDelay elapsed")
-              kill(SIGKILL)
+              killOnly(SIGKILL)
           .start
           .flatMap(sigkillFiber.set)
 
-  def kill(signal: ProcessSignal, processLost: Option[OrderOutcome.Killed => Problem] = None): IO[Unit] =
+  private def killOnly(signal: ProcessSignal, processLost: Option[OrderOutcome.Killed => Problem] = None): IO[Unit] =
     IO.defer:
       IO.unlessA(signal == SIGKILL && sigkilled):
         _orderProcess.compareAndExchange(None, Some(Left(signal))) match
@@ -208,7 +212,7 @@ private final class JobDriverForOrder private(
 
 
 object JobDriverForOrder:
-  
+
   def resource(orderId: OrderId, jobDriverParams: JobDriver.Params): ResourceIO[JobDriverForOrder] =
     for
       supervisor <- Supervisor[IO]
