@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.effect.std.Supervisor
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
@@ -62,7 +63,8 @@ final class Subagent private(
   signatureVerifier: DirectoryWatchingSignatureVerifier,
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
-  val testEventBus: StandardEventBus[Any])
+  val testEventBus: StandardEventBus[Any],
+  supervisor: Supervisor[IO])
   (using ioRuntime: IORuntime)
 extends MainService, Service.StoppableByRequest:
   subagent =>
@@ -72,7 +74,8 @@ extends MainService, Service.StoppableByRequest:
   if conf.scriptInjectionAllowed then logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
   val subagentRunId: SubagentRunId = SubagentRunId.fromJournalId(journal.journalId)
-  private[subagent] val commandExecutor = SubagentCommandExecutor(this, signatureVerifier)
+  private[subagent] val commandExecutor =
+    SubagentCommandExecutor(this, signatureVerifier, supervisor)
   private val dedicatedAllocated =
     SetOnce[Allocated[IO, DedicatedSubagent]](SubagentNotDedicatedProblem)
 
@@ -253,14 +256,16 @@ object Subagent:
           size = config.getInt("js7.journal.memory.event-count"),
           waitingFor = "JS7 Agent Director",
           infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+        supervisor <- Supervisor[IO]
         subagent <- Service.resource:
           new Subagent(
             webServer, directorRouteVariable,
             ForDirector(
               _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
             journal, signatureVerifier,
-            conf, jobLauncherConf, testEventBus)
-        _ <- Resource.eval(subagentDeferred.complete(subagent))
+            conf, jobLauncherConf, testEventBus,
+            supervisor)
+        _ <- subagentDeferred.complete(subagent).toResource
       yield
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
         subagent

@@ -1,10 +1,11 @@
 package js7.subagent
 
 import cats.effect.IO
+import cats.effect.std.Supervisor
 import cats.syntax.traverse.*
 import fs2.Stream
 import js7.base.Js7Version
-import js7.base.catsutils.CatsEffectExtensions.{right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -22,7 +23,8 @@ import scala.concurrent.duration.Deadline.now
 
 private[subagent] final class SubagentCommandExecutor(
   val subagent: Subagent,
-  signatureVerifier: DirectoryWatchingSignatureVerifier):
+  signatureVerifier: DirectoryWatchingSignatureVerifier,
+  supervisor: Supervisor[IO]):
 
   private val journal = subagent.journal
 
@@ -78,12 +80,12 @@ private[subagent] final class SubagentCommandExecutor(
               .rightAs(CoupleDirector.Response(Js7Version))
 
           case ShutDown(processSignal, dontWaitForDirector, restart) =>
-            subagent.shutdown(
+            supervisor.supervise:
+              subagent.shutdown(
                 processSignal,
                 dontWaitForDirector = dontWaitForDirector,
                 restart = restart)
-              .startAndForget
-              .as(Right(SubagentCommand.Accepted))
+            .as(Right(SubagentCommand.Accepted))
 
           case ReleaseEvents(eventId) =>
             subagent.releaseEvents(eventId)
