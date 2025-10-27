@@ -163,7 +163,7 @@ private[cluster] object ActivationInhibitor:
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     timing: ClusterTiming)
   : IO[Checked[Unit]] =
-    logger.infoIOWithResult(s"tryInhibitActivationOfPeer ${admission.uri}"):
+    logger.infoIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
       clusterNodeApi(admission, "tryInhibitActivationOfPeer")
         .use: api =>
           api.login() *>
@@ -180,8 +180,8 @@ private[cluster] object ActivationInhibitor:
           // Then we must allow the call to continue it's (otherwise checked!) activation.
           // TODO On any error, we assume the peer is not alive or not active.
           //  We should not be sure about this.
-          logger.info(s"tryInhibitActivationOfPeer ${admission.uri} failed: ${
-            throwable.toStringWithCauses}")
+          logger.info(s"Peer $peerId ${admission.uri} seems no longer to be active: ${
+            admission.uri} failed: ${throwable.toStringWithCauses}")
           Checked.unit
 
 
