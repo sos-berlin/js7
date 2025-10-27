@@ -1,6 +1,7 @@
 package js7.subagent.job
 
-import cats.effect.{FiberIO, IO, ResourceIO}
+import cats.effect.std.Supervisor
+import cats.effect.{FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
@@ -22,7 +23,10 @@ import js7.data.value.expression.Expression
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 
-private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: JobDriver.Params):
+private final class JobDriverForOrder private(
+  val orderId: OrderId,
+  jobDriverParams: JobDriver.Params,
+  supervisor: Supervisor[IO]):
 
   import jobDriverParams.{checkedJobLauncher, fileValueState, jobConf, pathToJobResource}
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
@@ -146,10 +150,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
               logger.warn(s"OrderProcess has timed out after ${
                 since.elapsed.pretty} and will be killed now")
           .flatMap: _ =>
-            killWithSigkillDelay(SIGTERM)
-              .handleError: t =>
-                logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
-              .startAndForget
+            killInBackground(SIGTERM)
       .start
 
   private def scheduleTimeoutCancellationAt(ts: Timestamp): IO[FiberIO[Unit]] =
@@ -163,11 +164,15 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
           s"$orderId OrderProcess has reached the end of admission period and will be killed now"
     .productR:
       // TODO Es darf nur einen geben:
-      killWithSigkillDelay(SIGTERM)
+      killInBackground(SIGTERM)
+    .start
+
+  private def killInBackground(signal: ProcessSignal): IO[Unit] =
+    supervisor.supervise:
+      killWithSigkillDelay(signal)
         .handleError: t =>
           logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
-        .startAndForget
-    .start
+    .void
 
   def killWithSigkillDelay(signal_ : ProcessSignal): IO[Unit] =
     IO.defer:
@@ -200,3 +205,14 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
     orderProcess.cancel(immediately = signal == SIGKILL)
       .handleError: t =>
         logger.error(s"Kill $signal => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+
+
+object JobDriverForOrder:
+  
+  def resource(orderId: OrderId, jobDriverParams: JobDriver.Params): ResourceIO[JobDriverForOrder] =
+    for
+      supervisor <- Supervisor[IO]
+      result <- Resource.eval:
+        IO(new JobDriverForOrder(orderId, jobDriverParams, supervisor))
+    yield
+      result
