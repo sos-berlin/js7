@@ -92,12 +92,12 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
         otherSubagentIds = Seq(toLocalSubagentId(agentPath)))
       .flatMap(_.directorResource)
       .useSync(99.s): director =>
-        import director.subagent
+        import director.localSubagent
         eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
-        subagent.shutdown(restart = true).await(99.s)
+        localSubagent.shutdown(restart = true).await(99.s)
 
         // The director(!) must return restart=true
-        assert(subagent.untilTerminated.await(99.s).restart)
+        assert(localSubagent.untilTerminated.await(99.s).restart)
 
 
 object ResetSubagentTest:

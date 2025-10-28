@@ -63,8 +63,8 @@ extends MainService, Service.StoppableByRequest:
 
   protected type Termination = DirectorTermination
 
-  val subagent: Subagent = forDirector.subagent
-  val localUri: Uri = subagent.localUri
+  val localSubagent: Subagent = forDirector.subagent
+  val localUri: Uri = localSubagent.localUri
   val eventWatch: StrictEventWatch = clusterNode.recoveredExtract.eventWatch.strict
 
   private val shutdownBeforeClusterNodeActivated = Deferred.unsafe[IO, (ShutDown, CommandMeta)]
@@ -120,7 +120,7 @@ extends MainService, Service.StoppableByRequest:
                       logger.error(s"$cmd: $prblm")
     .start.flatMap: directorFiber =>
       startService:
-        forDirector.subagent.untilTerminated
+        localSubagent.untilTerminated
           .flatTap(termination => IO:
             subagentTermination = termination)
           .productR:

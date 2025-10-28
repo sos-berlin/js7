@@ -272,6 +272,7 @@ object Subagent:
           for uri <- uri do file := s"$uri/subagent"
 
 
+  /** Some objects the local Subagent provides for the Director. */
   final case class ForDirector(
     subagent: Subagent,
     signatureVerifier: DirectoryWatchingSignatureVerifier,
