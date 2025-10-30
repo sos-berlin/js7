@@ -47,8 +47,8 @@ object ServiceMain:
               // We have to log the error ourselves, like a Service
               logger.error(t.toStringWithCauses)
               throw t
-          logging.logFirstLines(commandLineArguments, conf)
-          logging.run(toServiceResource(conf)):
+          logFirstLines(commandLineArguments, conf)
+          run(toServiceResource(conf)):
             use(conf, _)
       .attempt.map:
         case Left(throwable) =>
@@ -57,7 +57,7 @@ object ServiceMain:
           ExitCode.Error
         case Right(termination) =>
           if !suppressTerminationLogging then
-            logging.logTermination(productName, termination)
+            logTermination(productName, termination)
           termination.toExitCode
       .guarantee:
         IO:
@@ -93,39 +93,33 @@ object ServiceMain:
       "\n" + "─" * 80
 
   /** For usage after logging system has properly been initialized. */
-  private object logging:
-    private lazy val logger =
-      if Logger.initialize("JS7 Engine") then
-        Logger.trace(s"❌ Logger has been initialized implicitly")
-      Logger[ServiceMain.type]
+  private def logTermination(name: String, termination: ProgramTermination): Unit =
+    // Log complete timestamp in case of short log timestamp
+    val msg = s"$name terminates ${runningSince.elapsed.pretty} after start" +
+      (termination.restart ?? " and is expected to restart")
+    logger.info(msg)
+    printlnWithClock(msg)
 
-    def logTermination(name: String, termination: ProgramTermination): Unit =
-      // Log complete timestamp in case of short log timestamp
-      val msg = s"$name terminates ${runningSince.elapsed.pretty} after start" +
-        (termination.restart ?? " and is expected to restart")
-      logger.info(msg)
-      printlnWithClock(msg)
+  private def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)
+  : Unit =
+    logger.debug(commandLineArguments.toString)
 
-    def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)
-    : Unit =
-      logger.debug(commandLineArguments.toString)
+    val paths = conf.maybeConfigDirectory.map(o => s"config=$o") ++
+      conf.maybeDataDirectory.map(o => s"data=$o")
+    if paths.nonEmpty then logger.info(paths.mkString(" "))
 
-      val paths = conf.maybeConfigDirectory.map(o => s"config=$o") ++
-        conf.maybeDataDirectory.map(o => s"data=$o")
-      if paths.nonEmpty then logger.info(paths.mkString(" "))
+    logConfig(conf.config)
+    logJavaSettings()
 
-      logConfig(conf.config)
-      logJavaSettings()
-
-    private[ServiceMain] def run[Svc <: MainService](
-      resource: ResourceIO[Svc])
-      (use: Svc => IO[ProgramTermination])
-    : IO[ProgramTermination] =
-      resource
-        .use: service =>
-          use(service)
-        .recover:
-          case t: MainServiceTerminationException =>
-            logger.debug(t.toStringWithCauses)
-            logger.info(t.getMessage)
-            t.termination
+  def run[Svc <: MainService](
+    resource: ResourceIO[Svc])
+    (use: Svc => IO[ProgramTermination])
+  : IO[ProgramTermination] =
+    resource
+      .use: service =>
+        use(service)
+      .recover:
+        case t: MainServiceTerminationException =>
+          logger.debug(t.toStringWithCauses)
+          logger.info(t.getMessage)
+          t.termination
