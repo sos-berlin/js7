@@ -47,7 +47,7 @@ final class ControllerApi(
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
 
-  private val apiCache = new RefCountedResource(
+  private val apiCache = RefCountedResource(
     ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
       apisResource,
       proxyConf.recouplingStreamReaderConf.delayConf))

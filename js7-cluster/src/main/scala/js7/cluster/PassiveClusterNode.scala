@@ -85,7 +85,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
-  private val activeApiCache = new RefCountedResource(common.clusterNodeApi(
+  private val activeApiCache = RefCountedResource(common.clusterNodeApi(
     Admission(
       idToUri(activeId),
       nodeNameToPassword(activeNodeName)

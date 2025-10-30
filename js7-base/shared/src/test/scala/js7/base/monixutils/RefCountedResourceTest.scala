@@ -10,7 +10,7 @@ final class RefCountedResourceTest extends OurAsyncTestSuite:
   "RefCountedResource" in:
     val count = Atomic(0)
     val baseResource = Resource.make(IO(count.incrementAndGet()))(_ => IO(count -= 1))
-    val refCountedResource = new RefCountedResource(baseResource)
+    val refCountedResource = RefCountedResource(baseResource)
     val resource = refCountedResource.resource
     assert(count.get() == 0)
 
