@@ -65,7 +65,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
                   logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
                     throwable.nullIfNoStackTrace)
 
-  private def killAllDueToShutdown(signal: ProcessSignal): IO[Unit] =
+  def killAllDueToShutdown(signal: ProcessSignal): IO[Unit] =
     orderToAlloc.toMap.map(_.values.map(_.allocatedThing)).flatMap: drivers =>
       if drivers.nonEmpty then
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")

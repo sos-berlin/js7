@@ -227,12 +227,26 @@ extends Service.StoppableByRequest:
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("killAndStopAllJobs", signal):
-      IO(jobKeyToJobDriver.unsafeToMap.values)
-        .flatMap(_
-          .toVector
-          .parFoldMapA: jobDriver =>
-            jobDriver.stop(signal)
-              .handleError(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
+      parForeachJobDriver: jobDriver =>
+        jobDriver.stop(signal)
+          .handleError: t =>
+            logger.error(s"$jobDriver stop: ${t.toStringWithCauses}")
+
+  def killAllProcesses(signal: ProcessSignal): IO[Unit] =
+    logger.debugIO("killAllProcesses", signal):
+      parForeachJobDriver: jobDriver =>
+        jobDriver.killAllDueToShutdown(signal)
+          .handleError: t =>
+            logger.error(s"$jobDriver killAllProcesses: ${t.toStringWithCauses}")
+
+  private def parForeachJobDriver(body: JobDriver => IO[Unit]): IO[Unit] =
+    jobDrivers.flatMap:
+      _.parFoldMapA:
+        body
+
+  private def jobDrivers: IO[Seq[JobDriver]] =
+    jobKeyToJobDriver.toMap.map:
+      _.values.toSeq
 
   def startOrderProcess(
     order: Order[Order.Processing],

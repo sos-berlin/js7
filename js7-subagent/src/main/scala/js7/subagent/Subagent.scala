@@ -1,8 +1,9 @@
 package js7.subagent
 
-import cats.effect.std.Supervisor
+import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
@@ -28,7 +29,6 @@ import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp, WallClock}
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.flattenToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Missing, ProgramTermination, ScalaUtils, SetOnce}
 import js7.base.web.Uri
@@ -41,7 +41,7 @@ import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentNotDedicatedProblem}
-import js7.data.subagent.SubagentCommand.DedicateSubagent
+import js7.data.subagent.SubagentCommand.{DedicateSubagent, ShutDown}
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
@@ -64,6 +64,7 @@ final class Subagent private(
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any],
+  shuttingDown: AtomicCell[IO, Option[ShutDown]],
   supervisor: Supervisor[IO])
   (using ioRuntime: IORuntime)
 extends MainService, Service.StoppableByRequest:
@@ -79,7 +80,7 @@ extends MainService, Service.StoppableByRequest:
   private val dedicatedAllocated =
     SetOnce[Allocated[IO, DedicatedSubagent]](SubagentNotDedicatedProblem)
 
-  private val terminated = Deferred.unsafe[IO, ProgramTermination]
+  private val whenTerminated = Deferred.unsafe[IO, ProgramTermination]
 
   val forDirector: ForDirector = toForDirector(this)
 
@@ -94,29 +95,51 @@ extends MainService, Service.StoppableByRequest:
     dedicatedAllocated.toOption.fold(false)(_.allocatedThing.isShuttingDown)
 
   def untilTerminated: IO[ProgramTermination] =
-    terminated.get
+    whenTerminated.get
 
   def shutdown(
     processSignal: Option[ProcessSignal] = None,
     dontWaitForDirector: Boolean = false,
     restart: Boolean = false)
   : IO[ProgramTermination] =
+    shutdown:
+      ShutDown(
+        processSignal, dontWaitForDirector = dontWaitForDirector, restart =restart)
+
+  def shutdown(cmd: ShutDown): IO[ProgramTermination] =
+    import cmd.{dontWaitForDirector, processSignal}
     logger.debugIO:
-      terminated.tryGet.flatMap:
+      whenTerminated.tryGet.flatMap:
         _.map(IO.pure).getOrElse:
-          IO.defer:
-            logger.info(s"❗ Shutdown ${
-              flattenToString(
-                processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")}")
-            dedicatedAllocated
-              .toOption
-              .fold(IO.unit): allocated =>
-                allocated.allocatedThing
-                  .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
-                  .guarantee(allocated.release)
-              .*>(IO.defer:
-                val termination = ProgramTermination(restart = restart)
-                terminated.complete(termination).attempt.as(termination))
+          shuttingDown.getAndSet(Some(cmd)).flatMap:
+            case None =>
+              whenTerminated.tryGet.flatMap:
+                _.map(IO.pure).getOrElse:
+                  IO:
+                    logger.info(s"❗ Shutdown ${cmd.argsString}")
+                  .productR:
+                    dedicatedAllocated.toOption.foldMap: allocated =>
+                      allocated.allocatedThing
+                        .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
+                        .guarantee(allocated.release)
+                  .productR:
+                    shuttingDown.get
+                  .map: maybeCurrentCmd =>
+                    ProgramTermination(restart = maybeCurrentCmd.getOrElse(cmd).restart)
+                  .flatMap: termination =>
+                    whenTerminated.complete(termination).as(termination)
+
+            case Some(currentShutdown) =>
+              cmd.processSignal.foldMap:
+                killAllProcesses
+              .productR:
+                // Update parameters used for ProgramTermination
+                shuttingDown.update:
+                  _.map: currentShutdown =>
+                    currentShutdown.copy(
+                      restart = currentShutdown.restart | cmd.restart)
+              .productR:
+                whenTerminated.get
 
   def registerDirectorRoute(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
     logger.debugResource:
@@ -182,6 +205,10 @@ extends MainService, Service.StoppableByRequest:
     IO(checkedDedicatedSubagent)
       .flatMapT(_.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod))
 
+  def killAllProcesses(signal: ProcessSignal): IO[Unit] =
+    dedicatedAllocated.toOption.foldMap:
+      _.allocatedThing.killAllProcesses(signal)
+
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Checked[Unit]] =
     subagent.checkedDedicatedSubagent.traverse:
       _.killProcess(orderId, signal)
@@ -234,14 +261,14 @@ object Subagent:
         systemSessionToken <- sessionRegister
           .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         // Stop Subagent _after_ web service to allow Subagent to execute last commands!
-        subagentDeferred <- Resource.eval(Deferred[IO, Subagent])
+        subagentDeferred <- Deferred[IO, Subagent].toResource
         directorRouteVariable = new DirectorRouteVariable
         webServer <- SubagentWebServer.service(
           subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
           (using actorSystem, ioRuntime)
         _ <- provideUriFile(conf, webServer.localHttpUri)
         // For BlockingInternalJob (thread-blocking Java jobs)
-        iox <- Resource.eval(environment[IOExecutor])
+        iox <- environment[IOExecutor].toResource
         blockingInternalJobEC <-
           unlimitedExecutionContextResource[IO](
             s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
@@ -256,6 +283,7 @@ object Subagent:
           size = config.getInt("js7.journal.memory.event-count"),
           waitingFor = "JS7 Agent Director",
           infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+        shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown]).toResource
         supervisor <- Supervisor[IO]
         subagent <- Service.resource:
           new Subagent(
@@ -264,7 +292,7 @@ object Subagent:
               _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
             journal, signatureVerifier,
             conf, jobLauncherConf, testEventBus,
-            supervisor)
+            shuttingDownAtomic, supervisor)
         _ <- subagentDeferred.complete(subagent).toResource
       yield
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)

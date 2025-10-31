@@ -1,8 +1,10 @@
 package js7.tests.subagent
 
-import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.agent.data.commands.AgentCommand
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
@@ -21,7 +23,9 @@ import js7.data.value.expression.Expression.expr
 import js7.data.workflow.instructions.{Execute, If, StickySubagent}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.jobs.TestJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import scala.concurrent.TimeoutException
 import scala.language.implicitConversions
 import scala.util.Random
 
@@ -129,6 +133,71 @@ final class SubagentShutdownTest extends OurTestSuite, SubagentTester:
         for orderId <- orderIds do
           val events = controller.eventWatch.awaitKey[OrderTerminated](orderId).map(_.value)
           assert(events.exists(_.isSubtypeOf[OrderFinished]))
+
+  "Second SubagentCommand.Shutdown command may cancel processes (bare Subagent)" in:
+    runSubagent(bareSubagentItem): subagent =>
+      enableSubagents(localSubagentId -> false, bareSubagentId -> true)
+      withItem(
+        Workflow.of:
+          TestJob.execute(agentPath, arguments = Map(
+            "stdout" -> "SLEEPING\n",
+            "sleep" -> 999))
+      ): workflow =>
+        val orderId = addOrder(workflow.path)
+        controller.eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+
+        // First Shutdown //
+        subagent.executeCommandForTest:
+          SubagentCommand.ShutDown()
+        .await(99.s).orThrow
+
+        intercept[TimeoutException]:
+          controller.awaitNextKey[OrderProcessed](orderId, timeout = 500.ms)
+
+        // Second Shutdown //
+        subagent.executeCommandForTest:
+          SubagentCommand.ShutDown(Some(SIGTERM))
+        .await(99.s).orThrow
+        val orderProcessed = controller.awaitNextKey[OrderProcessed](orderId).head.value
+        assert:
+          orderProcessed.outcome ==
+            OrderOutcome.processLost:
+              ProcessKilledDueToSubagentShutdownProblem:
+                OrderOutcome.Killed:
+                  OrderOutcome.Failed:
+                    Some("Canceled")
+
+  "Second AgentCommand.Shutdown command may cancel processes (local Subagent)" in :
+    enableSubagents(localSubagentId -> true, bareSubagentId -> false)
+    withItem(
+      Workflow.of:
+        TestJob.execute(agentPath, arguments = Map(
+          "stdout" -> "SLEEPING\n",
+          "sleep" -> 999))
+    ): workflow =>
+      val orderId = addOrder(workflow.path)
+      controller.eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+
+      // First Shutdown //
+      agent.executeCommandAsSystemUser:
+        AgentCommand.ShutDown()
+      .await(99.s).orThrow
+
+      intercept[TimeoutException]:
+        controller.awaitNextKey[OrderProcessed](orderId, timeout = 500.ms)
+
+      // Second Shutdown //
+      agent.executeCommandAsSystemUser:
+        AgentCommand.ShutDown(Some(SIGTERM))
+      .await(99.s).orThrow
+      val orderProcessed = controller.awaitNextKey[OrderProcessed](orderId).head.value
+      assert:
+        orderProcessed.outcome ==
+          OrderOutcome.processLost:
+            ProcessKilledDueToSubagentShutdownProblem:
+              OrderOutcome.Killed:
+                OrderOutcome.Failed:
+                  Some("Canceled")
 
 
 object SubagentShutdownTest:

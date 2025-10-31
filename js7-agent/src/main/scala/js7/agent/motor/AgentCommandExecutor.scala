@@ -1,6 +1,8 @@
 package js7.agent.motor
 
+import cats.effect.std.AtomicCell
 import cats.effect.{Deferred, IO, ResourceIO}
+import cats.syntax.option.none
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -22,7 +24,7 @@ import js7.base.system.startup.Halt
 import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, AsyncLock, ScalaUtils, SetOnce}
+import js7.base.utils.{Allocated, AsyncLock, ScalaUtils}
 import js7.cluster.WorkingClusterNode
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import js7.data.Problems.ClusterSwitchOverButNotCoupledProblem
@@ -44,8 +46,10 @@ final class AgentCommandExecutor private(
   workingClusterNode: WorkingClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
-  actorSystem: ActorSystem)
-extends MainService, Service.StoppableByRequest, CommandHandler:
+  actorSystem: ActorSystem,
+  shuttingDown: AtomicCell[IO, Option[ShutDown]])
+extends
+  MainService, Service.StoppableByRequest, CommandHandler:
 
   protected type Termination = DirectorTermination
 
@@ -54,11 +58,8 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
   private val register = new CommandRegister[AgentCommand]
 
   private val _dedicated = Deferred.unsafe[IO, Dedicated]
-  private val shutdownOnce = SetOnce[ShutDown]
   private val terminated = Deferred.unsafe[IO, DirectorTermination]
   private var isResetting = false
-
-  private def isShuttingDown = shutdownOnce.isDefined
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
@@ -104,18 +105,14 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
           _.executeCommand(cmd)
 
       case DedicateAgentDirector(agentPath, directors, controllerId, controllerRunId) =>
-        if isShuttingDown then
-          IO.left(AgentIsShuttingDown)
-        else
+        whenNotShuttingDown:
           // Command is idempotent until AgentState has been touched
           dedicate(agentPath, directors, controllerId, controllerRunId)
             .map(_.map: (agentRunId, eventId) =>
               AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId))
 
       case CoupleController(agentPath, agentRunId, eventId, controllerRunId) =>
-        if isShuttingDown then
-          IO.left(AgentIsShuttingDown)
-        else
+        whenNotShuttingDown:
           // Command does not change AgentState. It only checks the coupling (for now)
           IO:
             for
@@ -202,9 +199,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
       case Right(()) =>
         logger.info(s"❗ $cmd")
         isResetting = true
-        if isShuttingDown then
-          IO.left(Problem.pure("Director is shutting down"))
-        else
+        whenNotShuttingDown:
           agentMotor.flatMapSome: agentMotor =>
             agentMotor.resetBareSubagents
           *>
@@ -230,7 +225,7 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
         restartDirector = true))
 
   private def initiateShutdown(originalCmd: AgentCommand, cmd: ShutDown): IO[Checked[Accepted]] =
-    logger.traceIO(cmd.toString):
+    logger.traceIO("initiateShutdown", cmd):
       locally:
         if cmd.isSwitchover then
           journal.aggregate.map(_.clusterState).map:
@@ -239,16 +234,29 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
         else
           IO.right(())
       .flatMapT: _ =>
-        IO(shutdownOnce.trySet(cmd) !! AgentIsShuttingDown)
-      .flatMapT: _ =>
-        logger.info(s"❗️ $originalCmd")
-        shutdown(cmd)
-          .pipeIf(!cmd.restartDirector):
-            _.startAndForget // Shutdown in background and respond the command early
-          .as(Right(Accepted)) // Don't fail after shutdownOnce!
+        shuttingDown.getAndSet(Some(cmd)).flatMap:
+          case None =>
+            logger.info(s"❗ Shutdown  due to $originalCmd")
+            shutdown(cmd)
+              .pipeIf(!cmd.restartDirector/*not switchover?*/):
+                _.startAndForget // Shutdown in background and respond the command early
+              .as(Right(Accepted))
+
+          case Some(runningShutdown) =>
+            cmd.processSignal.foldMap:
+              forDirector.subagent.killAllProcesses
+            .productR:
+              // Update parameters used for ProgramTermination
+              shuttingDown.update(_.map: runningShutdown =>
+                runningShutdown.copy(
+                  restart = runningShutdown.restart | cmd.restart,
+                  restartDirector = (runningShutdown.restartDirector | cmd.restartDirector)
+                    && !(runningShutdown.restart | cmd.restart)))
+            .as:
+              Right(Accepted)
 
   private def shutdown(cmd: ShutDown): IO[Unit] =
-    logger.debugIO(s"❗shutdown $cmd"):
+    logger.debugIO(s"❗ shutdown $cmd"):
       locally:
         // Run asynchronously as a fiber:
         if cmd.isFailover then
@@ -264,37 +272,40 @@ extends MainService, Service.StoppableByRequest, CommandHandler:
       .productR:
         stop
       .productR:
-        terminated.complete:
-          // If dedicated while being shut down, the dedicated AgentMotor is
-          // being stopped asynchronously in background.
-          DirectorTermination(
-            restartJvm = cmd.restart,
-            restartDirector = cmd.restartDirector)
-        .void
+        shuttingDown.get.map(_ getOrElse cmd).flatMap: runningShutdown =>
+          terminated.complete:
+            // If dedicated while being shut down, the dedicated AgentMotor is
+            // being stopped asynchronously in background.
+            DirectorTermination(
+              restartJvm = runningShutdown.restart,
+              restartDirector = runningShutdown.restartDirector)
+          .void
+
+  private def whenNotShuttingDown[A](body: IO[Checked[A]]): IO[Checked[A]] =
+    shuttingDown.get.flatMap:
+      case None => body
+      case Some(_) => IO.left(AgentIsShuttingDown)
 
   private def startAgentMotor(agentPath: AgentPath, controllerId: ControllerId): IO[Checked[Unit]] =
     lock.lock:
-      IO.defer:
-        if isShuttingDown then
-          IO.left(AgentIsShuttingDown)
-        else
-          _dedicated.tryGet.flatMap:
-            case Some(dedicated: Dedicated) =>
-              val agentMotor = dedicated.agentMotor
-              if agentMotor.agentPath == agentPath && agentMotor.controllerId == controllerId then
-                logger.debug("❓ startAgentMotor: already started")
-                IO.right(())
-              else
-                IO.left(Problem(s"This Agent has already been dedicated as '${agentMotor.agentPath
-                  }' for '${agentMotor.controllerId}'"))
+      whenNotShuttingDown:
+        _dedicated.tryGet.flatMap:
+          case Some(dedicated: Dedicated) =>
+            val agentMotor = dedicated.agentMotor
+            if agentMotor.agentPath == agentPath && agentMotor.controllerId == controllerId then
+              logger.debug("❓ startAgentMotor: already started")
+              IO.right(())
+            else
+              IO.left(Problem(s"This Agent has already been dedicated as '${agentMotor.agentPath
+                }' for '${agentMotor.controllerId}'"))
 
-            case None =>
-              AgentMotor.service(failedOverSubagentId, forDirector, workingClusterNode,
-                  agentConf, actorSystem)
-                .toAllocated
-                .flatMap: allocated =>
-                  _dedicated.complete(Dedicated(allocated))
-                    .as(Checked.unit)
+          case None =>
+            AgentMotor.service(failedOverSubagentId, forDirector, workingClusterNode,
+                agentConf, actorSystem)
+              .toAllocated
+              .flatMap: allocated =>
+                _dedicated.complete(Dedicated(allocated))
+                  .as(Checked.unit)
 
   private def stopAgentMotor(cmd: AgentCommand.ShutDown = AgentCommand.ShutDown()): IO[Unit] =
     logger.traceIO:
@@ -359,15 +370,17 @@ object AgentCommandExecutor:
     agentConf: AgentConfiguration,
     actorSystem: ActorSystem)
   : ResourceIO[AgentCommandExecutor] =
-    val journal = workingClusterNode.journal
-    Service.resource:
-      journal.aggregate.map: agentState =>
-        workingClusterNode.failedNodeId.map: nodeId =>
-          agentState.meta.clusterNodeIdToSubagentId(nodeId).orThrow
-      .flatMap: failedOverSubagentId =>
-        IO:
-          new AgentCommandExecutor(forDirector, failedOverSubagentId, workingClusterNode, clock,
-            agentConf, actorSystem)
+    Service:
+      for
+        failedOverSubagentId <-
+          workingClusterNode.journal.aggregate.map: agentState =>
+            workingClusterNode.failedNodeId.map: nodeId =>
+              agentState.meta.clusterNodeIdToSubagentId(nodeId).orThrow
+        shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown])
+      yield
+        new AgentCommandExecutor(forDirector, failedOverSubagentId, workingClusterNode, clock,
+          agentConf, actorSystem,
+          shuttingDownAtomic)
 
 
   private final case class Dedicated(
