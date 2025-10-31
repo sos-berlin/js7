@@ -9,7 +9,7 @@ import js7.base.config.Js7Config
 import js7.base.configutils.Configs.parseConfigIfExists
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
@@ -69,7 +69,7 @@ object SubagentClientMain extends SimpleServiceProgram[SubagentClientMain.Conf]:
           "js7.data-directory" -> dataDirectory.toString
         ).asJava
       .withFallback(ConfigFactory.systemProperties)
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "agent.conf", secret = false))
       .withFallback(Js7Config.defaultConfig)
 

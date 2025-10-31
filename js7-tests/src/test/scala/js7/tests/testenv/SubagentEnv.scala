@@ -51,11 +51,11 @@ trait SubagentEnv extends ProgramEnv:
     super.createDirectoriesAndFiles()
     createDirectory(executables)
     if provideHttpsCertificate then
-      (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
+      (configDir / "private" / "https-keystore.p12") := AgentKeyStoreResource.contentBytes
       if provideClientCertificate then
-        configDir / "private/controller-https-truststore.p12" :=
+        configDir / "private" / "controller-https-truststore.p12" :=
           ExportedControllerTrustStoreResource.contentBytes
-        configDir / "private/private.conf" ++= s"""
+        configDir / "private" / "private.conf" ++= s"""
          |js7.web.https.truststores = [
          |  {
          |    file = $${js7.config-directory}/private/controller-https-truststore.p12

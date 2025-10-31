@@ -223,7 +223,7 @@ private[https] object HttpsTestBase:
     agent.writeExecutable(RelativePathExecutable(s"TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
 
   private def provideControllerConfiguration(controller: ControllerEnv): Unit =
-    controller.configDir / "private/private.conf" ++= """
+    controller.configDir / "private" / "private.conf" ++= """
       |js7.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}

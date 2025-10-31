@@ -146,5 +146,5 @@ object ControllerConfiguration:
 
   // Same code in PekkoHttpControllerTextApi.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =
-    parseConfigIfExists(configDirectory / "private/private.conf", secret = true)
+    parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true)
       .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))

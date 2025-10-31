@@ -63,7 +63,7 @@ object ControllerClientMain extends SimpleServiceProgram[ControllerClientMain.Co
           "js7.data-directory" -> dataDirectory.toString
         ).asJava
       .withFallback(ConfigFactory.systemProperties)
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
       .withFallback(Js7Config.defaultConfig)
 

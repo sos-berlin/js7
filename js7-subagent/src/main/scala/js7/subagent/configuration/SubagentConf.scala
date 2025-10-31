@@ -231,7 +231,7 @@ object SubagentConf:
           "js7.config-directory" -> configDir.toString,
           "js7.data-directory" -> dataDir.toString
         ).asJava))
-      .withFallback(parseConfigIfExists(configDir / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDir / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDir / "agent.conf", secret = false))
       .withFallback(internal)
       .resolve

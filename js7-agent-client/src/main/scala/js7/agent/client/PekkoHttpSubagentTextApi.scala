@@ -107,6 +107,6 @@ object PekkoHttpSubagentTextApi:
   // Like AgentConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory.systemProperties
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "private" / "private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "agent.conf", secret = false))
       .withFallback(Js7Config.defaultConfig)
