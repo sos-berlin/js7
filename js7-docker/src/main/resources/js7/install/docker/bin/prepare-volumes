@@ -3,6 +3,8 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
+umask o-rwx
+
 rm -rf volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1a,subagent-1b,subagent-1c,subagent-2a}/data/cache
 mkdir -p -m 700 volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1a,subagent-1b,subagent-1c,subagent-2a}/config/private
 mkdir -p volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1a,subagent-1b,subagent-1c,subagent-2a}/data/{cache,logs,state,work}
@@ -33,6 +35,6 @@ build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
 
 ln -snf ../build/metrics/docker-compose.yaml metrics/
-# Docker expectes volumes in same directory as docker-compose.yaml
+# Docker expects volumes in same directory as docker-compose.yaml
 mkdir -p metrics/volumes
 ln -snf ../../volumes/{prometheus,grafana} metrics/volumes/
