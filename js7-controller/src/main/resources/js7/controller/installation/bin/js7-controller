@@ -142,7 +142,7 @@ while true; do
     fi
     wait $pid
     returnCode=$?
-    echo "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
+    log "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
   }
 
   returnCode=
