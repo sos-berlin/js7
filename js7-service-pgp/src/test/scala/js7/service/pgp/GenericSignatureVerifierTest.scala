@@ -31,9 +31,10 @@ final class GenericSignatureVerifierTest extends OurTestSuite:
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
-      val provider = GenericSignatureVerifier.Provider(WallClock, ConfigFactory.empty).checked(config"""
-        js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}""""
-      ).orThrow
+      val config = config"""
+        js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}"
+        """
+      val provider = GenericSignatureVerifier.Provider(WallClock, config).readConfiguredVerifiers.orThrow
       assert(provider.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))
       assert(provider.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
       assert(provider.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))

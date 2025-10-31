@@ -1,11 +1,12 @@
 package js7.base.crypt.generic
 
+import cats.data.NonEmptyVector
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Files.exists
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
@@ -21,6 +22,7 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import scala.collection.immutable
 import scala.jdk.CollectionConverters.*
+import scala.util.Left
 
 /** A `SignatureVerifier` that verifies different types of signatures.
   * @author Joacim Zschimmer
@@ -66,7 +68,7 @@ object GenericSignatureVerifier:
     protected type MySignature = GenericSignature
     protected type MySignatureVerifier = GenericSignatureVerifier
 
-    val signatureProviderRegister = SignatureProviderRegister(clock, config)
+    private val signatureProviderRegister = SignatureProviderRegister(clock, config)
 
     def typeName = "(generic)"
 
@@ -76,38 +78,45 @@ object GenericSignatureVerifier:
     def recommendedKeyDirectoryName: String =
       throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
-    def checked(config: Config): Checked[GenericSignatureVerifier] =
-      config.getObject(configPath).asScala.toMap.map: (typeName, v) => // All Config key-values
-        typeName ->
-          checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
-            .map(Paths.get(_))
-            .flatMap: directory =>
-              signatureProviderRegister.nameToSignatureVerifierProvider
-                .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-                .flatMap: companion =>
-                  if !exists(directory) then
-                    Left(Problem.pure(
-                      s"Signature key directory '$directory' for '$typeName' does not exist"))
-                  else
-                    val files = autoClosing(Files.list(directory)):
-                      _.asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector
-                    if files.isEmpty then
-                      logger.warn(s"No public key files for signature verifier '${
-                        companion.typeName}' in directory '$directory'")
-                    companion.checked(
-                      files.map(_.labeledByteArray),
-                      origin = directory.toString)
-      .toVector
-      .traverse:
-        case (_, Left(p)) => Left(p)
-        case (k, Right(v)) => Right(v)
+    def readConfiguredVerifiers: Checked[GenericSignatureVerifier] =
+      readNonEmptyProviderToDirectory.flatMap:
+        _.toVector.traverse: (provider, directory) =>
+          readVerifier(provider, directory)
       .flatMap: verifiers =>
-        if verifiers.isEmpty then
-          Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
-        else
-          logVerifiers(verifiers)
-          Right:
-            GenericSignatureVerifier(verifiers, this)
+        logVerifiers(verifiers)
+        Right:
+          GenericSignatureVerifier(verifiers, this)
+
+    private def readVerifier(provider: SignatureVerifier.Provider, directory: Path)
+    : Checked[provider.MySignatureVerifier] =
+      val files = autoClosing(Files.list(directory)):
+        _.asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector
+      if files.isEmpty then
+        logger.warn(s"No public key files for signature verifier '${provider.typeName
+          }' in directory '$directory'")
+      provider.checked(
+        files.map(_.labeledByteArray),
+        origin = directory.toString)
+
+
+    def readNonEmptyProviderToDirectory: Checked[NonEmptyVector[(SignatureVerifier.Provider, Path)]] =
+      readProvidersAndDirectories.flatMap: seq =>
+        NonEmptyVector.fromVector(seq).toRight:
+          Problem.pure(s"No trusted signature keys - Configure one with $configPath!")
+
+    def readProvidersAndDirectories: Checked[Vector[(SignatureVerifier.Provider, Path)]] =
+      config.getObject(configPath).asScala.toVector.traverse: (typeName, v) => // All Config key-values
+        checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
+          .map(Paths.get(_))
+          .flatMap: directory =>
+            signatureProviderRegister.nameToSignatureVerifierProvider
+              .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
+              .flatMap: provider =>
+                if !exists(directory) then
+                  Left(Problem.pure:
+                    s"Signature key directory '$directory' for '$typeName' does not exist")
+                else
+                  Right(provider -> directory)
 
     @deprecated("Not implemented", "")
     def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =

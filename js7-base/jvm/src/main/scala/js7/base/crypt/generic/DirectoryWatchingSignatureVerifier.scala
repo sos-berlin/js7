@@ -2,15 +2,11 @@ package js7.base.crypt.generic
 
 import cats.effect
 import cats.effect.{IO, ResourceIO}
-import cats.instances.either.*
-import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
-import java.nio.file.Files.exists
-import java.nio.file.{Path, Paths}
-import js7.base.Problems.UnknownSignatureTypeProblem
+import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.catchAsChecked
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.*
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
@@ -27,9 +23,7 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.WallClock
 import js7.base.utils.Labeled
-import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class DirectoryWatchingSignatureVerifier private(
@@ -62,16 +56,15 @@ extends
             companion -> (directory -> directoryState)
       .flatMap: companionToDir =>
         IO.defer:
-          state = provider.State(
-            companionToDir
-              .map:
-                case (companion, (directory, directoryState)) =>
-                  companion -> toVerifier(companion, directory, directoryState)
-              .toMap)
+          state = provider.State:
+            companionToDir.map:
+              case (companion, (directory, directoryState)) =>
+                companion -> toVerifier(companion, directory, directoryState)
+            .toMap
 
           startService:
-            companionToDir
-              .map { case (companion, (directory, directoryState)) =>
+            companionToDir.map:
+              case (companion, (directory, directoryState)) =>
                 CorrelId.bindNew:
                   watchDirectory(companion, directory, directoryState)
                     .onErrorRestartLoop(()): (t, _, retry) =>
@@ -79,9 +72,8 @@ extends
                         logger.error(s"${companion.typeName}: ${t.toStringWithCauses}",
                           t.nullIfNoStackTrace)
                         retry(()).delayBy(10.s)
-              }
-              .parSequence
-              .map(_.combineAll)
+            .parSequence
+            .map(_.combineAll)
 
   private def watchDirectory(
     provider: SignatureVerifier.Provider,
@@ -171,8 +163,7 @@ object DirectoryWatchingSignatureVerifier:
     protected type MySignature = GenericSignature
     protected type MySignatureVerifier = DirectoryWatchingSignatureVerifier
 
-    private val genericSignatureVerifierContext = GenericSignatureVerifier.Provider(clock, config)
-    import genericSignatureVerifierContext.signatureProviderRegister
+    private val genericSignatureVerifierProvider = GenericSignatureVerifier.Provider(clock, config)
 
     def typeName = "(generic)"
 
@@ -187,28 +178,10 @@ object DirectoryWatchingSignatureVerifier:
       prepare.map(_.toResource(onUpdated))
 
     def prepare: Checked[Prepared] =
-      config.getObject(configPath).asScala.toMap  // All Config key-values
-        .map: (typeName, v) =>
-          checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
-            .map(Paths.get(_))
-            .flatMap: directory =>
-              signatureProviderRegister.nameToSignatureVerifierProvider
-                .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-                .flatMap: companion =>
-                  if !exists(directory) then
-                    Left(Problem.pure:
-                      s"Signature key directory '$directory' for '$typeName' does not exist")
-                  else
-                    Right(companion -> directory)
-        .toVector
-        .sequence
-        .map(_.toMap)
-        .flatMap: companionToDirectory =>
-          if companionToDirectory.isEmpty then
-            Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
-          else
-            for settings <- DirectoryWatchSettings.fromConfig(config) yield
-              new Prepared(companionToDirectory, settings)
+      genericSignatureVerifierProvider.readNonEmptyProviderToDirectory
+        .flatMap: providerToDirectory =>
+          DirectoryWatchSettings.fromConfig(config).map: settings =>
+            new Prepared(providerToDirectory.toVector.toMap, settings)
 
     final class Prepared(
       companionToDirectory: Map[SignatureVerifier.Provider, Path],
@@ -241,4 +214,4 @@ object DirectoryWatchingSignatureVerifier:
           .collect:
             case Right(o) => o
           .toVector,
-        genericSignatureVerifierContext)
+        genericSignatureVerifierProvider)
