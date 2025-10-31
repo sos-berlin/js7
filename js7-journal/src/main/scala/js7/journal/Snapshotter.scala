@@ -2,7 +2,7 @@ package js7.journal
 
 import cats.effect.IO
 import js7.base.catsutils.CatsEffectExtensions.True
-import js7.base.catsutils.CatsEffectUtils.whenDeferred
+import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -55,10 +55,10 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
         // The new snapshot's EventId must differ from the last snapshot's EventId,
         // otherwise no snapshot is taken, and the committer continues.
         // A SnapshotTaken event at the beginning of a journal file increments the EventId.
-        whenDeferred(
+        IO:
           (!isStopping || ignoreIsStopping) &&
             state.get.committed.eventId > lastSnapshotTakenEventId
-        ):
+        .ifTrue:
           IO.uncancelable: _ => // Uncancelable !!!
             stopCommitter >>
               IO.whenA(!isStopping || ignoreIsStopping):
