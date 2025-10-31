@@ -21,7 +21,7 @@ final class FileValueState(
 extends AutoCloseable:
 
   private val scopeRegister = new ScopeRegister
-  private val commonDirectory = Paths.get("0")
+  private val commonDirectory = Path.of("0")
   private val commonDirectoryCreated = Atomic(false)
   private val directoryNumber = Atomic(0L)
   private val usedFilenames = Atomic(Set.empty[Path])

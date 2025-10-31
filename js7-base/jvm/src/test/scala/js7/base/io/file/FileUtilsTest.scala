@@ -6,7 +6,7 @@ import java.io.File.separator
 import java.io.{BufferedReader, File, InputStreamReader}
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, createTempFile, delete, exists}
-import java.nio.file.{Files, NotDirectoryException, Path, Paths}
+import java.nio.file.{Files, NotDirectoryException, Path}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits.*
@@ -38,7 +38,7 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
 
   "Path extention methods" - {
     "slash" - {
-      val a = Paths.get("a")
+      val a = Path.of("a")
       "valid" in:
         assert((a / "b").toString == s"a${separator}b")
       "invalid" - {

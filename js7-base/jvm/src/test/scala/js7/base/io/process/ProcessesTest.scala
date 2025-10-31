@@ -6,7 +6,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, withTemporaryFile}
 import js7.base.io.process.Processes.*
@@ -44,7 +44,7 @@ final class ProcessesTest extends OurTestSuite:
       succeed
 
   "toShellCommandArguments" in:
-    val file = Paths.get("FILE")
+    val file = Path.of("FILE")
     val a = toShellCommandArguments(file, Args)
     assert(a == List("FILE") ++ Args)
     assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter

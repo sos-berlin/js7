@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.createTempDirectory
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
@@ -47,12 +47,12 @@ final class SubagentConfTest extends OurTestSuite:
     assert(dummyDirectoriesConf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
 
   "--log-directory=" in:
-    assert(dummyDirectoriesConf().logDirectory == Paths.get("DATA/logs").toAbsolutePath)
-    assert(dummyDirectoriesConf("--log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
-    assert(dummyDirectoriesConf("--log-directory=test").logDirectory == Paths.get("test").toAbsolutePath)
+    assert(dummyDirectoriesConf().logDirectory == Path.of("DATA/logs").toAbsolutePath)
+    assert(dummyDirectoriesConf("--log-directory=LOGS").logDirectory == Path.of("LOGS").toAbsolutePath)
+    assert(dummyDirectoriesConf("--log-directory=test").logDirectory == Path.of("test").toAbsolutePath)
 
   "--job-working-directory=" in:
-    assert(dummyDirectoriesConf("--job-working-directory=DIR").jobWorkingDirectory == Paths.get("DIR").toAbsolutePath)
+    assert(dummyDirectoriesConf("--job-working-directory=DIR").jobWorkingDirectory == Path.of("DIR").toAbsolutePath)
 
   "Unknown argument" in:
     provideConfigAndData { (config, data) =>
@@ -73,10 +73,10 @@ final class SubagentConfTest extends OurTestSuite:
 
   "Codepages" - {
     lazy val subagentConf = SubagentConf.of(
-      configDirectory = Paths.get("/tmp/CONFIG"),
-      dataDirectory = Paths.get("/tmp/DATA"),
-      logDirectory = Paths.get("/tmp/LOGS"),
-      jobWorkingDirectory = Paths.get(if isWindows then """c:\tmp\WORKING""" else "/tmp/WORKING"),
+      configDirectory = Path.of("/tmp/CONFIG"),
+      dataDirectory = Path.of("/tmp/DATA"),
+      logDirectory = Path.of("/tmp/LOGS"),
+      jobWorkingDirectory = Path.of(if isWindows then """c:\tmp\WORKING""" else "/tmp/WORKING"),
       webServerPorts = Nil,
       config"""js7.windows.codepages.88888 = "UNKNOWN" """,
       name = "JS7")

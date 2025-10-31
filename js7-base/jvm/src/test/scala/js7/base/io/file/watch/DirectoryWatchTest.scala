@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import fs2.Stream
 import java.nio.file.Files.{createDirectory, delete}
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.io.file.FileUtils
@@ -33,13 +33,13 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
         state <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
         _ = assert(state ==
           DirectoryState(Map(
-            Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
-            Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
+            Path.of("TEST-1") -> DirectoryState.Entry(Path.of("TEST-1")),
+            Path.of("TEST-2") -> DirectoryState.Entry(Path.of("TEST-2")))))
         _ = touchFile(dir / "TEST-A")
         _ = touchFile(dir / "TEST-1")
         state2 <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
       yield
-        assert(state.diffTo(state2).toSet == Set(FileAdded(Paths.get("TEST-A"))))
+        assert(state.diffTo(state2).toSet == Set(FileAdded(Path.of("TEST-A"))))
 
   "readDirectoryThenStream" in:
     Fs2PubSub
@@ -49,10 +49,10 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
 
         def addFile(name: String): IO[Unit] =
           files :+= name
-          publisher.publish(Seq(FileAdded(Paths.get(name))))
+          publisher.publish(Seq(FileAdded(Path.of(name))))
 
         def toDirectoryState(names: String*) =
-          DirectoryState.fromIterable(names.map(Paths.get(_)).map(Entry(_)))
+          DirectoryState.fromIterable(names.map(Path.of(_)).map(Entry(_)))
 
         def readDirectory() =
           toDirectoryState(files*)
@@ -70,16 +70,16 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
           events <- observe(state, 1)
           _ = assert:
             events == Seq(
-              Seq(FileAdded(Paths.get("TEST-1"))) -> toDirectoryState("0", "TEST-1"))
+              Seq(FileAdded(Path.of("TEST-1"))) -> toDirectoryState("0", "TEST-1"))
           _ <- // The duplicate event will be ignored
-            publisher.publish(Seq(FileAdded(Paths.get("TEST-1"))))
+            publisher.publish(Seq(FileAdded(Path.of("TEST-1"))))
           _ <-
             state = readDirectory()
             addFile("TEST-2")
           events <- observe(state, 1)
         yield assert:
           events == Seq(
-            Seq(FileAdded(Paths.get("TEST-2"))) -> toDirectoryState("0", "TEST-1", "TEST-2")))
+            Seq(FileAdded(Path.of("TEST-2"))) -> toDirectoryState("0", "TEST-1", "TEST-2")))
 
   "stream" in:
     temporaryDirectoryResource[IO]("DirectoryWatchTest-")
@@ -101,7 +101,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
               assert(buffer.isEmpty)
               touchFile(dir / "TEST-1")
               awaitAndAssert:
-                buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
+                buffer == Seq(Set(FileAdded(Path.of("TEST-1")))))
             .*>(stop.complete(())))
           .as(succeed))
 
@@ -133,7 +133,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
                 assert(buffer.isEmpty)
                 touchFile(dir / "TEST-1")
                 awaitAndAssert:
-                  buffer contains FileAdded(Paths.get("TEST-1"))
+                  buffer contains FileAdded(Path.of("TEST-1"))
                 logger.info(s"delete TEST-1")
                 delete(dir / "TEST-1")
 
@@ -143,8 +143,8 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
                 touchFile(dir / "TEST-2")
                 logger.info(s"delete TEST-2 touched")
                 awaitAndAssert:
-                  buffer.contains(FileDeleted(Paths.get("TEST-1")))
-                    && buffer.contains(FileAdded(Paths.get("TEST-2")))
+                  buffer.contains(FileDeleted(Path.of("TEST-1")))
+                    && buffer.contains(FileAdded(Path.of("TEST-2")))
                 logger.info("stop"))
               .*>(stop.complete(())))
       .as(succeed))
@@ -175,7 +175,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
                 buffer.view.map(_.size).sum == indices.size
               fileCreationFuture.await(100.ms)
               assert(buffer.flatten.sortBy(_.relativePath.getFileName.toString.toInt) ==
-                indices.map(i => FileAdded(Paths.get(i.toString))))
+                indices.map(i => FileAdded(Path.of(i.toString))))
               sleep(100.ms)
               first += n)
           .flatMap:

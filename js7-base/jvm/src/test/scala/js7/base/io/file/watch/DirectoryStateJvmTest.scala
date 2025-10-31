@@ -1,7 +1,7 @@
 package js7.base.io.file.watch
 
 import cats.effect.IO
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile}
 import js7.base.io.file.watch.DirectoryStateJvm.readDirectory
@@ -18,9 +18,9 @@ final class DirectoryStateJvmTest extends OurAsyncTestSuite:
         _ = touchFile(dir / "TEST")
         directoryState <- readDirectory(dir)
         _ = assert(!directoryState.isEmpty)
-        _ = assert(directoryState.files.to(Set) == Set(Paths.get("1"), Paths.get("TEST")))
+        _ = assert(directoryState.files.to(Set) == Set(Path.of("1"), Path.of("TEST")))
         directoryState <- readDirectory(dir, _.startsWith("1"))
         _ = assert(!directoryState.isEmpty)
-        _ = assert(directoryState.files == Set(Paths.get("1")))
+        _ = assert(directoryState.files == Set(Path.of("1")))
       yield
         succeed

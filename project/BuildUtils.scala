@@ -1,6 +1,6 @@
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.Files.{createDirectories, deleteIfExists}
-import java.nio.file.Paths
+import java.nio.file.Path
 import sbt.{ModuleID, ProjectReference}
 import sbtcrossproject.CrossPlugin.autoImport.JVMCrossProjectOps
 import sbtcrossproject.CrossProject
@@ -9,9 +9,9 @@ import scala.language.implicitConversions
 
 object BuildUtils
 {
-  createDirectories(Paths.get("logs"))
-  //Files.list(Paths.get("logs")).toArray(new Array[Path](_)).foreach(Files.delete)
-  deleteIfExists(Paths.get("logs/build.log"))
+  createDirectories(Path.of("logs"))
+  //Files.list(Path.of("logs")).toArray(new Array[Path](_)).foreach(Files.delete)
+  deleteIfExists(Path.of("logs", "build.log"))
 
   val isWindows: Boolean = sys.props("os.name") startsWith "Windows"
   val isMac: Boolean = sys.props("os.name") startsWith "Mac OS"

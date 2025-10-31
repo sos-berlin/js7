@@ -2,7 +2,7 @@ package js7.tests.provider
 
 import cats.syntax.option.*
 import java.nio.file.Files.{createDirectories, createDirectory, delete}
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.SillySigner
@@ -169,7 +169,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
-          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"), Set(WorkflowPath, AgentPath, SubagentId, CalendarPath)),
+          ItemPaths.AlienFileProblem(Path.of("UNKNOWN.tmp"), Set(WorkflowPath, AgentPath, SubagentId, CalendarPath)),
           VersionedItemReader.SourceProblem(WorkflowPath("NO-JSON"), SourceType.Json,
             Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-1"), SourceType.Json,

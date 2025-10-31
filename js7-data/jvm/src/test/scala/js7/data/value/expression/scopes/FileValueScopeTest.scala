@@ -7,7 +7,7 @@ import cats.syntax.parallel.*
 import java.io.IOException
 import java.nio.file.Files.{isRegularFile, newOutputStream}
 import java.nio.file.StandardOpenOption.{APPEND, WRITE}
-import java.nio.file.{AccessDeniedException, Path, Paths}
+import java.nio.file.{AccessDeniedException, Path}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
@@ -31,7 +31,7 @@ final class FileValueScopeTest extends OurTestSuite:
   private given IORuntime = ioRuntime
 
   "IOException" in:
-    val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
+    val dir = Path.of("/tmp/FileValueScopeTest-NonExistant")
     autoClosing(new FileValueState(dir)): fileValueState =>
       FileValueScope.resource(fileValueState).blockingUse(99.s): fileValueScope =>
         assert:
@@ -127,7 +127,7 @@ final class FileValueScopeTest extends OurTestSuite:
   private def toFile(fileValueScope: FileValueScope, args: Seq[String]): Checked[Path] =
     Expression.FunctionCall(functionName, Some(args.map(a => Argument(StringConstant(a)))))
       .evalAsString(using fileValueScope)
-      .map(Paths.get(_))
+      .map(Path.of(_))
 
   private def check(body: FileValueScope => Unit): Unit =
     withTemporaryDirectory("FileValueScopeTest-"): dir =>

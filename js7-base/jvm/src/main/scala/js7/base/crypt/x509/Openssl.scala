@@ -191,14 +191,14 @@ object Openssl:
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss'Z'")
   private val p12Password = "jobscheduler"
   private val useHomebrew = isMac
-  private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
+  private lazy val homebrewOpenssl = Path.of("/usr/local/opt/openssl/bin/openssl")
 
   lazy val openssl: String =
     val openssl =
       if useHomebrew && exists(homebrewOpenssl) then
         homebrewOpenssl
       else
-        Paths.get("openssl")
+        Path.of("openssl")
     val version = runProcess(s"$openssl version").trim
     logger.info(s"Using $version, $openssl")
     quote(openssl)
@@ -211,14 +211,14 @@ object Openssl:
       .split('\n')
       .collectFirst { case OpensslDir(dir) => dir }
       .map: dir =>
-        lazy val cygwinOpensslCnf = Paths.get("""c:\cygwin64""") / dir / "openssl.cnf"
-        lazy val winGitOpensslCnf = Paths.get("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
+        lazy val cygwinOpensslCnf = Path.of("""c:\cygwin64""") / dir / "openssl.cnf"
+        lazy val winGitOpensslCnf = Path.of("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
         if isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf) then
           cygwinOpensslCnf.contentString
         else if isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf) then
           winGitOpensslCnf.contentString
         else
-          (Paths.get(dir) / "openssl.cnf").contentString
+          (Path.of(dir) / "openssl.cnf").contentString
       .getOrElse:
         sys.error(s"Missing OPENSSLDIR in output of: $openssl version -a")
 

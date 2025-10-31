@@ -3,9 +3,9 @@ package js7.base.system
 import java.io.{File, FileInputStream}
 import java.net.InetAddress
 import java.nio.file.Files.newDirectoryStream
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{Path, Paths}
 import java.util
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.time.ScalaTime.*
@@ -105,7 +105,7 @@ object ServerOperatingSystem:
           sys.error(s"Key PRETTY_NAME not found in files $file")
 
       def readFileAnyRelease() =
-        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")): stream =>
+        val anyFile = autoClosing(newDirectoryStream(Path.of("/etc"), "*-release")): stream =>
           val iterator = stream.iterator
           if !iterator.hasNext then sys.error("No file matches /etc/*-release")
           iterator.next
@@ -128,10 +128,10 @@ object ServerOperatingSystem:
         None
       else
         Try:
-          readFirstLine(Paths.get("/etc/system-release")) // Best result under CentOS 7.2 (more version details than in /etc/os-release)
+          readFirstLine(Path.of("/etc/system-release")) // Best result under CentOS 7.2 (more version details than in /etc/os-release)
         .recover { _ => readFileOsRelease() }   // New standard ?
         .recover { _ => readFileAnyRelease() }  // Vendor-specific
-        .recover { _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+        .recover { _ => readFirstLine(Path.of("/etc/release")) } // Solaris ?
         .toOption
 
     lazy val cpuModel: Option[String] =

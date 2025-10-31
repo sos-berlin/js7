@@ -3,7 +3,7 @@ package js7.tests
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.nio.file.Files.move
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
@@ -62,7 +62,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
 
   private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controllerEnv.userAndPassword))
   private lazy val eventWatch = controller.eventWatch
-  private lazy val outdatedState = agentEnv.stateDir.resolveSibling(Paths.get("state~"))
+  private lazy val outdatedState = agentEnv.stateDir.resolveSibling(Path.of("state~"))
 
   override def afterAll() =
     try

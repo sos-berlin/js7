@@ -2,7 +2,7 @@ package js7.subagent.configuration
 
 import cats.effect.{ExitCode, IO}
 import fs2.{Chunk, Stream}
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.catsutils.OurApp
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -13,7 +13,7 @@ object ListWindowsCodepages extends OurApp:
 
   def run(args: List[String]): IO[ExitCode] =
     val subagentConf = SubagentConf.forTest(
-      configAndData = Paths.get("/tmp/UNUSED"),
+      configAndData = Path.of("/tmp/UNUSED"),
       name = "ListWindowsCodepages")
 
     val configuredCodepages = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")

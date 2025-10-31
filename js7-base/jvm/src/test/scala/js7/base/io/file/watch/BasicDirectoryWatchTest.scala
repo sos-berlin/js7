@@ -3,7 +3,7 @@ package js7.base.io.file.watch
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.createDirectory
-import java.nio.file.Paths
+import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
@@ -45,7 +45,7 @@ final class BasicDirectoryWatchTest extends OurAsyncTestSuite:
           watcher.streamResource.use(stream => IO {
             val observed = stream.take(1).compile.toList.unsafeToFuture()
             dir / "TEST-2" := "MODIFIED"
-            assert(observed.await(99.s) == List(Seq(FileModified(Paths.get("TEST-2")))))
+            assert(observed.await(99.s) == List(Seq(FileModified(Path.of("TEST-2")))))
           }).await(99.s)
         })
     }

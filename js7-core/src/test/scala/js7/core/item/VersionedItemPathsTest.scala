@@ -1,7 +1,7 @@
 package js7.core.item
 
 import java.io.File.separator
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidNameProblem
@@ -17,7 +17,7 @@ import js7.data.workflow.WorkflowPath
 final class VersionedItemPathsTest extends OurTestSuite:
 
   "fileToItemPathAndSourceType" in:
-    val dir = Paths.get("DIR")
+    val dir = Path.of("DIR")
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("folder/test") -> SourceType.Json))
     //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.json") ==
@@ -34,7 +34,7 @@ final class VersionedItemPathsTest extends OurTestSuite:
       Left(InvalidNameProblem("WorkflowPath", "a@b")))
 
   if sys.props contains "test.speed" then "speed" in:
-    val dir = Paths.get("/TEST/JS7/PROVIDER/CONFIG/LIVE")
+    val dir = Path.of("/TEST/JS7/PROVIDER/CONFIG/LIVE")
     val path = dir / "folder/test.workflow.json"
     for _ <- 1 to 5 do
       info:

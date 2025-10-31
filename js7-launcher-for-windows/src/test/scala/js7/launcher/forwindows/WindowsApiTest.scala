@@ -2,7 +2,7 @@ package js7.launcher.forwindows
 
 import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinNT.TOKEN_ALL_ACCESS
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.launcher.forwindows.WindowsApi.{kernel32, messageIdToString, openProcessToken}
@@ -13,10 +13,10 @@ final class WindowsApiTest extends OurTestSuite:
       assert(WindowsApi.processHandleCount > 0)
 
     "tempPath" in:
-      assert(WindowsApi.tempPath == Paths.get(sys.env("TMP")))
+      assert(WindowsApi.tempPath == Path.of(sys.env("TMP")))
 
     "windowsDirectory" in:
-      assert(WindowsApi.windowsDirectory == Paths.get("C:\\Windows"))  // Expected for test environment
+      assert(WindowsApi.windowsDirectory == Path.of("C:\\Windows"))  // Expected for test environment
 
     "openProcessToken" in:
       val handle = WindowsApi.openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS)

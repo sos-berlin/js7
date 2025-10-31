@@ -2,7 +2,7 @@ package js7.base.test
 
 import java.io.IOException
 import java.nio.file.Files.deleteIfExists
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.log.log4j.Log4j
 import js7.base.metering.CallMeter
@@ -24,10 +24,10 @@ private object TestResultCollector:
   private val results = mutable.Buffer[Result]()
   private val logger = Logger[this.type]
   private val ThreadNameRegex = """(\d+-)?(.*)""".r
-  private val dumpFile = Paths.get("target/test.hprof")
+  private val dumpFile = Path.of("target", "test.hprof")
 
   try
-    deleteIfExists(Paths.get(s"$dumpFile.idom")) // YourKit Java profiler file
+    deleteIfExists(Path.of(s"$dumpFile.idom")) // YourKit Java profiler file
     deleteIfExists(dumpFile)
   catch case e: IOException =>
     logger.warn(e.toStringWithCauses)

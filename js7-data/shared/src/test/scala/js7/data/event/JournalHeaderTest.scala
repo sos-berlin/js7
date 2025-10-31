@@ -1,6 +1,6 @@
 package js7.data.event
 
-import java.nio.file.Paths
+import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
@@ -85,7 +85,7 @@ final class JournalHeaderTest extends OurTestSuite:
       js7Version = "2.0-JS7",
       buildId = "BUILD")
 
-    val file = Paths.get("FILE")
+    val file = Path.of("FILE")
 
     assert(
       JournalHeader.checkedHeader[TestState](header.copy(typeName = Some("OTHER")), file, None) ==

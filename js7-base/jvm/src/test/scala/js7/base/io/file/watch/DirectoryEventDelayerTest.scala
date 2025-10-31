@@ -6,7 +6,7 @@ import cats.effect.testkit.TestControl
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import fs2.Stream
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.watch
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayerTest.*
@@ -126,7 +126,7 @@ final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterA
               .collect:
                 case e: watch.DirectoryEvent => e
               .through(
-                DirectoryEventDelayer(Paths.get("/tmp"), delay = 2.s,
+                DirectoryEventDelayer(Path.of("/tmp"), delay = 2.s,
                   delayConf = DelayConf(0.s)))
               .foreach(event => IO:
                 buffer += event)
@@ -142,14 +142,14 @@ final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterA
         yield r
 
   "Many FileAdded events" in:
-    val addedEvents = (1 to 100000).toVector.map(i => Paths.get(i.toString)).map(FileAdded(_))
+    val addedEvents = (1 to 100000).toVector.map(i => Path.of(i.toString)).map(FileAdded(_))
     val addedSince = Deadline.now
     val buffer = mutable.Buffer[DirectoryEvent]()
     for
       queue <- Queue.unbounded[IO, Option[DirectoryEvent]]
       streaming <- Stream.fromQueueNoneTerminated(queue, limit = 2)
         .through(
-          DirectoryEventDelayer(Paths.get("/tmp/?"), delay = 100.ms,
+          DirectoryEventDelayer(Path.of("/tmp/?"), delay = 100.ms,
             delayConf = DelayConf(0.s)))
         .foreach(event => IO:
           buffer += event)
@@ -167,15 +167,15 @@ final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterA
 object DirectoryEventDelayerTest:
   private val logger = Logger[this.type]
 
-  private val aFileAdded = FileAdded(Paths.get("A"))
-  private val aFileDeleted = FileDeleted(Paths.get("A"))
-  private val aFileModified = FileModified(Paths.get("A"))
+  private val aFileAdded = FileAdded(Path.of("A"))
+  private val aFileDeleted = FileDeleted(Path.of("A"))
+  private val aFileModified = FileModified(Path.of("A"))
 
-  private val bFileAdded = FileAdded(Paths.get("B"))
-  private val bFileModified = FileModified(Paths.get("B"))
-  private val bFileDeleted = FileDeleted(Paths.get("B"))
+  private val bFileAdded = FileAdded(Path.of("B"))
+  private val bFileModified = FileModified(Path.of("B"))
+  private val bFileDeleted = FileDeleted(Path.of("B"))
 
-  private val cFileAdded = FileAdded(Paths.get("C"))
+  private val cFileAdded = FileAdded(Path.of("C"))
 
   private type EOF = EOF.type
   private object EOF

@@ -5,7 +5,7 @@ import cats.effect.{IO, Resource}
 import cats.syntax.parallel.*
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
@@ -62,7 +62,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
         arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
 
       implicit lazy val executor: InternalJobLauncher =
-        val u = Paths.get("UNUSED")
+        val u = Path.of("UNUSED")
 
         val jobLauncherConf = JobLauncherConf(u, u, u, u,
           UTF_8,

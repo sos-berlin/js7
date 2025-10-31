@@ -1,7 +1,7 @@
 package js7.journal.files
 
 import java.io.FileOutputStream
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.FileUtils.implicits.pathToFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
@@ -45,7 +45,7 @@ final class JournalFilesTest extends OurTestSuite:
     }
 
   "deletionMarkerFile" in:
-    assert(deletionMarkerFile(Paths.get("DIR/NAME")) == Paths.get("DIR/NAME-DELETE!"))
+    assert(deletionMarkerFile(Path.of("DIR/NAME")) == Path.of("DIR/NAME-DELETE!"))
 
   "deleteJournalIfMarked" in:
     withTemporaryDirectory("JournalHistoryTest-") { dir =>

@@ -1,7 +1,7 @@
 package js7.base.io.file.watch
 
 import cats.effect.IO
-import java.nio.file.Paths
+import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
@@ -21,8 +21,8 @@ final class DirectoryStateTest extends OurAsyncTestSuite:
         directoryState <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
         _ = assert(directoryState ==
           DirectoryState.fromIterable(Seq(
-            Entry(Paths.get("TEST-1")),
-            Entry(Paths.get("TEST-2")))))
+            Entry(Path.of("TEST-1")),
+            Entry(Path.of("TEST-2")))))
       yield
         succeed
 
@@ -30,20 +30,20 @@ final class DirectoryStateTest extends OurAsyncTestSuite:
     assert(DirectoryState.empty.applyAndReduceEvents(Nil) == (Nil, DirectoryState.empty))
 
     var (events, state) = DirectoryState.empty.applyAndReduceEvents(Seq(
-      FileAdded(Paths.get("1")),
-      FileAdded(Paths.get("2")),
-      FileAdded(Paths.get("3")),
-      FileAdded(Paths.get("3")),
-      FileDeleted(Paths.get("2")),
-      FileDeleted(Paths.get("X")),
-      FileAdded(Paths.get("4")),
-      FileDeleted(Paths.get("4")),
-      FileAdded(Paths.get("4"))))
+      FileAdded(Path.of("1")),
+      FileAdded(Path.of("2")),
+      FileAdded(Path.of("3")),
+      FileAdded(Path.of("3")),
+      FileDeleted(Path.of("2")),
+      FileDeleted(Path.of("X")),
+      FileAdded(Path.of("4")),
+      FileDeleted(Path.of("4")),
+      FileAdded(Path.of("4"))))
     assert(events == Seq(
-      FileAdded(Paths.get("1")),
-      FileAdded(Paths.get("3")),
-      FileAdded(Paths.get("4"))))
+      FileAdded(Path.of("1")),
+      FileAdded(Path.of("3")),
+      FileAdded(Path.of("4"))))
     assert(state == DirectoryState.fromIterable(Seq(
-      Entry(Paths.get("1")),
-      Entry(Paths.get("3")),
-      Entry(Paths.get("4")))))
+      Entry(Path.of("1")),
+      Entry(Path.of("3")),
+      Entry(Path.of("4")))))

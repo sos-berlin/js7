@@ -7,7 +7,7 @@ import cats.syntax.flatMap.*
 import fs2.concurrent.SignallingRef
 import izumi.reflect.Tag
 import java.nio.file.Files.{delete, exists}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.Environment
 import js7.base.log.Logger
@@ -325,7 +325,7 @@ extends
         SnapshotableState.logBoth(
           couldBeRecoveredState, s"$what is WRONG?",
           aggregate, s"$S is EXPECTED?",
-          isTest ? Paths.get("logs/snapshot-error.txt"))
+          isTest ? Path.of("logs", "snapshot-error.txt"))
       catch case NonFatal(t) =>
         keyedEvents.foreachWithBracket(Round): (keyedEvent, bracket) =>
           logger.error(s"$bracket${keyedEvent.toString.truncateWithEllipsis(200)}")

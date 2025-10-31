@@ -4,7 +4,7 @@ import cats.effect.SyncIO
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Files.deleteIfExists
-import java.nio.file.Paths
+import java.nio.file.Path
 import java.util.regex.Pattern
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,8 +16,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder
 @State(Scope.Benchmark)
 open class OurBenchmark:
   sys.props("js7.log4j.directory") = "target"
-  deleteIfExists(Paths.get("target/js7.log"))
-  deleteIfExists(Paths.get("target/js7-debug.log"))
+  deleteIfExists(Path.of("target/js7.log"))
+  deleteIfExists(Path.of("target/js7-debug.log"))
 
   val loggerRelease = Logger.resource[SyncIO](getClass.simpleScalaName).allocated.unsafeRunSync()._2
 

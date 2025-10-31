@@ -1,6 +1,7 @@
 package js7.base.scalasource
 
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 
 final class SourcecodeTest extends OurTestSuite:
@@ -23,13 +24,15 @@ final class SourcecodeTest extends OurTestSuite:
 
   "sourcecode.File" in:
     val file = Paths.get(implicitly[sourcecode.File].value)
-    assert(file.isAbsolute && file.endsWith(Paths.get("js7/base/scalasource/SourcecodeTest.scala")))
+    assert:
+      file.isAbsolute &&
+        file.endsWith(Path.of("js7") / "base" / "scalasource" / "SourcecodeTest.scala")
 
   "sourcecode.FileName" in:
     assert(implicitly[sourcecode.FileName].value == "SourcecodeTest.scala")
 
   "sourcecode.Line" in:
-    assert(implicitly[sourcecode.Line].value == 32/*number of this source code line*/)
+    assert(implicitly[sourcecode.Line].value == 35/*number of this source code line*/)
 
   "sourcecode.Text" in:
     def text(arg: sourcecode.Text[Int]) = arg

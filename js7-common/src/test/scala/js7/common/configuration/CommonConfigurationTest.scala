@@ -2,7 +2,7 @@ package js7.common.configuration
 
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
@@ -17,10 +17,10 @@ import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
   */
 final class CommonConfigurationTest extends OurTestSuite:
   "--config-directory=" in:
-    assert(conf().configDirectory == Paths.get("CONFIG").toAbsolutePath)
+    assert(conf().configDirectory == Path.of("CONFIG").toAbsolutePath)
 
   "--data-directory=" in:
-    assert(conf().dataDirectory == Paths.get("DATA").toAbsolutePath)
+    assert(conf().dataDirectory == Path.of("DATA").toAbsolutePath)
 
   "--http-port=" in:
     intercept[IllegalArgumentException] { conf("--http-port=65536") }
@@ -35,7 +35,7 @@ final class CommonConfigurationTest extends OurTestSuite:
   "--https-port=" in:
     intercept[IllegalArgumentException]:
       conf("--https-port=65536")
-    val config = Paths.get("CONFIG").toAbsolutePath
+    val config = Path.of("CONFIG").toAbsolutePath
     assert(conf("--https-port=1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(

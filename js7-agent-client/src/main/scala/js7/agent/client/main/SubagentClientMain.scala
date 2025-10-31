@@ -76,7 +76,7 @@ object SubagentClientMain extends SimpleServiceProgram[SubagentClientMain.Conf]:
     val name = "AgentClient"
 
     def readWorkFile(file: String): String =
-      dataDirectory.resolve(s"work/$file").contentString.trim
+      dataDirectory.resolve(Path.of("work", file)).contentString.trim
 
   object Conf extends BasicConfiguration.Companion[Conf]:
     def fromCommandLine(args: CommandLineArguments): Conf =
