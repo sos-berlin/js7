@@ -10,9 +10,9 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.parameterListToString
-import js7.base.utils.{Big, ScalaUtils}
+import js7.base.utils.ScalaUtils.flattenToString
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Big, ScalaUtils}
 import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
@@ -142,8 +142,11 @@ object SubagentCommand extends CommonCommand.Companion:
     type Response = Accepted
 
     override def toString =
-      "ShutDown" + parameterListToString(
-        processSignal, dontWaitForDirector ? "dontWaitForDirector", restart ? "restart")
+      s"ShutDown($argsString)"
+
+    def argsString: String =
+      flattenToString(processSignal, dontWaitForDirector ? "dontWaitForDirector",
+        restart ? "restart")
 
   object ShutDown:
     implicit val jsonCodec: Codec.AsObject[ShutDown] = deriveConfiguredCodec

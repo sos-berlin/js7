@@ -5,14 +5,19 @@ import cats.syntax.parallel.*
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.{=>?, flatten}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.{=>?, flatten}
+import js7.data.agent.AgentPath
 import js7.data.order.OrderOutcome
+import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.{StringValue, Value}
+import js7.data.workflow.instructions.Execute
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.subagent.jobs.TestJob.*
+import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.*
 
 final class TestJob(outcome: OrderOutcome.Completed)
@@ -64,3 +69,7 @@ object TestJob extends InternalJob.Companion[TestJob]:
     (chars * (charBlockSize / chars.length + 1)).take(charBlockSize)
       .tap: string =>
         assertThat(string.length == charBlockSize)
+
+  def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute.Anonymous =
+    execute(agentPath, arguments = Map(
+      "sleep" -> NumericConstant(duration.toBigDecimalSeconds)))

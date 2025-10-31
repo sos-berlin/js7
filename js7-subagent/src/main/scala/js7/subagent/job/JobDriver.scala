@@ -32,10 +32,6 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
   override def toString =
     s"JobDriver($jobKey ${workflowJob.executable})"
 
-  // JobDriver consists of two sections: //
-  // - mutableSection, to manage all orders and processes //
-  // - JobDriverForOrder, for each order //
-
   private val orderToAlloc = AsyncMap.empty[OrderId, Allocated[IO, JobDriverForOrder]]
   private val lastProcessTerminated = SetOnce[Deferred[IO, Unit]]
 
@@ -75,8 +71,8 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
       drivers.foldMap: driver =>
         driver.kill(signal, Some(ProcessKilledDueToSubagentShutdownProblem(_)))
-      .handleError: t =>
-        logger.error(s"killAllDueToShutdown: ${t.toStringWithCauses}", t)
+          .handleError: t =>
+            logger.error(s"$driver kill: ${t.toStringWithCauses}", t)
 
   def runOrderProcess(
     order: Order[Order.Processing],
@@ -85,18 +81,18 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
     stdObservers: StdObservers)
   : IO[OrderOutcome] =
     JobDriverForOrder.resource(order.id, params).toAllocated.flatMap: allocated =>
-      IO(checkedJobLauncher)
-        .flatTapT: _ =>
-          orderToAlloc.insert(order.id, allocated)
-        .flatMap:
-          case Left(problem) => // insertion failed
-            IO.pure(OrderOutcome.Disrupted(problem))
+      IO(checkedJobLauncher).flatTapT: _ =>
+        orderToAlloc.insert(order.id, allocated)
+      .flatMap:
+        case Left(problem) => // insertion failed
+          IO.pure(OrderOutcome.Disrupted(problem))
 
-          case Right(jobLauncher: JobLauncher) =>
-            val forOrder = allocated.allocatedThing
-            forOrder.processOrder(order, executeArguments, endOfAdmissionPeriod, stdObservers, jobLauncher)
-              .guarantee:
-                removeOrderEntry(order.id)
+        case Right(jobLauncher: JobLauncher) =>
+          val forOrder = allocated.allocatedThing
+          forOrder
+            .processOrder(order, executeArguments, endOfAdmissionPeriod, stdObservers, jobLauncher)
+            .guarantee:
+              removeOrderEntry(order.id)
 
   private def removeOrderEntry(orderId: OrderId): IO[Unit] =
     orderToAlloc.remove(orderId).flatMap(_.foldMap(_.release)) *>

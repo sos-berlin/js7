@@ -105,6 +105,9 @@ object Service:
   inline def apply[Svc <: Service](newService: => Svc): ResourceIO[Svc] =
     resource(newService)
 
+  inline def apply[Svc <: Service](inline newService: IO[Svc]): ResourceIO[Svc] =
+    resource(newService)
+
   def resource[Svc <: Service](newService: => Svc): ResourceIO[Svc] =
     resource(IO(newService))
 

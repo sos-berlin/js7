@@ -1,13 +1,13 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, right}
-import js7.base.catsutils.CatsExtensions.flatMapSome
-import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.catsutils.CatsExtensions.{flatMapSome, ifTrue}
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.LogLevel.Warn
 import js7.base.log.Logger.syntax.*
@@ -63,16 +63,14 @@ final class DedicatedSubagent private(
 extends Service.StoppableByRequest:
   protected type S = SubagentState
 
-  private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
+  private val jobKeyToJobDriver = AsyncMap[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = false
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
+  private val stopParams = Ref.unsafe[IO, StopParams](StopParams())
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
   private var _isUsed = false
-  @volatile private var _dontWaitForDirector = false
   @volatile private var _shuttingDown = false
-  private var stopSignal: Option[ProcessSignal] = Some(SIGTERM)
-  private var stopDontWaitForDirector = false
 
   def isUsed: Boolean =
     _isUsed || isShuttingDown
@@ -84,27 +82,25 @@ extends Service.StoppableByRequest:
     startService:
       untilStopRequested *>
         IO.defer:
-          stopMe(stopSignal, stopDontWaitForDirector) *>
+          stopMe *>
             IO(logger.info(s"$toString stopped"))
 
   private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
   : IO[Unit] =
-    IO.defer:
-      stopSignal = signal
-      stopDontWaitForDirector = dontWaitForDirector
+    stopParams.set(StopParams(signal, dontWaitForDirector)) *>
       stop
 
-  private def stopMe(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
+  private def stopMe: IO[Unit] =
     logger.debugIO:
       IO.defer:
-        _dontWaitForDirector |= dontWaitForDirector
         _shuttingDown = true
         persistedQueue.persisting:
           journal.persist:
             SubagentShutdownStarted
         .ignoreProblem(Warn)
         .productR:
-          stopAllOrders(signal, dontWaitForDirector)
+          stopParams.get.flatMap: stopArgs =>
+            stopAllOrders(stopArgs.signal, stopArgs.dontWaitForDirector)
         .productR:
           persistedQueue.persisting:
             journal.persist:
@@ -264,7 +260,7 @@ extends Service.StoppableByRequest:
           case None =>
             startOrderProcess2(order, executeDefaultArguments, endOfAdmissionPeriod)
               .flatTap: _ =>
-                IO.whenA(_dontWaitForDirector):
+                stopParams.get.map(_.dontWaitForDirector).ifTrue:
                   logger.warn:
                     s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost"
                   orderToProcessing.remove(order.id).void
@@ -521,3 +517,8 @@ object DedicatedSubagent:
       IO:
         queue.synchronized:
           queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector
+
+
+  private final case class StopParams(
+    signal: Option[ProcessSignal] = Some(SIGKILL),
+    dontWaitForDirector: Boolean = false)
