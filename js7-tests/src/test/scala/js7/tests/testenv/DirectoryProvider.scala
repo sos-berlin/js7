@@ -435,6 +435,8 @@ extends HasCloser:
     try body(dir)
     finally deleteDirectoryRecursively(dir)
 
+  override def toString = s"DirectoryProvider($directory)"
+
 
 object DirectoryProvider:
   private val Vinitial = VersionId("INITIAL")

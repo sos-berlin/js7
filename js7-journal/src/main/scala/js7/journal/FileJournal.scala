@@ -193,7 +193,7 @@ extends
       //.raceMerge:
       //  untilStopRequested *>
       //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
-      .logWhenMethodTakesLonger // TODO When cluster hangs then there can be many concurrent log lines
+      //.logWhenMethodTakesLonger  When cluster hangs then there can be many concurrent log lines
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
