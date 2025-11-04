@@ -134,7 +134,6 @@ object SnapshotJournalWriter:
         .productR:
           IO.blocking:
             w.endSnapshotSection()
-
             // Write a SnapshotTaken event to increment EventId to
             // get a new (EventId-based) filename for the next journal file
             w.beginEventSection(sync = false)

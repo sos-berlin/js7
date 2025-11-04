@@ -6,7 +6,6 @@ import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
@@ -111,4 +110,3 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
 object Snapshotter:
   private val logger = Logger[this.type]
-  private val meteter = CallMeter("journal.snapshot.duration.total")

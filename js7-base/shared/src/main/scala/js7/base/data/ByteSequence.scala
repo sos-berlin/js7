@@ -170,6 +170,9 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def lastOption(byteSeq: ByteSeq): Option[Byte] =
     nonEmpty(byteSeq) ? at(byteSeq, length(byteSeq) - 1)
 
+  def contains(byteSeq: ByteSeq, byte: Byte): Boolean =
+    indexOf(byteSeq, byte) >= 0
+
   def indexOf(byteSeq: ByteSeq, byte: Byte): Int =
     indexOf(byteSeq, byte, 0)
 
@@ -363,6 +366,9 @@ object ByteSequence:
 
     def lastOption: Option[Byte] =
       typeClassInstance.lastOption(self)
+
+    def contains(byte: Byte): Boolean =
+      typeClassInstance.contains(self, byte)
 
     def indexOf(byte: Byte): Int =
       typeClassInstance.indexOf(self, byte)

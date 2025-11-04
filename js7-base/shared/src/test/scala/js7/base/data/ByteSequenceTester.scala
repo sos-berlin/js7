@@ -230,6 +230,12 @@ extends OurTestSuite:
     assert(byteSeq.lastOption == Some('b'.toByte))
     assert(ByteSeq.empty.lastOption == None)
 
+  "contains" in:
+    val byteSeq = ByteSeq("aba")
+    assert(byteSeq.contains('a'))
+    assert(byteSeq.contains('b'))
+    assert(!byteSeq.contains('x'))
+
   "indexOf" in:
     val byteSeq = ByteSeq("aba")
     assert(byteSeq.indexOf('a') == 0)

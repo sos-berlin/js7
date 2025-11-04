@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Tests.isStrict
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -31,7 +32,8 @@ extends AutoCloseable:
     writeJson(json.toByteArray)
 
   def writeJson(byteArray: ByteArray): Unit =
-    assertThat(byteArray.indexOf('\n') == -1, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
+    if isStrict then assertThat(!byteArray.contains('\n'),
+      "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(byteArray.unsafeArray)
     buffered.write('\n')
     _bytesWritten += byteArray.length + 1

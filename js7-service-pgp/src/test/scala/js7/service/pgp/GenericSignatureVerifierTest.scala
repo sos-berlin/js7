@@ -1,6 +1,5 @@
 package js7.service.pgp
 
-import com.typesafe.config.ConfigFactory
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.configutils.Configs.*
 import js7.base.crypt.SignedString
