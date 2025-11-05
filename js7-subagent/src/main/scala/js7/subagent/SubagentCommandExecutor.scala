@@ -19,7 +19,6 @@ import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.subagent.SubagentCommandExecutor.*
-import scala.concurrent.duration.Deadline.now
 
 private[subagent] final class SubagentCommandExecutor(
   val subagent: Subagent,

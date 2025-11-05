@@ -22,7 +22,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
-import js7.data.delegate.DelegateCouplingState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, NonPersistentEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
