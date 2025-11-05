@@ -124,7 +124,7 @@ object EventCalc:
     keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : EventCalc[S, E, Ctx] =
     val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
-    EventCalc(_.addEvents(keyedEvents))
+    EventCalc(_.addEvents(eagerlyComputedKeyedEvents))
 
   opaque type OpaqueEventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] = EventColl[S, E, Ctx]
 
