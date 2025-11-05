@@ -1313,7 +1313,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
   private def unsignedItemsToBeAttached(workflow: Workflow, agentPath: AgentPath)
   : Iterable[UnsignedItem] =
-    // TODO Optimize: Remember the set of already assigned ItemPaths and
+    // OPTIMISE: Remember the set of already assigned ItemPaths and
     //  Items (which may change) for (workflow.id, agentPath)
     // (and clear with ResetAgent)
     val result = Map.newBuilder[UnsignedItemKey, UnsignedItem]

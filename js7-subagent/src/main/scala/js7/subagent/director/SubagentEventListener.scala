@@ -129,7 +129,7 @@ private trait SubagentEventListener:
                 //   to terminate StartOrderProcess command idempotency detection and
                 //   to allow a new StartOrderProcess command for a next process.
                 // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
-                // TODO Optimize: ReleaseEvents only after OrderProcessed,
+                // OPTIMISE: ReleaseEvents only after OrderProcessed,
                 //  or (asynchronously) after a number of events
                 lastEventId.foldMap: eventId =>
                   enqueueReleaseEventsCommand(eventId)
