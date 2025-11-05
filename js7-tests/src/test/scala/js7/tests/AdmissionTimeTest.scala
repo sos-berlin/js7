@@ -250,6 +250,58 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
+  "Order is scheduled before start of admission" in :
+    clock.resetTo(local("2025-11-05T00:00"))
+    withItem(standardWorkflow): workflow =>
+      val orderId = nextOrderId()
+      addOrder:
+        FreshOrder(orderId, workflow.path, scheduledFor = Some(local("2025-11-05T11:30")))
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+      clock := local("2025-11-05T00:00")
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+      clock := local("2025-11-05T11:30")
+      controller.awaitNextKey[OrderStarted](orderId)
+      controller.awaitNextKey[OrderWaitingForAdmission](orderId)
+      clock := local("2025-11-05T12:30")
+      controller.awaitNextKey[OrderSaid](orderId)
+      controller.awaitNextKey[OrderFinished](orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, scheduledFor = Some(local("2025-11-05T11:30")),
+          deleteWhenTerminated = true),
+        OrderStarted,
+        OrderWaitingForAdmission(local("2025-11-05T12:00")),
+        OrderMoved(Position(0) / BranchId.AdmissionTime % 0),
+        OrderSaid("OK"),
+        OrderMoved(Position(1)),
+        OrderFinished(),
+        OrderDeleted))
+
+  "Order is scheduled after start of admission" in:
+    clock.resetTo(local("2025-11-05T00:00"))
+    withItem(standardWorkflow): workflow =>
+      val orderId = nextOrderId()
+      addOrder:
+        FreshOrder(orderId, workflow.path, scheduledFor = Some(local("2025-11-05T12:30")))
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+      clock := local("2025-11-05T00:00")
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+      clock := local("2025-11-05T12:01")
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+      clock := local("2025-11-05T12:30")
+      controller.awaitNextKey[OrderSaid](orderId)
+      controller.awaitNextKey[OrderFinished](orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, scheduledFor = Some(local("2025-11-05T12:30")),
+          deleteWhenTerminated = true),
+        OrderMoved(Position(0) / BranchId.AdmissionTime % 0),
+        OrderStarted,
+        OrderSaid("OK"),
+        OrderMoved(Position(1)),
+        OrderFinished(),
+        OrderDeleted))
+
   "Suspend and resume while waiting for with AdmissionTime" in:
     clock.resetTo(local("2025-10-14T00:00"))
     withItem(standardWorkflow): workflow =>
@@ -455,7 +507,7 @@ object AdmissionTimeTest:
   private def local(ymdhms: String): Timestamp =
     LocalDateTime.parse(ymdhms).atZone(zoneId).toInstant.toTimestamp
 
-  private val admissionTimeScheme = AdmissionTimeScheme.daily(localTime"12:00", 1.minute)
+  private val admissionTimeScheme = AdmissionTimeScheme.daily(localTime"12:00", 1.h)
 
   private val standardWorkflow = Workflow(
     WorkflowPath.Anonymous,

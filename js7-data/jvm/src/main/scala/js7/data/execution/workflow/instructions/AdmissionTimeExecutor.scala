@@ -31,31 +31,42 @@ extends EventInstructionExecutor:
         given ZoneId <- workflow.timeZone.toZoneId
         events <-
           if order.forceAdmission then
+            // No need for OrderStarted
             Right:
               (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
           else
+            // skippedReason is independent of the Order's scheduled time
             skippedReason(order, instr).map: reason =>
+              /// Skip ///
+              // No need for OrderStarted
               Right:
-                //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
                 (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
             .getOrElse:
-              // TODO Result of findTimeInterval could be cached for the workflow position,
+              // OPTIMISE: Result of findTimeInterval could be cached for the workflow position,
               //  to avoid re-evaluation for each order.
               val now = clock.now()
               instr.admissionTimeScheme
                 .findTimeInterval(now, limit = FindTimeIntervalLimit, dateOffset = noDateOffset)
               match
                 case None =>
+                  /// No more admission time ///
+                  // Fail even if Order hasn't started
                   Right(List(
                     order.id <-:
                       OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No more admission time"))),
                     order.id <-: OrderFailedIntermediate_()))
 
                 case Some(interval) =>
-                  if interval.contains(now) then
+                  if !order.isStarted && order.isDelayed(now) then
+                    /// Wait for Fresh Order's scheduled time ///
+                    Right(Nil)
+                  else if interval.contains(now) then
+                    /// Enter the AdmissionTime block ///
                     Right:
                       (order.id <-: OrderMoved(order.position / BranchId.AdmissionTime % 0)) :: Nil
                   else
+                    /// Wait for admission ///
+                    // When detaching, the Controller checks the admission time with its own clock
                     detach(order).getOrElse:
                       start(order).getOrElse:
                         Right:

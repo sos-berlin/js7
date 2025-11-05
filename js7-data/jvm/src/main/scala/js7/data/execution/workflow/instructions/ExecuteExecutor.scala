@@ -125,7 +125,8 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
 
 object ExecuteExecutor:
-  // TODO Use a Calendar ?
+
+  // TODO Calendar item and PlanScheme know about order dates, too
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
   private[instructions] val FindTimeIntervalLimit = 1096.days // TODO Use AgentConfiguration.findTimeIntervalLimit
