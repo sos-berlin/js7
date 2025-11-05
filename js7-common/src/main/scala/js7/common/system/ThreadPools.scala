@@ -54,7 +54,7 @@ object ThreadPools:
       schedulerServiceToResource(F.delay:
         newUnlimitedExecutionContext(name, virtual = virtual))
 
-  private def newUnlimitedExecutionContext(name: String, virtual: Boolean = false)
+  private def newUnlimitedExecutionContext(name: String, virtual: Boolean)
   : ExecutionContextExecutorService =
     labeledExecutionContextExecutorService(name):
       ExecutionContext.fromExecutorService(

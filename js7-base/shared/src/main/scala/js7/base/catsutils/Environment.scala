@@ -150,8 +150,6 @@ final class Environment(label: String = ""):
 
 object Environment:
 
-  private lazy val logger = Logger[this.type]
-
   /** Register a Resource which is allocated and its value is returned immediately. */
   //def registerEagerly[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[A] =
   //  register(resource).evalMap: _ =>

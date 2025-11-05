@@ -107,7 +107,7 @@ extends MainService, Service.StoppableByRequest:
           agentCommandExecutorDeferred.complete:
             Left(DirectorTerminatedProblem(DirectorTermination.fromProgramTermination(termination)))
         case Right(workingClusterNode) =>
-          AgentCommandExecutor.service(forDirector, workingClusterNode, clock, conf, actorSystem)
+          AgentCommandExecutor.service(forDirector, workingClusterNode, conf, actorSystem)
             .toAllocated
             .flatTap: allocated =>
               agentCommandExecutorDeferred.complete(Right(allocated)).flatMap:
@@ -255,7 +255,6 @@ object RunningAgent:
   : ResourceIO[Subagent] =
     Resource.suspend:
       IO:
-        val testEventBus = new StandardEventBus[Any]
         for
           _ <- Resource.eval(IO:
             if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)

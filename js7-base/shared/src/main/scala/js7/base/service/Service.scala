@@ -54,8 +54,7 @@ trait Service:
       logInfoStartAndStop(logger, args):
         run
 
-  private def logInfoStartAndStop[A](logger: Logger, args: String = "")(body: IO[A])
-  : IO[A] =
+  private def logInfoStartAndStop[A](logger: Logger, args: String)(body: IO[A]): IO[A] =
     IO.defer:
       logger.info(s"$service${args.nonEmpty ?? s"($args)"} started")
       body.guaranteeCase:

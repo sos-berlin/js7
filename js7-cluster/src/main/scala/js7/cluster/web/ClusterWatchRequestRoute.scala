@@ -33,23 +33,22 @@ trait ClusterWatchRequestRoute extends RouteProvider:
   protected final def clusterWatchMessageRoute(userId: UserId): Route =
     Route.seal:
       accept(`application/x-ndjson`):
-        extractRequest: request =>
-          parameter("keepAlive".as[FiniteDuration]): keepAlive =>
-            completeWithStream(`application/x-ndjson`):
-              clusterWatchRequestStream
-                .handleErrorWith: throwable =>
-                  // The streaming event web service doesn't have an error channel,
-                  // so we simply log the error and end the stream
-                  logger.warn(throwable.toStringWithCauses)
-                  if throwable.getStackTrace.nonEmpty then
-                    logger.debug(throwable.toStringWithCauses, throwable)
-                  Stream.empty
-                .through:
-                  encodeAndHeartbeat(
-                    httpChunkSize = httpChunkSize,
-                    prefetch = prefetch,
-                    keepAlive = keepAlive)
-                .interruptWhenF(shutdownSignaled)
+        parameter("keepAlive".as[FiniteDuration]): keepAlive =>
+          completeWithStream(`application/x-ndjson`):
+            clusterWatchRequestStream
+              .handleErrorWith: throwable =>
+                // The streaming event web service doesn't have an error channel,
+                // so we simply log the error and end the stream
+                logger.warn(throwable.toStringWithCauses)
+                if throwable.getStackTrace.nonEmpty then
+                  logger.debug(throwable.toStringWithCauses, throwable)
+                Stream.empty
+              .through:
+                encodeAndHeartbeat(
+                  httpChunkSize = httpChunkSize,
+                  prefetch = prefetch,
+                  keepAlive = keepAlive)
+              .interruptWhenF(shutdownSignaled)
 
 
 object ClusterWatchRequestRoute:

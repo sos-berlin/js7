@@ -45,7 +45,7 @@ object MBeanUtils:
                 try
                   beanServer.registerMBean(bean, objectName)
                   bean -> None // Never deregister
-                catch case e: javax.management.InstanceAlreadyExistsException =>
+                catch case _: javax.management.InstanceAlreadyExistsException =>
                   bean -> None // Never deregister
               else
                 try
@@ -66,8 +66,8 @@ object MBeanUtils:
                     logger.error(s"Ignoring registerMBean($objectName): $e")
                     bean -> None)(
         release =
-          case (bean, None) => F.unit
-          case (bean, Some(objectName)) =>
+          case (_, None) => F.unit
+          case (_, Some(objectName)) =>
             F.delay:
               beanServer.unregisterMBean(objectName))
       .map(_._1)

@@ -33,8 +33,8 @@ object ClusterWatchConf:
     JavaResource("js7/cluster/watch/configuration/cluster-watch.conf")
 
   def fromCommandLine(args: CommandLineArguments): ClusterWatchConf =
-    val configDir = args.as[Path]("--config-directory=").toAbsolutePath
-    args.as[Path]("--data-directory=").toAbsolutePath // not used
+    args.as[Path]("--config-directory=").toAbsolutePath // Mark as used
+    args.as[Path]("--data-directory=").toAbsolutePath // Mark as used
     val clusterWatchId = args.as[ClusterWatchId]("--cluster-watch-id=")
     val common = CommonConfiguration.Common.fromCommandLineArguments(args)
     import common.configDirectory

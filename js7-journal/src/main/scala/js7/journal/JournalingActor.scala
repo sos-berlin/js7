@@ -109,7 +109,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
 
   private def persistEventCalcReturnChecked2[EE <: E, A](
     eventCalc: EventCalc[S, EE, TimeCtx],
-    options: CommitOptions = CommitOptions.default,
+    options: CommitOptions,
     async: Boolean = false,
     dontCrashActorOnFailure: Boolean = false)(
     callback: Persisted[S, EE] => A)

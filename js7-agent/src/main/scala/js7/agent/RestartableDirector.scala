@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
 final class RestartableDirector private(
   subagent: Subagent,
   conf: AgentConfiguration,
-  testWiring: TestWiring = TestWiring.empty)
+  testWiring: TestWiring)
   (using ioRuntime: IORuntime)
 extends MainService, Service.StoppableByRequest:
 

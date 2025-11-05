@@ -54,8 +54,7 @@ extends
     yield
       notice
 
-  def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView, now: Timestamp)
-  : Checked[NoticeId] =
+  def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView): Checked[NoticeId] =
     for
       scope <- state.toOrderScope(order)
       noticeKey <- expectOrderToNoticeKey.evalAsString(using scope)

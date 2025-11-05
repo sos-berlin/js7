@@ -15,7 +15,7 @@ import scala.jdk.OptionConverters.*
 /** Used by CrashPidFileKiller. */
 final class CrashProcessKiller private(
   protected val sigtermDescendantsWatch: FiberVar[Unit],
-  override protected val dontExecute: Boolean = false,
+  override protected val dontExecute: Boolean,
   sigkillDelay: FiniteDuration)
 extends ProcessKiller[Pid]:
 

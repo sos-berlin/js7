@@ -324,8 +324,7 @@ object Logger extends AdHocLogger:
       //  loggingResource(logLevel, function = s"${src.value}: Resource[${tag.tag}]")(using F)
 
       /** Maybe not useful. */
-      private def loggingResource[F[_]](
-        logLevel: LogLevel, function: String, args: => Any = "")
+      private def loggingResource[F[_]](logLevel: LogLevel, function: String, args: => Any)
         (using F: Sync[F])
       : Resource[F, Unit] =
         Resource
@@ -473,7 +472,7 @@ object Logger extends AdHocLogger:
         a
 
     private def logStream[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
-      args: => Any = "")
+      args: => Any)
       (stream: Stream[F, A])
       (using F: Sync[F])
     : Stream[F, A] =
@@ -519,7 +518,7 @@ object Logger extends AdHocLogger:
 
 
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
-    function: String, args: => Any = "")
+    function: String, args: => Any)
   : Unit =
     lazy val argsString = args match
       case null => "null"
@@ -589,7 +588,7 @@ object Logger extends AdHocLogger:
     logLevel: LogLevel,
     marker: Marker | Null,
     function: String,
-    args: => Any = "",
+    args: => Any,
     duration: => String,
     symbol: String,
     result: => Any,

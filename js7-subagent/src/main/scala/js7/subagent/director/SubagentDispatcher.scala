@@ -1,7 +1,6 @@
 package js7.subagent.director
 
 import cats.effect.IO
-import js7.base.log.Logger
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
@@ -23,5 +22,3 @@ extends CommandDispatcher:
 private object SubagentDispatcher:
   type PostCommand = (Numbered[SubagentCommand.Queueable], SubagentRunId, Switch.ReadOnly) =>
     IO[Checked[Unit]]
-
-  private val logger = Logger[this.type]

@@ -5,7 +5,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.Completed
-import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
@@ -98,5 +97,4 @@ trait SessionRoute extends RouteProvider:
 
 
 object SessionRoute:
-  private val logger = Logger[this.type]
   private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")

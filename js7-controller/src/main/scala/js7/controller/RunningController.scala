@@ -392,7 +392,6 @@ object RunningController:
   : ResourceIO[SignedItemVerifier[SignableItem]] =
     DirectoryWatchingSignatureVerifier.Provider(clock, config)
       .checkedResource(
-        config,
         onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
       .orThrow
       .map(directoryWatchingSignatureVerifier =>

@@ -12,8 +12,6 @@ trait PrometheusMetricsRoute:
   protected val conf: CommonConfiguration
 
   private lazy val prometheusAdapter =
-    conf.config.hasPath("js7.config-directory").thenSome:
-      val configDir = conf.config.getString("js7.config-directory")
     new PrometheusJmxAdapter(Some(conf.configDirectory))
 
   /** /metrics web service according to Prometheus.

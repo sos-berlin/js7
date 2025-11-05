@@ -80,7 +80,7 @@ object OurIORuntime:
   private def resource2[F[_]](
     label: String,
     threads: Int,
-    shutdownHooks: Seq[() => Unit] = Nil,
+    shutdownHooks: Seq[() => Unit],
     computeExecutor: Option[Executor])
     (using F: Sync[F])
   : Resource[F, IORuntime] =

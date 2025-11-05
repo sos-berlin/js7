@@ -344,8 +344,6 @@ object ClusterWatchCounterpart:
     override def toString =
       s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"
 
-  private class RequestTimeoutException extends Exception
-
   private final val MyRequestTimeoutProblem = Problem("ClusterWatch request timed out")
 
   final case class TestWaitingForConfirmation(request: ClusterWatchRequest)

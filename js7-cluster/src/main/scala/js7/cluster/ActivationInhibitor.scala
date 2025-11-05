@@ -25,7 +25,7 @@ import scala.util.control.NoStackTrace
 /** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor private(
   supervisor: Supervisor[IO],
-  testFailInhibitActivationWhileTrying: Option[String] = None):
+  testFailInhibitActivationWhileTrying: Option[String]):
 
   private val _state = AsyncVariable[State](Initial)
 

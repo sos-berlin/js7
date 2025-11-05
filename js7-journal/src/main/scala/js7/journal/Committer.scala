@@ -275,7 +275,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           Written.fromApplied(applied, positionAndEventId)
       .flatTap: chunk =>
         IO.blocking:
-          val t = Deadline.now
           eventWriter.flush(sync = conf.syncOnCommit)
           bean.fileSize = eventWriter.fileLength
           JournalLogger.markChunkForLogging(chunk)

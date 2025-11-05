@@ -44,7 +44,7 @@ object CatsEffectExtensions:
 
     // inline for proper processing of Enclosing
     inline def adHocInfo(inline msg: String): IO[A] =
-      io.flatTap(a => IO(logger.info(msg)))
+      io.flatTap(_ => IO(logger.info(msg)))
 
     /** Converts a failed IO into a `Checked[A]`. */
     def catchAsChecked: IO[Checked[A]] =

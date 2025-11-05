@@ -30,7 +30,7 @@ object StreamingSupport:
     def toPekkoSourceForHttpResponseX(using Tag[A]): IO[Source[A, NotUsed]] =
       Deferred[IO, IO[Unit]].flatMap: deferredRelease =>
         stream
-          .onFinalizeCase: exitCase =>
+          .onFinalize:
             deferredRelease.get
               .flatMap: release =>
                 //logger

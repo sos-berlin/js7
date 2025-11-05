@@ -151,7 +151,6 @@ extends
 
 object DirectoryWatchingSignatureVerifier:
   private val logger = Logger[this.type]
-  private val configPath = "js7.configuration.trusted-signature-keys"
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")
@@ -173,7 +172,7 @@ object DirectoryWatchingSignatureVerifier:
     def recommendedKeyDirectoryName: String =
       throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
 
-    def checkedResource(config: Config, onUpdated: () => Unit)
+    def checkedResource(onUpdated: () => Unit)
     : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
       prepare.map(_.toResource(onUpdated))
 

@@ -543,7 +543,7 @@ object ScalaUtils:
       def checked(i: Int)(using loc: ScalaSourceLocation): Checked[A] =
         try
           Right(seq(i))
-        catch case t: IndexOutOfBoundsException =>
+        catch case _: IndexOutOfBoundsException =>
           Left:
             val range = seq.knownSize match
               case -1 => ""

@@ -41,7 +41,7 @@ object MapDiff:
 
   def diff[K, V](from: collection.Map[K, V], to: collection.Map[K, V]): MapDiff[K, V] =
     MapDiff(
-      added = to.view.filter { case (k, v) => !from.contains(k) }.toMap,
+      added = to.view.filter { case (k, _) => !from.contains(k) }.toMap,
       updated = to.view.filter { case (k, v) => from.get(k) exists v.!= }.toMap,
       deleted = from.keySet.toSet diff to.keySet)
 

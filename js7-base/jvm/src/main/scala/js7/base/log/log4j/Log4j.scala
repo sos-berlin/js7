@@ -2,10 +2,8 @@ package js7.base.log.log4j
 
 import java.lang.reflect.Method
 import js7.base.log.{CorrelId, Logger}
-import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.ifFailed
 import js7.base.utils.{Atomic, Once}
-import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -14,8 +12,6 @@ import scala.util.{Failure, Success, Try}
 object Log4j:
 
   private val isShutdown = Atomic(false)
-  private val startedAt = Timestamp.now
-  private val runningSince = Deadline.now
   private val ifNotInitialized = new Once
   private var earlyInitialized = false
 

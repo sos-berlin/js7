@@ -16,7 +16,7 @@ import js7.launcher.process.ShellReturnValuesProvider.*
 private final class ShellReturnValuesProvider private(
   val file: Path,
   encoding: Charset,
-  v1Compatible: Boolean = false)
+  v1Compatible: Boolean)
 extends AutoCloseable:
 
   def close(): Unit =

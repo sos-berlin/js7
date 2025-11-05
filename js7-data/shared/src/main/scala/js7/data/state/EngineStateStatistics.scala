@@ -25,7 +25,7 @@ object EngineStateStatistics:
     EngineStateStatistics(EventCounter.empty)
 
   final class Builder:
-    private val eventCounterBuilder = EventCounter.Builder()
+    //private val eventCounterBuilder = EventCounter.Builder()
 
     def put(eventCount: EventCounter.EventCount) =
       () //eventCounterBuilder.put(eventCount.eventName, eventCount.count)

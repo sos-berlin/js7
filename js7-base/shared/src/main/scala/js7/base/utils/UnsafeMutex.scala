@@ -6,7 +6,7 @@ import cats.syntax.flatMap.*
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
-final class UnsafeMutex[F[_]: UnsafeMemoizable: Async]:
+final class UnsafeMutex[F[_]: {UnsafeMemoizable, Async}]:
 
   private val mutex = Mutex[F].unsafeMemoize
 

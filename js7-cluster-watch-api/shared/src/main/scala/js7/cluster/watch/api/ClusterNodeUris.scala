@@ -75,10 +75,3 @@ final class ClusterNodeUris private(prefixedUri: Uri):
 object ClusterNodeUris:
   def apply(prefixedUri: Uri): ClusterNodeUris =
     new ClusterNodeUris(Uri(prefixedUri.string.stripSuffix("/") + "/"))
-
-  private def encodeClass[A: ClassTag]: String =
-    encodeClass(implicitClass[A])
-
-  private def encodeClass(cls: Class[?]): String =
-    require(cls != classOf[Nothing], "Missing return=CLASS")
-    cls.simpleScalaName

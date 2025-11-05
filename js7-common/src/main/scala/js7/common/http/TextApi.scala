@@ -42,7 +42,7 @@ trait TextApi:
   def checkIsResponding: IO[Boolean] =
     requireIsResponding.as(true)
       .recoverWith:
-        case ConnectionLost(t) => IO.pure(false)
+        case ConnectionLost(_) => IO.pure(false)
 
 
   protected object printer:

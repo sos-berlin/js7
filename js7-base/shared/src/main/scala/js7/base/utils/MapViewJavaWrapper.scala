@@ -67,4 +67,4 @@ final class MapViewJavaWrapper[K, V](mapView: MapView[K, V]) extends ju.Abstract
       // wrong type is passed. This is why we need a type cast to A inside a try/catch.
       mapView.contains(key.asInstanceOf[K])
     catch
-      case ex: ClassCastException => false
+      case _: ClassCastException => false

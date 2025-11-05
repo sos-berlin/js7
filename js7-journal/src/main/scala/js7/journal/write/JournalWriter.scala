@@ -8,7 +8,6 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toMB
@@ -35,8 +34,6 @@ extends AutoCloseable:
 
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
-
-  private val logger = Logger.withPrefix[this.type](file.getFileName.toString)
 
   private var _eventsStarted = append
   private var _lastEventId = after

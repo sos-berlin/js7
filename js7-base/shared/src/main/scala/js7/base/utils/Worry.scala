@@ -54,13 +54,13 @@ final case class Worry(
   def logWhenItTakesLonger[A](preposition: String, completed: String, what: => String)(io: IO[A])
   : IO[A] =
     logWhenItTakesLonger_(io, maxLogLevel = maxLogLevel):
-      case (None, elapsed, level, sym) => IO.pure:
+      case (None, elapsed, _, sym) => IO.pure:
         s"$sym Still waiting $preposition $what for ${elapsed.pretty}"
-      case (Some(Outcome.Succeeded(_)), elapsed, level, sym) => IO.pure:
+      case (Some(Outcome.Succeeded(_)), elapsed, _, sym) => IO.pure:
         s"$sym $what $completed after ${elapsed.pretty}"
-      case (Some(Outcome.Canceled()), elapsed, level, sym) => IO.pure:
+      case (Some(Outcome.Canceled()), elapsed, _, sym) => IO.pure:
         s"$sym $what canceled after ${elapsed.pretty}"
-      case (Some(Outcome.Errored(t)), elapsed, level, sym) => IO.pure:
+      case (Some(Outcome.Errored(t)), elapsed, _, sym) => IO.pure:
         s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
 
   def logWhenItTakesLonger_[A](io: IO[A], maxLogLevel: LogLevel = LogLevel.MaxValue)
@@ -79,7 +79,7 @@ final case class Worry(
             val sym = outcome match
               case Outcome.Succeeded(_) => "🔵"
               case Outcome.Canceled() => "◼️ "
-              case Outcome.Errored(t) => "💥"
+              case Outcome.Errored(_) => "💥"
             onDelayedOrCompleted(Some(outcome), elapsed, level, sym)
               .flatMap: line =>
                 IO(logger.log(level, line))

@@ -288,9 +288,9 @@ private trait SubagentEventListener:
         journal.persist(subagentId <-: SubagentCoupled)
           .map(_.orThrow)
 
-  private def isCouplingStateCoupled: Boolean =
-    journal.unsafeAggregate().idToSubagentItemState(subagentId).couplingState ==
-      DelegateCouplingState.Coupled
+  //private def isCouplingStateCoupled: Boolean =
+  //  journal.unsafeAggregate().idToSubagentItemState(subagentId).couplingState ==
+  //    DelegateCouplingState.Coupled
 
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()
 

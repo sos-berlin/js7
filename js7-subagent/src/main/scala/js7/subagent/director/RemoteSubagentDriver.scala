@@ -151,8 +151,8 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   //  dispatcher.suspend *> stopEventListener
 
   private def tryShutdownSubagent(
-    processSignal: Option[ProcessSignal] = None,
-    dontWaitForDirector: Boolean = false)
+    processSignal: Option[ProcessSignal],
+    dontWaitForDirector: Boolean)
   : IO[Unit] =
     IO.defer:
       shuttingDown = true

@@ -25,8 +25,7 @@ import scala.collection.mutable
 final class InputStreamJsonSeqReader(
   inputStream_ : SeekableInputStream,
   name: String,
-  blockSize: Int = BlockSize,
-  withRS: Boolean = false)
+  blockSize: Int = BlockSize)
 extends AutoCloseable:
 
   private val inAtomic = Atomic[SeekableInputStream | Null](inputStream_)
@@ -81,8 +80,6 @@ extends AutoCloseable:
       while !lfReached && (!eof || blockRead < blockLength) do
         if blockRead == blockLength then
           eof = !fillByteBuffer()
-        if blockRead < blockLength then
-          val byte = block(blockRead)
         val start = blockRead
         while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do
           blockRead += 1

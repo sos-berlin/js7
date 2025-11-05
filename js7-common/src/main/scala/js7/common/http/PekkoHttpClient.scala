@@ -292,7 +292,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     data: A,
     headers: List[HttpHeader],
-    dontLog: Boolean = false)
+    dontLog: Boolean)
     (using IO[Option[SessionToken]])
   : IO[B] =
     post_[A](uri, data, AcceptJson ::: headers, dontLog = dontLog)

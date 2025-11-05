@@ -169,7 +169,7 @@ final class Openssl(dir: Path):
     p12File
 
   private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean,
-    days: Option[Int] = None,
+    days: Option[Int],
     notBefore: Option[Timestamp] = None,
     notAfter: Option[Timestamp] = None) =
     runProcess:

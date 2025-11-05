@@ -4,7 +4,6 @@ import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
-import js7.base.log.Logger
 import js7.base.metering.CallMeterLoggingService.*
 import js7.base.service.Service
 import scala.collection.mutable
@@ -37,8 +36,6 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
 
 
 object CallMeterLoggingService:
-
-  private val logger = Logger[this.type]
 
   def service(config: Config): ResourceIO[CallMeterLoggingService] =
     service(Conf.fromConfig(config))

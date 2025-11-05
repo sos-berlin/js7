@@ -196,7 +196,7 @@ object WorkingClusterNode:
     (using NodeNameToPassword[S])
   : IO[Unit] =
     state.clusterState match
-      case clusterState: ClusterState.Coupled =>
+      case _: ClusterState.Coupled =>
         common.requireValidLicense.flatMapT: _ =>
           common.inhibitActivationOfPeer(state).flatMapT:
             case Some(otherFailedOver) =>

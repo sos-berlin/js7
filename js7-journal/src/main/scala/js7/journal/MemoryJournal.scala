@@ -26,9 +26,9 @@ import scala.concurrent.duration.Deadline
 final class MemoryJournal[S <: JournaledState[S]] private(
   initial: S,
   val size: Int,
-  waitingFor: String = "releaseEvents",
+  waitingFor: String,
   infoLogEvents: Set[String],
-  eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+  eventIdGenerator: EventIdGenerator,
   clock: WallClock,
   semaphore: Semaphore[IO])
   (implicit protected val S: JournaledState.Companion[S])

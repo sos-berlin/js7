@@ -31,7 +31,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
               boardStates.traverse: boardState =>
                 boardState.board.match
                   case board: GlobalBoard =>
-                    board.expectingOrderToNoticeId(order, state, clock.now())
+                    board.expectingOrderToNoticeId(order, state)
                       .left.map(_.withPrefix(s"${instr.getClass.shortClassName}:"))
 
                   case board: PlannableBoard =>

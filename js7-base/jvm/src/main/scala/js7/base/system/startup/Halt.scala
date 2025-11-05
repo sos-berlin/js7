@@ -18,8 +18,7 @@ object Halt:
       exitCode = if restart then Js7ReturnCodes.HaltAndRestart else Js7ReturnCodes.Halt,
       warnOnly = warnOnly)
 
-  private def haltJava2(msg: String, exitCode: Int = Js7ReturnCodes.Halt, warnOnly: Boolean)
-  : Nothing =
+  private def haltJava2(msg: String, exitCode: Int, warnOnly: Boolean): Nothing =
     try System.err.println()
     catch case _: Throwable => {}
 

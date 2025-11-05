@@ -21,7 +21,6 @@ import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.system.startup.Halt
-import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, ScalaUtils}
@@ -44,7 +43,6 @@ final class AgentCommandExecutor private(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   workingClusterNode: WorkingClusterNode[AgentState],
-  clock: AlarmClock,
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem,
   shuttingDown: AtomicCell[IO, Option[ShutDown]])
@@ -59,7 +57,6 @@ extends
 
   private val _dedicated = Deferred.unsafe[IO, Dedicated]
   private val terminated = Deferred.unsafe[IO, DirectorTermination]
-  private var isResetting = false
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
@@ -198,7 +195,6 @@ extends
       case Left(problem) => IO.left(problem)
       case Right(()) =>
         logger.info(s"❗ $cmd")
-        isResetting = true
         whenNotShuttingDown:
           agentMotor.flatMapSome: agentMotor =>
             agentMotor.resetBareSubagents
@@ -366,7 +362,6 @@ object AgentCommandExecutor:
   def service(
     forDirector: Subagent.ForDirector,
     workingClusterNode: WorkingClusterNode[AgentState],
-    clock: AlarmClock,
     agentConf: AgentConfiguration,
     actorSystem: ActorSystem)
   : ResourceIO[AgentCommandExecutor] =
@@ -378,7 +373,7 @@ object AgentCommandExecutor:
               agentState.meta.clusterNodeIdToSubagentId(nodeId).orThrow
         shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown])
       yield
-        new AgentCommandExecutor(forDirector, failedOverSubagentId, workingClusterNode, clock,
+        new AgentCommandExecutor(forDirector, failedOverSubagentId, workingClusterNode,
           agentConf, actorSystem,
           shuttingDownAtomic)
 

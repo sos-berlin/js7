@@ -3,7 +3,6 @@ package js7.base.time
 import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId, ZoneOffset, Duration as JDuration}
-import js7.base.log.Logger
 import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
 import js7.base.time.AdmissionPeriodCalculator.*
 import js7.base.time.JavaTime.extensions.*
@@ -65,8 +64,6 @@ sealed trait AdmissionPeriodCalculator:
 
 
 object AdmissionPeriodCalculator:
-  private val logger = Logger[this.type]
-
   private[time] val NoOffset = ZoneOffset.ofTotalSeconds(0)
   private val JEpsilon = FiniteDuration.Epsilon.toJava
 

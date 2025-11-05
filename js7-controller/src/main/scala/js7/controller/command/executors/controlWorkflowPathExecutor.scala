@@ -5,7 +5,6 @@ import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
 import js7.data.controller.ControllerStateExecutor
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.workflow.{Workflow, WorkflowPathControl, WorkflowPathControlPath}
 
@@ -32,7 +31,6 @@ private[command] def controlWorkflowPathExecutor: CommandEventConverter[ControlW
           else
             NoKey <-: UnsignedSimpleItemChanged(item)
         coll <- coll.add:
-          val instrService = InstructionExecutorService(coll.context.clock)
           ControllerStateExecutor.updatedWorkflowPathControlAttachedEvents(item)
       yield
         coll

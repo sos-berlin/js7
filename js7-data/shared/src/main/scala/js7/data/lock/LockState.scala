@@ -51,7 +51,7 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
       case Right(()) =>
         Right(true)
 
-  private def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
+  private def checkAcquire(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Unit] =
     tryAcquire(orderId, count)
       .map(_ => ())
 

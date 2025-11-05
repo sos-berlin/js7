@@ -112,14 +112,13 @@ object CloseableIterator:
 
   def closeableIteratorToStream[A](iterator: CloseableIterator[A], chunkSize: Int): Stream[IO, A] =
     Stream
-      .resource(Resource.makeCase(
+      .resource(Resource.make(
         acquire = IO.pure(iterator))(
-        release = (iterator, exitCase) => IO:
-          //logger.trace(s"Close $iterator $exitCase")
-          iterator.close()))
+        release = iterator =>
+          IO(iterator.close())))
       .flatMap: iterator =>
         Stream.fromIterator(iterator, chunkSize = chunkSize)
-  
+
   private class CloseAtEnd[A](underlying: CloseableIterator[A]) extends CloseableIterator[A]:
     def hasNext = underlying.hasNext || {
       underlying.close()

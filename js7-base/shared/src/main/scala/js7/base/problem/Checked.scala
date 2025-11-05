@@ -159,7 +159,7 @@ object Checked:
 
     def orElse[B >: A](other: => Checked[B]): Checked[B] =
       underlying match
-        case Left(aProblem) =>
+        case Left(_) =>
           other match
             case Left(bProblem) => /*aProblem |+|*/ bProblem
             case Right(right) => Right(right)

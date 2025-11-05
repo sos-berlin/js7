@@ -21,7 +21,7 @@ import scala.reflect.ClassTag
 
 final class HttpSubagentApi private(
   admission: Admission,
-  protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
+  protected val httpsConfig: HttpsConfig,
   protected val name: String,
   protected val actorSystem: ActorSystem)
 extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpClient:

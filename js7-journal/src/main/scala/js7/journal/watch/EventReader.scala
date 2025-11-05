@@ -167,7 +167,7 @@ extends AutoCloseable:
     jsonSeqReader: InputStreamJsonSeqReader,
     position: Long,
     until: Option[SyncDeadline],
-    markEOF: Boolean = false,
+    markEOF: Boolean,
     onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
     Stream.suspend:

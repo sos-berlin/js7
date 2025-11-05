@@ -9,7 +9,7 @@ object TimestampedKeyedEvent:
 
     def maybeMillisSinceEpoch: Option[Long] =
       maybe match
-        case o: KeyedEvent[E] => None
+        case _: KeyedEvent[E] => None
         case o: TimestampedKeyedEvent[E] => Some(o.millisSinceEpoch)
 
     def keyedEvent: KeyedEvent[E] =

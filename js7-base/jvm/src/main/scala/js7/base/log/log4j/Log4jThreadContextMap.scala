@@ -83,7 +83,7 @@ object Log4jThreadContextMap:
     put("js7.prettyVersion", BuildInfo.prettyVersion)
     put("js7.system", Lazy(StartUp.startUpLine))
 
-  private val dummyNullCorrelId = CorrelId("__NULL__")
+  //private val dummyNullCorrelId = CorrelId("__NULL__")
 
   // Counters are not accurate because not synchronized !!!
   private var putSuppressedCount = 0L

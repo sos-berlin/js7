@@ -107,9 +107,6 @@ extends MainService, Service.StoppableByRequest:
     //          t.toStringWithCauses}")
     //        IO.left(ClusterWatchActiveStillAliveProblem)
 
-  private def TEST(t: Throwable): Unit =
-    logger.info(t.toStringWithCauses)
-
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
     private val streamFailed = Atomic(false)
 

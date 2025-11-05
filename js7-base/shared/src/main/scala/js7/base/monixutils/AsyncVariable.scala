@@ -7,7 +7,7 @@ import js7.base.utils.AsyncLock
 import org.jetbrains.annotations.TestOnly
 
 final class AsyncVariable[V] private(
-  initial: V, varName: String, typeName: String, suppressLog: Boolean = false, logMinor: Boolean):
+  initial: V, varName: String, typeName: String, suppressLog: Boolean, logMinor: Boolean):
 
   @volatile private var _value = initial
   private val lock = AsyncLock(varName, suppressLog = suppressLog, logMinor = logMinor)

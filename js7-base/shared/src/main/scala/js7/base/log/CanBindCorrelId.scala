@@ -137,14 +137,6 @@ object CanBindCorrelId:
       else
         bind(generate())(body)
 
-  private type SavedLocal = Any
-
-  private def save(): SavedLocal =
-    null
-
-  private def restore(saved: SavedLocal): Unit =
-    {}
-
   object implicits:
     /** Implicit instance for all things synchronous.
      *

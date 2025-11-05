@@ -6,7 +6,6 @@ import java.util.{Map as JMap, Optional as JOptional, Set as JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.metering.CallMeter
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
@@ -302,6 +301,3 @@ object JControllerState extends JJournaledState.Companion[JControllerState, Cont
   /** Includes the type. */
   def inventoryItemToJson(item: JInventoryItem): String =
     ControllerState.inventoryItemJsonCodec(item.asScala).compactPrint
-
-  private val meterToPlanGet = CallMeter("JControllerState.toPlan.get")
-  private val meterToPlanKeySet = CallMeter("JControllerState.toPlan.keySet")

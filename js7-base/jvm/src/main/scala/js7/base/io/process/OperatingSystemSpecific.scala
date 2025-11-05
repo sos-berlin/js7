@@ -3,7 +3,6 @@ package js7.base.io.process
 import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions.*
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 
 /**
@@ -28,8 +27,6 @@ private[process] sealed trait OperatingSystemSpecific:
   protected final def filenamePrefix(name: String) = s"JS7-Agent-$name-"
 
 private object OperatingSystemSpecific:
-  private val logger = Logger[this.type]
-
   private[process] val OS: OperatingSystemSpecific = if isWindows then OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
   private object Unix extends OperatingSystemSpecific:

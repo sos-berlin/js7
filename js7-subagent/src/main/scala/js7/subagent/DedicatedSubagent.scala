@@ -65,7 +65,6 @@ extends Service.StoppableByRequest:
 
   private val jobKeyToJobDriver = AsyncMap[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
-  private val stoppingLock = false
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
   private val stopParams = Ref.unsafe[IO, StopParams](StopParams())
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])

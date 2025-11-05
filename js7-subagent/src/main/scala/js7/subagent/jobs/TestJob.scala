@@ -3,7 +3,6 @@ package js7.subagent.jobs
 import cats.effect.IO
 import cats.syntax.parallel.*
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.Assertions.assertThat
@@ -20,10 +19,7 @@ import js7.subagent.jobs.TestJob.*
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.*
 
-final class TestJob(outcome: OrderOutcome.Completed)
-extends InternalJob:
-  // We need an empty constructor for reflection
-  def this() = this(OrderOutcome.succeeded)
+final class TestJob extends InternalJob:
 
   def toOrderProcess(step: Step): OrderProcess =
     def toStringOrInt: Value =>? Checked[Either[String, Int]] =
@@ -60,8 +56,6 @@ extends InternalJob:
 
 
 object TestJob extends InternalJob.Companion[TestJob]:
-  private val logger = Logger[this.type]
-
   private val charBlockSize = 64 * 1024
   private lazy val charBlock: String =
     val chars: String = ('\u0021' to '\u007e').mkString

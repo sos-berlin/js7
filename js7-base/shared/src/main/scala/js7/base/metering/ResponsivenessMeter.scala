@@ -66,7 +66,7 @@ extends Service.StoppableByCancel:
         callback.get.flatMap(_(delay, isSlow, conf))
 
   @threadUnsafe lazy
-  val meterCallbackDefault: MeterCallback = (delay, slow, conf) =>
+  val meterCallbackDefault: MeterCallback = (delay, slow, _) =>
     IO:
       if slow then
         logger.log(logLevel, s"🐌 Internal response time was ${delay.pretty}")

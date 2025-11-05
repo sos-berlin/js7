@@ -70,7 +70,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
 
                   itemUpdater
                     .updateItems(verifiedUpdateItems)
-                    .flatTap(o => IO:
+                    .flatTap(_ => IO:
                       if startedAt.elapsed > 1.s then
                         logger.debug("POST controller/api/item totally: " +
                           itemsPerSecondString(startedAt.elapsed, itemCount, "items")))

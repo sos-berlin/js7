@@ -129,7 +129,7 @@ extends MainService, Service.StoppableByRequest:
                   .flatMap: termination =>
                     whenTerminated.complete(termination).as(termination)
 
-            case Some(currentShutdown) =>
+            case Some(_) =>
               cmd.processSignal.foldMap:
                 killAllProcesses
               .productR:

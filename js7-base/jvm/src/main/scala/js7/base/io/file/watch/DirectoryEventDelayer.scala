@@ -123,9 +123,6 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
     private val atomicCell = memoize:
       AtomicCell[IO].of(State(TreeMap.empty, Map.empty, Deferred.unsafe))
 
-    private def update(f: State => State): IO[Unit] =
-      atomicCell.flatMap(_.update(f))
-
     private def modify[A](f: State => (State, A)): IO[A] =
       atomicCell.flatMap(_.modify(f))
 

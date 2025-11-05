@@ -31,7 +31,6 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   /** Remember the descendant processes just before SIGTERM. */
   protected val sigtermDescendantsWatch: FiberVar[Unit]
   private var _sigtermDescendants: Map[Pid, Vector[ProcessHandle]] = Map.empty
-  private var sigtermDescendantsSince = Deadline(ZeroDuration)
   private val isTerminatedMainPid = mutable.Set[Pid]()
 
   protected def label: String
@@ -55,7 +54,6 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   private def saveSigtermDescendants(descendants: Map[Pid, Vector[ProcessHandle]]): IO[Unit] =
     IO.defer:
       _sigtermDescendants = descendants // We will sigkill them later
-      sigtermDescendantsSince = Deadline.now
       sigtermDescendantsWatch.startFiber:
         watchSigtermDescendants
 

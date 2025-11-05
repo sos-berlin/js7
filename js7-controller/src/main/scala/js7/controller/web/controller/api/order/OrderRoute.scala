@@ -29,9 +29,9 @@ import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, DeleteOrdersW
 import js7.data.order.{FreshOrder, OrderId}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, UnsupportedMediaType}
+import org.apache.pekko.http.scaladsl.model.HttpEntity
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Conflict, Created, UnsupportedMediaType}
 import org.apache.pekko.http.scaladsl.model.headers.Location
-import org.apache.pekko.http.scaladsl.model.{HttpEntity, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Route}
 import scala.concurrent.duration.Deadline.now
@@ -43,7 +43,7 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
   : IO[Checked[command.Response]]
-  
+
   protected def actorSystem: ActorSystem
 
   private given IORuntime = ioRuntime
@@ -141,14 +141,3 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
 object OrderRoute:
   private val emptyJsonObject = Json.obj()
   private val logger = Logger[this.type]
-
-  private val matchOrderId = new Directive[Tuple1[OrderId]]:
-    def tapply(inner: Tuple1[OrderId] => Route) =
-      path(Segment): orderIdString =>
-        inner(Tuple1(OrderId(orderIdString)))
-      ~
-        extractUnmatchedPath:
-          case Uri.Path.Slash(tail) if !tail.isEmpty =>
-            inner(Tuple1(OrderId(tail.toString))) // Slashes not escaped
-          case _ =>
-            complete(NotFound) // Invalid OrderId syntax

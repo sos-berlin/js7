@@ -144,8 +144,7 @@ object SessionApi:
             body
         case o => IO.pure(o)
 
-    private def renewSession(problem: Problem)
-    : IO[Completed] =
+    private def renewSession(problem: Problem): IO[Completed] =
       IO.defer:
         clearSession()
         // Race condition with a parallel operation,
