@@ -13,7 +13,8 @@ import js7.data.item.{SourceType, VersionedItem, VersionedItemId, VersionedItemP
 trait VersionedItemReader extends ItemReader:
   val companion: VersionedItem.Companion_
 
-  import companion.{Item, Path as ThisItemPath}
+  import companion.Item
+  private type ThisItemPath = companion.Path
 
   protected def read(id: VersionedItemId[ThisItemPath], byteArray: ByteArray): PartialFunction[SourceType, Checked[Item]]
 

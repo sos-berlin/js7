@@ -10,9 +10,7 @@ import js7.data.item.{InventoryItem, InventoryItemPath, SourceType}
 trait ItemReader:
   val companion: InventoryItem.Companion_
 
-  import companion.Path as ThisItemPath
-
-  private[item] final lazy val itemPathCompanion: InventoryItemPath.Companion[ThisItemPath] =
+  private[item] final lazy val itemPathCompanion: InventoryItemPath.Companion[companion.Path] =
     companion.Path
 
   protected def read(key: companion.Key, source: ByteArray)

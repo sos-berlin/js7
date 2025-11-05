@@ -83,9 +83,19 @@ private object SinglePortPekkoWebServer:
           s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}"
         bind(
           https,
-          Some(ConnectionContext.https(
-            loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-            clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+          Some:
+            ConnectionContext.https(
+              loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
+              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need))
+            // Non-deprecated solution ???
+            //https://pekko.apache.org/docs/pekko-http/current/server-side/server-https-support.html
+            //ConnectionContext.httpsServer: () =>
+            //  val sslContext = loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs)
+            //  val engine = sslContext.createSSLEngine()
+            //  if httpsClientAuthRequired then
+            //    engine.setUseClientMode(false) <-- What's this?
+            //    engine.setNeedClientAuth(true)
+            //  engine)
 
       def bind(
         binding: WebServerBinding,
