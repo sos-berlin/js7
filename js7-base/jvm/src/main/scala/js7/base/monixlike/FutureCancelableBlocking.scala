@@ -9,5 +9,4 @@ object FutureCancelableBlocking:
     def blockingCancel()(using sourcecode.Enclosing, ScalaSourceLocation): Unit =
       cancelable match
         case o: StandardFutureCancelable => o.cancelToFuture().awaitInfinite
-        case o: SerialFutureCancelable => o.cancelToFuture().awaitInfinite
         case EmptyFutureCancelable =>
