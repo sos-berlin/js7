@@ -1,6 +1,7 @@
 package js7.tests
 
 import cats.effect.{IO, Resource}
+import cats.syntax.traverse.*
 import fs2.Stream
 import js7.agent.RunningAgent
 import js7.base.catsutils.Environment.TaggedResource
@@ -15,10 +16,12 @@ import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.WaitForCondition.{retryUntil, waitForCondition}
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Atomic
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
@@ -31,8 +34,9 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.given
-import js7.data.value.expression.Expression.{NamedValue, StringConstant}
+import js7.data.value.expression.Expression.{NamedValue, StringConstant, exprFun}
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Scope
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BreakOrder, Execute, Fail, Fork, If, Prompt, Retry, TryInstruction}
@@ -1051,6 +1055,42 @@ final class CancelOrdersTest
           HistoricOutcome(Position(0) / "try+0" % 0, OrderOutcome.Killed(OrderOutcome.Failed(Map(
             "returnCode" -> NumberValue(sigtermReturnCode))))),
           HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught)))
+
+  "Cancel via ExprFunction" in:
+    controller.resetLastWatchedEventId()
+
+    val orderIds = Seq(OrderId("EXPR-A1"), OrderId("EXPR-A2"), OrderId("EXPR-B"))
+    for orderId <- orderIds do
+      addOrder:
+        FreshOrder(orderId, singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+      controller.awaitNextKey[OrderAttached](orderId)
+
+    execCmd:
+      CancelOrders(
+        exprFun"orderId => substring($$orderId ++ '      ', 0, 6) == 'EXPR-A'",
+        CancellationMode.FreshOnly)
+    controller.await[OrderCancelled](_.key == orderIds(0))
+    controller.await[OrderCancelled](_.key == orderIds(1))
+
+    execCmd:
+      CancelOrders(Seq(orderIds(2)))
+    for orderId <- orderIds do
+      controller.await[OrderTerminated](_.key == orderId)
+
+
+final class CancelOrdersExprFunctionSpeedTest extends OurTestSuite:
+  private val logger = Logger[this.type]
+
+  "Speed test ExprFunction" in:
+    val orderIds = (1 to 1_000_000).view.map(_.toString).toVector
+    val fun = exprFun"orderId => substring($$orderId, 0, 1) != '7'"
+    (1 to (if isIntelliJIdea then 20 else 1)).foreach: _ =>
+      val t = Deadline.now
+      val result = orderIds.traverse: orderId =>
+        fun.eval(orderId)(using Scope.empty)
+      val elapsed = t.elapsed
+      logger.info(itemsPerSecondString(elapsed, orderIds.size, "evaluations"))
+      assert(result.isRight)
 
 
 object CancelOrdersTest:

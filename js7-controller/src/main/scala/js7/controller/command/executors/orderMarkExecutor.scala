@@ -2,7 +2,7 @@ package js7.controller.command.executors
 
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.Problems.UnknownOrderProblem
@@ -13,11 +13,32 @@ import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.order.OrderId
+import js7.data.value.StringValue
+import js7.data.value.expression.{ExprFunction, Scope}
+import scala.collection.immutable
+import scala.collection.immutable.ArraySeq
 
 private[command] def cancelOrdersExecutor: CommandEventConverter[CancelOrders] =
   CommandEventConverter.eventCalc[CancelOrders]: cmd =>
-    executeOrderMarkCommands(cmd.orderIds):
-      _.cancel(_, cmd.mode)
+    EventCalc: coll =>
+      cmd.orderIds.match
+        case orderIds: immutable.Iterable[OrderId] =>
+          Right(orderIds)
+
+        case fun: ExprFunction =>
+          // Maybe SLOW with a complicated ExprFunction and a million orders !!!
+          coll.aggregate.idToOrder.keys.toVector.traverse: orderId =>
+            fun.eval(StringValue(orderId.string))(using Scope.empty)
+              .flatMap(_.asBoolean)
+              .map(orderId -> _)
+          .map:
+            _.collect:
+              case (orderId, true) => orderId
+      .map: orderIds =>
+        executeOrderMarkCommands(orderIds):
+          _.cancel(_, cmd.mode)
+      .flatMap: eventCalc =>
+        coll.addEventCalc(eventCalc)
 
 private[command] def suspendOrdersExecutor: CommandEventConverter[SuspendOrders] =
   CommandEventConverter.eventCalc[SuspendOrders]: cmd =>

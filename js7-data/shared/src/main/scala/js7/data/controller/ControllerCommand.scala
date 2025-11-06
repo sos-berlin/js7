@@ -71,12 +71,18 @@ object ControllerCommand extends CommonCommand.Companion:
   object AddOrdersResponse:
     implicit val jsonCodec: Codec.AsObject[AddOrdersResponse] = deriveCodec
 
+
   final case class CancelOrders(
-    orderIds: immutable.Iterable[OrderId],
+    orderIds: immutable.Iterable[OrderId] | ExprFunction,
     mode: CancellationMode = CancellationMode.FreshOrStarted())
   extends IsEventEmitting, Big:
     type Response = Response.Accepted
-    override def toShortString = s"CancelOrders(${orderIds.mkStringLimited(3, " ")}, $mode)"
+    override def toShortString = s"CancelOrders(${
+      orderIds match
+        case orderIds: immutable.Iterable[OrderId] => orderIds.mkStringLimited(3, " ")
+        case fun: ExprFunction => fun
+    }, $mode)"
+
   object CancelOrders:
     implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
       JsonObject.fromIterable(
@@ -85,9 +91,10 @@ object ControllerCommand extends CommonCommand.Companion:
 
     implicit val jsonDecoder: Decoder[CancelOrders] = c =>
       for
-        orderIds <- c.get[Vector[OrderId]]("orderIds")
+        orderIds <- c.get[Vector[OrderId] | ExprFunction]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       yield CancelOrders(orderIds, mode)
+
 
   final case class PostNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)
   extends IsEventEmitting:
@@ -379,6 +386,16 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))
+
+  private given Encoder[immutable.Iterable[OrderId] | ExprFunction] =
+    case orderIds: immutable.Iterable[OrderId] => orderIds.asJson
+    case fun: ExprFunction => fun.asJson
+
+  private given Decoder[Vector[OrderId] | ExprFunction] = c =>
+    if c.value.isString then
+      c.value.as[ExprFunction] // A predicate used to filter *all* orders, can be SLOW
+    else
+      c.value.as[Vector[OrderId]]
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],

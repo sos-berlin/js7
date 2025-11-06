@@ -17,9 +17,8 @@ import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.plan.{PlanSchemaId, PlanStatus}
 import js7.data.value.expression.ExprFunction.testing.|=>
-import js7.data.value.expression.Expression.exprFun
-import js7.data.value.expression.ExpressionParser
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{expr, exprFun}
+import js7.data.value.expression.{ExprFunction, ExpressionParser}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
@@ -103,6 +102,13 @@ final class ControllerCommandTest extends OurTestSuite:
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "A", "B" ]
+        }""")
+
+    "CancelOrders ExprFunction" in:
+      testJson[ControllerCommand](CancelOrders(exprFun"orderId => true", CancellationMode.FreshOrStarted()),
+        json"""{
+          "TYPE": "CancelOrders",
+          "orderIds": "orderId => true"
         }""")
 
     "CancelOrders FreshOrStarted" in:
@@ -209,7 +215,7 @@ final class ControllerCommandTest extends OurTestSuite:
       ChangeGlobalToPlannableBoard(
         PlannableBoard(BoardPath("BOARD")),
         PlanSchemaId("DailyPlan"),
-        "noticeKey" |=> expr("[ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]")
+        "noticeKey" |=> expr"[ substring($$noticeKey, 0, 10), substring($$noticeKey, 10) ]"
       ),
       json"""{
         "TYPE": "ChangeGlobalToPlannableBoard",
@@ -227,9 +233,9 @@ final class ControllerCommandTest extends OurTestSuite:
       ChangePlannableToGlobalBoard(
         GlobalBoard(
           BoardPath("BOARD"),
-          postOrderToNoticeKey = expr("'NOTICEKEY'"),
-          expectOrderToNoticeKey = expr("'NOTICEKEY'"),
-          endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+          postOrderToNoticeKey = expr"'NOTICEKEY'",
+          expectOrderToNoticeKey = expr"'NOTICEKEY'",
+          endOfLife = expr"$$js7EpochMilli + 24 * 3600 * 1000"),
         PlanSchemaId("DailyPlan"),
         exprFun""" (planKey, noticeKey) => "$$planKey$$noticeKey" """),
       json"""{
