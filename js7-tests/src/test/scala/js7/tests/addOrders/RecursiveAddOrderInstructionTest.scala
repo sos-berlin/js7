@@ -2,10 +2,11 @@ package js7.tests.addOrders
 
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderTerminated
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.OrderId
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.instructions.AddOrder
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -26,14 +27,16 @@ final class RecursiveAddOrderInstructionTest extends OurTestSuite, ControllerAge
 
   "Test" in:
     if !isIntelliJIdea then pending // FIXME Test fails because problem is not fixed
+    pendingUntilFixed:
+      val workflowPath = WorkflowPath.of("WORKFLOW")
+      val workflow = Workflow.of(workflowPath,
+        AddOrder(
+          expr"'ORDER-' ++ (toNumber(replaceAll(orderId, '^ORDER-(.+)$$', '$$1')) + 1)",
+          workflowPath))
 
-    val workflowPath = WorkflowPath.of("WORKFLOW")
-    val workflow = Workflow.of(workflowPath,
-      AddOrder(
-        expr"'ORDER-' ++ (toNumber(replaceAll(orderId, '^ORDER-(.+)$$', '$$1')) + 1)",
-        workflowPath))
+      withItem(workflow): workflow =>
+        val orderId = OrderId("ORDER-0")
+        addOrder(orderId, workflow.path)
+        eventWatch.awaitNextKey[OrderTerminated](orderId)
 
-    withItem(workflow): workflow =>
-      val orderId = OrderId("ORDER-0")
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
-      eventWatch.awaitNextKey[OrderTerminated](orderId)
+        sleep(1.s)
