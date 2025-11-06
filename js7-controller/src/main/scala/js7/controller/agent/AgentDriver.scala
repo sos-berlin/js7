@@ -258,7 +258,13 @@ extends Service.StoppableByRequest:
         startNewClusterWatch *>
         startAndForgetDirectorDriver
 
-  def terminate(noJournal: Boolean = false, reset: Boolean = false): IO[Unit] =
+  def resetAgentAndStop: IO[Unit] =
+    terminate_(reset = true)
+
+  def stop(noJournal: Boolean = false): IO[Unit] =
+    terminate_(noJournal = noJournal)
+
+  private def terminate_(noJournal: Boolean = false, reset: Boolean = false): IO[Unit] =
     logger.traceIO("terminate",
       (noJournal ? "noJournal") ++ (reset ? "reset").mkString(" ")):
       IO.defer:

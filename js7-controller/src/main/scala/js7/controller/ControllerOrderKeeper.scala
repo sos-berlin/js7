@@ -193,7 +193,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
           agentRegister.values.map(_.agentDriver)
             .toVector
             .parTraverse(agentDriver =>
-              agentDriver.terminate()
+              agentDriver.stop()
                 .recoverWith(t => IO(logger.error(
                   s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                 .logWhenItTakesLonger(s"$agentDriver.terminate"))
@@ -696,7 +696,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       if switchover.isDefined && runningAgentDriverCount > 0 then
         agentRegister.values.map(_.agentDriver) foreach { agentDriver =>
           agentDriver
-            .terminate(noJournal = true)
+            .stop(noJournal = true)
             .recoverWith(t => IO(logger.error(
               s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate")
@@ -1085,7 +1085,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
         for entry <- agentRegister.get(agentPath) do
           entry.isDeleted = true
           val agentDriver = entry.agentDriver
-          agentDriver.terminate(reset = true)
+          agentDriver.resetAgentAndStop
             .recoverWith(t => IO(logger.error(
               s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate(reset)")

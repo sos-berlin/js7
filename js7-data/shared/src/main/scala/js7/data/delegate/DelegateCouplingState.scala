@@ -14,30 +14,38 @@ object DelegateCouplingState:
   final case class Reset(reason: Reset.Reason) extends DelegateCouplingState
   object Reset:
     val fresh: Reset = Reset(Fresh)
+    val byCommand: Reset = Reset(ResetCommand)
     val shutdown: Reset = Reset(Shutdown)
     val restart: Reset = Reset(Restart)
-    val byCommand: Reset = Reset(ResetCommand)
 
     sealed trait Reason:
       @javaApi val string: String = getClass.simpleScalaName
 
-    /** Initially state. */
+    /** Initially state.
+      *
+      * Applicable for Director and Subagent. */
     case object Fresh extends Reason
 
-    /** Delegate has shutdown properly and lost its state. */
+    /** Delegate has been reset by command.
+      *
+      * Applicable for Director and Subagent. */
+    case object ResetCommand extends Reason
+
+    /** Delegate has shutdown properly and lost its state.
+      *
+      * Applicable for Subagent only. */
     case object Shutdown extends Reason
 
-    /** Delegate has restarted without proper shutdown. */
+    /** Delegate has restarted without proper shutdown.
+      *
+      * Applicable for Subagent only because it has lost its state.*/
     case object Restart extends Reason
-
-    /** Delegate has been reset by command. */
-    case object ResetCommand extends Reason
 
     given TypedJsonCodec[Reason] = TypedJsonCodec(
       Subtype(Fresh),
+      Subtype(ResetCommand),
       Subtype(Shutdown),
-      Subtype(Restart),
-      Subtype(ResetCommand))
+      Subtype(Restart))
 
   case object Coupled extends DelegateCouplingState
 

@@ -88,11 +88,6 @@ object HttpClient:
       case Left(throwable) => throwableToTry(throwable).map(Left(_)).toEither
       case Right(a) => Right(Right(a))
 
-  def throwableToProblem(throwable: Throwable): Problem =
-    throwableToTry(throwable) match
-      case Failure(throwable) => Problem.fromThrowable(throwable)
-      case Success(problem) => problem
-
   private def throwableToTry(throwable: Throwable): Try[Problem] =
     throwable match
       case HttpException.HasProblem(problem) =>

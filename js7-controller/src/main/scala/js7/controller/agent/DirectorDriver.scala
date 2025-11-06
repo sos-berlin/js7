@@ -90,7 +90,7 @@ extends Service.StoppableByRequest:
         .map(_.keyTo(AgentRefState).checked(agentPath))
         .flatMapT: agentRefState =>
           (agentRefState.couplingState, agentRefState.agentRunId) match
-            case (Resetting(false), None) =>
+            case (Resetting(force = false), None) =>
               IO.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
 
             case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
@@ -232,7 +232,8 @@ extends Service.StoppableByRequest:
       .recoverFromProblem:
         case problem @ AgentNotDedicatedProblem =>
           logger.debug(s"resetAgent: $problem")
-      .flatTapT(_ => stop.map(Right(_)))
+      .flatTapT: _ =>
+        stop.map(Right(_))
 
   private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     logger.debugIO:
