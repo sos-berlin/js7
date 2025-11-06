@@ -13,7 +13,7 @@ import com.softwaremill.tagging.@@
 import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, now}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, now, right}
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.SyncDeadline
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -462,7 +462,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             case _ => false
 
           committedPromise.completeWith:
-            if isAgentReset /*Race condition ???*/ then
+            if isAgentReset /*Race condition ??? Use persist(EventCalc)! */ then
               for o <- stampedAgentEvents.map(_.value) do logger.warn(
                 s"Ignored event after Agent reset: $o")
               Future.successful(None)
@@ -842,18 +842,22 @@ extends Stash, JournalingActor[ControllerState, Event]:
                           // ResetAgent command may return with error despite it has reset the orders
                           agentEntry.isResetting = true
                           handleEvents(persisted)
-                          agentEntry
-                            .agentDriver.reset(force = force)
-                            .onError: t =>
-                              IO(logger.error("ResetAgent: " + t.toStringWithCauses, t))
+                          agentEntry.agentDriver.reset(force = force)
                             .catchIntoChecked
-                            .flatMapT: _ =>
-                              journal.persist(_
-                                .keyTo(AgentRefState).checked(agentPath)
-                                .map(_.couplingState)
-                                .map:
-                                  case Resetting(_) => (agentPath <-: AgentReset) :: Nil
-                                  case _ => Nil)
+                            .flatTap: _ =>
+                              // Stop AgentDriver even if reset failed
+                              agentEntry.agentDriver.stop()
+                            .flatMap:
+                              case Left(problem) =>
+                                IO.right(logger.warn:
+                                  s"Delaying $agentPath AgentCommand.Reset due to: $problem")
+                              case Right(()) =>
+                                journal.persist(_
+                                  .keyTo(AgentRefState).checked(agentPath)
+                                  .map(_.couplingState)
+                                  .map:
+                                    case Resetting(_) => (agentPath <-: AgentReset) :: Nil
+                                    case _ => Nil)
                             .rightAs(ControllerCommand.Response.Accepted)
                             .unsafeToFuture()
                         }.flatten

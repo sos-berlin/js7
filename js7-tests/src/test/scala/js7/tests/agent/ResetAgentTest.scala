@@ -24,7 +24,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.Problems.AgentResetProblem
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset, AgentResetStarted}
 import js7.data.agent.Problems.AgentAlreadyDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.calendar.{Calendar, CalendarPath}
@@ -79,9 +79,34 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   private var myAgent: TestAgent = null
 
-  "ResetAgent while a locking order is executed" in:
+  override def beforeAll() =
+    super.beforeAll()
     myAgent = agent
 
+  "ResetAgent while Director is not reachable, delaying AgentCommand.Reset until recoupling" in:
+    // Make Director unreachable
+    myAgent.terminate().await(99.s)
+
+    execCmd:
+      ResetAgent(agentPath)
+    controller.awaitNextKey[AgentResetStarted](agentPath)
+    sleep(100.ms)
+    assert(controllerState.keyTo(AgentRefState)(agentPath).couplingState ==
+      DelegateCouplingState.Resetting())
+    assert(exists(agent.conf.stateDirectory / "agent-journal"))
+
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
+    // After restart of Director, the Agent is being reset
+    controller.awaitNextKey[AgentReset](agentPath)
+    myAgent.untilTerminated.await(99.s)
+
+    assert(!exists(agent.conf.stateDirectory / "agent-journal"))
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
+    controller.awaitNextKey[AgentCoupled](agentPath)
+
+    assert(exists(agent.conf.stateDirectory / "agent-journal"))
+
+  "ResetAgent while a locking order is executed" in:
     val lockingOrderId = OrderId("LOCKING")
     controller.api.addOrder(FreshOrder(lockingOrderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == lockingOrderId)
