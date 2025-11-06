@@ -101,7 +101,7 @@ object HttpClient:
         val msg = t.getMessage + (if t.getCause == null then "" else ", caused by " + t.getCause)
         Success(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt))
       case t =>
-        Failure(t.appendCurrentStackTrace)
+        Failure(t)
 
   abstract class HttpException(message: String | Null = null) extends RuntimeException(message):
     def statusInt: Int
