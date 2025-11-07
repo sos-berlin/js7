@@ -8,7 +8,6 @@ import js7.base.web.Uris.encodeQuery
 import js7.data.cluster.ClusterWatchId
 import js7.data.event.{Event, EventRequest, JournalPosition}
 import scala.concurrent.duration.FiniteDuration
-import scala.reflect.ClassTag
 
 final class ClusterNodeUris private(prefixedUri: Uri):
   val command: Uri = api("/cluster/command")

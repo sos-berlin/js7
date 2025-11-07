@@ -8,7 +8,6 @@ import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Missing
-import js7.base.utils.StackTraces.StackTraceThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}

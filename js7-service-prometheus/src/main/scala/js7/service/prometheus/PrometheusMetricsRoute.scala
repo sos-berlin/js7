@@ -1,6 +1,5 @@
 package js7.service.prometheus
 
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.CommonConfiguration
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpResponse}
