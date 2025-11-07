@@ -10,6 +10,7 @@ import js7.data.value.Value
 import js7.data.value.expression.ExpressionParser.parseFunction
 import js7.data.value.expression.scopes.NamedValueScope
 import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable.ArraySeq
 import scala.language.implicitConversions
 
 final case class ExprFunction(
@@ -18,6 +19,8 @@ final case class ExprFunction(
   maybeName: Option[String] = None,
   minimumArgumentCount: Int = 0,
   maximumArgumentCount: Option[Int] = None):
+
+  private val parameterNames = parameters.map(_.name).to(ArraySeq)
 
   override def equals(o: Any) =
     o match
@@ -44,7 +47,7 @@ final case class ExprFunction(
         minimumArgumentCount = minimum,
         maximumArgumentCount = Some(maximum)))
 
-  def eval(arguments: Value*)(using scope: Scope): Checked[Value] =
+  inline def eval(arguments: Value*)(using scope: Scope): Checked[Value] =
     eval(arguments: Iterable[Value])(using scope)
 
   def eval(arguments: Iterable[Value])(using scope: Scope): Checked[Value] =
@@ -59,7 +62,7 @@ final case class ExprFunction(
           s" in '$name' function")
     else
       val argScope = NamedValueScope.simple:
-        parameters.view.map(_.name).zip(arguments).toMap
+        parameterNames.zip(arguments).toMap
       expression.eval(using argScope |+| scope)
 
   override def toString =

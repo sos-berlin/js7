@@ -4,9 +4,11 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.BooleanConstant.True
+import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
+import scala.language.implicitConversions
 
 final class ExpressionParserTest extends OurTestSuite:
   // See also ExpressionTest
@@ -27,76 +29,76 @@ final class ExpressionParserTest extends OurTestSuite:
     testExpression("""$`weird name, with dot., and comma`""", NamedValue("weird name, with dot., and comma"))
     testExpression("""${`weird name, with dot., and comma`}""", NamedValue("weird name, with dot., and comma"))
     testExpression(""""${`weird name, with dot., and comma`}"""", InterpolatedString(List(NamedValue("weird name, with dot., and comma"))))
-    //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, StringConstant("SOME-KEY")))
-    //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("SOME-KEY")))
-    //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("SOME-KEY")))
-    //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), StringConstant("SOME-KEY")))
+    //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, "SOME-KEY"))
+    //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), "SOME-KEY"))
+    //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), "SOME-KEY"))
+    //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), "SOME-KEY"))
 
     "variable()" in:
       assert(parseExpression("""variable("clé")""") ==
-        Right(NamedValue("clé")))
+        Right(NamedValue(NamedValue.LastOccurred, StringConstant("clé"))))
       assert(parseExpression("""variable ( "clé", default = "DEFAULT" )""") ==
-        Right(NamedValue("clé", StringConstant("DEFAULT"))))
+        Right(NamedValue("clé", "DEFAULT")))
       assert(parseExpression("""variable(key="clé", label=LABEL)""") ==
-        Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("clé"))))
+        Right(NamedValue(NamedValue.ByLabel("LABEL"), "clé")))
       assert(parseExpression("""variable(key="clé", job=JOB)""") ==
-        Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("clé"))))
+        Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), "clé")))
 
     "argument()" in:
       assert(parseExpression("""argument("clé")""") ==
-        Right(NamedValue(NamedValue.Argument, StringConstant("clé"))))
+        Right(NamedValue(NamedValue.Argument, "clé")))
       assert(parseExpression("""argument ( "clé", default = "DEFAULT" )""") ==
-        Right(NamedValue(NamedValue.Argument, StringConstant("clé"), Some(StringConstant("DEFAULT")))))
+        Right(NamedValue(NamedValue.Argument, "clé", Some("DEFAULT"))))
   }
   "$returnCode" - {
     testExpression("$returnCode",
       LastReturnCode)
     testExpression("""variable("returnCode", label=LABEL)""",
-      NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("returnCode")))
+      NamedValue(NamedValue.ByLabel("LABEL"), "returnCode"))
     testExpression("""variable("returnCode", job=JOB)""",
-      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("returnCode")))
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), "returnCode"))
   }
 
   "Boolean" - {
-    testBooleanExpression("true", BooleanConstant(true))
-    testBooleanExpression("false", BooleanConstant(false))
-    testBooleanExpression("(false)", BooleanConstant(false))
+    testBooleanExpression("true", true)
+    testBooleanExpression("false", false)
+    testBooleanExpression("(false)", false)
   }
 
   "ConstantString.quote" - {
     for string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r") do
-      testExpression(StringConstant.quote(string), StringConstant(string))
+      testExpression(StringConstant.quote(string), string)
 
     "More characters" in:
       for i <- 0 to 0x200 do
         val string = i.toChar.toString
-        testExpressionRaw(StringConstant.quote(string), StringConstant(string))
+        testExpressionRaw(StringConstant.quote(string), string)
   }
 
   "String" - {
-    testExpression("'x'", StringConstant("x"))
-    testExpression("'ö'", StringConstant("ö"))
-    testExpression("""'a\x'""", StringConstant("""a\x"""))
-    testExpression("""'a\\x'""", StringConstant("""a\\x"""))
-    testExpression(""" "" """.trim, StringConstant(""))
-    testExpression(""" "x" """.trim, StringConstant("x"))
-    testExpression(""" "ö" """.trim, StringConstant("ö"))
+    testExpression("'x'", "x")
+    testExpression("'ö'", "ö")
+    testExpression("""'a\x'""", """a\x""")
+    testExpression("""'a\\x'""", """a\\x""")
+    testExpression(""" "" """.trim, "")
+    testExpression(""" "x" """.trim, "x")
+    testExpression(""" "ö" """.trim, "ö")
 
     "Escaping special characters" - {
       "Raw control characters are not escaped" in:
         for char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar) do
           val doubleQuoted = s""" "$char" """.trim
-          testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
+          testExpressionRaw(doubleQuoted, s"$char")
 
           val singleQuoted = s""" '$char' """.trim
-          testExpressionRaw(singleQuoted, StringConstant(s"$char"))
+          testExpressionRaw(singleQuoted, s"$char")
 
       "U+0080...U+7FFF" in:
         for char <- (0x80 to 0x7fff).view.map(_.toChar) do
           val doubleQuoted = s""" "$char" """.trim
-          testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
+          testExpressionRaw(doubleQuoted, s"$char")
           val singleQuoted = s""" "'$char" """.trim
-          testExpressionRaw(singleQuoted, StringConstant(s"'$char"))
+          testExpressionRaw(singleQuoted, s"'$char")
 
       val escapedChars = Seq(
         'n' -> '\n',
@@ -107,18 +109,18 @@ final class ExpressionParserTest extends OurTestSuite:
         '\\' -> '\\')
 
       for (escaped, expected) <- escapedChars do
-        testExpression(s""" "'\\$escaped" """.trim, StringConstant(s"'$expected"))
-        testExpression(s""" "\\$escaped" """.trim, StringConstant(s"$expected"))
+        testExpression(s""" "'\\$escaped" """.trim, s"'$expected")
+        testExpression(s""" "\\$escaped" """.trim, s"$expected")
 
       "Single quoted string" - {
-        testExpression("'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
-        testExpression("'ONE\r\nTWO'".trim, StringConstant("ONE\nTWO"))
+        testExpression("'ONE\nTWO'".trim, "ONE\nTWO")
+        testExpression("'ONE\r\nTWO'".trim, "ONE\nTWO")
 
         // TODO Bad syntax, because ' cannot be used at start or end of the string
-        testExpression("''->'<-''".trim, StringConstant("->'<-"))
-        testExpression("'''->''<-'''".trim, StringConstant("->''<-"))
-        testExpression("''''->'''<-''''".trim, StringConstant("->'''<-"))
-        testExpression("'''''->''''<-'''''".trim, StringConstant("->''''<-"))
+        testExpression("''->'<-''".trim, "->'<-")
+        testExpression("'''->''<-'''".trim, "->''<-")
+        testExpression("''''->'''<-''''".trim, "->'''<-")
+        testExpression("'''''->''''<-'''''".trim, "->''''<-")
       }
 
       "Invalid escaped characters" in:
@@ -137,19 +139,19 @@ final class ExpressionParserTest extends OurTestSuite:
             """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
     }
 
-    testExpression(""""A"""", StringConstant("A"))
+    testExpression(""""A"""", "A")
     testExpression(""""$A$B"""", InterpolatedString(List(NamedValue("A"), NamedValue("B"))))
-    testExpression(""""$`A:1`B"""", InterpolatedString(List(NamedValue("A:1"), StringConstant("B"))))
-    testExpression(""""${A}B"""", InterpolatedString(List(NamedValue("A"), StringConstant("B"))))
-    testExpression(""""${`A:1`}B"""", InterpolatedString(List(NamedValue("A:1"), StringConstant("B"))))
-    testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), StringConstant(":B"))))
+    testExpression(""""$`A:1`B"""", InterpolatedString(List(NamedValue("A:1"), "B")))
+    testExpression(""""${A}B"""", InterpolatedString(List(NamedValue("A"), "B")))
+    testExpression(""""${`A:1`}B"""", InterpolatedString(List(NamedValue("A:1"), "B")))
+    testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), ":B")))
 
     "Interpolated string" in:
       assert(parseExpression(""""$A"""") == Right(InterpolatedString(NamedValue("A") :: Nil)))
       assert(parseExpression(""""-->$A$BB<--"""") ==
-        Right(InterpolatedString(List(StringConstant("-->"), NamedValue("A"), NamedValue("BB"), StringConstant("<--")))))
+        Right(InterpolatedString(List("-->", NamedValue("A"), NamedValue("BB"), "<--"))))
       assert(parseExpression(""""-->${AB}${CD}<--"""") ==
-        Right(InterpolatedString(List(StringConstant("-->"), NamedValue("AB"), NamedValue("CD"), StringConstant("<--")))))
+        Right(InterpolatedString(List("-->", NamedValue("AB"), NamedValue("CD"), "<--"))))
       assert(parseExpression(""""-->$("A")<--"""") ==
         Right(StringConstant("-->A<--")))
       assert(parseExpression("""""""") == Right(StringConstant.empty))
@@ -169,25 +171,23 @@ final class ExpressionParserTest extends OurTestSuite:
       NotEqual(LastReturnCode, NumericConstant(7)))
     testBooleanExpression("$returnCode > 7",
       GreaterThan(LastReturnCode, NumericConstant(7)))
-    testBooleanExpression("""variable("A") == "X"""",
-      Equal(NamedValue("A"), StringConstant("X")))
     testBooleanExpression("""$A == "X"""",
-      Equal(NamedValue("A"), StringConstant("X")))
+      Equal(NamedValue("A"), "X"))
 
     testBooleanExpression("$returnCode > 0 && $returnCode < 9",
       And(
         GreaterThan(LastReturnCode, NumericConstant(0)),
-        LessThan(LastReturnCode, NumericConstant(9))))
+        LessThan(LastReturnCode, 9)))
 
     testBooleanExpression("$returnCode >= 0 && $returnCode <= 9",
       And(
-        GreaterOrEqual(LastReturnCode, NumericConstant(0)),
-        LessOrEqual(LastReturnCode, NumericConstant(9))))
+        GreaterOrEqual(LastReturnCode, 0),
+        LessOrEqual(LastReturnCode, 9)))
 
     testBooleanExpression("$returnCode == 1 || $returnCode == 2 || $returnCode == 3",
       Or(
         Or(
-          Equal(LastReturnCode, NumericConstant(1)),
+          Equal(LastReturnCode, 1),
           Equal(LastReturnCode, NumericConstant(2))),
         Equal(LastReturnCode, NumericConstant(3))))
 
@@ -195,13 +195,13 @@ final class ExpressionParserTest extends OurTestSuite:
       And(
         And(
           GreaterOrEqual(LastReturnCode, NumericConstant(0)),
-          LessOrEqual(LastReturnCode, NumericConstant(9))),
-        Equal(NamedValue("result"), StringConstant("OK"))))
+          LessOrEqual(LastReturnCode, 9)),
+        Equal(NamedValue("result"), "OK")))
 
     testBooleanExpression("""$returnCode in [0, 3, 50]""",
       In(
         LastReturnCode,
-        ListExpr(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
+        ListExpr.of(0, 3, 50)))
 
     // Boolean operand are no longer statically typed checked (via BooleanExpr),
     // to allow MissingValue.
@@ -213,10 +213,10 @@ final class ExpressionParserTest extends OurTestSuite:
       Or(
         In(
           LastReturnCode,
-          ListExpr(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
+          ListExpr.of(0, 3, 50)),
         Equal(
           NamedValue("result"),
-          StringConstant("1"))))
+          "1")))
 
     testBooleanExpression("""$returnCode==$expected.toNumber|| !($result=="1")||true&&$returnCode>0""",
       Or(
@@ -226,7 +226,7 @@ final class ExpressionParserTest extends OurTestSuite:
             ToNumber(NamedValue("expected"))),
           Not(Equal(
               NamedValue("result"),
-              StringConstant("1")))),
+              "1"))),
         And(
           True,
           GreaterThan(
@@ -234,36 +234,36 @@ final class ExpressionParserTest extends OurTestSuite:
             NumericConstant(0)))))
 
     testExpression("""["STRING", $NAME, 7].mkString""",
-      MkString(ListExpr(StringConstant("STRING") :: NamedValue("NAME") :: NumericConstant(7) :: Nil)))
+      MkString(ListExpr.of("STRING", NamedValue("NAME"), 7)))
   }
 
   testExpression("1+2",
-    Add(NumericConstant(1), NumericConstant(2)))
+    Add(1, NumericConstant(2)))
 
   testExpression("1 + 2 + 3",
-    Add(Add(NumericConstant(1), NumericConstant(2)), NumericConstant(3)))
+    Add(Add(1, 2), 3))
 
   testExpression("'A' ++ 'B'++'C'",
-    Concat(Concat(StringConstant("A"), StringConstant("B")), StringConstant("C")))
+    Concat(Concat("A", "B"), "C"))
 
   testExpression("'STRING'.stripMargin",
-    StripMargin(StringConstant("STRING")))
+    StripMargin("STRING"))
 
   testBooleanExpression("""$result matches 'A.*'""",
     Matches(
       NamedValue("result"),
-      StringConstant("A.*")))
+      "A.*"))
 
   "FunctionCall" - {
     testExpression("orderId", FunctionCall("orderId", None))
     testExpression("myFunction()", FunctionCall("myFunction", Some(Nil)))
-    testExpression("myFunction(1)", FunctionCall("myFunction", Some(Seq(Argument(NumericConstant(1))))))
+    testExpression("myFunction(1)", FunctionCall("myFunction", Some(Seq(Argument(1)))))
     testExpression("myFunction(named=1, 'STRING')",
       FunctionCall(
         "myFunction",
         Some(Seq(
-          Argument(NumericConstant(1), Some("named")),
-          Argument(StringConstant("STRING"))))))
+          Argument(1, Some("named")),
+          Argument("STRING")))))
     testExpression("myFunction(nested())",
       FunctionCall(
         "myFunction",
@@ -273,11 +273,11 @@ final class ExpressionParserTest extends OurTestSuite:
 
   "Unknown numeric function" in:
     assert(parseExpression(""""123".toNumber""") ==
-      Right(ToNumber(StringConstant("123"))))
+      Right(ToNumber("123")))
 
   "Unknown boolean function" in:
     assert(parseExpression(""""true".toBoolean""") ==
-      Right(ToBoolean(StringConstant("true"))))
+      Right(ToBoolean("true")))
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpr)(using x: source.Position) =
     exprString in:

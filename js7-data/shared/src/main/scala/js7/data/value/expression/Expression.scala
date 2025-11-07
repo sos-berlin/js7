@@ -8,7 +8,7 @@ import java.util.regex.{Pattern, PatternSyntaxException}
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.log.Logger
 import js7.base.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
-import js7.base.problem.Checked.{CheckedOption, catchExpected, catchNonFatalDontLog}
+import js7.base.problem.Checked.{CheckedOption, catchNonFatalDontLog}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichOption}
 import js7.base.utils.ScalaUtils.withStringBuilder
@@ -16,6 +16,7 @@ import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem, UnknownNameInExpressionProblem}
+import js7.data.value.expression.Expression.NamedValue.isSimpleOrNumericName
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{BooleanValue, FunctionValue, GoodValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter, ValueType}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -46,35 +47,37 @@ sealed trait Expression extends HasPrecedence:
       .flatMap(_.referencedJobResourcePaths)
       .toSet
 
-  final def evalAs[V <: Value](implicit V: Value.Companion[V], scope: Scope): Checked[V] =
+  final def evalAs[V <: Value](using V: Value.Companion[V], scope: Scope): Checked[V] =
     eval.flatMap(_.as[V])
 
-  final def eval(implicit scope: Scope): Checked[Value] =
+  final def eval(using scope: Scope): Checked[Value] =
     evalRaw match
+      case Right(v) => Right(v)
       case Left(UnexpectedValueTypeProblem(_, MissingValue)) => Right(MissingValue)
       case Left(problem) => Left(problem)
-      case Right(o: Value) => Right(o)
 
   protected def evalRaw(using scope: Scope): Checked[Value]
 
-  final def evalAsBoolean(implicit scope: Scope): Checked[Boolean] =
-    eval.flatMap(_.as[BooleanValue]).map(_.booleanValue)
+  def evalAsBoolean(using scope: Scope): Checked[Boolean] =
+    eval.flatMap(_.asBoolean)
 
-  final def evalAsNumber(implicit scope: Scope): Checked[BigDecimal] =
-    eval.flatMap(_.as[NumberValue]).map(_.number)
+  def evalAsBooleanValue(using scope: Scope): Checked[BooleanValue] =
+    evalAsBoolean.map(BooleanValue(_))
 
-  final def evalAsInt(implicit scope: Scope): Checked[Int] =
-    evalAsNumber.flatMap: o =>
-      catchExpected[ArithmeticException](o.toIntExact)
+  def evalAsNumber(using scope: Scope): Checked[BigDecimal] =
+    eval.flatMap(_.asNumber)
 
-  final def evalToString(implicit scope: Scope): Checked[String] =
+  def evalAsInt(using scope: Scope): Checked[Int] =
+    eval.flatMap(_.asInt)
+
+  def evalToString(using scope: Scope): Checked[String] =
     eval.flatMap(_.toStringValueString)
 
-  final def evalAsString(implicit scope: Scope): Checked[String] =
-    eval.flatMap(_.as[StringValue]).map(_.string)
+  def evalAsString(using scope: Scope): Checked[String] =
+    eval.flatMap(_.asString)
 
-  final def evalAsVector(implicit scope: Scope): Checked[Vector[Value]] =
-    eval.flatMap(_.as[ListValue]).map(_.elements)
+  def evalAsVector(using scope: Scope): Checked[Vector[Value]] =
+    eval.flatMap(_.asVector)
 
 
 object Expression:
@@ -82,7 +85,7 @@ object Expression:
   private lazy val logger = Logger[this.type]
 
   @TestOnly
-  val LastReturnCode: NamedValue = NamedValue(Value.ShellReturnCode)
+  val LastReturnCode: Expression = NamedValue(Value.ShellReturnCode)
 
   given jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   given jsonDecoder: Decoder[Expression] = c =>
@@ -104,10 +107,14 @@ object Expression:
   sealed trait Constant extends IsPure:
     final def precedence: Int = Precedence.Factor
     final def subexpressions: Iterable[Expression] = Nil
-    def toValue: Value
 
-    final def evalRaw(using @unused scope: Scope): Checked[Value] =
-      Right(toValue)
+    protected def toRightValue: Right[Problem, Value]
+
+    final def toValue: Value =
+      toRightValue.value
+
+    final protected def evalRaw(using @unused scope: Scope): Checked[Value] =
+      toRightValue
 
   sealed trait SimpleValueExpr extends Expression
 
@@ -355,8 +362,12 @@ object Expression:
       for
         a <- a.eval.map(_.missingToEmptyString).flatMap(_.toStringValueString)
         b <- b.evalToString
-        result <- catchExpected[PatternSyntaxException](
-          BooleanValue(a.matches(b)))
+        result <-
+          try Right:
+            BooleanValue(a.matches(b))
+          catch
+            case e: PatternSyntaxException => Left(Problem.fromThrowable(e))
+
       yield result
 
     override def toString: String = makeString(a, "matches", b)
@@ -385,7 +396,7 @@ object Expression:
       inParentheses(a) + "?"
 
 
-  private def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope)
+  private def evalOrDefault(expr: Expression, default: Expression)(using scope: Scope)
   : Checked[Value] =
     expr.eval match
       case Left(problem) =>
@@ -426,16 +437,25 @@ object Expression:
       inParentheses(a) + "." + identifierToString(name)
 
 
-  final case class ListExpr(subexpressions: List[Expression]) extends IsPureIfSubexpressionsArePure:
+  final case class ListExpr(subexpressions: Vector[Expression]) extends IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.Factor
 
     protected def evalRaw(using scope: Scope) =
-      subexpressions.traverse(_.eval).map(_.toVector).map(ListValue(_))
+      evalAsVector.map(ListValue(_))
+
+    override def evalAsVector(using scope: Scope): Checked[Vector[Value]] =
+      subexpressions.traverse(_.eval)
 
     override def toString: String = subexpressions.mkString("[", ", ", "]")
 
   object ListExpr:
-    val empty: ListExpr = ListExpr(Nil)
+    val empty: ListExpr = ListExpr(Vector.empty)
+
+    def fromIterable(subexpressions: IterableOnce[Expression]): ListExpr =
+      new ListExpr(Vector.from(subexpressions))
+
+    def of(expressions: Expression*): ListExpr =
+      fromIterable(expressions)
 
 
   final case class ObjectExpr(nameToExpr: Map[String, Expression])
@@ -503,7 +523,14 @@ object Expression:
 
   final case class BooleanConstant(booleanValue: Boolean)
   extends BooleanExpr, Constant:
-    val toValue: Value = BooleanValue(booleanValue)
+    protected val toRightValue: Right[Problem, BooleanValue] = Right(BooleanValue(booleanValue))
+    private val toRightBoolean = Right(booleanValue)
+
+    override def evalAsBoolean(using scope: Scope): Right[Problem, Boolean] =
+      toRightBoolean
+
+    override def evalAsBooleanValue(using scope: Scope): Checked[BooleanValue] =
+      toRightValue
 
     override def toString: String = booleanValue.toString
 
@@ -517,14 +544,33 @@ object Expression:
 
   final case class NumericConstant(number: BigDecimal)
   extends NumericExpr, Constant:
-    val toValue: Value = NumberValue(number)
+    protected val toRightValue: Right[Problem, NumberValue] = Right(NumberValue(number))
+    private val toRightNumber = Right(number)
+    private val checkedInt: Checked[Int] =
+      try Right:
+        toRightValue.value.number.toIntExact
+      catch
+        case e: ArithmeticException => Left(Problem.fromThrowable(e))
+
+    override def evalAsNumber(using scope: Scope): Right[Problem, BigDecimal] =
+      toRightNumber
+
+    override def evalAsInt(using scope: Scope): Checked[Int] =
+      checkedInt
 
     override def toString: String = number.toString
 
 
   final case class StringConstant(string: String)
   extends StringExpr, Constant:
-    val toValue: Value = StringValue(string)
+    protected val toRightValue: Right[Problem, StringValue] = Right(StringValue(string))
+    private val toRightString = Right(string)
+
+    override def evalToString(using scope: Scope): Checked[String] =
+      toRightString
+
+    override def evalAsString(using scope: Scope): Checked[String] =
+      toRightString
 
     override def toString: String = StringConstant.quote(string)
 
@@ -551,12 +597,12 @@ object Expression:
       for
         name <- nameExpr.evalAsString
         maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
-        value <- maybeValue
-          .map(Right(_))
-          .getOrElse(
+        value <- maybeValue match
+          case Some(v) => Right(v)
+          case None =>
             default.map(_.eval.flatMap(_.toStringValue))
-              .toChecked(
-                where match {
+              .toChecked:
+                where match
                   case NamedValue.Argument =>
                     Problem(s"No such order argument: $name")
                   case NamedValue.LastOccurred =>
@@ -565,8 +611,7 @@ object Expression:
                     Problem(s"Workflow instruction at label $label did not return a named value '$name'")
                   case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
                     Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
-                })
-              .flatten)
+              .flatten
       yield
         value
 
@@ -611,14 +656,20 @@ object Expression:
             s"variable(${args mkString ", "})"
 
   object NamedValue:
-    def apply(name: String): NamedValue =
-      NamedValue(NamedValue.LastOccurred, StringConstant(name))
+    def apply(name: String): NamedValue | SimpleNamedValue =
+      if isSimpleOrNumericName(name) || !name.contains('`') then
+        SimpleNamedValue(name)
+      else
+        NamedValue(NamedValue.LastOccurred, StringConstant(name))
 
     def apply(name: String, default: Expression): NamedValue =
       NamedValue(NamedValue.LastOccurred, StringConstant(name), Some(default))
 
     def argument(name: String): NamedValue =
       NamedValue(NamedValue.Argument, StringConstant(name))
+
+    private[Expression] def isSimpleOrNumericName(name: String) =
+      isSimpleName(name) || name.nonEmpty && name.forall(c => c >= '0' && c <= '9')
 
     private[Expression] def isSimpleName(name: String) =
       name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
@@ -634,6 +685,27 @@ object Expression:
     final case class LastExecutedJob(jobName: WorkflowJob.Name) extends Where
     final case class ByLabel(label: Label) extends Where
     case object Argument extends Where
+
+
+  final case class SimpleNamedValue private[Expression](name: String) extends IsImpure:
+
+    private val valueSearch = ValueSearch.Name(name)
+
+    def precedence: Int = Precedence.Factor
+    def subexpressions: Iterable[Expression] = Nil
+
+    protected def evalRaw(using scope: Scope) =
+      for
+        maybeValue <- scope.findValue(ValueSearch(ValueSearch.LastOccurred, valueSearch)).sequence
+        value <- maybeValue.toRight(Problem(s"No such named value: $name"))
+      yield
+        value
+
+    override def toString: String =
+      if isSimpleOrNumericName(name) then
+        s"$$$name"
+      else
+        s"$$`$name`"
 
 
   //// A name different from predefined scala.Symbol
@@ -706,7 +778,7 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       expression.eval.map :
-        case ListValue(list) => StringValue(list.map(_.convertToString).mkString)
+        case ListValue(seq) => StringValue(seq.view.map(_.convertToString).mkString)
         case value => StringValue(value.convertToString)
 
     override def toString = s"mkString($expression)"
@@ -734,19 +806,25 @@ object Expression:
         .map(seq => StringValue(seq.mkString))
 
     override def toString: String =
-      withStringBuilder { sb =>
+      withStringBuilder: sb =>
+        def appendVariable(name: String, next: List[Expression]) =
+          sb.append('$')
+          next match
+            case StringConstant(next) :: Nil if next.headOption.forall(isIdentifierPart) =>
+              appendIdentifierWithBackticks(sb, name)
+            case _ =>
+              appendIdentifier(sb, name)
+
         sb.append('"')
         subexpressions.tails foreach:
           case StringConstant(string) :: _ =>
             appendQuotedContent(sb, string)
 
+          case SimpleNamedValue(name) :: next =>
+            appendVariable(name, next)
+
           case NamedValue(NamedValue.LastOccurred, StringConstant(name), None) :: next =>
-            sb.append('$')
-            next match
-              case StringConstant(next) :: Nil if next.headOption.forall(isIdentifierPart) =>
-                appendIdentifierWithBackticks(sb, name)
-              case _ =>
-                appendIdentifier(sb, name)
+            appendVariable(name, next)
 
           case expr :: _ =>
             sb.append("$(")
@@ -755,7 +833,6 @@ object Expression:
 
           case Nil =>
         sb.append('"')
-      }
 
 
   final case class ReplaceAll(string: Expression, pattern: Expression, replacement: Expression)
@@ -767,11 +844,14 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       for
-        string <- string.eval.flatMap(_.asString)
+        string <- string.evalAsString
         pattern <- precompiledPattern.getOrElse(compilePattern(pattern))
-        replacement <- replacement.eval.flatMap(_.asString)
-        result <- catchExpected[RuntimeException]:
-          StringValue(pattern.matcher(string).replaceAll(replacement))
+        replacement <- replacement.evalAsString
+        result <-
+          try Right:
+            StringValue(pattern.matcher(string).replaceAll(replacement))
+          catch
+            case e: RuntimeException => Left(Problem.fromThrowable(e))
       yield
         result
 
@@ -786,11 +866,14 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       for
-        string <- string.eval.flatMap(_.asString)
-        start <- start.eval.flatMap(_.asInt)
-        end <- end.traverse(_.eval.flatMap(_.asInt))
-        result <- catchExpected[RuntimeException]:
-          StringValue(string.substring(start, end getOrElse string.length))
+        string <- string.evalAsString
+        start <- start.evalAsInt
+        end <- end.fold(Right(string.length))(_.evalAsInt)
+        result <-
+          try Right:
+            StringValue(string.substring(start, end))
+          catch
+            case e: RuntimeException => Left(Problem.fromThrowable(e))
       yield
         result
 
@@ -807,15 +890,18 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       for
-        string <- string.eval.flatMap(_.asString)
+        string <- string.evalAsString
         pattern <- precompiledPattern.getOrElse(compilePattern(pattern))
-        replacement <- replacement.eval.flatMap(_.asString)
-        result <- catchExpected[RuntimeException]:
-          val matcher = pattern.matcher(string)
-          if !matcher.matches() then
-            Left(Problem("Does not match"))
-          else
-            Right(StringValue(matcher.replaceFirst(replacement)))
+        replacement <- replacement.evalAsString
+        result <-
+          try Right:
+            val matcher = pattern.matcher(string)
+            if !matcher.matches() then
+              Left(Problem("Does not match"))
+            else
+              Right(StringValue(matcher.replaceFirst(replacement)))
+          catch
+            case e: RuntimeException => Left(Problem.fromThrowable(e))
         result <- result
       yield
         result
@@ -831,9 +917,9 @@ object Expression:
             logger.warn(s"Expression will fail with: $problem")
 
   private def compilePattern(pattern: Expression)(using Scope): Checked[Pattern] =
-    pattern.eval.flatMap(_.asString).flatMap: pattern =>
-      try
-        Right(Pattern.compile(pattern))
+    pattern.evalAsString.flatMap: pattern =>
+      try Right:
+        Pattern.compile(pattern)
       catch case t: PatternSyntaxException =>
         val i = t.getIndex
         Left(Problem(s"${t.getDescription} in regular expression pattern: “${
@@ -847,8 +933,8 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       for
-        a <- a.eval.flatMap(_.asNumber)
-        b <- b.eval.flatMap(_.asNumber)
+        a <- a.evalAsNumber
+        b <- b.evalAsNumber
       yield
         NumberValue(a min b)
 
@@ -862,8 +948,8 @@ object Expression:
 
     def evalRaw(using scope: Scope): Checked[Value] =
       for
-        a <- a.eval.flatMap(_.asNumber)
-        b <- b.eval.flatMap(_.asNumber)
+        a <- a.evalAsNumber
+        b <- b.evalAsNumber
       yield
         NumberValue(a max b)
 
@@ -884,7 +970,7 @@ object Expression:
 
   type MissingConstant = MissingConstant.type
   case object MissingConstant extends Constant:
-    val toValue: Value = MissingValue
+    protected val toRightValue: Right[Problem, MissingValue] = Right(MissingValue)
 
     override val toString = "missing"
 
@@ -905,7 +991,7 @@ object Expression:
     given Conversion[Long, NumericConstant] = NumericConstant(_)
     given Conversion[BigDecimal, NumericConstant] = NumericConstant(_)
     given Conversion[String, StringConstant] = StringConstant(_)
-    given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr(iterable.toList)
+    given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr.fromIterable(iterable)
 
   extension (inline ctx: StringContext)
     inline def expr(inline args: Any*): Expression =

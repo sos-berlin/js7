@@ -4,9 +4,9 @@ import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data.value.expression.Expression.{BooleanConstant, ListExpr, NumericConstant, ObjectExpr, StringConstant}
 import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.vavr.VavrConverters.*
 import scala.jdk.CollectionConverters.*
@@ -67,7 +67,7 @@ object JExpression extends JJsonable.Companion[JExpression]:
   @Nonnull
   /** Returns the values as a ListExpr. */
   def fromIterable(@Nonnull values: java.lang.Iterable[JExpression]): JExpression =
-    JExpression(ListExpr(values.asScala.view.map(_.asScala).toList))
+    JExpression(ListExpr.fromIterable(values.asScala.view.map(_.asScala)))
 
   @Nonnull
   /** Returns the map as an ObjectExpr. */

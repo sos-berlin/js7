@@ -15,11 +15,11 @@ object ExpressionOptimizer:
   private def optimizeMkString(mkString: MkString): StringExpr =
     optimize(mkString.expression) match
       case ListExpr(list) =>
-        optimizeConcatList(list).pipe(mergeStringConstants) match
+        optimizeConcatList(list.toList).pipe(mergeStringConstants) match
           case Nil => StringConstant.empty
           case (string: StringExpr) :: Nil => string
           case o :: Nil => MkString(o)
-          case list => MkString(ListExpr(list))
+          case list => MkString(ListExpr.fromIterable(list))
 
       case o: StringExpr => o
       case o => MkString(o)

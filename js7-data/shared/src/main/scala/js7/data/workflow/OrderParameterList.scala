@@ -133,11 +133,11 @@ final case class OrderParameterList(
   def addDefaults(arguments: Map[String, Value]): MapView[String, Value] =
     arguments
       .view
-      .orElseMapView(nameToExpression.collectValues {
-        case const: Expression.Constant => const.toValue
-        // Expressions must have been evaluated with OrderAdded event.
-        // The resulting values are expected to be in Order.arguments.
-      })
+      .orElseMapView:
+        nameToExpression.collectValues:
+          case const: Expression.Constant => const.toValue
+          // Expressions must have been evaluated with OrderAdded event.
+          // The resulting values are expected to be in Order.arguments.
 
   private[workflow] lazy val nameToExpression: MapView[String, Expression] =
     nameToParameter.view

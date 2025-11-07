@@ -45,6 +45,6 @@ final class CommandLineParserTest extends OurTestSuite:
         """XX "$NAME-\"QUOTED\"\\\$"""",
         List(
           StringConstant("XX"),
-          MkString(ListExpr(List(
+          MkString(ListExpr.of(
             NamedValue("NAME"),
-            StringConstant("""-"QUOTED"\$"""))))))))
+            StringConstant("""-"QUOTED"\$""")))))))

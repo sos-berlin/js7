@@ -30,9 +30,9 @@ sealed trait Value:
   def release: IO[Unit] = IO.unit
 
   def asString: Checked[String] =
-    as[StringValue].map(_.string)
+    asStringValue.map(_.string)
 
-  final def toStringValueString: Checked[String] =
+  def toStringValueString: Checked[String] =
     toStringValue.map(_.string)
 
   /** Soft conversion to StringValue. */
@@ -52,6 +52,9 @@ sealed trait Value:
       Right(this.asInstanceOf[V])
     else
       Left(UnexpectedValueTypeProblem(V, this))
+
+  def asStringValue: Checked[StringValue] =
+    as[StringValue]
 
   final def missingTo(value: Value): Value =
     if this == MissingValue then
@@ -73,13 +76,15 @@ sealed trait Value:
   final def asMaybeNumber: Checked[Option[BigDecimal]] =
     asNumber.map(Some(_))
 
-  final def asInt: Checked[Int] =
-    asNumber.flatMap(o => catchExpected[ArithmeticException](
-      o.toIntExact))
+  def asInt: Checked[Int] =
+    asNumber.flatMap: o =>
+      catchExpected[ArithmeticException]:
+        o.toIntExact
 
-  final def asLong: Checked[Long] =
-    asNumber.flatMap(o => catchExpected[ArithmeticException]
-      (o.toLongExact))
+  def asLong: Checked[Long] =
+    asNumber.flatMap: o =>
+      catchExpected[ArithmeticException]:
+        o.toLongExact
 
   final def asLongIgnoreFraction: Checked[Long] =
     asNumber
@@ -88,7 +93,7 @@ sealed trait Value:
           .setScale(0, RoundingMode.DOWN)
           .toLongExact))
 
-  final def asNumber: Checked[BigDecimal] =
+  def asNumber: Checked[BigDecimal] =
     as[NumberValue].map(_.number)
 
   final def asDuration: Checked[FiniteDuration] =
@@ -100,6 +105,9 @@ sealed trait Value:
 
   def asBoolean: Checked[Boolean] =
     as[BooleanValue].map(_.booleanValue)
+
+  def asVector: Checked[Vector[Value]] =
+    as[ListValue].map(_.elements)
 
   /** Soft conversion to BooleanValue. */
   def toBooleanValue: Checked[BooleanValue] =
@@ -277,6 +285,18 @@ object GoodValue:
 final case class StringValue(string: String) extends GoodValue:
   requireNonNull(string)
 
+  override val asStringValue: Right[Problem, StringValue] =
+    Right(this)
+
+  override val asString: Right[Problem, String] =
+    Right(string)
+
+  override val toStringValue: Checked[StringValue] =
+    Right(this)
+
+  override def toStringValueString: Checked[String] =
+    asString
+
   def valueType: ValueType = StringValue
 
   override def toNumberValue: Checked[NumberValue] =
@@ -295,6 +315,8 @@ final case class StringValue(string: String) extends GoodValue:
 
   def convertToString: String = string
 
+
+
   override def toString: String =
     ValuePrinter.quoteString(string.truncateWithEllipsis(200, showLength = true))
 
@@ -311,6 +333,21 @@ object StringValue extends GoodValue.Companion[StringValue], ValueType.Simple:
 /** NumberValue for any numeric value.
   */
 final case class NumberValue(number: BigDecimal) extends GoodValue:
+
+  override val asInt: Checked[Int] =
+    catchExpected[ArithmeticException]:
+      number.toIntExact
+
+  override val asLong: Checked[Long] =
+    catchExpected[ArithmeticException]:
+      number.toLongExact
+
+  override val asNumber: Checked[BigDecimal] =
+    Right(number)
+
+  override val toNumberValue: Checked[NumberValue] =
+    Right(this)
+
   def valueType: ValueType = NumberValue
 
   override def toStringValue: Right[Problem, StringValue] =
@@ -372,6 +409,12 @@ object NumberValue extends GoodValue.Companion[NumberValue], ValueType.Simple:
 final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   def valueType: ValueType = BooleanValue
 
+  override val asBoolean: Checked[Boolean] =
+    Right(booleanValue)
+
+  override val toBooleanValue: Checked[BooleanValue] =
+    Right(this)
+
   override def toNumberValue: Checked[NumberValue] =
     Right(if booleanValue then NumberValue.One else NumberValue.Zero)
 
@@ -399,6 +442,9 @@ object BooleanValue extends GoodValue.Companion[BooleanValue], ValueType.Simple:
   */
 final case class ListValue private(elements: Vector[Value]) extends GoodValue:
   def valueType: ValueType = ListValue
+
+  override val asVector: Right[Problem, Vector[Value]] =
+    Right(elements)
 
   @javaApi @Nonnull def toJava: java.util.List[Value] =
     elements.asJava
@@ -459,6 +505,7 @@ final case class ObjectType(nameToType: Map[String, ValueType])
 extends ValueType.Compound:
   def name = "Object"
 
+
 final case class FunctionValue(function: ExprFunction) extends GoodValue:
   def valueType: ValueType = FunctionValue
 
@@ -469,6 +516,7 @@ final case class FunctionValue(function: ExprFunction) extends GoodValue:
     function.toString
 
   override def toString = function.toString
+
 object FunctionValue extends GoodValue.Companion[FunctionValue], ValueType:
   val name = "Function"
 

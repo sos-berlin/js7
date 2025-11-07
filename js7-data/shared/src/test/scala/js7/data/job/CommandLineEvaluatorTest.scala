@@ -46,13 +46,12 @@ final class CommandLineEvaluatorTest extends OurTestSuite:
 
   private val commandLineEvaluator =
     new CommandLineEvaluator()(
-      using new Scope {
+      using new Scope:
         override val nameToCheckedValue =
           MapView(
             "NAME" -> Right(StringValue("MY NAME")),
-            "NUMERIC" -> Right(NumberValue(7)))
-      })
+            "NUMERIC" -> Right(NumberValue(7))))
 
   private def eval(commandLine: String): Checked[CommandLine] =
-    commandLineEvaluator.eval(
-      CommandLineParser.parse(commandLine).orThrow)
+    commandLineEvaluator.eval:
+      CommandLineParser.parse(commandLine).orThrow

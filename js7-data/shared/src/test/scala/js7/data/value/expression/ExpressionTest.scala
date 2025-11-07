@@ -3,11 +3,11 @@ package js7.data.value.expression
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
-import js7.data.value.Value.convenience.given
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.BooleanConstant.{False, True}
 import js7.data.value.expression.Expression.convenience.given
+import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
@@ -155,11 +155,11 @@ final class ExpressionTest extends OurTestSuite:
     "Lists" - {
       testEval("[ 'AAA', missing, 7 ]",
         result = Right(ListValue(Seq[Value]("AAA", MissingValue, 7))),
-        ListExpr(List("AAA", MissingConstant, 7)))
+        ListExpr.of("AAA", MissingConstant, 7))
 
       testEval("""[ 'AAA', error("ERROR"), 7 ]""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        ListExpr(List("AAA", ErrorExpr("ERROR"), 7)))
+        ListExpr.of("AAA", ErrorExpr("ERROR"), 7))
     }
   }
 
@@ -246,7 +246,7 @@ final class ExpressionTest extends OurTestSuite:
   "variable()" - {
     testEval("""variable("ASTRING")""",
       result = Right("AA"),
-      NamedValue("ASTRING"))
+      NamedValue(NamedValue.LastOccurred, "ASTRING"))
 
     testEval("""variable(missing)""",
       result = Right(MissingValue),
@@ -254,11 +254,11 @@ final class ExpressionTest extends OurTestSuite:
 
     testEval("""variable(key="ASTRING")""",
       result = Right("AA"),
-      NamedValue("ASTRING"))
+      NamedValue(NamedValue.LastOccurred, "ASTRING"))
 
     testEval("""variable("UNKNOWN")""",
       result = Left(Problem("No such named value: UNKNOWN")),
-      NamedValue("UNKNOWN"))
+      NamedValue(NamedValue.LastOccurred, "UNKNOWN"))
 
     testEval("""variable("UNKNOWN", default="DEFAULT")""",
       result = Right("DEFAULT"),
@@ -282,7 +282,7 @@ final class ExpressionTest extends OurTestSuite:
 
     testEval(""" variable("ABOOLEAN")""",
       result = Right(true),
-      NamedValue("ABOOLEAN"))
+      NamedValue(NamedValue.LastOccurred, "ABOOLEAN"))
   }
 
   "argument()" - {
@@ -355,17 +355,17 @@ final class ExpressionTest extends OurTestSuite:
 
     testEval("""mkString([$ANUMBER, "-", missing, true])""",
       result = Right("7-true"),
-      MkString(ListExpr(List(
+      MkString(ListExpr.of(
         NamedValue("ANUMBER"),
         "-",
         MissingConstant,
-        true))))
+        true)))
 
     testEval("""mkString([ "-->", error("ERROR") ])""",
       result = Left(ErrorInExpressionProblem("ERROR"))/*because the list fails*/,
-      MkString(ListExpr(List(
+      MkString(ListExpr.of(
         "-->",
-        ErrorExpr("ERROR")))))
+        ErrorExpr("ERROR"))))
   }
 
   "stripMargin()" - {
@@ -502,7 +502,7 @@ final class ExpressionTest extends OurTestSuite:
             Catch(
               In(
                 7,
-                ListExpr(List(Divide(1, 0)))),
+                ListExpr.of(Divide(1, 0))),
               NamedValue("unknown")),
             -1))
 
@@ -903,20 +903,20 @@ final class ExpressionTest extends OurTestSuite:
     val expr = Map[String, Expression](
       "A" -> 1,
       "B" -> "BBB",
-      "LIST" -> ListExpr(List(1, 2, 3)))
+      "LIST" -> ListExpr.of(1, 2, 3))
     assert(scope.evalExpressionMap(expr) ==
       Right(Map[String, Value](
         "A" -> 1,
         "B" -> "BBB",
         "LIST" -> ListValue(List[Value](1, 2, 3)))),
-      In(LastReturnCode, ListExpr(List(1, 2, 3))))
+      In(LastReturnCode, ListExpr.of(1, 2, 3)))
 
   //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
   //  result = Right(ObjectValue(Map(
   //    "A" -> (1),
   //    "B" -> StringValue("BBB"),
-  //    "LIST" -> ListValue(List((1), (2), (3)))))),
-  //  In(LastReturnCode, ListExpr(List((1), (2), (3)))))
+  //    "LIST" -> ListValue.of(1, 2, 3)))),
+  //  In(LastReturnCode, ListExpr.of(1, 2, 3))))
 
   "Operator precedence" - {
     testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
@@ -1060,12 +1060,12 @@ final class ExpressionTest extends OurTestSuite:
   "mkString" - {
     testEval(""" mkString(["»", $ASTRING, 7]) """,
       result = Right(StringValue("»AA7")),
-      MkString(ListExpr(List("»", NamedValue("ASTRING"), 7))))
+      MkString(ListExpr.of("»", NamedValue("ASTRING"), 7)))
 
     // Fails because List construction fails
     testEval(""" mkString(["»", missing, error("ERROR"), 7]) """,
       result = Left(ErrorInExpressionProblem("ERROR")),
-      MkString(ListExpr(List("»", MissingConstant, ErrorExpr("ERROR"), 7))))
+      MkString(ListExpr.of("»", MissingConstant, ErrorExpr("ERROR"), 7)))
   }
 
   "min" - {
@@ -1274,7 +1274,7 @@ final class ExpressionTest extends OurTestSuite:
   "in" - {
     testEval("$returnCode in [1, 2, 3]",
       result = Right(true),
-      In(LastReturnCode, ListExpr(List(1, 2, 3))))
+      In(LastReturnCode, ListExpr.of(1, 2, 3)))
 
     testEval("$a in $list",
       result = Right(true),
@@ -1299,7 +1299,7 @@ final class ExpressionTest extends OurTestSuite:
 
     "In" in:
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
-        In(a, ListExpr(List(b, c, d))).eval
+        In(a, ListExpr.of(b, c, d)).eval
           == Right(BooleanValue(Set(b, c, d)(a)))))
   }
 
@@ -1328,7 +1328,7 @@ final class ExpressionTest extends OurTestSuite:
       result = Right(true),
       Matches("A-", "A.+"))
 
-    testEval(""" variable("ASTRING") matches "A+" """,
+    testEval(""" $ASTRING matches "A+" """,
       result = Right(true),
       Matches(NamedValue("ASTRING"), "A+"))
 
@@ -1338,7 +1338,7 @@ final class ExpressionTest extends OurTestSuite:
 
     testEval(""" [7] matches "" """,
       result = Left(UnexpectedValueTypeProblem(StringValue, ListValue(List(NumberValue(7))))),
-      Matches(ListExpr(List(7)), ""))
+      Matches(ListExpr.of(7), ""))
 
     testEval(""" missing matches "" """,
       result = Right(true),

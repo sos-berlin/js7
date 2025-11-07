@@ -75,7 +75,7 @@ object ExpressionParser:
 
   private val listExpr: Parser[ListExpr] =
     bracketCommaSequence(expression)
-      .map(ListExpr(_))
+      .map(ListExpr.fromIterable)
 
   private val parenthesizedExpression: Parser[Expression] =
     inParentheses(expression)

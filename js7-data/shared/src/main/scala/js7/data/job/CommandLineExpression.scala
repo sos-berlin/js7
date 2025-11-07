@@ -15,9 +15,8 @@ object CommandLineExpression:
       commandLine.expressions
         .view
         .map(optimize)
-        .map {
-          case o @ MkString(ListExpr(_ :: _)) => o
+        .map:
+          case o @ MkString(ListExpr(seq)) if seq.sizeIs > 1 => o
           case MkString(expr) => expr
           case o => o
-        }
         .toList)

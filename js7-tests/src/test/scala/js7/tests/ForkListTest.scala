@@ -270,8 +270,8 @@ final class ForkListTest
       SubagentBundleId("active-active-all-agents"),
       Map(subagentId -> NumericConstant(1)))
     updateItem(subagentBundle)
-    val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
-    val listExpr = ListExpr(list.map(NumericConstant(_)))
+    val seq = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toVector
+    val listExpr = ListExpr(seq.map(NumericConstant(_)))
 
     val workflow = updateItem(Workflow.of(
       WorkflowPath("FORK-IN-FORKLIST"),
@@ -312,7 +312,7 @@ final class ForkListTest
 
         OrderFinished(None)))
 
-      for i <- list do withClue(s"i=$i "):
+      for i <- seq do withClue(s"i=$i "):
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId / s"$i", after = eventId)
           .map(_.event) ==

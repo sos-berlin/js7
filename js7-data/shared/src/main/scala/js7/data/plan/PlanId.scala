@@ -38,7 +38,9 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
     if isGlobal then
       ListExpr.empty
     else
-      ListExpr(StringConstant(planSchemaId.string) :: StringConstant(planKey.string) :: Nil)
+      ListExpr.of(
+        StringConstant(planSchemaId.string),
+        StringConstant(planKey.string))
 
   override def toString =
     s"Plan:$shortString"

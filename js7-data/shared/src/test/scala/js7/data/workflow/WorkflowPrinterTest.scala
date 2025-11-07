@@ -6,13 +6,14 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
-import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpr, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.expression.Expression.convenience.given
+import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpr, NamedValue, Or}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.WorkflowPrinterTest.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
+import scala.language.implicitConversions
 import scala.util.control.NonFatal
-
 /**
   * @author Joacim Zschimmer
   */
@@ -37,7 +38,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringConstant("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY" -> "VALUE"))))),
       """define workflow {
         |  execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, executable='my-script';
         |}
@@ -48,7 +49,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY\n\"$" -> StringConstant("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY\n\"$" -> "VALUE"))))),
       """define workflow {
         |  execute agent='AGENT', defaultArguments={'KEY
         |"$': 'VALUE'}, executable='my-script';
@@ -65,7 +66,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
               ShellScriptExecutable(
                 "LINE 1\nLINE 2\n'''LINE 3'''\n",
                 returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 2)),
-              Map("KEY" -> StringConstant("VALUE")))),
+              Map("KEY" -> "VALUE"))),
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
@@ -88,7 +89,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
             PathExecutable(
               "my-script",
               returnCodeMeaning = ReturnCodeMeaning.NoFailure),
-            Map("KEY" -> StringConstant("VALUE")),
+            Map("KEY" -> "VALUE"),
             processLimit = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
         |  execute agent='AGENT', processLimit=3, defaultArguments={'KEY': 'VALUE'}, sigkillDelay=10, failureReturnCodes=[], executable='my-script';
@@ -108,7 +109,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
             PathExecutable(
               "a-script",
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 2)),
-            Map("KEY" -> StringConstant("VALUE"))),
+            Map("KEY" -> "VALUE")),
           WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("b-script")))),
       """define workflow {
         |  job A;
@@ -140,8 +141,8 @@ final class WorkflowPrinterTest extends OurTestSuite:
         WorkflowPath.NoId,
         Vector(
           If(Or(
-            In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-            Equal(NamedValue("KEY"), StringConstant("VALUE")))
+            In(LastReturnCode, ListExpr.of(1, 2)),
+            Equal(NamedValue("KEY"), "VALUE"))
           ):
             Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))),
       """define workflow {
@@ -156,7 +157,7 @@ final class WorkflowPrinterTest extends OurTestSuite:
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          If(Equal(LastReturnCode, NumericConstant(-1))):
+          If(Equal(LastReturnCode, -1)):
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A-THEN"))),
               If(BooleanConstant(true)).Then:

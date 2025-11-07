@@ -21,6 +21,9 @@ import scala.collection.MapView
   * (while `this` is the own specicialized `Scope`). */
 trait Scope:
 
+  private lazy val nameToMaybeCheckedValue: String => Option[Checked[Value]] =
+    nameToCheckedValue.lift
+
   def symbolToValue: PartialFunction[String, Checked[Value]] =
     Map.empty
 
@@ -30,7 +33,7 @@ trait Scope:
   def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
     valueSearch match
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-        nameToCheckedValue.lift(name)
+        nameToMaybeCheckedValue(name)
       case _ =>
         None
 

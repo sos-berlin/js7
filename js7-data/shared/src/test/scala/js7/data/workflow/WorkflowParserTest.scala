@@ -12,12 +12,14 @@ import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, S
 import js7.data.lock.LockPath
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
-import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpr, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.expression.Expression.convenience.given
+import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpr, NamedValue, Or}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Finish, Fork, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
+import scala.language.implicitConversions
 import scala.util.control.NoStackTrace
 
 /**
@@ -69,9 +71,9 @@ final class WorkflowParserTest extends OurTestSuite:
           WorkflowJob(AgentPath("AGENT"),
             PathExecutable("my/executable"),
             Map(
-              "A" -> StringConstant("aaa"),
-              "B" -> StringConstant("bbb"),
-              "I" -> NumericConstant(-123)),
+              "A" -> "aaa",
+              "B" -> "bbb",
+              "I" -> -123),
             processLimit = 3,
             sigkillDelay = Some(30.s)),
           sourcePos = sourcePos(20, 208)),
@@ -121,7 +123,7 @@ final class WorkflowParserTest extends OurTestSuite:
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
-          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringConstant("VALUE")), sourcePos(48, 92)),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> "VALUE"), sourcePos(48, 92)),
           Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(102, 107)),
           ImplicitEnd(sourcePos(414, 415))),
         Map(
@@ -166,7 +168,7 @@ final class WorkflowParserTest extends OurTestSuite:
               PathExecutable(
                 "my/executable",
                 env = Map(
-                  "A" -> NumericConstant(1),
+                  "A" -> 1,
                   "B" -> NamedValue("b")),
                 returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
 
@@ -239,8 +241,8 @@ final class WorkflowParserTest extends OurTestSuite:
         If(
           Nev.one(If.IfThen(
             Or(
-              In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue("KEY"), StringConstant("VALUE"))),
+              In(LastReturnCode, ListExpr.of(1, 2)),
+              Equal(NamedValue("KEY"), "VALUE")),
             thenBlock = Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
@@ -255,7 +257,7 @@ final class WorkflowParserTest extends OurTestSuite:
         Vector(
           If(
             Nev.one(If.IfThen(
-              Equal(LastReturnCode, NumericConstant(-1)),
+              Equal(LastReturnCode, -1),
               thenBlock = Workflow.of(
                 Execute.Anonymous(
                   WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
@@ -274,7 +276,7 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow.anonymous(
         Vector(
           If(
-            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(-1)),
+            Nev.one(If.IfThen(Equal(LastReturnCode, -1),
               thenBlock = Workflow.of(Fail(sourcePos = sourcePos(41, 45))))),
             sourcePos = sourcePos(18, 40)),
           ImplicitEnd(sourcePos(46, 47)))))
@@ -285,7 +287,7 @@ final class WorkflowParserTest extends OurTestSuite:
         Vector(
           If(
             Nev.one(If.IfThen(
-              Equal(LastReturnCode, NumericConstant(-1)),
+              Equal(LastReturnCode, -1),
               thenBlock = Workflow.of(Fail(sourcePos = sourcePos(41, 45))))),
             elseBlock = Some(Workflow.of(Execute.Anonymous(
               WorkflowJob(AgentPath("AGENT"), PathExecutable("/ELSE")),
@@ -302,12 +304,12 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow.anonymous(
         Vector(
           If(
-            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(1)),
+            Nev.one(If.IfThen(Equal(LastReturnCode, 1),
               thenBlock = Workflow.of(
                 ImplicitEnd(sourcePos(51, 52))))),
             sourcePos = sourcePos(28, 49)),
           If(
-            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(2)),
+            Nev.one(If.IfThen(Equal(LastReturnCode, 2),
               thenBlock = Workflow.of:
                 ImplicitEnd(sourcePos(86, 87)))),
             sourcePos = sourcePos(63, 84)),
@@ -324,11 +326,11 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow.anonymous(
         Vector(
           If(
-            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(1)),
+            Nev.one(If.IfThen(Equal(LastReturnCode, 1),
               thenBlock = Workflow.of(ImplicitEnd(sourcePos(62, 63))))),
             sourcePos = sourcePos(28, 49)),
           If(
-            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(2)),
+            Nev.one(If.IfThen(Equal(LastReturnCode, 2),
               thenBlock = Workflow.of(ImplicitEnd(sourcePos(108, 109))))),
             sourcePos = sourcePos(74, 95)),
           ImplicitEnd(sourcePos(118, 119)))))
@@ -453,9 +455,9 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow(WorkflowPath.NoId, Vector(
         Fail(None, Map.empty, sourcePos = sourcePos(33, 37)),
         Fail(None, Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(47, 87)),
-        Fail(Some(StringConstant("ERROR")), Map.empty, sourcePos = sourcePos(97, 119)),
-        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(129, 186)),
-        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), uncatchable = true, sourcePos(196, 271)),
+        Fail(Some("ERROR"), Map.empty, sourcePos = sourcePos(97, 119)),
+        Fail(Some("ERROR"), Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(129, 186)),
+        Fail(Some("ERROR"), Map("returnCode" -> NumberValue(7)), uncatchable = true, sourcePos(196, 271)),
         ImplicitEnd(sourcePos = sourcePos(279, 280)))))
 
   "lock" in:
