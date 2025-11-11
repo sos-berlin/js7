@@ -198,30 +198,26 @@ extends SubagentDriver, Service.StoppableByRequest:
   def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
-      requireNotStopping
-        .flatMap:
-          case Left(problem) =>
-            journal.persistOne:
-              order.id <-: OrderProcessed(OrderOutcome.processLostUnchecked(problem))
-            .flatMapT: (stamped, _) =>
-              IO.pure(stamped.value.event).start.map(Right(_))
+      requireNotStopping.flatMap:
+        case Left(problem) =>
+          persistOrderProcessed(order.id, OrderOutcome.processLostUnchecked(problem))
 
-          case Right(()) =>
-            attachItemsForOrder(order).flatMap:
-              case Left(problem) =>
-                logger.error(s"attachItemsForOrder ${order.id}: $problem")
-                persistOrderProcessed(order.id, problem)
+        case Right(()) =>
+          attachItemsForOrder(order).flatMap:
+            case Left(problem) =>
+              logger.error(s"attachItemsForOrder ${order.id}: $problem")
+              persistOrderProcessed(order.id, OrderOutcome.Failed.fromProblem(problem))
 
-              case Right(()) =>
-                startProcessingOrder2(order, endOfAdmissionPeriod)
-                  .recoverFromProblemWith:
-                    case problem @ SubagentIsShuttingDownProblem =>
-                      persistOrderProcessed(order.id, problem)
+            case Right(()) =>
+              startProcessingOrder2(order, endOfAdmissionPeriod)
+                .recoverFromProblemWith:
+                  case problem @ SubagentIsShuttingDownProblem =>
+                    persistOrderProcessed(order.id, OrderOutcome.processLostUnchecked(problem))
 
-  private def persistOrderProcessed(orderId: OrderId, problem: Problem)
+  private def persistOrderProcessed(orderId: OrderId, outcome: OrderOutcome.NotSucceeded)
   : IO[Checked[FiberIO[OrderProcessed]]] =
     journal.persistOne:
-      orderId <-: OrderProcessed(OrderOutcome.processLost(problem))
+      orderId <-: OrderProcessed(outcome)
     .flatMapT: (stamped, _) =>
       IO.pure(stamped.value.event)
         .start
