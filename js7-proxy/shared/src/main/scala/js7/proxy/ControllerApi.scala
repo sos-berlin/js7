@@ -101,9 +101,10 @@ extends ControllerApiWithHttp:
     signedItems: immutable.Iterable[Signed[SignableItem]] = Nil,
     delete: immutable.Iterable[VersionedItemPath] = Nil)
   : IO[Checked[Completed]] =
-    updateItems(AddVersion(versionId) +: (
-      Stream.iterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++
-        Stream.iterable(delete).map(RemoveVersioned.apply)))
+    updateItems:
+      AddVersion(versionId) +:
+        Stream.iterable(signedItems).map(o => AddOrChangeSigned(o.signedString)).append:
+          Stream.iterable(delete).map(RemoveVersioned.apply)
 
   def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): IO[Checked[Completed]] =
     updateItems:
@@ -186,20 +187,20 @@ extends ControllerApiWithHttp:
               body(api)
 
   private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
-    CorrelId.bindIfEmpty(IO.defer:
+    IO.defer:
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
       apiResource.use: api =>
-        api.loginAndRetryIfSessionLost(body(api))
-          .tryIt.map:
-            case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
-              Failure(t)  // Trigger onErrorRestartLoop
-            case o => HttpClient.failureToChecked(o)
-          .untry
+        api.loginAndRetryIfSessionLost:
+          body(api)
+        .tryIt.map:
+          case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
+            Failure(t) // Trigger onErrorRestartLoop
+          case o => HttpClient.failureToChecked(o)
+        .untry
       .onErrorRestartLoop(()):
-        case (t, _, retry)
-          if isTemporaryUnreachable(t) && delays.hasNext =>
+        case (t, _, retry) if isTemporaryUnreachable(t) && delays.hasNext =>
           if warned.elapsed >= 60.s then
             logger.warn(s"⟲ Will retry after error: ${t.toStringWithCauses}")
             warned = now
@@ -209,7 +210,7 @@ extends ControllerApiWithHttp:
             IO.sleep(delays.next()) *>
             retry(())
 
-        case (t, _, _) => IO.raiseError(t))
+        case (t, _, _) => IO.raiseError(t)
 
 
 object ControllerApi:
