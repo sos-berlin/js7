@@ -30,16 +30,16 @@ sealed trait OrderOutcome:
   def isProcessLost: Boolean =
     false
 
-  def toKilledButRestartable(toProblem: Killed => Problem): Option[Disrupted] =
-    def onlyReturnCode(outcome: Succeeded | Failed) =
-      outcome.namedValues.filter(_._1 == Value.ShellReturnCode)
-    val isKilledOutcome =
-      this match
-        case o: OrderOutcome.Succeeded => Some(o.copy(namedValues = onlyReturnCode(o)))
-        case o: Failed if !o.uncatchable => Some(o.copy(namedValues = onlyReturnCode(o)))
-        case _: (Failed | TimedOut | Killed | Disrupted | Caught) => None
-    isKilledOutcome.map: outcome =>
-      processLost(toProblem(Killed(outcome)))
+  //def toKilledButRestartable(toProblem: Killed => Problem): Option[Disrupted] =
+  //  def onlyReturnCode(outcome: Succeeded | Failed) =
+  //    outcome.namedValues.filter(_._1 == Value.ShellReturnCode)
+  //  val isKilledOutcome =
+  //    this match
+  //      case o: OrderOutcome.Succeeded => Some(o.copy(namedValues = onlyReturnCode(o)))
+  //      case o: Failed if !o.uncatchable => Some(o.copy(namedValues = onlyReturnCode(o)))
+  //      case _: (Failed | TimedOut | Killed | Disrupted | Caught) => None
+  //  isKilledOutcome.map: outcome =>
+  //    processLost(toProblem(Killed(outcome)))
 
   /** Different to namedValues, findNamedValues dives into nested OrderOutcomes. */
   def findNamedValues: Option[NamedValues]
