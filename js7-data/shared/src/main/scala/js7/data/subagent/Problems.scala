@@ -26,7 +26,8 @@ object Problems:
   case object SubagentNotDedicatedProblem extends Problem.ArgumentlessCoded
 
   type SubagentShutDownBeforeProcessStartProblem = SubagentShutDownBeforeProcessStartProblem.type
-  case object SubagentShutDownBeforeProcessStartProblem extends Problem.ArgumentlessCoded
+  case object SubagentShutDownBeforeProcessStartProblem
+    extends Problem.ArgumentlessCoded, ProcessLostProblem
 
   type SubagentIsShuttingDownProblem = SubagentIsShuttingDownProblem.type
   case object SubagentIsShuttingDownProblem extends Problem.ArgumentlessCoded
@@ -58,7 +59,7 @@ object Problems:
   extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   final case class ProcessKilledDueToSubagentShutdownProblem(outcome: OrderOutcome.Killed)
-  extends Problem.Coded:
+  extends Problem.Coded, ProcessLostProblem:
     def arguments = Map1("outcome", outcome.toString)
 
 

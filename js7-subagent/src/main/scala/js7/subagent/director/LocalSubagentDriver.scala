@@ -202,7 +202,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         .flatMap:
           case Left(problem) =>
             journal.persistOne:
-              order.id <-: OrderProcessed(OrderOutcome.processLost(problem))
+              order.id <-: OrderProcessed(OrderOutcome.processLostUnchecked(problem))
             .flatMapT: (stamped, _) =>
               IO.pure(stamped.value.event).start.map(Right(_))
 

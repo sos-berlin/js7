@@ -10,7 +10,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.OrderOutcome.*
-import js7.data.subagent.Problems.{ProcessKilledDueToSubagentShutdownProblem, ProcessLostDueToUnknownReasonProblem}
+import js7.data.subagent.Problems.{ProcessKilledDueToSubagentShutdownProblem, ProcessLostDueToUnknownReasonProblem, ProcessLostProblem}
 import js7.data.value.{NamedValues, NumberValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
@@ -286,7 +286,12 @@ object OrderOutcome:
         Subtype[ProcessLost](aliases = Seq("JobSchedulerRestarted")),
         Subtype(deriveCodec[Other]))
 
-  def processLost(problem: Problem): Disrupted =
+  /** ProcessLost may restart the Execute instruction. Only for temporary problems! */
+  def processLost(problem: ProcessLostProblem): Disrupted =
+    Disrupted(Disrupted.ProcessLost(problem))
+
+  /** ProcessLost may restart the Execute instruction. Only for temporary problems! */
+  def processLostUnchecked(problem: Problem): Disrupted =
     Disrupted(Disrupted.ProcessLost(problem))
 
   @TestOnly

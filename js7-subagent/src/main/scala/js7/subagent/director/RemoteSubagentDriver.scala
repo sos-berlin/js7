@@ -245,20 +245,20 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
   /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
-  protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
+  protected def onSubagentDied(processLostProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
   : IO[Unit] =
     IO.defer:
-      stopDispatcherAndEmitProcessLostEvents(orderProblem, Some(subagentDiedEvent))
+      stopDispatcherAndEmitProcessLostEvents(processLostProblem, Some(subagentDiedEvent))
 
   /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDiedEvent` event. */
   def stopDispatcherAndEmitProcessLostEvents(
-    orderProblem: ProcessLostProblem,
+    processLostProblem: ProcessLostProblem,
     subagentDiedEvent: Option[SubagentDied])
   : IO[Unit] =
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDiedEvent
-    logger.debugIO("stopDispatcherAndEmitProcessLostEvents", s"$orderProblem, $subagentDiedEvent"):
+    logger.debugIO("stopDispatcherAndEmitProcessLostEvents", s"$processLostProblem, $subagentDiedEvent"):
       orderToDeferred.removeAll.flatMap: oToD =>
         val orderIds = oToD.keys
         IO.whenA(subagentDiedEvent.isDefined):
@@ -270,7 +270,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
             orderIds.view.flatMap(state.idToOrder.get)
               .flatMap(_.ifProcessing(subagentId))
               .map: order =>
-                order.id <-: state.orderProcessLostIfRestartable(order, orderProblem)
+                order.id <-: state.orderProcessLostIfRestartable(order, processLostProblem)
               .toVector.sortBy(_.key: OrderId) // for prettier logging
               .concat:
                 subagentDiedEvent.map(subagentId <-: _)
@@ -344,7 +344,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
           case SubagentIsShuttingDownProblem =>
             OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
           case CommandDispatcher.StoppedProblem =>
-            OrderProcessed.processLost(problem)
+            OrderProcessed.processLostUnchecked(problem)
           case _ =>
             OrderProcessed(OrderOutcome.Disrupted(problem))
         journal.persist(order.id <-: orderProcessed)
@@ -501,7 +501,8 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
                       // The SubagentEventListener should do the same for all lost processes
                       // at once, but just in case the SubagentEventListener does run, we emit
                       // an OrderProcess event here.
-                      val orderProcessed = OrderProcessed.processLost(SubagentNotDedicatedProblem)
+                      val orderProcessed =
+                        OrderProcessed.processLostUnchecked(SubagentNotDedicatedProblem)
                       onStartOrderProcessFailed(command, orderProcessed)
                         .flatTapT: _ =>
                           deferred.complete(orderProcessed)

@@ -12,13 +12,13 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.{Order, OrderId, OrderOutcome}
-import js7.data.subagent.Problems.ProcessCancelledBeforeStartProblem
+import js7.data.subagent.Problems.{ProcessCancelledBeforeStartProblem, ProcessLostProblem}
 import js7.data.value.expression.Expression
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
@@ -37,7 +37,7 @@ private final class JobDriverForOrder private(
   private val sigkillFiber = FiberVar[Unit]()
   private var runningSince: SyncDeadline | Null = null
   private var isKilled = false
-  private var killedWithProcessLost = none[OrderOutcome.Killed => Problem]
+  private var killedWithProcessLost = none[OrderOutcome.Killed => ProcessLostProblem]
   private var sigkilled = false
   private var timedOut = false
 
@@ -177,7 +177,7 @@ private final class JobDriverForOrder private(
   /** A SIGTERM is followed by a SIGKILL if the process has not terminated after sigkillDelay. */
   def kill(
     signal_ : ProcessSignal,
-    processLost: Option[OrderOutcome.Killed => Problem] = None)
+    processLost: Option[OrderOutcome.Killed => ProcessLostProblem] = None)
   : IO[Unit] =
     IO.defer:
       val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
@@ -190,7 +190,10 @@ private final class JobDriverForOrder private(
           .start
           .flatMap(sigkillFiber.set)
 
-  private def killOnly(signal: ProcessSignal, processLost: Option[OrderOutcome.Killed => Problem] = None): IO[Unit] =
+  private def killOnly(
+    signal: ProcessSignal,
+    processLost: Option[OrderOutcome.Killed => ProcessLostProblem] = None)
+  : IO[Unit] =
     IO.defer:
       IO.unlessA(signal == SIGKILL && sigkilled):
         _orderProcess.compareAndExchange(None, Some(Left(signal))) match

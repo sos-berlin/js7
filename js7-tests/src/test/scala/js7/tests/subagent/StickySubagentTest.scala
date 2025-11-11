@@ -164,7 +164,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     assert(eventWatch.eventsByKey[OrderEvent](orderId)
       .map {
         case OrderProcessed(OrderOutcome.Disrupted(ProcessLost(ProcessLostDueToRestartProblem), _)) =>
-          OrderProcessed(OrderOutcome.processLost(SubagentNotDedicatedProblem))
+          OrderProcessed(OrderOutcome.processLostUnchecked(SubagentNotDedicatedProblem))
         case o => o
       } == Seq(
       OrderAdded(withoutSubagentBundleWorkflow.id),

@@ -1,7 +1,7 @@
 package js7.data.subagent
 
 import js7.base.crypt.Signed
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentRunId
 import js7.data.event.JournaledState
@@ -9,6 +9,7 @@ import js7.data.item.{SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, OrderOutcome}
+import js7.data.subagent.Problems.ProcessLostProblem
 import js7.data.value.expression.Scope
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -53,7 +54,7 @@ extends JournaledState[S]:
       jobKey
 
   /** Returns ProcessLost if job isRestartable, otherwise returns Disrupted. */
-  final def orderProcessLostIfRestartable(order: Order[Order.State], problem: Problem): OrderProcessed =
+  final def orderProcessLostIfRestartable(order: Order[Order.State], problem: ProcessLostProblem): OrderProcessed =
     OrderProcessed:
       if workflowJob(order.workflowPosition).exists(_.isRestartable) then
         // ProcessLost indicates that we should restart the order process

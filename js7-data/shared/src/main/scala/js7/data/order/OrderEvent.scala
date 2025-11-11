@@ -28,7 +28,7 @@ import js7.data.order.OrderEvent.OrderMoved.Reason
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected273
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.plan.PlanId
-import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
+import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.instructions.ForkBranchId
@@ -323,8 +323,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     @TestOnly
     val processLostDueToReset: OrderProcessed = processLost(ProcessLostDueToResetProblem)
 
-    def processLost(problem: Problem): OrderProcessed =
+    /** ProcessLost may restart the Execute instruction. Only for temporary problems! */
+    def processLost(problem: ProcessLostProblem): OrderProcessed =
       OrderProcessed(OrderOutcome.processLost(problem))
+
+    /** ProcessLost may restart the Execute instruction. Only for temporary problems! */
+    def processLostUnchecked(problem: Problem): OrderProcessed =
+      OrderProcessed(OrderOutcome.processLostUnchecked(problem))
 
     implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
 
