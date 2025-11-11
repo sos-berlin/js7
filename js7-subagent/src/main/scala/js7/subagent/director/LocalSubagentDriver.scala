@@ -206,7 +206,7 @@ extends SubagentDriver, Service.StoppableByRequest:
           attachItemsForOrder(order).flatMap:
             case Left(problem) =>
               logger.error(s"attachItemsForOrder ${order.id}: $problem")
-              persistOrderProcessed(order.id, OrderOutcome.Failed.fromProblem(problem))
+              persistOrderProcessed(order.id, OrderOutcome.Disrupted(problem))
 
             case Right(()) =>
               startProcessingOrder2(order, endOfAdmissionPeriod)
