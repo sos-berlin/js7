@@ -20,7 +20,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -46,7 +45,7 @@ import js7.tests.jobresource.JobResourceTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertions.*
-import scala.annotation.tailrec
+import scala.util.boundary
 
 class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -317,7 +316,6 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(stdout.contains(executableContent))
 
   "🔥 Heavy addition and removal of Workflow and JobResource: Order may fail with No such JobResource" in:
-    if !isIntelliJIdea then pending // FIXME
     val jobResource = JobResource(JobResourcePath("HEAVY"))
     val workflow = Workflow(
       WorkflowPath("HEAVY"),
@@ -325,21 +323,21 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
         EmptyJob.execute(agentPath),
       jobResourcePaths = Seq(jobResource.path))
 
-    @tailrec def loop(n: Int): Unit =
-      updateItems(workflow, jobResource)
-      val stamped = controller.runOrder:
-        FreshOrder(OrderId("HEAVY"), workflow.path, deleteWhenTerminated = true)
-      if !stamped.map(_.value).contains(OrderFinished()) then
-        // FIXME JobResourcePath must be attached at Agent
-        assert:
-          stamped.map(_.value).contains:
-            OrderProcessed:
-              OrderOutcome.Failed.fromProblem:
-                UnknownKeyProblem("JobResourcePath", jobResource.path)
-      else
-        deleteItems(workflow.path, jobResource.path)
-        if n > 1 then loop(n - 1)
-    loop(1000)
+    boundary:
+      (1 to 1000).foreach: _ =>
+        updateItems(workflow, jobResource)
+        val stamped = controller.runOrder:
+          FreshOrder(OrderId("HEAVY"), workflow.path, deleteWhenTerminated = true)
+        if stamped.map(_.value).contains(OrderFinished()) then
+          deleteItems(workflow.path, jobResource.path)
+        else
+          // FIXME Order JobResourcePath should have been attached at Agent and Order must not fail:
+          assert:
+            stamped.map(_.value).contains:
+              OrderProcessed:
+                OrderOutcome.Disrupted:
+                  UnknownKeyProblem("JobResourcePath", jobResource.path)
+          boundary.break()
 
 object JobResourceTest:
 

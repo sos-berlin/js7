@@ -461,17 +461,10 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
                   logger.debug(s"postQueuedCommand($commandString) stopped")
                   IO.right(())
                 else
-                  postQueuedCommand2(numberedCommand)
-            .tryIt
+                  dependentSignedItems(command).flatMapT: signedItems =>
+                    postQueuedCommand2(numberedCommand, signedItems)
             .flatMap:
-              case Failure(throwable) =>
-                retryAfterError(Problem.reverseThrowable(throwable))
-
-              //case Success(checked @ Left(_: SubagentDriverStoppedProblem)) =>
-              //  logger.debug(s"postQueuedCommand($commandString) stopped")
-              //  IO.right(checked)
-
-              case Success(checked @ Left(problem)) =>
+              case checked @ Left(problem) =>
                 if HttpClient.isTemporaryUnreachableStatus(problem.httpStatusCode) then
                   // We don't check the error type,
                   // because it seems impossible to properly detect recoverable errors.
@@ -481,7 +474,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
                 else
                   IO.right(checked)
 
-              case Success(checked @ Right(_)) =>
+              case checked @ Right(_) =>
                 IO.right(checked)
         .flatMap:
           case Left(SubagentNotDedicatedProblem) =>
@@ -512,7 +505,8 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
 
           case Left(problem) =>
             processingAllowed.isOff.flatMap(if _ then
-              logger.debug(s"⚠️ postQueuedCommand($commandString) error after stop ignored: $problem")
+              logger.debug:
+                s"⚠️  postQueuedCommand($commandString) error after stop ignored: $problem"
               IO.right(())
             else
               IO.left(problem))
@@ -539,44 +533,44 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
           case None => problem.toString
           case Some(t) => t.toStringWithCauses
         if lastWarning.contains(warning) then
-          logger.debug(s"⚠️ Retry warning #$warningCount (${startedAt.elapsed.pretty}): $warning")
+          logger.debug(s"⚠️  Retry warning #$warningCount (${startedAt.elapsed.pretty}): $warning")
         else
           lastWarning = Some(warning)
           logger.warn(s"Retry warning #$warningCount: $warning")
         IO.sleep(tryPostErrorDelay) // Retry
           .as(Left(()))
 
-  private def postQueuedCommand2(numberedCommand: Numbered[SubagentCommand.Queueable])
+  private def postQueuedCommand2(
+    numberedCommand: Numbered[SubagentCommand.Queueable],
+    signedItems: Seq[Signed[SignableItem]])
   : IO[Checked[Unit]] =
     IO.defer:
       val command = numberedCommand.value
-      dependentSignedItems(command)
-        .map(_.orThrow)
-        .flatMap: signedItems =>
-          val cmd = signedItems match
-            case Nil => numberedCommand
-            case signedSeq =>
-              val correlId = CorrelId.current
-              numberedCommand.copy(
-                value = SubagentCommand.Batch(signedSeq
-                  .map(AttachSignedItem(_): SubagentCommand)
-                  .appended(command)
-                  .map(CorrelIdWrapped(correlId, _))))
-          api
-            .executeSubagentCommand(cmd)
-            .flatMapT(_ => attachedItemKeys
-              .update(o => IO.pure:
-                o ++ signedItems.view.map(_.value.keyAndRevision))
-              .as(Checked.unit))
+      val cmd =
+        if signedItems.isEmpty then
+          numberedCommand
+        else
+          val correlId = CorrelId.current
+          numberedCommand.copy(
+            value = SubagentCommand.Batch(signedItems
+              .map(AttachSignedItem(_): SubagentCommand)
+              .appended(command)
+              .map(CorrelIdWrapped(correlId, _))))
+      api.executeSubagentCommand(cmd)
+        .flatMapT: _ =>
+          attachedItemKeys
+            .updateDirect:
+              _ ++ signedItems.view.map(_.value.keyAndRevision)
+            .as(Checked.unit)
 
   private def dependentSignedItems(command: SubagentCommand)
   : IO[Checked[Seq[Signed[SignableItem]]]] =
     command match
       case startOrderProcess: StartOrderProcess =>
-        val alreadyAttached = attachedItemKeys.get
-        signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
-          .map(_.map(_.filterNot: signed =>
-            alreadyAttached.get(signed.value.key) contains signed.value.itemRevision))
+        attachedItemKeys.value.flatMap: alreadyAttached =>
+          signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
+            .map(_.map(_.filterNot: signed =>
+              alreadyAttached.get(signed.value.key) contains signed.value.itemRevision))
       case _ =>
         IO.right(Nil)
 
