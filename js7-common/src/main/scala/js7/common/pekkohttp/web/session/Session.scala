@@ -2,12 +2,21 @@ package js7.common.pekkohttp.web.session
 
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.:=
 
 /**
   * @author Joacim Zschimmer
   */
-trait Session extends HasTimeout:
+trait Session:
+  private val _isAlive = Atomic(true)
+
   protected[session] def sessionInit: SessionInit
+
+  final def isAlive: Boolean =
+    _isAlive.get
+
+  private[session] def die(): Unit =
+    _isAlive := false
 
   final def sessionNumber: Long =
     sessionToken.number

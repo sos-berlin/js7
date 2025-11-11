@@ -1,9 +1,10 @@
 package js7.common.pekkohttp.web.session
 
 import cats.effect.std.{AtomicCell, Supervisor}
-import cats.effect.{Deferred, IO, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
+import cats.syntax.option.*
 import com.typesafe.config.Config
 import izumi.reflect.Tag
 import java.nio.file.Files.{createFile, deleteIfExists}
@@ -103,9 +104,10 @@ extends Service.TrivialReleasable:
           assertThat( // paranoid
             !state.tokenToSession.contains(token), "Duplicate generated SessionToken")
           val session = newSession(SessionInit(token, user))
+          val entry = Entry(session)
 
           val updated = state.copy(
-            tokenToSession = state.tokenToSession.updated(session.sessionToken, session))
+            tokenToSession = state.tokenToSession.updated(session.sessionToken, entry))
 
           logger.info(s"${session.sessionToken} for ${user.id} Login" +
             clientVersion.fold("")(v =>
@@ -123,18 +125,18 @@ extends Service.TrivialReleasable:
                 .left.foreach: problem =>
                   logger.error(problem.toString)
 
-          updated -> session)
-    .flatMap: session =>
+          updated -> entry)
+    .flatMap: entry =>
       IO.unlessA(isEternalSession):
         CatsDeadline.now.flatMap: now =>
           val timeoutAt = now + sessionTimeout
           supervisor.supervise:
             cell.flatMap(_.update:
-              _.deleteOnly(session.sessionToken, "expired"))
+              _.deleteOnly(entry.session.sessionToken, "expired"))
             .delayBy(sessionTimeout)
-          .flatMap: fiber =>
-            session.timeoutAt(timeoutAt, fiber)
-      .as(session.sessionToken)
+          .map: fiber =>
+            entry.timeoutFiber = Some(fiber)
+      .as(entry.session.sessionToken)
 
   def logout(sessionToken: SessionToken): IO[Unit] =
     cell.flatMap(_.evalUpdate:
@@ -149,20 +151,19 @@ extends Service.TrivialReleasable:
           logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
           Left(InvalidSessionTokenProblem)
 
-        case (Some(session), Right(user))
-          if !user.id.isAnonymous && user.id != session.currentUser.id =>
-          tryUpdateLatelyAuthenticatedUser(user, session)
+        case (Some(entry), Right(user))
+          if !user.id.isAnonymous && user.id != entry.currentUserId =>
+          tryUpdateLatelyAuthenticatedUser(user, entry.session)
 
-        case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
+        case (Some(entry), Left(userIds)) if !userIds.contains(entry.currentUserId) =>
           logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
-            s"'${userIds.mkString(", ")}' do not include Sessions's ${session.currentUser.id}")
+            s"'${userIds.mkString(", ")}' do not include Sessions's ${entry.currentUserId}")
           Left(InvalidSessionTokenProblem)
 
-        case (Some(session), _) =>
-          Right(session)
+        case (Some(entry), _) =>
+          Right(entry.session)
     .flatTapT: session =>
-      session.isAlive.map:
-        _ !! InvalidSessionTokenProblem
+      IO(session.isAlive !! InvalidSessionTokenProblem)
 
   @TestOnly
   private[js7] def count: IO[Int] =
@@ -204,27 +205,33 @@ extends Service.TrivialReleasable:
     s"SessionRegister[${implicitly[Tag[S]].tag.shortName}]"
 
 
-  private final case class State(tokenToSession: Map[SessionToken, S]):
+  private final case class State(tokenToSession: Map[SessionToken, Entry]):
     /** Cancel the timeout fiber, too. */
     def delete(token: SessionToken, reason: String): IO[State] =
       tokenToSession.get(token).fold(IO.pure(this)): session =>
-        session.cancelTimeoutFiber.as:
-          logger.info(s"$token for ${session.currentUser.id} $reason")
+        session.timeoutFiber.foldMap(_.cancel).as:
           deleteOnly(token, "expired")
 
     def deleteOnly(token: SessionToken, reason: String): State =
-      tokenToSession.get(token).fold(this): session =>
-        logger.info(s"$token for ${session.currentUser.id} $reason")
+      tokenToSession.get(token).fold(this): entry =>
+        logger.info(s"$token for ${entry.currentUserId} $reason")
+        entry.session.die()
         copy(tokenToSession = tokenToSession.removed(token))
 
     def logOpenSessions(): Unit =
-      tokenToSession.values
+      tokenToSession.values.map(_.session)
         .groupMap(_.currentUser.id)(_.sessionToken)
         .view.mapValues(_.toVector.sortBy(_.number))
         .toVector.sortBy(_._1)
         .foreach: (userId, sessionTokens) =>
-          logger.debug(s"${sessionTokens.size.toString} open sessions for $userId${
+          logger.debug(s"${sessionTokens.size} open sessions for $userId${
             sessionTokens.view.mkString(" (", " ", ")")}")
+
+
+  private final class Entry(val session: S):
+    def currentUserId = session.currentUser.id
+    var timeoutFiber = none[FiberIO[Unit]]
+    override def toString = currentUserId.toString
 
 
 object SessionRegister:
