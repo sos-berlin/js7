@@ -49,8 +49,8 @@ final class ClusterWatch(
         logger.trace(s"$from: $opString${
           _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed(using now).pretty)}")
 
-        (_state, request.maybeEvent) match
-          case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) if !request.forceWhenUntaught =>
+        (_state, request.maybeEvent, request.forceWhenUntaught) match
+          case (None/*untaught*/, Some(event: ClusterNodeLostEvent), /*force=*/false) =>
             IO:
               manuallyConfirmed(event) match
                 case None =>
@@ -64,11 +64,11 @@ final class ClusterWatch(
                     event.getClass.simpleScalaName} confirmation")
                   Right(Some(confirmer) -> reportedClusterState)
 
-          case (None, _) =>
+          case (None, _, _) =>
             logger.info(s"$from teaches clusterState=$reportedClusterState")
             IO.right(None -> reportedClusterState)
 
-          case (Some(state), _) =>
+          case (Some(state), _, _) =>
             state.processRequest(request, manuallyConfirmed, checkActiveIsLost, opString)(using now)
 
     checkedClusterState.flatMap:
