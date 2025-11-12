@@ -211,8 +211,10 @@ extends SubagentDriver, Service.StoppableByRequest:
             case Right(()) =>
               startProcessingOrder2(order, endOfAdmissionPeriod)
                 .recoverFromProblemWith:
-                  case problem @ SubagentIsShuttingDownProblem =>
+                  case problem: SubagentIsShuttingDownProblem =>
                     persistOrderProcessed(order.id, OrderOutcome.processLostUnchecked(problem))
+                  case problem =>
+                    persistOrderProcessed(order.id, OrderOutcome.Failed.fromProblem(problem))
 
   private def persistOrderProcessed(orderId: OrderId, outcome: OrderOutcome.NotSucceeded)
   : IO[Checked[FiberIO[OrderProcessed]]] =
