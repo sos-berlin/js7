@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import cats.syntax.semigroup.*
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerState

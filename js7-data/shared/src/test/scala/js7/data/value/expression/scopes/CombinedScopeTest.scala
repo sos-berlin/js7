@@ -1,6 +1,5 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.semigroup.*
 import js7.base.test.OurTestSuite
 import js7.data.value.NumberValue
 import js7.data.value.expression.Scope

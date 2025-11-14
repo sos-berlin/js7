@@ -15,7 +15,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
-import scala.annotation.unused
 import scala.collection.MapView
 import scala.language.implicitConversions
 

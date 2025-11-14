@@ -1,6 +1,5 @@
 package js7.data.state
 
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp

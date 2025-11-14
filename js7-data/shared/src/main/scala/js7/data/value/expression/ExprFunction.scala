@@ -1,6 +1,5 @@
 package js7.data.value.expression
 
-import cats.syntax.semigroup.*
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}

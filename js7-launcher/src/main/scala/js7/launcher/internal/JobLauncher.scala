@@ -2,7 +2,6 @@ package js7.launcher.internal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.semigroup.*
 import java.nio.file.Files.{exists, getPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE

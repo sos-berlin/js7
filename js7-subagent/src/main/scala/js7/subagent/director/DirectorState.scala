@@ -1,7 +1,6 @@
 package js7.subagent.director
 
 import cats.effect.IO
-import cats.syntax.monoid.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap

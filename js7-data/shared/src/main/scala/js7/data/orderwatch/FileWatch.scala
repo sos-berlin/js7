@@ -1,6 +1,5 @@
 package js7.data.orderwatch
 
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder, DecodingFailure}
@@ -17,8 +16,8 @@ import js7.data.order.Order.DefaultPriority
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.*
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
+import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
-import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ObjectValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import scala.collection.View

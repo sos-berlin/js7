@@ -1,7 +1,6 @@
 package js7.launcher
 
 import cats.effect.ResourceIO
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked
 import js7.base.time.Timestamp

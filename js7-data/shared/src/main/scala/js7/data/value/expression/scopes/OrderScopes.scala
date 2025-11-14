@@ -1,6 +1,5 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.semigroup.*
 import js7.base.problem.Checked
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
@@ -17,16 +16,13 @@ import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
 import scala.collection.MapView
 import scala.collection.immutable.Map.Map1
+
 /** Provide some Scopes for an Order in any state. */
 trait OrderScopes:
 
   protected val order: Order[Order.State]
   protected val workflow: Workflow
   protected val controllerId: ControllerId
-
-  /** The same Scope over the Order's whole lifetime. */
-  private lazy val minimumOrderScope: Scope =
-    order.minimumScope(controllerId)
 
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
@@ -61,7 +57,7 @@ trait OrderScopes:
   /** For `Order[Order.State]`, without order variables. */
   final lazy val variablelessOrderScope: Scope =
     combine(
-      minimumOrderScope,
+      order.minimumScope(controllerId),
       symbolScope,
       NamedValueScope:
         case "js7Label" => symbolScope.symbol("label").get

@@ -10,7 +10,7 @@ import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
-import scala.annotation.unused
+import scala.annotation.{threadUnsafe, unused}
 import scala.collection.MapView
 
 /** Provides data for `Expression` evaluation.
@@ -68,6 +68,11 @@ trait Scope:
       .combineProblems
       .map(_.toMap)
 
+  inline final def |+|(other: Scope): Scope =
+    combine(other)
+
+  inline final def combine(other: Scope): Scope =
+    Scope.combine(this, other)
 
 object Scope extends Monoid[Scope]:
   given Monoid[Scope] = this

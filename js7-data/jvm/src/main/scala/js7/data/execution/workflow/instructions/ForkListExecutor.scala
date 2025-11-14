@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import cats.instances.either.*
 import cats.instances.vector.*
-import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
