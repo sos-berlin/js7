@@ -37,7 +37,7 @@ final class EnvScopeTest extends OurTestSuite:
 
       "Nested call" in:
         val envScope = new EnvScope:
-          def get(name: String) =
+          override def getEnv(name: String) =
             condOpt(name):
               case "A" => "B"
               case "B" => "RESULT"

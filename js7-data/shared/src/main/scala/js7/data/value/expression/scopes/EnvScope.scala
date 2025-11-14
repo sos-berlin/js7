@@ -6,13 +6,18 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
+import js7.data.value.expression.scopes.EnvScope.testEnv
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 import org.jetbrains.annotations.TestOnly
 
 /** Accesses environment variables. */
 trait EnvScope extends Scope:
-  protected def get(name: String): Option[String]
+
+  // Overridable for testing purposes
+  protected def getEnv(name: String): Option[String] =
+    Option(testEnv.get(name)).orElse:
+      sys.env.get(name)
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
   : Option[Checked[Value]] =
@@ -23,7 +28,7 @@ trait EnvScope extends Scope:
             case Some(Seq(Argument(nameExpr, None | Some("name")))) =>
               for
                 name <- nameExpr.evalAsString
-                string <- get(name) !! UnknownKeyProblem("environment variable", name)
+                string <- getEnv(name) !! UnknownKeyProblem("environment variable", name)
               yield
                 StringValue(string)
 
@@ -32,7 +37,7 @@ trait EnvScope extends Scope:
             Argument(defaultExpr, None | Some("default")))) =>
               for
                 name <- nameExpr.evalAsString
-                result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
+                result <- getEnv(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
               yield
                 result
 
@@ -46,10 +51,6 @@ trait EnvScope extends Scope:
 object EnvScope extends EnvScope:
 
   private val testEnv = new ConcurrentHashMap[String, String]
-
-  def get(name: String): Option[String] =
-    Option(testEnv.get(name)).orElse:
-      sys.env.get(name)
 
   @TestOnly
   private[js7] def putForTest(name: String, value: String): Unit =
