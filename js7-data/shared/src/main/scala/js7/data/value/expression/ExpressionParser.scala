@@ -48,10 +48,15 @@ object ExpressionParser:
   def exprFunction(string: String): ExprFunction =
     parseFunction(string).orThrow
 
+  //def parseExpressionOrExprFunction(string: String): Checked[Expression | ExprFunction] =
+  //  checkedParse(string, expressionOrExprFunction.surroundedBy(w) <* end)
+
   def parseFunction(string: String): Checked[ExprFunction] =
     checkedParse(string, functionDefinition.surroundedBy(w) <* end)
       .left.map(_.withPrefix("Error in functionDefinition:"))
 
+  /** Returns an expression which may also be a FunctionExpr. */
+  // 👉Not needed when a FunctionValue becomes an ordinary Value in an Expression
   def parseExpressionOrFunction(string: String): Checked[Expression] =
     checkedParse(string, expressionOrFunction.surroundedBy(w) <* end)
 
@@ -62,10 +67,20 @@ object ExpressionParser:
   private val parameterList: Parser[List[String]] =
     identifier.map(_ :: Nil) | inParentheses(commaSequence(identifier))
 
+  private val functionParameterDefinition: Parser[List[String]] =
+    (parameterList <* (w ~ symbol("=>"))).backtrack
+
   private val functionDefinition: Parser[ExprFunction] =
-    (((parameterList <* (w ~ symbol("=>"))).backtrack <* w) ~ expression)
+    ((functionParameterDefinition <* w) ~ expression)
       .map: (names, expression) =>
         ExprFunction(names*)(expression)
+
+  //val expressionOrExprFunction: Parser[Expression | ExprFunction] =
+  //  functionParameterDefinition.orElse(expression).flatMap:
+  //    case expr: Expression => pure(expr)
+  //    case names: List[String] =>
+  //      (w *> expressionOrFunction).map: expr =>
+  //        ExprFunction(names *)(expr)
 
   private val functionExpr: Parser[FunctionExpr] =
     functionDefinition.map(FunctionExpr(_))

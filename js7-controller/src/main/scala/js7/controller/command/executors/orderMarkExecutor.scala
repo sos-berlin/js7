@@ -14,9 +14,8 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.order.OrderId
 import js7.data.value.StringValue
-import js7.data.value.expression.{ExprFunction, Scope}
+import js7.data.value.expression.{Expression, Scope}
 import scala.collection.immutable
-import scala.collection.immutable.ArraySeq
 
 private[command] def cancelOrdersExecutor: CommandEventConverter[CancelOrders] =
   CommandEventConverter.eventCalc[CancelOrders]: cmd =>
@@ -25,12 +24,23 @@ private[command] def cancelOrdersExecutor: CommandEventConverter[CancelOrders] =
         case orderIds: immutable.Iterable[OrderId] =>
           Right(orderIds)
 
-        case fun: ExprFunction =>
+        case expr: Expression.FunctionExpr =>
           // Maybe SLOW with a complicated ExprFunction and a million orders !!!
           coll.aggregate.idToOrder.keys.toVector.traverse: orderId =>
-            fun.eval(StringValue(orderId.string))(using Scope.empty)
+            expr.function.eval(StringValue(orderId.string))(using Scope.empty)
               .flatMap(_.asBoolean)
               .map(orderId -> _)
+          .map:
+            _.collect:
+              case (orderId, true) => orderId
+
+        case expr: Expression =>
+          // Maybe SLOW with a complicated ExprFunction and a million orders !!!
+          coll.aggregate.idToOrder.values.toVector.traverse: order =>
+            coll.aggregate.toOrderScope(order).flatMap: scope =>
+              expr.eval(using Scope.empty)
+                .flatMap(_.asBoolean)
+                .map(order.id -> _)
           .map:
             _.collect:
               case (orderId, true) => orderId

@@ -17,7 +17,7 @@ import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem, UnknownNameInExpressionProblem}
 import js7.data.value.expression.Expression.NamedValue.isSimpleOrNumericName
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.{BooleanValue, FunctionValue, GoodValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter, ValueType}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
@@ -91,6 +91,10 @@ object Expression:
   given jsonDecoder: Decoder[Expression] = c =>
     c.as[String].flatMap:
       parseExpression(_).toDecoderResult(c.history)
+
+  val expressionOrFunctionDecoder: Decoder[Expression] = c =>
+    c.as[String].flatMap:
+      parseExpressionOrFunction(_).toDecoderResult(c.history)
 
 
   sealed transparent trait IsPureIfSubexpressionsArePure extends Expression:
@@ -994,6 +998,7 @@ object Expression:
     given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr.fromIterable(iterable)
 
   extension (inline ctx: StringContext)
+    /** Parses also a function. */
     inline def expr(inline args: Any*): Expression =
       ${ExprLiteral('ctx, 'args)}
 
@@ -1006,10 +1011,10 @@ object Expression:
 
 object ExprLiteral extends Literally[Expression]:
   def validate(string: String)(using Quotes) =
-    ExpressionParser.parseExpression(string) match
+    ExpressionParser.parseExpressionOrFunction(string) match
       case Left(problem) => Left(problem.toString)
       case Right(_) => Right:
-        '{ ExpressionParser.parseExpression(${Expr(string)}).orThrow }
+        '{ ExpressionParser.parseExpressionOrFunction(${Expr(string)}).orThrow }
 
 
 object ExprFunctionLiteral extends Literally[ExprFunction]:

@@ -25,7 +25,7 @@ import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId, PlanStatus}
 import js7.data.subagent.SubagentId
-import js7.data.value.expression.{ExprFunction, Scope}
+import js7.data.value.expression.{ExprFunction, Expression, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
@@ -72,26 +72,34 @@ object ControllerCommand extends CommonCommand.Companion:
     implicit val jsonCodec: Codec.AsObject[AddOrdersResponse] = deriveCodec
 
 
+  /** Cancel orders.
+    *
+    * Use `orderIds: Iterable[OrderId]`.
+    *
+    * Don't use `orderIds: Expression`, or only for testing purposes.
+    * When there are many orders, the calculation may take a long time and
+    * MAY DISTURB CLUSTER TIMEOUT HANDLING.
+    **/
   final case class CancelOrders(
-    orderIds: immutable.Iterable[OrderId] | ExprFunction,
+    orderIds: immutable.Iterable[OrderId] | Expression/*SLOW*/,
     mode: CancellationMode = CancellationMode.FreshOrStarted())
   extends IsEventEmitting, Big:
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${
       orderIds match
         case orderIds: immutable.Iterable[OrderId] => orderIds.mkStringLimited(3, " ")
-        case fun: ExprFunction => fun
+        case expr: Expression => expr
     }, $mode)"
 
   object CancelOrders:
-    implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
-      JsonObject.fromIterable(
+    given Encoder.AsObject[CancelOrders] = o =>
+      JsonObject.fromIterable:
         ("orderIds" -> o.orderIds.asJson) ::
-          (o.mode != CancellationMode.Default).thenList("mode" -> o.mode.asJson))
+          (o.mode != CancellationMode.Default).thenList("mode" -> o.mode.asJson)
 
-    implicit val jsonDecoder: Decoder[CancelOrders] = c =>
+    given Decoder[CancelOrders] = c =>
       for
-        orderIds <- c.get[Vector[OrderId] | ExprFunction]("orderIds")
+        orderIds <- c.get[Vector[OrderId] | Expression]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       yield CancelOrders(orderIds, mode)
 
@@ -387,13 +395,14 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))
 
-  private given Encoder[immutable.Iterable[OrderId] | ExprFunction] =
+  private given Encoder[immutable.Iterable[OrderId] | Expression] =
     case orderIds: immutable.Iterable[OrderId] => orderIds.asJson
-    case fun: ExprFunction => fun.asJson
+    case expr: Expression => expr.asJson
 
-  private given Decoder[Vector[OrderId] | ExprFunction] = c =>
+  private given Decoder[Vector[OrderId] | Expression] = c =>
     if c.value.isString then
-      c.value.as[ExprFunction] // A predicate used to filter *all* orders, can be SLOW
+      // A predicate used to filter *all* orders, can be SLOW
+      c.value.as(using Expression.expressionOrFunctionDecoder)
     else
       c.value.as[Vector[OrderId]]
 

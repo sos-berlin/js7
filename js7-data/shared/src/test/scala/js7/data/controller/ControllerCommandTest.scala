@@ -105,7 +105,7 @@ final class ControllerCommandTest extends OurTestSuite:
         }""")
 
     "CancelOrders ExprFunction" in:
-      testJson[ControllerCommand](CancelOrders(exprFun"orderId => true", CancellationMode.FreshOrStarted()),
+      testJson[ControllerCommand](CancelOrders(expr"orderId => true", CancellationMode.FreshOrStarted()),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": "orderId => true"

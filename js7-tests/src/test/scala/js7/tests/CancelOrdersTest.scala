@@ -6,11 +6,13 @@ import fs2.Stream
 import js7.agent.RunningAgent
 import js7.base.catsutils.Environment.TaggedResource
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.crypt.silly.SillySigner
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.runProcess
 import js7.base.io.process.{Pid, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
@@ -21,25 +23,28 @@ import js7.base.time.WaitForCondition.{retryUntil, waitForCondition}
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Atomic
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Response, ResumeOrder, SuspendOrders}
+import js7.data.controller.ControllerState
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.VersionId
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderResumed, OrderRetrying, OrderStarted, OrderStateReset, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.given
-import js7.data.value.expression.Expression.{NamedValue, StringConstant, exprFun}
-import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.expression.Scope
+import js7.data.value.expression.Expression.{NamedValue, StringConstant, expr, exprFun}
+import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BreakOrder, Execute, Fail, Fork, If, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BreakOrder, Execute, Fail, Fork, If, Prompt, Retry, Sleep, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -1009,7 +1014,7 @@ final class CancelOrdersTest
                      |while [ $$i -ge 0 ]; do sleep 0.1; done
                      |""".stripMargin),
         Workflow.of:
-          If(expr("$returnCode == 0")):
+          If(expr"$$returnCode == 0"):
             Fail(Some(StringConstant:
               "💥 $returnCode == 0")))))
 
@@ -1056,7 +1061,7 @@ final class CancelOrdersTest
             "returnCode" -> NumberValue(sigtermReturnCode))))),
           HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught)))
 
-  "Cancel via ExprFunction" in:
+  "Cancel via Expression predicate" in:
     controller.resetLastWatchedEventId()
 
     val orderIds = Seq(OrderId("EXPR-A1"), OrderId("EXPR-A2"), OrderId("EXPR-B"))
@@ -1067,7 +1072,7 @@ final class CancelOrdersTest
 
     execCmd:
       CancelOrders(
-        exprFun"orderId => substring($$orderId ++ '      ', 0, 6) == 'EXPR-A'",
+        expr"orderId => substring($$orderId ++ '      ', 0, 6) == 'EXPR-A'",
         CancellationMode.FreshOnly)
     controller.await[OrderCancelled](_.key == orderIds(0))
     controller.await[OrderCancelled](_.key == orderIds(1))
@@ -1077,7 +1082,28 @@ final class CancelOrdersTest
     for orderId <- orderIds do
       controller.await[OrderTerminated](_.key == orderId)
 
+  "Speed test Expression with real ControllerState" in :
+    withItem(Workflow.empty): workflow =>
+      val wp = workflow.id /: Position(0)
+      val orders = (1 to 100_000).view.map: i =>
+        Order(OrderId(i.toString), wp, Order.Fresh())
+      .toVector
+      val expr = expr"substring(orderId, 0, 1) != '7'"
+      (1 to (if isIntelliJIdea then 20 else 1)).foreach: _ =>
+        val t = Deadline.now
+        val result = orders.traverse: order =>
+          controllerState.toOrderScope(order).flatMap: scope =>
+            expr.eval(using scope)
+        val elapsed = t.elapsed
+        logInfo(itemsPerSecondString(elapsed, orders.size, "evaluations"))
+        assert(result.rightAs(()) == Checked.unit)
 
+  private def logInfo(line: String) =
+    logger.info(line)
+    if !isIntelliJIdea then info(line)
+
+
+/** Speed tests without Engine under optimal laboratory conditions. */
 final class CancelOrdersExprFunctionSpeedTest extends OurTestSuite:
   private val logger = Logger[this.type]
 
@@ -1089,8 +1115,34 @@ final class CancelOrdersExprFunctionSpeedTest extends OurTestSuite:
       val result = orderIds.traverse: orderId =>
         fun.eval(orderId)(using Scope.empty)
       val elapsed = t.elapsed
-      logger.info(itemsPerSecondString(elapsed, orderIds.size, "evaluations"))
-      assert(result.isRight)
+      logInfo(itemsPerSecondString(elapsed, orderIds.size, "evaluations"))
+      assert(result.rightAs(()) == Checked.unit)
+
+  "Speed test Expression" in:
+    val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
+    val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Seq(Sleep(expr"1")))
+    val controllerState = ControllerState.empty
+      .applyKeyedEvents(Seq(
+        NoKey <-: VersionAdded(workflow.id.versionId),
+        NoKey <-: VersionedItemAdded(itemSigner.sign(workflow))))
+      .orThrow
+    val wp = workflow.id /: Position(0)
+    val orders = (1 to 1_000_000).view.map: i =>
+      Order(OrderId(i.toString), wp, Order.Fresh())
+    .toVector
+    val expr = expr"substring(orderId, 0, 1) != '7'"
+    (1 to (if isIntelliJIdea then 20 else 1)).foreach: _ =>
+      val t = Deadline.now
+      val result = orders.traverse: order =>
+        controllerState.toOrderScope(order).flatMap: scope =>
+          expr.eval(using scope)
+      val elapsed = t.elapsed
+      logInfo(itemsPerSecondString(elapsed, orders.size, "evaluations"))
+      assert(result.rightAs(()) == Checked.unit)
+
+  private def logInfo(line: String) =
+    logger.info(line)
+    if !isIntelliJIdea then info(line)
 
 
 object CancelOrdersTest:
@@ -1168,7 +1220,7 @@ object CancelOrdersTest:
 
   private val promptingWorkflow = Workflow.of(
     WorkflowPath("WORKFLOW") ~ versionId,
-    Prompt(expr("'PROMPT'")),
+    Prompt(expr"'PROMPT'"),
     EmptyJob.execute(agentPath))
 
   private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =

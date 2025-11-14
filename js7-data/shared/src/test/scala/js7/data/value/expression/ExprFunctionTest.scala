@@ -1,11 +1,11 @@
 package js7.data.value.expression
 
-import ExprFunctionTest.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
+import js7.data.value.expression.ExprFunctionTest.*
 import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.Expression.{Add, Divide, FunctionExpr, MissingConstant, Multiply, NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{parseExpressionOrFunction, parseFunction}
@@ -107,6 +107,14 @@ final class ExprFunctionTest extends OurTestSuite:
       assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(NumberValue(10) :: Nil) ==
         Right(NumberValue(17)))
   }
+
+  //"parseExpressionOrExprFunction" in:
+  //  assert:
+  //    parseExpressionOrExprFunction("x => $x + 7") ==
+  //      Right(ExprFunction("x")(Add(NamedValue("x"), 7)))
+  //  assert:
+  //    parseExpressionOrExprFunction("7") ==
+  //      Right(7: Expression)
 
   "restrict" in:
     def restrict(min: Int, max: Int): Checked[ExprFunction] =
