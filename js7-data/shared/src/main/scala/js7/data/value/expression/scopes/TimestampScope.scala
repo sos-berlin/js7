@@ -17,18 +17,18 @@ extends Scope:
     functionCall match
       case FunctionCall(`name`, arguments) =>
         // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
-        Some(arguments match {
-          case Some(Seq(
-            Argument(formatExpr, None | Some("format")),
-            Argument(timezoneExpr, None | Some("timezone")))) =>
-            func(formatExpr, timezoneExpr)
+        Some:
+          arguments match
+            case Some(Seq(
+              Argument(formatExpr, None | Some("format")),
+              Argument(timezoneExpr, None | Some("timezone")))) =>
+              func(formatExpr, timezoneExpr)
 
-          case Some(Seq(Argument(formatExpr, None | Some("format")))) =>
-            func2(formatExpr, None)
+            case Some(Seq(Argument(formatExpr, None | Some("format")))) =>
+              func2(formatExpr, None)
 
-          case _ =>
-            Left(InvalidFunctionArgumentsProblem(functionCall))
-        })
+            case _ =>
+              Left(InvalidFunctionArgumentsProblem(functionCall))
 
       case _ =>
         super.evalFunctionCall(functionCall)

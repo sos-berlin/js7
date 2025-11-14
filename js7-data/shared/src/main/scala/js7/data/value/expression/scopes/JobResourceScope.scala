@@ -29,34 +29,36 @@ extends Scope:
   private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
     Some(jobResourceVariable(v.jobResourcePath, v.name))
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope): Option[Checked[Value]] =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope)
+  : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("jobResourceVariable", arguments) =>
-        Some(arguments match {
-          case Some(Seq(
-            Argument(jobResourcePathExpr, None),
-            Argument(variableNameExpr, None))) =>
-            evalFunctionCall2(jobResourcePathExpr, Some(variableNameExpr))
+        Some:
+          arguments match
+            case Some(Seq(
+              Argument(jobResourcePathExpr, None),
+              Argument(variableNameExpr, None))) =>
+              evalFunctionCall2(jobResourcePathExpr, Some(variableNameExpr))
 
-          case _ =>
-            Left(InvalidFunctionArgumentsProblem(functionCall))
-        })
+            case _ =>
+              Left(InvalidFunctionArgumentsProblem(functionCall))
 
       case FunctionCall("jobResourceVariables", arguments) =>
-        Some(arguments match {
-          case Some(Seq(Argument(jobResourcePathExpr, None))) =>
-            evalFunctionCall2(jobResourcePathExpr, None)
+        Some:
+          arguments match
+            case Some(Seq(Argument(jobResourcePathExpr, None))) =>
+              evalFunctionCall2(jobResourcePathExpr, None)
 
-          case _ =>
-            Left(InvalidFunctionArgumentsProblem(functionCall))
-        })
+            case _ =>
+              Left(InvalidFunctionArgumentsProblem(functionCall))
 
-      case _ => None
+      case _ =>
+        super.evalFunctionCall(functionCall)
 
   private def evalFunctionCall2(
     jobResourcePathExpr: Expression,
     variableNameExpr: Option[Expression])
-    (implicit s: Scope)
+    (using Scope)
   : Checked[Value] =
     for
       jobResourcePathString <- jobResourcePathExpr.evalAsString
@@ -66,25 +68,24 @@ extends Scope:
     yield value
 
   private def jobResourceVariable(jrPath: JobResourcePath, variableName: Option[String])
-    (implicit s: Scope)
+    (using Scope)
   : Checked[Value] =
     pathToJobResource
       .rightOr(jrPath, UnknownKeyProblem("JobResource", jrPath.string))
-      .flatMap(jobResource =>
-        variableName match {
+      .flatMap: jobResource =>
+        variableName match
           case None =>
             evalExpressionMap(jobResource.variables).map(ObjectValue(_))
 
           case Some(variableName) =>
-            jobResource.variables.get(variableName) match {
+            jobResource.variables.get(variableName) match
               case None => Left(UnknownNameInExpressionProblem(s"$jrPath:$variableName"))
               case Some(expr) => expr.eval
-            }
-        })
 
   override def toString = "JobResourceScope"
 
 
 object JobResourceScope:
-  def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope): Scope =
+  def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope)
+  : Scope =
     new JobResourceScope(pathToJobResource, useScope)
