@@ -19,6 +19,8 @@ final class UniqueOrderIdScope(orderIds: Set[OrderId]) extends Scope:
           pattern.evalAsString.flatMap: pattern =>
             makeUnique(
               pattern,
-              string => orderIds(OrderId.unchecked(string)))
-              .map(StringValue(_))
-      case _ => None
+              exists = string => orderIds(OrderId.unchecked(string))
+            ).map(StringValue(_))
+
+      case _ =>
+        super.evalFunctionCall(functionCall)

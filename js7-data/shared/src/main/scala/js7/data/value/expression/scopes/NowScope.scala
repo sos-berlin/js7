@@ -14,7 +14,8 @@ final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(using Scope)
   : Option[Checked[Value]] =
-    timestampScope.evalFunctionCall(functionCall)
+    timestampScope.evalFunctionCall(functionCall) orElse
+      super.evalFunctionCall(functionCall)
 
   override def toString = s"NowScope($now)"
 

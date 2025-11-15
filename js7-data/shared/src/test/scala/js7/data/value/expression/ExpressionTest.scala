@@ -77,9 +77,9 @@ final class ExpressionTest extends OurTestSuite:
                 maybeNumber <- value.asMaybeNumber
               yield maybeNumber.map(_ * 3).fold(missingValue)(NumberValue(_)))
 
-          case _ => None
+          case _ => super.evalFunctionCall(functionCall)
 
-      override def evalJobResourceVariable(v: JobResourceVariable)(using @unused scope: Scope) =
+      override def evalJobResourceVariable(v: JobResourceVariable)(using Scope) =
         v match
           case JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE")) =>
             Some(Right(StringValue("myJobResource,VARIABLE,value")))
@@ -87,7 +87,7 @@ final class ExpressionTest extends OurTestSuite:
           case JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME")) =>
             Some(Right(StringValue("JOB-RESOURCE,VARIABLE-NAME,value")))
 
-          case _ => None
+          case _ => super.evalJobResourceVariable(v)
 
   "Constants" - {
     "Numbers" - {

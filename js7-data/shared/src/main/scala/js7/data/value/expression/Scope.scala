@@ -21,7 +21,10 @@ import scala.collection.MapView
   * (while `this` is the own specicialized `Scope`). */
 trait Scope:
 
-  private lazy val nameToMaybeCheckedValue: String => Option[Checked[Value]] =
+  private lazy val symbolToMaybeValue: String => Option[Checked[Value]] =
+    symbolToValue.lift
+
+  private lazy val nameToMaybeValue: String => Option[Checked[Value]] =
     nameToCheckedValue.lift
 
   def symbolToValue: PartialFunction[String, Checked[Value]] =
@@ -33,16 +36,17 @@ trait Scope:
   def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
     valueSearch match
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-        nameToMaybeCheckedValue(name)
+        nameToMaybeValue(name)
       case _ =>
         None
 
   final def symbol(name: String): Option[Checked[Value]] =
     evalFunctionCall(FunctionCall(name, arguments = None))(using Scope.empty)
 
-  def evalFunctionCall(functionCall: FunctionCall)(implicit @unused fullScope: Scope)
-  : Option[Checked[Value]] =
-    None
+  def evalFunctionCall(functionCall: FunctionCall)(using @unused scope: Scope) =
+    functionCall match
+      case FunctionCall(name, None | Some(Nil)) => symbolToMaybeValue(name)
+      case _ => None
 
   def evalJobResourceVariable(v: JobResourceVariable)(implicit @unused fullScope: Scope)
   : Option[Checked[Value]] =
