@@ -5,7 +5,6 @@ import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.Js7Version
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -43,7 +42,6 @@ import js7.journal.problems.Problems.JournalKilledProblem
 import js7.subagent.director.RemoteSubagentDriver.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
 
 // TODO Some bookkeeping desired?
 // - Which operations (SubagentCommand) on SubagentItem are ongoing?
