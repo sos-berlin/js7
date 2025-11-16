@@ -1,6 +1,8 @@
 package js7.base.time
 
 import java.lang.System.nanoTime
+import java.text.{DecimalFormat, DecimalFormatSymbols}
+import java.util.Locale
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -80,6 +82,28 @@ object Stopwatch:
   def perSecondStringOnly(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toPerSecondsString
 
+  private val decimalFormat: DecimalFormat =
+    val symbols = new DecimalFormatSymbols(Locale.GERMANY)
+    symbols.setDecimalSeparator('.')
+    symbols.setGroupingSeparator('\'')
+    new DecimalFormat("#,###.##", symbols)
+
+  private def formatNumber(number: Long | Double): String =
+    val n = number match
+      case number: Long => BigDecimal.valueOf(number)
+      case number: Double => BigDecimal.valueOf(number)
+    if n < 0 then
+      n.toString
+    else if n < 10_000 then
+      n.toString
+    else if n == 1_000_000 then
+      "million"
+    else if n % 1_000_000 == 0 then
+      s"${n / 1_000_000}m"
+    else if n % 1000 == 0 then
+      s"${n / 1000}k"
+    else
+      decimalFormat.format(n)
 
   final case class Result(
     duration: FiniteDuration,
@@ -97,7 +121,7 @@ object Stopwatch:
       if duration.toNanos == 0 then
         "∞"
       else
-        "~" + (n * 1000L*1000*1000 / duration.toNanos)
+        ((duration < 1.s) ?? "~") + formatNumber(n * 1000L*1000*1000 / duration.toNanos)
 
     private def gapOps = (gap ?? " ") + ops
 
@@ -107,7 +131,7 @@ object Stopwatch:
         case 1 => s"⏱️  ${duration.pretty}/$n$gapOps"
         case _ =>
           val suffix = showPerSecond ?? s", $perSecondString$gapOps/s"
-          s"⏱️  ${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty})$suffix"
+          s"⏱️  ${duration.pretty}/${formatNumber(n)}$gapOps (⌀${singleDuration.pretty})$suffix"
 
     def toShortString: String =
       if n == 0 || !showPerSecond then
