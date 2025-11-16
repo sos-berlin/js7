@@ -20,7 +20,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, 
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
-import js7.data.item.{ItemRevision, ItemSigner, VersionId}
+import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLocksAcquired, OrderMoved, OrderStarted}
@@ -510,7 +510,7 @@ object ControllerStateExecutorTest:
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(WallClock)
 
-  private val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+  private val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
 
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")

@@ -27,8 +27,7 @@ import js7.proxy.ControllerApi
 final class Feed(controllerApi: ControllerApi, conf: FeedConf):
 
   private lazy val itemSigner: Option[ItemSigner[SignableItem]] =
-    conf.documentSigner.map:
-      ItemSigner(_, ControllerState.signableItemJsonCodec)
+    conf.documentSigner.map(ControllerState.toItemSigner)
 
   def run(in: ResourceIO[InputStream]): IO[Unit] =
     readObjects(in).flatMap: objects =>

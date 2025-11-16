@@ -8,8 +8,8 @@ import js7.data.controller.ControllerState
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.TestEvent.{Added, InvalidEvent}
+import js7.data.item.VersionId
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
-import js7.data.item.{ItemSigner, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStarted}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.position.Position
@@ -58,7 +58,7 @@ final class EventCollTest extends OurTestSuite:
     val workflow = Workflow.of(WorkflowPath("W") ~ "1")
     val coll =
       val coll = EventColl[ControllerState, Event, Unit](ControllerState.empty, ())
-      val signer = ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+      val signer = ControllerState.toItemSigner(SillySigner.Default)
       locally:
         for
           coll <- coll.addNoKey:

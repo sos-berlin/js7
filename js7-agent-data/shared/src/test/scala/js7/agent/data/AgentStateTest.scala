@@ -23,7 +23,7 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
-import js7.data.item.{ItemRevision, ItemSigner}
+import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderForked}
@@ -103,7 +103,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
   private val unsignedWorkflow = Workflow(WorkflowPath("UNSIGNED-v2.2-WORKFLOW") ~ "1.0", Nil)
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
   private val unsignedJobResource = JobResource(JobResourcePath("UNSIGNED-v2.2-JOB-RESOURCE"))
-  private val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+  private val itemSigner = AgentState.toItemSigner(SillySigner.Default)
   private val signedWorkflow = itemSigner.sign(workflow)
   private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("JOBRESOURCE")))
   private val workflowPathControl = WorkflowPathControl(

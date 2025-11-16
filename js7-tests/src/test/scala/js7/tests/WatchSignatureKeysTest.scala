@@ -28,7 +28,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.item.{ItemSigner, VersionId}
+import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -68,7 +68,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     .orThrow
   override protected lazy val signer =
     X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow
-  private lazy val itemSigner = ItemSigner(signer, ControllerState.signableItemJsonCodec)
+  private lazy val itemSigner = ControllerState.toItemSigner(signer)
   override protected lazy val verifier =
     X509SignatureVerifier.Provider(WallClock, ConfigFactory.empty)
       .checked(Seq(Labeled(aCertAndKey.certificate, "verifier")))
@@ -132,7 +132,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       .orThrow
     lazy val bItemSigner =
       val bSigner = X509Signer.checked(bCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
-      new ItemSigner(bSigner, ControllerState.signableItemJsonCodec)
+      ControllerState.toItemSigner(bSigner)
 
     "Item signed with previous signature key is rejected" in:
       val v = nextVersion()
@@ -161,7 +161,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       .orThrow
     lazy val cItemSigner =
       val cSigner = X509Signer.checked(cCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
-      new ItemSigner(cSigner, ControllerState.signableItemJsonCodec)
+      ControllerState.toItemSigner(cSigner)
 
     val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
     val agentUpdated = agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]

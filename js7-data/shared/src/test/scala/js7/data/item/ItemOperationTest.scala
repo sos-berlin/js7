@@ -43,7 +43,7 @@ final class ItemOperationTest extends OurTestSuite:
         }""")
 
     "AddOrChangeSigned" in:
-      val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+      val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
       val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1")
       testJson[ItemOperation](
         AddOrChangeSigned(itemSigner.toSignedString(workflow)),

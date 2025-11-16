@@ -11,7 +11,6 @@ import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.data.event.{EventId, JournalId}
-import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
@@ -93,7 +92,7 @@ final class SubagentCommandTest extends OurTestSuite:
         }""")
 
     "AttachSignedItem" in:
-      val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+      val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
       testJson[SubagentCommand](
         AttachSignedItem(
           itemSigner.sign(Workflow(WorkflowPath("WORKFLOW") ~ "1", Nil))),

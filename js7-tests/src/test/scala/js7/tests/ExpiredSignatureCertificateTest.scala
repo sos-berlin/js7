@@ -28,7 +28,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.item.{ItemSigner, VersionId}
+import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
@@ -287,7 +287,7 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
 
               val v = nextVersionId.next()
               val workflow = simpleWorkflow.withVersion(v)
-              val itemSigner = ItemSigner(documentSigner, ControllerState.signableItemJsonCodec)
+              val itemSigner = ControllerState.toItemSigner(documentSigner)
               val signedWorkflow = itemSigner.sign(workflow)
               logger.info(s"Signed workflow with ${documentSigner.toLongString}")
               for _ <- controller.api.updateRepo(v, Seq(signedWorkflow)).await(timeout) yield

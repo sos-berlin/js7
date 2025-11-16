@@ -394,10 +394,7 @@ object RunningController:
       .checkedResource(
         onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
       .orThrow
-      .map(directoryWatchingSignatureVerifier =>
-        new SignedItemVerifier(
-          directoryWatchingSignatureVerifier,
-          ControllerState.signableItemJsonCodec))
+      .map(ControllerState.toSignedItemVerifier)
 
   private def startControllerOrderKeeper(
     journalActor: ActorRef @@ JournalActor.type,

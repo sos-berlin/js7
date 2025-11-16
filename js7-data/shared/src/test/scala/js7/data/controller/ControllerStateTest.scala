@@ -26,7 +26,7 @@ import js7.data.item.ItemAttachedState.Attachable
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
-import js7.data.item.{ClientAttachments, InventoryItemKey, InventoryItemPath, ItemRevision, ItemSigner, Repo, UnsignedSimpleItemEvent, VersionId}
+import js7.data.item.{ClientAttachments, InventoryItemKey, InventoryItemPath, ItemRevision, Repo, UnsignedSimpleItemEvent, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
@@ -432,7 +432,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 object ControllerStateTest:
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
-  private lazy val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+  private lazy val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
   private val orderId = OrderId("ORDER")
   private val expectingNoticeOrderId = OrderId("ORDER-EXPECTING-NOTICE")

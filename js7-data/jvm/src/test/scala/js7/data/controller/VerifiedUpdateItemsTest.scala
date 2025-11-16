@@ -12,11 +12,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.data.controller.ControllerState.signableItemJsonCodec
-import js7.data.crypt.SignedItemVerifier
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
-import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
+import js7.data.item.{SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -26,8 +24,8 @@ final class VerifiedUpdateItemsTest extends OurTestSuite:
   private given IORuntime = ioRuntime
 
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
-  private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)
-  private lazy val itemSigner = new ItemSigner[SignableItem](signer, signableItemJsonCodec)
+  private lazy val itemVerifier = ControllerState.toSignedItemVerifier(signatureVerifier)
+  private lazy val itemSigner = ControllerState.toItemSigner(signer)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val workflow1 = Workflow(WorkflowPath("WORKFLOW-A") ~ v1, Vector(Fail(None)))

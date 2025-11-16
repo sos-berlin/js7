@@ -44,9 +44,9 @@ import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterWatchId
-import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
-import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.item.{InventoryItem, ItemOperation, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
@@ -146,7 +146,7 @@ extends HasCloser:
           agentPath,
           SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in DirectorEnv*/)
 
-  val itemSigner = new ItemSigner(signer, signableItemJsonCodec)
+  val itemSigner = ControllerState.toItemSigner(signer)
 
   def toSignedString[A <: SignableItem](item: A): SignedString =
     itemSigner.toSignedString(item)

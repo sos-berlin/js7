@@ -14,7 +14,7 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancellationMode
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
-import js7.data.item.{ItemRevision, ItemSigner, VersionId}
+import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -216,7 +216,7 @@ final class AgentCommandTest extends OurTestSuite:
       }""")
 
   "AttachSignedItem VersionedItem (without ItemRevision)" in:
-    val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+    val itemSigner = AgentState.toItemSigner(SillySigner.Default)
     testJson[AgentCommand](
       AgentCommand.AttachSignedItem(
         itemSigner.sign(SimpleTestWorkflow)),
@@ -233,7 +233,7 @@ final class AgentCommandTest extends OurTestSuite:
 
   "AttachSignedItem JobResource (with ItemRevision)" in:
     val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
-    val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+    val itemSigner = AgentState.toItemSigner(SillySigner.Default)
     testJson[AgentCommand](
       AgentCommand.AttachSignedItem(itemSigner.sign(jobResource)),
       json"""{

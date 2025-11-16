@@ -30,7 +30,7 @@ import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
 import js7.data.calendar.Calendar
-import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.plan.PlanSchema
@@ -255,4 +255,4 @@ object Provider:
     SignatureProviderRegister(WallClock, conf.config).nameToDocumentSignerCompanion
       .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
       .flatMap(companion => companion.checked(keyFile.byteArray, password))
-      .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
+      .map(ControllerState.toItemSigner)
