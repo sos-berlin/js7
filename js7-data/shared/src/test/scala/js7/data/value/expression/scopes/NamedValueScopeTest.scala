@@ -27,5 +27,5 @@ final class NamedValueScopeTest extends OurTestSuite:
     assert(NamedValue("FAIL").eval == Left(Problem("FAILED")))
 
   "namedValue" in:
-    assert(scope.nameToCheckedValue.lift("A") == Some(Right(NumberValue(100))))
-    assert(scope.nameToCheckedValue.lift("X") == None)
+    assert(scope.namedValue("A") == Some(Right(NumberValue(100))))
+    assert(scope.namedValue("X") == None)

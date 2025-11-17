@@ -4,22 +4,14 @@ import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory.getPlatformMXBean
 import js7.base.problem.Checked
 import js7.base.system.LiveBeanMapView
-import js7.base.utils.KeyRenamingMapView
 import js7.data.value.Value
 import js7.data.value.expression.Scope
-import scala.collection.MapView
 
 /** Scope provides the current "live" server metering value. */
 private[subagent] object ServerMeteringLiveScope extends Scope:
 
-  override val nameToCheckedValue: MapView[String, Checked[Value]] =
-    val rename = Seq(
-      "cpuLoad" -> "js7CpuLoad",
-      "committedVirtualMemorySize" -> "js7CommittedVirtualMemorySize",
-      "freeMemorySize" -> "js7FreeMemorySize",
-      "totalMemorySize" -> "js7TotalMemorySize")
-
-    val bean = LiveBeanMapView(
+  val bean: LiveBeanMapView[OperatingSystemMXBean] =
+    LiveBeanMapView(
       getPlatformMXBean(classOf[com.sun.management.OperatingSystemMXBean]),
       LiveBeanMapView.NameFilter(Set(
         "cpuLoad",
@@ -27,8 +19,13 @@ private[subagent] object ServerMeteringLiveScope extends Scope:
         "freeMemorySize",
         "totalMemorySize")))
 
-    KeyRenamingMapView(rename)(bean)
-      .mapValues(Value.ofAny)
+  override def namedValue(name: String): Option[Checked[Value]] =
+    name.match
+      case "js7CpuLoad" => bean.get("cpuLoad")
+      case "js7CommittedVirtualMemorySize" => bean.get("committedVirtualMemorySize")
+      case "js7FreeMemorySize" => bean.get("freeMemorySize")
+      case "js7TotalMemorySize" => bean.get("totalMemorySize")
+    .map(Value.ofAny)
 
   override def toString =
     s"ServerMeteringLiveScope.Scope"

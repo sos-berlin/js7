@@ -8,7 +8,7 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, Order, OrderDetails, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
+import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -39,7 +39,7 @@ trait OrderScopes:
         order.workflowPosition.position.tryPosition.flatMap:
           workflow.instruction_[TryInstruction]
         .map: tryInstruction =>
-          tryInstruction.maxTries.fold(missingValue)(NumberValue(_))
+          tryInstruction.maxTries.fold(MissingValue)(NumberValue(_))
 
       case "timedOut" => Right(BooleanValue:
         order.hasTimedOut)

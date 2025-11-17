@@ -131,13 +131,20 @@ final case class OrderParameterList(
 
   /** Add missing default and final values defined in OrderParameterList. */
   def addDefaults(arguments: Map[String, Value]): MapView[String, Value] =
-    arguments
-      .view
-      .orElseMapView:
-        nameToExpression.collectValues:
-          case const: Expression.Constant => const.toValue
-          // Expressions must have been evaluated with OrderAdded event.
-          // The resulting values are expected to be in Order.arguments.
+    arguments.view.orElseMapView:
+      nameToConstantValue.view
+      // Expressions must have been evaluated with OrderAdded event.
+      // The resulting values are expected to be in Order.arguments.
+
+  /** Read an Order argument, or get it's constant default value. */
+  def getArgument(name: String, orderArguments: NamedValues): Option[Value] =
+    orderArguments.get(name).orElse:
+      nameToConstantValue.get(name)
+
+  private lazy val nameToConstantValue: Map[String, Value] =
+    nameToExpression.collectValues:
+      case const: Expression.Constant => const.toValue
+    .toMap
 
   private[workflow] lazy val nameToExpression: MapView[String, Expression] =
     nameToParameter.view

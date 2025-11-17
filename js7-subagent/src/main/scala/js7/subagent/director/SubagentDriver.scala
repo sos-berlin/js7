@@ -9,7 +9,6 @@ import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.StandardMapView
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobKey, JobResource}
@@ -64,17 +63,13 @@ trait SubagentDriver:
   protected final val orderToDeferred =
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
+  // Live Scope!
   val subagentProcessCountScope: Scope =
-    val Key = "js7SubagentProcessCount"
     new Scope:
-      override val nameToCheckedValue =
-        new StandardMapView[String, Checked[Value]]:
-          override val keySet = Set(Key)
-
-          override def get(key: String) =
-            key match
-              case Key => Some(Right(NumberValue(processCount)))
-              case _ => None
+      override def namedValue(name: String): Option[Checked[Value]] =
+        name match
+          case "js7SubagentProcessCount" => Some(Right(NumberValue(processCount)))
+          case _ => None
 
   final def subagentId: SubagentId =
     subagentItem.id

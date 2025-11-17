@@ -1,7 +1,6 @@
 package js7.data.value.expression.scopes
 
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.data.order.{HistoricOutcome, Order, OrderOutcome}
 import js7.data.value.Value
 import js7.data.value.expression.scopes.OrderVariablesScope.*
@@ -12,22 +11,19 @@ import scala.collection.MapView
 final class OrderVariablesScope(order: Order[Order.State], workflow: Workflow)
 extends Scope:
 
-  override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
-    orderArguments.mapValues(Right(_))
-      .orElseMapView:
-        order.historicOutcomes
-          .view.reverse
-          .collect:
-            case HistoricOutcome(_, o: OrderOutcome) =>
-              o.findNamedValues.map(_.view.mapValues(Right(_)))
-          .flatten
-          .fold(MapView.empty[String, Checked[Value]]): (a, b) =>
-            a.orElseMapView(b)
+  override def namedValue(name: String): Option[Checked[Value]] =
+    workflow.orderParameterList.getArgument(name, order.arguments).orElse:
+      order.historicOutcomes.view.reverse.flatMap:
+        case HistoricOutcome(_, o: OrderOutcome) =>
+          o.findNamedValues.flatMap(_.get(name))
+      .headOption
+    .map(Right(_))
 
   override def findValue(search: ValueSearch): Option[Checked[Value]] =
     search match
       case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
-        orderArguments.get(name).map(Right(_))
+        workflow.orderParameterList.getArgument(name, order.arguments)
+          .map(Right(_))
 
       case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
         order.historicOutcomes

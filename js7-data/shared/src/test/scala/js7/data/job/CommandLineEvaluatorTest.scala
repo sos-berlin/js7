@@ -5,7 +5,6 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
-import scala.collection.MapView
 
 final class CommandLineEvaluatorTest extends OurTestSuite:
   "Constant" in:
@@ -47,10 +46,10 @@ final class CommandLineEvaluatorTest extends OurTestSuite:
   private val commandLineEvaluator =
     new CommandLineEvaluator()(
       using new Scope:
-        override val nameToCheckedValue =
-          MapView(
-            "NAME" -> Right(StringValue("MY NAME")),
-            "NUMERIC" -> Right(NumberValue(7))))
+        override def namedValue(name: String) =
+          PartialFunction.condOpt(name):
+            case "NAME" => Right(StringValue("MY NAME"))
+            case "NUMERIC" => Right(NumberValue(7)))
 
   private def eval(commandLine: String): Checked[CommandLine] =
     commandLineEvaluator.eval:

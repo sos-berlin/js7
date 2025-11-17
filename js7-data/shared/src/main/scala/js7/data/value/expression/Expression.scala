@@ -720,7 +720,7 @@ object Expression:
   //  def subexpressions: Iterable[Expression] = Nil
   //
   //  def evalRaw(using scope: Scope): Checked[Value] =
-  //    scope.symbolToValue.applyOrElse(name, _ => Left(Problem(s"Unknown symbol: $name")))
+  //    scope.symbolValue.applyOrElse(name, _ => Left(Problem(s"Unknown symbol: $name")))
   //
   //  override def toString = name
 
@@ -998,10 +998,11 @@ object Expression:
     given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr.fromIterable(iterable)
 
   extension (inline ctx: StringContext)
-    /** Parses also a function. */
+    /** Expression literal - accepts also a function. */
     inline def expr(inline args: Any*): Expression =
       ${ExprLiteral('ctx, 'args)}
 
+    /** ExprFunction literal. */
     inline def exprFun(inline args: Any*): ExprFunction =
       ${ExprFunctionLiteral('ctx, 'args)}
 

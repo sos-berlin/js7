@@ -10,7 +10,7 @@ import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
-import scala.annotation.{threadUnsafe, unused}
+import scala.annotation.unused
 import scala.collection.MapView
 
 /** Provides data for `Expression` evaluation.
@@ -21,22 +21,23 @@ import scala.collection.MapView
   * (while `this` is the own specicialized `Scope`). */
 trait Scope:
 
-  private lazy val symbolToMaybeValue: String => Option[Checked[Value]] =
-    symbolToValue.lift
+  /** A redefined symbol as orderId.
+    *
+    * @return None if symbol is unknown and caller should look elsewhere. */
+  def symbolValue(name: String): Option[Checked[Value]] =
+    None
 
-  private lazy val nameToMaybeValue: String => Option[Checked[Value]] =
-    nameToCheckedValue.lift
-
-  def symbolToValue: PartialFunction[String, Checked[Value]] =
-    Map.empty
-
-  def nameToCheckedValue: PartialFunction[String, Checked[Value]] =
-    Map.empty
+  /** A variable like $variable.
+    *
+    * @return None if variable is unknown and caller should look elsewhere. 
+    */
+  def namedValue(name: String): Option[Checked[Value]] =
+    None
 
   def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
     valueSearch match
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-        nameToMaybeValue(name)
+        namedValue(name)
       case _ =>
         None
 
@@ -45,16 +46,12 @@ trait Scope:
 
   def evalFunctionCall(functionCall: FunctionCall)(using @unused scope: Scope) =
     functionCall match
-      case FunctionCall(name, None | Some(Nil)) => symbolToMaybeValue(name)
+      case FunctionCall(name, None | Some(Nil)) => symbolValue(name)
       case _ => None
 
   def evalJobResourceVariable(v: JobResourceVariable)(implicit @unused fullScope: Scope)
   : Option[Checked[Value]] =
     None
-
-  final def namedValue(name: String): Option[Checked[Value]] =
-    findValue:
-      ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name))
 
   def parseAndEval(expression: String): Checked[Value] =
     parseExpression(expression)
@@ -69,10 +66,11 @@ trait Scope:
       .map(_.toMap)
 
   inline final def |+|(other: Scope): Scope =
-    combine(other)
+    append(other)
 
-  inline final def combine(other: Scope): Scope =
+  inline final def append(other: Scope): Scope =
     Scope.combine(this, other)
+
 
 object Scope extends Monoid[Scope]:
   given Monoid[Scope] = this

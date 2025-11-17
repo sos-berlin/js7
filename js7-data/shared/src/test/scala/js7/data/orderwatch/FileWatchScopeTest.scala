@@ -32,12 +32,11 @@ final class FileWatchScopeTest extends OurTestSuite:
     assert(fileWatchScope.parseAndEval("$5") == Left(Problem("No such named value: 5")))
 
   "nameToCheckedValue" in:
-    assert(fileWatchScope.nameToCheckedValue.toMap == Map(
-      "0" -> Right(StringValue("file-100B.csv")),
-      "1" -> Right(StringValue("100B")),
-      "2" -> Right(StringValue("B")),
-      "4" -> Right(StringValue("B")),
-      "orderWatchPath" -> Right(StringValue("FILE-WATCH"))))
+    assert(fileWatchScope.namedValue("0") == Some(Right(StringValue("file-100B.csv"))))
+    assert(fileWatchScope.namedValue("1") == Some(Right(StringValue("100B"))))
+    assert(fileWatchScope.namedValue("2") == Some(Right(StringValue("B"))))
+    assert(fileWatchScope.namedValue("4") == Some(Right(StringValue("B"))))
+    assert(fileWatchScope.namedValue("orderWatchPath") == Some(Right(StringValue("FILE-WATCH"))))
 
   "Complete" in:
     implicit val scope: Scope = NowScope() |+| fileWatchScope

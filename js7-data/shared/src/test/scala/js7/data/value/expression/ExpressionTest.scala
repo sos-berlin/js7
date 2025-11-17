@@ -3,19 +3,18 @@ package js7.data.value.expression
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
+import js7.data.value.Value.convenience.given
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.BooleanConstant.{False, True}
 import js7.data.value.expression.Expression.convenience.given
-import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
+import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
-import scala.collection.MapView
 import scala.language.implicitConversions
 
 final class ExpressionTest extends OurTestSuite:
@@ -25,23 +24,20 @@ final class ExpressionTest extends OurTestSuite:
       import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
       import ValueSearch.{LastExecuted, Name}
 
-      override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
-        MapView(
-          "ASTRING" -> Right(StringValue("AA")),
-          "ANUMBER" -> Right(NumberValue(7)),
-          "ABOOLEAN" -> Right(BooleanValue(true)),
-          "WEIRD/NAME" -> Right(StringValue("weird")),
-          "returnCode" -> Right(NumberValue(1)),
-          "myObject" -> Right(ObjectValue(Map(
+      override def namedValue(name: String): Option[Checked[Value]] =
+        PartialFunction.condOpt(name):
+          case "ASTRING" => Right(StringValue("AA"))
+          case "ANUMBER" => Right(NumberValue(7))
+          case "ABOOLEAN" => Right(BooleanValue(true))
+          case "WEIRD/NAME" => Right(StringValue("weird"))
+          case "returnCode" => Right(NumberValue(1))
+          case "myObject" => Right(ObjectValue(Map(
             "myField" -> ObjectValue(Map(
-              "a" -> 1))))),
-          "missing" -> Right(MissingValue))
+              "a" -> 1)))))
+          case "missing" => Right(MissingValue)
 
       override def findValue(search: ValueSearch) =
         search match
-          case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-            nameToCheckedValue.get(name)
-
           case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
             Map("KEY" -> "LABEL-VALUE")
               .get(name)
@@ -65,7 +61,7 @@ final class ExpressionTest extends OurTestSuite:
               .map(o => Right(StringValue(o)))
 
           case _ =>
-            None
+            super.findValue(search)
 
       override def evalFunctionCall(functionCall: FunctionCall)(using Scope) =
         functionCall match
@@ -74,7 +70,7 @@ final class ExpressionTest extends OurTestSuite:
               for
                 value <- expr.eval
                 maybeNumber <- value.asMaybeNumber
-              yield maybeNumber.map(_ * 3).fold(missingValue)(NumberValue(_)))
+              yield maybeNumber.map(_ * 3).fold(MissingValue)(NumberValue(_)))
 
           case _ => super.evalFunctionCall(functionCall)
 

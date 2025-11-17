@@ -1,14 +1,18 @@
 package js7.data.value.expression.scopes
 
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.value.Value
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NamedValueScope.namesToString
 import scala.collection.MapView
 
 final class NamedValueScope(
-  override val nameToCheckedValue: PartialFunction[String, Checked[Value]])
+  nameToCheckedValue: PartialFunction[String, Checked[Value]])
 extends Scope:
+
+  override def namedValue(name: String): Option[Checked[Value]] =
+    nameToCheckedValue.get(name)
 
   override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"
 

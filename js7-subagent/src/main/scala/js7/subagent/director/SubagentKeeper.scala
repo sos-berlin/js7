@@ -26,7 +26,7 @@ import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, LockKeeper, SetOnce, StandardMapView}
+import js7.base.utils.{Allocated, LockKeeper, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -377,7 +377,7 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    val scope = maybeBundleId.fold(Scope.empty)(bundleSubagentProcessCountScope)
+    val scope = maybeBundleId.foldMap(bundleSubagentProcessCountScope)
     Stream.repeatEval:
       stateVar.value.flatMap: directorState =>
         IO:
@@ -393,16 +393,13 @@ extends Service.StoppableByRequest:
     .headL
 
   private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId) =
-    val Key = "js7ClusterSubagentProcessCount"
     new Scope:
-      override val nameToCheckedValue =
-        new StandardMapView[String, Checked[Value]]:
-          override val keySet = Set(Key)
+      override def namedValue(name: String): Option[Checked[Value]] =
+        name match
+          case "js7ClusterSubagentProcessCount" =>
+            Some(Right(NumberValue(bundleSubagentProcessCount(bundleId))))
+          case _ => None
 
-          override def get(key: String) =
-            key match
-              case Key => Some(Right(NumberValue(bundleSubagentProcessCount(bundleId))))
-              case _ => None
 
   private def bundleSubagentProcessCount(bundleId: SubagentBundleId): Int =
     val state = journal.unsafeAggregate()

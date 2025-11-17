@@ -37,6 +37,6 @@ final class NowScopeTest extends OurTestSuite:
     val n = checkedValue.flatMap(_.asNumber).orThrow.toLongExact
     assert(n == epochMilli)
 
-  "nameToCheckedValue" in:
-    assert(nowScope.nameToCheckedValue("js7EpochMilli") == Right(NumberValue(1629115200000L)))
-    assert(nowScope.nameToCheckedValue("js7EpochSecond") == Right(NumberValue(1629115200)))
+  "namedValue" in:
+    assert(nowScope.namedValue("js7EpochMilli") == Some(Right(NumberValue(1629115200000L))))
+    assert(nowScope.namedValue("js7EpochSecond") == Some(Right(NumberValue(1629115200))))
