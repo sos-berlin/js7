@@ -215,19 +215,23 @@ object JavaTimeTest:
     /**
      * Duration, counted in microseconds.
      */
-    def µs = Duration.ofNanos(1000L * delegate)
+    inline def µs: Duration =
+      Duration.ofNanos(1000L * delegate)
 
     /**
      * Duration, counted in milliseconds.
      */
-    def ms = Duration.ofMillis(delegate)
+    inline def ms: Duration =
+      Duration.ofMillis(delegate)
 
     /**
      * Duration, counted in seconds.
      */
-    def s = Duration.ofSeconds(delegate)
+    inline def s: Duration =
+      Duration.ofSeconds(delegate)
 
     /**
      * Duration, counted in hours.
      */
-    def h = Duration.ofHours(delegate)
+    inline def h: Duration =
+      Duration.ofHours(delegate)

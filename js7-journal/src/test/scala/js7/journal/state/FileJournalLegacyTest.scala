@@ -44,7 +44,7 @@ final class FileJournalLegacyTest extends OurTestSuite, BeforeAndAfterAll:
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
 
-  protected lazy val directory = createTempDirectory("FileJournalLegacyTest-")
+  protected lazy val directory: Path = createTempDirectory("FileJournalLegacyTest-")
   private lazy val journalLocation = testJournalMeta(fileBase = directory)
 
   override def afterAll() =

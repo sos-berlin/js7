@@ -1,6 +1,7 @@
 package js7.base.io.process
 
 import java.nio.file.Files.*
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions.*
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import js7.base.system.OperatingSystem.isWindows
@@ -18,7 +19,8 @@ private[process] sealed trait OperatingSystemSpecific:
 
   def shellFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
-  def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes*)
+  def newTemporaryShellFile(name: String): Path =
+    createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes*)
 
   protected def outputFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
@@ -27,7 +29,11 @@ private[process] sealed trait OperatingSystemSpecific:
   protected final def filenamePrefix(name: String) = s"JS7-Agent-$name-"
 
 private object OperatingSystemSpecific:
-  private[process] val OS: OperatingSystemSpecific = if isWindows then OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
+  private[process] val OS: OperatingSystemSpecific =
+    if isWindows then
+      OperatingSystemSpecific.Windows
+    else
+      OperatingSystemSpecific.Unix
 
   private object Unix extends OperatingSystemSpecific:
     val shellFileExtension = ".sh"
@@ -39,7 +45,10 @@ private object OperatingSystemSpecific:
     def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
 
   private object Windows extends OperatingSystemSpecific:
-    private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
+    private val Cmd: String =
+      sys.env.get("ComSpec") orElse
+        sys.env.get("COMSPEC" /*cygwin*/) getOrElse
+        """C:\Windows\system32\cmd.exe"""
     val shellFileExtension = ".cmd"
     val shellFileAttributes = Nil
     val outputFileAttributes = Nil

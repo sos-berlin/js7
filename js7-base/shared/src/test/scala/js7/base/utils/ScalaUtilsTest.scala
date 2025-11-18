@@ -187,7 +187,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
   "simpleName" in:
     object A:
       object B:
-        def getSimpleName = getClass.getSimpleName
+        def getSimpleName: String = getClass.getSimpleName
         def simpleName = getClass.simpleName
 
     assert(A.B.simpleName == "B$")

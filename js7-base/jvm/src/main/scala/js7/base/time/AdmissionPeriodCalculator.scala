@@ -64,7 +64,7 @@ sealed trait AdmissionPeriodCalculator:
 
 
 object AdmissionPeriodCalculator:
-  private[time] val NoOffset = ZoneOffset.ofTotalSeconds(0)
+  private[time] val NoOffset: ZoneOffset = ZoneOffset.ofTotalSeconds(0)
   private val JEpsilon = FiniteDuration.Epsilon.toJava
 
   def apply(admissionPeriod: AdmissionPeriod, dateOffset: FiniteDuration)

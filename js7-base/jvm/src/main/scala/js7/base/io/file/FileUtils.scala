@@ -133,7 +133,7 @@ object FileUtils:
       def contentString_=(string: String): Unit =
         write(string, UTF_8)
 
-      def contentString(encoding: Charset) =
+      def contentString(encoding: Charset): String =
         Files.readString(delegate, encoding)
 
       def writeUtf8Executable(string: String): Unit =

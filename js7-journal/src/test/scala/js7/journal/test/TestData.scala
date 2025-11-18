@@ -1,5 +1,6 @@
 package js7.journal.test
 
+import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.config.Js7Config
@@ -10,7 +11,7 @@ import js7.journal.data.JournalLocation
   * @author Joacim Zschimmer
   */
 private[journal] object TestData:
-  val TestConfig = config"""
+  val TestConfig: Config = config"""
     js7.journal.sync = on
     js7.journal.delay = 0s
     js7.journal.sync-delay = 0s

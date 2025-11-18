@@ -1,6 +1,7 @@
 package js7.controller.client
 
 import cats.effect.{IO, ResourceIO}
+import com.typesafe.config.Config
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
@@ -26,7 +27,7 @@ extends
   TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword,
   Service.TrivialReleasable:
 
-  protected val config = config"pekko.log-dead-letters = 0".withFallback(conf.config)
+  protected val config: Config = config"pekko.log-dead-letters = 0".withFallback(conf.config)
 
   protected val name = "PekkoHttpControllerTextApi"
 

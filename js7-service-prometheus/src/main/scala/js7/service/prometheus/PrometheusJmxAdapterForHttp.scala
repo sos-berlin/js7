@@ -22,7 +22,7 @@ private[prometheus] object PrometheusJmxAdapterForHttp:
         def getQueryString =
           request.uri.queryString(UTF_8) getOrElse ""
 
-        def getHeaders(name: String) =
+        def getHeaders(name: String): java.util.Enumeration[String] =
           request.getHeader(name).toScala.fold(EmptyEnumeration): header =>
             SingleEnumeration(header.value)
 

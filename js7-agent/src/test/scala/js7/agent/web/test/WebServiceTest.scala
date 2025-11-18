@@ -1,10 +1,7 @@
 package js7.agent.web.test
 
 import cats.effect.unsafe.IORuntime
-import org.apache.pekko.actor.ActorRefFactory
-import org.apache.pekko.http.scaladsl.model.HttpHeader
-import org.apache.pekko.http.scaladsl.model.headers.RawHeader
-import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import com.typesafe.config.Config
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.AgentRouteProvider
 import js7.base.Js7Version
@@ -13,13 +10,17 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
+import js7.common.http.PekkoHttpClient.`x-js7-session`
+import js7.common.message.ProblemCodeMessages
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkohttp.web.session.SessionRegister
-import js7.common.http.PekkoHttpClient.`x-js7-session`
-import js7.common.message.ProblemCodeMessages
 import js7.subagent.SubagentSession
+import org.apache.pekko.actor.ActorRefFactory
+import org.apache.pekko.http.scaladsl.model.HttpHeader
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**
@@ -41,14 +42,15 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
   protected final lazy val sessionRegister = SessionRegister.forTest[SubagentSession](
     SubagentSession.apply, SessionRegister.TestConfig)
 
-  override def testConfig =
+  override def testConfig: Config =
     config"pekko.loglevel = warning"
       .withFallback(AgentConfiguration.DefaultConfig.resolve())
       .withFallback(super.testConfig)
 
   protected final def actorSystem = system
-  protected val config = config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
-    .withFallback(WebLogDirectives.TestConfig)
+  protected val config: Config =
+    config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
+      .withFallback(WebLogDirectives.TestConfig)
 
   implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.s)
 

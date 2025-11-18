@@ -792,4 +792,4 @@ object PekkoHttpClient:
     message: String,
     cause: pekko.stream.StreamTcpException)
   extends RuntimeException(message, cause), NoStackTrace:
-    override def toString = getMessage
+    override def toString = getMessage: String

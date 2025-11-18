@@ -27,7 +27,7 @@ trait TestAgentDirectoryProvider extends HasCloser:
 
   final val itemSigner = TestAgentDirectoryProvider.itemSigner
 
-  final lazy val agentDirectory =
+  final lazy val agentDirectory: Path =
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>
       logger.debug(s"Deleting $dir")
       repeatUntilNoException(9.s, 10.ms):  // For Windows

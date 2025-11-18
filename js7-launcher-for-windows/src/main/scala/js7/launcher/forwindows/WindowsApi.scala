@@ -21,11 +21,11 @@ private object WindowsApi:
   private val logger = Logger[this.type]
   val MAX_PATH = 260
 
-  lazy val kernel32 = Native.load("kernel32", classOf[Kernel32], UNICODE_OPTIONS)
-  lazy val advapi32 = Native.load("advapi32", classOf[Advapi32], UNICODE_OPTIONS)
-  lazy val myUserenv = Native.load("userenv", classOf[MyUserenv], UNICODE_OPTIONS)
-  lazy val myKernel32 = Native.load("kernel32", classOf[MyKernel32], UNICODE_OPTIONS)
-  lazy val myAdvapi32 = Native.load("advapi32", classOf[MyAdvapi32], UNICODE_OPTIONS)
+  lazy val kernel32: Kernel32 = Native.load("kernel32", classOf[Kernel32], UNICODE_OPTIONS)
+  lazy val advapi32: Advapi32 = Native.load("advapi32", classOf[Advapi32], UNICODE_OPTIONS)
+  lazy val myUserenv: MyUserenv = Native.load("userenv", classOf[MyUserenv], UNICODE_OPTIONS)
+  private lazy val myKernel32 = Native.load("kernel32", classOf[MyKernel32], UNICODE_OPTIONS)
+  lazy val myAdvapi32: MyAdvapi32 = Native.load("advapi32", classOf[MyAdvapi32], UNICODE_OPTIONS)
 
   def waitForSingleObject(handle: HANDLE, timeout: Int): Boolean =
     if timeout == 0 then

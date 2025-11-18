@@ -72,7 +72,7 @@ object CalendarExecutor:
 
   private sealed trait Period:
     protected val formatter_ : DateTimeFormatter
-    lazy val formatter = formatter_.withLocale(ROOT)
+    lazy val formatter: DateTimeFormatter = formatter_.withLocale(ROOT)
     def normalDuration: FiniteDuration
     def next(zoned: ZonedDateTime): ZonedDateTime
     def query: TemporalQuery[LocalDate]

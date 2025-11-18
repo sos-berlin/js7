@@ -41,7 +41,7 @@ final class MapViewJavaWrapper[K, V](mapView: MapView[K, V]) extends ju.Abstract
 
           def hasNext = ui.hasNext
 
-          def next() =
+          def next(): ju.Map.Entry[K, V] =
             val (k, v) = ui.next()
             new ju.Map.Entry[K, V]:
               def getKey = k

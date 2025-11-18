@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, ResourceIO}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{createTempDirectory, delete}
+import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -36,7 +37,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private val stateName = "TestState"
 
-  protected lazy val directory = createTempDirectory("JournalTest-")
+  protected lazy val directory: Path = createTempDirectory("JournalTest-")
   protected val journalLocation = testJournalMeta(directory / "test")
 
   private lazy val journalResource: ResourceIO[FileJournal[TestState]] =
