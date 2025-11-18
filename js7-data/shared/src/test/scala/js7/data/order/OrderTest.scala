@@ -779,6 +779,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderStateReset      , _             , _, _                      ) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded    , _             , _, _                      ) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderSuspensionMarked, IsSuspended(_), _, _                      ) => _.isInstanceOf[WaitingForAdmission]
+          case (_: OrderWaitingForAdmission, _          , _, IsDetached | IsAttached) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderGoMarked        , _             , _, IsAttached             ) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderGoes            , _             , _, _                      ) => _.isInstanceOf[WaitingForAdmission]
           case (_: OrderTransferred     , _             , _, IsDetached             ) => _.isInstanceOf[WaitingForAdmission]

@@ -634,7 +634,7 @@ extends
           this)
 
       case OrderWaitingForAdmission(until) =>
-        check(isState[Ready] && isDetachedOrAttached,
+        check((isState[Ready] || isState[WaitingForAdmission]) && isDetachedOrAttached,
           copy(
             state = WaitingForAdmission(until)))
   end applyEvent
