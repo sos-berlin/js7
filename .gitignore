@@ -37,3 +37,7 @@ idea-shared-test
 
 # npm
 node_modules
+
+# OTHER
+/nohup.out
+/*.log
