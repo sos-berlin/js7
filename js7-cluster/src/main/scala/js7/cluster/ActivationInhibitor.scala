@@ -164,25 +164,24 @@ private[cluster] object ActivationInhibitor:
     timing: ClusterTiming)
   : IO[Checked[Unit]] =
     logger.infoIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
-      clusterNodeApi(admission, "tryInhibitActivationOfPeer")
-        .use: api =>
-          api.login() *>
-            api.executeClusterCommand:
-              ClusterInhibitActivation(timing.inhibitActivationDuration)
-            .map(_.clusterState)
-            .map:
-              case None => Checked.unit
-              case Some(clusterState) =>
-                Left(ClusterActivationInhibitedByPeerProblem(ownId, peerId, clusterState))
-        .handleError: throwable =>
-          // We can only safely check if the peer is active. !!!
-          // All other response mean, we doesn't know for sure.
-          // Then we must allow the call to continue it's (otherwise checked!) activation.
-          // TODO On any error, we assume the peer is not alive or not active.
-          //  We should not be sure about this.
-          logger.info(s"Peer $peerId ${admission.uri} seems no longer to be active: ${
-            admission.uri} failed: ${throwable.toStringWithCauses}")
-          Checked.unit
+      clusterNodeApi(admission, "tryInhibitActivationOfPeer").use: api =>
+        api.login() *>
+          api.executeClusterCommand:
+            ClusterInhibitActivation(timing.inhibitActivationDuration)
+          .map(_.clusterState)
+          .map:
+            case None => Checked.unit
+            case Some(clusterState) =>
+              Left(ClusterActivationInhibitedByPeerProblem(ownId, peerId, clusterState))
+      .handleError: throwable =>
+        // We can only safely check if the peer is active. !!!
+        // All other response mean, we doesn't know for sure.
+        // Then we must allow the call to continue it's (otherwise checked!) activation.
+        // TODO On any error, we assume the peer is not alive or not active.
+        //  We should not be sure about this.
+        logger.info(s"Peer $peerId ${admission.uri} seems no longer to be active: ${
+          admission.uri} failed: ${throwable.toStringWithCauses}")
+        Checked.unit
 
 
   private[cluster] sealed trait State

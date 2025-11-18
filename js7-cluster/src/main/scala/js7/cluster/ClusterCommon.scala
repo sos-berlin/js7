@@ -131,20 +131,19 @@ private[cluster] final class ClusterCommon private(
       //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
       IO(aggregate.clusterState.checkedSubtype[HasNodes]).flatMapT: clusterState =>
         val peerId = clusterState.setting.other(ownId)
-        IO(aggregate.clusterNodeToUserAndPassword(ownId))
-          .flatMapT: peersUserAndPassword =>
-            val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
-            ActivationInhibitor
-              .tryInhibitActivationOfPeer(
-                ownId, peerId, admission, clusterNodeApi, clusterState.setting.timing)
-              .flatMap:
-                case Left(problem) =>
-                  logger.debug(s"⛔️ $problem")
-                  IO.right(false)
-                case Right(()) =>
-                  activationInhibitor.tryToActivate:
-                    activate(clusterState, event):
-                      body
+        IO(aggregate.clusterNodeToUserAndPassword(ownId)).flatMapT: peersUserAndPassword =>
+          val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
+          ActivationInhibitor
+            .tryInhibitActivationOfPeer(
+              ownId, peerId, admission, clusterNodeApi, clusterState.setting.timing)
+            .flatMap:
+              case Left(problem) =>
+                logger.debug(s"⛔️ $problem")
+                IO.right(false)
+              case Right(()) =>
+                activationInhibitor.tryToActivate:
+                  activate(clusterState, event):
+                    body
 
   private def activate(
     clusterState: ClusterState.HasNodes,
@@ -153,49 +152,49 @@ private[cluster] final class ClusterCommon private(
   : IO[Checked[Boolean]] =
     logger.traceIOWithResult:
       IO.pure(clusterState.applyEvent(event)).flatMapT:
+        case ClusterState.Empty => IO.left(Problem.pure:
+          "ClusterState:Empty in ifClusterWatchAllowsActivation ??")
+
         case updatedClusterState: HasNodes =>
-          clusterWatchSynchronizer(clusterState)
-            .flatMap:
-              _.applyEvent(event, updatedClusterState,
-                // Changed ClusterWatch must only confirm when taught and sure !!!
-                clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
-            .flatMap:
-              case Left(problem) =>
-                if problem.is(ClusterNodeLossNotConfirmedProblem)
-                  || problem.is(ClusterWatchInactiveNodeProblem) then
-                  logger.warn:
-                    s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem"
-                  testEventBus.publish(ClusterWatchDisagreedToActivation)
-                  if event.isInstanceOf[ClusterPassiveLost] then
-                    val msg = "🟥 While this node has lost the passive node" +
-                      " and is waiting for ClusterWatch's agreement, " +
-                      "the passive node failed over"
-                    if clusterConf.testDontHaltWhenPassiveLostRejected then
-                      IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
-                    else
-                      haltJava(msg, restart = true, warnOnly = true)
+          clusterWatchSynchronizer(clusterState).flatMap:
+            _.applyEvent(event, updatedClusterState,
+              // Changed ClusterWatch must only confirm when taught and sure !!!
+              clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
+          .flatMap:
+            case Left(problem) =>
+              if problem.is(ClusterNodeLossNotConfirmedProblem)
+                || problem.is(ClusterWatchInactiveNodeProblem) then
+                logger.warn:
+                  s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem"
+                testEventBus.publish(ClusterWatchDisagreedToActivation)
+                if event.isInstanceOf[ClusterPassiveLost] then
+                  val msg = "🟥 While this node has lost the passive node" +
+                    " and is waiting for ClusterWatch's agreement, " +
+                    "the passive node failed over"
+                  if clusterConf.testDontHaltWhenPassiveLostRejected then
+                    IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
                   else
-                    IO.right(false)  // Ignore heartbeat loss
+                    haltJava(msg, restart = true, warnOnly = true)
                 else
-                  IO.left(problem)
+                  IO.right(false)  // Ignore heartbeat loss
+              else
+                IO.left(problem)
 
-              case Right(None) =>
-                logger.debug:
-                  s"No ClusterWatch confirmation required for '${event.getClass.simpleScalaName}' event"
-                body
+            case Right(None) =>
+              logger.debug:
+                s"No ClusterWatch confirmation required for '${event.getClass.simpleScalaName}' event"
+              body
 
-              case Right(maybeConfirm) =>
-                maybeConfirm match
-                  case None =>
-                    logger.info(
-                      s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
-                  case Some(confirm) =>
-                    logger.info(
-                      s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
-                testEventBus.publish(ClusterWatchAgreedToActivation)
-                body
-        case ClusterState.Empty => IO.left(Problem.pure(
-          "ClusterState:Empty in ifClusterWatchAllowsActivation ??"))
+            case Right(maybeConfirm) =>
+              maybeConfirm match
+                case None =>
+                  logger.info(
+                    s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                case Some(confirm) =>
+                  logger.info(
+                    s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
+              testEventBus.publish(ClusterWatchAgreedToActivation)
+              body
 
 
 private[js7] object ClusterCommon:
