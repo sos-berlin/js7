@@ -2,9 +2,11 @@ package js7.data.event
 
 import io.circe.{Codec, Decoder}
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.crypt.{DocumentSigner, SignatureVerifier}
 import js7.data.agent.AgentPath
+import js7.data.crypt.SignedItemVerifier
 import js7.data.delegate.DelegateId
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedControl, VersionedItem, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemSigner, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedControl, VersionedItem, VersionedItemPath}
 import scala.collection.MapView
 
 trait ItemContainer:
@@ -108,6 +110,11 @@ object ItemContainer:
     implicit final lazy val delegateIdJsonCodec: Codec[DelegateId] =
       InventoryItemPath.jsonCodec(delegateIds)
 
+    def toItemSigner(signer: DocumentSigner): ItemSigner[SignableItem] =
+      ItemSigner(signer, signableItemJsonCodec)
+
+    def toSignedItemVerifier(verifier: SignatureVerifier): SignedItemVerifier[SignableItem] =
+      SignedItemVerifier(verifier, signableItemJsonCodec)
 
     def decodeDelegateIdOrAgentPath: Decoder[DelegateId] =
       c => c.get[DelegateId]("delegateId") match
