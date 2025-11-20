@@ -453,7 +453,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 case clusterState: Coupled =>
                   val passiveLost = ClusterPassiveLost(passiveId)
                   suspendHeartbeat(forEvent = true):
-                    common.ifClusterWatchAllowsActivation(ownId, passiveLost, aggregate):
+                    common.ifClusterWatchAllowsActivation(passiveLost, aggregate):
                       journal.onPassiveLost *>
                         persistWithoutTouchingHeartbeat():
                           case _: Coupled => Right(Some(passiveLost))

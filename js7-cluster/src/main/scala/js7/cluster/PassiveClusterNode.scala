@@ -50,7 +50,7 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSe
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
-import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
+import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger
@@ -59,7 +59,6 @@ import js7.journal.{EventIdGenerator, FileJournalMXBean}
 import scala.concurrent.duration.Deadline
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] private(
-  ownId: NodeId,
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
   activeNodeName: NodeName,
@@ -76,7 +75,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
     nodeNameToPassword: NodeNameToPassword[S],
     ioRuntime: IORuntime):
 
-  import clusterConf.journalConf
+  import clusterConf.{journalConf, ownId}
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 
@@ -434,7 +433,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(ownId, failedOver, aggregate):
+                      common.ifClusterWatchAllowsActivation(failedOver, aggregate):
                         IO:
                           val file = recoveredJournalFile.file
                           val fileSize =
@@ -467,7 +466,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(ownId, failedOver, aggregate):
+                      common.ifClusterWatchAllowsActivation(failedOver, aggregate):
                         IO:
                           writeFailedOverEvent(out, file, failedOverStamped,
                             eventNumber = recoverer.totalEventCount, failedOverSince,
@@ -797,7 +796,6 @@ object PassiveClusterNode:
   private val PassiveClusterNodeShutdownProblem = Problem("PassiveClusterNode has been shut down")
 
   def resource[F[_]: Sync, S <: ClusterableState[S]: ClusterableState.Companion](
-    ownId: NodeId,
     setting: ClusterSetting,
     recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
     activeNodeName: NodeName,
@@ -815,5 +813,5 @@ object PassiveClusterNode:
     for
       bean <- registerMBean[F]("Journal", new FileJournalMXBean.Bean) // TODO Use a passive cluster bean!
     yield
-      PassiveClusterNode(ownId, setting, recovered, activeNodeName, passiveUserId,
+      PassiveClusterNode(setting, recovered, activeNodeName, passiveUserId,
         eventIdGenerator, initialFileEventId, otherFailed, clusterConf, common, bean)

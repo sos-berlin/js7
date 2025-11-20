@@ -22,7 +22,7 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, SwitchedOve
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
-import js7.data.node.{NodeId, NodeNameToPassword}
+import js7.data.node.NodeNameToPassword
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
@@ -118,7 +118,6 @@ private[cluster] final class ClusterCommon private(
       clusterState.setting, peersUserAndPassword, clusterNodeApi)
 
   def ifClusterWatchAllowsActivation[S <: ClusterableState[S]](
-    ownId: NodeId,
     event: ClusterNodeLostEvent,
     aggregate: S)
     (body: IO[Checked[Boolean]])

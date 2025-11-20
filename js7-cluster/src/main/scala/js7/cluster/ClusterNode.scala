@@ -503,7 +503,7 @@ object ClusterNode:
     : PassiveClusterNode[S] =
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
       val allocated = PassiveClusterNode
-        .resource[SyncIO, S](ownId, setting, recovered,
+        .resource[SyncIO, S](setting, recovered,
           activeNodeName = injectedActiveNodeName getOrElse
             recovered.state.clusterNodeIdToName(setting.activeId).orThrow,
           passiveUserId = injectedPassiveUserId getOrElse
