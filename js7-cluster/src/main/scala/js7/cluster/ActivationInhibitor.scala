@@ -17,7 +17,7 @@ import js7.cluster.ActivationInhibitor.*
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterActivationInhibitedByPeerProblem
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
-import js7.data.cluster.{ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
+import js7.data.cluster.{ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -162,13 +162,13 @@ private[cluster] object ActivationInhibitor:
     peerId: NodeId,
     admission: Admission,
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
-    timing: ClusterTiming)
+    inhibitActivationDuration: FiniteDuration)
   : IO[Checked[Unit]] =
     logger.infoIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
       clusterNodeApi(admission, "tryInhibitActivationOfPeer").use: api =>
         api.login() *>
           api.executeClusterCommand:
-            ClusterInhibitActivation(timing.inhibitActivationDuration)
+            ClusterInhibitActivation(inhibitActivationDuration)
           .map(_.clusterState)
           .map:
             case None => Checked.unit
