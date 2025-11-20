@@ -198,7 +198,7 @@ private[cluster] object ActivationInhibitor:
         case Some(clusterState) =>
           s"⛔️ Activation inhibited due to peer clusterState=${clusterState.toShortString}"
 
-  final class InhibitActivationFailsForTestingException private[ActivationInhibitor]
+  private final class InhibitActivationFailsForTestingException private[ActivationInhibitor]
   extends
     RuntimeException(s"🟪 inhibitActivation fails due to testFailInhibitActivationWhileTrying"),
     NoStackTrace

@@ -442,7 +442,8 @@ extends Service.StoppableByRequest:
         label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged,
         onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
-    yield clusterWatchService
+    yield
+      clusterWatchService
 
   private def onClusterStateChanged(hasNodes: HasNodes): Unit =
     if !clusterState.contains(hasNodes) then
@@ -455,23 +456,21 @@ extends Service.StoppableByRequest:
 
   private def onUndecidableClusterNodeLoss(maybeProblem: Option[ClusterNodeLossNotConfirmedProblem])
   : IO[Unit] =
-    journal
-      .persist(_
-        .keyTo(AgentRefState)
-        .checked(agentPath)
+    journal.persist:
+      _.keyTo(AgentRefState).checked(agentPath)
         .map(_.nodeToLossNotConfirmedProblem)
-        .flatMap: nodeToClusterWatchConfirmationRequired =>
-          Right(maybeProblem match
+        .map: nodeToLossNodeNotConfirmed =>
+          maybeProblem match
             case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
-              (!nodeToClusterWatchConfirmationRequired.get(problem.fromNodeId).contains(problem))
-                .thenList(
-                  agentPath <-: AgentClusterWatchConfirmationRequired(problem))
+              (!nodeToLossNodeNotConfirmed.get(problem.fromNodeId).contains(problem))
+                .thenList:
+                  agentPath <-: AgentClusterWatchConfirmationRequired(problem)
             case None =>
-              nodeToClusterWatchConfirmationRequired.nonEmpty.thenList(
-                agentPath <-: AgentClusterWatchManuallyConfirmed)))
-      .rightAs(())
-      .handleProblemWith(problem => IO:
-        logger.error(problem.toString))
+              nodeToLossNodeNotConfirmed.nonEmpty.thenList:
+                agentPath <-: AgentClusterWatchManuallyConfirmed
+    .rightAs(())
+    .handleProblem: problem =>
+      logger.error(s"onUndecidableClusterNodeLoss: $problem")
 
   private def activeClientResource: ResourceIO[AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi(

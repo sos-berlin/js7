@@ -121,6 +121,7 @@ object CatsEffectExtensions:
     def catchIntoChecked: IO[Checked[A]] =
       io.attempt.map(either => Checked.fromThrowableEither(either).flatten)
 
+    /** Throw on Left, return Right. */
     def orThrow: IO[A] =
       io.flatMap:
         case Left(problem) => IO.raiseError(problem.throwable)
