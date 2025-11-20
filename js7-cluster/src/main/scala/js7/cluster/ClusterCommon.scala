@@ -3,23 +3,21 @@ package js7.cluster
 import cats.effect.{IO, Outcome, Resource, ResourceIO}
 import cats.syntax.all.*
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.problem.{Checked, Problem}
-import js7.base.system.startup.Halt.haltJava
+import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, ScalaUtils, SetOnce}
+import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.core.license.LicenseChecker
-import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
+import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, SwitchedOver}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.NodeNameToPassword
@@ -31,9 +29,9 @@ private[cluster] final class ClusterCommon private(
   val clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
-  val testEventBus: EventPublisher[Any],
-  val activationInhibitor: ActivationInhibitor):
+  val activationConsentChecker: ActivationConsentChecker):
 
+  export activationConsentChecker.testEventBus
   import clusterConf.ownId
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
@@ -41,7 +39,7 @@ private[cluster] final class ClusterCommon private(
 
   def stop: IO[Unit] =
     IO.defer:
-      _clusterWatchSynchronizer.toOption.fold(IO.unit)(_.stop)
+      _clusterWatchSynchronizer.foldMap(_.stop)
 
   def requireValidLicense: IO[Checked[Unit]] =
     IO(licenseChecker.checkLicense(ClusterProductName))
@@ -117,81 +115,15 @@ private[cluster] final class ClusterCommon private(
     ActivationInhibitor.inhibitActivationOfPassiveNode(
       clusterState.setting, peersUserAndPassword, clusterNodeApi)
 
-  def ifClusterWatchAllowsActivation[S <: ClusterableState[S]](
+  /** Ask peer and ClusterWatch about consent that this node is or gets active. */
+  def checkConsent[S <: ClusterableState[S]](
     event: ClusterNodeLostEvent,
     aggregate: S)
-    (body: IO[Checked[Consent]])
+    (body: IO[Checked[Unit]])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
-    logger.traceIOWithResult:
-      // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
-      //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
-      IO(aggregate.clusterState.checkedSubtype[HasNodes]).flatMapT: clusterState =>
-        val peerId = clusterState.setting.other(ownId)
-        IO(aggregate.clusterNodeToUserAndPassword(ownId)).flatMapT: peersUserAndPassword =>
-          val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
-          ActivationInhibitor
-            .tryInhibitActivationOfPeer(
-              ownId, peerId, admission, clusterNodeApi, clusterState.setting.timing)
-            .flatMap:
-              case Left(problem) =>
-                logger.debug(s"⛔️ $problem")
-                IO.right(Consent.Rejected)
-              case Right(()) =>
-                activationInhibitor.tryToActivate:
-                  activate(clusterState, event):
-                    body
-
-  private def activate(
-    clusterState: ClusterState.HasNodes,
-    event: ClusterNodeLostEvent)
-    (body: IO[Checked[Consent]])
-  : IO[Checked[Consent]] =
-    logger.traceIOWithResult:
-      IO.pure(clusterState.applyEvent(event)).flatMapT:
-        case ClusterState.Empty => IO.left(Problem.pure:
-          "ClusterState:Empty in ifClusterWatchAllowsActivation ??")
-
-        case updatedClusterState: HasNodes =>
-          clusterWatchSynchronizer(clusterState).flatMap:
-            _.applyEvent(event, updatedClusterState,
-              // Changed ClusterWatch must only confirm when taught and sure !!!
-              clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
-          .flatMap:
-            case Left(problem) =>
-              if problem.is(ClusterNodeLossNotConfirmedProblem)
-                || problem.is(ClusterWatchInactiveNodeProblem) then
-                logger.warn:
-                  s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem"
-                testEventBus.publish(ClusterWatchDisagreedToActivation)
-                if event.isInstanceOf[ClusterPassiveLost] then
-                  val msg = "🟥 While this node has lost the passive node" +
-                    " and is waiting for ClusterWatch's agreement, " +
-                    "the passive node failed over"
-                  if clusterConf.testDontHaltWhenPassiveLostRejected then
-                    IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
-                  else
-                    haltJava(msg, restart = true, warnOnly = true)
-                else
-                  IO.right(Consent.Rejected)  // Ignore heartbeat loss
-              else
-                IO.left(problem)
-
-            case Right(None) =>
-              logger.debug:
-                s"No ClusterWatch confirmation required for '${event.getClass.simpleScalaName}' event"
-              body
-
-            case Right(maybeConfirm) =>
-              maybeConfirm match
-                case None =>
-                  logger.info(
-                    s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
-                case Some(confirm) =>
-                  logger.info(
-                    s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
-              testEventBus.publish(ClusterWatchAgreedToActivation)
-              body
+    activationConsentChecker.checkConsent(event, aggregate, clusterWatchSynchronizer):
+      body
 
 
 private[js7] object ClusterCommon:
@@ -202,7 +134,7 @@ private[js7] object ClusterCommon:
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
-    testEventPublisher: EventPublisher[Any])
+    testEventBus: EventPublisher[Any])
   : ResourceIO[ClusterCommon] =
     for
       activationInhibitor <- ActivationInhibitor.resource(
@@ -212,18 +144,12 @@ private[js7] object ClusterCommon:
         acquire = IO:
           new ClusterCommon(
             clusterWatchCounterpart,
-            clusterNodeApi, clusterConf, licenseChecker, testEventPublisher,
-            activationInhibitor))(
+            clusterNodeApi, clusterConf, licenseChecker,
+            ActivationConsentChecker(
+              activationInhibitor, clusterNodeApi, clusterConf, testEventBus)))(
         release = _.stop)
     yield
       common
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"
-
-  case object ClusterWatchAgreedToActivation
-  case object ClusterWatchDisagreedToActivation
-
-  private[cluster] enum Consent:
-    case Rejected
-    case Given

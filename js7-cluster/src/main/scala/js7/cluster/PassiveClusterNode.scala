@@ -37,7 +37,8 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.{OneTimeToken, SetOnce}
-import js7.cluster.ClusterCommon.{Consent, clusterEventAndStateToString}
+import js7.cluster.ActivationConsentChecker.Consent
+import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
@@ -433,7 +434,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(failedOver, aggregate):
+                      common.checkConsent(failedOver, aggregate):
                         IO:
                           val file = recoveredJournalFile.file
                           val fileSize =
@@ -459,14 +460,14 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                           eventWatch.onJournalingEnded(fileSize)
-                          Right(Consent.Given)
+                          Checked.unit
                     else
                       // TODO Similar to then-part
                       val failedOverSince = Deadline.now
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(failedOver, aggregate):
+                      common.checkConsent(failedOver, aggregate):
                         IO:
                           writeFailedOverEvent(out, file, failedOverStamped,
                             eventNumber = recoverer.totalEventCount, failedOverSince,
@@ -479,7 +480,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                           lastProperEventPosition = fileSize
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
-                          Right(Consent.Given)
+                          Checked.unit
                   ).flatMap:
                     case Left(problem) =>
                       if problem.is(ClusterFailOverWhilePassiveLostProblem)

@@ -24,8 +24,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic, CatsUtils, SetOnce}
 import js7.base.web.{HttpClient, Uri}
+import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ActiveClusterNode.*
-import js7.cluster.ClusterCommon.Consent
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, ClusterSwitchOverButNotCoupledProblem, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
@@ -454,13 +454,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 case clusterState: Coupled =>
                   val passiveLost = ClusterPassiveLost(passiveId)
                   suspendHeartbeat(forEvent = true):
-                    common.ifClusterWatchAllowsActivation(passiveLost, aggregate):
+                    common.checkConsent(passiveLost, aggregate):
                       journal.onPassiveLost *>
                         persistWithoutTouchingHeartbeat():
                           case _: Coupled => Right(Some(passiveLost))
                           case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                        .map(_.toCompleted)
-                        .rightAs(Consent.Given)
+                        .rightAs(())
                     .recoverFromProblemWith:
                       case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
                         journal.kill  // avoid taking a snapshot

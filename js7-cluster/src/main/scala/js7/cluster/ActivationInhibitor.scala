@@ -12,8 +12,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ActivationInhibitor.*
-import js7.cluster.ClusterCommon.Consent
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterActivationInhibitedByPeerProblem
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation

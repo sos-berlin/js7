@@ -65,7 +65,7 @@ extends Service.StoppableByRequest:
   clusterNode =>
 
   import clusterConf.ownId
-  import common.activationInhibitor
+  import common.activationConsentChecker.activationInhibitor
 
   private val workingNodeStarted =
     Deferred.unsafe[IO, Try[Either[ProgramTermination, WorkingClusterNode[S]]]]
@@ -361,7 +361,7 @@ object ClusterNode:
     val passiveOrWorkingNode = Atomic[Option[
       Either[Allocated[SyncIO, PassiveClusterNode[S]], Allocated[IO, WorkingClusterNode[S]]]]](None)
 
-    import common.activationInhibitor
+    import common.activationConsentChecker.activationInhibitor
 
     def prepareBackupNodeWithEmptyClusterState(): Prepared[S] =
       logger.info(s"Backup cluster $ownId, awaiting appointment from a primary node")
