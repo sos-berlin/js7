@@ -120,9 +120,9 @@ private[cluster] final class ClusterCommon private(
   def ifClusterWatchAllowsActivation[S <: ClusterableState[S]](
     event: ClusterNodeLostEvent,
     aggregate: S)
-    (body: IO[Checked[Boolean]])
+    (body: IO[Checked[Consent]])
     (using NodeNameToPassword[S])
-  : IO[Checked[Boolean]] =
+  : IO[Checked[Consent]] =
     logger.traceIOWithResult:
       // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
       //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
@@ -136,7 +136,7 @@ private[cluster] final class ClusterCommon private(
             .flatMap:
               case Left(problem) =>
                 logger.debug(s"⛔️ $problem")
-                IO.right(false)
+                IO.right(Consent.Rejected)
               case Right(()) =>
                 activationInhibitor.tryToActivate:
                   activate(clusterState, event):
@@ -145,8 +145,8 @@ private[cluster] final class ClusterCommon private(
   private def activate(
     clusterState: ClusterState.HasNodes,
     event: ClusterNodeLostEvent)
-    (body: IO[Checked[Boolean]])
-  : IO[Checked[Boolean]] =
+    (body: IO[Checked[Consent]])
+  : IO[Checked[Consent]] =
     logger.traceIOWithResult:
       IO.pure(clusterState.applyEvent(event)).flatMapT:
         case ClusterState.Empty => IO.left(Problem.pure:
@@ -173,7 +173,7 @@ private[cluster] final class ClusterCommon private(
                   else
                     haltJava(msg, restart = true, warnOnly = true)
                 else
-                  IO.right(false)  // Ignore heartbeat loss
+                  IO.right(Consent.Rejected)  // Ignore heartbeat loss
               else
                 IO.left(problem)
 
@@ -223,3 +223,7 @@ private[js7] object ClusterCommon:
 
   case object ClusterWatchAgreedToActivation
   case object ClusterWatchDisagreedToActivation
+
+  private[cluster] enum Consent:
+    case Rejected
+    case Given

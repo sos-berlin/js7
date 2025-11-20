@@ -37,7 +37,7 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.{OneTimeToken, SetOnce}
-import js7.cluster.ClusterCommon.clusterEventAndStateToString
+import js7.cluster.ClusterCommon.{Consent, clusterEventAndStateToString}
 import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
@@ -459,7 +459,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                           eventWatch.onJournalingEnded(fileSize)
-                          Right(true)
+                          Right(Consent.Given)
                     else
                       // TODO Similar to then-part
                       val failedOverSince = Deadline.now
@@ -479,7 +479,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                           lastProperEventPosition = fileSize
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
-                          Right(true)
+                          Right(Consent.Given)
                   ).flatMap:
                     case Left(problem) =>
                       if problem.is(ClusterFailOverWhilePassiveLostProblem)
@@ -490,8 +490,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] privat
                       else
                         Stream.raiseError[IO](problem.throwable.appendCurrentStackTrace)
 
-                    case Right(false) => Stream.empty   // Ignore
-                    case Right(true) => Stream.emit(Right(()))  // End observation
+                    case Right(Consent.Rejected) => Stream.empty   // Ignore
+                    case Right(Consent.Given) => Stream.emit(Right(()))  // End observation
 
               case clusterState =>
                 logger.trace("Ignoring observed pause without heartbeat because cluster is not coupled: " +

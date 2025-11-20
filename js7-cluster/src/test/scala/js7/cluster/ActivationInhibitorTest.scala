@@ -11,6 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive}
+import js7.cluster.ClusterCommon.Consent
 
 final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
@@ -47,7 +48,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   "tryActivate" - {
     lazy val inhibitor = startActivationInhibitor.await(99.s)
-    lazy val activation = succeedingActivation(inhibitor, Right(true))
+    lazy val activation = succeedingActivation(inhibitor, Right(Consent.Given))
 
     "first" in:
       TestControl.executeEmbed:
@@ -72,7 +73,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
           a <- activation.<*(IO(activated := true)).start
           _ <- IO.sleep(1.s + 1.ns/*???*/)
           _ = assert(activated.get)
-          _ <- for a <- a.joinStd yield assert(a == Right(true))
+          _ <- for a <- a.joinStd yield assert(a == Right(Consent.Given))
           state <- inhibitor.state
         yield
           assert(state == Some(Active))
@@ -83,7 +84,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
       val activated = Atomic(false)
       for
         inhibitor <- startActivationInhibitor
-        activation = succeedingActivation(inhibitor, Right(false))
+        activation = succeedingActivation(inhibitor, Right(Consent.Rejected))
         a <- activation.<*(IO(activated := true)).start
         _ <- IO.sleep(1.ms)
         _ = assert(!activated.get)
@@ -91,7 +92,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
         _ <- IO.sleep(1.s)
         _ = assert(activated.get)
-        _ <- for a <- a.joinStd yield assert(a == Right(false))
+        _ <- for a <- a.joinStd yield assert(a == Right(Consent.Rejected))
         _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
       yield
         succeed
@@ -143,8 +144,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
     "again with succeeding activation" in:
       TestControl.executeEmbed:
         for
-          a <- succeedingActivation(inhibitor, Right(true))
-          _ = assert(a == Right(true))
+          a <- succeedingActivation(inhibitor, Right(Consent.Given))
+          _ = assert(a == Right(Consent.Given))
           _ <- for s <- inhibitor.state yield assert(s == Some(Active))
         yield
           succeed
@@ -158,7 +159,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         inhibited <- inhibitor.inhibitActivation(2.s)
         _ = assert(inhibited)
         _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
-        b <- succeedingActivation(inhibitor, Right(true))
+        b <- succeedingActivation(inhibitor, Right(Consent.Given))
 
         // While inhibition is in effect
         _ <- IO.sleep(1.s)
@@ -167,12 +168,12 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
 
         // After inhibition has timed out, activation starts
-        a <- succeedingActivation(inhibitor, Right(true)).start
+        a <- succeedingActivation(inhibitor, Right(Consent.Given)).start
         _ <- IO.sleep(1.ms)
         _ <- for o <- a.joinStd.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
 
         a <- a.joinStd
-        _ = assert(a == Right(true))
+        _ = assert(a == Right(Consent.Given))
         _ <- for s <- inhibitor.state yield assert(s == Some(Active))
 
         // inhibitActivation returns false if state is active" in
@@ -186,14 +187,14 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
       for
         inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive.timeout(1.ms)
-        b <- succeedingActivation(inhibitor, Right(true)).start
+        b <- succeedingActivation(inhibitor, Right(Consent.Given)).start
 
         _ <- IO.sleep(1.ms)
         inhibiting <- inhibitor.inhibitActivation(2.s).start
         _ <- for o <- inhibiting.joinStd.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
 
         _ <- IO.sleep(1.s)
-        _ <- for b <- b.joinStd.timeout(1.ms) yield assert(b == Right(true))
+        _ <- for b <- b.joinStd.timeout(1.ms) yield assert(b == Right(Consent.Given))
         _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(!o)
         _ <- for s <- inhibitor.state yield assert(s == Some(Active))
 
@@ -227,11 +228,11 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
   private def startActivationInhibitor: IO[ActivationInhibitor] =
     ActivationInhibitor.resource().allocated.map(_._1)
 
-  private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
-  : IO[Checked[Boolean]] =
+  private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Consent])
+  : IO[Checked[Consent]] =
     inhibitor.tryToActivate:
       IO.sleep(1.s).as(bodyResult)
 
-  private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Boolean]] =
+  private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Consent]] =
     inhibitor.tryToActivate:
       IO.sleep(1.s) *> IO.raiseError(new RuntimeException("TEST"))

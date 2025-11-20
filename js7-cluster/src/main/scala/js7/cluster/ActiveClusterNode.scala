@@ -25,6 +25,7 @@ import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic, CatsUtils, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
+import js7.cluster.ClusterCommon.Consent
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, ClusterSwitchOverButNotCoupledProblem, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
@@ -459,16 +460,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                           case _: Coupled => Right(Some(passiveLost))
                           case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                         .map(_.toCompleted)
-                        .rightAs(true)
+                        .rightAs(Consent.Given)
                     .recoverFromProblemWith:
                       case problem @ ClusterPassiveLostWhileFailedOverTestingProblem => // test only
                         journal.kill  // avoid taking a snapshot
                           .as(Left(problem))
-                  .map(_.flatMap: allowed =>
-                    if !allowed then
-                      Checked.unit
-                    else
-                      Left(missingHeartbeatProblem))
+                  .map(_.flatMap:
+                    case Consent.Rejected => Checked.unit
+                    case Consent.Given => Left(missingHeartbeatProblem))
 
                 case _ =>
                   IO.pure(Left(missingHeartbeatProblem))

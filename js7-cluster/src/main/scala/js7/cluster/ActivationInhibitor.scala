@@ -13,6 +13,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.ActivationInhibitor.*
+import js7.cluster.ClusterCommon.Consent
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterActivationInhibitedByPeerProblem
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
@@ -46,23 +47,23 @@ private[cluster] final class ActivationInhibitor private(
             new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
       .void
 
-  def tryToActivate(activate: IO[Checked[Boolean]]): IO[Checked[Boolean]] =
+  def tryToActivate(activate: IO[Checked[Consent]]): IO[Checked[Consent]] =
     logger.debugIOWithResult:
       _state.updateCheckedWithResult:
         case Initial | Active | Passive =>
           activate.flatMap:
-            case o @ (Left(_) | Right(false)) => IO:
+            case o @ (Left(_) | Right(Consent.Rejected)) => IO:
               logger.debug(s"⛔ tryToActivate: Passive — because activation function returned $o")
               o.map(Passive -> _)
-            case Right(true) =>
+            case Right(Consent.Given) =>
               IO:
                 logger.debug("✔︎ tryToActivate: Active — because activation function succeeded")
-                Right(Active -> true)
+                Right(Active -> Consent.Given)
 
         case inhibited: Inhibited =>
           IO:
             logger.info("⛔ Activation of this cluster node has been inhibited by the peer ⛔")
-            Right(inhibited -> false)
+            Right(inhibited -> Consent.Rejected)
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
