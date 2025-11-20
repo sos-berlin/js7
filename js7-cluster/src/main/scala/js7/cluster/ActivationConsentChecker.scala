@@ -80,46 +80,53 @@ private class ActivationConsentChecker(
           IO.right(Consent.Rejected)
 
         case Right(()) =>
+          // TODO Stop providing acknowledgments ?
           /// Then ask ClusterWatch ///
-          clusterWatchSynchronizer(updatedClusterState).flatMap:
-            _.applyEvent(event, updatedClusterState,
-              // Changed ClusterWatch must only confirm when taught and sure !!!
-              clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
-          .flatMap:
-            case Left(problem) =>
-              if problem.is(ClusterNodeLossNotConfirmedProblem)
-                || problem.is(ClusterWatchInactiveNodeProblem) then
-                logger.warn(s"⛔ ClusterWatch did not agree to '${
-                  event.getClass.simpleScalaName}' event: $problem")
-                testEventBus.publish(ClusterWatchDisagreedToActivation)
-                if event.isInstanceOf[ClusterPassiveLost] then
-                  val msg = "🟥 While this node has lost the passive node" +
-                    " and is waiting for ClusterWatch's agreement, " +
-                    "the passive node failed over"
-                  if clusterConf.testDontHaltWhenPassiveLostRejected then
-                    IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
-                  else
-                    haltJava(msg, restart = true, warnOnly = true)
-                else
-                  IO.right(Consent.Rejected) // Ignore heartbeat loss
-              else
-                IO.left(problem)
+          askClusterWatch(event, updatedClusterState, clusterWatchSynchronizer)
 
-            case Right(None) =>
-              logger.debug(s"No ClusterWatch confirmation required for '${
-                event.getClass.simpleScalaName}' event")
-              IO.right(Consent.Given)
+  private def askClusterWatch(
+    event: ClusterNodeLostEvent,
+    updatedClusterState: ClusterState.IsNodeLost,
+    clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
+  : IO[Checked[Consent]] =
+    clusterWatchSynchronizer(updatedClusterState).flatMap:
+      _.applyEvent(event, updatedClusterState,
+        // Changed ClusterWatch must only confirm when taught and sure !!!
+        clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
+    .flatMap:
+      case Left(problem) =>
+        if problem.is(ClusterNodeLossNotConfirmedProblem)
+          || problem.is(ClusterWatchInactiveNodeProblem) then
+          logger.warn(s"⛔ ClusterWatch did not agree to '${
+            event.getClass.simpleScalaName}' event: $problem")
+          testEventBus.publish(ClusterWatchDisagreedToActivation)
+          if event.isInstanceOf[ClusterPassiveLost] then
+            val msg = "🟥 While this node has lost the passive node" +
+              " and is waiting for ClusterWatch's agreement, " +
+              "the passive node failed over"
+            if clusterConf.testDontHaltWhenPassiveLostRejected then
+              IO.left(ClusterPassiveLostWhileFailedOverTestingProblem) // For test only
+            else
+              haltJava(msg, restart = true, warnOnly = true)
+          else
+            IO.right(Consent.Rejected) // Ignore heartbeat loss
+        else
+          IO.left(problem)
 
-            case Right(maybeConfirm) =>
-              maybeConfirm match
-                case None =>
-                  logger.info:
-                    s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event"
-                case Some(confirm) =>
-                  logger.info:
-                    s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event"
-              testEventBus.publish(ClusterWatchAgreedToActivation)
-              IO.right(Consent.Given)
+      case Right(None) =>
+        logger.debug(s"No ClusterWatch confirmation required for '${
+          event.getClass.simpleScalaName}' event")
+        IO.right(Consent.Given)
+
+      case Right(maybeConfirm) =>
+        maybeConfirm match
+          case None =>
+            logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+          case Some(confirm) =>
+            logger.info:
+              s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event"
+        testEventBus.publish(ClusterWatchAgreedToActivation)
+        IO.right(Consent.Given)
 
 
 object ActivationConsentChecker:
