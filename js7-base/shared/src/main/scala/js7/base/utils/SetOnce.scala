@@ -1,7 +1,8 @@
 package js7.base.utils
 
-import cats.InvariantMonoidal
+import cats.{InvariantMonoidal, Monoid}
 import cats.effect.IO
+import cats.syntax.foldable.*
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
@@ -48,6 +49,9 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
 
   def fold[B](ifEmpty: => B)(f: A => B): B =
     toOption.fold(ifEmpty)(f)
+
+  def foldMap[B: Monoid as B](f: A => B): B =
+    toOption.foldMap(f)
 
   def toOption: Option[A] =
     promise.future.value.map(_.get)

@@ -66,6 +66,12 @@ final class SetOnceTest extends OurTestSuite:
     a := 7
     assert(a.toOption == Some(7))
 
+  "foldMap" in:
+    val a = SetOnce[Int]
+    assert(a.foldMap(_ * 3) == 0)
+    a := 7
+    assert(a.foldMap(_ * 3) == 21)
+
   "fold" in:
     val a = SetOnce[Int]
     assert(a.fold(0)(_ * 3) == 0)
