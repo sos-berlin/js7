@@ -50,6 +50,8 @@ object ClusterWatchProblems:
   case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
   // Test only!
+  type ClusterPassiveLostWhileFailedOverTestingProblem =
+    ClusterPassiveLostWhileFailedOverTestingProblem.type
   case object ClusterPassiveLostWhileFailedOverTestingProblem extends Problem.ArgumentlessCoded
 
   final case class ClusterNodeLossNotConfirmedProblem(
