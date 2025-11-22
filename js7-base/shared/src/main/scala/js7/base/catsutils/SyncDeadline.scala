@@ -3,6 +3,7 @@ package js7.base.catsutils
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.kernel.Eq
+import fs2.compat.NotGiven
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
@@ -102,7 +103,7 @@ object SyncDeadline:
     for d <- IO.monotonic yield
       Now(d.toNanos)
 
-  def usingNow[A](body: Now ?=> A): IO[A] =
+  def usingNow[A](body: Now ?=> A)(/*erase*/ using NotGiven[A <:< IO[?]]): IO[A] =
     now.flatMap(now => IO(body(using now)))
 
   def fromScheduler()(using scheduler: Scheduler): Now =

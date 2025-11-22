@@ -6,6 +6,7 @@ import js7.base.thread.CatsBlocking
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
+import scala.util.NotGiven
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
 sealed class CatsDeadline private(val monotonic: FiniteDuration)
@@ -101,7 +102,7 @@ object CatsDeadline:
   val now: IO[Now] =
     for o <- IO.monotonic yield Now(o)
 
-  def usingNow[A](body: Now ?=> A): IO[A] =
+  def usingNow[A](body: Now ?=> A)(/*erase*/ using NotGiven[A <:< IO[?]]): IO[A] =
     now.flatMap(now => IO(body(using Now(now.monotonic))))
 
   def fromMonotonicNanos(nanos: Long): CatsDeadline =
