@@ -162,13 +162,13 @@ private[cluster] object ActivationInhibitor:
     peerId: NodeId,
     admission: Admission,
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
-    inhibitActivationDuration: FiniteDuration)
+    duration: FiniteDuration)
   : IO[Checked[Unit]] =
     logger.infoIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
       clusterNodeApi(admission, "tryInhibitActivationOfPeer").use: api =>
         api.login() *>
           api.executeClusterCommand:
-            ClusterInhibitActivation(inhibitActivationDuration)
+            ClusterInhibitActivation(duration)
           .map(_.clusterState)
           .map:
             case None => Checked.unit

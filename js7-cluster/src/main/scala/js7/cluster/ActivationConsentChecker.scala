@@ -15,6 +15,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.{NodeId, NodeNameToPassword}
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 private class ActivationConsentChecker(
@@ -42,6 +43,8 @@ private class ActivationConsentChecker(
           .map((peerId, admission, _))
       .flatMapT: (peerId, admission, nodeLossClusterState) =>
         checkConsent2(peerId, admission, event, nodeLossClusterState, clusterWatchSynchronizer)
+      .flatTapT: consent =>
+        IO.right(testEventBus.publish(consent))
 
   private def checkConsent2[S <: ClusterableState[S]](
     peerId: NodeId,
@@ -51,26 +54,25 @@ private class ActivationConsentChecker(
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
   : IO[Checked[Consent]] =
     activationInhibitor.tryToActivate:
-      inhibitActivationOfPeer(peerId, admission, nodeLossClusterState).flatMapT:
-        case Consent.Rejected =>
-          IO.right(Consent.Rejected)
-
+      inhibitActivationOfPeer(peerId, admission,
+        duration = nodeLossClusterState.setting.timing.inhibitActivationDuration
+      ).flatMapT:
+        case Consent.Rejected => IO.right(Consent.Rejected)
         case Consent.Given =>
-          // TODO Stop providing acknowledgments ?
           askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer)
 
   private def inhibitActivationOfPeer(
     peerId: NodeId,
     admission: Admission,
-    nodeLossClusterState: ClusterState.IsNodeLost)
+    duration: FiniteDuration)
   : IO[Checked[Consent]] =
     ActivationInhibitor
       .tryInhibitActivationOfPeer(
         ownId, peerId, admission, clusterNodeApi,
-        inhibitActivationDuration = nodeLossClusterState.setting.timing.inhibitActivationDuration)
+        duration = duration)
       .map:
         case Left(problem) =>
-          logger.info(s"⛔️ $problem")
+          logger.info(s"⛔️ inhibitActivationOfPeer: $problem")
           Right(Consent.Rejected)
 
         case Right(()) =>
@@ -88,10 +90,10 @@ private class ActivationConsentChecker(
     .flatMap:
       case Left(problem) =>
         if problem.is(ClusterNodeLossNotConfirmedProblem)
-          || problem.is(ClusterWatchInactiveNodeProblem) then
+          || problem.is(ClusterWatchInactiveNodeProblem)
+        then
           logger.warn(s"⛔ ClusterWatch did not agree to '${
             event.getClass.simpleScalaName}' event: $problem")
-          testEventBus.publish(ClusterWatchDisagreedToActivation)
           if event.isSubtypeOf[ClusterPassiveLost] then
             val msg = "🟥 While this node has lost the passive node" +
               " and is waiting for ClusterWatch's agreement, " +
@@ -110,23 +112,20 @@ private class ActivationConsentChecker(
           event.getClass.simpleScalaName}' event")
         IO.right(Consent.Given)
 
-      case Right(maybeConfirm) =>
-        maybeConfirm match
+      case Right(maybeConfirmation) =>
+        maybeConfirmation match
           case None =>
             logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
-          case Some(confirm) =>
+          case Some(confirmation) =>
             logger.info:
-              s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event"
-        testEventBus.publish(ClusterWatchAgreedToActivation)
+              s"${confirmation.confirmer} agreed to '${event.getClass.simpleScalaName}' event"
         IO.right(Consent.Given)
 
 
 object ActivationConsentChecker:
   private val logger = Logger[this.type]
 
-  private[cluster] enum Consent:
+  // Public for testing
+  enum Consent:
     case Rejected
     case Given
-
-  case object ClusterWatchAgreedToActivation
-  case object ClusterWatchDisagreedToActivation

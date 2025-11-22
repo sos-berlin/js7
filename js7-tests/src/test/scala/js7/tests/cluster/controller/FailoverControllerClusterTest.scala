@@ -10,7 +10,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
-import js7.cluster.ActivationConsentChecker.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
+import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
@@ -126,8 +126,10 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       /// Cluster is coupled, primary is active ///
 
-      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type]
-      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type]
+      val whenClusterWatchAgrees =
+        backupController.testEventBus.when_[Consent](_ == Consent.Given)
+      val whenClusterWatchDoesNotAgree =
+        backupController.testEventBus.when_[Consent](_ == Consent.Rejected)
       sys.props(testHeartbeatLossPropertyKey) = "true"
 
       // When heartbeat from passive to active node is broken,
