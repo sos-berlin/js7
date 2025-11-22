@@ -216,9 +216,9 @@ object Checked:
             case Some(b) => b.widen[Checked[A | B]]
         case right => F.pure(right)
 
-    def onProblem(f: Problem => F[Unit])(using F: Monad[F]): F[Checked[A]] =
+    def onProblem(f: Problem =>? F[Unit])(using F: Monad[F]): F[Checked[A]] =
       recoverFromProblemWith: problem =>
-        f(problem).as(Left(problem))
+        f.applyOrElse(problem, _ => F.pure(())).as(Left(problem))
 
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal:

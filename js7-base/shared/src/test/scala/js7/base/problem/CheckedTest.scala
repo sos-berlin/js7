@@ -12,6 +12,7 @@ import cats.syntax.traverse.*
 import cats.{Applicative, Apply}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
@@ -149,6 +150,18 @@ final class CheckedTest extends OurAsyncTestSuite:
     assert(Right(1).onProblem(_ => throw new NotImplementedError) == 1.some)
     var flag = false
     assert((Left(Problem("X")): Checked[String]).onProblem(_ => flag = true) == none)
+    assert(flag)
+
+  "onProblem in F[_]" in:
+    assert:
+      SyncIO(Right(1)).onProblem:
+        case _: TestCodeProblem => throw new NotImplementedError
+      .run() == Right(1)
+    var flag = false
+    assert:
+      SyncIO(Left(TestCodeProblem()): Checked[String]).onProblem:
+        case _: TestCodeProblem => SyncIO { flag = true }
+      .run() == Left(TestCodeProblem)
     assert(flag)
 
   "handleProblem" in:
