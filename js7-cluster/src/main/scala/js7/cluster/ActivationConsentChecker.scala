@@ -6,9 +6,8 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.system.startup.Halt.haltJava
-import js7.base.utils.CatsUtils.whenM
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ActivationConsentChecker.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
@@ -31,35 +30,23 @@ private class ActivationConsentChecker(
     event: ClusterNodeLostEvent,
     aggr: S,
     /*TODO*/clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
-    (body: IO[Checked[Unit]])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
     logger.traceIOWithResult:
-      checkConsent(event, aggr, clusterWatchSynchronizer).flatTapT: consent =>
-        whenM(consent == Consent.Given):
-          body
-
-  private def checkConsent[S <: ClusterableState[S]](
-    event: ClusterNodeLostEvent,
-    aggr: S,
-    clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
-    (using NodeNameToPassword[S])
-  : IO[Checked[Consent]] =
-    // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
-    //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
-    IO.pure:
-      aggr.clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
-        val peerId = clusterState.setting.other(ownId)
-        aggr.clusterNodeToUserAndPassword(ownId).map: peersUserAndPassword =>
-          val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
-          (clusterState, peerId, admission)
-      .flatMap: (clusterState, peerId, admission) =>
-        clusterState.applyEvent(event).flatMap:
-          _.checkedSubtype[ClusterState.IsNodeLost]
-        .map:
-          (_, peerId, admission)
-    .flatMapT: (updatedClusterState, peerId, admission) =>
-      activationInhibitor.tryToActivate:
+      // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
+      //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
+      IO.pure:
+        aggr.clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
+          val peerId = clusterState.setting.other(ownId)
+          aggr.clusterNodeToUserAndPassword(ownId).map: peersUserAndPassword =>
+            val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
+            (clusterState, peerId, admission)
+        .flatMap: (clusterState, peerId, admission) =>
+          clusterState.applyEvent(event).flatMap:
+            _.checkedSubtype[ClusterState.IsNodeLost]
+          .map:
+            (_, peerId, admission)
+      .flatMapT: (updatedClusterState, peerId, admission) =>
         checkConsent2(peerId, admission, event, updatedClusterState, clusterWatchSynchronizer)
 
   private def checkConsent2[S <: ClusterableState[S]](
@@ -69,17 +56,14 @@ private class ActivationConsentChecker(
     updatedClusterState: ClusterState.IsNodeLost,
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
   : IO[Checked[Consent]] =
-    /// First, check whether peer seems no longer to be active ///
-    inhibitActivationOfPeer(peerId, admission, updatedClusterState).flatMap:
-      case Left(problem) =>
-        logger.debug(s"⛔️ $problem")
-        IO.right(Consent.Rejected)
+    activationInhibitor.tryToActivate:
+      inhibitActivationOfPeer(peerId, admission, updatedClusterState).flatMapT:
+        case Consent.Rejected =>
+          IO.right(Consent.Rejected)
 
-      case Right(Consent.Rejected) => IO.right(Consent.Rejected)
-      case Right(Consent.Given) =>
-        // TODO Stop providing acknowledgments ?
-        /// Then ask ClusterWatch ///
-        askClusterWatch(event, updatedClusterState, clusterWatchSynchronizer)
+        case Consent.Given =>
+          // TODO Stop providing acknowledgments ?
+          askClusterWatch(event, updatedClusterState, clusterWatchSynchronizer)
 
   private def inhibitActivationOfPeer(
     peerId: NodeId,
@@ -92,7 +76,7 @@ private class ActivationConsentChecker(
         inhibitActivationDuration = updatedClusterState.setting.timing.inhibitActivationDuration)
       .map:
         case Left(problem) =>
-          logger.debug(s"⛔️ $problem")
+          logger.info(s"⛔️ $problem")
           Right(Consent.Rejected)
 
         case Right(()) =>

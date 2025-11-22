@@ -10,6 +10,7 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.whenM
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, ScalaUtils, SetOnce}
 import js7.cluster.ActivationConsentChecker.Consent
@@ -122,8 +123,10 @@ private[cluster] final class ClusterCommon private(
     (body: IO[Checked[Unit]])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
-    activationConsentChecker.checkConsent(event, aggregate, clusterWatchSynchronizer):
-      body
+    activationConsentChecker.checkConsent(event, aggregate, clusterWatchSynchronizer)
+      .flatTapT: consent =>
+        whenM(consent == Consent.Given):
+          body
 
 
 private[js7] object ClusterCommon:
