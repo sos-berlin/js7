@@ -11,7 +11,6 @@ import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ActivationConsentChecker.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
-import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
@@ -36,44 +35,39 @@ private class ActivationConsentChecker(
       // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
       //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
       IO.pure:
-        aggr.clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
-          val peerId = clusterState.setting.other(ownId)
-          aggr.clusterNodeToUserAndPassword(ownId).map: peersUserAndPassword =>
-            val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
-            (clusterState, peerId, admission)
-        .flatMap: (clusterState, peerId, admission) =>
+        aggr.toPeerAndAdmission(ownId).flatMap: (peerId, admission, clusterState) =>
+          // Apply ClusterNodeLostEvent //
           clusterState.applyEvent(event).flatMap:
             _.checkedSubtype[ClusterState.IsNodeLost]
-          .map:
-            (_, peerId, admission)
-      .flatMapT: (updatedClusterState, peerId, admission) =>
-        checkConsent2(peerId, admission, event, updatedClusterState, clusterWatchSynchronizer)
+          .map((peerId, admission, _))
+      .flatMapT: (peerId, admission, nodeLossClusterState) =>
+        checkConsent2(peerId, admission, event, nodeLossClusterState, clusterWatchSynchronizer)
 
   private def checkConsent2[S <: ClusterableState[S]](
     peerId: NodeId,
     admission: Admission,
     event: ClusterNodeLostEvent,
-    updatedClusterState: ClusterState.IsNodeLost,
+    nodeLossClusterState: ClusterState.IsNodeLost,
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
   : IO[Checked[Consent]] =
     activationInhibitor.tryToActivate:
-      inhibitActivationOfPeer(peerId, admission, updatedClusterState).flatMapT:
+      inhibitActivationOfPeer(peerId, admission, nodeLossClusterState).flatMapT:
         case Consent.Rejected =>
           IO.right(Consent.Rejected)
 
         case Consent.Given =>
           // TODO Stop providing acknowledgments ?
-          askClusterWatch(event, updatedClusterState, clusterWatchSynchronizer)
+          askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer)
 
   private def inhibitActivationOfPeer(
     peerId: NodeId,
     admission: Admission,
-    updatedClusterState: ClusterState.IsNodeLost)
+    nodeLossClusterState: ClusterState.IsNodeLost)
   : IO[Checked[Consent]] =
     ActivationInhibitor
       .tryInhibitActivationOfPeer(
         ownId, peerId, admission, clusterNodeApi,
-        inhibitActivationDuration = updatedClusterState.setting.timing.inhibitActivationDuration)
+        inhibitActivationDuration = nodeLossClusterState.setting.timing.inhibitActivationDuration)
       .map:
         case Left(problem) =>
           logger.info(s"⛔️ $problem")
@@ -84,11 +78,11 @@ private class ActivationConsentChecker(
 
   private def askClusterWatch(
     event: ClusterNodeLostEvent,
-    updatedClusterState: ClusterState.IsNodeLost,
+    nodeLossClusterState: ClusterState.IsNodeLost,
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
   : IO[Checked[Consent]] =
-    clusterWatchSynchronizer(updatedClusterState).flatMap:
-      _.applyEvent(event, updatedClusterState,
+    clusterWatchSynchronizer(nodeLossClusterState).flatMap:
+      _.applyEvent(event, nodeLossClusterState,
         // Changed ClusterWatch must only confirm when taught and sure !!!
         clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
     .flatMap:

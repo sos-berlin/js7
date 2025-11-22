@@ -402,8 +402,8 @@ object ClusterNode:
                   clusterState,
                   recovered.state
                     .clusterNodeToUserAndPassword(
-                      ourNodeId = clusterState.activeId,
-                      otherNodeId = clusterState.passiveId)
+                      ownId = clusterState.activeId,
+                      peerId = clusterState.passiveId)
                     .orThrow)
                 .map:
                   case None /*Other node has not failed-over*/ =>

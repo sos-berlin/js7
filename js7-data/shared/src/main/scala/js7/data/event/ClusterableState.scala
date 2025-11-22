@@ -1,9 +1,10 @@
 package js7.data.event
 
 import cats.syntax.traverse.*
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.checkedSubtype
+import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 
@@ -18,21 +19,29 @@ extends SnapshotableState[S]:
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId]
 
-  final def clusterNodeToUserAndPassword(ourNodeId: NodeId)(using NodeNameToPassword[S])
+  def toPeerAndAdmission(ownId: NodeId)(using NodeNameToPassword[S])
+  : Checked[(NodeId, Admission, ClusterState.HasNodes)] =
+    clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
+      val peerId = clusterState.setting.other(ownId)
+      clusterNodeToUserAndPassword(ownId).map: peersUserAndPassword =>
+        val admission = Admission(clusterState.setting.idToUri(peerId), peersUserAndPassword)
+        (peerId, admission, clusterState)
+
+  final def clusterNodeToUserAndPassword(ownId: NodeId)(using NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
     clusterState.checkedSubtype[HasNodes].flatMap: clusterState =>
-      val otherNodeId = clusterState.setting.other(ourNodeId)
-      clusterNodeToUserAndPassword(ourNodeId, otherNodeId)
+      val otherNodeId = clusterState.setting.other(ownId)
+      clusterNodeToUserAndPassword(ownId, otherNodeId)
 
-  final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)
+  final def clusterNodeToUserAndPassword(ownId: NodeId, peerId: NodeId)
     (using nodeNameToPassword: NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
     for
-      nodeName <- clusterNodeIdToName(otherNodeId)
+      nodeName <- clusterNodeIdToName(peerId)
       maybePassword <- nodeNameToPassword(nodeName)
       maybeUserAndPassword <-
         maybePassword.traverse(password =>
-          for userId <- clusterNodeToUserId(ourNodeId) yield
+          for userId <- clusterNodeToUserId(ownId) yield
             UserAndPassword(userId, password))
     yield
       maybeUserAndPassword

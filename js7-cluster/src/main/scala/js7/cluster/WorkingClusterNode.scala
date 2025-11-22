@@ -3,12 +3,12 @@ package js7.cluster
 import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.utils.CatsUtils.unlessM
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.RichCheckedF
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.unlessM
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption, foldMap}
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.Uri
@@ -123,8 +123,8 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
       val passiveNodeId = clusterState.setting.other(clusterState.activeId)
       journal.aggregate
         .map(_.clusterNodeToUserAndPassword(
-          ourNodeId = clusterState.activeId,
-          otherNodeId = passiveNodeId))
+          ownId = clusterState.activeId,
+          peerId = passiveNodeId))
         .flatMapT: passiveNodeUserAndPassword =>
           IO.defer:
             val activeClusterNode =
