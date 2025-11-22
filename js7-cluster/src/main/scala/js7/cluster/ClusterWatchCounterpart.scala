@@ -9,6 +9,7 @@ import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.LogLevel.Warn
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
@@ -37,7 +38,7 @@ final class ClusterWatchCounterpart private(
   clusterConf: ClusterConf,
   timing: ClusterTiming,
   shuttingDown: DeferredSource[IO, Unit],
-  testEventPublisher: EventPublisher[Any])
+  testEventBus: EventPublisher[Any])
 extends Service.Trivial:
 
   import clusterConf.ownId
@@ -137,8 +138,8 @@ extends Service.Trivial:
       val sym = new BlockingSymbol
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
-        .*>(IO(
-          testEventPublisher.publish(TestWaitingForConfirmation(request))))
+        .*>(IO:
+          testEventBus.publish(TestWaitingForConfirmation(request)))
         .*>(requested
           .untilConfirmed
           .timeoutTo(timing.clusterWatchReactionTimeout, IO.left(MyRequestTimeoutProblem)))
@@ -153,8 +154,8 @@ extends Service.Trivial:
                   else
                     sym.escalate()
                   logger.log(sym.logLevel, s"$sym Still trying to get a confirmation from ${
-                    clusterWatchId.fold("any ClusterWatch")(id =>
-                      id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)"))
+                    clusterWatchId.fold("any ClusterWatch"): id =>
+                      s"$id${requested.clusterWatchIdChangeAllowed ?? " (or other)"}"
                   } for ${request.toShortString} for ${since.elapsed.pretty}...")
                 *> retry(())
         .flatTap:
@@ -168,7 +169,7 @@ extends Service.Trivial:
 
           case Right(confirmation) =>
             hasConfirmedSomething := true
-            testEventPublisher.publish(TestConfirmed(request, confirmation))
+            testEventBus.publish(TestConfirmed(request, confirmation))
             SyncDeadline.usingNow:
               logger.log(sym.relievedLogLevel,
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
@@ -193,25 +194,27 @@ extends Service.Trivial:
           takeRequest(confirm)
       .flatMapT: requested =>
         val confirmation = toConfirmation(confirm)
-        (requested.request.maybeEvent, confirmation) match
+        (requested.request.maybeEvent, confirmation).match
           case (Some(_: ClusterPassiveLost), Left(problem))
             if problem is ClusterNodeLossNotConfirmedProblem =>
-            // Ignore this, because ActiveClusterNode cannot handle this.
-            // Continue to wait until user has confirmed the ClusterPassiveLost via ClusterWatch.
+            IO:
+              // Ignore this, because ActiveClusterNode cannot handle this.
+              // Continue to wait until user has confirmed the ClusterPassiveLost via ClusterWatch.
 
-            // Possible improvement: ActiveClusterNode should continue trying to get acknowledges
-            // from the lost passive node. If it succeeds, ActiveClusterNode becomes senseless.
+              // Possible improvement:
+              // ActiveClusterNode should continue trying to get acknowledgements from the lost
+              // passive node. If it succeeds, ActiveClusterNode becomes senseless.
 
-            // Keep _requested
-            _requested.compareAndSet(None, Some(requested))
-            logger.warn(problem.toString)
-            IO.right(())
+              // Keep _requested
+              _requested.compareAndSet(None, Some(requested))
+              logger.warn(problem.toString)
 
           case _ =>
             for confirmer <- confirm.manualConfirmer do
-              logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+              logger.info(s"‼️  ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             requested.confirm(confirmation)
+        .map(Right(_))
       .flatMapT: _ =>
         SyncDeadline.usingNow:
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
@@ -286,7 +289,10 @@ extends Service.Trivial:
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
   def newStream: fs2.Stream[IO, ClusterWatchRequest] =
-    pubsub.newStream // TODO Delete all but the last request at a time. At push-side?
+    pubsub.newStream
+      // TODO Delete all but the last request at a time. At push-side?
+      // try something like this: .chunks.flatMap(chunk => fs2.Stream.from(chunk.last))
+      // Change newStream, too (maybe look at Fs2PubSub at whole)
 
   override def toString = "ClusterWatchCounterpart"
 
@@ -317,12 +323,12 @@ object ClusterWatchCounterpart:
     clusterConf: ClusterConf,
     timing: ClusterTiming,
     shuttingDown: DeferredSource[IO, Unit],
-    testEventPublisher: EventPublisher[Any])
+    testEventBus: EventPublisher[Any])
   : ResourceIO[ClusterWatchCounterpart] =
     for
       pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]
       service <- Service.resource:
-        new ClusterWatchCounterpart(pubsub, clusterConf, timing, shuttingDown, testEventPublisher)
+        new ClusterWatchCounterpart(pubsub, clusterConf, timing, shuttingDown, testEventBus)
     yield
       service
 
@@ -337,9 +343,8 @@ object ClusterWatchCounterpart:
     def untilConfirmed: IO[Checked[ClusterWatchConfirmation]] =
       confirmation.get
 
-    def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Checked[Unit]] =
-      confirmation.complete(confirm)
-        .as(Checked.unit)
+    def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Unit] =
+      confirmation.complete(confirm).void
 
     override def toString =
       s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"

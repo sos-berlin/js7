@@ -42,7 +42,7 @@ final class ClusterWatchService private(
   label: String,
   keepAlive: FiniteDuration,
   retryDelays: NonEmptyList[FiniteDuration],
-  onClusterStateChanged: (HasNodes) => Unit,
+  onClusterStateChanged: HasNodes => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends MainService, Service.StoppableByRequest:
 

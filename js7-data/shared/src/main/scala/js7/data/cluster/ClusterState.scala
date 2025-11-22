@@ -1,6 +1,7 @@
 package js7.data.cluster
 
 import fs2.{Pure, Stream}
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
@@ -109,12 +110,14 @@ with EventDrivenState.Companion[ClusterState]:
 
   override val name: String = getClass.shortClassName
 
+
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
   case object Empty extends ClusterState:
     def asCode = AsCode.Empty
     def isNonEmptyActive(id: Id) = false
     def isEmptyOrActive(id: Id) = true
+
 
   sealed trait HasNodes extends ClusterState:
     this: Product =>
@@ -142,6 +145,7 @@ with EventDrivenState.Companion[ClusterState]:
 
     override def toString =
       s"$productPrefix($nodesString${setting.clusterWatchId.fold("")(o => ", " + o)})"
+
   object HasNodes:
     def unapply(clusterState: ClusterState.HasNodes): Some[ClusterSetting] =
       Some(clusterState.setting)
@@ -151,17 +155,20 @@ with EventDrivenState.Companion[ClusterState]:
       Subtype(deriveCodec[PreparedToBeCoupled]),
       Subtype(deriveCodec[Coupled]),
       Subtype(deriveCodec[ActiveShutDown]),
-      Subtype(deriveCodec[PassiveLost]),
-      Subtype(deriveCodec[SwitchedOver]),
-      Subtype(deriveCodec[FailedOver]))
+      Subtype[PassiveLost],
+      Subtype[FailedOver],
+      Subtype(deriveCodec[SwitchedOver]))
+
 
   sealed trait IsCoupledOrDecoupled extends HasNodes:
     this: Product =>
 
     def withSetting(setting: ClusterSetting): IsCoupledOrDecoupled
 
+
   sealed trait IsDecoupled extends IsCoupledOrDecoupled:
     this: Product =>
+
 
   /** Initial appointment of the nodes. */
   final case class NodesAppointed(setting: ClusterSetting)
@@ -171,12 +178,14 @@ with EventDrivenState.Companion[ClusterState]:
     def withSetting(setting: ClusterSetting): NodesAppointed =
       copy(setting = setting)
 
+
   /** Intermediate state only, is immediately followed by transition ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
   extends HasNodes:
     def asCode = AsCode.PreparedToBeCoupled
 
     def withSetting(setting: ClusterSetting): HasNodes = copy(setting = setting)
+
 
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
@@ -185,6 +194,7 @@ with EventDrivenState.Companion[ClusterState]:
 
     def withSetting(setting: ClusterSetting): Coupled =
       copy(setting = setting)
+
 
   /** The active node has shut down while `Coupled` and will continue to be active when restarted.
       The passive node must not fail-over.
@@ -197,6 +207,7 @@ with EventDrivenState.Companion[ClusterState]:
     def withSetting(setting: ClusterSetting): ActiveShutDown =
       copy(setting = setting)
 
+
   final case class SwitchedOver(setting: ClusterSetting)
   extends IsDecoupled:
     def asCode = AsCode.SwitchedOver
@@ -204,8 +215,15 @@ with EventDrivenState.Companion[ClusterState]:
     def withSetting(setting: ClusterSetting): SwitchedOver =
       copy(setting = setting)
 
+
   sealed trait IsNodeLost extends IsDecoupled:
     this: Product =>
+
+  object IsNodeLost:
+    given Codec.AsObject[IsNodeLost] = TypedJsonCodec(
+      Subtype[PassiveLost],
+      Subtype[FailedOver])
+
 
   final case class PassiveLost(setting: ClusterSetting)
   extends IsNodeLost:
@@ -213,6 +231,10 @@ with EventDrivenState.Companion[ClusterState]:
 
     def withSetting(setting: ClusterSetting): PassiveLost =
       copy(setting = setting)
+
+  object PassiveLost:
+    given Codec.AsObject[PassiveLost] = deriveCodec
+
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
@@ -229,7 +251,11 @@ with EventDrivenState.Companion[ClusterState]:
     override def toString = "FailedOver(" +
       s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"
 
-  implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
+  object FailedOver:
+    given Codec.AsObject[FailedOver] = deriveCodec
+
+
+  given jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
     Subtype(Empty),
     Subtype[HasNodes])
 

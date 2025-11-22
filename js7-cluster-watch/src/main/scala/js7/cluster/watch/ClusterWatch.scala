@@ -43,41 +43,39 @@ final class ClusterWatch(
   private def processRequest2(request: ClusterWatchRequest): IO[Checked[Confirmed]] =
     import request.{from, clusterState as reportedClusterState}
 
-    val checkedClusterState: IO[Checked[(manualConfirmer: Option[String], clusterState: HasNodes)]] =
-      SyncDeadline.now.flatMap: now =>
-        lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
-        logger.trace(s"$from: $opString${
-          _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed(using now).pretty)}")
+    SyncDeadline.now.flatMap: now =>
+      lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
+      logger.trace(s"$from: $opString${
+        _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed(using now).pretty)}")
 
-        (_state, request.maybeEvent, request.forceWhenUntaught) match
-          case (None/*untaught*/, Some(event: ClusterNodeLostEvent), /*force=*/false) =>
-            IO:
-              manuallyConfirmed(event) match
-                case None =>
-                  val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)
-                  logger.warn:
-                    s"ClusterWatch is untaught, therefore unable to confirm a node loss: $problem"
-                  Left(problem)
+      (_state, request.maybeEvent, request.forceWhenUntaught) match
+        case (None/*untaught*/, Some(event: ClusterNodeLostEvent), /*force=*/false) =>
+          IO:
+            manuallyConfirmed(event) match
+              case None =>
+                val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)
+                logger.warn:
+                  s"ClusterWatch is untaught, therefore unable to confirm a node loss: $problem"
+                Left(problem)
 
-                case Some(confirmer) =>
-                  logger.info(s"$from teaches clusterState=$reportedClusterState after ${
-                    event.getClass.simpleScalaName} confirmation")
-                  Right(Some(confirmer) -> reportedClusterState)
+              case Some(confirmer) =>
+                logger.info(s"$from teaches clusterState=$reportedClusterState after ${
+                  event.getClass.simpleScalaName} confirmation")
+                Right(Some(confirmer) -> reportedClusterState)
 
-          case (None, _, _) =>
-            logger.info(s"$from teaches clusterState=$reportedClusterState")
-            IO.right(None -> reportedClusterState)
+        case (None, _, _) =>
+          logger.info(s"$from teaches clusterState=$reportedClusterState")
+          IO.right(None -> reportedClusterState)
 
-          case (Some(state), _, _) =>
-            state.processRequest(request, manuallyConfirmed, checkActiveIsLost, opString)(using now)
-
-    checkedClusterState.flatMap:
+        case (Some(state), _, _) =>
+          state.processRequest(request, manuallyConfirmed, checkActiveIsLost, opString)(using now)
+    .flatMap:
       case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
         SyncDeadline.usingNow: now ?=>
           _nodeToLossRejected(problem.event.lostNodeId) = LossRejected(problem.event)
-          _state = _state.map(state => state.copy(
-            lastHeartbeat = // Update lastHeartbeat only when `from` is active
-              Some(state).filter(_.clusterState.activeId != from).fold(now)(_.lastHeartbeat)))
+          _state.foreach: state =>
+            if state.clusterState.activeId == from then
+              _state = Some(state.copy(lastHeartbeat = now))
         .flatMap: _ =>
           onUndecidableClusterNodeLoss(Some(problem))
             .as(Left(problem))
