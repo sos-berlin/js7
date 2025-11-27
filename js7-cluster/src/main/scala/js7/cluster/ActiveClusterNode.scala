@@ -431,7 +431,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       .flatMap:
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
           logger.warn(s"❗ No heartbeat from passive cluster $passiveId since ${duration.pretty}" +
-            " - trying to continue as single active cluster node")
+            " - trying to continue as the single and active cluster node")
           assertThat(passiveId != ownId)
 
           // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
@@ -491,7 +491,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           if isTest then
             throw new RuntimeException(s"🟥 Halt suppressed for testing: ${t.problem}")
           else
-            Halt.haltJava("🟥 HALT because other cluster node has become active",
+            Halt.haltJava("🟥 HALT because another cluster node has become active",
               restart = true)
 
         case Failure(t) =>

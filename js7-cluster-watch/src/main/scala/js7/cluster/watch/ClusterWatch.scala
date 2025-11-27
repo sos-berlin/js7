@@ -233,7 +233,7 @@ object ClusterWatch:
                     // ClusterWatch and persisting it. Then we have a different state.
                     val previouslyActive = clusterState.activeId.string
                     logger.warn(s"$from forced ClusterState to $reportedClusterState " +
-                      s"maybe because heartbeat of up to now active $previouslyActive " +
+                      s"maybe because the last heartbeat of up to now active $previouslyActive " +
                       s"is too long ago (${lastHeartbeat.elapsed.pretty})")
                     IO.right(confirmer -> reportedClusterState)
         .flatTap:

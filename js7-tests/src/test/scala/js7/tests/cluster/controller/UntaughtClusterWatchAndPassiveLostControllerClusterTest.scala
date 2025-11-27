@@ -33,14 +33,14 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
     runMyTest(stopBackup = false, restartedClusterWatchId = primaryClusterWatchId)
 
   // JS-2092 The other ClusterWatch starts while Cluster nodes are decoupled.
-  "Disturb primary-backup connection and fail-over ClusterWatch" in:
+  "Disturb primary-backup connection and switch ClusterWatch" in:
     runMyTest(stopBackup = false, restartedClusterWatchId = backupClusterWatchId)
 
   "Kill passive Controller" in:
     runMyTest(stopBackup = true, restartedClusterWatchId = primaryClusterWatchId)
 
   // JS-2092 The other ClusterWatch starts while Cluster nodes are decoupled.
-  "Kill passive Cluster node and fail-over ClusterWatch" in:
+  "Kill passive Cluster node and switch ClusterWatch" in:
     runMyTest(stopBackup = true, restartedClusterWatchId = backupClusterWatchId)
 
   private def runMyTest(stopBackup: Boolean, restartedClusterWatchId: ClusterWatchId) =

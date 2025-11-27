@@ -92,8 +92,8 @@ private class ActivationConsentChecker(
         if problem.is(ClusterNodeLossNotConfirmedProblem)
           || problem.is(ClusterWatchInactiveNodeProblem)
         then
-          logger.warn(s"⛔ ClusterWatch did not agree to '${
-            event.getClass.simpleScalaName}' event: $problem")
+          logger.warn(s"⛔ ClusterWatch did not agree to ${
+            event.getClass.simpleScalaName} event: $problem")
           if event.isSubtypeOf[ClusterPassiveLost] then
             val msg = "🟥 While this node has lost the passive node" +
               " and is waiting for ClusterWatch's agreement, " +

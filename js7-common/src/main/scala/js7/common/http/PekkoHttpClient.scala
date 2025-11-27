@@ -419,13 +419,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match
-                case _: java.net.ConnectException => "⭕"
-                case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥"
+                case _: java.net.ConnectException => "⭕ "
+                case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥 "
                 case t: pekko.stream.StreamTcpException
-                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
+                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
                 case t: LegiblePekkoHttpException
-                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
-                case _ => "💥"
+                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
+                case _ => "💥 "
 
               logger.debug:
                 s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}"

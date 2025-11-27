@@ -116,7 +116,10 @@ extends Service.Trivial:
         val request = toRequest(reqId)
         lock.lock:
           logger.logIOWithResult(
-            if PekkoHttpClient.logHeartbeat then LogLevel.Trace else LogLevel.None,
+            if PekkoHttpClient.logHeartbeat || !request.isSubtypeOf[ClusterWatchCheckState] then
+              LogLevel.Trace
+            else
+              LogLevel.None,
             "check",
             s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
             // macOS `less` displays 🩶 with wrong width
@@ -219,6 +222,8 @@ extends Service.Trivial:
         SyncDeadline.usingNow:
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
           Checked.unit
+      .onProblem: problem =>
+        IO(logger.info(s"⛔️ Rejected $confirm: $problem"))
 
   private def toConfirmation(confirm: ClusterWatchConfirm): Checked[ClusterWatchConfirmation] =
     confirm.problem.toLeft:
@@ -275,7 +280,7 @@ extends Service.Trivial:
             else if !_requested.compareAndSet(value, None) then
               takeRequest(confirm)
             else
-              // Log when ActiveClusterNode will detect and register a changed ClusterWatchId.
+              // Log when ActiveClusterNode detects and registers a changed ClusterWatchId.
               requested.clusterWatchId match
                 case None => logger.info(s"${confirm.clusterWatchId} will be registered")
                 case Some(o) if confirm.clusterWatchId != o =>
