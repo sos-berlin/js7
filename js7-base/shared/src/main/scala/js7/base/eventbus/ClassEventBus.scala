@@ -34,9 +34,8 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
         case subscriptions =>
           for subscription <- subscriptions do
             try subscription.call(event)
-            catch { case NonFatal(t) =>
+            catch case NonFatal(t) =>
               logger.error(s"Error in event handler ignored: $t", t)
-            }
 
   final def addSubscription(subscription: EventSubscription): Unit =
     register.synchronized:
@@ -107,12 +106,11 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
   : Unit =
     val used = Atomic(false)
     lazy val subscription: EventSubscription =
-      toSubscription { event_ =>
+      toSubscription: event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
         if predicate(event) && !used.getAndSet(true) then
           subscription.close()
           handle(event)
-      }
     addSubscription(subscription)
 
   private final def oneShotPF[C <: Classifier : ClassTag, A](
@@ -127,13 +125,12 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
   : Unit =
     val used = Atomic(false)
     lazy val subscription: EventSubscription =
-      toSubscription { event_ =>
+      toSubscription: event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
         for a <- f(event) do
           if !used.getAndSet(true) then
             subscription.close()
             handle(a)
-      }
     addSubscription(subscription)
 
   final def subscribe[C <: Classifier: ClassTag](handle: ClassifierToEvent[C] => Unit): EventSubscription =
