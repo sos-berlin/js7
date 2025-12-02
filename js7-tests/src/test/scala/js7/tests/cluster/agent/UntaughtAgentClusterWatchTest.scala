@@ -104,11 +104,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
             ClusterNodeLossNotConfirmedProblem(NodeId.primary, ClusterPassiveLost(NodeId.backup)))
           assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
 
-          // TODO Delay until AgentOrderKeeper does not persist anything ?
-          // because it cannot be terminated while persisting and we would stick in a deadlock.
-          //?sleep(1.s)
-
-          controller.eventWatch.resetLastWatchedEventId()
+          controller.resetLastWatchedEventId()
           // Now, we as the user kill the primary node and confirm this to the ClusterWatch:
           primaryDirector
             .terminate(
