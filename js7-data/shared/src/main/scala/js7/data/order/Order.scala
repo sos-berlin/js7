@@ -874,6 +874,11 @@ extends
   def isProcessable: Boolean =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
+  def isProcessingAt(subagentId: SubagentId): Boolean =
+    state match
+      case state: Processing => state.subagentId.contains(subagentId)
+      case _ => false
+
   def isInOutermostBlock: Boolean =
     position.branchPath == innerBlock
 

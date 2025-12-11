@@ -234,7 +234,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDiedEvent
-    val processing = Order.Processing(subagentId)
     logger.debugIO(orderToDeferred
       .removeAll
       .flatMap: oToD =>
@@ -248,7 +247,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               .flatMap:
                 state.idToOrder.get
               .filter: order =>
-                order.state == processing // Just to be sure, condition should always be true
+                order.isProcessingAt(subagentId) || locally:
+                  // Just to be sure
+                  logger.warn(s"Expected Order.Processing($subagentId), not: $order")
+                  false
               // Filter Orders which have been sent to Subagent ???
               .map: order =>
                 order.id <-: state.orderProcessLostIfRestartable(order, orderProblem)

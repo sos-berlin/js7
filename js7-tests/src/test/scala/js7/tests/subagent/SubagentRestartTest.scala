@@ -11,6 +11,8 @@ import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId}
+import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentRestartTest.*
@@ -95,6 +97,58 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     // Subagent is unreachable now
     val eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
+    controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
+
+    runSubagent(bareSubagentItem): _ =>
+      locally:
+        val events = eventWatch.awaitNextKey[OrderProcessed](aOrderId)
+        assert(events.head.value == OrderProcessed.processLostDueToRestart)
+
+        // OrderProcessed must be followed by OrderMoved
+        eventWatch.awaitNextKey[OrderMoved](aOrderId)
+      locally:
+        sleep(4.s)
+        TestSemaphoreJob.continue(2)
+        eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId)
+        for orderId <- View(aOrderId, bOrderId) do
+          val events = eventWatch.awaitKey[OrderTerminated](orderId, after = eventId)
+          assert(events.head.value.isInstanceOf[OrderFinished])
+
+  "Restart remote Subagent while a job is running, use SubagentBundle" in:
+    controller.resetLastWatchedEventId()
+    TestSemaphoreJob.reset()
+    val aOrderId = OrderId("A-RESTART-BUNDLE")
+
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("BUNDLE"),
+      Map(bareSubagentId -> expr"1"))
+
+    val workflow = Workflow(
+      WorkflowPath("BUNDLE-WORKFLOW"),
+      Seq(
+        TestSemaphoreJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)))))
+
+    // Workflow cannot be deleted due to SubagentBundle ???
+    //withItems((subagentBundle, workflow)): (subagentBundle, workflow) =>
+    updateItems(subagentBundle, workflow)
+    runSubagent(bareSubagentItem): subagent =>
+      controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
+
+      val started = eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId).head.value
+      assert(started == OrderProcessingStarted(Some(bareSubagentItem.id), Some(subagentBundle.id)))
+
+      val written = eventWatch.awaitNextKey[OrderStdoutWritten](aOrderId).head.value
+      assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
+
+      // For this test, the terminating Subagent must not emit any event before shutdown
+      subagent.journal.stopEventWatch()
+      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+
+    // Subagent is unreachable now
+    val eventId = eventWatch.lastAddedEventId
+    val bOrderId = OrderId("B-RESTART-BUNDLE")
     controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
     runSubagent(bareSubagentItem): _ =>
