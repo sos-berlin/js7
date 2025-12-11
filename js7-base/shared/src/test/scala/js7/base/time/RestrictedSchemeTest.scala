@@ -75,19 +75,28 @@ final class RestrictedSchemeTest extends AnyFreeSpec:
         }""")
   }
 
-  "MonthRestriction" in:
-    assert:
-      SchemeRestriction.months(BitSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)).orThrow.toString ==
-        "Unrestricted"
-    assert:
-      SchemeRestriction.months(BitSet(1, 6, 12)).orThrow.toString ==
-        "MonthRestriction(January June December)"
-    assert:
-      SchemeRestriction.months(BitSet(2, 3, 4)).orThrow.toString ==
-        "MonthRestriction(February March April)"
-    assert:
-      SchemeRestriction.months(BitSet(5, 7, 8)).orThrow.toString ==
-        "MonthRestriction(May July August)"
-    assert:
-      SchemeRestriction.months(BitSet(9, 10, 11)).orThrow.toString ==
-        "MonthRestriction(September October November)"
+  "MonthRestriction" - {
+    "Every month means Unrestricted" in:
+      assert:
+        SchemeRestriction.months(BitSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)).orThrow.toString ==
+          "Unrestricted"
+
+    "There must be a month" in:
+      assert:
+        SchemeRestriction.months(BitSet.empty) ==
+          Left(Problem("MonthRestriction must contain between 1 and 11 months"))
+
+    "toString" in:
+      assert:
+        SchemeRestriction.months(BitSet(1, 6, 12)).orThrow.toString ==
+          "MonthRestriction(January June December)"
+      assert:
+        SchemeRestriction.months(BitSet(2, 3, 4)).orThrow.toString ==
+          "MonthRestriction(February March April)"
+      assert:
+        SchemeRestriction.months(BitSet(5, 7, 8)).orThrow.toString ==
+          "MonthRestriction(May July August)"
+      assert:
+        SchemeRestriction.months(BitSet(9, 10, 11)).orThrow.toString ==
+          "MonthRestriction(September October November)"
+  }
