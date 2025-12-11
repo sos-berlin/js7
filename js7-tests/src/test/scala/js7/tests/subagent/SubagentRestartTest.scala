@@ -38,29 +38,24 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       super.afterAll()
 
   "Reject items if no signature keys are installed" in:
-    val eventId = eventWatch.lastAddedEventId
-
     runSubagent(bareSubagentItem, suppressSignatureKeys = true): _ =>
       val orderId = OrderId("ITEM-SIGNATURE")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
-      val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-        .head.value.event
+      val started = eventWatch.awaitNextKey[OrderProcessingStarted](orderId).head.value
       assert(started == OrderProcessingStarted(bareSubagentItem.id))
 
-      val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
-        .head.value.event
+      val processed = eventWatch.awaitNextKey[OrderProcessed](orderId).head.value
       assert(processed == OrderProcessed(OrderOutcome.Disrupted(MessageSignedByUnknownProblem)))
 
   "Restart Director" in:
-    val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("RESTART-DIRECTOR")
 
     runSubagent(bareSubagentItem): _ =>
       locally:
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
-        val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-        assert(events.head.value.event == OrderProcessingStarted(bareSubagentItem.id))
+        val events = eventWatch.awaitNextKey[OrderProcessingStarted](orderId)
+        assert(events.head.value == OrderProcessingStarted(bareSubagentItem.id))
 
         // STOP DIRECTOR
         myAgent.terminate().await(99.s)
@@ -68,19 +63,18 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       TestSemaphoreJob.continue()
 
       locally:
-        val eventId = eventWatch.lastAddedEventId
         eventWatch.allKeyedEvents[OrderProcessed] foreach:
           case ke @ KeyedEvent(`orderId`, OrderProcessed(_)) => fail(s"Unexpected $ke")
           case _ =>
 
         // START DIRECTOR
         myAgent = directoryProvider.startAgent(agentPath).await(99.s)
-        eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
-        val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-        assert(events.head.value.event.isInstanceOf[OrderFinished])
+        eventWatch.awaitNextKey[OrderProcessed](orderId)
+        val events = eventWatch.awaitNextKey[OrderTerminated](orderId)
+        assert(events.head.value.isInstanceOf[OrderFinished])
 
   "Restart remote Subagent while a job is running" in:
-    var eventId = eventWatch.lastAddedEventId
+    controller.resetLastWatchedEventId()
     val aOrderId = OrderId("A-RESTART-SUBAGENT")
 
     TestSemaphoreJob.reset()
@@ -88,40 +82,38 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     runSubagent(bareSubagentItem): subagent =>
       controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
-      val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        .head.value.event
+      val started = eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId).head.value
       assert(started == OrderProcessingStarted(bareSubagentItem.id))
 
-      val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-        .head.value.event
+      val written = eventWatch.awaitNextKey[OrderStdoutWritten](aOrderId).head.value
       assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
 
-      // For this test, the terminating Subagent must no emit any event before shutdown
+      // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
 
     // Subagent is unreachable now
-    eventId = eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
     controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
     runSubagent(bareSubagentItem): _ =>
       locally:
-        val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
-        assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
+        val events = eventWatch.awaitNextKey[OrderProcessed](aOrderId)
+        assert(events.head.value == OrderProcessed.processLostDueToRestart)
 
         // OrderProcessed must be followed by OrderMoved
-        eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)
+        eventWatch.awaitNextKey[OrderMoved](aOrderId)
       locally:
         sleep(4.s)
         TestSemaphoreJob.continue(2)
-        eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId)
         for orderId <- View(aOrderId, bOrderId) do
-          val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-          assert(events.head.value.event.isInstanceOf[OrderFinished])
+          val events = eventWatch.awaitKey[OrderTerminated](orderId, after = eventId)
+          assert(events.head.value.isInstanceOf[OrderFinished])
 
   "Restart both Director and remote Subagent while a job is running" in:
-    var eventId = eventWatch.lastAddedEventId
+    controller.resetLastWatchedEventId()
     val aOrderId = OrderId("A-RESTART-BOTH")
 
     TestSemaphoreJob.reset()
@@ -129,15 +121,13 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     runSubagent(bareSubagentItem): subagent =>
       controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
-      val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        .head.value.event
+      val started = eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId).head.value
       assert(started == OrderProcessingStarted(bareSubagentItem.id))
 
-      val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-        .head.value.event
+      val written = eventWatch.awaitNextKey[OrderStdoutWritten](aOrderId).head.value
       assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
 
-      // For this test, the terminating Subagent must no emit any event before shutdown
+      // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
 
@@ -147,24 +137,23 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     // Subagent is unreachable now
 
     // START DIRECTOR
-    eventId = eventWatch.lastAddedEventId
-    logger.debug(s"eventId=$eventId")
+    val eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath).await(99.s)
-    eventWatch.await[AgentReady](after = eventId)
+    eventWatch.awaitNext[AgentReady]()
 
     val bOrderId = OrderId("B-RESTART-BOTH")
     controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
     runSubagent(bareSubagentItem): _ =>
       locally:
-        val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
-        assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
+        val events = eventWatch.awaitNextKey[OrderProcessed](aOrderId)
+        assert(events.head.value == OrderProcessed.processLostDueToRestart)
 
         // OrderProcessed must be followed by OrderMoved
-        eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)
+        eventWatch.awaitNextKey[OrderMoved](aOrderId)
       locally:
         TestSemaphoreJob.continue(2)
-        eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        eventWatch.awaitNextKey[OrderProcessingStarted](aOrderId)
         for orderId <- View(aOrderId, bOrderId) do
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
