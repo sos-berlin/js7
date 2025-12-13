@@ -3,6 +3,7 @@ package js7.journal.log
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
 import js7.base.log.CorrelId
+import js7.base.log.Logger.syntax.*
 import js7.base.log.LoggingEscapeCodes.{isColorAllowed, resetColor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
@@ -27,10 +28,6 @@ private[journal] final class JournalLogger(
   private val sb = new StringBuilder
   private var suppressed = false
 
-  //def logHeader(header: JournalHeader): Unit =
-  //  logger.trace(
-  //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
-
   def logCommitted(
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     eventNumber: Long,
@@ -52,13 +49,13 @@ private[journal] final class JournalLogger(
       .view
 
   def logCommitted(persists: IndexedSeqView[LoggablePersist]): Unit =
-    if !suppressed then logger.whenInfoEnabled:
+    if !suppressed && logger.isInfoEnabled then
       val committedAt = now
       val myPersists = dropEmptyPersists(persists)
 
-      logger.whenTraceEnabled:
+      if logger.isDebugEnabled then
         logPersists(myPersists, committedAt):
-          traceLogPersist
+          logCommittedEvents
 
       def isLoggable(stamped: Stamped[AnyKeyedEvent]) =
         val event = stamped.value.event
@@ -98,7 +95,7 @@ private[journal] final class JournalLogger(
           frame.nr += 1
           frame.isFirstEvent = false
 
-  private def traceLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
+  private def logCommittedEvents(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
     sb.clear()
     sb.append(':')  // Allow simple filtering of log file: grep " - :" x.log
@@ -130,7 +127,7 @@ private[journal] final class JournalLogger(
     else
       sb.append("       ")
 
-    sb.append(transactionMarker(forTrace = true))
+    sb.append(transactionMarker(forEachEvent = true))
     sb.append(stamped.eventId)
     if stamped.value.key != NoKey then
       sb.append(' ')
@@ -155,7 +152,7 @@ private[journal] final class JournalLogger(
         sb.append(' ')
         sb.append(eventString)
 
-    logger.trace(sb.toString)
+    logger.underlying.debug(sb.toString)
 
   private def infoLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
@@ -168,7 +165,7 @@ private[journal] final class JournalLogger(
         frame.persist.clusterState match
           case "Empty" => "Event "
           case o => s"Event (⚠️ $o) "
-    sb.append(transactionMarker(forTrace = false))
+    sb.append(transactionMarker(forEachEvent = false))
     if key != NoKey then
       sb.append(key)
       sb.append(spaceArrowSpace)
@@ -268,14 +265,14 @@ object JournalLogger:
         else '├' // End of LoggablePersist
       else '│'
 
-    def transactionMarker(forTrace: Boolean): Char =
+    def transactionMarker(forEachEvent: Boolean): Char =
       if isFirstEvent && isLastEvent then ' '
       else if isTransaction then
         if isFirstEvent then '⎛' // ⎧
         else if isLastEvent then '⎝' // ⎩
-        else if forTrace && nr == beforeLastEventNr then '⎨'
+        else if forEachEvent && nr == beforeLastEventNr then '⎨'
         else '⎪'
-      else if !forTrace then ' '
+      else if !forEachEvent then ' '
       else if isFirstEvent then '┌'
       else if isLastEvent then '└'
       else if isLastPersist && nr == beforeLastEventNr then '┤'
