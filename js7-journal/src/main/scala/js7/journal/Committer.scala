@@ -557,19 +557,19 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
 
   /** Events of an Persist have been written and flushed to the journal file. */
-  private final case class Written private/*not copyable due to vars in LoggablePersist*/(
-    eventId: EventId,
-    eventCount: Int,
-    lastStamped: Option[Stamped[AnyKeyedEvent]],
-    originalAggregate: S,
-    stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
-    aggregate: S,
-    since: Deadline,
-    eventNumber: Long,
-    commitOptions: CommitOptions,
-    metering: CallMeter.Metering,
-    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
-    positionAndEventId: PositionAnd[EventId])
+  private final class Written private/*not copyable due to vars in LoggablePersist*/(
+    val eventId: EventId,
+    val eventCount: Int,
+    val lastStamped: Option[Stamped[AnyKeyedEvent]],
+    val originalAggregate: S,
+    val stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
+    val aggregate: S,
+    val since: Deadline,
+    val eventNumber: Long,
+    val commitOptions: CommitOptions,
+    val metering: CallMeter.Metering,
+    val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
+    val positionAndEventId: PositionAnd[EventId])
   extends AppliedOrFlushed with LoggablePersist:
     def isTransaction = commitOptions.transaction
     def stampedSeq = stampedKeyedEvents
