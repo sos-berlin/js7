@@ -5,19 +5,19 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val bouncyCastleVersion = "1.82"
-  val pekkoVersion = "1.2.1"
-  val pekkoHttpVersion = "1.2.0"
+  val bouncyCastleVersion = "1.83"
+  val pekkoVersion = "1.4.0"
+  val pekkoHttpVersion = "1.3.0"
   val slf4jVersion = "2.0.17"  // See also plugins.sbt
   val log4jVersion = "2.24.3"  // See also plugins.sbt
-//val log4jVersion = "2.25.2"  // See also plugins.sbt      2.25.1 logs NullPointerException
+//val log4jVersion = "2.25.2"  // See also plugins.sbt      2.25.2 throws NullPointerException
   val catsVersion = "2.13.0"
   val catsEffectVersion = "3.6.3"
   val catsEffectTestingVersion = catsEffectVersion
   val izumiReflectVersion = "3.0.1"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.1.0"
-  val circeVersion = "0.14.14"
+  val circeVersion = "0.14.15"
   val circeYamlVersion = "0.16.0"
   val circeGenericExtrasVersion = "0.14.4"
   val scalaTestVersion = "3.2.19"
@@ -33,7 +33,7 @@ object Dependencies
   val softwaremillTaggingVersion = "2.3.5"
   val reactorVersion = "3.7.11"
   val vavrVersion = "0.10.7"
-  val jnaVersion = "5.18.0"
+  val jnaVersion = "5.18.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
@@ -83,6 +83,6 @@ object Dependencies
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
-  val prometheus          = "io.prometheus" % "prometheus-metrics-exporter-common" % "1.4.1" ::
-                            "io.prometheus.jmx" % "collector" % "1.4.0" :: Nil
+  val prometheus          = "io.prometheus" % "prometheus-metrics-exporter-common" % "1.4.3" ::
+                            "io.prometheus.jmx" % "collector" % "1.5.0" :: Nil
 }

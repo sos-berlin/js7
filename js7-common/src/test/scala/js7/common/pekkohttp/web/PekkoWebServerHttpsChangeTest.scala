@@ -30,7 +30,6 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.impl.util.JavaVersion
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
@@ -132,7 +131,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
             changedHttpsConnectionContext)
           .await(99.s)
       assert(e.getMessage == locally:
-        if JavaVersion.majorVersion >= 23 then
+        if Runtime.version.feature >= 23 then
           "(certificate_unknown) No trusted certificate found"
         else
           "No trusted certificate found")

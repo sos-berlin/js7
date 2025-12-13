@@ -34,7 +34,6 @@ import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.impl.util.JavaVersion
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.HttpRequest
@@ -164,7 +163,7 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
             HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"),
             httpsConnectionContext)
           .await(99.s)
-      if JavaVersion.majorVersion >= 23 then
+      if Runtime.version.feature >= 23 then
         assert(e.getMessage == "(certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found")
       else
         assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found"
