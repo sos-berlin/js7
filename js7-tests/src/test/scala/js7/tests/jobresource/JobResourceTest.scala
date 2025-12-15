@@ -1,7 +1,6 @@
 package js7.tests.jobresource
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import cats.syntax.all.*
 import fs2.Stream
 import io.circe.syntax.EncoderOps

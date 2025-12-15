@@ -23,7 +23,6 @@ import js7.data.plan.{Plan, PlanId, PlanSchemaState}
 import js7.data.state.EngineStateStatistics
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemState
-import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 

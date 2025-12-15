@@ -1,6 +1,5 @@
 package js7.tests.order
 
-import cats.effect.unsafe.IORuntime
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp

@@ -1,6 +1,5 @@
 package js7.tests
 
-import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
@@ -15,9 +14,9 @@ import js7.data.controller.ControllerCommand.{GoOrder, ResumeOrder, SuspendOrder
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderSleeping, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Sleep
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.subagent.Subagent
 import js7.tests.SleepTest.*
 import js7.tests.jobs.EmptyJob

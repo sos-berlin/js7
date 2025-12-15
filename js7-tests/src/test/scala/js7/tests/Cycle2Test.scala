@@ -1,6 +1,5 @@
 package js7.tests
 
-import cats.effect.unsafe.IORuntime
 import java.time.{LocalDate, LocalTime}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger

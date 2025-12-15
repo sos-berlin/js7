@@ -1,6 +1,5 @@
 package js7.tests.subagent
 
-import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.test.OurTestSuite

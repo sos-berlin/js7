@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Checked
 import js7.data.order.Order
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderMoved, OrderSaid}

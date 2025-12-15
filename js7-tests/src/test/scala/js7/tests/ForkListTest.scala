@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.lang.System.lineSeparator as nl

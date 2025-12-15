@@ -1,6 +1,5 @@
 package js7.tests.agent
 
-import cats.effect.unsafe.IORuntime
 import js7.agent.data.commands.AgentCommand
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively

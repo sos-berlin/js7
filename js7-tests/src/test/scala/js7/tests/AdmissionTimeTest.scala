@@ -8,7 +8,7 @@ import js7.base.test.TestExtensions.autoSome
 import js7.base.time.JavaTimeConverters.{AsScalaInstant, toTimezone}
 import js7.base.time.JavaTimeLiterals.localTime
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, MonthlyDatePeriod, TestAlarmClock, Timestamp, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, MonthlyDatePeriod, TestAlarmClock, Timestamp, WeekdayPeriod}
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.command.SuspensionMode

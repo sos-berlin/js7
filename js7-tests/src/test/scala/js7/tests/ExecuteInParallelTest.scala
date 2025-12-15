@@ -16,9 +16,9 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderCancelled, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteInParallelTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source

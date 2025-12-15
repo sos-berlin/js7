@@ -1,6 +1,5 @@
 package js7.tests
 
-import cats.effect.unsafe.IORuntime
 import java.time.ZoneId
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey

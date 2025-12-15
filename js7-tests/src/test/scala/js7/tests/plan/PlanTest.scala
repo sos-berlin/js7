@@ -19,8 +19,8 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
-import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.plan.PlanTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.language.implicitConversions

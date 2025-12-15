@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem

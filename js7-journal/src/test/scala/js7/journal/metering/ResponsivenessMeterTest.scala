@@ -10,7 +10,6 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.LogLevel.Info
 import js7.base.metering.ResponsivenessMeter
-import js7.base.problem.Checked
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.{ClusterEvent, ClusterState}

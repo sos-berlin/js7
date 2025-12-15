@@ -2,7 +2,7 @@ package js7.tests
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO}
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path, Paths}
 import js7.base.configutils.Configs.HoconStringInterpolator

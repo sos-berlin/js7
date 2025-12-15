@@ -2,7 +2,6 @@ package js7.tests
 
 import cats.effect.{IO, Resource}
 import cats.syntax.traverse.*
-import fs2.Stream
 import js7.agent.RunningAgent
 import js7.base.catsutils.Environment.TaggedResource
 import js7.base.configutils.Configs.HoconStringInterpolator

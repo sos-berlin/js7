@@ -2,7 +2,6 @@ package js7.tests.agent
 
 import cats.effect.IO
 import cats.effect.std.Queue
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.nio.file.Files.exists
 import java.time.LocalTime

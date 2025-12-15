@@ -16,7 +16,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.unsafe.IORuntime
 
 final class FailOnErrWrittenTest extends OurTestSuite, ControllerAgentForScalaTest:
 

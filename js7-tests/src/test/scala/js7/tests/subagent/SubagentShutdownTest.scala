@@ -20,9 +20,9 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutd
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.Expression.expr
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{Execute, If, StickySubagent}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.subagent.jobs.TestJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.TimeoutException

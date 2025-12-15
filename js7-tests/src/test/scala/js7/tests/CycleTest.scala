@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.time.{LocalDateTime, LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException

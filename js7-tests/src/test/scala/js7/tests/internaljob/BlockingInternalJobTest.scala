@@ -23,7 +23,6 @@ import js7.launcher.forjava.internal.BlockingInternalJob.{InterruptibleOrderProc
 import js7.tests.internaljob.BlockingInternalJobTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
-import scala.concurrent.duration.*
 
 final class BlockingInternalJobTest
   extends OurTestSuite, ControllerAgentForScalaTest:

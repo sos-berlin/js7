@@ -2,7 +2,6 @@ package js7.tests.order
 
 import cats.effect.IO
 import cats.effect.std.Semaphore
-import cats.effect.unsafe.IORuntime
 import cats.syntax.functor.*
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.time.LocalDate
@@ -33,7 +32,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.Expression.expr
-import js7.data.value.{NamedValues, NumberValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, Schedule, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}

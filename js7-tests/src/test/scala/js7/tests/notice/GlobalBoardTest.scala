@@ -1,6 +1,5 @@
 package js7.tests.notice
 
-import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator

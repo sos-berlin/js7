@@ -103,7 +103,6 @@ final class ControllerOrderKeeper(
 extends Stash, JournalingActor[ControllerState, Event]:
 
   import controllerConfiguration.config
-  import js7.controller.ControllerOrderKeeper.RichIdToOrder
 
   private given scheduler: Scheduler = ioRuntime.scheduler
   private given ExecutionContext = ioRuntime.compute

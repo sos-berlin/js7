@@ -1,6 +1,5 @@
 package js7.tests
 
-import cats.effect.unsafe.IORuntime
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*

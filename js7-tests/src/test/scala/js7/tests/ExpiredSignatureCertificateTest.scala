@@ -1,6 +1,5 @@
 package js7.tests
 
-import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
