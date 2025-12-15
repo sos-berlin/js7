@@ -1,6 +1,7 @@
 package js7.base.session
 
 import cats.effect.{IO, Outcome, Resource, ResourceIO}
+import cats.syntax.flatMap.*
 import js7.base.auth.UserAndPassword
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
@@ -134,16 +135,50 @@ object SessionApi:
           body
 
     override def retryIfSessionLost[A](body: IO[A]): IO[A] =
-      body.recoverWith:
-        case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) =>
-          renewSession(problem) *>
-            body
-      .flatMap: // A may be a Checked, Left[Problem]
-        case Left(problem: Problem) if problem.is(InvalidSessionTokenProblem) =>
-          renewSession(problem) *>
-            body
-        case a =>
-          IO.pure(a)
+      0.tailRecM: i =>
+        body.attempt.flatMap:
+          // Since JS-2227, when the server responds with InvalidSessionTokenProblem, we may
+          // get a Brokem Pipe. Then we retry the operation BrokenPipeRetryLimit times.
+          // After tried again, we get the InvalidSessionTokenProblem.
+          // Maybe it's a good idea anyway, to retry after Broken pipe.
+          // Why do we get a Broken pipe for InvalidSessionTokenProblem ??? A server problem?
+          case Left(e: Exception)
+            if e.getClass.getName == "org.apache.pekko.stream.StreamTcpException"
+              && Option(e.getMessage).getOrElse("").contains("Broken pipe") =>
+            repeatOrFailAfterBrokenPipe(i, e, Problem.fromThrowable(e))
+
+          case Left(e @ HttpException.HasProblem(problem))
+            if problem.throwableOption.exists(_.toString.contains("Broken pipe"))
+              && problem.throwableOption
+              .exists(_.toString.contains("org.apache.pekko.stream.StreamTcpException")) =>
+            repeatOrFailAfterBrokenPipe(i, e, problem)
+
+          case Left(HttpException.HasProblem(problem)) if problem is InvalidSessionTokenProblem =>
+            logger.debug(s"⟲ $toString retryIfSessionLost due to $problem")
+            renewSession(problem) *>
+              body.map(Right(_))
+
+          case Left(t) =>
+            IO.raiseError(t)
+
+          case Right(Left(problem: Problem)) if problem is InvalidSessionTokenProblem =>
+            logger.debug(s"⟲ $toString retryIfSessionLost due to $problem")
+            renewSession(problem) *>
+              body.map(Right(_))
+
+          case Right(a) =>
+            IO.right(a)
+
+    private def repeatOrFailAfterBrokenPipe(i: Int, throwable: Throwable, problem: Problem)
+    : IO[Either[Int, Nothing]] =
+      val j = i + 1
+      if j < BrokenPipeRetryLimit then
+        logger.warn(s"⟲ $toString retry #$j due to $problem")
+        // We assume the Broken pipe is due to InvalidSessionTokenProblem,
+        // so renew the session to avoid a Broken pipe again (this could repeat several times)
+        renewSession(problem).as(Left(j))
+      else
+        IO.raiseError(throwable)
 
     private def renewSession(problem: Problem): IO[Completed] =
       IO.defer:
@@ -226,6 +261,8 @@ object SessionApi:
       5.s, 5.s) // 60s
     assert(seq.reduce(_ + _) == 1.minute)
     seq
+
+  private val BrokenPipeRetryLimit = 3
 
   def defaultLoginDelays(): Iterator[FiniteDuration] =
     initialLoginDelays.iterator ++ Iterator.continually(10.s)
