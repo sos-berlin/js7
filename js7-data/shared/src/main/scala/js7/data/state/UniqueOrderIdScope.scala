@@ -7,15 +7,14 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 
-final class UniqueOrderIdScope(orderIds: Set[OrderId]) extends Scope:
+final class UniqueOrderIdScope(orderIds: OrderId => Boolean) extends Scope:
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(using fullScope: Scope)
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(using Scope)
   : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("uniqueOrderId", Some(Seq(Argument(pattern, None)))) =>
         Some:
           // TODO pattern could also be a function — this requires a serializable FunctionValue
-
           pattern.evalAsString.flatMap: pattern =>
             makeUnique(
               pattern,

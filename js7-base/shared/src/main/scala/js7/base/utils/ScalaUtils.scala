@@ -557,13 +557,12 @@ object ScalaUtils:
         vector.take(i) :+ a :++ vector.drop(i)
 
 
-    implicit final class RichScalaUtilsMap[K, V](private val underlying: MapOps[K, V, ?, ?])
-    extends AnyVal:
+    extension [K, V](mapOps: MapOps[K, V, ?, ?])
       def checked(key: K)(using K: Tag[K], loc: ScalaSourceLocation): Checked[V] =
         rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
-        underlying.get(key) match
+        mapOps.get(key) match
           case None => Left(notFound)
           case Some(a) => Right(a)
 

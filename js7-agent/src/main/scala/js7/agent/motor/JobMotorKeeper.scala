@@ -216,7 +216,6 @@ private final class JobMotorKeeper(
         IO.whenA(isAtLimitAndGetsBigger):
           triggerAllJobs:
             s"Agent process limit increased to ${newLimit.getOrElse("unlimited")}"
-        .map(Right(_))
 
     def forceIncreaseProcessCount(n: Int): IO[Unit] =
       IO:

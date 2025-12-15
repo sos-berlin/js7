@@ -280,17 +280,18 @@ object ScalaTime:
         BigDecimal(duration.length).round(ctx).toLong,
         duration.unit)
 
-    def toDoubleSeconds: Double = 
+    def toDoubleSeconds: Double =
       duration.toNanos / 1_000_000_000.0
-      
-    def toBigDecimalSeconds: BigDecimal = duration.unit match
-      case NANOSECONDS  => BigDecimal(duration.length, 9)
-      case MICROSECONDS => BigDecimal(duration.length, 6)
-      case MILLISECONDS => BigDecimal(duration.length, 3)
-      case SECONDS      => BigDecimal(duration.length, 0)
-      case MINUTES      => BigDecimal(duration.length) * 60
-      case HOURS        => BigDecimal(duration.length) * (60 * 60)
-      case DAYS         => BigDecimal(duration.length) * (60 * 60 * 24)
+
+    def toBigDecimalSeconds: BigDecimal =
+      duration.unit match
+        case NANOSECONDS  => BigDecimal(duration.length, 9)
+        case MICROSECONDS => BigDecimal(duration.length, 6)
+        case MILLISECONDS => BigDecimal(duration.length, 3)
+        case SECONDS      => BigDecimal(duration.length, 0)
+        case MINUTES      => BigDecimal(duration.length) * 60
+        case HOURS        => BigDecimal(duration.length) * (60 * 60)
+        case DAYS         => BigDecimal(duration.length) * (60 * 60 * 24)
 
     def toDecimalString: String =
       toBigDecimalSeconds.bigDecimal.stripTrailingZeros.toPlainString
@@ -300,7 +301,7 @@ object ScalaTime:
     def toHoconString: String =
       val duration = this.duration
       duration.length.toString +
-        (duration.unit match {
+        duration.unit.match
           case NANOSECONDS => "ns"
           case MICROSECONDS => "microseconds"
           case MILLISECONDS => "ms"
@@ -308,7 +309,6 @@ object ScalaTime:
           case MINUTES => "m"
           case HOURS => "h"
           case DAYS => "d"
-        })
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type)
   extends AnyVal:
