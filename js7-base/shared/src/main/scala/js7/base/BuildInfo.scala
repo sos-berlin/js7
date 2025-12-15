@@ -1,9 +1,8 @@
 package js7.base
 
+import java.io.IOException
 import java.util.Properties
 import js7.base.io.JavaResource
-import js7.base.io.JavaResource.UnknownJavaResourceProblem
-import js7.base.problem.ProblemException
 import js7.base.utils.Tests.isIntelliJIdea
 
 object BuildInfo:
@@ -11,10 +10,9 @@ object BuildInfo:
   private val props: Properties =
     val resourceName = "js7/js7-engine.properties"
     try JavaResource(resourceName).toProperties
-    catch
-      case e @ ProblemException(UnknownJavaResourceProblem(`resourceName`)) if isIntelliJIdea =>
-        throw new AssertionError(
-          s"💥 Try to rebuild with sbt: $resourceName resource is missing", e)
+    catch case e: IOException if isIntelliJIdea =>
+      throw new AssertionError(
+        s"💥 Try to rebuild with sbt: $resourceName resource is missing", e)
 
   lazy val version: String = prop
   lazy val longVersion: String = prop
