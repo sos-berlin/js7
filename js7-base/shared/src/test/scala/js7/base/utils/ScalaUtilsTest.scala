@@ -853,7 +853,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     }
   }
 
-  "Any" - {
+  "AnyRef | Null" - {
     "checkedSubtype" in:
       trait A
       case class A1() extends A
@@ -880,6 +880,11 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       assert(((A2(): A).ifSubtype[A2]: Option[A2]) == Some(A2()))
       "A1().ifSubtype[A]" shouldNot compile
       "A1().ifSubtype[A2]" shouldNot compile
+
+    "hideNullForJava" in:
+      assert((("": String | Null).hideNullForJava: String) == "")
+      assert((null.asInstanceOf[String].hideNullForJava: String) == null)
+      assert(("".hideNullForJava: String) == "") // How to make this not compile ??? Macro!
   }
 
   "Boolean" - {

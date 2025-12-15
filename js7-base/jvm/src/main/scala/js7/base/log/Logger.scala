@@ -17,7 +17,7 @@ import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichBoolean, RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichBoolean, RichJavaClass, RichThrowable, hideNullForJava}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Atomic, Once, Tests, Worry}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
@@ -592,8 +592,9 @@ object Logger extends AdHocLogger:
     duration: => String,
     symbol: String,
     result: => Any,
-    t: Throwable | Null = null)
+    throwable: Throwable | Null = null)
   : Unit =
+    val t: Throwable = throwable.hideNullForJava
     lazy val argsString = args.toString
     marker match
       case null =>

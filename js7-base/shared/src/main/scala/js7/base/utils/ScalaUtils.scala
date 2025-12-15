@@ -309,9 +309,20 @@ object ScalaUtils:
         w.toString
 
       /** Useable for logging.
-        * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
-      def nullIfNoStackTrace: Throwable | Null =
-        if throwable.getStackTrace.isEmpty then null else throwable
+        *
+        * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)`
+        *
+        *  Despite null may be returned, the return type omits explicit Null type to be compatible
+        *  with Java.
+        *  With Null, a method with vararg Object type would match, but not the one with
+        *  Throwable type.
+        *
+        * @return `null` if the stack trace is empty, despite expli.*/
+      def nullIfNoStackTrace: Throwable =
+        if throwable.getStackTrace.isEmpty then
+          null.asInstanceOf[Throwable]
+        else
+          throwable
 
       def ifStackTrace: Option[Throwable] =
         nullToNone(nullIfNoStackTrace)
@@ -332,6 +343,10 @@ object ScalaUtils:
         val A = implicitClass[B]
         a != null && A.isAssignableFrom(a.getClass) thenSome
           a.asInstanceOf[B]
+
+      /** Make the type Java-compatible. */
+      inline def hideNullForJava: A =
+        a.asInstanceOf[A]
 
 
     implicit final class RichAny[A](private val delegate: A) extends AnyVal:

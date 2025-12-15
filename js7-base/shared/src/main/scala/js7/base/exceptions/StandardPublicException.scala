@@ -4,6 +4,9 @@ package js7.base.exceptions
  * @author Joacim Zschimmer
  */
 class StandardPublicException(override val publicMessage: String, cause: Throwable | Null = null)
-extends RuntimeException(publicMessage, cause), PublicException:
+extends
+  RuntimeException(publicMessage, cause.asInstanceOf[Throwable]),
+  PublicException:
 
-  def this(publicMessage: String) = this(publicMessage, null: Throwable | Null)
+  def this(publicMessage: String) =
+    this(publicMessage, null: Throwable | Null)

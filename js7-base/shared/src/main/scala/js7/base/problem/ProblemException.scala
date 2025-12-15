@@ -6,7 +6,7 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 case class ProblemException private(problem: Problem, message: String, cause: Throwable | Null)
-extends RuntimeException(message, cause):
+extends RuntimeException(message, cause.asInstanceOf[Throwable]):
 
   protected[problem] def this(problem: Problem, cause: Throwable) =
     this(problem, problem.message, cause)
@@ -26,7 +26,10 @@ object ProblemException:
       case _ => None
 
   private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable | Null)
-  extends ProblemException(problem, message, cause), scala.util.control.NoStackTrace:
+  extends
+    ProblemException(problem, message, cause.asInstanceOf[Throwable]),
+    scala.util.control.NoStackTrace:
+
     def this(problem: Problem, cause: Throwable | Null) =
       this(problem, problem.message, cause)
 

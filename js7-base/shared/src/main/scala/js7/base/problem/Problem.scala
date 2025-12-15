@@ -26,8 +26,11 @@ sealed trait Problem:
 
   def throwableOption: Option[Throwable]
 
-  final def throwableIfStackTrace: Throwable | Null =
-    throwableOption.fold(null)(_.nullIfNoStackTrace)
+  /** @return `null` if no stack trace. Type `Null` is omitted to let Scala find the right
+    *         overloaded logging function.
+    */
+  final def throwableIfStackTrace: Throwable /*| Null*/ =
+    throwableOption.fold(null.asInstanceOf[Throwable])(_.nullIfNoStackTrace)
 
   /** For Java, return an unchecked Exception. */
   final def toRuntimeException: RuntimeException =
