@@ -224,11 +224,10 @@ final class ProblemTest extends OurTestSuite:
     val problem = new Problem.HasCode:
       val code = ProblemCode("PROBLEM")
       val arguments = Map("ARG" -> "VALUE")
-    val NoArguments = Map.empty[String, String]
     problem match
-      case Problem.HasCode(ProblemCode("OTHER"), args) if args == problem.arguments => fail()
-      case Problem.HasCode(ProblemCode("PROBLEM"), NoArguments) => fail()
-      case Problem.HasCode(ProblemCode("PROBLEM"), args) if args == problem.arguments =>  // okay
+      case prblm @ Problem.HasCode(ProblemCode("OTHER")) if prblm.arguments == problem.arguments => fail()
+      case prblm @ Problem.HasCode(ProblemCode("PROBLEM")) if prblm.arguments.isEmpty => fail()
+      case prblm @ Problem.HasCode(ProblemCode("PROBLEM")) if prblm.arguments == problem.arguments =>  // okay
 
   "Problem.IsThrowable" in:
     Problem("PROBLEM") match

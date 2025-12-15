@@ -142,7 +142,8 @@ object SessionApi:
         case Left(problem: Problem) if problem.is(InvalidSessionTokenProblem) =>
           renewSession(problem) *>
             body
-        case o => IO.pure(o)
+        case a =>
+          IO.pure(a)
 
     private def renewSession(problem: Problem): IO[Completed] =
       IO.defer:

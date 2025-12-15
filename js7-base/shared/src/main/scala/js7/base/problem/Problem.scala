@@ -153,6 +153,7 @@ object Problem extends Semigroup[Problem]:
     else
       normalizePrefix(a) + b
 
+  /** A Simple Problem is not a Combined nor a FromThrowable. */
   private[Problem] trait Simple extends Problem:
     protected def rawMessage: String
     final def throwableOption: None.type = None
@@ -172,6 +173,7 @@ object Problem extends Semigroup[Problem]:
         case Some(p: FromEagerThrowable) => new ProblemException.NoStackTrace(this, p.throwable)
         case _ => new ProblemException.NoStackTrace(this)
 
+  /** HasCode. */
   trait HasCode extends Simple:
     def code: ProblemCode
     def arguments: Map[String, String]
@@ -196,6 +198,7 @@ object Problem extends Semigroup[Problem]:
       if s"$msg ".startsWith(s"${code.string} ") ||
           s"$msg(".startsWith(s"${code.string}(") then msg
       else code.string + ": " + msg
+
   object HasCode:
     def apply(code: ProblemCode, arguments: Map[String, String]): HasCode =
       val c = code
@@ -203,31 +206,43 @@ object Problem extends Semigroup[Problem]:
       new HasCode:
         val code = c
         val arguments = a
-    def unapply(coded: HasCode): Option[(ProblemCode, Map[String, String])] =
-      Some((coded.code, coded.arguments))
 
+    inline def unapply(coded: HasCode): Some[ProblemCode] =
+      Some(coded.code)
+
+
+  /** Derive Problem classes from this. */
   trait Coded extends HasCode:
     val code: ProblemCode = Coded.codeOf(getClass)
     def toSerialized: Problem = HasCodeAndMessage(code, arguments, message)
+
   object Coded:
     trait Companion:
       val code: ProblemCode = codeOf(getClass)
+
     private[problem] def codeOf(clas: Class[?]) =
-      ProblemCode(clas.simpleScalaName stripSuffix "Problem")
+      new ProblemCode(clas.simpleScalaName stripSuffix "Problem")
+
 
   trait ArgumentlessCoded extends Coded, Coded.Companion:
     override val code: ProblemCode = Coded.codeOf(getClass)
     final def arguments: Map[String, String] = Map.empty
 
+
+  /** A deserialized Coded.
+    *
+    * The original class is lost. */
   private[problem] case class HasCodeAndMessage(
     code: ProblemCode,
     arguments: Map[String, String],
     override val rawMessage: String)
   extends HasCode
 
+
   class Eager(protected val rawMessage: String, val cause: Option[Problem] = None)
   extends Simple:
     override final def hashCode: Int = super.hashCode  // Derived case class should not override
+
 
   class Lazy(messageFunction: => String, val cause: Option[Problem] = None)
   extends Simple:
@@ -245,12 +260,11 @@ object Problem extends Semigroup[Problem]:
 
     def throwableOption: Option[Throwable] =
       val throwables = problems.flatMap(_.throwableOption)
-      throwables.headOption.map { head =>
+      throwables.headOption.map: head =>
         val throwable = new ProblemException(this)
         throwable.setStackTrace(head.getStackTrace)
         for o <- throwables.tail do throwable.appendStackTrace(o.getStackTrace)
         throwable
-      }
 
     // Omits this Combined
     override def flatten: View[Problem] =
@@ -274,7 +288,9 @@ object Problem extends Semigroup[Problem]:
     override def hashCode: Int =
       problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
 
+
   sealed trait FromThrowable extends Problem
+
 
   private class FromEagerThrowable(
     val throwable: Throwable,
@@ -287,6 +303,7 @@ object Problem extends Semigroup[Problem]:
 
     def cause: None.type =
       None
+
 
   private final class FromLazyThrowable(throwableFunction: () => Throwable)
   extends FromThrowable:
@@ -309,7 +326,7 @@ object Problem extends Semigroup[Problem]:
     else
       prefix + ";\n"
 
-  implicit val jsonEncoder: Encoder.AsObject[Problem] = problem =>
+  given jsonEncoder: Encoder.AsObject[Problem] = problem =>
     JsonObject.fromIterable(
       (problem match {
         case problem: HasCode => Seq(
@@ -325,7 +342,7 @@ object Problem extends Semigroup[Problem]:
     val typeField = "TYPE" -> Json.fromString("Problem")
     problem => typeField +: jsonEncoder.encodeObject(problem)
 
-  implicit val jsonDecoder: Decoder[Problem] =
+  given jsonDecoder: Decoder[Problem] =
     c => for
       maybeCode <- c.get[Option[ProblemCode]]("code")
       arguments <- c.getOrElse[Map[String, String]]("arguments")(Map.empty)
@@ -334,6 +351,7 @@ object Problem extends Semigroup[Problem]:
       maybeCode match
         case None => Problem.pure(message)
         case Some(code) => HasCodeAndMessage(code, arguments, message)
+
 
   object IsThrowable:
     def unapply(problem: Problem): Option[Throwable] =

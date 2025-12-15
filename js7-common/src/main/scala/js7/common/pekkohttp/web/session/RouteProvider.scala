@@ -1,9 +1,7 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.model.StatusCode
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
-import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route}
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.{Permission, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.SecretString
@@ -11,14 +9,17 @@ import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkohttp.ExceptionHandling
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.RouteProvider.*
-import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.http.scaladsl.model.StatusCode
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
+import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route}
 
 /**
   * @author Joacim Zschimmer
@@ -97,16 +98,13 @@ trait RouteProvider extends ExceptionHandling:
 
   protected final def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
     (if statusCode == Unauthorized then respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass):
-      val delay =
-        if problem == InvalidLoginProblem then
-          logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
-          gateKeeper.invalidAuthenticationDelay
-        else
-          ZeroDuration
-      complete:
-        IO.pure(statusCode -> problem)
-          .delayBy(delay)
-          .unsafeToFuture()
+      if problem == InvalidLoginProblem then
+        logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
+        completeIO:
+          IO.sleep(gateKeeper.invalidAuthenticationDelay)
+            .as(statusCode -> problem)
+      else
+        complete(statusCode -> problem)
 
 
 object RouteProvider:
