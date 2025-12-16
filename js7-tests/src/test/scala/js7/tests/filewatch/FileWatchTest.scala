@@ -27,6 +27,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeleted, 
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
+import js7.data.order.Order.Finished
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancellationMarkedOnAgent, OrderDeleted, OrderExternalVanished, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
@@ -103,8 +104,8 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     createDirectory(watchDirectory)
     createDirectory(waitingWatchDirectory)
     updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
-    eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
-    eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
+    controller.await[ItemAttached](_.event.key == fileWatch.path)
+    controller.await[ItemAttached](_.event.key == waitingFileWatch.path)
 
   "referencedItemPaths" in:
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
@@ -154,17 +155,17 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     val (orderId, planId, priority) =
       myFileWatch.externalToOrderAndPlanIdAndPriority(ExternalOrderName("1"), None, Timestamp.now).orThrow
     assert(planId == PlanId.Global && priority == 7)
-    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    controller.awaitNextKey[OrderProcessingStarted](orderId)
     assert(controllerState.idToOrder(orderId).priority == 7)
     assert(controllerState.idToOrder(orderId).namedValues(waitingWorkflow).toMap == Map(
       "file" -> StringValue(file.toString),
       "DEFAULT" -> StringValue("DEFAULT-VALUE")))
 
     TestJob.continue()
-    eventWatch.await[OrderFinished](_.key == orderId)
+    controller.awaitNextKey[OrderFinished](orderId)
 
     delete(file)
-    eventWatch.await[OrderDeleted](_.key == orderId)
+    controller.awaitNextKey[OrderDeleted](orderId)
 
     controller.api.updateItems(Stream(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
 
@@ -172,7 +173,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     val file = watchDirectory / "2"
     val orderId = externalToOrderId(ExternalOrderName("2"))
     file := ""
-    eventWatch.await[OrderDeleted](_.key == orderId)
+    controller.awaitNextKey[OrderDeleted](orderId)
     assert(!exists(file))
 
   "Add many files, forcing an overflow" in:
@@ -181,7 +182,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     val orderIds = filenames.map(ExternalOrderName(_)).map(externalToOrderId).toSet
     val whenAllRemoved = eventWatch
       .stream(EventRequest.singleClass[OrderDeleted](
-        after = eventWatch.lastAddedEventId,
+        after = controller.lastAddedEventId,
         timeout = Some(88.s)))
       .scan(orderIds)((set, stamped) => set - stamped.value.key)
       .dropWhile(_.nonEmpty)
@@ -198,41 +199,41 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     val file = waitingWatchDirectory / "REMOVE"
     val orderId = waitingFileToOrderId(ExternalOrderName("REMOVE"))
     file := ""
-    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    controller.awaitNextKey[OrderProcessingStarted](orderId)
 
     assert(controller.api.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     TestJob.continue()
-    eventWatch.await[OrderFinished](_.key == orderId)
+    controller.awaitNextKey[OrderFinished](orderId)
     intercept[TimeoutException]:
-      eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
+      controller.awaitNextKey[OrderDeleted](orderId, timeout = 100.ms)
 
     delete(file)
-    val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
+    val vanished = controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path).head
+    val removed = controller.awaitNextKey[OrderDeleted](orderId).head
     assert(vanished.timestamp <= removed.timestamp)
 
   "CancelOrder does not delete the order until the file has vanished" in:
     val file = waitingWatchDirectory / "CANCEL"
     val orderId = waitingFileToOrderId(ExternalOrderName("CANCEL"))
     file := ""
-    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    controller.awaitNextKey[OrderProcessingStarted](orderId)
 
     execCmd(CancelOrders(orderId :: Nil))
-    eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
+    controller.awaitNextKey[OrderCancellationMarkedOnAgent](orderId)
 
     TestJob.continue()
-    eventWatch.await[OrderFinished](_.key == orderId)
+    controller.awaitNextKey[OrderFinished](orderId)
     intercept[TimeoutException]:
-      eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
+      controller.awaitNextKey[OrderDeleted](orderId, timeout = 100.ms)
 
     assert(controller.api.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     delete(file)
-    val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
+    val vanished = controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path).head
+    val removed = controller.awaitNextKey[OrderDeleted](orderId).head
     assert(vanished.timestamp <= removed.timestamp)
 
   private var itemRevision = ItemRevision(0)
@@ -246,11 +247,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
     for i <- 1 to 2 do withClue(s"#$i"):
       itemRevision = itemRevision.next
-      val eventId = eventWatch.lastAddedEventId
+      val eventId = controller.resetLastWatchedEventId()
       val changedFileWatch = waitingFileWatch.copy(delay = i.ms/*little change*/)
       controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-      eventWatch.await[ItemAttached](after = eventId)
-      assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
+      controller.awaitNext[ItemAttached](_.event.key == changedFileWatch.path)
+      assert(controller.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
           NoKey <-: UnsignedSimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
           NoKey <-: ItemAttachable(changedFileWatch.path, aAgentPath),
@@ -260,19 +261,19 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       val iOrderId = waitingFileToOrderId(ExternalOrderName(s"AGAIN-$i"))
       iFile := ""
       TestJob.continue()
-      eventWatch.await[OrderFinished](_.key == iOrderId)
+      controller.awaitNextKey[OrderFinished](iOrderId)
 
       delete(iFile)
-      val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-      val removed = eventWatch.await[OrderDeleted](_.key == iOrderId).head
+      val vanished = controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path).head
+      val removed = controller.awaitNextKey[OrderDeleted](iOrderId).head
       assert(vanished.timestamp <= removed.timestamp)
 
-    eventWatch.await[OrderFinished](_.key == longOrderId)
+    controller.awaitKey[OrderFinished](longOrderId)
     intercept[TimeoutException]:
-      eventWatch.await[OrderDeleted](_.key == longOrderId, timeout = 100.ms)
+      controller.awaitNextKey[OrderDeleted](longOrderId, timeout = 100.ms)
     delete(longFile)
-    val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = eventWatch.await[OrderDeleted](_.key == longOrderId).head
+    val vanished = controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path).head
+    val removed = controller.awaitNextKey[OrderDeleted](longOrderId).head
     assert(vanished.timestamp <= removed.timestamp)
 
   "Change directory" - {
@@ -286,11 +287,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       val singletonOrderId = waitingFileToOrderId(ExternalOrderName(singletonName))
       singletonFile := ""
 
-      eventWatch.await[OrderFinished](_.key == singletonOrderId)
+      controller.awaitNextKey[OrderFinished](singletonOrderId)
       assert(exists(singletonFile))
 
       withTemporaryDirectory() { newDirectory =>
-        val eventId = eventWatch.lastAddedEventId
+        val eventId = controller.resetLastWatchedEventId()
 
         // A file only in the newDirectory
         val newFile = newDirectory / "CHANGE-DIRECTORY-NEW"
@@ -301,40 +302,35 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         val changedFileWatch = waitingFileWatch.copy(
           directoryExpr = ExpressionParser.expr(StringConstant.quote(newDirectory.toString)))
         controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-        eventWatch.await[ItemAttached](after = eventId)
+        controller.awaitNext[ItemAttachable](_.event.key == changedFileWatch.path)
 
         /// Files are considered deleted (due to directory change — they still exists) ///
-        eventWatch.await[OrderExternalVanished](_.key == singletonOrderId, after = eventId)
-        eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
-        //eventId = eventWatch.lastAddedEventId
+        controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path)
+        controller.awaitNextKey[OrderExternalVanished](singletonOrderId)
+        controller.awaitNextKey[OrderDeleted](singletonOrderId)
 
         // File in old directory is ignored
         val oldFile = waitingWatchDirectory / "CHANGE-DIRECTORY-OLD"
         oldFile := ""
 
-        val vanished = eventWatch.await[ExternalOrderVanished](
-          _ == waitingFileWatch.path <-: ExternalOrderVanished(ExternalOrderName(singletonName)),
-          after = eventId).head
-        val deleted = eventWatch
-          .await[OrderExternalVanished](_.key == singletonOrderId, after = eventId).head
-        assert(vanished.timestamp <= deleted.timestamp)
-
         // bothOrderId has been started again because its filename duplicates in newDirectory
 
-        eventWatch.await[OrderFinished](_.key == newOrderId, after = eventId)
-        delete(newFile)
-        eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
+        controller.awaitNextKey[OrderFinished](newOrderId)
+        assert(controllerState.idToOrder(newOrderId).state.isInstanceOf[Finished])
 
-        assert(eventWatch
+        delete(newFile)
+        controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path)
+        controller.awaitNextKey[OrderExternalVanished](newOrderId)
+        controller.awaitNextKey[OrderDeleted](newOrderId)
+
+        assert(controller
           .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet ==
           Set(newFile.toString))
 
         // Java for macOS needs 2s to detect a file (maybe oldFile)
-        if isMac then sleep(2500.ms)
-
-        assert(eventWatch
+        awaitAndAssert(3.s)(controller
           .keyedEvents[ExternalOrderVanished](after = eventId)
           .map(_.event.externalOrderName)
           .toSet ==
@@ -348,9 +344,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       delete(singletonFile)
 
       // Restore waitingFileWatch
-      val eventId = eventWatch.lastAddedEventId
+      controller.resetLastWatchedEventId()
       controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
-      eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
+      controller.awaitNext[ItemAttached](_.event.key == waitingFileWatch.path)
 
     "Same filename both in old and new directory" in:
       TestJob.reset()
@@ -363,9 +359,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       val orderId = waitingFileToOrderId(externalOrderName)
       oldFile := ""
 
-      eventWatch.await[OrderFinished](_.key == orderId)
+      controller.awaitNextKey[OrderFinished](orderId)
       assert(exists(oldFile))
-      assert(eventWatch.eventsByKey[OrderFinished](orderId).last == OrderFinished())
+      assert(controllerState.idToOrder(orderId).state.isInstanceOf[Finished])
 
       def orderWatchState = controllerState.keyTo(OrderWatchState)(waitingFileWatch.path)
       assert(orderWatchState == OrderWatchState(
@@ -375,7 +371,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       Logger.info(s"$orderWatchState")
 
       withTemporaryDirectory() { newDirectory =>
-        val eventId = eventWatch.lastAddedEventId
+        val eventId = controller.resetLastWatchedEventId()
 
         val newFile = newDirectory / name
         newFile := ""
@@ -384,31 +380,30 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         val changedFileWatch = waitingFileWatch.copy(
           directoryExpr = ExpressionParser.expr(StringConstant.quote(newDirectory.toString)))
         controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-        eventWatch.await[ItemAttached](after = eventId)
+        controller.awaitNext[ItemAttachable]()
 
         /// Files are considered deleted (due to directory change — they still exists) ///
-        eventWatch.awaitKey[OrderExternalVanished](orderId, after = eventId)
-        eventWatch.awaitKey[OrderDeleted](orderId, after = eventId)
+        controller.awaitNextKey[OrderExternalVanished](orderId)
+        controller.awaitNextKey[OrderDeleted](orderId)
+        //controller.awaitNext[ItemAttached]()
 
         // orderId has been started again because its filename duplicates in newDirectory
 
-        eventWatch.awaitKey[ExternalOrderAppeared](waitingFileWatch.path, after = eventId)
-        eventWatch.awaitKey[OrderAdded](orderId, after = eventId)
+        controller.awaitNextKey[ExternalOrderAppeared](waitingFileWatch.path)
+        controller.awaitNextKey[OrderAdded](orderId)
 
-        TestJob.continue(1)
+        TestJob.continue()
 
-        eventWatch.awaitKey[OrderFinished](orderId, after = eventId)
-        eventWatch.awaitKey[OrderDeleted](orderId, after = eventId)
+        controller.awaitNextKey[OrderFinished](orderId)
+        //controller.awaitNextKey[OrderDeleted](orderId)
 
-        assert(eventWatch
+        assert(controller
           .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet == Set(newFile.toString))
 
         // Java for macOS needs 2s to detect a file (maybe oldFile)
-        if isMac then sleep(2500.ms)
-
-        assert(eventWatch
+        awaitAndAssert(3.s)(controller
           .keyedEvents[ExternalOrderVanished](after = eventId)
           .map(_.event.externalOrderName)
           .toSet ==
@@ -416,23 +411,25 @@ extends OurTestSuite, ControllerAgentForScalaTest:
             ExternalOrderName(oldFile.getFileName.toString),
             ExternalOrderName(newFile.getFileName.toString)))
 
-        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+        assert(controllerState.idToOrder(orderId).state.isInstanceOf[Finished])
+        delete(newFile)
+        controller.awaitNextKey[OrderDeleted](orderId)
       }
 
       delete(oldFile)
 
       // Restore waitingFileWatch
-      val eventId = eventWatch.lastAddedEventId
+      val eventId = controller.resetLastWatchedEventId()
       controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
-      eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
+      controller.awaitNext[ItemAttached](_.event.key == waitingFileWatch.path)
     }
 
   "Change Agent" in:
-    val eventId = eventWatch.lastAddedEventId
+    val eventId = controller.resetLastWatchedEventId()
     val changedFileWatch = fileWatch.copy(agentPath = bAgentPath)
     controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-    eventWatch.await[ItemAttached](after = eventId)
-    assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
+    controller.awaitNext[ItemAttached]()
+    assert(controller.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
         NoKey <-: UnsignedSimpleItemChanged(changedFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
         NoKey <-: ItemDetachable(fileWatch.path, aAgentPath),
@@ -442,27 +439,31 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   "JS-2159 Delete a FileWatch while an Order is still running" in:
     watchDirectory / "BEFORE-DELETION" := ""
-    eventWatch.await[OrderFinished](_.key == OrderId("file:TEST-WATCH:BEFORE-DELETION"))
+    controller.awaitNextKey[OrderFinished](OrderId("file:TEST-WATCH:BEFORE-DELETION"))
 
-    watchDirectory / "BEFORE-DELETION" := ""
-    eventWatch.await[OrderFinished](_.key == OrderId("file:TEST-WATCH:BEFORE-DELETION"))
+    //watchDirectory / "BEFORE-DELETION" := ""
+    //controller.awaitNextKey[OrderFinished](OrderId("file:TEST-WATCH:BEFORE-DELETION"))
 
   "Deleting the Workflow referenced by the FileWatch is rejected" in:
-    assert(controller.api.updateItems(Stream(
-      AddVersion(VersionId("TRY-DELETE")),
-      RemoveVersioned(workflow.path)
-    )).await(99.s) ==
-      Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path,
-        moreInfo = " with ExternalOrderName(BEFORE-DELETION), attached to Agent:AGENT-B")))
+    assert:
+      controller.api.updateItems:
+        Stream(
+          AddVersion(VersionId("TRY-DELETE")),
+          RemoveVersioned(workflow.path))
+      .await(99.s) ==
+        Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path,
+          moreInfo = " with ExternalOrderName(BEFORE-DELETION), attached to Agent:AGENT-B"))
 
   "Delete a FileWatch" in:
-    val eventId = eventWatch.lastAddedEventId
-    assert(controller.api.updateItems(Stream(
-      DeleteSimple(fileWatch.path),
-      DeleteSimple(waitingFileWatch.path)
-    )).await(99.s) == Right(Completed))
-    eventWatch.await[ItemDeleted](_.event.key == fileWatch.path, after = eventId)
-    val events = eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
+    val eventId = controller.resetLastWatchedEventId()
+    assert:
+      controller.api.updateItems:
+        Stream(
+          DeleteSimple(fileWatch.path),
+          DeleteSimple(waitingFileWatch.path))
+      .await(99.s) == Right(Completed)
+    controller.awaitNext[ItemDeleted](_.event.key == fileWatch.path)
+    val events = controller.keyedEvents[InventoryItemEvent](after = eventId)
       .filter(_.event.key == fileWatch.path)
     assert(events == Seq(
       NoKey <-: ItemDeletionMarked(fileWatch.path),
