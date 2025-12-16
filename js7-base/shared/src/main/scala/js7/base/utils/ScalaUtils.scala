@@ -845,7 +845,7 @@ object ScalaUtils:
         if underlying then fs2.Stream.emit(a) else fs2.Stream.empty
 
       /** The string on the right side if true, otherwise the empty string. */
-      def ??(string: => String): String =
+      inline def ??(inline string: String): String =
         if underlying then string else ""
 
       inline def !![L](left: => L): Either[L, Unit] =
