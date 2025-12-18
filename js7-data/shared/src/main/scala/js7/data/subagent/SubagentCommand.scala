@@ -10,7 +10,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.flattenToString
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Big, ScalaUtils}
 import js7.base.version.Version
@@ -141,12 +141,8 @@ object SubagentCommand extends CommonCommand.Companion:
   extends Queueable:
     type Response = Accepted
 
-    override def toString =
-      s"ShutDown($argsString)"
-
-    def argsString: String =
-      flattenToString(processSignal, dontWaitForDirector ? "dontWaitForDirector",
-        restart ? "restart")
+    override def toString = functionCallToString("Shutdown",
+      processSignal, dontWaitForDirector ? "dontWaitForDirector", restart ? "restart")
 
   object ShutDown:
     implicit val jsonCodec: Codec.AsObject[ShutDown] = deriveConfiguredCodec

@@ -14,7 +14,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.parameterListToString
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Big, ScalaUtils}
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -175,7 +175,7 @@ object AgentCommand extends CommonCommand.Companion:
       clusterAction contains ShutDown.ClusterAction.Switchover
 
     override def toString =
-      "Shutdown" + parameterListToString(
+      functionCallToString("Shutdown",
         processSignal, clusterAction,
         suppressSnapshot ? "suppressSnapshot",
         restart ? "restart",

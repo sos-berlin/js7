@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.parameterListToString
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
@@ -644,7 +644,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderFinished(outcome: Option[OrderOutcome.Completed] = None)
   extends OrderActorEvent, OrderTerminated:
-    override def toString = "OrderFinished" + parameterListToString(outcome)
+    override def toString = functionCallToString("OrderFinished", outcome)
 
 
   type OrderExternalVanished = OrderExternalVanished.type
@@ -675,8 +675,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
 
-    override def toString = "OrderCancellationMarked" +
-      parameterListToString((mode != CancellationMode.Default) ? mode)
+    override def toString =
+      functionCallToString("OrderCancellationMarked", (mode != CancellationMode.Default) ? mode)
 
 
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
@@ -736,8 +736,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     asSucceeded: Boolean = false,
     restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big:
-    override def toString = "OrderResumed" +
-      parameterListToString(position.view, historyOperations,
+    override def toString = 
+      functionCallToString("OrderResumed", position.view, historyOperations,
         asSucceeded ? "asSucceeded",
         restartKilledJob ? "restartKilledJob")
 

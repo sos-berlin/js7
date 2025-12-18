@@ -1263,6 +1263,9 @@ object ScalaUtils:
     else if c <= 0xffff then 3
     else 4
 
+  def functionCallToString(name: String, args: IterableOnce[Any]*): String =
+    name + parameterListToString(args*)
+
   def parameterListToString(args: IterableOnce[Any]*): String =
     val iterator = args.iterator.flatten
     if iterator.isEmpty then

@@ -4,7 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Big
-import js7.base.utils.ScalaUtils.parameterListToString
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.order.OrderEvent.OrderResumed
@@ -17,13 +17,13 @@ object OrderMark:
 
   final case class Cancelling(mode: CancellationMode)
   extends OrderMark:
-    override def toString = "Cancelling" +
-      parameterListToString((mode != CancellationMode.Default) ? mode)
+    override def toString =
+      functionCallToString("Cancelling", (mode != CancellationMode.Default) ? mode)
 
   final case class Suspending(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderMark:
-    override def toString = "Suspending" +
-      parameterListToString((mode != SuspensionMode.standard) ? mode)
+    override def toString =
+      functionCallToString("Suspending", (mode != SuspensionMode.standard) ? mode)
 
   final case class Resuming(
     position: Option[Position] = None,
@@ -32,8 +32,9 @@ object OrderMark:
     asSucceeded: Boolean = false,
     restartKilledJob: Boolean = false)
   extends OrderMark, Big:
-    override def toString = "Resuming" +
-      parameterListToString(position.view, historicOperations,
+    override def toString =
+      functionCallToString("Resuming",
+        position.view, historicOperations,
         asSucceeded ? "asSucceeded",
         restartKilledJob ? "restartKilledJob")
 

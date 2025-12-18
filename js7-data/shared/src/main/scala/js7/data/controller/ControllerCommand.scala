@@ -13,6 +13,7 @@ import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncode
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
@@ -230,6 +231,13 @@ object ControllerCommand extends CommonCommand.Companion:
 
     private def isSwitchover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Switchover
+
+    override def toString =
+      functionCallToString("Shutdown",
+        restart ? "restart",
+        clusterAction,
+        suppressSnapshot ? "suppressSnapshot",
+        dontNotifyActiveNode ? "dontNotifyActiveNode")
 
   object ShutDown:
     sealed trait ClusterAction
