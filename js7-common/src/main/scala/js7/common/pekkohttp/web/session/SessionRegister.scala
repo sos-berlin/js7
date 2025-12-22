@@ -24,6 +24,8 @@ import js7.base.service.Service
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.{Js7Versions, Version}
@@ -127,6 +129,7 @@ extends Service.TrivialReleasable:
 
           updated -> entry)
     .flatMap: entry =>
+      Bean.sessionCount += 1
       IO.unlessA(isEternalSession):
         CatsDeadline.now.flatMap: now =>
           val timeoutAt = now + sessionTimeout
@@ -216,6 +219,7 @@ extends Service.TrivialReleasable:
       tokenToSession.get(token).fold(this): entry =>
         logger.info(s"$token for ${entry.currentUserId} $reason")
         entry.session.die()
+        Bean.sessionCount -= 1
         copy(tokenToSession = tokenToSession.removed(token))
 
     def logOpenSessions(): Unit =
@@ -254,3 +258,12 @@ object SessionRegister:
     js7.component.name = "JS7 TEST"
     js7.auth.session.timeout = ${TestTimeout.toMillis} milliseconds
     """
+
+  sealed trait SessionsMXBean:
+    this: Bean.type =>
+
+    def getSessionCount: Int =
+      sessionCount.get
+
+  object Bean extends SessionsMXBean:
+    val sessionCount = Atomic(0)

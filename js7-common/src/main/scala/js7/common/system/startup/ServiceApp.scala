@@ -13,6 +13,7 @@ import js7.base.utils.{AsyncLock, ProgramTermination}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.http.HttpMXBean
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.system.startup.ServiceApp.*
 import scala.concurrent.duration.Duration
 
@@ -55,6 +56,7 @@ trait ServiceApp extends OurApp:
           _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
           _ <- registerStaticMBean("AsyncLock", AsyncLock.Bean)
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
+          _ <- registerStaticMBean("Sessions", SessionRegister.Bean)
           svc <- program(cnf)
         yield svc,
       use)
