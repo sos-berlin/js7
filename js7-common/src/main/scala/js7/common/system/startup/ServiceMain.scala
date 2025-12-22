@@ -1,7 +1,8 @@
 package js7.common.system.startup
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{ExitCode, IO, ResourceIO}
+import cats.effect.{ExitCode, IO, Resource, ResourceIO}
+import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
@@ -48,8 +49,15 @@ object ServiceMain:
               logger.error(t.toStringWithCauses)
               throw t
           logFirstLines(commandLineArguments, conf)
-          run(toServiceResource(conf)):
-            use(conf, _)
+
+          (toServiceResource(conf) <* logCancellationOrFailure(productName))
+            .use: service =>
+              use(conf, service) /// Run the Service ///
+            .recover:
+              case t: MainServiceTerminationException =>
+                logger.debug(t.toStringWithCauses)
+                logger.info(t.getMessage)
+                t.termination
       .attempt.map:
         case Left(throwable) =>
           // Service has already logged an error (not always)
@@ -69,6 +77,15 @@ object ServiceMain:
           IO(sys.runtime.halt(exitCode.code))
         else
           IO.unit
+
+  private def logCancellationOrFailure(productName: String): ResourceIO[Unit] =
+    Resource.onFinalizeCase:
+      case Resource.ExitCase.Succeeded => IO.unit
+      case Resource.ExitCase.Canceled =>
+        IO(logger.warn:
+          s"Stop $productName due to cancellation (maybe due to a signal like SIGTERM)")
+      case Resource.ExitCase.Errored(t) =>
+        IO(logger.warn(s"Stop $productName due $t"))
 
   private def catsEffectIgnoresExitCode: Boolean =
     BuildInfo.catsEffectVersion.startsWith("3.5.") && Runtime.version.feature > 17

@@ -111,7 +111,7 @@ object Service:
     resource(IO(newService))
 
   def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
-    Resource.make(
+    Resource.makeCase(
       acquire =
         newService.flatTap: service =>
           if service.started.getAndSet(true) then
@@ -123,8 +123,15 @@ object Service:
                 IO:
                   // Maybe duplicate, but some tests don't propagate this error and silently deadlock
                   logger.error(s"$service start: ${t.toStringWithCauses}", t.nullIfNoStackTrace))(
-      release = service =>
-        service.stop.logWhenItTakesLonger(s"stopping $service"))
+      release = (service, exitCase) =>
+        exitCase.match
+          case Resource.ExitCase.Succeeded => IO.unit
+          case Resource.ExitCase.Canceled =>
+            IO(logger.debug(s"◼️  Stop $service due to cancellation"))
+          case Resource.ExitCase.Errored(t) =>
+            IO(logger.debug(s"💥 Stop $service due ${t.toStringWithCauses}"))
+        .productR:
+          service.stop.logWhenItTakesLonger(s"stopping $service"))
 
   def restartAfterFailure[Svc <: Service: Tag](
     restartDelayConf: DelayConf = defaultRestartDelayConf,
