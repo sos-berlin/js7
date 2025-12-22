@@ -11,7 +11,7 @@ validity=36530 # 100 years
 password=jobscheduler
 client=""
 install=false
-CACN="### JS7 Example CA"  # Start with "#" to place it at the top of a long certificate list
+CACN="# JS7 Example CA"  # Start with "#" to place it at the top of a long certificate list
 
 for arg in "$@"; do
   case "$arg" in
