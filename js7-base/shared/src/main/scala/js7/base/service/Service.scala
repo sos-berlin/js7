@@ -143,7 +143,7 @@ object Service:
 
   def simple(body: IO[Unit | ExitCode | ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:
-      def run =
+      protected def run =
         body.map(ProgramTermination.fromUnitOrExitCode)
 
 

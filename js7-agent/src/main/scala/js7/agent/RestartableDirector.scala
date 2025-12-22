@@ -1,12 +1,12 @@
 package js7.agent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO, Resource, ResourceIO}
+import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import js7.agent.RestartableDirector.*
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
-import js7.base.catsutils.CatsEffectExtensions.{right, startAndLogError}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
 import js7.base.monixutils.AsyncVariable
@@ -57,12 +57,8 @@ extends MainService, Service.StoppableByRequest:
         .guarantee:
           _currentDirector.set(null)
 
-  private def onStopRequested(stop: IO[Unit]): ResourceIO[Unit] =
-    Resource
-      .make(
-        acquire = (untilStopRequested *> stop).startAndLogError)(
-        release = _.cancel)
-      .void
+  private def onStopRequested(onStop: IO[Unit]): ResourceIO[Unit] =
+    (untilStopRequested *> onStop).background.void
 
   def untilTerminated: IO[DirectorTermination] =
     _untilTerminated.get.dematerialize

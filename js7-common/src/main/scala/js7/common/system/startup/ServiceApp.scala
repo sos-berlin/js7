@@ -49,7 +49,7 @@ trait ServiceApp extends OurApp:
         useLockFile = useLockFile,
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
-      cnf =>
+      toServiceResource = cnf =>
         for
           _ <- CallMeterLoggingService.service(cnf.config)
           _ <- ResponsivenessMeter.service(cnf.config).whenA(useOwnResponsivenessMeter)
@@ -58,8 +58,9 @@ trait ServiceApp extends OurApp:
           _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
           _ <- registerStaticMBean("Sessions", SessionRegister.Bean)
           svc <- program(cnf)
-        yield svc,
-      use)
+        yield
+          svc,
+      use = use)
 
   protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService](
     args: List[String],

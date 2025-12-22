@@ -21,7 +21,7 @@ trait SimpleMainService extends MainService:
   override final def untilTerminated: IO[ProgramTermination] =
     terminated.get
 
-  def run: IO[Termination]
+  protected def run: IO[Termination]
 
 
 object SimpleMainService:
@@ -29,7 +29,7 @@ object SimpleMainService:
   def resource(program: IO[ExitCode | Unit], label: String): ResourceIO[SimpleMainService] =
     Service.resource:
       new SimpleMainService with Service.StoppableByCancel:
-        def run = program.map:
+        protected def run = program.map:
           case () => ProgramTermination.Success
           case o: ExitCode => ProgramTermination.fromExitCode(o)
 

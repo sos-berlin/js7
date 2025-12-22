@@ -38,7 +38,7 @@ object IsEmpty:
       def ifNonEmpty: Option[A] =
         IsEmpty.ifNonEmpty(a)
 
-      inline def ??(replacementForEmpty: => A): A =
+      inline def ??(inline replacementForEmpty: A): A =
         ifEmpty(replacementForEmpty)
 
       // !? isn't a good symbol, use mapNonEmpty instead
