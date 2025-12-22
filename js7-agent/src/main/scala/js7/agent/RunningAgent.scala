@@ -140,7 +140,7 @@ extends MainService, Service.StoppableByRequest:
         executeCommandAsSystemUser(ShutDown())
           .attempt
           .map:
-            case Left(throwable) => logger.warn(s"Shutdown: ${throwable.toStringWithCauses}")
+            case Left(t) => logger.warn(s"Shutdown: ${t.toStringWithCauses}", t)
             case Right(Left(problem @ AgentIsShuttingDown)) => logger.debug(s"Shutdown: $problem}")
             case Right(Left(problem)) => logger.warn(s"Shutdown: $problem}")
             case Right(Right(_)) =>
