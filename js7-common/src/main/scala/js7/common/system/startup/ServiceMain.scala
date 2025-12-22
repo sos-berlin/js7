@@ -110,16 +110,3 @@ object ServiceMain:
 
     logConfig(conf.config)
     logJavaSettings()
-
-  def run[Svc <: MainService](
-    resource: ResourceIO[Svc])
-    (use: Svc => IO[ProgramTermination])
-  : IO[ProgramTermination] =
-    resource
-      .use: service =>
-        use(service)
-      .recover:
-        case t: MainServiceTerminationException =>
-          logger.debug(t.toStringWithCauses)
-          logger.info(t.getMessage)
-          t.termination
