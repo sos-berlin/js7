@@ -12,7 +12,7 @@ object BuildInfo:
     try JavaResource(resourceName).toProperties
     catch case e: IOException if isIntelliJIdea =>
       throw new AssertionError(
-        s"💥 Try to rebuild with sbt: $resourceName resource is missing", e)
+        s"💥 Try to rebuild with 'sbt js7-base/package': $resourceName resource is missing", e)
 
   lazy val version: String = prop
   lazy val longVersion: String = prop
