@@ -2,7 +2,6 @@ package js7.agent
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
-import cats.syntax.all.*
 import com.typesafe.config.ConfigUtil
 import js7.agent.RunningAgent.*
 import js7.agent.client.AgentClient
@@ -137,7 +136,7 @@ extends MainService, Service.StoppableByRequest:
   private def stopMe: IO[Unit] =
     logger.debugIO:
       terminating:
-        executeCommandAsSystemUser(ShutDown())
+        executeCommand(ShutDown(), CommandMeta.system("RunningAgent stopMe"))
           .attempt
           .map:
             case Left(t) => logger.warn(s"Shutdown: ${t.toStringWithCauses}", t)
@@ -160,7 +159,7 @@ extends MainService, Service.StoppableByRequest:
             processSignal, clusterAction,
             suppressSnapshot = suppressSnapshot,
             restartDirector = restartDirector),
-          CommandMeta(SimpleUser.System)
+          CommandMeta.system("RunningAgent.terminate")
         ).map(_.orThrow)
 
   private def terminating(body: IO[Unit]): IO[DirectorTermination] =
@@ -169,15 +168,6 @@ extends MainService, Service.StoppableByRequest:
         body
       *> untilTerminated
     .logWhenMethodTakesLonger
-
-  private[agent] def executeCommandAsSystemUser(command: AgentCommand)
-  : IO[Checked[AgentCommand.Response]] =
-    for
-      checkedSession <- forDirector.sessionRegister.systemSession
-      checkedChecked <- checkedSession.traverse: session =>
-        executeCommand(command, CommandMeta(session.currentUser))
-    yield
-      checkedChecked.flatten
 
   // May be called before RunningAgent service has been started
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
@@ -188,7 +178,7 @@ extends MainService, Service.StoppableByRequest:
             IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
           else
             IO.defer:
-              logger.info(s"❗ $cmd")
+              logger.info(s"❗️ $meta: $cmd")
               val termination = DirectorTermination(
                 restartJvm = cmd.restart,
                 restartDirector = cmd.restartDirector)

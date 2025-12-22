@@ -1,21 +1,23 @@
 package js7.tests.subagent
 
+import fs2.Stream
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
+import js7.core.command.CommandMeta
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
+import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTwiceTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import fs2.Stream
 
 final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
 
@@ -62,7 +64,10 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
         OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
 
       // Shutdown the original Subagent
-      bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+      bareSubagent.shutdown(
+        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        CommandMeta.test
+      ).await(99.s)
       bareSubagentRelease.await(99.s)
 
       // After ProcessLost at previous Subagent aOrderId restarts at current Subagent

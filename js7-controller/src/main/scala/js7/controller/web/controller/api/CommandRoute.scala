@@ -10,6 +10,7 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.core.command.CommandMeta
+import js7.core.command.CommandMeta.pekkoDirectives.commandMeta
 import js7.data.controller.ControllerCommand
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
@@ -28,14 +29,11 @@ trait CommandRoute extends ControllerRouteProvider:
 
   private given IORuntime = ioRuntime
 
-  final val commandRoute: Route =
-    pathEnd:
-      post:
-        authorizedUser(ValidUserPermission) { user =>
-          withSizeLimit(entitySizeLimit):
-            entity(as[ControllerCommand]) { command =>
-              completeIO:
-                executeCommand(command, CommandMeta(user))
-                  .map(_.map(o => o: ControllerCommand.Response))
-            }
-        }
+  final lazy val commandRoute: Route =
+    (pathEnd & post & withSizeLimit(entitySizeLimit)):
+      authorizedUser(ValidUserPermission): user =>
+        entity(as[ControllerCommand]): command =>
+          commandMeta(user): meta =>
+            completeIO:
+              executeCommand(command, meta)
+                .map(_.map(o => o: ControllerCommand.Response))

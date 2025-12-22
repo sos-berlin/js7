@@ -1,15 +1,17 @@
 package js7.tests.subagent
 
+import cats.effect.IO
 import js7.agent.data.commands.AgentCommand
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.isSubtypeOf
 import js7.base.utils.Tests.isIntelliJIdea
+import js7.core.command.CommandMeta
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
@@ -23,7 +25,9 @@ import js7.data.value.expression.Expression.expr
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{Execute, If, StickySubagent}
 import js7.data.workflow.position.Position
+import js7.subagent.Subagent
 import js7.subagent.jobs.TestJob
+import js7.tests.subagent.SubagentShutdownTest.executeCommandForTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.TimeoutException
 import scala.language.implicitConversions
@@ -179,7 +183,7 @@ final class SubagentShutdownTest extends OurTestSuite, SubagentTester:
       controller.eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
 
       // First Shutdown //
-      agent.executeCommandAsSystemUser:
+      agent.executeCommand:
         AgentCommand.ShutDown()
       .await(99.s).orThrow
 
@@ -187,7 +191,7 @@ final class SubagentShutdownTest extends OurTestSuite, SubagentTester:
         controller.awaitNextKey[OrderProcessed](orderId, timeout = 500.ms)
 
       // Second Shutdown //
-      agent.executeCommandAsSystemUser:
+      agent.executeCommand:
         AgentCommand.ShutDown(Some(SIGTERM))
       .await(99.s).orThrow
       val orderProcessed = controller.awaitNextKey[OrderProcessed](orderId).head.value
@@ -202,3 +206,8 @@ final class SubagentShutdownTest extends OurTestSuite, SubagentTester:
 
 object SubagentShutdownTest:
   private val logger = Logger[this.type]
+
+  extension (subagent: Subagent)
+    private[SubagentShutdownTest] def executeCommandForTest(cmd: SubagentCommand.Queueable)
+    : IO[Checked[SubagentCommand.Response]] =
+      subagent.executeCommand(cmd, CommandMeta.test)

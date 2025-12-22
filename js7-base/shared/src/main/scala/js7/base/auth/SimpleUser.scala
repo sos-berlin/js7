@@ -4,6 +4,7 @@ import js7.base.auth.SimpleUser.*
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 
 /**
   * @author Joacim Zschimmer
@@ -16,23 +17,27 @@ final case class SimpleUser(
 extends User:
 
   logger.trace(s"SimpleUser($id, $grantedPermissions, $distinguishedNames)")
-
-  override def toString = s""
-
   if id.isAnonymous && grantedPermissions.contains(ValidUserPermission) then
     throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
   // SuperPermission is allowed for empowered Anonymous (public = on | loopback-is-public = on)
+
+  override def toString = id.toString
 
 
 object SimpleUser extends User.Companion[SimpleUser]:
   private val logger = Logger[this.type]
 
-  /** The unauthenticated, anonymous user without permissions, for testing. */
-  val TestAnonymous: SimpleUser =
-    SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
-
   val System: SimpleUser =
-    SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(SuperPermission))
+    SimpleUser(UserId.unchecked("System"), HashedPassword.MatchesNothing, Set(SuperPermission))
+
+  /** The unauthenticated, anonymous user without permissions, for testing. */
+  @TestOnly
+  val TestAnonymous: SimpleUser =
+  SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
+
+  @TestOnly
+  val Test: SimpleUser =
+    SimpleUser(UserId.Test, HashedPassword.newEmpty())
 
   implicit val companion: User.Companion[SimpleUser] = this
 

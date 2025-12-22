@@ -9,6 +9,7 @@ import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.core.command.CommandMeta
+import js7.core.command.CommandMeta.pekkoDirectives.commandMeta
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.subagent.SubagentCommand
 import org.apache.pekko.http.scaladsl.server.Directives.{as, entity, pathEnd, post, withSizeLimit}
@@ -24,7 +25,8 @@ private trait CommandRoute extends SubagentRouteProvider, EntitySizeLimitProvide
   protected final lazy val commandRoute: Route =
     (pathEnd & post & withSizeLimit(entitySizeLimit)):
       authorizedUser(AgentDirectorPermission): user =>
-        entity(as[Numbered[SubagentCommand]]): command =>
-          completeIO:
-            executeCommand(command, CommandMeta(user))
-              .map(_.map(o => o: SubagentCommand.Response))
+        commandMeta(user): meta =>
+          entity(as[Numbered[SubagentCommand]]): command =>
+            completeIO:
+              executeCommand(command, meta)
+                .map(_.map(o => o: SubagentCommand.Response))

@@ -52,7 +52,6 @@ import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import org.apache.pekko.actor.ActorSystem
-import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
 final class Subagent private(
@@ -87,7 +86,10 @@ extends MainService, Service.StoppableByRequest:
   protected def start =
     startService:
       IO.race(
-        untilStopRequested *> shutdown(processSignal = Some(SIGKILL), dontWaitForDirector = true),
+        untilStopRequested *>
+          shutdown(
+            ShutDown(processSignal = Some(SIGKILL), dontWaitForDirector = true),
+            CommandMeta.system("Subagent stop")),
         untilTerminated)
       .void
 
@@ -97,16 +99,7 @@ extends MainService, Service.StoppableByRequest:
   def untilTerminated: IO[ProgramTermination] =
     whenTerminated.get
 
-  def shutdown(
-    processSignal: Option[ProcessSignal] = None,
-    dontWaitForDirector: Boolean = false,
-    restart: Boolean = false)
-  : IO[ProgramTermination] =
-    shutdown:
-      ShutDown(
-        processSignal, dontWaitForDirector = dontWaitForDirector, restart =restart)
-
-  def shutdown(cmd: ShutDown): IO[ProgramTermination] =
+  def shutdown(cmd: ShutDown, meta: CommandMeta): IO[ProgramTermination] =
     import cmd.{dontWaitForDirector, processSignal}
     logger.debugIO:
       whenTerminated.tryGet.flatMap:
@@ -116,7 +109,7 @@ extends MainService, Service.StoppableByRequest:
               whenTerminated.tryGet.flatMap:
                 _.map(IO.pure).getOrElse:
                   IO:
-                    logger.info(s"❗ Shutdown ${cmd.argsString}")
+                    logger.info(s"❗ $meta: $cmd")
                   .productR:
                     dedicatedAllocated.toOption.foldMap: allocated =>
                       allocated.allocatedThing
@@ -145,13 +138,9 @@ extends MainService, Service.StoppableByRequest:
     logger.debugResource:
       directorRouteVariable.registeringRouteResource(toRoute)
 
-  @TestOnly
-  def executeCommandForTest(cmd: SubagentCommand.Queueable): IO[Checked[SubagentCommand.Response]] =
-    executeCommand(cmd)
-
-  private[subagent] def executeCommand(cmd: SubagentCommand.Queueable)
+  def executeCommand(cmd: SubagentCommand.Queueable, meta: CommandMeta)
   : IO[Checked[SubagentCommand.Response]] =
-    commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
+    commandExecutor.executeCommand(Numbered(0, cmd), meta)
 
   def executeDedicateSubagent(cmd: DedicateSubagent): IO[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent

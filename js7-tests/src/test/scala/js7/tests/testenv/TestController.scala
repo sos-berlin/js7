@@ -149,7 +149,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
 
   def addOrderBlocking(order: FreshOrder): Unit =
     import runningController.ioRuntime
-    runningController.addOrder(order).await(99.s).orThrow
+    runningController.addOrderForTest(order).await(99.s).orThrow
 
   def runOrder(order: FreshOrder, timeout: FiniteDuration = 99.s)
     (using sourcecode.Enclosing, ScalaSourceLocation)

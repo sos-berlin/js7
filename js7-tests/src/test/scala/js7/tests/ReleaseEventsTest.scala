@@ -122,7 +122,9 @@ final class ReleaseEventsTest extends OurTestSuite, DirectoryProviderForScalaTes
       awaitAndAssert { tornEventId == lastFileEventId }
 
       // Agent's journal file count should be 1 after TakeSnapshot and after Controller has read all events
-      agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Controller"))))
+      agent.executeCommand(
+          AgentCommand.TakeSnapshot,
+          CommandMeta(SimpleUser(UserId("Controller")), "ReleaseEventsTest"))
         .await(99.s).orThrow
       awaitAndAssert(5.s) { agentJournalFiles.size == 2 }
       controller.runOrder(dOrder)

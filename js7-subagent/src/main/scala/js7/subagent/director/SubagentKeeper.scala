@@ -27,6 +27,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, LockKeeper, SetOnce}
+import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -37,7 +38,7 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessin
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{ProcessLostDueSubagentDeletedProblem, ProcessLostDueSubagentUriChangeProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
-import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentCommand, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
@@ -123,11 +124,11 @@ extends Service.StoppableByRequest:
   def kill: IO[Unit] =
     stop
 
-  def shutdownLocalSubagent(signal: Option[ProcessSignal]): IO[Unit] =
+  def shutdownLocalSubagent(signal: Option[ProcessSignal], meta: CommandMeta): IO[Unit] =
     logger.traceIO:
       localSubagentDriver.flatMapSome: driver =>
         logger.debugIO:
-          driver.shutdownSubagent(signal).void
+          driver.shutdownSubagent(SubagentCommand.ShutDown(signal), meta).void
       .void
 
   private def localSubagentDriver: IO[Option[LocalSubagentDriver[S]]] =

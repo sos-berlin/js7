@@ -284,11 +284,8 @@ extends SubagentDriver, Service.StoppableByRequest:
                 deferred.complete(orderProcessed).void
         .startAndForget
 
-  def shutdownSubagent(
-    processSignal: Option[ProcessSignal] = None,
-    dontWaitForDirector: Boolean = false)
-  : IO[ProgramTermination] =
-    subagent.shutdown(processSignal, dontWaitForDirector = dontWaitForDirector) <*
+  def shutdownSubagent(cmd: SubagentCommand.ShutDown, meta: CommandMeta): IO[ProgramTermination] =
+    subagent.shutdown(cmd, meta) <*
       waitForSubagentShutDownEvent
 
   private def waitForSubagentShutDownEvent: IO[Unit] =
@@ -326,9 +323,8 @@ extends SubagentDriver, Service.StoppableByRequest:
       SubagentCommand.ReleaseEvents(eventId)
     .rightAs(())
 
-  private def executeCommand(cmd: SubagentCommand)
-  : IO[Checked[SubagentCommand.Response]] =
-    subagent.commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
+  private def executeCommand(cmd: SubagentCommand): IO[Checked[SubagentCommand.Response]] =
+    api.executeSubagentCommand(Numbered(0, cmd))
 
   def testFailover(): Unit =
     _testFailover = true

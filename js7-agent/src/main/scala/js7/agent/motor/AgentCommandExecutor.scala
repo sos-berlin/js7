@@ -122,17 +122,17 @@ extends
                 orderIds = journal.unsafeAggregate().idToOrder.keySet)
 
       case cmd: Reset =>
-        reset(cmd)
+        reset(cmd, meta)
 
       case TakeSnapshot =>
         journal.takeSnapshot
           .as(Right(Accepted))
 
       case cmd: ClusterSwitchOver =>
-        switchOver(cmd)
+        switchOver(cmd, meta)
 
       case cmd: ShutDown =>
-        initiateShutdown(cmd, cmd)
+        initiateShutdown(cmd, cmd, meta)
 
       case NoOperation =>
         IO.right(Accepted)
@@ -189,12 +189,12 @@ extends
                 stopAgentMotor()
               .map(Right(_))
 
-  private def reset(cmd: Reset): IO[Checked[Accepted]] =
+  private def reset(cmd: Reset, meta: CommandMeta): IO[Checked[Accepted]] =
     cmd.agentRunId.fold(Checked.unit)(checkAgentRunId(_)) match
       //? case Left(AgentNotDedicatedProblem) => IO.right(Accepted)
       case Left(problem) => IO.left(problem)
       case Right(()) =>
-        logger.info(s"❗ $cmd")
+        logger.info(s"❗ $meta: $cmd")
         whenNotShuttingDown:
           agentMotor.flatMapSome: agentMotor =>
             agentMotor.resetBareSubagents
@@ -207,20 +207,23 @@ extends
             .flatMapT: _ =>
               initiateShutdown(
                 cmd,
-                ShutDown(processSignal = Some(SIGKILL), suppressSnapshot = true, restart = true))
+                ShutDown(processSignal = Some(SIGKILL), suppressSnapshot = true, restart = true),
+                meta)
             .flatTapT: _ =>
               journal.deleteJournalWhenStopping.as(Checked.unit)
 
-  private def switchOver(cmd: ClusterSwitchOver): IO[Checked[AgentCommand.Response]] =
+  private def switchOver(cmd: ClusterSwitchOver, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     // SubagentKeeper stops the local (surrounding) Subagent,
     // which lets the Director (RunningAgent) stop
     initiateShutdown(
       cmd,
       ShutDown(
         clusterAction = Some(ShutDown.ClusterAction.Switchover),
-        restartDirector = true))
+        restartDirector = true),
+      meta)
 
-  private def initiateShutdown(originalCmd: AgentCommand, cmd: ShutDown): IO[Checked[Accepted]] =
+  private def initiateShutdown(originalCmd: ShutDown | ClusterSwitchOver | Reset, cmd: ShutDown, meta: CommandMeta)
+  : IO[Checked[Accepted]] =
     logger.traceIO("initiateShutdown", cmd):
       locally:
         if cmd.isSwitchover then
@@ -232,7 +235,7 @@ extends
       .flatMapT: _ =>
         shuttingDown.getAndSet(Some(cmd)).flatMap:
           case None =>
-            logger.info(s"❗ Shutdown  due to $originalCmd")
+            logger.info(s"❗ $meta: Shutdown  due to $originalCmd")
             shutdown(cmd)
               .pipeIf(!cmd.restartDirector/*not switchover?*/):
                 _.startAndForget // Shutdown in background and respond the command early

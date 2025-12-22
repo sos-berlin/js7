@@ -22,7 +22,7 @@ final class ControllerCommandExecutorTest extends OurTestSuite:
   private given IORuntime = ioRuntime
 
   private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
-  private val meta = CommandMeta(SimpleUser(UserId("USER")))
+  private val meta = CommandMeta(SimpleUser(UserId("USER")), "ControllerCommandExecutorTest")
 
   private var cancelled = 0
   private val otherCommandExecutor = new IControllerCommandExecutor:

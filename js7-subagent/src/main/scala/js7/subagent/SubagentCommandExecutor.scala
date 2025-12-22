@@ -77,12 +77,9 @@ private[subagent] final class SubagentCommandExecutor(
               .flatMapT(_.executeCoupleDirector(cmd))
               .rightAs(CoupleDirector.Response(Js7Version))
 
-          case ShutDown(processSignal, dontWaitForDirector, restart) =>
+          case cmd: ShutDown =>
             supervisor.supervise:
-              subagent.shutdown(
-                processSignal,
-                dontWaitForDirector = dontWaitForDirector,
-                restart = restart)
+              subagent.shutdown(cmd, meta)
             .as(Right(SubagentCommand.Accepted))
 
           case ReleaseEvents(eventId) =>

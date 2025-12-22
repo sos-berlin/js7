@@ -5,6 +5,7 @@ import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
+import org.jetbrains.annotations.TestOnly
 
 /**
   * @author Joacim Zschimmer
@@ -18,6 +19,9 @@ final case class UserId private(string: String) extends GenericString:
 
 object UserId extends GenericString.Checked_[UserId]:
   val Anonymous: UserId = UserId("Anonymous")
+
+  @TestOnly
+  val Test: UserId = UserId("TEST")
 
   def unchecked(string: String): UserId =
     new UserId(string)

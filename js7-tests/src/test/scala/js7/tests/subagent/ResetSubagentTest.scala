@@ -6,13 +6,14 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.core.command.CommandMeta
 import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentReset, SubagentResetStarted, SubagentResetStartedByController}
-import js7.data.subagent.SubagentRunId
+import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -41,7 +42,10 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
 
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
-      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true, restart = true).await(99.s)
+      subagent.shutdown(
+        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true, restart = true),
+        CommandMeta.test
+      ).await(99.s)
       assert(subagent.untilTerminated.await(99.s).restart)
 
     eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId)
@@ -94,7 +98,10 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
       .useSync(99.s): director =>
         import director.localSubagent
         eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
-        localSubagent.shutdown(restart = true).await(99.s)
+        localSubagent.shutdown(
+          SubagentCommand.ShutDown(restart = true),
+          CommandMeta.test
+        ).await(99.s)
 
         // The director(!) must return restart=true
         assert(localSubagent.untilTerminated.await(99.s).restart)

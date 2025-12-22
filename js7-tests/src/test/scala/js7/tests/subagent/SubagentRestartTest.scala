@@ -7,11 +7,12 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.core.command.CommandMeta
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.subagent.{SubagentBundle, SubagentBundleId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentCommand}
 import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -92,7 +93,10 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
-      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+      subagent.shutdown(
+        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        CommandMeta.test
+      ).await(99.s)
 
     // Subagent is unreachable now
     val eventId = controller.lastAddedEventId
@@ -144,7 +148,10 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
-      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+      subagent.shutdown(
+        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        CommandMeta.test
+      ).await(99.s)
 
     // Subagent is unreachable now
     val eventId = controller.lastAddedEventId
@@ -183,7 +190,10 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
-      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+      subagent.shutdown(
+        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        CommandMeta.test
+      ).await(99.s)
 
       // STOP DIRECTOR
       myAgent.terminate().await(99.s)

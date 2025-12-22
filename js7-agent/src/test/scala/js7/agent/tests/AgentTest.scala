@@ -68,30 +68,30 @@ final class AgentTest extends OurTestSuite, AgentTester:
               .execute(
                 DedicateAgentDirector(agentPath, Seq(subagentId),
                   controllerId, controllerRunId),
-                CommandMeta(TestUser))
+                CommandMeta.test)
               .await(99.s).orThrow
             agentApi
               .execute(
                 AttachItem(AgentRef(agentPath, Seq(subagentId))),
-                CommandMeta(TestUser))
+                CommandMeta.test)
               .await(99.s).orThrow
             agentApi
               .execute(
                 AttachItem(SubagentItem(subagentId, agentPath, Uri("https://127.0.0.1:0"))),
-                CommandMeta(TestUser))
+                CommandMeta.test)
               .await(99.s).orThrow
 
             assert:
               agentApi.execute(
                 AttachSignedItem(itemSigner.sign(TestWorkflow)),
-                CommandMeta(TestUser)
+                CommandMeta.test
               ).await(99.s)
                 == Right(AgentCommand.Response.Accepted)
             val order = Order(OrderId("TEST"), TestWorkflow.id /: Position(0), Order.Ready())
             assert:
               agentApi.execute(
                 AttachOrder(order, TestAgentPath),
-                CommandMeta(TestUser)
+                CommandMeta.test
               ).await(99.s)
                 == Right(AgentCommand.Response.Accepted)
             val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event

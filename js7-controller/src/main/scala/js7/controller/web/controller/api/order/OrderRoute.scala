@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import io.circe.Json
-import js7.base.auth.{SimpleUser, ValidUserPermission}
+import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.*
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
@@ -23,6 +23,7 @@ import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.order.OrderRoute.*
 import js7.core.command.CommandMeta
+import js7.core.command.CommandMeta.pekkoDirectives.commandMeta
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, DeleteOrdersWhenTerminated}
@@ -51,26 +52,27 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
 
   final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission): user =>
-      post:
-        pathEnd:
-          withSizeLimit(entitySizeLimit):
-            entity(as[HttpEntity]): httpEntity =>
-              if httpEntity.contentType == `application/x-ndjson`.toContentType then
-                addOrdersNdjson(httpEntity, user)
-              else
-                entity(as[Json]): json =>
-                  if json.isArray then
-                    addOrdersJsonArray(json, user)
-                  else
-                    json.as[FreshOrder] match
-                      case Left(failure) => complete(failure.toProblem)
-                      case Right(order) => addSingleOrder(order, user)
-        ~
-          pathPrefix("DeleteOrdersWhenTerminated"):
-            pathEnd:
-              deleteOrdersWhenTerminated(user)
+      commandMeta(user): meta =>
+        post:
+          pathEnd:
+            withSizeLimit(entitySizeLimit):
+              entity(as[HttpEntity]): httpEntity =>
+                if httpEntity.contentType == `application/x-ndjson`.toContentType then
+                  addOrdersNdjson(httpEntity, meta)
+                else
+                  entity(as[Json]): json =>
+                    if json.isArray then
+                      addOrdersJsonArray(json, meta)
+                    else
+                      json.as[FreshOrder] match
+                        case Left(failure) => complete(failure.toProblem)
+                        case Right(order) => addSingleOrder(order, meta)
+          ~
+            pathPrefix("DeleteOrdersWhenTerminated"):
+              pathEnd:
+                deleteOrdersWhenTerminated(meta)
 
-  private def addOrdersNdjson(httpEntity: HttpEntity, user: SimpleUser) =
+  private def addOrdersNdjson(httpEntity: HttpEntity, meta: CommandMeta) =
     completeIO:
       val startedAt = now
       var byteCount = 0L
@@ -94,20 +96,20 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
                 itemsPerSecondString(d, orders.size, "orders") + " · " +
                 bytesPerSecondString(d, byteCount))
         .flatMapT: orders =>
-          executeCommand(AddOrders(orders), CommandMeta(user))
+          executeCommand(AddOrders(orders), meta)
         .map(_.map(o => o: ControllerCommand.Response))
 
-  private def addOrdersJsonArray(json: Json, user: SimpleUser) =
+  private def addOrdersJsonArray(json: Json, meta: CommandMeta) =
     json.as[Vector[FreshOrder]] match
       case Left(failure) => complete(failure.toProblem)
       case Right(orders) =>
         completeIO:
-          executeCommand(AddOrders(orders), CommandMeta(user))
+          executeCommand(AddOrders(orders), meta)
             .map(_.map(o => o: ControllerCommand.Response))
 
-  private def addSingleOrder(order: FreshOrder, user: SimpleUser) =
+  private def addSingleOrder(order: FreshOrder, meta: CommandMeta) =
     extractUri: uri =>
-      onSuccess(executeCommand(AddOrder(order), CommandMeta(user)).unsafeToFuture()):
+      onSuccess(executeCommand(AddOrder(order), meta).unsafeToFuture()):
         case Left(problem) => complete(problem)
         case Right(response) =>
           respondWithHeader(Location(uri.withPath(uri.path / order.id.string))):
@@ -117,7 +119,7 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
               else
                 Created -> emptyJsonObject
 
-  private def deleteOrdersWhenTerminated(user: SimpleUser): Route =
+  private def deleteOrdersWhenTerminated(meta: CommandMeta): Route =
     withSizeLimit(entitySizeLimit):
       entity(as[HttpEntity]): httpEntity =>
         if httpEntity.contentType != `application/x-ndjson`.toContentType then
@@ -134,7 +136,7 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
               .map:
                 DeleteOrdersWhenTerminated(_)
               .flatMap:
-                executeCommand(_, CommandMeta(user))
+                executeCommand(_, meta)
               .mapmap(o => o: ControllerCommand.Response)
 
 

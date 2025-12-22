@@ -30,5 +30,7 @@ extends SubagentApi, SessionApi.Dummy:
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =
-    subagent.commandExecutor.executeCommand(numbered, CommandMeta.System)
-      .asInstanceOf[IO[Checked[numbered.value.Response]]]
+    subagent.commandExecutor.executeCommand(
+      numbered,
+      CommandMeta.system("LocalSubagentApi")
+    ).asInstanceOf[IO[Checked[numbered.value.Response]]]

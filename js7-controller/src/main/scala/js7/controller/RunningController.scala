@@ -2,7 +2,6 @@ package js7.controller
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
-import cats.syntax.traverse.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
 import fs2.Stream
@@ -105,15 +104,16 @@ extends Service.TrivialReleasable, MainService:
     IO.fromFutureDummyCancelable(IO.pure(terminated))
 
   protected def release =
-    shutdown(ShutDown()).void
+    shutdown(ShutDown(), CommandMeta.system("RunningController release"))
+      .void
 
-  def shutdown(cmd: ShutDown): IO[ProgramTermination] =
+  def shutdown(cmd: ShutDown, meta: CommandMeta): IO[ProgramTermination] =
     IO.defer:
       if terminated.isCompleted then  // Works only if previous termination has been completed
         untilTerminated
       else
         logger.debugIO(
-          executeCommandAsSystemUser(cmd)
+          executeCommand(cmd, meta)
             .rightAs(())
             .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
               logger.info(problem.toString)
@@ -121,13 +121,6 @@ extends Service.TrivialReleasable, MainService:
             }
             .map(_.orThrow)
             .*>(untilTerminated))
-
-  private def executeCommandAsSystemUser(command: ControllerCommand): IO[Checked[command.Response]] =
-    for
-      checkedSession <- sessionRegister.systemSession
-      checkedChecked <- checkedSession.traverse(session =>
-        executeCommand(command, CommandMeta(session.currentUser)))
-    yield checkedChecked.flatten
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     logger.debugIO(s"executeCommand ${command.toShortString}")(
@@ -162,8 +155,8 @@ extends Service.TrivialReleasable, MainService:
       .evalOn(ioRuntime.compute)
 
   @TestOnly
-  def addOrder(order: FreshOrder): IO[Checked[Unit]] =
-    executeCommandAsSystemUser(AddOrder(order))
+  def addOrderForTest(order: FreshOrder): IO[Checked[Unit]] =
+    executeCommand(AddOrder(order), CommandMeta.test)
       .mapT(response =>
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
 
@@ -426,7 +419,7 @@ object RunningController:
     def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
       command.match
         case command: ControllerCommand.ShutDown =>
-          logger.info(s"❗ $command")
+          logger.info(s"❗️ $meta: $command")
           if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
             IO.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else

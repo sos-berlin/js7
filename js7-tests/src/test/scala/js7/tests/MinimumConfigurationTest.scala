@@ -11,6 +11,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.common.commandline.CommandLineArguments
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
+import js7.core.command.CommandMeta
 import js7.data.controller.ControllerCommand
 
 final class MinimumConfigurationTest extends OurAsyncTestSuite:
@@ -29,8 +30,10 @@ final class MinimumConfigurationTest extends OurAsyncTestSuite:
             "--data-directory=" + data))
       .use: controller =>
         controller.untilReady *>
-          controller.shutdown(ControllerCommand.ShutDown())
-            .as(succeed)
+          controller.shutdown(
+            ControllerCommand.ShutDown(),
+            CommandMeta.test
+          ).as(succeed)
 
   private def createRequiredDirectoryAndFiles(config: Path, data: Path): Unit =
     val privateDir = config / "private"
@@ -49,4 +52,3 @@ final class MinimumConfigurationTest extends OurAsyncTestSuite:
       js7.configuration.trusted-signature-keys.Silly =
         ${js7.config-directory}"/private/trusted-silly-signature-keys"
       """
-

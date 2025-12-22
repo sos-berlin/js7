@@ -22,6 +22,7 @@ import js7.base.web.Uri
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.PekkoHttpControllerApi
+import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerCommand
@@ -180,7 +181,10 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
   override def afterAll() =
     try
       // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
-      controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
+      controller.runningController.shutdown(
+        ControllerCommand.ShutDown(),
+        CommandMeta.test("HttpsTestBase afterAll")
+      ).await(99.s)
 
       if useCluster then
         backupController.stop.await(99.s)

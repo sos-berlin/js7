@@ -33,8 +33,9 @@ final class AttachSignedItemTest extends OurTestSuite, DirectoryProviderForScala
     directoryProvider.runAgents(): agents =>
       val agent = agents.head
       agent.untilReady.await(99.s)
-      val meta = CommandMeta:
-        SimpleUser(directoryProvider.agentEnvs(0).controllerUserAndPassword.get.userId)
+      val meta = CommandMeta(
+        SimpleUser(directoryProvider.agentEnvs(0).controllerUserAndPassword.get.userId),
+        "AttachSignedItemTest")
       val controllerRunId = ControllerRunId(JournalId.random())
 
       agent.executeCommand(

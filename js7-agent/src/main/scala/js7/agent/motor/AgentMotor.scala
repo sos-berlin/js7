@@ -22,6 +22,7 @@ import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.WorkingClusterNode
 import js7.common.system.PlatformInfos.currentPlatformInfo
+import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -71,7 +72,9 @@ extends Service.StoppableByRequest:
     _kill.get.ifFalse:
       _shutdown.get.flatMap: shutdown =>
         IO.unlessA(shutdown.restartDirector):
-          subagentKeeper.shutdownLocalSubagent(shutdown.processSignal)
+          subagentKeeper.shutdownLocalSubagent(
+            shutdown.processSignal,
+            CommandMeta.system("AgentMotor stop"))
         .productR:
           orderMotor.stop
         .productR:

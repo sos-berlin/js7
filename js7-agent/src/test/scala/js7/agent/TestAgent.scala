@@ -19,6 +19,7 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -122,9 +123,9 @@ extends
   def testEventBus: StandardEventBus[Any] =
     agent.testEventBus
 
-  def executeCommandAsSystemUser(command: AgentCommand): IO[Checked[AgentCommand.Response]] =
-    agent.executeCommandAsSystemUser(command)
-      .evalOn(ioRuntime.compute)
+  def executeCommand(cmd: AgentCommand)(using loc: ScalaSourceLocation)
+  : IO[Checked[AgentCommand.Response]] =
+    executeCommand(cmd: AgentCommand, CommandMeta.test(using loc))
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
