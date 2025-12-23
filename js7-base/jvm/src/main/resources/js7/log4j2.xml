@@ -24,7 +24,8 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
   <properties>
     <property name="logDirectory" value="${sys:js7.log4j.directory:-logs}"/>
     <property name="infoLine">
-      %d{yyyy-MM-dd HH:mm:ss.SSSXX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
+      <!-- .SSSXX shows timezone -->
+      %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
     </property>
     <property name="infoPattern">
       %highlight{${infoLine}}{ERROR=red bold,WARN=red,INFO=default}%n
