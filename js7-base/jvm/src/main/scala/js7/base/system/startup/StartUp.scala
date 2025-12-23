@@ -72,9 +72,8 @@ object StartUp:
       + " · pid=" + ProcessHandle.current.pid
       + (hostname.nonEmpty ?? s" host=$hostname")
       // Show in the headline of each log file:
-      + " · started at " + startedAt
-      + " " + startedAt.toInstant.atZone(ZoneId.systemDefault).getOffset
-      //+ " " + java.time.ZoneId.systemDefault "Europe/Berlin"
+      + " · started at " + startedAt.toInstant.atZone(zoneId).withFixedOffsetZone
+      + " " + zoneId // "Europe/Berlin"
 
   def printlnWithClockIgnoringException(line: String): Unit =
     try printlnWithClock(line)
