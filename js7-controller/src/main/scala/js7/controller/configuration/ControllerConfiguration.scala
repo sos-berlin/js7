@@ -4,7 +4,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
-import java.time.ZoneId
 import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.*
@@ -32,7 +31,6 @@ final case class ControllerConfiguration(
   dataDirectory: Path,
   configDirectory: Path,
   webServerPorts: Seq[WebServerPort],
-  timeZone: ZoneId,
   pekkoAskTimeout: Timeout,
   clusterConf: ClusterConf,
   name: String,
@@ -62,7 +60,7 @@ extends BasicConfiguration, CommonConfiguration:
   // Suppresses Config (which may contain secrets)
   override def toString: String =
     s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
-      s"$timeZone,$journalConf,$clusterConf,$name,Config)"
+      s"$journalConf,$clusterConf,$name,Config)"
 
 
 object ControllerConfiguration:
@@ -126,7 +124,6 @@ object ControllerConfiguration:
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,
-      timeZone = ZoneId.systemDefault,
       pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name,

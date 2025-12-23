@@ -3,7 +3,6 @@ package js7.controller.configuration
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
-import java.time.ZoneId
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
@@ -46,7 +45,6 @@ final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
         dataDirectory = (directory / "DATA").toAbsolutePath,
         configDirectory = (directory / "CONFIG").toAbsolutePath,
         webServerPorts = Nil,
-        ZoneId.systemDefault,
         pekkoAskTimeout = 1.h,
         clusterConf = ClusterConf(
           JournalConf.fromConfig(configuration.config)

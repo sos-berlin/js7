@@ -59,6 +59,7 @@ object StartUp:
 
   /** Log Java version, config and data directory, and classpath. */
   lazy val startUpLine: String =
+    val zoneId = ZoneId.systemDefault
     "Java " + sys.props.getOrElse("java.version", "") + " · "
       + sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " "
       + sys.props.getOrElse("java.vm.version", "")
