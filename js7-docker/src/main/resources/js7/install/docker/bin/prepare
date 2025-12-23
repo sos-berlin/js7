@@ -20,11 +20,9 @@ if [ -d build ] && [ ! -f build/bin/prepare ]; then :
   exit 1
 fi
 
+# docker-compose.yaml expects TZ
 if [ -z "${TZ:-}" ]; then
-  if [ -f /etc/timezone ]; then
-    TZ=$(cat /etc/timezone)
-    echo "TZ=${TZ-UTC}"
-  elif [ -d /usr/share/zoneinfo ]; then
+  if [ -d /usr/share/zoneinfo ] && [ -L /etc/localtime ]; then
     TZ=$(realpath /etc/localtime)
     TZ=${TZ#/usr/share/zoneinfo/}
     echo "TZ=${TZ-UTC}"
@@ -32,6 +30,9 @@ if [ -z "${TZ:-}" ]; then
     # Works for Europe/Stockholm but not for UTC
     a=$(realpath /etc/localtime)
     TZ="$(basename "$(dirname "$a")")/$(basename "$a")"
+  elif [ -f /etc/timezone ]; then
+    TZ=$(cat /etc/timezone)
+    echo "TZ=${TZ-UTC}"
   else
     echo "Missing environment variable TZ (time zone)"
     exit 1
