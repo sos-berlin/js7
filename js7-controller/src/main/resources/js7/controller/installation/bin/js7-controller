@@ -125,7 +125,9 @@ while true; do
   pid=$!
   log "PID $pid"
 
-  terminate() {
+  trapped=false
+  trapSignal() {
+    trapped=true
     log "❌ $1: Shutdown JS7 Controller"
     t=$(monotonicMillis)
     if [ "$SHELL" = "/bin/bash" ]; then
@@ -141,35 +143,34 @@ while true; do
         '{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }' &
     fi
     wait $pid
-    returnCode=$?
+    exitCode=$?
     log "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
   }
 
-  returnCode=
-  trap "terminate SIGTERM" SIGTERM
-  trap "terminate SIGINT" SIGINT
-  if wait $pid; then
-    returnCode=${returnCode:-$?}
-  else
-    returnCode=${returnCode:-$?}
-  fi
-  # After a trapped signal, $? is 128+signal, but not the real $returnCode (only in Docker?)
+  trap "trapSignal SIGTERM" SIGTERM
+  trap "trapSignal SIGINT" SIGINT
+
+  exitCode=
+  while wait $pid; exitCode=$?; $trapped; do
+    trapped=false
+  done
+
   trap - SIGTERM SIGINT
 
-  if [[ $returnCode -eq 0 ]] || [[ $returnCode -eq 97 ]]; then
+  if [[ $exitCode -eq 0 ]] || [[ $exitCode -eq 97 ]]; then
     log "JS7 Controller has been shut down"
   else
-    log "JS7 Controller exited with exit code $returnCode"
+    log "JS7 Controller exited with exit code $exitCode"
   fi
 
-  if [[ $returnCode -eq 0 ]] || [[ $returnCode -ge 97 ]] && [[ $returnCode -le 99 ]]; then
+  if [[ $exitCode -eq 0 ]] || [[ $exitCode -ge 97 ]] && [[ $exitCode -le 99 ]]; then
     log "Clear $workDir"
     find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
   fi
 
-  if [[ $returnCode -eq 97 ]] || [[ $returnCode -eq 98 ]]; then
+  if [[ $exitCode -eq 97 ]] || [[ $exitCode -eq 98 ]]; then
     log "Starting again"
   else
-    exit $returnCode
+    exit $exitCode
   fi
 done

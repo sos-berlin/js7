@@ -122,15 +122,24 @@ exec "${execOptions[@]}" "${execute[@]}" &
 pid=$!
 log "PID $pid"
 
-terminate() {
-  echo "⚡️ $1"
-  log "$1: Shutdown JS7 $camelName"
-  kill $pid
+trapped=false
+trapSignal() {
+  trapped=true
+  log "⚡️ $1"
+  kill -s "$1" $pid
 }
 
-trap "terminate SIGTERM" SIGTERM
-trap "terminate SIGINT" SIGINT
-wait $pid || log "JS7 $camelName exited with exit code $?"
+trap "trapSignal SIGTERM" SIGTERM
+trap "trapSignal SIGINT" SIGINT
+
+exitCode=
+while wait $pid; exitCode=$?; $trapped; do
+  trapped=false
+done
+if [ $exitCode -ne 0 ]; then
+  log "JS7 $camelName exited with exit code $exitCode"
+fi
+
 trap - SIGTERM SIGINT
 
 log "JS7 $camelName terminated"

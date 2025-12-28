@@ -131,7 +131,9 @@ while true; do
   pid=$!
   log "PID $pid"
 
-  terminate() {
+  trapped=false
+  trapSignal() {
+    trapped=true
     log "❌ $1: Shutdown JS7 Subagent"
     t=$(monotonicMillis)
     if [ "$SHELL" = "/bin/bash" ]; then
@@ -146,24 +148,24 @@ while true; do
         '{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }' &
     fi
     wait $pid
-    returnCode=$?
+    exitCode=$?
     log "Shutdown took $(( $(monotonicMillis) - "$t" ))ms"
   }
 
-  returnCode=""
-  trap "terminate SIGTERM" SIGTERM
-  trap "terminate SIGINT" SIGINT
-  if wait $pid; then
-    returnCode=${returnCode:-$?}
-  else
-    returnCode=${returnCode:-$?}
-  fi
+  trap "trapSignal SIGTERM" SIGTERM
+  trap "trapSignal SIGINT" SIGINT
+
+  exitCode=
+  while wait $pid; exitCode=$?; $trapped; do
+    trapped=false
+  done
+
   trap - SIGTERM SIGINT
 
-  if [[ $returnCode -eq 0 ]] || [[ $returnCode -eq 97 ]]; then
+  if [[ $exitCode -eq 0 ]] || [[ $exitCode -eq 97 ]]; then
     log "JS7 Subagent has been shut down"
   else
-    log "JS7 Subagent exited with exit code $returnCode"
+    log "JS7 Subagent exited with exit code $exitCode"
   fi
 
   # Call CrashPidFileKiller only if Engine could lock $data/state/lock
@@ -180,15 +182,15 @@ while true; do
     ps fux || true
   fi
 
-  if [[ $returnCode -eq 0 ]] || [[ $returnCode -ge 97 ]] && [[ $returnCode -le 99 ]]; then
+  if [[ $exitCode -eq 0 ]] || [[ $exitCode -ge 97 ]] && [[ $exitCode -le 99 ]]; then
     log "Clear $workDir"
     find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
   fi
 
   # For testing, we restart after SIGKILL, too
-  if [[ $returnCode -eq 137 ]] || [[ $returnCode -eq 97 ]] || [[ $returnCode -eq 98 ]]; then
+  if [[ $exitCode -eq 137 ]] || [[ $exitCode -eq 97 ]] || [[ $exitCode -eq 98 ]]; then
     log "Starting again"
   else
-    exit $returnCode
+    exit $exitCode
   fi
 done
