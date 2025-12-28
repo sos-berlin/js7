@@ -64,7 +64,7 @@ object SessionApi:
   private val logger = Logger[this.type]
 
   /** Logs out when the resource is being released. */
-  def resource[A <: SessionApi](api: IO[A]): ResourceIO[A] =
+  def logoutOnRelease[A <: SessionApi](api: IO[A]): ResourceIO[A] =
     Resource.make(
       acquire = api)(
       release = _.tryLogout.void)

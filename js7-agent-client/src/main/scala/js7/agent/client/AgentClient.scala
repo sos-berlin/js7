@@ -1,6 +1,6 @@
 package js7.agent.client
 
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import cats.syntax.flatMap.*
 import fs2.Stream
 import js7.agent.client.AgentClient.*
@@ -125,7 +125,7 @@ object AgentClient:
 
   def apply(admission: Admission, label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
-    (implicit actorSystem: ActorSystem)
+    (using actorSystem: ActorSystem)
   : AgentClient =
     val a = actorSystem
     val up = admission.userAndPassword
@@ -148,8 +148,8 @@ object AgentClient:
     admission: Admission,
     label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
-    (implicit actorSystem: ActorSystem)
+    (using ActorSystem)
   : ResourceIO[AgentClient] =
-    Resource.make(
-      acquire = IO(apply(admission, label, httpsConfig)))(
-      release = client => client.tryLogout *> IO(client.close()))
+    SessionApi.logoutOnRelease:
+      IO:
+        apply(admission, label, httpsConfig)

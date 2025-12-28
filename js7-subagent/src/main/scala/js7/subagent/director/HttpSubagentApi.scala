@@ -90,6 +90,6 @@ object HttpSubagentApi:
     name: String,
     actorSystem: ActorSystem)
   : ResourceIO[HttpSubagentApi] =
-    SessionApi.resource:
+    SessionApi.logoutOnRelease:
       IO:
         HttpSubagentApi(admission, httpsConfig, name, actorSystem)

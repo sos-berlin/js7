@@ -24,7 +24,6 @@ import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
-import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
@@ -495,15 +494,13 @@ extends Service.StoppableByRequest:
           .map(NonEmptyList.fromListUnsafe)
 
   private def clientResource(uri: Uri): ResourceIO[AgentClient] =
-    SessionApi.resource:
-      IO:
-        val agentUserAndPassword = controllerConfiguration.config
-          .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
-          .map(password => UserAndPassword(controllerId.unsafeUserId, password))
-        AgentClient(
-          Admission(uri, agentUserAndPassword),
-          label = agentPath.toString,
-          controllerConfiguration.httpsConfig)(using actorSystem)
+    val agentUserAndPassword = controllerConfiguration.config
+      .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
+      .map(password => UserAndPassword(controllerId.unsafeUserId, password))
+    AgentClient.resource(
+      Admission(uri, agentUserAndPassword),
+      label = agentPath.toString,
+      controllerConfiguration.httpsConfig)(using actorSystem)
 
   private def maybeAgentRunId: IO[Option[AgentRunId]] =
     maybeAgentRefState.map(_.flatMap(_.agentRunId))

@@ -106,8 +106,9 @@ object HttpControllerApi:
     httpClient: HttpClient,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   : ResourceIO[HttpControllerApi] =
-    SessionApi.resource(IO(
-      new HttpControllerApi.Standard(admission, httpClient, loginDelays)))
+    SessionApi.logoutOnRelease:
+      IO:
+        new HttpControllerApi.Standard(admission, httpClient, loginDelays)
 
   final class Standard(
     admission: Admission,
