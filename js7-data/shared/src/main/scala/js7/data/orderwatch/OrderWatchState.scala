@@ -172,11 +172,11 @@ extends
           externalToState = externalToState - externalOrderName,
           orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName))
 
-      case Some(HasOrder(`orderId`, Some(queued: Appeared))) =>
+      case Some(HasOrder(`orderId`, Some(appeared: Appeared))) =>
         // The reappeared ExternalOrderName has been deleted.
         // We insert the ExternalOrderName into orderAddedQueue to start a new Order.
         Right(copy(
-          externalToState = externalToState.updated(externalOrderName, queued),
+          externalToState = externalToState.updated(externalOrderName, appeared),
           orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName,
           orderAddedQueue = orderAddedQueue + externalOrderName))
 
@@ -249,9 +249,9 @@ extends
       Right(this)
 
   override def toString =
-    s"OrderWatchState($path $externalToState " +
-      s"orderAddedQueue=${orderAddedQueue.mkString("{", " ", "}")
-      } orderExternalVanishedQueue=${orderExternalVanishedQueue.mkString("{", " ", "}")})"
+    s"OrderWatchState($path $externalToState orderAddedQueue=${
+      orderAddedQueue.mkString("{", " ", "}")} orderExternalVanishedQueue=${
+      orderExternalVanishedQueue.mkString("{", " ", "}")})"
 
 
 object OrderWatchState

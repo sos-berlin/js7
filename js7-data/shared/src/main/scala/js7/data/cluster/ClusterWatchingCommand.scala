@@ -12,6 +12,7 @@ sealed trait ClusterWatchingCommand:
 
 
 object ClusterWatchingCommand:
+
   // Command from ClusterWatch
   final case class ClusterWatchConfirm(
     requestId: ClusterWatchRequest.RequestId,

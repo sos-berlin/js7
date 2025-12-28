@@ -177,7 +177,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   private[cluster] def emitClusterActiveNodeRestarted: IO[Checked[Unit]] =
     clusterStateLock.lock:
-      persist():
+      persist:
         case _: ActiveShutDown => Right(Some(ClusterActiveNodeRestarted))
         case _ => Right(None)
       .rightAs(())
@@ -223,7 +223,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         requireOwnNodeId(command, activeId):
           checkCouplingToken(command).flatMapT: _ =>
             clusterStateLock.lock(command.toShortString):
-              persist():
+              persist:
                 case clusterState @ ClusterState.Empty =>
                   Left(ClusterCommandInapplicableProblem(command, clusterState))
 
@@ -262,7 +262,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         requireOwnNodeId(command, activeId):
           clusterStateLock.lock(command.toShortString):
             journal.onPassiveLost *>
-              persist():
+              persist:
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // ClusterPassiveLost leads to recoupling
                   // TODO The cluster is not coupled for a short while.
@@ -277,7 +277,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
          logger.info(s"The passive $passiveId is shutting down")
           // DEADLOCK when shutdownThisNode wait for ack: clusterStateLock.lock(command.toShortString):
           journal.onPassiveLost *>
-            persist():
+            persist:
               case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                 Right(Some(ClusterPassiveLost(passiveId)))
 
@@ -323,7 +323,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   def switchOver: IO[Checked[Unit]] =
     clusterStateLock.lock:
-      persist():
+      persist:
         case coupled: Coupled => Right(Some(ClusterSwitchedOver(coupled.passiveId)))
         case clusterState => Left(ClusterSwitchOverButNotCoupledProblem(clusterState))
       .flatMapT: (_: Seq[Stamped[?]], _) =>
@@ -342,7 +342,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       //  - Erst nach Erfolg oder ClusterPassiveLost die Acks abschalten.
       //  --> Das alles in eine stopJournaling-Routine? --> ResourceIO["Journaling"]
       clusterStateLock.lock:
-        persist():
+        persist:
           case _: Coupled =>
             Right(Some(ClusterActiveNodeShutDown))
           case _ =>
@@ -649,7 +649,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   def onTerminatedUnexpectedly: IO[Checked[Unit]] =
     fetchingAcksTerminatedUnexpectedlyPromise.get.untry
 
-  private def persist()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
+  private def persist(toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     suspendHeartbeat(forEvent = true):
       persistWithoutTouchingHeartbeat()(toEvents)

@@ -56,9 +56,9 @@ trait TestCatsEffect extends BeforeAndAfterAll:
     else
       val allocated =
         OurIORuntime.resource[SyncIO](
-            getClass.shortClassName,
-            config"""js7.thread-pools.compute.threads = 1/1""")
-          .toAllocated.run()
+          getClass.shortClassName,
+          config"""js7.thread-pools.compute.threads = 1/1"""
+        ).toAllocated.run()
       _ioRuntime := allocated.some
 
       if isIntelliJIdea then
@@ -101,7 +101,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
 
 object TestCatsEffect:
   /** Make a seed for Cats Effect TestControl. */
-  def toSeed(number: Long) =
-    ByteArray(
+  def toSeed(number: Long): String =
+    ByteArray:
       Base64.getEncoder.encode(number.toString.getBytes(UTF_8))
-    ).utf8String
+    .utf8String

@@ -489,7 +489,8 @@ object ControllerStateExecutor:
       .map:
         ItemAttachable(workflowControl.id, _)
 
-  def nextOrderWatchOrderEvents(controllerState: ControllerState): View[KeyedEvent[OrderCoreEvent | ExternalOrderRejected]] =
+  def nextOrderWatchOrderEvents(controllerState: ControllerState)
+  : View[KeyedEvent[OrderCoreEvent | ExternalOrderRejected]] =
     controllerState.ow.nextEvents(addOrder(controllerState, _, _))
 
   // TODO Try to call with only relevant OrderIDs

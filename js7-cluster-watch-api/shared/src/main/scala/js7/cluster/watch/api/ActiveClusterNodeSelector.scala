@@ -30,8 +30,7 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
     logger.traceResource:
       apisResource.flatMap: apis =>
         Resource.eval:
-          selectActiveNodeApiOnly(
-            apis)
+          selectActiveNodeApiOnly(apis)
 
   private def selectActiveNodeApiOnly(apis: Nel[Api]): IO[Api] =
     logger.traceIOWithResult:

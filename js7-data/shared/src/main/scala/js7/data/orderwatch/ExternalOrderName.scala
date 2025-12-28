@@ -8,4 +8,4 @@ final case class ExternalOrderName(string: String) extends GenericString:
 
 
 object ExternalOrderName extends GenericString.NonEmpty[ExternalOrderName]:
-  protected def unchecked(string: String) = new ExternalOrderName(string)
+  def unchecked(string: String) = new ExternalOrderName(string)

@@ -59,9 +59,8 @@ extends
 
   def allFilesVanished: View[KeyedEvent[ExternalOrderVanished]] =
     directoryState.fileToEntry.keys
-      .view
-      .map(file =>
-        fileWatch.path <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
+      .view.map: file =>
+        fileWatch.path <-: ExternalOrderVanished(ExternalOrderName.unchecked(file.toString))
 
   def estimatedExtraSnapshotSize: Int =
     directoryState.fileToEntry.size

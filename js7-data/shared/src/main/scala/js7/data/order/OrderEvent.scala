@@ -736,7 +736,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     asSucceeded: Boolean = false,
     restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big:
-    override def toString = 
+    override def toString =
       functionCallToString("OrderResumed", position.view, historyOperations,
         asSucceeded ? "asSucceeded",
         restartKilledJob ? "restartKilledJob")

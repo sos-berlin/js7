@@ -10,6 +10,7 @@ import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 class PekkoHttpControllerApi(
@@ -18,7 +19,7 @@ class PekkoHttpControllerApi(
   actorSystem: ActorSystem,
   protected final val config: Config = ConfigFactory.empty,
   httpsConfig: HttpsConfig = HttpsConfig.empty,
-  override protected final val loginDelays: () => Iterator[FiniteDuration] = 
+  override protected final val loginDelays: () => Iterator[FiniteDuration] =
     SessionApi.defaultLoginDelays,
   name: String = "")
 extends HttpControllerApi, SessionApi.HasUserAndPassword, AutoCloseable:
@@ -36,6 +37,7 @@ object PekkoHttpControllerApi:
   private val defaultName = "ControllerApi"
 
   /** Logs out when the resource is being released. */
+  @TestOnly
   def separatePekkoResource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
@@ -54,9 +56,8 @@ object PekkoHttpControllerApi:
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : ResourceIO[Nel[HttpControllerApi]] =
-    admissions.zipWithIndex
-      .traverse: (a, i) =>
-        resource(a, httpsConfig, name = s"$name-$i")
+    admissions.zipWithIndex.traverse: (a, i) =>
+      resource(a, httpsConfig, name = s"$name-$i")
 
   /** Logs out when the resource is being released. */
   def resource(

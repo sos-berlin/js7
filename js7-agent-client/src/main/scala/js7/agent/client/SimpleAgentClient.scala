@@ -9,6 +9,7 @@ import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.ExecutionContext
 
 /**
@@ -18,6 +19,7 @@ import scala.concurrent.ExecutionContext
  *
  * @author Joacim Zschimmer
  */
+@TestOnly
 final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],

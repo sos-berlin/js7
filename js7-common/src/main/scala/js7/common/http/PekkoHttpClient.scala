@@ -617,17 +617,6 @@ object PekkoHttpClient:
       IO:
         new PekkoHttpClient.Standard(
           uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)
-    //Resource.make(
-    //  acquire = IO(new PekkoHttpClient.Standard(
-    //    uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))(
-    //  release = { client =>
-    //    val logout = client match {
-    //      case client: HttpSessionApi => client.logout()
-    //      case _ => IO.unit
-    //    }
-    //    logout
-    //      .guarantee(IO(client.close()))
-    //  })
 
   final case class `x-js7-session`(sessionToken: SessionToken)
   extends ModeledCustomHeader[`x-js7-session`]:

@@ -1503,10 +1503,9 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       planId <- cursor.getOrElse[PlanId]("planId")(PlanId.Global)
       scheduledFor <- cursor.get[Option[Timestamp]]("scheduledFor")
-      externalOrder <- cursor.get[Option[ExternalOrderLink]]("externalOrder")
-        .flatMap:
-          case Some(id) => Right(Some(id))
-          case None => cursor.get[Option[ExternalOrderLink]]("externalOrderKey") // COMPATIBLE with v2.7.1
+      externalOrder <- cursor.get[Option[ExternalOrderLink]]("externalOrder").flatMap:
+        case Some(o) => Right(Some(o))
+        case None => cursor.get[Option[ExternalOrderLink]]("externalOrderKey") // COMPATIBLE with v2.7.1
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
       priority <- cursor.getOrElse[BigDecimal]("priority")(DefaultPriority)
