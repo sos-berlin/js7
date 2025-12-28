@@ -3,6 +3,7 @@ package js7.data.event
 import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.event.JournalHeader.{JournalIdMismatchProblem, JournalTypeMismatchProblem}
@@ -81,32 +82,36 @@ final class JournalHeaderTest extends OurTestSuite:
       totalRunningTime = 1.hour,
       timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z"),
       generation = 7,
-      version = "3",
+      version = "1",
       js7Version = "2.0-JS7",
       buildId = "BUILD")
 
     val file = Path.of("FILE")
 
-    assert(
+    assert:
       JournalHeader.checkedHeader[TestState](header.copy(typeName = Some("OTHER")), file, None) ==
-        Left(JournalTypeMismatchProblem(file, expected = "JournalHeaderTest.TestState", "OTHER")))
+        Left(JournalTypeMismatchProblem(file, expected = "JournalHeaderTest.TestState", "OTHER"))
 
-    assert(
+    assert:
       JournalHeader.checkedHeader[TestState](header.copy(typeName = None), file, None) ==
-        Right(()))
+        Right(())
 
-    assert(
+    assert:
       JournalHeader.checkedHeader[TestState](header, file, None) ==
-        Right(()))
+        Right(())
 
     val expectedJournalId = JournalId(UUID.fromString("00000000-000-000-000-000000000000"))
-    assert(
+    assert:
       JournalHeader.checkedHeader[TestState](header, file, Some(expectedJournalId)) ==
-        Left(JournalIdMismatchProblem(file, expectedJournalId = expectedJournalId, header.journalId)))
+        Left(JournalIdMismatchProblem(file, expectedJournalId = expectedJournalId, header.journalId))
 
-    assert(
+    assert:
       JournalHeader.checkedHeader[TestState](header, file, Some(header.journalId)) ==
-        Right(()))
+        Right(())
+
+    assert:
+      JournalHeader.checkedHeader[TestState](header.copy(version = "9"), file, Some(header.journalId)) ==
+        Left(Problem("Journal file has version 9 but 1 is expected. Incompatible journal file: FILE"))
 
 
 object JournalHeaderTest:

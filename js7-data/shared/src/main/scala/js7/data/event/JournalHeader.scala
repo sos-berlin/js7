@@ -138,14 +138,16 @@ object JournalHeader:
       _ <- expectedJournalId.fold(Checked.unit)(expected => (expected == header.journalId) !!
         JournalIdMismatchProblem(
           journalFileForInfo, expectedJournalId = expected, foundJournalId = header.journalId))
+      _ <-
+        if compatibility.getOrElse(header.version, header.version) != Version then
+          Left(Problem(
+            s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
+        else
+          for o <- expectedJournalId do logger.debug(
+            s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
+          Right(())
     yield
-      if compatibility.getOrElse(header.version, header.version) != Version then
-        Left(Problem(
-          s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
-      else
-        for o <- expectedJournalId do logger.debug(
-          s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
-        Right(())
+      ()
 
   def forTest(typeName: String, journalId: JournalId, eventId: EventId = EventId.BeforeFirst)
   : JournalHeader =
