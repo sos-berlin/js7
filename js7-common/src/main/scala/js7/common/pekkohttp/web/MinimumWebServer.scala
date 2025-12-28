@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, ResourceIO}
+import io.circe.Encoder
 import js7.base.auth.SimpleUser
 import js7.base.catsutils.Environment.environment
 import js7.common.configuration.CommonConfiguration
@@ -40,6 +41,7 @@ object MinimumWebServer:
     WebLogDirectives:
 
     protected type OurSession = SimpleSession
+    protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
     protected val gateKeeper = GateKeeper(
       routeBinding.webServerBinding,

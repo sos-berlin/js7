@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
+import io.circe.Encoder
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
 import js7.base.thread.CatsBlocking.syntax.*
@@ -32,6 +33,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
   protected def isPublic = false
 
   protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
   protected final val whenShuttingDown = Deferred.unsafe
   protected final val config = config"js7.web.server.verbose-error-messages = on"
@@ -49,6 +51,10 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
       js7.auth.users {
         A-USER = "plain:A-PASSWORD"
         B-USER = "plain:B-PASSWORD"
+        LIST-SESSIONS {
+          password = "plain:LIST-SESSIONS-PASSWORD"
+          permissions = [ ReadInternals ]
+        }
       }""")
 
   private val sessionRegisterLazy = Lazy[Allocated[IO, SessionRegister[SimpleSession]]]:

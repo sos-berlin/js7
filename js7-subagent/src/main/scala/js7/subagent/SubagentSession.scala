@@ -1,10 +1,6 @@
 package js7.subagent
 
-import js7.base.auth.SimpleUser
-import js7.common.pekkohttp.web.session.{Session, SessionInit}
+import js7.common.pekkohttp.web.session.SimpleSession
 
-final case class SubagentSession(sessionInit: SessionInit)
-extends Session:
-  type User = SimpleUser
-
-  override def toString = sessionToken.toString
+type SubagentSession = SimpleSession
+val SubagentSession = SimpleSession

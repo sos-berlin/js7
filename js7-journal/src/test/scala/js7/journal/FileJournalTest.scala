@@ -16,6 +16,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Stopwatch, TestWallClock, WallClock}
+import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{AnyKeyedEvent, EventCalc, EventId, SnapshotableState, Stamped}
@@ -29,6 +30,8 @@ import org.scalatest.Assertion
 import scala.concurrent.duration.FiniteDuration
 
 final class FileJournalTest extends OurAsyncTestSuite:
+
+  override protected def testWallClock = Missing // This test itself sets the WallClock
 
   override protected def testTimeout: FiniteDuration =
     if sys.props.contains("test.speed") then 999.s else 99.s

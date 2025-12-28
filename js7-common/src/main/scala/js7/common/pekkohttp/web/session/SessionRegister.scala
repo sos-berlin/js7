@@ -12,6 +12,7 @@ import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.Environment.environment
 import js7.base.catsutils.UnsafeMemoizable.{memoize, unsafeMemoize}
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.provideFile
@@ -23,6 +24,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -33,6 +35,7 @@ import js7.common.auth.SecretStringGenerator
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkohttp.web.session.SessionRegister.*
 import org.jetbrains.annotations.TestOnly
+import scala.collection.View
 import scala.concurrent.duration.*
 
 /**
@@ -79,7 +82,7 @@ extends Service.TrivialReleasable:
 
   private def createSystemSession(user: SimpleUser, file: Path): IO[SessionToken] =
     for
-      token <- login(user, Some(Js7Version), isEternalSession = true)
+      token <- login(user, source = "System", Some(Js7Version), isEternalSession = true)
       _ <- IO.interruptible:
         deleteIfExists(file)
         createFile(file, operatingSystem.secretFileAttributes*)
@@ -92,6 +95,7 @@ extends Service.TrivialReleasable:
 
   def login(
     user: SimpleUser,
+    source: String,
     clientVersion: Option[Version],
     token: Option[SessionToken] = None,
     isEternalSession: Boolean = false)
@@ -100,34 +104,39 @@ extends Service.TrivialReleasable:
       token.fold(IO.pure(state)): token =>
         state.delete(token, "deleted due to Login")
       .flatMap: state =>
-        IO:
-          val token = SessionToken.generateFromSecretString:
-            SecretStringGenerator.newSecretString()
-          assertThat( // paranoid
-            !state.tokenToSession.contains(token), "Duplicate generated SessionToken")
-          val session = newSession(SessionInit(token, user))
-          val entry = Entry(session)
+        environment[WallClock].flatMap: clock =>
+          IO:
+            val now = clock.now()
+            val token = SessionToken.generateFromSecretString:
+              SecretStringGenerator.newSecretString()
+            assertThat( // paranoid
+              !state.tokenToSession.contains(token), "Duplicate generated SessionToken")
+            val session = newSession:
+              SessionInit(token, user, source, now,
+                timeoutAt = !isEternalSession ? (Deadline.now + sessionTimeout))
+            session.lastUsed = Session.LastUsed("login", now)
+            val entry = Entry(session)
 
-          val updated = state.copy(
-            tokenToSession = state.tokenToSession.updated(session.sessionToken, entry))
+            val updated = state.copy(
+              tokenToSession = state.tokenToSession.updated(session.sessionToken, entry))
 
-          logger.info(s"${session.sessionToken} for ${user.id} Login" +
-            clientVersion.fold("")(v =>
-              " (" + v + (
-                if v == Js7Version then
-                  " ✔)"
-                else
-                  s" ⚠️ version differs from this server's version $Js7Version!)")) +
-            (isEternalSession ?? " (eternal)"))
+            logger.info(s"${session.sessionToken} for ${user.id} Login" +
+              clientVersion.fold("")(v =>
+                " (" + v + (
+                  if v == Js7Version then
+                    " ✔)"
+                  else
+                    s" ⚠️ version differs from this server's version $Js7Version!)")) +
+              (isEternalSession ?? " (eternal)"))
 
-          clientVersion match
-            case None => logger.warn("Client does not provide its version")
-            case Some(v) =>
-              Js7Versions.checkNonMatchingVersion(v, otherName = user.id.toString)
-                .left.foreach: problem =>
-                  logger.error(problem.toString)
+            clientVersion match
+              case None => logger.warn("Client does not provide its version")
+              case Some(v) =>
+                Js7Versions.checkNonMatchingVersion(v, otherName = user.id.toString)
+                  .left.foreach: problem =>
+                    logger.error(problem.toString)
 
-          updated -> entry)
+            updated -> entry)
     .flatMap: entry =>
       Bean.sessionCount += 1
       IO.unlessA(isEternalSession):
@@ -145,28 +154,37 @@ extends Service.TrivialReleasable:
     cell.flatMap(_.evalUpdate:
       _.delete(sessionToken, "Logout"))
 
-  private[session] def session(token: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser])
+  private[session] def session(
+    token: SessionToken,
+    idsOrUser: Either[Set[UserId], SimpleUser],
+    usedFor: String = "")
   : IO[Checked[S]] =
-    cell.flatMap(_.get).map: state =>
-      (state.tokenToSession.get(token), idsOrUser) match
-        case (None, _) =>
-          val users = idsOrUser.fold(_.mkString("|"), _.id)
-          logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
-          Left(InvalidSessionTokenProblem)
+    environment[WallClock].flatMap: clock =>
+      cell.flatMap(_.get).map: state =>
+        (state.tokenToSession.get(token), idsOrUser) match
+          case (None, _) =>
+            val users = idsOrUser.fold(_.mkString("|"), _.id)
+            logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
+            Left(InvalidSessionTokenProblem)
 
-        case (Some(entry), Right(user))
-          if !user.id.isAnonymous && user.id != entry.currentUserId =>
-          tryUpdateLatelyAuthenticatedUser(user, entry.session)
+          case (Some(entry), Right(user))
+            if !user.id.isAnonymous && user.id != entry.currentUserId =>
+            tryUpdateLatelyAuthenticatedUser(user, entry.session)
 
-        case (Some(entry), Left(userIds)) if !userIds.contains(entry.currentUserId) =>
-          logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
-            s"'${userIds.mkString(", ")}' do not include Sessions's ${entry.currentUserId}")
-          Left(InvalidSessionTokenProblem)
+          case (Some(entry), Left(userIds)) if !userIds.contains(entry.currentUserId) =>
+            logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
+              s"'${userIds.mkString(", ")}' do not include Sessions's ${entry.currentUserId}")
+            Left(InvalidSessionTokenProblem)
 
-        case (Some(entry), _) =>
-          Right(entry.session)
+          case (Some(entry), _) =>
+            entry.session.lastUsed = Session.LastUsed(usedFor, clock.now())
+            Right(entry.session)
     .flatTapT: session =>
       IO(session.isAlive !! InvalidSessionTokenProblem)
+
+  def sessions: IO[Seq[S]] =
+    cell.flatMap(_.get).map:
+      _.tokenToSession.values.toVector.map(_.session)
 
   @TestOnly
   private[js7] def count: IO[Int] =
@@ -223,7 +241,7 @@ extends Service.TrivialReleasable:
         copy(tokenToSession = tokenToSession.removed(token))
 
     def logOpenSessions(): Unit =
-      tokenToSession.values.map(_.session)
+      sessions
         .groupMap(_.currentUser.id)(_.sessionToken)
         .view.mapValues(_.toVector.sortBy(_.number))
         .toVector.sortBy(_._1)
@@ -231,6 +249,8 @@ extends Service.TrivialReleasable:
           logger.debug(s"${sessionTokens.size} open sessions for $userId${
             sessionTokens.view.mkString(" (", " ", ")")}")
 
+    def sessions: View[Session] =
+      tokenToSession.values.view.map(_.session)
 
   private final class Entry(val session: S):
     def currentUserId = session.currentUser.id

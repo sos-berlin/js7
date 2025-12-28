@@ -1,16 +1,18 @@
 package js7.common.pekkohttp.web.session
 
 import cats.effect.IO
-import cats.effect.testkit.TestControl
 import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import js7.base.catsutils.Environment
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.test.OurAsyncTestSuite
+import js7.base.test.{OurAsyncTestSuite, OurTestControl}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
+import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.{Allocated, Lazy}
@@ -26,6 +28,8 @@ import js7.common.pekkoutils.Pekkos.newActorSystem
 final class SessionRegisterTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
+
+  override protected val testWallClock = WallClock.fixed(timestamp)
 
   private val sessionRegisterLazy = Lazy[Allocated[IO, SessionRegister[MySession]]]:
     SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
@@ -47,7 +51,8 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
     assert(sessionRegister.session(unknownSessionToken, Right(AUser)).await(99.s).isLeft)
 
   "login anonymously" in:
-    sessionToken = sessionRegister.login(Anonymous, Some(Js7Version)).await(99.s): SessionToken
+    sessionToken = sessionRegister.login(Anonymous, "SessionRegisterTest", Some(Js7Version))
+      .await(99.s)
     succeed
 
   "login and update User" in:
@@ -73,17 +78,31 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
     val mySystem = newActorSystem("SessionRegisterTest", executionContext = ioRuntime.compute)
     SessionRegister.service(MySession.apply, SessionRegister.TestConfig)
       .blockingUse(99.s): mySessionRegister =>
-        val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
-          .await(99.s)
+        val sessionToken =
+          mySessionRegister.login(SimpleUser.TestAnonymous, "SessionRegisterTest", Some(Js7Version))
+            .await(99.s)
 
         mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
         assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
         // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-        assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-        assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser/*changed*/)
+        assert:
+          mySessionRegister.session(sessionToken, Right(AUser)).await(99.s).map(_.withoutTimeout) ==
+            Right(MySession(SessionInit(
+              sessionToken,
+              loginUser = SimpleUser.TestAnonymous,
+              "SessionRegisterTest",
+              timestamp)))
+        assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s)
+          .toOption.get.currentUser == AUser/*changed*/)
 
-        assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
+        assert:
+          mySessionRegister.session(sessionToken, Right(AUser)).await(99.s).map(_.withoutTimeout) ==
+            Right(MySession(SessionInit(
+              sessionToken,
+              loginUser = SimpleUser.TestAnonymous,
+              "SessionRegisterTest",
+              timestamp)))
         assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
         assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser)
 
@@ -95,12 +114,14 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
 
   "Session timeout" in:
-    TestControl.executeEmbed:
+    OurTestControl.executeEmbed:
       SessionRegister.service(MySession.apply, SessionRegister.TestConfig).use: sr =>
         for
+          _ <- Environment.registerPure[IORuntime](summon[IORuntime]).allocated
+          _ <- Environment.registerPure[WallClock](WallClock.fixed(timestamp)).allocated
           _ <- sr.count.map(n => assert(n == 0))
-          sessionToken <- sr.login(AUser, Some(Js7Version))
-          eternal <- sr.login(BUser, Some(Js7Version), isEternalSession = true)
+          sessionToken <- sr.login(AUser, "SessionRegisterTest", Some(Js7Version))
+          eternal <- sr.login(BUser, "SessionRegisterTest", Some(Js7Version), isEternalSession = true)
           _ <- sr.count.map(n => assert(n == 2))
           session <- sr.session(sessionToken, Right(Anonymous))
           _ = assert(session.isRight)
@@ -110,10 +131,12 @@ final class SessionRegisterTest extends OurAsyncTestSuite:
           checked <- sr.session(eternal, Right(Anonymous))
           _ = assert(checked.isRight)
           _ <- sr.count.map(n => assert(n == 1))
-        yield succeed
+        yield
+          succeed
 
   "Non-matching version are still not checked" in:
-    sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s): SessionToken
+    sessionRegister.login(AUser, "SessionRegisterTest", Some(Version("2.2.0")))
+      .await(99.s): SessionToken
       //Left(Problem(s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
     succeed
 
@@ -123,5 +146,6 @@ private object SessionRegisterTest:
   private val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())
   private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty())
+  private val timestamp = ts"2025-12-23T02:00:00Z"
 
   final case class MySession(sessionInit: SessionInit) extends Session

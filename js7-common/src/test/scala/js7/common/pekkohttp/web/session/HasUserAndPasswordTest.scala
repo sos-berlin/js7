@@ -8,11 +8,15 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.TimestampForTests.ts
+import js7.base.time.WallClock
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.data.session.HttpSessionApi
 
 final class HasUserAndPasswordTest extends OurAsyncTestSuite, SessionRouteTester:
+
+  override protected val testWallClock = WallClock.fixed(ts"2025-12-23T12:00:00Z")
 
   "HasUserAndPassword retryUntilReachable repeats body after server loss" in:
     val progress = memoize(Queue.bounded[IO, String](1))

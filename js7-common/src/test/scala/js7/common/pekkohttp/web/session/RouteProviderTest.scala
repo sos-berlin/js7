@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
+import io.circe.Encoder
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
@@ -9,6 +10,8 @@ import js7.base.generic.SecretString
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
+import js7.base.time.WallClock
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Lazy
 import js7.common.auth.IdToUser
@@ -30,10 +33,13 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
 
   private given IORuntime = ioRuntime
 
+  override protected val testWallClock = WallClock.fixed(ts"2025-12-23T12:00:00Z")
+
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 
   protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
   protected def whenShuttingDown = Deferred.unsafe
   protected val config = config"js7.web.server.verbose-error-messages = on"
@@ -102,7 +108,8 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
         assert(status == Forbidden)
 
     "Known SessionToken" in:
-      sessionToken = sessionRegister.login(TestUser, Some(Js7Version)).await(99.s)
+      sessionToken = sessionRegister.login(TestUser, "RouteProviderTest", Some(Js7Version))
+        .await(99.s)
       Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")
@@ -114,4 +121,5 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
 object RouteProviderTest:
   private val TestUser = SimpleUser(UserId("TEST-USER"), HashedPassword(SecretString("321"), _.reverse))
 
-  final case class MySession(sessionInit: SessionInit) extends Session
+  final case class MySession(sessionInit: SessionInit) extends Session:
+    def withoutTimeout = copy(sessionInit = sessionInit.copy(timeoutAt = None))

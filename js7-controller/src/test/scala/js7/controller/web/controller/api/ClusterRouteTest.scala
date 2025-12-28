@@ -1,6 +1,7 @@
 package js7.controller.web.controller.api
 
 import cats.effect.{Deferred, IO}
+import io.circe.Encoder
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.test.OurTestSuite
 import js7.cluster.web.ClusterRoute
@@ -22,6 +23,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 final class ClusterRouteTest extends OurTestSuite, RouteTester, ClusterRoute:
 
   protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
   protected def actorSystem = system
   protected def whenShuttingDown = Deferred.unsafe

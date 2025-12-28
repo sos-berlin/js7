@@ -1,32 +1,37 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.model.HttpHeader
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
-import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
-import org.apache.pekko.http.scaladsl.server.Directive
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
-import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import io.circe.Json
+import js7.base.auth.User.UserDoesNotHavePermissionProblem
+import js7.base.auth.{ReadInternalsPermission, SessionToken, SimpleUser, UserAndPassword, UserId}
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.session.SessionApi
-import js7.base.test.{OurTestSuite}
-import js7.base.thread.Futures.implicits.*
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
+import js7.base.time.WallClock
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
-import js7.common.pekkohttp.StandardDirectives.lazyRoute
-import js7.common.pekkohttp.web.session.SessionRouteTest.*
 import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
+import js7.common.pekkohttp.StandardDirectives.lazyRoute
+import js7.common.pekkohttp.web.session.SessionRouteTest.*
 import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.http.scaladsl.model.HttpHeader
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
+import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
+import org.apache.pekko.http.scaladsl.server.Directive
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 
@@ -38,33 +43,35 @@ extends OurTestSuite, SessionRouteTester:
 
   private given IORuntime = ioRuntime
 
+  override protected val testWallClock = WallClock.fixed(ts"2025-12-23T12:00:00Z")
+
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
 
   override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")
 
-  override protected[session] lazy val preAuthenticate = Directive(inner =>
-    seal {
-      lazyRoute(preAuthenticateResult match {
-        case None => gateKeeper.preAuthenticate.tapply(inner)  // Production behaviour
-        case Some(testResult) => inner(Tuple1(testResult))     // For test, to simulate HTTPS multi-user distinguished names
-      })
-    })
+  override protected[session] lazy val preAuthenticate =
+    Directive: inner =>
+      seal:
+        lazyRoute:
+          preAuthenticateResult match
+            case None => gateKeeper.preAuthenticate.tapply(inner)  // Production behaviour
+            case Some(testResult) => inner(Tuple1(testResult))     // For test, to simulate HTTPS multi-user distinguished names
 
   private var preAuthenticateResult: Option[Either[Set[UserId], SimpleUser]] = None
 
   import gateKeeper.invalidAuthenticationDelay
 
   "login fails if server is unreachable" in:
-    withSessionApi(None) { api =>
-      // In the rare case of an already used TCP port (alien software) pekko.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
+    withSessionApi(None): api =>
+      // In the rare case of an already used TCP port (alien software)
+      // pekko.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
       val exception = intercept[RuntimeException]:
         api.login().await(99.s)
       assert(exception.getMessage.contains("java.net.ConnectException"))
-    }
 
   "loginUntilReachable" - {
     "invalid authorization" in:
-      withSessionApi(Some(UserId("INVALID") -> SecretString("INVALID"))) { api =>
+      withSessionApi(Some(UserId("INVALID") -> SecretString("INVALID"))): api =>
         import api.implicitSessionToken
         @volatile var count = 0
         def onError(t: Throwable) = IO:
@@ -76,7 +83,8 @@ extends OurTestSuite, SessionRouteTester:
           Iterator.continually(10.ms),
           onError = onError
         ).unsafeToFuture()
-        // Pekko delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
+        // Pekko delays 100ms, 200ms, 400ms:
+        // "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
         awaitAndAssert(count >= 3)
         assert(count >= 3)
         // Start web server
@@ -86,27 +94,24 @@ extends OurTestSuite, SessionRouteTester:
         assert(exception.status == Unauthorized)
         assert(runningSince.elapsed >= invalidAuthenticationDelay)
         requireAccessIsUnauthorizedOrPublic(api)
-      }
 
     "authorized" in:
-      withSessionApi(Some(AUserAndPassword)) { api =>
+      withSessionApi(Some(AUserAndPassword)): api =>
         import api.implicitSessionToken
         api.loginUntilReachable(Iterator.continually(10.ms), _ => IO.pure(true)).await(99.s)
         requireAuthorizedAccess(api)
         api.logout().await(99.s)
         requireAccessIsUnauthorizedOrPublic(api)
-      }
   }
 
   "Login without credentials is accepted as Anonymous but access is nevertheless unauthorized if not public" in:
-    withSessionApi(None) { api =>
+    withSessionApi(None): api =>
       import api.implicitSessionToken
       api.login().await(99.s)
       requireAccessIsUnauthorizedOrPublic(api)
-    }
 
   "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized and delayed" in:
-    withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil)) { api =>
+    withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil)): api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
@@ -116,10 +121,12 @@ extends OurTestSuite, SessionRouteTester:
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
       assert(runningSince.elapsed >= invalidAuthenticationDelay)
       requireAccessIsUnauthorized(api)
-    }
 
   "Login without credentials and with Anonymous Authorization header is rejected and delayed" in:
-    withSessionApi(None, Right(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil)) { api =>
+    withSessionApi(
+      None,
+      Right(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil)
+    ): api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
@@ -129,22 +136,23 @@ extends OurTestSuite, SessionRouteTester:
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
       assert(runningSince.elapsed >= invalidAuthenticationDelay)
       requireAccessIsUnauthorized(api)
-    }
 
   "Login with credentials and HTTP or HTTPS authorization" - {
     "Credentials match" in:
-      withSessionApi(Some(AUserAndPassword), Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
+      withSessionApi(
+        Some(AUserAndPassword),
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+      ): api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         api.login().await(99.s)
         assert(api.hasSession)
-      }
 
     "Login password does not match" in:
       withSessionApi(
         Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
         Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
@@ -152,104 +160,101 @@ extends OurTestSuite, SessionRouteTester:
         assert(exception.status == Unauthorized)
         assert(exception.problem == Some(InvalidLoginProblem))
         requireAuthorizedAccess(api)
-      }
 
     "Login with credentials and different Authorization header is rejected" in:
       withSessionApi(
         Some(UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))),
         Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
           api.login().await(99.s)
         assert(exception.status == BadRequest &&
           exception.problem == Some(Problem("Login user does not match HTTP(S) user")))
-      }
 
     "Login with credentials and equivalent Authorization header but wrong password is rejected" in:
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
         Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
           api.login().await(99.s)
         assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
-      }
 
     "Login with credentials and equivalent Authorization header is accepted" in:
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))),
         Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         api.login().await(99.s)
         requireAuthorizedAccess(api)
-      }
   }
 
   "Login with credentials and HTTPS multi-UserId distinguished names" - {
     "Credentials match" in:
-      withSessionApi(Some(AUserAndPassword), Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))) { api =>
+      withSessionApi(
+        Some(AUserAndPassword),
+        Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))
+      ): api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         api.login().await(99.s)
         assert(api.hasSession)
-      }
 
     "Login UserId does not match" in:
       withSessionApi(
         Some(AUserAndPassword),
         Left(Left(Set(UserId("X-USER"), UserId("B-USER"))))
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
           api.login().await(99.s)
         assert(exception.status == BadRequest &&
           exception.problem == Some(specificLoginRequiredProblem))
-      }
 
     "Login password does not match" in:
       withSessionApi(
         Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
         Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
           api.login().await(99.s)
         assert(exception.status == Unauthorized)
         assert(exception.problem == Some(InvalidLoginProblem))
-      }
 
     "Login with credentials but wrong password is rejected" in:
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
         Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))
-      ) { api =>
+      ): api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
           api.login().await(99.s)
         assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
-      }
   }
 
   "Login without credentials but with Authorization header is accepted" in:
-    withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
+    withSessionApi(
+      None,
+      Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+    ): api =>
       import api.implicitSessionToken
       requireAuthorizedAccess(api)
       api.login().await(99.s)
       assert(api.hasSession)
       requireAuthorizedAccess(api)
-    }
 
   "Login as 'Anonymous' is rejected" in:
-    withSessionApi(Some(UserId.Anonymous -> SecretString(""))) { api =>
+    withSessionApi(Some(UserId.Anonymous -> SecretString(""))): api =>
       import api.implicitSessionToken
       val exception = intercept[PekkoHttpClient.HttpException]:
         api.login().await(99.s)
@@ -258,10 +263,9 @@ extends OurTestSuite, SessionRouteTester:
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
 
       requireAccessIsUnauthorizedOrPublic(api)  // public=true allows access
-    }
 
   "Login with invalid credentials is rejected with 403 Unauthorized and delayed" in:
-    withSessionApi(Some(UserId("A-USER") -> SecretString(""))) { api =>
+    withSessionApi(Some(UserId("A-USER") -> SecretString(""))): api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
@@ -273,10 +277,9 @@ extends OurTestSuite, SessionRouteTester:
       assert(runningSince.elapsed >= invalidAuthenticationDelay)
 
       requireAccessIsUnauthorizedOrPublic(api)  // public=true allows access
-    }
 
   "Login and Logout" in:
-    withSessionApi(Some(AUserAndPassword)) { api =>
+    withSessionApi(Some(AUserAndPassword)): api =>
       import api.implicitSessionToken
       assert(!api.hasSession)
 
@@ -303,19 +306,17 @@ extends OurTestSuite, SessionRouteTester:
       api.setSessionToken(sessionToken)
       val exception = requireAccessIsForbidden(api)
       assert(HttpClient.sessionMayBeLost(exception))
-    }
 
   "Logout without SessionToken is short-circuited" in:
-    withSessionApi(None) { api =>
+    withSessionApi(None): api =>
       assert(!api.hasSession)
       api.logout().await(99.s) shouldEqual Completed
       assert(!api.hasSession)
-    }
 
   "Use of discarded SessionToken is Forbidden, clearSession" in:
     // This applies to all commands, also Login and Logout.
     // With Unauthorized or Forbidden, stateful SessionApi learns about the invalid session.
-    withSessionApi(Some(AUserAndPassword)) { api =>
+    withSessionApi(Some(AUserAndPassword)): api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       import api.implicitSessionToken
       val exception = requireAccessIsForbidden(api)
@@ -326,19 +327,17 @@ extends OurTestSuite, SessionRouteTester:
       api.login().await(99.s)
       assert(api.hasSession)
       api.logout().await(99.s)
-    }
 
   "logout clears SessionToken even if unknown" in:
-    withSessionApi(None) { api =>
+    withSessionApi(None): api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       assert(api.hasSession)
       api.logout().await(99.s)
       assert(!api.hasSession)
-    }
 
   "Login with SessionToken" - {
     "Known SessionToken is invalidated" in:
-      withSessionApi(None) { api =>
+      withSessionApi(None): api =>
         api.login_(Some(AUserAndPassword)).await(99.s)
         val Some(firstSessionToken) = api.sessionToken: @unchecked
         assert(api.hasSession)
@@ -357,17 +356,36 @@ extends OurTestSuite, SessionRouteTester:
 
         api.logout().await(99.s) shouldEqual Completed
         assert(!api.hasSession)
-      }
 
     "Unknown SessionToken is ignored" in:
-      withSessionApi(Some(AUserAndPassword)) { api =>
+      withSessionApi(Some(AUserAndPassword)): api =>
         val unknown = SessionToken(SecretString("UNKNKOWN"))
         api.setSessionToken(unknown)
         api.login().await(99.s)
         assert(api.sessionToken.exists(_ != unknown))
         api.logout().await(99.s) shouldEqual Completed
-      }
   }
+
+  "List sessions" in:
+    withSessionApi(None): api =>
+      import api.implicitSessionToken
+
+      locally:
+        api.login_(Some(AUserAndPassword)).await(99.s)
+        val checked = HttpClient.liftProblem(api.get[Json](localUri / "session")).await(99.s)
+        if isPublic then
+          assert(checked.isRight)
+        else
+          assert(checked == Left:
+            UserDoesNotHavePermissionProblem(AUserAndPassword.userId, ReadInternalsPermission))
+        api.logout().await(99.s)
+
+      api.login_(Some(ListSessionsUserAndPassword)).await(99.s)
+      val jsonArray = api.get[Json](localUri / "session").await(99.s)
+      logger.info(jsonArray.toPrettyString)
+      val jsons = jsonArray.asArray.get.map(_.asObject.get)
+      assert(jsons.exists(_.keys.exists(_ == "userId")))
+      api.logout().await(99.s) shouldEqual Completed
 
   private def withSessionApi(
     userAndPassword_ : Option[UserAndPassword],
@@ -382,15 +400,15 @@ extends OurTestSuite, SessionRouteTester:
       val actorSystem = SessionRouteTest.this.system
       def baseUri = localUri
       def uriPrefixPath = ""
-      override val standardHeaders = idsOrUserOrHeaders.toOption.toList.flatten ::: super.standardHeaders
+      override val standardHeaders =
+        idsOrUserOrHeaders.toOption.toList.flatten ::: super.standardHeaders
       def httpsConfig = HttpsConfig.empty
       protected val chunkSize = 0
-    autoClosing(api) { _ =>
+    autoClosing(api): _ =>
       val saved = preAuthenticateResult
       preAuthenticateResult = idsOrUserOrHeaders.left.toOption
       try body(api)
       finally preAuthenticateResult = saved
-    }
 
 final class SessionRouteIsNotPublicTest extends SessionRouteTest(isPublic = false)
 
@@ -401,3 +419,5 @@ object SessionRouteTest:
   private val logger = Logger[this.type]
   private val AUserAndPassword = UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))
   private val BUserAndPassword = UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))
+  private val ListSessionsUserAndPassword =
+    UserAndPassword(UserId("LIST-SESSIONS"), SecretString("LIST-SESSIONS-PASSWORD"))

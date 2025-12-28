@@ -2,6 +2,7 @@ package js7.controller.web.controller.api
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
+import io.circe.Encoder
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
@@ -50,6 +51,7 @@ import scala.language.unsafeNulls
 final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
 
   protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
   private implicit val timeout: FiniteDuration = 99.s
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout)

@@ -2,7 +2,7 @@ package js7.subagent
 
 import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.nio.file.Path
@@ -243,6 +243,7 @@ object Subagent:
       import testWiring.testEventBus
       for
         _ <- OurIORuntimeRegister.toEnvironment(ioRuntime).registerMultiple(testWiring.envResources)
+        _ <- Environment.getOrRegister[WallClock](Resource.pure(WallClock))
         _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
         pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
         actorSystem <- Pekkos.actorSystemResource(conf.name, config)

@@ -1,14 +1,17 @@
 package js7.common.pekkohttp.web.session
 
 import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.time.Timestamp
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
+import Session.*
 
 /**
   * @author Joacim Zschimmer
   */
 trait Session:
   private val _isAlive = Atomic(true)
+  private[session] var lastUsed = LastUsed("", Timestamp.Epoch)
 
   protected[session] def sessionInit: SessionInit
 
@@ -32,3 +35,7 @@ trait Session:
   /** Succeeds only once. */
   private[session] final def tryUpdateUser(user: SimpleUser): Boolean =
     _user.compareAndSet(sessionInit.loginUser, user)
+
+
+object Session:
+  final case class LastUsed(what: String, timestamp: Timestamp)

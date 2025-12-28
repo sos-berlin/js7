@@ -63,7 +63,10 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
 
   protected lazy val testSessionHeader: HttpHeader =
     val token = sessionRegister
-      .login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), Some(Js7Version))
+      .login(
+        SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing),
+        "WebServiceTest", 
+        Some(Js7Version))
       .await(99.s)
     RawHeader(`x-js7-session`.name, token.secret.string)
 

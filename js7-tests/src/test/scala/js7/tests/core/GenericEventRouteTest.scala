@@ -3,7 +3,7 @@ package js7.tests.core
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import fs2.Stream
-import io.circe.Decoder
+import io.circe.{Decoder, Encoder}
 import izumi.reflect.Tag
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
@@ -54,6 +54,7 @@ final class GenericEventRouteTest
 extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
 
   protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
   private given IORuntime = ioRuntime
 

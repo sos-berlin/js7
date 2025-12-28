@@ -1,5 +1,6 @@
 package js7.agent.web.common
 
+import io.circe.Encoder
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.subagent.SubagentSession
 
@@ -12,3 +13,4 @@ import js7.subagent.SubagentSession
  */
 trait AgentRouteProvider extends RouteProvider:
   protected type OurSession = SubagentSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SubagentSession]]

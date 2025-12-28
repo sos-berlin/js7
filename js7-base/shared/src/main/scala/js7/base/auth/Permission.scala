@@ -15,7 +15,9 @@ object Permission:
   def toStringToPermission(permissions: Iterable[Permission]): Map[String, Permission] =
     permissions.toKeyedMap(_.name)
 
-  val StandardSet: Set[Permission] = Set(ReadMetricsPermission)
+  val StandardSet: Set[Permission] = Set(
+    ReadMetricsPermission,
+    ReadInternalsPermission)
 
 
 /** SuperPermission covering all permissions. */
@@ -48,3 +50,5 @@ case object AgentDirectorPermission extends Permission
 case object AgentDirectorForwardPermission extends Permission
 
 case object ReadMetricsPermission extends Permission
+
+case object ReadInternalsPermission extends Permission

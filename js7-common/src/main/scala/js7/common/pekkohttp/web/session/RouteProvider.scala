@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import io.circe.Encoder
 import js7.base.auth.{Permission, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.SecretString
@@ -18,7 +19,7 @@ import js7.common.pekkohttp.web.session.RouteProvider.*
 import js7.data.problems.InvalidLoginProblem
 import org.apache.pekko.http.scaladsl.model.StatusCode
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractUri, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
 import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route}
 
 /**
@@ -27,6 +28,8 @@ import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route}
 trait RouteProvider extends ExceptionHandling:
 
   protected type OurSession <: Session
+  protected final given Encoder[OurSession] = sessionEncoder
+  protected def sessionEncoder: Encoder.AsObject[OurSession]
   protected def sessionRegister: SessionRegister[OurSession]
 
   protected def gateKeeper: GateKeeper[SimpleUser]
@@ -85,12 +88,14 @@ trait RouteProvider extends ExceptionHandling:
             inner(Tuple1(None))
 
           case Some(sessionToken) =>
-            onSuccess(sessionRegister.session(sessionToken, idsOrUser).unsafeToFuture()):
-              case Left(problem) =>
-                completeUnauthenticatedLogin(Forbidden, problem)
-
-              case Right(session) =>
-                inner(Tuple1(Some(session)))
+            extractUri: uri =>
+              onSuccess(
+                sessionRegister.session(sessionToken, idsOrUser,
+                    usedFor = s"${uri.scheme} ${uri.path.toString}")
+                  .unsafeToFuture()
+              ):
+                case Left(problem) => completeUnauthenticatedLogin(Forbidden, problem)
+                case Right(session) => inner(Tuple1(Some(session)))
 
   protected final val sessionTokenOption: Directive[Tuple1[Option[SessionToken]]] =
     optionalHeaderValuePF:

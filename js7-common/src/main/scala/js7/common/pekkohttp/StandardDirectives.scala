@@ -5,12 +5,13 @@ import cats.effect.unsafe.IORuntime
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
+import org.apache.pekko.http.scaladsl.model.AttributeKeys
 import org.apache.pekko.http.scaladsl.model.Uri.Path
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
 import org.apache.pekko.http.scaladsl.model.headers.{ETag, `Cache-Control`}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import org.apache.pekko.http.scaladsl.server.{Directive0, PathMatcher1, Route}
+import org.apache.pekko.http.scaladsl.server.{Directive0, Directive1, Directives, PathMatcher1, Route}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -42,6 +43,15 @@ object StandardDirectives:
         P.checked(segment)  // Slashes encoded as %2F in a single path segment
       case _ =>
         P.checked(uriPath.toString)
+
+  /** The source of the HTTP request as a String. */
+  def requestSource: Directive1[String] =
+    new Directive1[String]:
+      def tapply(inner: Tuple1[String] => Route) =
+        extractScheme: scheme =>
+          optionalAttribute(AttributeKeys.remoteAddress): maybeRemoteAddress =>
+            val source = maybeRemoteAddress.flatMap(_.toOption).fold("")(_.getHostAddress)
+            inner(Tuple1(source))
 
   def combineRoutes(routes: Iterable[Route]): Route =
     routes.foldFast(reject)(_ ~ _)
