@@ -6,13 +6,16 @@ import io.circe.Decoder
 import js7.base.auth.Admission
 import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
+import js7.common.http.PekkoHttpClient
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.*
 
 trait HttpClusterNodeApi
@@ -132,12 +135,18 @@ object HttpClusterNodeApi:
   /** Logs out when the resource is being released. */
   def resource(
     admission: Admission,
-    httpClient: HttpClient,
+    httpsConfig: HttpsConfig,
     uriPrefix: String,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+    (using ActorSystem)
   : ResourceIO[HttpClusterNodeApi] =
-    SessionApi.resource(IO(
-      new HttpClusterNodeApi.Standard(admission, httpClient, uriPrefix, loginDelays)))
+    for
+      httpClient <- PekkoHttpClient
+        .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")
+      api <- SessionApi.logoutOnRelease:
+        IO(HttpClusterNodeApi.Standard(admission, httpClient, uriPrefix, loginDelays))
+    yield
+      api
 
   private final class Standard(
     admission: Admission,

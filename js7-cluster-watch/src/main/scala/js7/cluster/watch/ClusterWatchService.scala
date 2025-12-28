@@ -36,7 +36,7 @@ import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 
 
-final class ClusterWatchService private[ClusterWatchService](
+final class ClusterWatchService private(
   val clusterWatchId: ClusterWatchId,
   nodeApis: Nel[HttpClusterNodeApi],
   label: String,
@@ -185,14 +185,12 @@ object ClusterWatchService:
     for
       given ActorSystem <- actorSystemResource(name = "ClusterWatch", config)
       _ <- MinimumWebServer.service(conf)
-      service <- service(
-        conf.clusterWatchId,
-        apisResource = clusterNodeAdmissions
-          .traverse(admission => PekkoHttpClient
-            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")
-            .flatMap:
-              HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller")),
-        config)
+      service <-
+        service(
+          conf.clusterWatchId,
+          apisResource = clusterNodeAdmissions.traverse: admission =>
+            HttpClusterNodeApi.resource(admission, httpsConfig, uriPrefix = "controller"),
+          config)
     yield
       service
 
@@ -204,29 +202,18 @@ object ClusterWatchService:
     onClusterStateChanged: HasNodes => Unit = _ => (),
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
   : ResourceIO[ClusterWatchService] =
-    resource2(
-      clusterWatchId, apisResource, config.withFallback(defaultConfig), label = label,
-      onClusterStateChanged, onUndecidableClusterNodeLoss)
-
-  private def resource2(
-    clusterWatchId: ClusterWatchId,
-    apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
-    config: Config,
-    label: String,
-    onClusterStateChanged: HasNodes => Unit,
-    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
-  : ResourceIO[ClusterWatchService] =
     for
       nodeApis <- apisResource
       service <-
+        val config_ = config.withFallback(defaultConfig)
         Service.resource:
           new ClusterWatchService(
             clusterWatchId,
             nodeApis,
             label = label,
-            keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow,
+            keepAlive = config_.finiteDuration("js7.web.client.keep-alive").orThrow,
             retryDelays =
-              config.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
+              config_.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
             onClusterStateChanged,
             onUndecidableClusterNodeLoss)
     yield
