@@ -133,6 +133,4 @@ trap "terminate SIGINT" SIGINT
 wait $pid || log "JS7 $camelName exited with exit code $?"
 trap - SIGTERM SIGINT
 
-log "JS7 $camelName has been shut down"
-
-data
+log "JS7 $camelName terminated"
