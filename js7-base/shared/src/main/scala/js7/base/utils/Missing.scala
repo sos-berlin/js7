@@ -2,13 +2,22 @@ package js7.base.utils
 
 import cats.Applicative
 
+/** Use with care.
+  *
+  * Use Missing only for optional parameters.
+  *
+  * Because Missing is an optional type, this operations are compilable for types without Missing !!!
+  * So use them with care and be sure to use them only for sum types with Missing,
+  * otherwise it would confuse the reader.
+  *
+  * --> Could a macro via type inspection require the Missing type?
+  */
 type Missing = Missing.type
 
 /** Marker for a missing value, like Option None. */
 object Missing:
 
   extension [A](underlying: A | Missing)
-    // TODO Use unique names to avoid application to simple A
 
     def toOption: Option[A] =
       underlying match

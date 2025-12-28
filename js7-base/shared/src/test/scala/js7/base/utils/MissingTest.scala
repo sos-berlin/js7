@@ -35,6 +35,12 @@ final class MissingTest extends OurTestSuite:
     val missing: Int | Missing = Missing
     assert(missing.foldMap(SyncIO(_)).unsafeRunSync() == Missing)
 
+  "foldMap requires Missing" in:
+    // Should not compile because foldMap is considered to be used with Missing
+    pendingUntilFixed:
+      assertDoesNotCompile:
+         """7.foldMap(SyncIO(_))"""
+
   "foreach" in:
     val a: Int | Missing = 7
     var result = -1
