@@ -62,7 +62,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped, TimeCtx, TimestampedKeyedEvent}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -469,97 +469,99 @@ extends Stash, JournalingActor[ControllerState, Event]:
               logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
               Future.successful(None)
             else
-              var timestampedEvents: Seq[MaybeTimestampedKeyedEvent[Event]] =
-                stampedAgentEvents.view.flatMap {
-                  case Stamped(_, timestampMillis, keyedEvent) =>
+              val eventCalc = EventCalc[ControllerState, Event, TimeCtx]: coll =>
+                // TODO On error, invalidate only affected Order or Agent
+                stampedAgentEvents.view.foldEithers(coll):
+                  case (coll, Stamped(_, ts, keyedEvent)) =>
                     keyedEvent match
                       case KeyedEvent(orderId: OrderId, _: OrderCancellationMarked) =>
-                        TimestampedKeyedEvent(orderId <-: OrderCancellationMarkedOnAgent, timestampMillis) :: Nil
+                        coll.add:
+                          orderId <-: OrderCancellationMarkedOnAgent ^ ts
 
                       case KeyedEvent(orderId: OrderId, _: OrderSuspensionMarked) =>
-                        TimestampedKeyedEvent(orderId <-: OrderSuspensionMarkedOnAgent, timestampMillis) :: Nil
+                        coll.add:
+                          orderId <-: OrderSuspensionMarkedOnAgent ^ ts
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                        val ownEvent = event match
-                          case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                          case _ => event
-                        TimestampedKeyedEvent(orderId <-: ownEvent, timestampMillis) :: Nil
+                        coll.add:
+                          val evt = orderId <-: event.match
+                            // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                            case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath)
+                            case _ => event
+                          evt ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
-                        TimestampedKeyedEvent(agentEntry.agentPath <-: AgentReady(timezone, platformInfo),
-                          timestampMillis) :: Nil
+                        coll.add:
+                          agentEntry.agentPath <-: AgentReady(timezone, platformInfo) ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentShutDown) =>
-                        TimestampedKeyedEvent(
-                          agentEntry.agentPath <-: AgentShutDown,
-                          timestampMillis
-                        ) :: Nil
+                        coll.add:
+                          agentEntry.agentPath <-: AgentShutDown ^ ts
 
                       case KeyedEvent(_: NoKey, ItemAttachedToMe(item)) =>
-                        // COMPATIBLE with v2.1
-                        (NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+                        coll.add:
+                          // COMPATIBLE with v2.1
+                          NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)
 
                       case KeyedEvent(_: NoKey, SignedItemAttachedToMe(signed)) =>
-                        // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                        val item = signed.value
-                        (NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+                        coll.add:
+                          // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                          val item = signed.value
+                          NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)
 
                       case KeyedEvent(_: NoKey, _: ItemDetachingFromMe) =>
-                        Nil
+                        Right(coll)
 
                       case KeyedEvent(_: NoKey, _: ItemDetached) =>
-                        keyedEvent :: Nil
+                        coll.add(keyedEvent)
 
                       case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
-                        keyedEvent :: Nil
+                        coll.add(keyedEvent)
 
                       case KeyedEvent(_, _: ItemAddedOrChanged) =>
-                        Nil
+                        Right(coll)
 
                       case KeyedEvent(_: SubagentId, event: SubagentItemStateEvent) =>
-                        event match
-                          case _: SubagentEventsObserved => Nil // Not needed
-                          case _ => keyedEvent :: Nil
+                        coll.add:
+                          event match
+                            case _: SubagentEventsObserved => None // Not needed
+                            case _ => Some(keyedEvent)
 
                       case ke @ KeyedEvent(_: NoKey, _: ClusterEvent) =>
-                        (agentPath <-: AgentMirroredEvent(ke)) :: Nil
+                        coll.add:
+                          agentPath <-: AgentMirroredEvent(ke)
 
                       case _ =>
-                        logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
-                        Nil
-                }.toVector
+                        logger.error:
+                          s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent"
+                        Right(coll)
 
-              if timestampedEvents.isEmpty then
-                // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-                // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
-                // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-                Future.successful(None)
-              else
-                val agentEventId = stampedAgentEvents.last.eventId
-                timestampedEvents :+= agentPath <-: AgentEventsObserved(agentEventId)
-                val coll = EventColl(controllerState(), TimeCtx(clock.now()))
-                  .add(timestampedEvents)
-                  .flatMap(addSubsequentEvents.calculate)
-                  .orThrow // TODO On error, invalidate Agent only
+              val agentEventId = stampedAgentEvents.last.eventId
+              persist(
+                EventCalc: coll =>
+                  for
+                    coll <- coll.addEventCalc(eventCalc)
+                    coll <-
+                      coll.add:
+                        // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+                        // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+                        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+                        coll.hasEvents thenSome
+                          agentPath <-: AgentEventsObserved(agentEventId)
+                    coll <-
+                      coll.addEventCalc:
+                        addSubsequentEvents
+                  yield
+                    coll,
+                CommitOptions(
+                  transaction = true,
+                  alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
+              ): persisted =>
                 orderQueue.enqueue:
-                  coll.keyedEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId } // For OrderSourceEvents
-
-                journal.unsafeAggregate().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match
-                  case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
-                    // Ignore the events, because orders are already marked as detached (and Failed)
-                    // TODO Avoid race-condition and guard with journal.lock!
-                    // (switch from actors to IO required!)
-                    Future.successful(None)
-                  case _ =>
-                    persist(
-                      EventCalc.pure(coll.timestampedKeyedEvents),
-                      CommitOptions(
-                        transaction = true,
-                        alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
-                    ):
-                      persisted =>
-                        handleEvents(persisted)
-                        Some(agentEventId)
+                  persisted.keyedEvents.view.collect:
+                    case KeyedEvent(orderId: OrderId, _) => orderId // For OrderSourceEvents
+                handleEvents(persisted)
+                Some(agentEventId)
 
     case Internal.OrdersMarked(orderToMark) =>
       // TODO Maybe execute this code when the corresponding event arrives:

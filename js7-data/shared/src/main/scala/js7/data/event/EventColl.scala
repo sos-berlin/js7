@@ -86,11 +86,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
 
   def addEventCalc[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalc[S, E1, Ctx1])
   : Checked[EventColl[S, E, Ctx]] =
-    // Call function with forwarded (events omitted) EventColl,
-    // then add the resulting EventColl to this.
-    eventCalc.widen[S, E, Ctx]
-      .calculate(forward)
-      .flatMap(addColl)
+    eventCalc.calculate(this)
 
   def addColl(other: EventColl[S, E, Ctx]): Checked[EventColl[S, E, Ctx]] =
     if other.originalAggregate_ ne aggregate then
