@@ -55,7 +55,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -1205,7 +1204,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "semi-dark-orange",
+                  "fixedColor": "semi-dark-purple",
                   "mode": "fixed"
                 }
               }
@@ -1749,6 +1748,55 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "java_lang_G1_Old_Gen_Usage_used"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Old used"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Max"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1841,6 +1889,19 @@
           "range": true,
           "refId": "init",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "java_lang_G1_Old_Gen_Usage_used{type=\"MemoryPool\",host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Old used",
+          "range": true,
+          "refId": "oldUsed"
         }
       ],
       "title": "Heap",
@@ -4104,7 +4165,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "semi-dark-yellow",
+                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -4368,6 +4429,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -4376,7 +4438,8 @@
                 "value": 0
               }
             ]
-          }
+          },
+          "unit": "none"
         },
         "overrides": [
           {
@@ -4799,13 +4862,14 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 2,
-  "weekStart": ""
+  "version": 13,
+  "weekStart": "",
+  "id": null
 }
