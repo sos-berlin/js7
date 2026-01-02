@@ -14,8 +14,9 @@ import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{Stopwatch, TestWallClock, WallClock}
+import js7.base.time.{TestWallClock, WallClock}
 import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
@@ -66,13 +67,13 @@ final class FileJournalTest extends OurAsyncTestSuite:
             .contentString
             .replaceAll(""""totalRunningTime":[0-9.]+,""", """"totalRunningTime":0,""")
           assert(normalizedJournalFileContent ==
-           s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.prettyVersion}","buildId":"${BuildInfo.buildId}"}
-              |"-------SNAPSHOT-------"
-              |"-------END OF SNAPSHOT-------"
-              |"-------EVENTS-------"
-              |{"eventId":1000,"TYPE":"SnapshotTaken"}
-              |{"eventId":1001,"Key":"A","TYPE":"SimpleAdded","string":"(FIRST)"}
-              |""".stripMargin)
+            s"""{"TYPE":"JS7.Journal","typeName":"TestState","journalId":"${journal.journalId}","eventId":0,"generation":1,"totalEventCount":0,"totalRunningTime":0,"timestamp":"1970-01-01T00:00:00.001Z","initiallyStartedAt":"1970-01-01T00:00:00.001Z","version":"1","js7Version":"${BuildInfo.prettyVersion}","buildId":"${BuildInfo.buildId}"}
+               |"-------SNAPSHOT-------"
+               |"-------END OF SNAPSHOT-------"
+               |"-------EVENTS-------"
+               |{"eventId":1000,"TYPE":"SnapshotTaken"}
+               |{"eventId":1001,"Key":"A","TYPE":"SimpleAdded","string":"(FIRST)"}
+               |""".stripMargin)
 
         _ <- journal.takeSnapshot
         assertion <- IO:
@@ -116,14 +117,14 @@ final class FileJournalTest extends OurAsyncTestSuite:
 
           (writeDuration, _) <- journal.takeSnapshot.timed
           _ <- IO:
-            info_(s"Snapshot write: ${Stopwatch.itemsPerSecondString(writeDuration, n, "objects")}")
+            info_(s"Snapshot write: ${itemsPerSecondString(writeDuration, n, "objects")}")
 
           (readDuration, recovered) <-
             IO:
               StateRecoverer.recover[TestState](journal.journalLocation, config)
             .timed
           _ <- IO:
-            info_(s"Snapshot read: ${Stopwatch.itemsPerSecondString(readDuration, n, "objects")}")
+            info_(s"Snapshot read: ${itemsPerSecondString(readDuration, n, "objects")}")
             assert(recovered.state.keyToAggregate.size == n)
             assert(recovered.state == journal.unsafeAggregate())
         yield
@@ -134,29 +135,33 @@ final class FileJournalTest extends OurAsyncTestSuite:
         run(n)
 
   "Massive parallel" - {
-    "test empty EventCalc" in:
+    "test empty EventCalc" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
         persistLimit = 500,
         _ => Nil)
 
-    "test" in:
+    "test" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
         persistLimit = 500,
-        i => (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
+        i =>
+          Thread.sleep(0, 1000) // 1µs assumed event computation time
+          (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
 
-    def run(n: Int, persistLimit: Int, toEvents: Int => Seq[AnyKeyedEvent]): IO[Assertion] =
+    def run(n: Int, persistLimit: Int, toEvents: Int => Seq[KeyedEvent[TestEvent]]): IO[Assertion] =
       testJournal(TestWallClock(ts"1970-01-01T00:00:00.001Z"), config"""
         js7.journal.concurrent-persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
       ): journal =>
-        (1 to n).toVector.parTraverse: i =>
-          journal.persist(toEvents(i))
+        (1 to n).to(ArraySeq).parTraverse: i =>
+          journal.persist:
+            EventCalc[TestState, TestEvent, TimeCtx]:
+              _.add(toEvents(i))
         .timed.flatMap: (duration, _) =>
           IO:
             info_(s"$n in parallel, concurrent-persist-limit=$persistLimit " +
-              Stopwatch.itemsPerSecondString(duration, n, "commits"))
+              itemsPerSecondString(duration, n, "commits"))
             succeed
   }
 
