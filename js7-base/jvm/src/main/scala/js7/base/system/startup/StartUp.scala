@@ -82,7 +82,7 @@ object StartUp:
   def printlnWithClock(line: String): Unit =
     System.err.println(s"$nowString $line")
 
-  def nowString: String =
+  private def nowString: String =
     zonedDateTimeToString(ZonedDateTime.now)
 
   // Pattern like in log4j2.xml
