@@ -350,7 +350,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
     "Same filename both in old and new directory" in:
       TestJob.reset()
-      TestJob.continue(1)
+      TestJob.continue()
 
       // Same filename in old and new directory
       val name = "BOTH"
@@ -383,13 +383,13 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         controller.awaitNext[ItemAttachable]()
 
         /// Files are considered deleted (due to directory change — they still exists) ///
-        controller.awaitNextKey[OrderExternalVanished](orderId)
-        controller.awaitNextKey[OrderDeleted](orderId)
-        //controller.awaitNext[ItemAttached]()
+        locally:
+          val vanished = controller.awaitNextKey[OrderExternalVanished](orderId).head.eventId
+          controller.awaitKey[OrderDeleted](orderId, after = vanished)
+          // ExternalOrderAppeared comes concurrently with OrderDeleted
+          controller.awaitKey[ExternalOrderAppeared](waitingFileWatch.path, after = vanished)
 
         // orderId has been started again because its filename duplicates in newDirectory
-
-        controller.awaitNextKey[ExternalOrderAppeared](waitingFileWatch.path)
         controller.awaitNextKey[OrderAdded](orderId)
 
         TestJob.continue()

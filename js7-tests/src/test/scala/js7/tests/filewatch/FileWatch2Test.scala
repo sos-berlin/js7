@@ -4,9 +4,9 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.io.File.separator
-import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
+import java.nio.file.Files.{createDirectories, createDirectory, delete}
 import js7.agent.client.AgentClient
-import js7.agent.data.event.AgentEvent.AgentReady
+import js7.agent.data.event.AgentEvent
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
@@ -17,25 +17,25 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.AgentShutDown
+import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedStateEvent, ItemAttachedToMe}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderStarted, OrderStderrWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderExternalVanished, OrderFinished, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Impure, StringConstant}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatch2Test.*
-import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
+import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 
 final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
@@ -89,97 +89,103 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
     initialFile := ""
     val initialOrderId = orderId1
 
-    directoryProvider.runController() { controller =>
+    directoryProvider.runController(): controller =>
       controller.api.updateUnsignedSimpleItems(Seq(aFileWatch)).await(99.s).orThrow
       // OrderWatch will be attached to the agent after next restart
-    }
 
     directoryProvider.runController(dontWaitUntilReady = true) { controller =>
-      import controller.eventWatch
-      import controller.eventWatch.await
+      import controller.{awaitNext, awaitNextKey}
 
       directoryProvider.runAgents(Seq(bAgentPath)) { _ =>
         directoryProvider.runAgents(Seq(aAgentPath)) { _ =>
-          await[ItemAttached](_.event.key == orderWatchPath)
-          TestJob.continue(2)
-          await[OrderFinished](_.key == initialOrderId)
-          await[OrderDeleted](_.key == initialOrderId)
-          assert(!exists(initialFile))
+          awaitNext[ItemAttached](_.event.key == orderWatchPath)
+          awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("1"))
+          TestJob.continue()
+          delete(initialFile)
+          TestJob.continue()
+          awaitNextKey[OrderFinished](initialOrderId)
+          awaitNextKey[OrderDeleted](initialOrderId)
 
           locally:
             val orderId = orderId2
             val file = aDirectory / "2"
             file := ""
-            TestJob.continue(2)
-            await[OrderFinished](_.key == orderId)
-            await[OrderDeleted](_.key == orderId)
-            assert(!exists(file))
+            TestJob.continue()
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("2"))
+            delete(file)
+            TestJob.continue()
+            awaitNextKey[OrderFinished](orderId)
+            awaitNextKey[OrderDeleted](orderId)
 
           assert(!TestJob.semaphore.flatMap(_.tryAcquire).await(99.s))
           aDirectory / "3" := ""
-          await[OrderStarted](_.key == orderId3)
+          awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("3"))
+          awaitNextKey[OrderAdded](orderId3)
+          awaitNextKey[OrderProcessingStarted](orderId3)
         }
 
         // RESTART WATCHING AGENT WHILE A FILE EXISTS
         directoryProvider.runAgents(Seq(aAgentPath)) { agents =>
           val aAgent = agents.head
+          delete(aDirectory / "3")
           TestJob.continue(2)
-          await[OrderFinished](_.key == orderId3)
+          awaitNextKey[AgentShutDown](aAgentPath)
+          awaitNextKey[OrderFinished](orderId3)
           // Agent must detect the file deletion after restart to allow the order to be removed:
-          await[OrderDeleted](_.key == orderId3)
-          assert(!exists(aDirectory / "3"))
+          awaitNextKey[OrderDeleted](orderId3)
 
           locally:
             // CHANGE DIRECTORY OF FILE ORDER SOURCE
             val orderId = orderId4
             val file = aDirectory / "4"
             file := ""
-            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("4"))
-            await[OrderStarted](_.key == orderId)
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("4"))
+            awaitNextKey[OrderStarted](orderId)
             createDirectory(bDirectory)
-            val beforeAttached = eventWatch.lastAddedEventId
             controller.api.updateUnsignedSimpleItems(Seq(bFileWatch)).await(99.s).orThrow
-            await[ItemAttached](ke => ke.event.key == orderWatchPath && ke.event.itemRevision == Some(ItemRevision(1)),
-              after = beforeAttached)
+            awaitNext[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("4"))
+            awaitNext[ItemAttached]: ke =>
+              ke.event.key == orderWatchPath && ke.event.itemRevision == Some(ItemRevision(1))
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
             // bDirectory does not contain the file
-            await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("4"))
+            delete(file)
             TestJob.continue(2)
-            await[OrderFinished](_.key == orderId)
-            await[OrderDeleted](_.key == orderId)
-            assert(!exists(file))
+            awaitNextKey[OrderFinished](orderId)
+            awaitNextKey[OrderDeleted](orderId)
 
           locally:
             val orderId = orderId5
             val file = bDirectory / "5"
             file := ""
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("5"))
             TestJob.continue(2)
-            await[OrderFinished](_.key == orderId)
-            await[OrderDeleted](_.key == orderId)
-            assert(!exists(file))
+            delete(file)
+            awaitNextKey[OrderFinished](orderId)
+            awaitNextKey[OrderDeleted](orderId)
 
           locally:
             // DELETE AND RECREATE FILE WHILE ORDER IS RUNNING, YIELDING A SECOND ORDER
             val orderId = orderId6
             val file = bDirectory / "6"
             file := ""
-            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"))
-            await[OrderStarted](_.key == orderId)
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"))
+            awaitNextKey[OrderStarted](orderId)
 
-            TestJob.continue(2)
-            val vanished = await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("6"))
-              .head.eventId
-
+            delete(file)
+            awaitNext[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("6"))
+            awaitNextKey[OrderExternalVanished](orderId)
             file := ""
-            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"), after = vanished)
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"))
 
             TestJob.continue(2)
-            val firstRemoved = await[OrderDeleted](_.key == orderId).head.eventId
+            awaitNextKey[OrderDeleted](orderId)
 
-            await[OrderStarted](_.key == orderId, after = firstRemoved)
-            await[OrderFinished](_.key == orderId, after = firstRemoved)
-            await[OrderDeleted](_.key == orderId, after = firstRemoved)
-            assert(!exists(file))
+            // file appeared again
+            awaitNextKey[OrderStarted](orderId)
+            delete(file)
+            TestJob.continue(2)
+            awaitNextKey[OrderFinished](orderId)
+            awaitNextKey[OrderDeleted](orderId)
 
           locally:
             // DELETE DIRECTORY
@@ -191,11 +197,11 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
             sleep(500.ms)
             createDirectory(bDirectory)
             file := ""
-            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("7"))
+            awaitNext[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("7"))
+            delete(file)
             TestJob.continue(2)
-            await[OrderFinished](_.key == orderId)
-            await[OrderDeleted](_.key == orderId)
-            assert(!exists(file))
+            awaitNextKey[OrderFinished](orderId)
+            awaitNextKey[OrderDeleted](orderId)
           val client = AgentClient(
             Admission(
               aAgent.localUri,
@@ -205,7 +211,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         }
       }
 
-      checkControllerEvents(eventWatch.keyedEvents[Event](after = EventId.BeforeFirst))
+      checkControllerEvents(controller.keyedEvents[Event](after = EventId.BeforeFirst))
     }
 
   private def checkControllerEvents(keyedEvents: Seq[AnyKeyedEvent]): Unit =
@@ -219,7 +225,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           case e: UnsignedSimpleItemEvent => e.key.isInstanceOf[OrderWatchPath]
           case _: OrderAdded => true
           case _: OrderStarted => true
-          case _: OrderStderrWritten => true
           case _: OrderFinished => true
           case _: OrderDeleted => true
           case _ => false
@@ -235,7 +240,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("1"))),
       NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
       orderId1 <-: OrderStarted,
-      orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}1\n"),
       orderId1 <-: OrderFinished(),
       orderId1 <-: OrderDeleted,
 
@@ -245,7 +249,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("2"))),
       orderId2 <-: OrderStarted,
-      orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}2\n"),
       orderId2 <-: OrderFinished(),
       orderId2 <-: OrderDeleted,
 
@@ -255,7 +258,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("3"))),
       orderId3 <-: OrderStarted,
-      orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}3\n"),
       orderId3 <-: OrderFinished(),
       orderId3 <-: OrderDeleted,
 
@@ -268,7 +270,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
       NoKey <-: UnsignedSimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
-      orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}4\n"),
       orderId4 <-: OrderFinished(),
       orderId4 <-: OrderDeleted,
 
@@ -278,7 +279,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("5"))),
       orderId5 <-: OrderStarted,
-      orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}5\n"),
       orderId5 <-: OrderFinished(),
       orderId5 <-: OrderDeleted,
 
@@ -288,7 +288,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("6"))),
       orderId6 <-: OrderStarted,
-      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
       // And again
@@ -298,7 +297,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("6"))),
       orderId6 <-: OrderStarted,
-      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
 
@@ -308,7 +306,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           "var" -> StringValue("VAR")),
         externalOrderKey = Some(orderWatchPath / ExternalOrderName("7"))),
       orderId7 <-: OrderStarted,
-      orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}7\n"),
       orderId7 <-: OrderFinished(),
       orderId7 <-: OrderDeleted))
 
@@ -322,16 +319,13 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
       .map(_.value)
       .flatMap(ke => Stream.emit(ke.event)
         .collect:
-          case e: AgentReady => e.copy(
-            timezone = "Europe/Berlin",
-            totalRunningTime = 1.s,
-            platformInfo = Some(PlatformInfo.test))
+          case e: AgentEvent.AgentStarted => e
           case e: InventoryItemEvent if e.key.isInstanceOf[OrderWatchPath] => e
           case e: OrderWatchEvent => e
         .map(e => ke.key <~: e))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
+      NoKey <-: AgentEvent.AgentStarted,
       NoKey <-: ItemAttachedToMe(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
       orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("1"),
@@ -344,7 +338,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
 
       orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("3"),
         Map("file" -> StringValue(s"$aDirectory${separator}3"))),
-      NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
+      NoKey <-: AgentEvent.AgentStarted,
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("4"),
@@ -377,7 +371,6 @@ object FileWatch2Test:
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       TestJob.execute(bAgentPath),
-      DeleteFileJob.execute(bAgentPath),
       TestJob.execute(bAgentPath)),
     orderPreparation = OrderPreparation(
       OrderParameterList(
