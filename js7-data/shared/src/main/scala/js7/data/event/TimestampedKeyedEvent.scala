@@ -1,8 +1,18 @@
 package js7.data.event
 
+import js7.base.time.Timestamp
+
 final case class TimestampedKeyedEvent[+E <: Event](
   keyedEvent: KeyedEvent[E],
-  millisSinceEpoch: Long)
+  millisSinceEpoch: Long):
+
+  def timestamp: Timestamp =
+    Timestamp.ofEpochMilli(millisSinceEpoch)
+
+  def toShortString = s"${keyedEvent.toShortString} @ $timestamp"
+
+  override def toString = s"${keyedEvent.toShortString} @ $timestamp"
+
 
 object TimestampedKeyedEvent:
   extension [E <: Event](maybe: MaybeTimestampedKeyedEvent[E])
@@ -16,6 +26,11 @@ object TimestampedKeyedEvent:
       maybe match
         case o: KeyedEvent[E] => o
         case o: TimestampedKeyedEvent[E] => o.keyedEvent
+
+    def toShortString: String =
+      maybe match
+        case o: KeyedEvent[E] => o.toShortString
+        case o: TimestampedKeyedEvent[E] => o.toShortString
 
 
 type MaybeTimestampedKeyedEvent[+E <: Event] = TimestampedKeyedEvent[E] | KeyedEvent[E]

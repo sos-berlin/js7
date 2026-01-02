@@ -13,10 +13,13 @@ sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent:
 object UnsignedSimpleItemEvent:
 
   sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent, ItemAddedOrChanged:
-    def item: UnsignedSimpleItem
     assertThat(item.itemRevision.isDefined)
+
+    def item: UnsignedSimpleItem
+
   object UnsignedSimpleItemAddedOrChanged:
     def unapply(event: UnsignedSimpleItemAddedOrChanged): Some[UnsignedSimpleItem] = Some(event.item)
+
 
   final case class UnsignedSimpleItemAdded(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged:
@@ -26,6 +29,7 @@ object UnsignedSimpleItemEvent:
   final case class UnsignedSimpleItemChanged(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged:
     def key: UnsignedSimpleItemPath = item.key
+
 
   def jsonCodec[S](implicit S: ItemContainer.Companion[S])
   : TypedJsonCodec[UnsignedSimpleItemEvent] =

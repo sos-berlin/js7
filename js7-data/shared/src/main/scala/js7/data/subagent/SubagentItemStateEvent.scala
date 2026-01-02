@@ -3,7 +3,7 @@ package js7.data.subagent
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.data.event.{Event, EventId}
+import js7.data.event.{Event, EventId, EventsObservedEvent}
 import js7.data.platform.PlatformInfo
 
 trait SubagentItemStateEvent extends Event.IsKeyBase[SubagentItemStateEvent]:
@@ -31,7 +31,7 @@ object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, Subagent
 
   /** Subagent may delete events until `untilEventId`. */
   final case class SubagentEventsObserved(untilEventId: EventId)
-  extends SubagentItemStateEvent:
+  extends EventsObservedEvent, SubagentItemStateEvent:
     override def isMinor = true
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
 

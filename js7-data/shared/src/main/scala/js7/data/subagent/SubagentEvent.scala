@@ -12,7 +12,9 @@ trait SubagentEvent extends NoKeyEvent
 
 object SubagentEvent :
   final case class SubagentItemAttached(item: InventoryItem)
-  extends SubagentEvent
+  extends SubagentEvent:
+    override def toShortString = s"$SubagentItemAttached(${item.key})"
+
 
   type SubagentShutdownStarted = SubagentShutdownStarted.type
   case object SubagentShutdownStarted

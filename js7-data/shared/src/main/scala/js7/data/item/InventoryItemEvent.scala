@@ -3,8 +3,10 @@ package js7.data.item
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.data.event.{ItemContainer, NoKeyEvent}
 
-trait InventoryItemEvent extends NoKeyEvent:
+trait InventoryItemEvent extends NoKeyEvent, Product:
   def key: InventoryItemKey
+
+  override def toShortString = s"$productPrefix($key)"
 
 
 object InventoryItemEvent:

@@ -22,20 +22,20 @@ sealed trait VersionedEvent extends NoKeyEvent
 object VersionedEvent:
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 
-  sealed trait VersionedItemEvent extends VersionedEvent:
+  sealed trait VersionedItemEvent extends VersionedEvent, Product:
     def path: VersionedItemPath
+    override def toShortString = s"$productPrefix($path)"
 
   sealed trait VersionedItemAddedOrChanged
   extends VersionedItemEvent,
     // SignedItemAddedOrChanged, ???
-    ItemAddedOrChanged,
-    Product:
+    ItemAddedOrChanged:
 
     def signedString: SignedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
     def path: VersionedItemPath = item.path
-    override def toShortString = s"$productPrefix($path)"
+
   object VersionedItemAddedOrChanged:
     def unapply(event: VersionedItemAddedOrChanged): Some[Signed[VersionedItem]] =
       Some(event.signed)

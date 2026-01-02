@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventsObservedEvent, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.log.JournalLogger.*
 import scala.collection.{IndexedSeqView, mutable}
@@ -98,7 +98,11 @@ private[journal] final class JournalLogger(
   private def logCommittedEvents(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
     sb.clear()
-    sb.append(':')  // Allow simple filtering of log file: grep " - :" x.log
+    sb.append:
+      if stamped.value.event.isInstanceOf[EventsObservedEvent] then
+        '.'
+      else
+        ':'  // Allow simple filtering of log file: grep " - :" x.log
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth):

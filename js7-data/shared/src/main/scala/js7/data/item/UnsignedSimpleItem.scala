@@ -1,9 +1,13 @@
 package js7.data.item
 
-trait UnsignedSimpleItem extends SimpleItem, UnsignedItem:
+trait UnsignedSimpleItem extends SimpleItem, UnsignedItem, Product:
   protected type Self <: UnsignedSimpleItem
 
   val companion: UnsignedSimpleItem.Companion[Self]
+
+  def toShortString: String =
+    s"$productPrefix($path)"
+
 
 
 object UnsignedSimpleItem:

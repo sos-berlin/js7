@@ -49,3 +49,6 @@ object Event:
 
   transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E]:
     type Key = K
+
+
+trait EventsObservedEvent extends Event

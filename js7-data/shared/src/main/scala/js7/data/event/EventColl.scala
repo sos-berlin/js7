@@ -4,7 +4,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, toEagerSeq}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, mkStringLimited, toEagerSeq}
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.EventColl.*
 import js7.data.event.KeyedEvent.NoKey
@@ -92,7 +92,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
     if other.originalAggregate_ ne aggregate then
       // This should not happen, despite it is returned as a Problem
       val problem = Problem.pure("EventColl.addColl: coll.originalAggregate doesn't match aggregate")
-      logger.warn(s"EventColl.addColl: coll.originalAggregate doesn't match aggregate",
+      logger.error(s"EventColl.addColl: coll.originalAggregate doesn't match aggregate",
         new Exception(problem.toString))
       aggregate.emitLineStream(o => logger.warn(s"aggregate=$o"))
       other.originalAggregate_.emitLineStream(o => logger.warn(s"other.originalAggregate=$o"))
@@ -150,7 +150,8 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
     this.asInstanceOf[EventColl[S1,E1, Ctx]]
 
   override def toString =
-    s"EventColl[${aggregate.companion.name}](${timestampedKeyedEvents.size} events)"
+    s"EventColl[${aggregate.companion.name}](${
+      timestampedKeyedEvents.view.map(_.toShortString).mkStringLimited(3)})"
 
 
 object EventColl:

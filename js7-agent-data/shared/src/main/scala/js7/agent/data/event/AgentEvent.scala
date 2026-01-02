@@ -51,7 +51,9 @@ object AgentEvent:
     timezone: String,
     totalRunningTime: FiniteDuration,
     platformInfo: Option/*COMPATIBLE with v2.3*/[PlatformInfo])
-  extends AgentEvent
+  extends AgentEvent:
+    override def toShortString = s"AgentReady($timezone, $totalRunningTime)"
+
 
   type AgentShutDown = AgentShutDown.type
   case object AgentShutDown extends AgentEvent
