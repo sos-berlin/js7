@@ -49,7 +49,7 @@ import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttin
 import js7.core.command.CommandMeta
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{ClusterModuleShuttingDownProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
+import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown, AgentStarted}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, NoticeId}
@@ -489,6 +489,10 @@ extends Stash, JournalingActor[ControllerState, Event]:
                             case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath)
                             case _ => event
                           evt ^ ts
+
+                      case KeyedEvent(_: NoKey, AgentEvent.AgentStarted) =>
+                        coll.add:
+                          agentEntry.agentPath <-: AgentStarted ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
                         coll.add:

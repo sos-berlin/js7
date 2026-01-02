@@ -8,7 +8,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{IsItemCommand, IsOrderCommand, ResetSubagent, ShutDown}
-import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
+import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown, AgentStarted}
 import js7.agent.motor.AgentMotor.*
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.CatsExtensions.ifFalse
@@ -150,6 +150,8 @@ object AgentMotor:
           agentState.meta.controllerId.toUserId.map: userId =>
             !agentState.journalState.userIdToReleasedEventId.contains(userId) ?
               JournalEventsReleased(userId, EventId.BeforeFirst)
+          .map: maybeReleased =>
+            AgentStarted +: maybeReleased.toList
         .map(_.orThrow)
         .map: (_: Persisted[AgentState, Event]) =>
           for

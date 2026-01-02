@@ -42,6 +42,10 @@ object AgentEvent:
       yield
         AgentDedicated(agentPath, directors, agentRunId, controllerId, controllerRunId)
 
+  type AgentStarted = AgentStarted.type
+  /** First event when the Director started. */
+  case object AgentStarted extends AgentEvent
+
   /** Agent is up and running. */
   final case class AgentReady(
     timezone: String,
@@ -54,6 +58,7 @@ object AgentEvent:
 
   implicit val jsonCodec: TypedJsonCodec[AgentEvent] = TypedJsonCodec(
     Subtype[AgentDedicated](aliases = Seq("AgentCreated")),
+    Subtype.singleton(AgentStarted),
     Subtype(deriveCodec[AgentReady]),
     Subtype(AgentShutDown))
 

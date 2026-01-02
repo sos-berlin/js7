@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentRefState.logger
-import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown, AgentStarted}
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -54,6 +54,9 @@ extends
             agentRunId = Some(agentRunId_),
             eventId = eventId_.getOrElse(EventId.BeforeFirst),
             problem = None))
+
+      case AgentStarted =>
+        Right(this)
 
       case AgentReady(timezone, platformInfo) =>
         Right(copy(

@@ -33,6 +33,10 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
 
   final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 
+  type AgentStarted = AgentStarted.type
+  /** First event when the Director started. */
+  case object AgentStarted extends AgentRefStateEvent
+
   /** Agent is up and running. */
   final case class AgentReady(
     timezone: String/*COMPATIBLE with v2.3*/,
@@ -77,6 +81,7 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
     Subtype(deriveConfiguredCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(AgentCoupled),
     Subtype(deriveConfiguredCodec[AgentCouplingFailed]),
+    Subtype(deriveConfiguredCodec[AgentStarted]),
     Subtype(deriveConfiguredCodec[AgentReady]),
     Subtype(deriveConfiguredCodec[AgentEventsObserved]),
     Subtype(AgentShutDown),

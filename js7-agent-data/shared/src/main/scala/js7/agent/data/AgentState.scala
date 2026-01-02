@@ -143,6 +143,9 @@ extends SignedItemContainer,
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
+      case KeyedEvent(_, AgentEvent.AgentStarted) =>
+        Right(this)
+
       case KeyedEvent(_, _: AgentEvent.AgentReady) =>
         Right(this)
 
