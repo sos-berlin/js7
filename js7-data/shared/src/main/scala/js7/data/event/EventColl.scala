@@ -28,7 +28,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   inline def hasEvents: Boolean =
     timestampedKeyedEvents.nonEmpty
 
-  inline def add[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[EventColl[S, E, Ctx]] =
+  inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventColl[S, E, Ctx]] =
     addEvent(keyedEvent)
 
   inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
