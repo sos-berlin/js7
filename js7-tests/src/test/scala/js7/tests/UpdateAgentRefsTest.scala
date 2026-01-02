@@ -143,7 +143,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
 
   "Change Directors's URI to an unreachable address" in:
     val eventId = eventWatch.lastAddedEventId
-    val subagentItem = SubagentItem(subagentId, agentPath, Uri("http://127.0.0.0:0"))
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri("http://127.0.0.0:9"))
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.path))
     eventWatch.await[AgentCouplingFailed](after = eventId)
