@@ -64,6 +64,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   private val stopAcknowledging = Deferred.unsafe[IO, Unit]
   @volatile private var stopRequested = false
   private val clusterWatchSynchronizerOnce = SetOnce[ClusterWatchSynchronizer]
+  private val prepareCouplingActive = Atomic(false)
 
   private def clusterWatchSynchronizer = clusterWatchSynchronizerOnce.orThrow
 
@@ -197,27 +198,28 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
               // TODO Cancel also when ack is stopped after execution has been started
               IO.left(Problem.pure("Active cluster node is shutting down"))
             else
-              clusterStateLock.lock(command.toShortString):
-                checkCouplingToken(command).flatMapT: _ =>
-                  persist():
-                    case Empty =>
-                      Left(ClusterCommandInapplicableProblem(command, Empty))
+              prepareCouplingActive.nonConcurrent("ClusterPrepareCoupling command"):
+                clusterStateLock.lock(command.toShortString):
+                  checkCouplingToken(command).flatMapT: _ =>
+                    persist:
+                      case Empty =>
+                        Left(ClusterCommandInapplicableProblem(command, Empty))
 
-                    case clusterState: HasNodes =>
-                      if clusterState.activeId != activeId || clusterState.passiveId != passiveId then
-                        Left(ClusterCommandInapplicableProblem(command, clusterState))
-                      else
-                        clusterState match
-                          case _: IsDecoupled =>
-                            Right(Some(ClusterCouplingPrepared(activeId)))
+                      case clusterState: HasNodes =>
+                        if clusterState.activeId != activeId || clusterState.passiveId != passiveId then
+                          Left(ClusterCommandInapplicableProblem(command, clusterState))
+                        else
+                          clusterState match
+                            case _: IsDecoupled =>
+                              Right(Some(ClusterCouplingPrepared(activeId)))
 
-                          case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>
-                            logger.debug:
-                              s"ClusterPrepareCoupling command ignored in clusterState=$clusterState"
-                            Right(None)
-                  .flatMapT: (stampedEvents, clusterState) =>
-                    proceed(clusterState).unless(stampedEvents.isEmpty)
-                      .as(Right(ClusterCommand.Response.Accepted))
+                            case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>
+                              logger.debug:
+                                s"ClusterPrepareCoupling command ignored in clusterState=$clusterState"
+                              Right(None)
+                    .flatMapT: (stampedEvents, clusterState) =>
+                      proceed(clusterState).unless(stampedEvents.isEmpty)
+                        .as(Right(ClusterCommand.Response.Accepted))
 
       case command @ ClusterCommand.ClusterCouple(activeId, passiveId, _) =>
         requireOwnNodeId(command, activeId):
