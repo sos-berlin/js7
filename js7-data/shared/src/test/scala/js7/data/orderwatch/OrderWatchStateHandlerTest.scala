@@ -3,7 +3,7 @@ package js7.data.orderwatch
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
@@ -41,15 +41,22 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
             .copy(isExternalNotVanished = state.isExternalNotVanished + orderId)
       case KeyedEvent(orderId: OrderId, OrderExternalVanished) =>
         update:
-          state.ow.onOrderExternalVanished(aExternalOrderKey(orderId.string.stripPrefix("file:A-WATCH:"))).orThrow
-            .copy(isExternalNotVanished = state.isExternalNotVanished - orderId)
+          state.copy(isExternalNotVanished = state.isExternalNotVanished - orderId)
       case KeyedEvent(externalOrderName, ExternalOrderRejected) =>
         throw new NotImplementedError
     events
 
   private def update(o: TestState) =
     state = o
-    assert(state.ow.finishRecovery == Right(state))
+    // Ignore orderExternalVanishedQueue because it's for compatibility only
+    assert:
+      state.ow.finishRecovery.map: st =>
+        st.copy(
+          pathToOrderWatchStateMap =
+            st.pathToOrderWatchStateMap.view.mapValues: orderWatchState =>
+              orderWatchState.copy(orderExternalVanishedQueue = Set.empty)
+            .toMap)
+      == Right(state)
 
   "addOrderWatch" in:
     update(state.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow)
@@ -124,9 +131,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state("A") == Some(HasOrder(orderId("A"), Some(Vanished))))
 
-      assert(applyNextEvents() == Seq(
-        orderId("A") <-: OrderExternalVanished))
-
       update(state.ow.onOrderDeleted(aExternalOrderKey("A"), orderId("A")).orThrow)
       assert(state("A") == None)
 
@@ -135,9 +139,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     "ExternalOrderVanished B => OrderExternalVanished" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(Vanished))))
-
-      assert(applyNextEvents() == Seq(
-        orderId("B") <-: OrderExternalVanished))
 
     "ExternalOrderAppeared B, while B order is running" in:
       update(state.ow.onOrderWatchEvent(externalOrderAppeared("B")).orThrow)
@@ -155,8 +156,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     "ExternalOrderVanished while order is running" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(Vanished))))
-      assert(applyNextEvents() == Seq(
-        orderId("B") <-: OrderExternalVanished))
 
       update(state.ow.onOrderWatchEvent(externalOrderAppeared("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(appeared("B")))))
@@ -172,9 +171,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
 
     "OrderExternalVanished" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
-      update(state.ow
-        .onOrderExternalVanished(aExternalOrderKey("B"))
-        .orThrow)
       assert(state("A") == None)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(Vanished))))
 

@@ -23,7 +23,7 @@ import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.LockState
-import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderExternalVanished, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
@@ -490,7 +490,7 @@ object ControllerStateExecutor:
         ItemAttachable(workflowControl.id, _)
 
   def nextOrderWatchOrderEvents(controllerState: ControllerState)
-  : View[KeyedEvent[OrderCoreEvent | ExternalOrderRejected]] =
+  : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =
     controllerState.ow.nextEvents(addOrder(controllerState, _, _))
 
   // TODO Try to call with only relevant OrderIDs

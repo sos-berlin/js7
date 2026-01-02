@@ -69,6 +69,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedItem, UnsignedItemKey}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished, PlanStatusEvent}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
@@ -519,8 +520,15 @@ extends Stash, JournalingActor[ControllerState, Event]:
                       case KeyedEvent(_: NoKey, _: ItemDetached) =>
                         coll.add(keyedEvent)
 
-                      case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
-                        coll.add(keyedEvent)
+                      case KeyedEvent(path: OrderWatchPath, event: OrderWatchEvent) =>
+                        coll.add(keyedEvent).flatMap: coll =>
+                          event match
+                            case event: ExternalOrderVanished =>
+                              coll.add:
+                                coll.aggregate.ow.toOrderExternalVanished(path, event)
+
+                            case _ =>
+                              Right(coll)
 
                       case KeyedEvent(_, _: ItemAddedOrChanged) =>
                         Right(coll)

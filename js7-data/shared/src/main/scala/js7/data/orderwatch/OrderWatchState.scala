@@ -37,7 +37,10 @@ final case class OrderWatchState(
   item: OrderWatch,
   externalToState: Map[ExternalOrderName, AppearedOrHasOrder] = Map.empty,
   private[orderwatch] val orderAddedQueue: Set[ExternalOrderName] = Set.empty,
-  private[orderwatch] val orderExternalVanishedQueue: Set[ExternalOrderName] = Set.empty)
+  // orderExternalVanishedQueue is required only when Controller version crosses v2.8.3 and
+  // the previous version emitted ExternalOrderVanished but not OrderExternalVanished events.
+  // Since 2.8.3, both events are emitted in the same transaction.
+  private[orderwatch] val orderExternalVanishedQueue: Set[ExternalOrderName] = Set.empty) // COMPATIBLE with before v2.8.3
 extends
   UnsignedSimpleItemState with EventDriven[OrderWatchState, OrderWatchEvent]:
 
@@ -132,8 +135,7 @@ extends
         // Vanished after Order has been added – the normal case
         Right(copy(
           externalToState = externalToState.updated(externalOrderName,
-            HasOrder(orderId, Some(Vanished))),
-          orderExternalVanishedQueue = orderExternalVanishedQueue + externalOrderName))
+            HasOrder(orderId, Some(Vanished)))))
 
       case Some(HasOrder(orderId, Some(Appeared(_, _)))) =>
         // The reappeared external order (file) has vanished again – we ignore it
@@ -160,31 +162,24 @@ extends
       case o =>
         unexpected(s"$orderId <-: OrderAdded($externalOrderName) but externalToState is $o")
 
-  def onOrderExternalVanished(externalOrderName: ExternalOrderName): Checked[OrderWatchState] =
-    Right(copy(
-      orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName))
-
   def onOrderDeleted(externalOrderName: ExternalOrderName, orderId: OrderId)
   : Checked[OrderWatchState] =
     externalToState.get(externalOrderName) match
       case Some(HasOrder(`orderId`, None/*?*/ | Some(Vanished))) | None =>
         Right(copy(
-          externalToState = externalToState - externalOrderName,
-          orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName))
+          externalToState = externalToState - externalOrderName))
 
       case Some(HasOrder(`orderId`, Some(appeared: Appeared))) =>
         // The reappeared ExternalOrderName has been deleted.
         // We insert the ExternalOrderName into orderAddedQueue to start a new Order.
         Right(copy(
           externalToState = externalToState.updated(externalOrderName, appeared),
-          orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName,
           orderAddedQueue = orderAddedQueue + externalOrderName))
 
       case Some(Appeared(_, _)) =>
         // The reappeared ExternalOrderName has been deleted.
         // We insert the ExternalOrderName into orderAddedQueue to start a new Order.
         Right(copy(
-          orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName,
           orderAddedQueue = orderAddedQueue + externalOrderName))
 
       case Some(x) =>
@@ -227,6 +222,12 @@ extends
     orderExternalVanishedQueue.view.flatMap: externalOrderName =>
       externalToState.get(externalOrderName).collect:
         case HasOrder(orderId, _) => orderId <-: OrderExternalVanished
+
+  def toOrderExternalVanished(vanished: ExternalOrderVanished)
+  : Option[KeyedEvent[OrderExternalVanished]] =
+      externalToState.get(vanished.externalOrderName).collect:
+        case HasOrder(orderId, _) =>
+          orderId <-: OrderExternalVanished
 
   def estimatedSnapshotSize: Int =
     1 + externalToState.size

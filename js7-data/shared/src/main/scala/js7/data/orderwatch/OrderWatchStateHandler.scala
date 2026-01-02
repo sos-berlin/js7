@@ -2,14 +2,12 @@ package js7.data.orderwatch
 
 import cats.instances.vector.*
 import cats.syntax.traverse.*
-import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Assertions.assertThat
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isStrict
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderExternalVanished}
 import js7.data.order.{Order, OrderId}
-import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}
 
@@ -64,24 +62,16 @@ trait OrderWatchStateHandler[Self]:
         .flatMap(_.onOrderAdded(externalOrderKey.name, orderId))
         .flatMap(updateOrderWatchState)
 
-    def onOrderExternalVanished(order: Order[Order.State]): Checked[Self] =
-      if isStrict then assertThat(order.externalOrder.exists(_.vanished))
-      order.externalOrder.toRight:
-        Problem(s"OrderExternalVanished but ${order.id} is not linked to an external order")
-      .flatMap: ext =>
-        onOrderExternalVanished(ext.externalOrderKey)
-
-    def onOrderExternalVanished(external: ExternalOrderKey): Checked[Self] =
-      pathToOrderWatchState.get(external.orderWatchPath)
-        .fold(Checked(self)):
-          _.onOrderExternalVanished(external.name).flatMap:
-            updateOrderWatchState
-
     def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.{name, orderWatchPath}
       pathToOrderWatchState.get(orderWatchPath).fold(Checked(self)): orderWatchState =>
         orderWatchState.onOrderDeleted(name, orderId)
           .flatMap(updateOrderWatchState)
+
+    def toOrderExternalVanished(path: OrderWatchPath, vanished: ExternalOrderVanished)
+    : Option[KeyedEvent[OrderExternalVanished]] =
+      pathToOrderWatchState.get(path).flatMap:
+        _.toOrderExternalVanished(vanished)
 
     def nextEvents(toOrderAdded: ToOrderAdded)
     : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =

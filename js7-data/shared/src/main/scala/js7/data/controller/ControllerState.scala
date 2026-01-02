@@ -1053,8 +1053,6 @@ extends
   : Checked[ControllerState] =
     for
       s <- this.updateOrders(s, updateOrders ++ externalVanishedOrders)
-      s <- externalVanishedOrders.foldEithers(s):
-        _.ow.onOrderExternalVanished(_)
       s <- removeOrders_(s, removeOrders)
       s <- Right(s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_
