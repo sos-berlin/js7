@@ -171,8 +171,9 @@ extends
             DirectoryEventDelayer(directory, fileWatch.delay, settings.logDelayConf)
           .chunks
           .evalMap: chunk =>
-            lockKeeper.lock(fileWatch.path):
-              emitOrderWatchEvents(fileWatch, directory, chunk)
+            //?lockKeeper.lock(fileWatch.path):
+              journal.persist:
+                orderWatchEvents(fileWatch, directory, chunk.asSeq)
           .foreach:
             case Left(problem) => IO(logger.error(s"${fileWatch.path}: $problem"))
             case Right(persisted) => IO:
