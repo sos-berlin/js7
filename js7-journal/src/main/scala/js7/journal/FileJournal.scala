@@ -188,8 +188,10 @@ extends
     if isTest then assertThat(!persist.commitOptions.commitLater/*not implemented*/)
     //meterPersist:
     enqueue(persist)
-      .flatMap: (_, whenPersisted) =>
+      .flatMap: (canceledRef, _, whenPersisted) =>
         whenPersisted.get
+          .onCancel:
+            canceledRef.set(true)
       //.raceMerge:
       //  untilStopRequested *>
       //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
@@ -197,7 +199,11 @@ extends
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
-  : IO[(DeferredSource[IO, Checked[Persisted[S, E]]], DeferredSource[IO, Checked[Persisted[S, E]]])] =
+  : IO[(
+      cancel: Ref[IO, Boolean],
+      whenApplied: DeferredSource[IO, Checked[Persisted[S, E]]],
+      whenPersisted: DeferredSource[IO, Checked[Persisted[S, E]]]
+    )] =
     // TODO ?
     // WHEN STOPPED WHILE SWITCHING OVER:
     // We ignore the event and do not notify the caller,
@@ -216,8 +222,9 @@ extends
         case Right(()) =>
           journalQueue.offer(Some(queueEntry))
       .as:
-        whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]] ->
-          whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]]
+        (queueEntry.canceled,
+          whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
+          whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
 
   def onPassiveNodeHasAcknowledged(eventId: EventId): IO[Unit] =
     ackSignal.update: lastAck =>
@@ -379,13 +386,19 @@ object FileJournal:
       State(aggregate, aggregate, totalEventCount)
 
 
-  private[journal] final case class QueueEntry[S <: EventDrivenState[S, Event]](
-    eventCalc: EventCalc[S, Event, TimeCtx],
-    commitOptions: CommitOptions,
-    since: Deadline,
-    metering: CallMeter.Metering,
-    whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
-    whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]):
+  private[journal] final class QueueEntry[S <: EventDrivenState[S, Event]](
+    val eventCalc: EventCalc[S, Event, TimeCtx],
+    val commitOptions: CommitOptions,
+    val since: Deadline,
+    val metering: CallMeter.Metering,
+    val whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
+    val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]):
+
+    val canceled = Ref.unsafe[IO, Boolean](false)
+
+    def onCanceled: IO[Unit] =
+      IO:
+        persistMeter.stopMetering(metering)
 
     def completePersistedWithProblem(problem: Problem): IO[Unit] =
       IO.defer:

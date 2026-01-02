@@ -132,7 +132,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.concurrentPersistLimit)
-          .through(commitPipeline)
+          .evalMapFilter: queueEntry =>
+            queueEntry.canceled.get.flatMap:
+              case false => IO.some(queueEntry)
+              case true => queueEntry.onCanceled.as(None)
+          .through:
+            commitPipeline
           .interruptWhenF(whenBeingKilled.get)
           .compile.drain
 

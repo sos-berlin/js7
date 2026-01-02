@@ -54,7 +54,7 @@ extends Actor, Stash:
       else
         journal.enqueue:
           Persist(options.copy(commitLater = commitLater), since)(eventCalc)
-        .flatMap: (whenApplied, whenCommitted) =>
+        .flatMap: (_, whenApplied, whenCommitted) =>
           whenApplied.get.map(_.map(_ -> whenCommitted))
         .awaitInfinite match
           case Left(problem) =>

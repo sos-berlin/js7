@@ -2,16 +2,19 @@ package js7.journal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
+import java.util.concurrent.CyclicBarrier
 import js7.base.BuildInfo
-import js7.base.catsutils.CatsEffectExtensions.orThrow
+import js7.base.catsutils.CatsEffectExtensions.{left, orThrow}
 import js7.base.catsutils.Environment
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
+import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -20,14 +23,17 @@ import js7.base.time.{TestWallClock, WallClock}
 import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.event.{AnyKeyedEvent, EventCalc, EventId, SnapshotableState, Stamped}
+import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.FileJournalTest.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.test.TestEvent.{Appended, SimpleAdded}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import org.scalatest.Assertion
+import scala.collection.immutable.ArraySeq
+import scala.concurrent.blocking
 import scala.concurrent.duration.FiniteDuration
 
 final class FileJournalTest extends OurAsyncTestSuite:
@@ -39,7 +45,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  "Persist" in:
+  "persist" in :
     testJournal(TestWallClock(ts"1970-01-01T00:00:00.001Z")): journal =>
       for
         persisted <-
@@ -98,7 +104,43 @@ final class FileJournalTest extends OurAsyncTestSuite:
       yield
         assertion
 
-  "Big snapshot" in:
+  "persist is cancelable" in :
+    testJournal(
+      TestWallClock(ts"1970-01-01T00:00:00.001Z"),
+      config"js7.journal.sync = off"
+    ): journal =>
+      journal.persist:
+        // Initialize
+        Seq(
+          "A" <-: SimpleAdded(""),
+          "B" <-: SimpleAdded(""))
+      .orThrow
+      .flatMap: _ =>
+        IO.defer:
+          val barrier1 = new CyclicBarrier(2)
+          val barrier2 = new CyclicBarrier(2)
+          journal.persist:
+            // Block the first persist operation
+            EventCalc[TestState, TestEvent, TimeCtx]: coll =>
+              blocking:
+                barrier1.await()
+                barrier2.await()
+                coll.add("A" <-: Appended('+'))
+          .both:
+            journal.persist("B" <-: Appended('?')).start.flatMap: fiber =>
+              barrier1.await()
+              // Cancel the second persist operation while the first one is still running
+              fiber.cancel
+                .productR:
+                  fiber.joinWith(IO.left(Problem("CANCELED")))
+                .productL:
+                  IO(barrier2.await())
+          .map: pair =>
+            assert(pair._1.isInstanceOf[Right[?, ?]] && pair._2 == Left(Problem("CANCELED")))
+        .replicateA(1000)
+      .map(_.combineAll)
+
+  "Big snapshot" in :
     val objectSize = 10_000
     val bigEvent = TestEvent.Added("+" * objectSize)
 
@@ -186,6 +228,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
   private def info_(line: String) =
     logger.debug(s"🔵🔵🔵 $line")
     info(line)
+
 
 object FileJournalTest:
   private val logger = Logger[this.type]
