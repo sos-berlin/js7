@@ -150,7 +150,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             journal.aggregate.map(_.clusterState).flatMap:
               case clusterState: Coupled if passiveUri != clusterState.setting.passiveUri =>
                 journal.onPassiveLost *>
-                  persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true /*Since v2.7*/):
+                  persistWithoutTouchingHeartbeat(forceClusterWatchWhenUntaught = true /*Since v2.7*/):
                     case clusterState: Coupled =>
                       Right:
                         (passiveUri != clusterState.setting.passiveUri) ?
@@ -304,24 +304,22 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   private def checkCouplingToken(command: ClusterCommand.ClusterCouplingCommand)
   : IO[Checked[Unit]] =
     logger.debugIO:
-      journal.aggregate.map(_.clusterState)
-        .map:
-          case o @ ClusterState.Empty => Left(ClusterCommandInapplicableProblem(command, o): Problem)
-          case HasNodes(setting) => Right(setting.passiveUri)
-        .flatMapT: passiveUri =>
-          common.clusterNodeApi(
-            Admission(passiveUri, passiveNodeUserAndPassword),
-            "checkCouplingToken")
-          .use: api =>
-            api.login(onlyIfNotLoggedIn = true) *>
-              HttpClient.liftProblem:
-                api.executeClusterCommand(ClusterConfirmCoupling(command.token)).void
-          .timeoutTo(passiveNodeCouplingResponseTimeout, IO.left(Problem(
-            s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
-          .handleError: throwable =>
-            val msg = s"A passive cluster node wanted to couple but $passiveUri does not respond"
-            logger.error(s"$msg: ${throwable.toStringWithCauses}")
-            Left(Problem(msg))
+      journal.aggregate.map(_.clusterState).map:
+        case o @ ClusterState.Empty => Left(ClusterCommandInapplicableProblem(command, o): Problem)
+        case HasNodes(setting) => Right(setting.passiveUri)
+      .flatMapT: passiveUri =>
+        common.clusterNodeApi(
+          Admission(passiveUri, passiveNodeUserAndPassword),
+          "checkCouplingToken")
+        .use: api =>
+          HttpClient.liftProblem:
+            api.executeClusterCommand(ClusterConfirmCoupling(command.token)).void
+        .timeoutTo(passiveNodeCouplingResponseTimeout, IO.left(Problem(
+          s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
+        .handleError: throwable =>
+          val msg = s"A passive cluster node wanted to couple but $passiveUri does not respond"
+          logger.error(s"$msg: ${throwable.toStringWithCauses}")
+          Left(Problem(msg))
 
   def switchOver: IO[Checked[Unit]] =
     clusterStateLock.lock:
@@ -658,7 +656,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   private def persistWithoutTouchingHeartbeat(
     extraEvent: Option[ItemAttachedToMe] = None,
-    dontAskClusterWatchWhenUntaught: Boolean = false)(
+    forceClusterWatchWhenUntaught: Boolean = false)(
     toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     IO.defer:
@@ -690,7 +688,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                     clusterWatchIdChangeAllowed = true/*
                       events == Seq(ClusterCouplingPrepared(ownId) ||
                       events == Seq(ClusterPassiveLost(clusterState.passiveId))*/,
-                    forceWhenUntaught = dontAskClusterWatchWhenUntaught)
+                    forceWhenUntaught = forceClusterWatchWhenUntaught)
                   .flatMapT:
                     case Some(confirmation)
                       // After SwitchOver this ClusterNode is no longer active
