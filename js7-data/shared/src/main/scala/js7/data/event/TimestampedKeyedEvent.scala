@@ -15,6 +15,7 @@ final case class TimestampedKeyedEvent[+E <: Event](
 
 
 object TimestampedKeyedEvent:
+
   extension [E <: Event](maybe: MaybeTimestampedKeyedEvent[E])
 
     def maybeMillisSinceEpoch: Option[Long] =

@@ -9,9 +9,34 @@ final case class MultipleLinesBracket(first: Char, middle: Char, last: Char, sin
 
 object MultipleLinesBracket:
 
+  /** Round bracket: ⎛.
+    *
+    * <pre>
+    *   ⎛1
+    *   ⎜2
+    *   ⎝3
+    * </pre>
+    */
   val Round: MultipleLinesBracket = MultipleLinesBracket("⎛⎜⎝")
+  /** Square bracket: ⎡.
+    *
+    * <pre>
+    *   ⎡1
+    *   ⎢2
+    *   ⎣3
+    * </pre>
+    */
   val Square: MultipleLinesBracket = MultipleLinesBracket("⎡⎢⎣")
+  /** Small square bracket: ┌.
+    *
+    * <pre>
+    *   ┌1
+    *   │2
+    *   └3
+    * </pre>
+    */
   val SmallSquare: MultipleLinesBracket = MultipleLinesBracket("┌│└")
+  /** No bracket, indent lines with a space only. */
   val Space: MultipleLinesBracket = MultipleLinesBracket("   ")
   val Default: MultipleLinesBracket = SmallSquare
 
@@ -35,7 +60,7 @@ object MultipleLinesBracket:
     iterableOrStream.match
       case o: Stream[fs2.Pure, A] => o
       case o: Iterable[A] => Stream.iterable(o)
-    // Keep chunk small because a single element may be big
+    // Keep chunks small because a single element may be big
     .chunkLimit(1).unchunks
     .zipWithBracket(brackets).flatMap: (o, br) =>
       Stream(" ", br.toString, o.toString, "\n")

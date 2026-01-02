@@ -299,35 +299,35 @@ object StreamExtensions:
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltWhenTrue: Stream[F2, Boolean])
     : Stream[F2, O] =
       stream.interruptWhen(haltWhenTrue)
-        .prefetch // prefetch avoid interruption / cancellation of the downstream
+        .prefetch // prefetch avoids interruption / cancellation of the downstream
 
     /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operation.
+      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
       */
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](
       haltWhenTrue: Deferred[F2, Either[Throwable, Unit]])
     : Stream[F2, O] =
       stream.interruptWhen(haltWhenTrue.get)
-        .prefetch // prefetch avoid interruption / cancellation of the downstream
+        .prefetch // prefetch avoids interruption / cancellation of the downstream
 
     /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operation.
+      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
       */
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](signal: Signal[F2, Boolean])
     : Stream[F2, O] =
       stream.interruptWhen(signal)
-        .prefetch // prefetch avoid interruption / cancellation of the downstream
+        .prefetch // prefetch avoids interruption / cancellation of the downstream
 
     /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-     * <p>The asynchronous boundary avoids cancellation of the downstream operation.
+     * <p>The asynchronous boundary avoids cancellation of the downstream operations.
      */
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltOnSignal: F2[Either[Throwable, Unit]])
     : Stream[F2, O] =
       stream.interruptWhen(haltOnSignal)
-        .prefetch // prefetch avoid interruption / cancellation of the downstream
+        .prefetch // prefetch avoids interruption / cancellation of the downstream
 
     /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operation.
+      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
       */
     @targetName("interruptUpstreamWhenUnit")
     def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltOnCompletion: F2[Unit])

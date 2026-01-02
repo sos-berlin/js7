@@ -32,6 +32,7 @@ final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Ke
 
   private def keyPrefix = (key != NoKey) ?? s"$key $Arrow "
 
+
 type AnyKeyedEvent = KeyedEvent[Event]
 
 val <-: = KeyedEvent
