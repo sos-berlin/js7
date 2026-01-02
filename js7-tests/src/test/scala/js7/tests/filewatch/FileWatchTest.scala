@@ -176,6 +176,12 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     controller.awaitNextKey[OrderDeleted](orderId)
     assert(!exists(file))
 
+  "Same filename again and again" in :
+    for _ <- 1 to 3 do
+      watchDirectory / "AGAIN" := ""
+      controller.awaitNextKey[OrderFinished](OrderId("file:TEST-WATCH:AGAIN"))
+      controller.awaitNextKey[OrderDeleted](OrderId("file:TEST-WATCH:AGAIN"))
+
   "Add many files, forcing an overflow" in:
     val since = Deadline.now
     val filenames = (1 to 1).map(_.toString).toVector
@@ -395,7 +401,6 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         TestJob.continue()
 
         controller.awaitNextKey[OrderFinished](orderId)
-        //controller.awaitNextKey[OrderDeleted](orderId)
 
         assert(controller
           .keyedEvents[ExternalOrderAppeared](after = eventId)
@@ -438,11 +443,22 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         NoKey <-: ItemAttached(fileWatch.path, Some(ItemRevision(1)), bAgentPath)))
 
   "JS-2159 Delete a FileWatch while an Order is still running" in:
-    watchDirectory / "BEFORE-DELETION" := ""
-    controller.awaitNextKey[OrderFinished](OrderId("file:TEST-WATCH:BEFORE-DELETION"))
+    waitingWatchDirectory / "DELETE-WATCH" := ""
+    val orderId = OrderId("file:WAITING-WATCH:DELETE-WATCH")
+    controller.awaitNextKey[OrderProcessingStarted](orderId)
 
-    //watchDirectory / "BEFORE-DELETION" := ""
-    //controller.awaitNextKey[OrderFinished](OrderId("file:TEST-WATCH:BEFORE-DELETION"))
+    controller.api.updateItems:
+      Stream:
+        DeleteSimple(waitingFileWatch.path)
+    .await(99.s).orThrow
+    controller.awaitNextKey[ExternalOrderVanished](waitingFileWatch.path)
+    controller.awaitNext[ItemDeleted](_.event.key == waitingFileWatch.path)
+
+    TestJob.continue()
+    controller.awaitNextKey[OrderFinished](orderId)
+    controller.awaitNextKey[OrderDeleted](orderId)
+
+    delete(waitingWatchDirectory / "DELETE-WATCH")
 
   "Deleting the Workflow referenced by the FileWatch is rejected" in:
     assert:
@@ -452,7 +468,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
           RemoveVersioned(workflow.path))
       .await(99.s) ==
         Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path,
-          moreInfo = " with ExternalOrderName(BEFORE-DELETION), attached to Agent:AGENT-B"))
+          moreInfo = ", attached to Agent:AGENT-B"))
 
   "Delete a FileWatch" in:
     val eventId = controller.resetLastWatchedEventId()
@@ -480,7 +496,8 @@ object FileWatchTest:
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW"),
-    Vector(DeleteFileJob.execute(aAgentPath)))
+    Vector(
+      DeleteFileJob.execute(aAgentPath)))
 
   private val waitingWorkflow = Workflow(
     WorkflowPath("WAITING-WORKFLOW"),
