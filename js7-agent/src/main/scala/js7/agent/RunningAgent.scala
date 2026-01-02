@@ -199,13 +199,13 @@ extends MainService, Service.StoppableByRequest:
 
                   case Some(Right(Allocated(o, _))) =>
                     o.execute(cmd, meta)
+            .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
         case _ =>
           agentCommandExecutorDeferred.tryGet.flatMap:
             case None => IO.left(NoDirectorProblem)
             case Some(checked) =>
               IO.pure(checked).flatMapT:
                 _.allocatedThing.execute(cmd, meta)
-      .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
 
   def systemSessionToken: SessionToken =
     forDirector.systemSessionToken

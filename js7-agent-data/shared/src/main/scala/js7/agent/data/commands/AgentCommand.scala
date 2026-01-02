@@ -42,7 +42,8 @@ object AgentCommand extends CommonCommand.Companion:
       implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
 
 
-  sealed trait IsEventEmittingAgentCommand extends AgentCommand, IsEventEmittingCommand
+  sealed trait NonBatch extends AgentCommand
+  sealed trait IsEventEmittingAgentCommand extends NonBatch, IsEventEmittingCommand
 
 
   final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
@@ -60,7 +61,7 @@ object AgentCommand extends CommonCommand.Companion:
     type Response = Response.Accepted
 
 
-  final case class EmergencyStop(restart: Boolean = false) extends AgentCommand:
+  final case class EmergencyStop(restart: Boolean = false) extends NonBatch:
     /** The JVM is halted before responding. */
     type Response = Response.Accepted
   object EmergencyStop:
@@ -82,7 +83,7 @@ object AgentCommand extends CommonCommand.Companion:
     type Response = Response.Accepted
 
 
-  case object NoOperation extends AgentCommand:
+  case object NoOperation extends NonBatch:
     type Response = Response.Accepted
 
 
@@ -95,7 +96,7 @@ object AgentCommand extends CommonCommand.Companion:
     directors: Seq[SubagentId],
     controllerId: ControllerId,
     controllerRunId: ControllerRunId)
-  extends AgentCommand:
+  extends NonBatch:
     type Response = DedicateAgentDirector.Response
 
   object DedicateAgentDirector:
@@ -124,7 +125,7 @@ object AgentCommand extends CommonCommand.Companion:
     agentRunId: AgentRunId,
     eventId: EventId,
     controllerRunId: ControllerRunId)
-  extends AgentCommand:
+  extends NonBatch:
     type Response = CoupleController.Response
   object CoupleController:
     final case class Response(orderIds: Set[OrderId])
@@ -133,7 +134,7 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   final case class Reset(agentRunId: Option[AgentRunId])
-  extends AgentCommand
+  extends NonBatch
 
   object Reset:
     type Response = AgentCommand.Response
@@ -141,11 +142,11 @@ object AgentCommand extends CommonCommand.Companion:
 
   type TakeSnapshot = TakeSnapshot.type
 
-  case object TakeSnapshot extends AgentCommand:
+  case object TakeSnapshot extends NonBatch:
     type Response = Response.Accepted
 
 
-  sealed trait ShutdownOrAbort extends AgentCommand
+  sealed trait ShutdownOrAbort extends NonBatch
 
 
   /**
@@ -197,7 +198,7 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   sealed trait IsOrderCommand extends IsEventEmittingAgentCommand
-  sealed trait IsItemCommand extends AgentCommand
+  sealed trait IsItemCommand extends NonBatch
 
 
   final case class AttachItem(item: UnsignedItem)
@@ -252,14 +253,14 @@ object AgentCommand extends CommonCommand.Companion:
 
 
   final case class ResetSubagent(subagentId: SubagentId, force: Boolean)
-  extends AgentCommand:
+  extends NonBatch:
     type Response = Response.Accepted
 
 
   type ClusterSwitchOver = ClusterSwitchOver.type
 
   case object ClusterSwitchOver
-    extends AgentCommand:
+  extends NonBatch:
     type Response = Response.Accepted
 
 

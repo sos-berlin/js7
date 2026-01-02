@@ -21,11 +21,11 @@ import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.system.startup.Halt
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, ScalaUtils}
 import js7.cluster.WorkingClusterNode
-import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
+import js7.core.command.{CommandMeta, CommandRegister}
 import js7.data.Problems.ClusterSwitchOverButNotCoupledProblem
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -80,16 +80,26 @@ extends
     batchId: Option[CorrelId] = None)
   : IO[Checked[AgentCommand.Response]] =
     register.resource[IO](command, meta, CorrelId.current, batchId).use: run =>
-      logCommand(run):
-        executeCommand2(command, run.correlId, meta, batchId = None)
+      command match
+        case Batch(wrappedCommands) =>
+          // Execute one command after the other
+          fs2.Stream.iterable(wrappedCommands)
+            .evalMap: wrapped =>
+              val CorrelIdWrapped(subcorrelId, cmd) = wrapped
+              subcorrelId.orNew.bind:
+                executeCommand(cmd, meta, batchId orElse Some(run.correlId))
+            .compile
+            .toVector
+            .map(AgentCommand.Batch.Response(_))
+            .catchAsChecked
 
-  private def logCommand[A](run: CommandRun[AgentCommand])(body: IO[A]): IO[A] =
-    run.command match
-      case _: AgentCommand.Batch => body // Log only individual commands
-      case _ => logger.debugIO(run.toString)(body)
+        case command: AgentCommand.NonBatch =>
+          logger.debugIO(run.toString):
+            executeCommand2(command, run.correlId, meta, batchId = None)
+          .logWhenItTakesLonger(run.toString)
 
   private def executeCommand2(
-    command: AgentCommand,
+    command: AgentCommand.NonBatch,
     correlId: CorrelId,
     meta: CommandMeta,
     batchId: Option[CorrelId])
@@ -139,18 +149,6 @@ extends
 
       case EmergencyStop(restart) =>
         Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW", restart = restart)
-
-      case Batch(wrappedCommands) =>
-        // Execute one command after the other
-        fs2.Stream.iterable(wrappedCommands)
-          .evalMap: wrapped =>
-            val CorrelIdWrapped(subcorrelId, cmd) = wrapped
-            subcorrelId.orNew.bind:
-              executeCommand(cmd, meta, batchId orElse Some(correlId))
-          .compile
-          .toVector
-          .map(AgentCommand.Batch.Response(_))
-          .catchAsChecked
 
   private def dedicate(
     agentPath: AgentPath,
