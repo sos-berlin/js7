@@ -1,8 +1,10 @@
 package js7.base.utils
 
-import cats.effect.Sync
-import cats.effect.kernel.Resource
+import cats.effect.{Resource, Sync}
+import cats.kernel.Monoid
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
+import js7.base.Problems.ConcurrentAccessProblem
+import js7.base.problem.Checked
 import scala.annotation.targetName
 
 type Atomic[A] = A match
@@ -33,12 +35,42 @@ object Atomic:
   //    case _: AnyRef => new AtomicReference(initial)
 
   object extensions:
-    extension(atomic: AtomicBoolean)
+    extension (atomic: AtomicBoolean)
       inline def :=(a: Boolean): Unit =
         atomic.set(a)
 
+      def whenInUse[F[_] : Sync as F, A](whenInUse: => F[A]): WhenInUse[F, A] =
+        WhenInUse[F, A](atomic, whenInUse)
 
-    extension(atomic: AtomicInteger)
+      /** Assures non-concurrent access to the `body`.
+        *
+        * @return `Left(ConcurrentAccessProblem(what))` if `this` `AtomicBoolean` is `true`,
+        *         otherwise the `body`.
+        */
+      def nonConcurrent[F[_] : Sync as F, A](what: String)(body: F[Checked[A]]): F[Checked[A]] =
+        whenInUse(
+          F.pure(Left(ConcurrentAccessProblem(what))),
+          body)
+
+      /** Assures non-concurrent access to the `body`.
+        *
+        * @return `A.empty` if `this` `AtomicBoolean` is `true`, otherwise the `body`.
+        */
+      def nonConcurrent[F[_] : Sync as F, A: Monoid as A](body: F[A]): F[A] =
+        whenInUse(F.pure(A.empty), body)
+
+      private[Atomic] def whenInUse[F[_] : Sync as F, A](whenInUse: => F[A], use: => F[A]): F[A] =
+        Resource:
+          F.delay:
+            atomic.getAndSet(true) ->
+              F.delay(atomic := false)
+        .use:
+          if _ then
+            whenInUse
+          else
+            use
+
+    extension (atomic: AtomicInteger)
       inline def :=(n: Int): Unit =
         atomic.set(n)
 
@@ -63,7 +95,7 @@ object Atomic:
           release = _ => F.delay(atomic -= 1))
 
 
-    extension(atomic: AtomicLong)
+    extension (atomic: AtomicLong)
       inline def :=(a: Long): Unit =
         atomic.set(a)
 
@@ -99,3 +131,11 @@ object Atomic:
     extension[A](atomic: AtomicReference[A])
       inline def :=(a: A): Unit =
         atomic.set(a)
+
+
+    final class WhenInUse[F[_] : Sync as F, A] private[Atomic](
+      atomic: AtomicBoolean,
+      whenInUse: => F[A]
+    ):
+      inline def otherwiseUse(inline use: F[A]): F[A] =
+        atomic.whenInUse(whenInUse, use)
