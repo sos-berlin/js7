@@ -181,13 +181,13 @@ final class FileJournalTest extends OurAsyncTestSuite:
     "test empty EventCalc" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
-        persistLimit = 1024,
+        persistLimit = 512,
         _ => Nil)
 
     "test" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
-        persistLimit = 1024,
+        persistLimit = 512,
         i =>
           Thread.sleep(0, 1000) // 1µs assumed event computation time
           (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
@@ -241,7 +241,7 @@ object FileJournalTest:
     js7.journal.delay = 0s
     js7.journal.sync-delay = 0s
     js7.journal.simulate-sync = 1ms
-    js7.journal.concurrent-persist-limit = 1024
+    js7.journal.concurrent-persist-limit = 512
     js7.journal.users-allowed-to-release-events = []
     js7.journal.watch.index-size = 1000
     js7.journal.watch.keep-open = 100

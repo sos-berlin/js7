@@ -142,31 +142,33 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     // The pipeline //
     private def commitPipeline: fs2.Pipe[IO, QueuedPersist[S], Nothing] = _
-      .chunks
+      .groupWithin(conf.concurrentPersistLimit, conf.delay) // Process above concurrently //
       .evalMap: chunk =>
         // Try to preserve the chunks for faster processing!
+        val ctx = TimeCtx(clock.now())
         chunk.flatTraverse: queuedPersist =>
-          applyEventCalc(queuedPersist, TimeCtx(clock.now()))
+          applyEventCalc(queuedPersist, ctx)
         .addElapsedToAtomicNanos(bean.eventCalcNanos)
       .unchunks
-      .conflateChunks(conf.concurrentPersistLimit) // Process above concurrently //
+      .groupWithin(conf.concurrentPersistLimit, conf.delay) // Process above concurrently //
       .evalMap: chunk =>
         // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
         //<editor-fold desc="// delay code ...">
-        //  val delay =
-        //    chunk.iterator.map: applied =>
-        //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
-        //    .maxOption.getOrElse(ZeroDuration)
-        //  IO.whenA(delay.isPositive):
-        //    IO.sleep(delay)
-        //  .productR:
+        //val delay = chunk.iterator.map: applied =>
+        //  (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
+        //.max
+        //IO.whenA(delay.isPositive):
+        //  Logger.trace(s"### delay ${delay.pretty}")
+        //  IO.sleep(delay)
+        //.productR:
         //</editor-fold>
-        writeToFile(chunk)
-          .addElapsedToAtomicNanos(bean.jsonWriteNanos)
+          writeToFile(chunk)
+            .addElapsedToAtomicNanos(bean.jsonWriteNanos)
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .unchunks
-      .prefetchN(conf.concurrentPersistLimit) // Process above concurrently //
+      .conflateChunks(Int.MaxValue) // Process above concurrently //
+      .unchunks
       .evalMap: written =>
         val clusterState = written.aggregate.clusterState
         IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
@@ -189,19 +191,16 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         IO.defer:
           val writtenView = chunk.asSeq.view
           val eventCount = writtenView.map(_.eventCount).sum
-          if chunk.nonEmpty then
-            bean.addEventCount(eventCount)
-            val persistCount = chunk.size
-            val now = System.nanoTime
-            bean.persistTotal += persistCount
-            bean.persistNanos += writtenView.map(w => now - w.since.time.toNanos).sum
-            bean.commitTotal += persistCount // Would differ if commitLater is implemented
-            statistics.onPersisted(persistCount = persistCount, eventCount,
-              since = chunk.iterator.map(_.since).min)
-            journalLogger.logCommitted(writtenView)
-
-            eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
-          end if
+          bean.addEventCount(eventCount)
+          val writtenPersistCount = chunk.size
+          val now = System.nanoTime
+          bean.persistTotal += writtenPersistCount
+          bean.persistNanos += writtenView.map(w => now - w.since.time.toNanos).sum
+          bean.commitTotal += writtenPersistCount // Would differ if commitLater is implemented
+          statistics.onPersisted(persistCount = writtenPersistCount, eventCount,
+            since = chunk.iterator.map(_.since).min)
+          journalLogger.logCommitted(writtenView)
+          eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
           chunk.traverse: written =>
             written.completePersistOperation
           .map(_.fold)
