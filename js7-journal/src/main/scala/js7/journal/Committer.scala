@@ -7,7 +7,7 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.{False, addElapsedToAtomicNanos, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{False, True, addElapsedToAtomicNanos, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
@@ -37,6 +37,7 @@ import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.LoggablePersist
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.write.EventJournalWriter
+import scala.collection.IndexedSeqView
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
@@ -169,7 +170,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       .unchunks
       .conflateChunks(Int.MaxValue) // Process above concurrently //
       .unchunks
-      .evalMap: written =>
+      .evalTap: written =>
         val clusterState = written.aggregate.clusterState
         IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
           // Do not switch requireClusterAck on, because
@@ -180,30 +181,20 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             eventId = written.eventId, lastStamped = written.lastStamped, n = written.eventCount)
         .map: isAck =>
           written.isAcknowledged = isAck
-          written
-        .productL:
-          IO.defer:
-            S.updateStaticReference(written.aggregate)
-            state.updateDirect:
-              _.copy(committed = written.aggregate)
-      .chunks
+      .conflateChunks(Int.MaxValue) // Process above concurrently //
       .evalTap: chunk =>
-        IO.defer:
-          val writtenView = chunk.asSeq.view
-          val eventCount = writtenView.map(_.eventCount).sum
-          bean.addEventCount(eventCount)
-          val writtenPersistCount = chunk.size
-          val now = System.nanoTime
-          bean.persistTotal += writtenPersistCount
-          bean.persistNanos += writtenView.map(w => now - w.since.time.toNanos).sum
-          bean.commitTotal += writtenPersistCount // Would differ if commitLater is implemented
-          statistics.onPersisted(persistCount = writtenPersistCount, eventCount,
-            since = chunk.iterator.map(_.since).min)
-          journalLogger.logCommitted(writtenView)
-          eventWriter.onCommitted(chunk.last.get.positionAndEventId, n = eventCount)
-          chunk.traverse: written =>
+        val writtenView = chunk.asSeq.view
+        val lastWritten = chunk(chunk.size - 1)
+        val eventCount = writtenView.map(_.eventCount).sum
+        state.updateDirect:
+          _.copy(committed = lastWritten.aggregate)
+        .productR:
+          IO:
+            logCommittedAndDoStatistics(writtenView, eventCount, lastWritten.aggregate)
+            eventWriter.onCommitted(lastWritten.positionAndEventId, n = eventCount)
+        .productR:
+          chunk.foldMap: written =>
             written.completePersistOperation
-          .map(_.fold)
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater
         chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).traverse: stamped =>
@@ -283,6 +274,22 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           eventWriter.flush(sync = conf.syncOnCommit)
           bean.fileSize = eventWriter.fileLength
           JournalLogger.markChunkForLogging(chunk)
+
+    private def logCommittedAndDoStatistics(
+      writtenView: IndexedSeqView[Written], eventCount: Int, aggregate: S)
+    : Unit =
+      journalLogger.logCommitted(writtenView)
+
+      bean.addEventCount(eventCount)
+      val writtenPersistCount = writtenView.size
+      val now = System.nanoTime
+      bean.persistTotal += writtenPersistCount
+      bean.persistNanos += writtenView.map(w => now - w.since.time.toNanos).sum
+      bean.commitTotal += writtenPersistCount // Would differ if commitLater is implemented
+      S.updateStaticReference(aggregate)
+
+      statistics.onPersisted(persistCount = writtenPersistCount, eventCount,
+        since = writtenView.iterator.map(_.since).min)
 
     private def possiblySwitchAck(stamped: Stamped[AnyKeyedEvent]): IO[Unit] =
       stamped.value.event match
@@ -463,16 +470,21 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         if !requireAck then
           IO.False
         else
-          logWaitingForAck(eventId, lastStamped, n):
-            meterAck:
-              ackSignal.waitUntil(_ >= eventId).as(true)
-                .addElapsedToAtomicNanos(bean.ackNanos)
-          .race:
-            // Cancel waiting on ClusterPassiveLost
-            requireClusterAck.waitUntil(!_) *> IO:
-              logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
-              false
-          .map(_.merge)
+          ackSignal.get.flatMap: ack =>
+            if eventId <= ack then
+              IO.True
+            else
+              logWaitingForAck(eventId, lastStamped, n):
+                meterAck:
+                  ackSignal.waitUntil(eventId <= _).as(true)
+                    .addElapsedToAtomicNanos(bean.ackNanos)
+              .race:
+                // Cancel waiting on ClusterPassiveLost
+                requireClusterAck.waitUntil(!_) *> IO:
+                  logger.debug:
+                    "requireClusterAck has become false, now cancel waiting for acknowledgement"
+                  false
+              .map(_.merge)
 
     private def logWaitingForAck[A](
       eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]], n: Int)
