@@ -27,7 +27,7 @@ import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
 import js7.journal.FileJournal.*
 import js7.journal.FileJournalMXBean.Bean
 import js7.journal.configuration.JournalConf
@@ -49,7 +49,7 @@ import scala.util.control.NonFatal
 final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   recovered: Recovered[S],
   val conf: JournalConf,
-  protected val journalQueue: Queue[IO, Option[QueueEntry[S]]],
+  protected val persistQueue: Queue[IO, Option[QueuedPersist[S]]],
   protected val restartSnapshotTimerSignal: SignallingRef[IO, Unit],
   protected val requireClusterAck: SignallingRef[IO, Boolean],
   protected val ackSignal: SignallingRef[IO, EventId],
@@ -150,7 +150,7 @@ extends
     IO.defer:
       val problem = Left(if isBeingKilled then JournalKilledProblem else ServiceStoppedProblem(toString))
       ().tailRecM: _ =>
-        journalQueue.tryTake.flatMap:
+        persistQueue.tryTake.flatMap:
           case None => IO.right(())
           case Some(None) => IO.left(())
           case Some(Some(queuedEntry)) =>
@@ -192,10 +192,6 @@ extends
         whenPersisted.get
           .onCancel:
             canceledRef.set(true)
-      //.raceMerge:
-      //  untilStopRequested *>
-      //    IO.raiseError(new IllegalStateException("Journal service has been stopped"))
-      //.logWhenMethodTakesLonger  When cluster hangs then there can be many concurrent log lines
 
   // TODO Visible only for legacy JournalActor.
   private[journal] def enqueue[E <: Event](persist: Persist[S, E])
@@ -212,17 +208,17 @@ extends
     IO.defer:
       val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
-      val queueEntry = QueueEntry[S](
-        persist.eventCalc.widen[S, Event, TimeCtx], persist.commitOptions, persist.since,
+      val queuedPersist = QueuedPersist[S](
+        persist.widen[S, Event],
         persistMeter.startMetering(),
         whenApplied, whenPersisted)
       IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
         case Left(problem) =>
           whenApplied.complete(Left(problem)) *> whenPersisted.complete(Left(problem))
         case Right(()) =>
-          journalQueue.offer(Some(queueEntry))
+          persistQueue.offer(Some(queuedPersist))
       .as:
-        (queueEntry.canceled,
+        (queuedPersist.canceled,
           whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
           whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
 
@@ -361,7 +357,7 @@ object FileJournal:
       bean <- registerMBean[IO]("Journal", new FileJournalMXBean.Bean)
       journal <- Service.resource:
         for
-          queue <- Queue.unbounded[IO, Option[QueueEntry[S]]]
+          queue <- Queue.unbounded[IO, Option[QueuedPersist[S]]]
           requireClusterAck <- SignallingRef[IO].of:
             recovered.clusterState.isInstanceOf[ClusterState.Coupled]
           ackSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
@@ -386,10 +382,8 @@ object FileJournal:
       State(aggregate, aggregate, totalEventCount)
 
 
-  private[journal] final class QueueEntry[S <: EventDrivenState[S, Event]](
-    val eventCalc: EventCalc[S, Event, TimeCtx],
-    val commitOptions: CommitOptions,
-    val since: Deadline,
+  private[journal] final class QueuedPersist[S <: EventDrivenState[S, Event]](
+    val persist: Persist[S, Event],
     val metering: CallMeter.Metering,
     val whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]]):

@@ -1,6 +1,5 @@
 package js7.journal
 
-import cats.effect
 import cats.effect.kernel.{DeferredSink, Outcome}
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.foldable.*
@@ -108,7 +107,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     protected def start =
       startService:
         IO.uncancelable: _ =>
-          (untilStopRequested *> journalQueue.offer(None))
+          (untilStopRequested *> persistQueue.offer(None))
             .background.surround:
               runCommitPipeline
             .guaranteeCase: outcome =>
@@ -131,46 +130,43 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
-        fs2.Stream.fromQueueNoneTerminated(journalQueue, conf.concurrentPersistLimit)
-          .evalMapFilter: queueEntry =>
-            queueEntry.canceled.get.flatMap:
-              case false => IO.some(queueEntry)
-              case true => queueEntry.onCanceled.as(None)
+        fs2.Stream.fromQueueNoneTerminated(persistQueue, conf.concurrentPersistLimit)
+          .evalMapFilter: queuedPersist =>
+            queuedPersist.canceled.get.flatMap:
+              case false => IO.some(queuedPersist)
+              case true => queuedPersist.onCanceled.as(None)
           .through:
             commitPipeline
           .interruptWhenF(whenBeingKilled.get)
           .compile.drain
 
     // The pipeline //
-    private def commitPipeline: fs2.Pipe[IO, QueueEntry[S], Nothing] = _
+    private def commitPipeline: fs2.Pipe[IO, QueuedPersist[S], Nothing] = _
       .chunks
       .evalMap: chunk =>
         // Try to preserve the chunks for faster processing!
-        chunk.flatTraverse: queueEntry =>
-          applyQueueEntryEvents(queueEntry)
+        chunk.flatTraverse: queuedPersist =>
+          applyEventCalc(queuedPersist, TimeCtx(clock.now()))
         .addElapsedToAtomicNanos(bean.eventCalcNanos)
       .unchunks
-      .conflateChunks(conf.concurrentPersistLimit) // Process two chunks concurrently
-      //.pipeIf(conf.delay.isPositive):
-      //  _.groupWithin(Int.MaxValue, conf.delay).unchunks
+      .conflateChunks(conf.concurrentPersistLimit) // Process above concurrently //
       .evalMap: chunk =>
-      // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
-      //<editor-fold desc="// delay code ...">
-      //  val delay =
-      //    chunk.iterator.map: applied =>
-      //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
-      //    .maxOption.getOrElse(ZeroDuration)
-      //  IO.whenA(delay.isPositive):
-      //    logger.trace(s"### delay ${delay.pretty}")
-      //    IO.sleep(delay)
-      //  .productR:
-      //</editor-fold>
-          writeToFile(chunk)
-            .addElapsedToAtomicNanos(bean.jsonWriteNanos)
+        // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
+        //<editor-fold desc="// delay code ...">
+        //  val delay =
+        //    chunk.iterator.map: applied =>
+        //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
+        //    .maxOption.getOrElse(ZeroDuration)
+        //  IO.whenA(delay.isPositive):
+        //    IO.sleep(delay)
+        //  .productR:
+        //</editor-fold>
+        writeToFile(chunk)
+          .addElapsedToAtomicNanos(bean.jsonWriteNanos)
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .unchunks
-      .prefetchN(conf.concurrentPersistLimit) // Process three chunks concurrently //
+      .prefetchN(conf.concurrentPersistLimit) // Process above concurrently //
       .evalMap: written =>
         val clusterState = written.aggregate.clusterState
         IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
@@ -220,21 +216,22 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         maybeDoASnasphot
       .drain
 
-    private def applyQueueEntryEvents(queueEntry: QueueEntry[S]): IO[Chunk[Applied]] =
+    private def applyEventCalc(queuedPersist: QueuedPersist[S], ctx: TimeCtx): IO[Chunk[Applied]] =
       state.updateCheckedWithResult: state =>
         IO:
-          if _isSwitchedOver then Left(ClusterNodeHasBeenSwitchedOverProblem)
+          if _isSwitchedOver then
+            Left(ClusterNodeHasBeenSwitchedOverProblem)
           else if isBeingKilled then
             Left(JournalKilledProblem)
           else
-            applyEvents(state, queueEntry).map: applied =>
+            applyEventCalc2(state, queuedPersist, ctx).map: applied =>
               state.copy(
                 uncommitted = applied.aggregate,
                 totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
               ) -> applied
       .flatMap:
         case Left(problem) =>
-          queueEntry.completePersistedWithProblem(problem).as(Chunk.empty)
+          queuedPersist.completePersistedWithProblem(problem).as(Chunk.empty)
         case Right(applied_) =>
           val applied = applied_ : Applied /*IntelliJ 2025.1*/
           if applied.stampedKeyedEvents.isEmpty then
@@ -257,9 +254,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             .as:
               Chunk.singleton(applied)
 
-    private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[Applied] =
+    private def applyEventCalc2(state: State[S], queuedPersist: QueuedPersist[S], ctx: TimeCtx)
+    : Checked[Applied] =
       catchNonFatalFlatten:
-        queueEntry.eventCalc.calculate(state.uncommitted, TimeCtx(clock.now()))
+        // Calculate events //
+        queuedPersist.persist.eventCalc.calculate(state.uncommitted, ctx)
       .map: coll =>
         if conf.slowCheckState && coll.hasEvents then
           assertIsRecoverable(state.uncommitted, coll.keyedEvents)
@@ -267,11 +266,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           eventIdGenerator.stamp(o.keyedEvent, timestampMillis = o.maybeMillisSinceEpoch)
         val aggregate = stamped.lastOption.fold(coll.aggregate): last =>
           coll.aggregate.withEventId(last.eventId)
-        Applied.fromQueueEntry(queueEntry,
+        Applied.fromQueueEntry(queuedPersist,
           coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1)
 
     private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Written]] =
-      // TODO JSON-parallelize all chunks!
+      // TODO JSON-parallelize all chunks! But keep memory usage low.
       chunk.traverse: applied =>
         import applied.{commitOptions, stampedKeyedEvents}
         meterJsonWrite:
@@ -552,13 +551,16 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         .void
 
   private object Applied:
-    def fromQueueEntry(queueEntry: QueueEntry[S],
+    def fromQueueEntry(queuedPersist: QueuedPersist[S],
       original: S, stamped: Vector[Stamped[AnyKeyedEvent]], aggregate: S, eventNumber: Long)
     : Applied =
       Applied(
         original, stamped, aggregate, eventNumber = eventNumber,
-        queueEntry.commitOptions, queueEntry.since, queueEntry.metering,
-        queueEntry.whenApplied, queueEntry.whenPersisted)
+        queuedPersist.persist.commitOptions,
+        queuedPersist.persist.since,
+        queuedPersist.metering,
+        queuedPersist.whenApplied,
+        queuedPersist.whenPersisted)
 
 
   /** Events of an Persist have been written and flushed to the journal file. */

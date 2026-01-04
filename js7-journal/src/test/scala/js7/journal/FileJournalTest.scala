@@ -14,6 +14,7 @@ import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
@@ -180,13 +181,13 @@ final class FileJournalTest extends OurAsyncTestSuite:
     "test empty EventCalc" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
-        persistLimit = 500,
+        persistLimit = 1024,
         _ => Nil)
 
     "test" in :
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
-        persistLimit = 500,
+        persistLimit = 1024,
         i =>
           Thread.sleep(0, 1000) // 1µs assumed event computation time
           (i.toString <-: TestEvent.SimpleAdded("A")) :: Nil)
@@ -202,9 +203,11 @@ final class FileJournalTest extends OurAsyncTestSuite:
               _.add(toEvents(i))
         .timed.flatMap: (duration, _) =>
           IO:
-            info_(s"$n in parallel, concurrent-persist-limit=$persistLimit " +
+            info_(s"$n in parallel, concurrent-persist-limit=$persistLimit • " +
               itemsPerSecondString(duration, n, "commits"))
             succeed
+      .productL:
+        IO(CallMeter.logAll())
   }
 
   private def testJournal(clock: WallClock, config: Config = ConfigFactory.empty)
@@ -226,8 +229,8 @@ final class FileJournalTest extends OurAsyncTestSuite:
         tester(journal)
 
   private def info_(line: String) =
-    logger.debug(s"🔵🔵🔵 $line")
-    info(line)
+    logger.info(s"🟪🟪🟪 $line")
+    if !isIntelliJIdea then info(line)
 
 
 object FileJournalTest:
