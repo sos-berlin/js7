@@ -235,6 +235,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         case Right(applied_) =>
           val applied = applied_ : Applied /*IntelliJ 2025.1*/
           if applied.stampedKeyedEvents.isEmpty then
+            bean.persistTotal += 1
+            bean.persistNanos += queuedPersist.persist.since.time.toNanos - System.nanoTime
             // When no events, exit early //
             (applied.completeApplied *> applied.completePersistOperation)
               .as(Chunk.empty)
