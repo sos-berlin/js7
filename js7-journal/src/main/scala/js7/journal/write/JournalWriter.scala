@@ -70,7 +70,8 @@ extends AutoCloseable:
             s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
         _lastEventId = stamped.eventId
       import S.keyedEventJsonCodec
-      if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
+      if false &&
+        sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
       then
         writeJsonInParallel(stampedEvents)
       else

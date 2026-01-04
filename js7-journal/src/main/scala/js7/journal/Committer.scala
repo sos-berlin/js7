@@ -38,6 +38,7 @@ import js7.journal.log.JournalLogger.LoggablePersist
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.write.EventJournalWriter
 import scala.collection.IndexedSeqView
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
@@ -132,10 +133,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(persistQueue, conf.concurrentPersistLimit)
-          .evalMapFilter: queuedPersist =>
-            queuedPersist.canceled.get.flatMap:
-              case false => IO.some(queuedPersist)
-              case true => queuedPersist.onCanceled.as(None)
           .through:
             commitPipeline
           .interruptWhenF(whenBeingKilled.get)
@@ -143,15 +140,21 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     // The pipeline //
     private def commitPipeline: fs2.Pipe[IO, QueuedPersist[S], Nothing] = _
-      .groupWithin(conf.concurrentPersistLimit, conf.delay) // Process above concurrently //
-      .evalMap: chunk =>
-        // Try to preserve the chunks for faster processing!
-        val ctx = TimeCtx(clock.now())
+      .prefetch // Process upstream concurrently //
+      .chunks
+      // Check cancellation and apply events //
+      .evalMapChunk: chunk =>
+        // Preserve the chunks for faster processing!
         chunk.flatTraverse: queuedPersist =>
-          applyEventCalc(queuedPersist, ctx)
-        .addElapsedToAtomicNanos(bean.eventCalcNanos)
-      .unchunks
-      .groupWithin(conf.concurrentPersistLimit, conf.delay) // Process above concurrently //
+          queuedPersist.canceled.get.flatMap:
+            case false => IO.pure(Chunk.singleton(queuedPersist))
+            case true => queuedPersist.onCanceled.as(Chunk.empty)
+        .flatMap: chunk =>
+          applyEventCalcs(chunk)
+            .addElapsedToAtomicNanos(bean.eventCalcNanos)
+      .filter(_.nonEmpty)
+      .prefetch // Process upstream concurrently //
+      // Jsonize and write to file //
       .evalMap: chunk =>
         // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
         //<editor-fold desc="// delay code ...">
@@ -168,7 +171,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .unchunks
-      .conflateChunks(Int.MaxValue) // Process above concurrently //
+      .conflateChunks(Int.MaxValue) // Process upstream concurrently //
+      // Await passive cluster node acknowledgement //
       .unchunks
       .evalTap: written =>
         val clusterState = written.aggregate.clusterState
@@ -181,7 +185,8 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             eventId = written.eventId, lastStamped = written.lastStamped, n = written.eventCount)
         .map: isAck =>
           written.isAcknowledged = isAck
-      .conflateChunks(Int.MaxValue) // Process above concurrently //
+      .conflateChunks(Int.MaxValue) // Process upstream concurrently //
+      // Completion: Logging, statistics, update EventWatch //
       .evalTap: chunk =>
         val writtenView = chunk.asSeq.view
         val lastWritten = chunk(chunk.size - 1)
@@ -192,12 +197,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           IO:
             logCommittedAndDoStatistics(writtenView, eventCount, lastWritten.aggregate)
             eventWriter.onCommitted(lastWritten.positionAndEventId, n = eventCount)
-        .productR:
-          chunk.foldMap: written =>
-            written.completePersistOperation
+      .evalTap: chunk =>
+        chunk.foldMap: written =>
+          written.completePersistOperation
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater
-        chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).traverse: stamped =>
+        chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).foldMap: stamped =>
           possiblySwitchAck(stamped)
       .evalTap: chunk =>
         IO.whenA(shouldReleaseObsoleteEvents(chunk)):
@@ -206,45 +211,54 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         maybeDoASnasphot
       .drain
 
-    private def applyEventCalc(queuedPersist: QueuedPersist[S], ctx: TimeCtx): IO[Chunk[Applied]] =
-      state.updateCheckedWithResult: state =>
+    private def applyEventCalcs(chunk: Chunk[QueuedPersist[S]]): IO[Chunk[Applied]] =
+      state.updateWithResult: state =>
         IO:
-          if _isSwitchedOver then
-            Left(ClusterNodeHasBeenSwitchedOverProblem)
-          else if isBeingKilled then
-            Left(JournalKilledProblem)
-          else
-            applyEventCalc2(state, queuedPersist, ctx).map: applied =>
-              state.copy(
-                uncommitted = applied.aggregate,
-                totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
-              ) -> applied
+          val ctx = TimeCtx(clock.now())
+          chunk.asSeq.view.scanLeft(state -> new ArrayBuffer[Checked[Applied]](chunk.size)):
+            case ((state, results), queuedPersist) =>
+              if _isSwitchedOver then
+                state -> (results += Left(ClusterNodeHasBeenSwitchedOverProblem))
+              else if isBeingKilled then
+                state -> (results += Left(JournalKilledProblem))
+              else
+                applyEventCalc2(state, queuedPersist, ctx) match
+                  case Left(problem) => state -> (results += Left(problem))
+                  case Right(applied) =>
+                    state.copy(
+                      uncommitted = applied.aggregate,
+                      totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
+                    ) -> (results += Right(applied))
+          .last
+      .map: results =>
+        chunk.zip(Chunk.from(results))
       .flatMap:
-        case Left(problem) =>
-          queuedPersist.completePersistedWithProblem(problem).as(Chunk.empty)
-        case Right(applied_) =>
-          val applied = applied_ : Applied /*IntelliJ 2025.1*/
-          if applied.stampedKeyedEvents.isEmpty then
-            bean.persistTotal += 1
-            bean.persistNanos += queuedPersist.persist.since.time.toNanos - System.nanoTime
-            // When no events, exit early //
-            (applied.completeApplied *> applied.completePersistOperation)
-              .as(Chunk.empty)
-          else
-            applied.stampedKeyedEvents.lastOption.map(_.value.event).match
-              case Some(_: ClusterSwitchedOver) =>
-                IO:
-                  logger.debug("ClusterSwitchedOver: no more events are accepted")
-                  _isSwitchedOver = true
-              case Some(_: ClusterPassiveLost) =>
-                processingPassiveLost += 1
-                // onPassiveLost should already have switched off acks
-                noMoreAcks("ClusterPassiveLost")
-              case _ => IO.unit
-            .productR:
-              applied.completeApplied
-            .as:
-              Chunk.singleton(applied)
+        _.flatTraverse:
+          case (queuedPersist, Left(problem)) =>
+            queuedPersist.completePersistedWithProblem(problem).as(Chunk.empty)
+
+          case (queuedPersist, Right(applied)) =>
+            if applied.stampedKeyedEvents.isEmpty then
+              bean.persistTotal += 1
+              bean.persistNanos += queuedPersist.persist.since.time.toNanos - System.nanoTime
+              // When no events, exit early //
+              (applied.completeApplied *> applied.completePersistOperation)
+                .as(Chunk.empty)
+            else
+              applied.stampedKeyedEvents.lastOption.map(_.value.event).match
+                case Some(_: ClusterSwitchedOver) =>
+                  IO:
+                    logger.debug("ClusterSwitchedOver: no more events are accepted")
+                    _isSwitchedOver = true
+                case Some(_: ClusterPassiveLost) =>
+                  processingPassiveLost += 1
+                  // onPassiveLost should already have switched off acks
+                  noMoreAcks("ClusterPassiveLost")
+                case _ => IO.unit
+              .productR:
+                applied.completeApplied
+              .as:
+                Chunk.singleton(applied)
 
     private def applyEventCalc2(state: State[S], queuedPersist: QueuedPersist[S], ctx: TimeCtx)
     : Checked[Applied] =

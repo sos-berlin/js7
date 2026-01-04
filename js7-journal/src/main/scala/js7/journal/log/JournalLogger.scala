@@ -8,6 +8,7 @@ import js7.base.log.LoggingEscapeCodes.{isColorAllowed, resetColor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventsObservedEvent, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
@@ -286,21 +287,22 @@ object JournalLogger:
 
   def markChunkForLogging(chunk: fs2.Chunk[LoggablePersist]): Unit =
     val n = chunk.size
-    chunk(0).isFirstPersist = true
-    for i <- 0 until n do
-      val persist = chunk(i)
-      persist.persistIndex = i
-      persist.persistCount = n
-    //if n >= 2 then chunk(n - 2).isBeforeLast = true
+    if n > 0 then
+      chunk(0).isFirstPersist = true
+      for i <- 0 until n do
+        val persist = chunk(i)
+        persist.persistIndex = i
+        persist.persistCount = n
+      //if n >= 2 then chunk(n - 2).isBeforeLast = true
 
-    var i = n
-    val it = chunk.reverseIterator
-    if it.exists: written =>
-      i -= 1
-      written.stampedSeq.nonEmpty // An existing event (not deleted due to commitLater)
-    then
-      chunk(i).isLastPersist = true
-      chunk(i).isLastOfFlushedOrSynced = true
+      var i = n
+      val it = chunk.reverseIterator
+      if it.exists: written =>
+        i -= 1
+        written.stampedSeq.nonEmpty // An existing event (not deleted due to commitLater)
+      then
+        chunk(i).isLastPersist = true
+        chunk(i).isLastOfFlushedOrSynced = true
 
     //if it.exists: written =>
     //  i -= 1

@@ -238,9 +238,9 @@ object FileJournalTest:
 
   private val config = config"""
     js7.journal.sync = on
-    js7.journal.delay = 0s
-    js7.journal.sync-delay = 0s
-    js7.journal.simulate-sync = 1ms
+    js7.journal.sync-delay = 10ms
+    js7.journal.simulate-sync = 0ms
+    js7.journal.delay = 0ms
     js7.journal.concurrent-persist-limit = 512
     js7.journal.users-allowed-to-release-events = []
     js7.journal.watch.index-size = 1000
