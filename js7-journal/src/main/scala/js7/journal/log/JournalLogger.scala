@@ -100,7 +100,7 @@ private[journal] final class JournalLogger(
     import frame.*
     sb.clear()
     sb.append:
-      if stamped.value.event.isInstanceOf[EventsObservedEvent] then
+      if isTest && stamped.value.event.isInstanceOf[EventsObservedEvent] then
         '.'
       else
         ':'  // Allow simple filtering of log file: grep " - :" x.log
