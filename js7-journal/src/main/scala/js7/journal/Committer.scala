@@ -533,7 +533,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
   end CommitterService // object
 
 
-  private sealed trait AppliedOrFlushed:
+  private sealed trait AppliedOrWritten:
     val originalAggregate: S
     val stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]]
     val aggregate: S
@@ -570,7 +570,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     metering: CallMeter.Metering,
     whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]])
-  extends AppliedOrFlushed:
+  extends AppliedOrWritten:
     def nonEmpty = stampedKeyedEvents.nonEmpty
 
     def completeApplied: IO[Unit] =
@@ -604,7 +604,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     val metering: CallMeter.Metering,
     val whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
     val positionAndEventId: PositionAnd[EventId])
-  extends AppliedOrFlushed with LoggablePersist:
+  extends AppliedOrWritten with LoggablePersist:
     def isTransaction = commitOptions.transaction
     def stampedSeq = stampedKeyedEvents
     def nonEmpty = eventCount > 0
