@@ -127,8 +127,8 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
           peerId = passiveNodeId))
         .flatMapT: passiveNodeUserAndPassword =>
           IO.defer:
-            val activeClusterNode =
-              new ActiveClusterNode(journal, passiveNodeUserAndPassword, common, clusterConf)
+            val activeClusterNode = ActiveClusterNode(
+              journal, clusterState, passiveNodeUserAndPassword, common, clusterConf)
             if _activeClusterNode.trySet(activeClusterNode) then
               activeClusterNode.start(eventId)
             else

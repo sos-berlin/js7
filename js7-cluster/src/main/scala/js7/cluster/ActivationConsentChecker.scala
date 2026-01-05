@@ -18,7 +18,7 @@ import js7.data.node.{NodeId, NodeNameToPassword}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-private final class ActivationConsentChecker(
+private final class ActivationConsentChecker private(
   val activationInhibitor: ActivationInhibitor,
   clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,
@@ -29,7 +29,7 @@ private final class ActivationConsentChecker(
   def checkConsent[S <: ClusterableState[S]](
     event: ClusterNodeLostEvent,
     aggr: S,
-    /*TODO*/clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
+    clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
     logger.traceIOWithResult:
@@ -124,6 +124,19 @@ private final class ActivationConsentChecker(
 
 object ActivationConsentChecker:
   private val logger = Logger[this.type]
+
+  def resource(
+    clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
+    clusterConf: ClusterConf,
+    testEventBus: EventPublisher[Any])
+  : ResourceIO[ActivationConsentChecker] =
+    for
+      activationInhibitor <- ActivationInhibitor.resource(
+        testFailInhibitActivationWhileTrying =
+          clusterConf.testFailInhibitActivationWhileTrying)
+    yield
+      ActivationConsentChecker(activationInhibitor, clusterNodeApi, clusterConf, testEventBus)
+
 
   // Public for testing
   enum Consent:

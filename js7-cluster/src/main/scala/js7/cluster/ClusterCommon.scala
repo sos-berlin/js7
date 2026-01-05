@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.{IO, Outcome, Resource, ResourceIO}
+import cats.effect.{IO, Outcome, ResourceIO}
 import cats.syntax.all.*
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.eventbus.EventPublisher
@@ -8,6 +8,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
+import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.whenM
@@ -30,7 +31,9 @@ private final class ClusterCommon private(
   val clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
-  val activationConsentChecker: ActivationConsentChecker):
+  val activationConsentChecker: ActivationConsentChecker)
+
+extends Service.TrivialReleasable:
 
   export activationConsentChecker.testEventBus
   import clusterConf.ownId
@@ -38,7 +41,7 @@ private final class ClusterCommon private(
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
   val couplingTokenProvider = OneTimeTokenProvider.unsafe()
 
-  def stop: IO[Unit] =
+  protected def release: IO[Unit] =
     IO.defer:
       _clusterWatchSynchronizer.foldMap(_.stop)
 
@@ -47,11 +50,11 @@ private final class ClusterCommon private(
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): IO[ClusterWatchSynchronizer] =
     IO:
-      _clusterWatchSynchronizer
-        .toOption
-        .getOrElse(initialClusterWatchSynchronizer(clusterState))
+      _clusterWatchSynchronizer.toOption.getOrElse:
+        initialClusterWatchSynchronizer(clusterState)
 
-  def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer =
+  def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes)
+  : ClusterWatchSynchronizer =
     _clusterWatchSynchronizer.toOption match
       case Some(o) =>
         // Only after ClusterFailedOver or ClusterSwitchedOver,
@@ -61,10 +64,7 @@ private final class ClusterCommon private(
 
       case None =>
         import clusterState.setting
-        val result = new ClusterWatchSynchronizer(
-          ownId,
-          clusterWatchCounterpart,
-          setting.timing)
+        val result = new ClusterWatchSynchronizer(ownId, clusterWatchCounterpart, setting.timing)
         _clusterWatchSynchronizer := result
         result
 
@@ -129,7 +129,7 @@ private final class ClusterCommon private(
           body
 
 
-private[js7] object ClusterCommon:
+private object ClusterCommon:
   private val logger = Logger[this.type]
 
   def resource(
@@ -140,17 +140,12 @@ private[js7] object ClusterCommon:
     testEventBus: EventPublisher[Any])
   : ResourceIO[ClusterCommon] =
     for
-      activationInhibitor <- ActivationInhibitor.resource(
-        testFailInhibitActivationWhileTrying =
-          clusterConf.testFailInhibitActivationWhileTrying)
-      common <- Resource.make(
-        acquire = IO:
-          new ClusterCommon(
-            clusterWatchCounterpart,
-            clusterNodeApi, clusterConf, licenseChecker,
-            ActivationConsentChecker(
-              activationInhibitor, clusterNodeApi, clusterConf, testEventBus)))(
-        release = _.stop)
+      activationConsentChecker <-
+        ActivationConsentChecker.resource(clusterNodeApi, clusterConf, testEventBus)
+      common <- Service:
+        ClusterCommon(
+          clusterWatchCounterpart, clusterNodeApi, clusterConf, licenseChecker,
+          activationConsentChecker)
     yield
       common
 
