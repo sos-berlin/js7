@@ -24,7 +24,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
 
 /** Inhibits activation of cluster node for the specified duration. */
-private[cluster] final class ActivationInhibitor private(
+private final class ActivationInhibitor private(
   supervisor: Supervisor[IO],
   testFailInhibitActivationWhileTrying: Option[String]):
 
@@ -117,7 +117,7 @@ private[cluster] final class ActivationInhibitor private(
       .timeoutTo(100.ms, IO.none) // Lock detection
 
 
-private[cluster] object ActivationInhibitor:
+private object ActivationInhibitor:
   private val logger = Logger[this.type]
 
   def resource(testFailInhibitActivationWhileTrying: Option[String] = None)

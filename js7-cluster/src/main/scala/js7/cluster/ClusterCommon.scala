@@ -25,7 +25,7 @@ import js7.data.node.NodeNameToPassword
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
-private[cluster] final class ClusterCommon private(
+private final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,
   val clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,

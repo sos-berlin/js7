@@ -59,7 +59,7 @@ import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, Recovered
 import js7.journal.{EventIdGenerator, FileJournalMXBean}
 import scala.concurrent.duration.Deadline
 
-private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]] private(
+private final class PassiveClusterNode[S <: ClusterableState[S]] private(
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
   activeNodeName: NodeName,

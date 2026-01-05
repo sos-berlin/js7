@@ -283,8 +283,8 @@ object RunningAgent:
         //_ <- Environment.registerPure(testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]])
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
-          (admission, label, actorSystem) => AgentClient.resource(
-            admission, label, httpsConfig)(using actorSystem),
+          clusterNodeApi = (admission, label, actorSystem) =>
+            AgentClient.resource(admission, label, httpsConfig)(using actorSystem),
           licenseChecker,
           journalLocation, clusterConf, eventIdGenerator, subagent.testEventBus)
         director <- service2(forDirector, clusterNode, subagent.testEventBus, conf, clock)

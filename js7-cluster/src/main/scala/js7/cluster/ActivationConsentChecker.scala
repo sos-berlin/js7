@@ -18,7 +18,7 @@ import js7.data.node.{NodeId, NodeNameToPassword}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-private class ActivationConsentChecker(
+private final class ActivationConsentChecker(
   val activationInhibitor: ActivationInhibitor,
   clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,

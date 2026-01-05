@@ -329,9 +329,8 @@ object ClusterNode:
         clusterWatchCounterpart <-
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, shuttingDown,
             testEventBus)
-        common <- ClusterCommon.
-          resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
-            licenseChecker, testEventBus)
+        common <- ClusterCommon.resource(
+          clusterWatchCounterpart, clusterNodeApi, clusterConf, licenseChecker, testEventBus)
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
           eventIdGenerator, shuttingDown,
           testEventBus)
