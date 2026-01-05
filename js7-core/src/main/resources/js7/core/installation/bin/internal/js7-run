@@ -17,6 +17,7 @@ data=
 appOptions=()
 javaOptions=()
 execOptions=()
+processorLimit=
 
 for arg in "$@"; do :
   case "$arg" in
@@ -63,6 +64,9 @@ for arg in "$@"; do :
     --data-directory=*)
       data="${arg#*=}"
       ;;
+    --processor-limit=*)
+      processorLimit="${arg#*=}"
+      ;;
     *)
       appOptions+=("$arg")
   esac
@@ -99,6 +103,17 @@ if [ ! -d "$config" ]; then :
   exit 1
 fi
 config="$(toSystemPath "$config")"
+
+if [ -n "$processorLimit" ]; then
+  if grep -q "/" <<< "$processorLimit"; then
+    # processorLimit is a quotient like 1/4
+    processorLimit=$(((1000 * $processorLimit * $(nproc) + 999) / 1000))
+  fi
+  if [ "$processorLimit" -le "$(nproc)" ]; then
+    [ "$processorLimit" -gt 0 ] || processorLimit=1
+    javaOptions+=(-XX:ActiveProcessorCount="$processorLimit")
+  fi
+fi
 
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :

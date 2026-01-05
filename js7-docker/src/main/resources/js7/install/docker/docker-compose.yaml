@@ -15,7 +15,12 @@ services:
     image: js7
     container_name: js7-controller
     hostname: js7-controller
-    command: ["js7-controller", "--arg0=js7-controller", "-J-Xmx200m"]
+    command: [
+      "js7-controller",
+      "--arg0=js7-controller",
+      "-J-Xmx200m",
+      "--processor-limit=1/4"
+    ]
     #networks:
     #  - default
     ports:
@@ -41,7 +46,12 @@ services:
     image: js7
     container_name: js7-backup-controller
     hostname: js7-backup-controller
-    command: ["js7-controller", "--arg0=js7-backup-controller", "-J-Xmx200m"]
+    command: [
+      "js7-controller",
+      "--arg0=js7-backup-controller",
+      "-J-Xmx200m",
+      "--processor-limit=1/8"
+    ]
     #cpus: 8
     #networks:
     #  - default
@@ -62,7 +72,12 @@ services:
     image: js7
     container_name: js7-subagent-1a
     hostname: js7-subagent-1a
-    command: ["js7-subagent", "--arg0=js7-subagent-1a", "-J-Xmx200m"]
+    command: [
+      "js7-subagent",
+      "--arg0=js7-subagent-1a",
+      "-J-Xmx200m",
+      "--processor-limit=1/4"
+    ]
     #cpus: 14
     working_dir: /home/js7
     environment:
@@ -80,7 +95,12 @@ services:
     image: js7
     container_name: js7-subagent-1b
     hostname: js7-subagent-1b
-    command: ["js7-subagent", "--arg0=js7-subagent-1b", "-J-Xmx200m"]
+    command: [
+      "js7-subagent",
+      "--arg0=js7-subagent-1b",
+      "-J-Xmx200m",
+      "--processor-limit=1/4"
+    ]
     #cpus: 8
     working_dir: /home/js7
     environment:
@@ -98,7 +118,12 @@ services:
     image: js7
     container_name: js7-subagent-1c
     hostname: js7-subagent-1c
-    command: ["js7-subagent", "--arg0=js7-subagent-1c", "-J-Xmx200m"]
+    command: [
+      "js7-subagent",
+      "--arg0=js7-subagent-1c",
+      "-J-Xmx200m",
+      "--processor-limit=1/8"
+    ]
     #cpus: 4
     working_dir: /home/js7
     environment:
@@ -116,7 +141,12 @@ services:
     image: js7
     container_name: js7-subagent-2a
     hostname: js7-subagent-2a
-    command: ["js7-subagent", "--arg0=js7-subagent-2a", "-J-Xmx200m"]
+    command: [
+      "js7-subagent",
+      "--arg0=js7-subagent-2a",
+      "-J-Xmx200m",
+      "--processor-limit=1/8"
+    ]
     #cpus: 7
     working_dir: /home/js7
     environment:
@@ -138,9 +168,11 @@ services:
       "js7-cluster-watch",
       "--arg0=js7-cluster-watch",
       "-J-Xmx50m",
+      "--processor-limit=1",
       "--cluster-watch-id=CLUSTER-WATCH",
       "--cluster-node-uri=https://js7-controller:4443",
-      "--cluster-node-uri=https://js7-backup-controller:4443" ]
+      "--cluster-node-uri=https://js7-backup-controller:4443"
+    ]
     #cpus: 0.5
     working_dir: /home/js7
     environment:
@@ -161,9 +193,11 @@ services:
       "js7-cluster-watch",
       "--arg0=js7-cluster-watch-b",
       "-J-Xmx50m",
+      "--processor-limit=1",
       "--cluster-watch-id=CLUSTER-WATCH-B",
       "--cluster-node-uri=https://js7-controller:4443",
-      "--cluster-node-uri=https://js7-backup-controller:4443" ]
+      "--cluster-node-uri=https://js7-backup-controller:4443"
+    ]
     #cpus: 0.5
     working_dir: /home/js7
     environment:
@@ -184,7 +218,13 @@ services:
     image: js7
     container_name: js7-provider
     hostname: js7-provider
-    command: ["js7-provider", "--arg0=js7-provider", "-J-Xmx100m", "--controller-uri=https://js7-controller:4443"]
+    command: [
+      "js7-provider",
+      "--arg0=js7-provider",
+      "-J-Xmx100m",
+      "--processor-limit=1",
+      "--controller-uri=https://js7-controller:4443"
+    ]
     #cpus: 0.5
     working_dir: /home/js7
     environment:
@@ -204,6 +244,7 @@ services:
       "js7-proxy",
       "--arg0=js7-proxy",
       "-J-Xmx200m",
+      "--processor-limit=1",
       #"--cluster-watch-id=PROXY",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]
@@ -227,6 +268,7 @@ services:
       "js7-proxy",
       "--arg0=js7-proxy-b",
       "-J-Xmx200m",
+      "--processor-limit=1",
       #"--cluster-watch-id=PROXY-B",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]

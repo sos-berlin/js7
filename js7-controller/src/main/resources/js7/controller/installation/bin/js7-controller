@@ -16,6 +16,7 @@ httpsPort=4443
 controllerOptions=()
 javaOptions=()
 execOptions=()
+processorLimit=
 
 for arg in "$@"; do :
   case "$arg" in
@@ -59,6 +60,9 @@ for arg in "$@"; do :
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       ;;
+    --processor-limit=*)
+      processorLimit="${arg#*=}"
+      ;;
     *)
       controllerOptions+=("$arg")
   esac
@@ -95,6 +99,17 @@ exec &> >(exec tee -a "$logs"/stdouterr.log)
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
+fi
+
+if [ -n "$processorLimit" ]; then
+  if grep -q "/" <<< "$processorLimit"; then
+    # processorLimit is a quotient like 1/4
+    processorLimit=$(((1000 * $processorLimit * $(nproc) + 999) / 1000))
+  fi
+  if [ "$processorLimit" -le "$(nproc)" ]; then
+    [ "$processorLimit" -gt 0 ] || processorLimit=1
+    javaOptions+=(-XX:ActiveProcessorCount="$processorLimit")
+  fi
 fi
 
 [ -d "$data/cache" ] || mkdir "$data/cache"
