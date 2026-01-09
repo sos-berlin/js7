@@ -23,7 +23,7 @@ import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
+import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyThrowable}
 import js7.common.http.PekkoHttpClientTest.*
 import js7.common.pekkohttp.CirceJsonSupport
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream}
@@ -235,11 +235,11 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       assert(Try(liftProblem(IO.raiseError(e)).await(99.s)).failed.get eq e)
   }
 
-  "toPrettyProblem" in:
+  "toPrettyThrowable" in:
     val t = new org.apache.pekko.stream.ConnectionException(
       "Tcp command [Connect(agent-1/<unresolved>:4443,None,List(),Some(10 seconds),true)] failed because of java.net.ConnectException: Connection refused")
       .initCause(new java.net.SocketException("Connection refused"))
-    assert(toPrettyProblem(Problem.fromThrowable(t)) == Problem("TCP Connect agent-1:4443: Connection refused"))
+    assert(toPrettyThrowable(t).toString == "TCP Connect agent-1:4443: Connection refused")
 
   "Connection refused, try two times" - {
     lazy val uri = findFreeLocalUri()

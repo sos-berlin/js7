@@ -405,7 +405,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               // via thread pools's reportFailure. To avoid this, we convert the failure
               // to a dummy successful response, which will get lost immediately.
               HttpResponse(GatewayTimeout, entity = "CANCELED")
-            case t: pekko.stream.StreamTcpException => IO.raiseError(makePekkoExceptionLegible(t))
+            case t: pekko.stream.StreamTcpException => IO.raiseError(simplifyPekkoException(t))
+            case t: Throwable => IO.raiseError(toPrettyThrowable(t))
           .map(decompressResponse)
           .pipeIf(logger.isDebugEnabled):
             logResponding(request, _, responseLogPrefix)
@@ -423,13 +424,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥 "
                 case t: pekko.stream.StreamTcpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
-                case t: LegiblePekkoHttpException
+                case t: SimplifiedPekkoHttpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
                 case _ => "💥 "
-
-              logger.debug:
-                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}"
-              IO.raiseError(toPrettyProblem(throwable).throwable)
+              IO(logger.debug:
+                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
 
             case Outcome.Succeeded(_) => IO.unit
 
@@ -588,13 +587,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   override def hasRelevantStackTrace(throwable: Throwable): Boolean =
     PekkoHttpClient.hasRelevantStackTrace(throwable)
 
-  private def makePekkoExceptionLegible(t: pekko.stream.StreamTcpException): RuntimeException =
+  private def simplifyPekkoException(t: pekko.stream.StreamTcpException): Throwable =
     pekkoExceptionRegex.findFirstMatchIn(t.toString)
       .toList
       .flatMap(_.subgroups)
       .match
-        case List(m1, m2) => new LegiblePekkoHttpException(s"$name $m1): $m2", t)
-        case _ => t
+        case List(m1, m2) => SimplifiedPekkoHttpException(s"$name $m1): $m2", t)
+        case _ => toPrettyThrowable(t)
 
   override def toString = s"$baseUri$nameString"
 
@@ -677,34 +676,22 @@ object PekkoHttpClient:
     protected val name: String = "")
   extends PekkoHttpClient
 
-  private val connectionWasClosedUnexpectedly = Problem.pure("Connection was closed unexpectedly")
-
   private val PekkoTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
 
   private val pekkoExceptionRegex = new Regex("org.apache.pekko.stream.StreamTcpException: Tcp command " +
     """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
 
-  def toPrettyProblem(problem: Problem): Problem =
-    problem.throwableOption.fold(problem) { throwable =>
-      val pretty = toPrettyProblem(throwable)
-      pretty.throwableOption match
-        case Some(t) if t eq throwable =>
-          problem
-        case _ =>
-          logger.debug(s"toPrettyProblem($problem) => $pretty")
-          pretty
-    }
-
-  def toPrettyProblem(throwable: Throwable): Problem =
-    def default = Problem.fromThrowable(throwable)
+  def toPrettyThrowable(throwable: Throwable): Throwable =
     throwable match
       case pekko.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
         if summary.contains("connection was closed unexpectedly") then
-          connectionWasClosedUnexpectedly
-        else Problem.pure(summary)
+          SimplifiedPekkoHttpException("Connection was closed unexpectedly", throwable)
+        else
+          SimplifiedPekkoHttpException(summary, throwable)
 
       case t if t.getClass.getName.endsWith("UnexpectedConnectionClosureException") =>
-        connectionWasClosedUnexpectedly
+        logger.trace(s"toPrettyThrowable ${throwable.toStringWithCauses}")
+        SimplifiedPekkoHttpException("Connection was closed unexpectedly", throwable)
 
       case t: pekko.stream.StreamTcpException =>
         t.getMessage match
@@ -713,13 +700,16 @@ object PekkoHttpClient:
             val prefix = s"TCP $command $host"
             t.getCause match
               case t: java.net.SocketException =>
-                Problem(prefix + ": " + t.getMessage)
+                logger.trace(s"toPrettyThrowable ${throwable.toStringWithCauses}")
+                SimplifiedPekkoHttpException(prefix + ": " + t.getMessage, throwable)
               case t: java.net.UnknownHostException =>
-                Problem(prefix + ": " + t.toString stripPrefix "java.net.")
-              case _ => default
-          case _ => default
+                logger.trace(s"toPrettyThrowable ${throwable.toStringWithCauses}")
+                SimplifiedPekkoHttpException(prefix + ": " + t.toString stripPrefix "java.net.",
+                  throwable)
+              case _ => throwable
+          case _ => throwable
 
-      case _ => default
+      case _ => throwable
 
   final class HttpException private[http](
     method: HttpMethod,
@@ -777,8 +767,6 @@ object PekkoHttpClient:
   object HttpIdleTimeoutProblem extends Problem.Coded.Companion
 
 
-  private final class LegiblePekkoHttpException(
-    message: String,
-    cause: pekko.stream.StreamTcpException)
+  private final class SimplifiedPekkoHttpException(message: String, cause: Throwable)
   extends RuntimeException(message, cause), NoStackTrace:
     override def toString = getMessage: String
