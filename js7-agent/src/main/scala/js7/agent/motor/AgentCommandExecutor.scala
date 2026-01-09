@@ -192,7 +192,7 @@ extends
       //? case Left(AgentNotDedicatedProblem) => IO.right(Accepted)
       case Left(problem) => IO.left(problem)
       case Right(()) =>
-        logger.info(s"❗ $meta: $cmd")
+        logger.info(s"❗ $cmd • $meta")
         whenNotShuttingDown:
           agentMotor.flatMapSome: agentMotor =>
             agentMotor.resetBareSubagents
@@ -233,7 +233,7 @@ extends
       .flatMapT: _ =>
         shuttingDown.getAndSet(Some(cmd)).flatMap:
           case None =>
-            logger.info(s"❗ $meta: Shutdown  due to $originalCmd")
+            logger.info(s"❗ Shutdown  due to $originalCmd • $meta")
             shutdown(cmd)
               .pipeIf(!cmd.restartDirector/*not switchover?*/):
                 _.startAndForget // Shutdown in background and respond the command early
@@ -253,7 +253,7 @@ extends
               Right(Accepted)
 
   private def shutdown(cmd: ShutDown): IO[Unit] =
-    logger.debugIO(s"❗ shutdown $cmd"):
+    logger.debugIO:
       locally:
         // Run asynchronously as a fiber:
         if cmd.isFailover then

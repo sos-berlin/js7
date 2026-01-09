@@ -178,7 +178,7 @@ extends MainService, Service.StoppableByRequest:
             IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
           else
             IO.defer:
-              logger.info(s"❗️ $meta: $cmd")
+              logger.info(s"❗️ $cmd • $meta")
               val termination = DirectorTermination(
                 restartJvm = cmd.restart,
                 restartDirector = cmd.restartDirector)

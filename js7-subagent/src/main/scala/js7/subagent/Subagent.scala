@@ -109,7 +109,7 @@ extends MainService, Service.StoppableByRequest:
               whenTerminated.tryGet.flatMap:
                 _.map(IO.pure).getOrElse:
                   IO:
-                    logger.info(s"❗ $meta: $cmd")
+                    logger.info(s"❗ $cmd • $meta")
                   .productR:
                     dedicatedAllocated.toOption.foldMap: allocated =>
                       allocated.allocatedThing
