@@ -2,6 +2,7 @@ package js7.cluster
 
 import cats.effect.kernel.DeferredSource
 import cats.effect.{Deferred, IO, Outcome, ResourceIO}
+import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
@@ -48,7 +49,7 @@ extends Service.Trivial:
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
   private val hasConfirmedSomething = Atomic(false)
-  private val _requested = Atomic(None: Option[Requested])
+  private val _requested = Atomic(none[Requested])
 
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
@@ -143,8 +144,7 @@ extends Service.Trivial:
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(IO:
           testEventBus.publish(TestWaitingForConfirmation(request)))
-        .*>(requested
-          .untilConfirmed
+        .*>(requested.untilConfirmed
           .timeoutTo(timing.clusterWatchReactionTimeout, IO.left(MyRequestTimeoutProblem)))
         .recoverFromProblemAndRetry(()):
           case (MyRequestTimeoutProblem, _, retry) =>

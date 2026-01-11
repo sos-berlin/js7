@@ -26,15 +26,12 @@ import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
-import js7.data.node.NodeId
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
-
 
 final class ClusterWatchService private(
   val clusterWatchId: ClusterWatchId,
@@ -44,7 +41,8 @@ final class ClusterWatchService private(
   retryDelays: NonEmptyList[FiniteDuration],
   onClusterStateChanged: HasNodes => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
-extends MainService, Service.StoppableByRequest:
+extends
+  MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
 
@@ -57,6 +55,8 @@ extends MainService, Service.StoppableByRequest:
   val clusterWatchRunId: ClusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
+  export clusterWatch.{manuallyConfirmNodeLoss, clusterNodeLossEventToBeConfirmed, clusterState}
+
   protected def start =
     startServiceAndLog(logger, nodeApis.mkString(", ")):
       run
@@ -66,16 +66,15 @@ extends MainService, Service.StoppableByRequest:
 
   private def run: IO[Unit] =
     Stream.iterable(nodeApis.toList).map: nodeApi =>
-      val nodeWatch = new NodeServer(nodeApi)
-      nodeWatch.stream.map(nodeWatch -> _)
+      val watchedNode = WatchedNode(nodeApi)
+      watchedNode.stream.map(watchedNode -> _)
     .parJoinUnbounded
-    .evalMap: (nodeWatch, request) =>
+    .evalMap: (watchedNode, request) =>
       // Synchronize requests from both nodes
       request.correlId.bind:
-        nodeWatch.processRequest(request)
+        watchedNode.processRequest(request)
     .interruptWhenF(untilStopRequested)
-    .compile
-    .drain
+    .compile.drain
 
   private def checkActiveIsLost(clusterState: ClusterState.HasNodes): IO[Checked[Unit]] =
     IO.right(())
@@ -107,7 +106,10 @@ extends MainService, Service.StoppableByRequest:
     //          t.toStringWithCauses}")
     //        IO.left(ClusterWatchActiveStillAliveProblem)
 
-  private final class NodeServer(nodeApi: HttpClusterNodeApi):
+  override def toString = s"ClusterWatchService($clusterWatchId)"
+
+
+  private final class WatchedNode(nodeApi: HttpClusterNodeApi):
     private val streamFailed = Atomic(false)
 
     def stream: Stream[IO, ClusterWatchRequest] =
@@ -119,28 +121,25 @@ extends MainService, Service.StoppableByRequest:
           logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
           streamFailed := true
           Stream.empty
-      //.interruptWhenF(untilStopRequested)
 
     private def clusterWatchRequestStream: Stream[IO, ClusterWatchRequest] =
       logger.traceStream("clusterWatchRequestStream", nodeApi):
-        Stream
-          .eval(nodeApi
-            .retryUntilReachable():
-              nodeApi.clusterWatchRequestStream(clusterWatchId,
-                keepAlive = Some(keepAlive),
-                dontLog = !PekkoHttpClient.logHeartbeat)
-                /*.map(_.interruptWhenF(untilStopRequested))*/)
-            .attempt.evalMap:
-              case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
-                IO.left(t) // Trigger onErrorRestartLoop
-              case attempted =>
-                IO:
-                  if attempted.isRight && streamFailed.getAndSet(false) then
-                    logger.info(s"🟢 $nodeApi is being watched again")
-                  HttpClient.attemptedToChecked(attempted)
-            .rethrow
-            .map(_.orThrow)
-          .flatten
+        Stream.eval:
+          nodeApi.retryUntilReachable():
+            nodeApi.clusterWatchRequestStream(clusterWatchId,
+              keepAlive = Some(keepAlive),
+              dontLog = !PekkoHttpClient.logHeartbeat)
+        .attempt.evalMap:
+          case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
+            IO.left(t) // Trigger onErrorRestartLoop
+          case attempted =>
+            IO:
+              if attempted.isRight && streamFailed.getAndSet(false) then
+                logger.info(s"🟢 $nodeApi is being watched again")
+              HttpClient.attemptedToChecked(attempted)
+        .rethrow
+        .map(_.orThrow)
+        .flatten
 
     def processRequest(request: ClusterWatchRequest): IO[Unit] =
       clusterWatch.processRequest(request)
@@ -162,19 +161,7 @@ extends MainService, Service.StoppableByRequest:
       .handleError: t =>
         logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)
 
-  end NodeServer
-
-
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
-    clusterWatch.manuallyConfirmNodeLoss(lostNodeId, confirmer)
-
-  def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
-    clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)
-
-  override def toString = s"ClusterWatchService($clusterWatchId)"
-
-  def clusterState(): Checked[ClusterState] =
-    clusterWatch.clusterState()
+  end WatchedNode
 
 
 object ClusterWatchService:
@@ -206,7 +193,7 @@ object ClusterWatchService:
       nodeApis <- apisResource
       service <-
         val config_ = config.withFallback(defaultConfig)
-        Service.resource:
+        Service:
           new ClusterWatchService(
             clusterWatchId,
             nodeApis,
