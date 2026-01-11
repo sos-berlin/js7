@@ -123,7 +123,9 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
         .use(api => api
           .login(onlyIfNotLoggedIn = true)
           .productR:
-            api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId))
+            val cmd = ClusterPassiveDown(activeId = activeId, passiveId = ownId)
+            logger.debug(s"notifyActiveNodeAboutShutdown $api: $cmd")
+            api.executeClusterCommand(cmd)
           .void
           .handleError(throwable => logger.debug(
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",

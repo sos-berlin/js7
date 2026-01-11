@@ -138,7 +138,9 @@ private object ActivationInhibitor:
             _.loginUntilReachable()
           .use:
             _.executeClusterCommand:
-              ClusterInhibitActivation(setting.timing.inhibitActivationDuration)
+              val cmd = ClusterInhibitActivation(setting.timing.inhibitActivationDuration)
+              logger.debug(s"inhibitActivationOfPassiveNode ${setting.passiveUri}: $cmd")
+              cmd
           .map(_.clusterState)
           .onErrorRestartLoop(()): (throwable, _, retry) =>
             // TODO Code mit loginUntilReachable usw. zusammenfassen.

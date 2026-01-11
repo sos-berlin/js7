@@ -306,7 +306,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           "checkCouplingToken")
         .use: api =>
           HttpClient.liftProblem:
-            api.executeClusterCommand(ClusterConfirmCoupling(command.token)).void
+            val cmd = ClusterConfirmCoupling(command.token)
+            logger.debug(s"checkCouplingToken $passiveUri: $cmd")
+            api.executeClusterCommand(cmd).void
         .timeoutTo(passiveNodeCouplingResponseTimeout, IO.left(Problem(
           s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
         .handleError: throwable =>
