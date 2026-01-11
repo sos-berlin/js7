@@ -46,10 +46,12 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   private def readAndPublishUnderlyingStream(whenStateFetched: Deferred[IO, Unit]): IO[Unit] =
     logger.traceIO:
       underlyingStream
-        .evalTap(eventAndState => IO.defer:
-          _currentState = eventAndState.state
-          whenStateFetched.complete(()).void *>
-            IO(onEvent(eventAndState)))
+        .evalTap: eventAndState =>
+          IO.defer:
+            _currentState = eventAndState.state
+            S.updateStaticReference(eventAndState.state)
+            whenStateFetched.complete(()).void *>
+              IO(onEvent(eventAndState))
         .interruptWhen(untilStopRequested.attempt)
         .through(topic.publish)
         .compile

@@ -8,6 +8,7 @@ import js7.common.pekkohttp.web.MinimumWebServer
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.startup.ServiceApp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
+import js7.data.state.EngineStateMXBean
 import js7.proxy.Proxy.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
@@ -47,6 +48,7 @@ object Proxy extends ServiceApp:
       controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
         ClusterWatchService.service(clusterWatchId, apisResource, conf.config)
-      service <- Service.resource(Proxy(controllerApi))
+      _ <- EngineStateMXBean.register
+      service <- Service(Proxy(controllerApi))
     yield
       service
