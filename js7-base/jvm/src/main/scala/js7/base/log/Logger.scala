@@ -433,7 +433,7 @@ object Logger extends AdHocLogger:
                   ctx.logReturn(
                     "",
                     if resultToLoggable eq null then
-                      "Completed"
+                      ""
                     else
                       "· " + resultToLoggable(result))
             .guaranteeCase:

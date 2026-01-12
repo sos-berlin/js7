@@ -989,7 +989,6 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
     allocated.allocatedThing.untilStopped
       .*>(IO:
-        logger.trace(s"'### self ! Internal.AgentDriverStopped(${agent.path})))")
         self ! Internal.AgentDriverStopped(agent.path))
       .unsafeRunAndForget() // TODO
 

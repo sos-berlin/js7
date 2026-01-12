@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 import scala.util.NotGiven
 
-/** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
+/** Like Scala's `scala.concurrent.duration.Deadline` but based on Cats Effect's Scheduler. */
 sealed class CatsDeadline private(val monotonic: FiniteDuration)
 extends Ordered[CatsDeadline]:
 

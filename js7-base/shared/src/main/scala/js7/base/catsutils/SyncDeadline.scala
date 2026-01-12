@@ -6,6 +6,8 @@ import cats.kernel.Eq
 import fs2.compat.NotGiven
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import scala.concurrent.duration.FiniteDuration
 
 // TODO Prefer CatsDeadline?
@@ -69,21 +71,23 @@ extends Ordered[SyncDeadline]:
     CatsDeadline.fromMonotonicNanos(nanosSinceZero)
 
   override def toString: String =
-    if nanosSinceZero.abs < toStringTestingLimit then
+    if isTest && nanosSinceZero.abs < toStringTestingLimit then
       // Probably executed for testing
       if nanosSinceZero >= 0 then
         s"SyncDeadline(start+${nanosSinceZero.ns.pretty})"
       else
         s"SyncDeadline(start${nanosSinceZero.ns.pretty})"
     else
-      s"SyncDeadline($nanosSinceZero)"
+      // We assume, nanoSinceZero is based on System.nanotime (not TestControl)
+      val elapsed = System.nanoTime - nanosSinceZero
+      ((elapsed > 0) ?? "+") + elapsed.ns.pretty
 
 
 object SyncDeadline:
 
   // Below this limit, it's probably a testing value and we can show it.
-  // Otherwise it's a duration since a random point in time.
-  private val toStringTestingLimit = (24.h).toNanos
+  // Otherwise, it's a duration since a point in time denoted by a random value.
+  private val toStringTestingLimit = 24.h.toNanos
 
   final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
 
