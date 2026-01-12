@@ -257,8 +257,8 @@ extends Service.Trivial:
         confirm.clusterWatchId,
         confirm.clusterWatchRunId)
 
-  // Recursive in case of (wrong) concurrent access to this._requested
-  @tailrec private def takeRequest(confirm: ClusterWatchConfirm)(using SyncDeadline.Now)
+  @tailrec // Recursive in case of (wrong) concurrent access to this._requested
+  private def takeRequest(confirm: ClusterWatchConfirm)(using SyncDeadline.Now)
   : Checked[Requested] =
     _requested.get() match
       case None =>

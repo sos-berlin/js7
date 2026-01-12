@@ -25,25 +25,25 @@ extends IControllerCommandExecutor:
   def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     executeCommand(command, meta, None)
 
-  private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
+  private def executeCommand(
+    command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
   : IO[Checked[command.Response]] =
     IO.defer:
       val correlId = CorrelId.current
       val run = register.add(command, meta, correlId, batchId)
       logCommand(run)
       executeCommand2(command, meta, correlId, batchId)
-        .map { checkedResponse =>
+        .map: checkedResponse =>
           if run.batchInternalId.isEmpty then
             checkedResponse match
               //case Right(ControllerCommand.Response.Accepted) =>
               case Right(_) =>
-                logger.debug(s"↙ ${run.idString} " +
-                  ControllerCommand.jsonCodec.classToName(run.command.getClass) +
-                  s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
+                logger.debug(s"↙ ${run.idString} ${
+                  ControllerCommand.jsonCodec.classToName(run.command.getClass)
+                } (${run.runningSince.elapsed.pretty}): $checkedResponse")
               case Left(problem) =>
           for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
           checkedResponse.map(_.asInstanceOf[command.Response])
-        }
         .guaranteeCase:
           case Outcome.Errored(t) if run.batchInternalId.isEmpty =>
             IO(logger.warn(s"$run failed: ${t.toStringWithCauses}"))
@@ -51,7 +51,8 @@ extends IControllerCommandExecutor:
         .guarantee:
           IO(register.remove(run.correlId))
 
-  private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
+  private def executeCommand2(
+    command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
   : IO[Checked[ControllerCommand.Response]] =
     IO.defer:
       command match

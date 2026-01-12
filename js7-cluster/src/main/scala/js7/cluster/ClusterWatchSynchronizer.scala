@@ -42,20 +42,20 @@ private final class ClusterWatchSynchronizer(
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
   def start(currentClusterState: IO[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
   : IO[Checked[Completed]] =
-    logger.debugIO(IO.defer:
-      this.registerClusterWatchId := registerClusterWatchId
-      // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
-      // This is more to teach a recently started ClusterWatch.
-      currentClusterState
-        .flatMap: clusterState =>
-          askClusterWatch(clusterState, registerClusterWatchId)
-            // The clusterState may have changed due to ClusterWatchRegistered
-            .when(clusterState.setting.clusterWatchId.isDefined)
-        .flatMapT: _ =>
-          currentClusterState.flatMap:
-            startHeartbeating(_, registerClusterWatchId)
-              .map(Right.apply)
-    )
+    logger.debugIO:
+      IO.defer:
+        this.registerClusterWatchId := registerClusterWatchId
+        // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
+        // This is more to teach a recently started ClusterWatch.
+        currentClusterState
+          .flatMap: clusterState =>
+            askClusterWatch(clusterState, registerClusterWatchId)
+              // The clusterState may have changed due to ClusterWatchRegistered
+              .when(clusterState.setting.clusterWatchId.isDefined)
+          .flatMapT: _ =>
+            currentClusterState.flatMap:
+              startHeartbeating(_, registerClusterWatchId)
+                .map(Right.apply)
 
   private def askClusterWatch(
     clusterState: HasNodes,
@@ -103,13 +103,14 @@ private final class ClusterWatchSynchronizer(
         clusterWatch
           .applyEvent(event, updatedClusterState,
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-          .flatTapT(_ => IO
+          .flatTapT: _ =>
             // ClusterWatchRegistered may be emitted by the background heartbeat, which
             // does not suspend heartbeat (it would suspend/kill itself).
             // So we send the updated ClusterState directly to the heartbeat (if running)
-            .whenA(event.isInstanceOf[ClusterWatchRegistered])(IO:
-              changeClusterState(updatedClusterState))
-            .as(Checked.unit))
+            IO:
+              if event.isSubtypeOf[ClusterWatchRegistered] then
+                changeClusterState(updatedClusterState)
+              Checked.unit
 
   /** Called by the node which detects the node loss. */
   def askNodeLostEvent(

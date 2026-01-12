@@ -8,6 +8,7 @@ import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 
+// TODO Prefer CatsDeadline?
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Cats Effect's Scheduler. */
 sealed class SyncDeadline private(val nanosSinceZero: Long)
 extends Ordered[SyncDeadline]:
@@ -87,7 +88,7 @@ object SyncDeadline:
   final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
 
   object Now:
-    def apply(nanosSinceZero: Long): Now =
+    private[SyncDeadline] def apply(nanosSinceZero: Long): Now =
       new Now(nanosSinceZero)
 
     private def fromIORuntime()(using ioRuntime: IORuntime): Now =

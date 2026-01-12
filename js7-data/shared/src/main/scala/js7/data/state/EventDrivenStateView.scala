@@ -203,4 +203,3 @@ object EventDrivenStateView:
   extends SnapshotableState.Companion[S]:
     override def updateStaticReference(engineState: S): Unit =
       EngineStateMXBean.setEngineState(engineState)
-

@@ -725,10 +725,12 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
 
   private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition)
   : Stamped[KeyedEvent[ClusterFailedOver]] =
-    val failedOver = ClusterFailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
-    val stamped = eventIdGenerator.stamp(NoKey <-: failedOver)
-    logger.debug(stamped.toString)
-    stamped
+    val failedOver = ClusterFailedOver(
+      failedActiveId = clusterState.activeId,
+      activatedId = clusterState.passiveId,
+      failedAt)
+    logger.debug(s"Trying $failedOver")
+    eventIdGenerator.stamp(failedOver)
 
   /** Update bean activeHeartbeatDelay. */
   private def meterHeartbeatDelay[O]: fs2.Pipe[IO, O, O] =
