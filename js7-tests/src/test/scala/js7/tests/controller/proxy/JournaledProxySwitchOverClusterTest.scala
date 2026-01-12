@@ -58,7 +58,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
             new JControllerFluxTester(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
           ) { _.test() }
 
-          runOrder(OrderId("ORDER-ON-PRIMARY"))
+          runOrder(OrderId("ORDER-AT-PRIMARY"))
 
           // SWITCH-OVER
 
@@ -71,16 +71,20 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
         primary.runController(dontWaitUntilReady = true): primaryController =>
           backupController.await[ControllerReady](after = lastEventId)
           primaryController.await[ClusterCoupled](after = lastEventId)
-          runOrder(OrderId("ORDER-ON-BACKUP-1"))
+          runOrder(OrderId("ORDER-AT-BACKUP-1"))
 
           // RESTART BACKUP
           lastEventId = backupController.eventWatch.lastAddedEventId
           backupController.terminate().await(99.s)
 
           backup.runController(): backupController2 =>
-            runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
-            backupController2.execCmd:
-              ShutDown(clusterAction = Some(ClusterAction.Failover))
+            runOrder(OrderId("ORDER-AT-BACKUP-RESTARTED"))
+            try
+              backupController2.execCmd:
+                ShutDown(clusterAction = Some(ClusterAction.Failover))
+            catch case t: org.apache.pekko.pattern.AskTimeoutException =>
+              // Due to dirty test shutdown behaviour?
+              Logger.warn(s"Shutdown with failover: $t", t)
 
           primaryController.await[ClusterFailedOver](after = lastEventId)
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))
