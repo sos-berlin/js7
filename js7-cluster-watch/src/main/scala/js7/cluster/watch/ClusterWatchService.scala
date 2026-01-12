@@ -47,7 +47,7 @@ extends
   protected type Termination = ProgramTermination
 
   // Public for test
-  val clusterWatch = new ClusterWatch(
+  val clusterWatch = ClusterWatch(
     label = label,
     onClusterStateChanged = onClusterStateChanged,
     checkActiveIsLost = checkActiveIsLost,

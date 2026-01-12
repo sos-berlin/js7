@@ -3,6 +3,7 @@ package js7.cluster
 import cats.effect.{IO, Outcome, ResourceIO}
 import cats.syntax.all.*
 import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -11,7 +12,6 @@ import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.whenM
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, ScalaUtils, SetOnce}
 import js7.cluster.ActivationConsentChecker.Consent
@@ -123,10 +123,10 @@ extends Service.TrivialReleasable:
     (body: IO[Checked[Unit]])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
-    activationConsentChecker.checkConsent(event, aggregate, clusterWatchSynchronizer)
-      .flatTapT: consent =>
-        whenM(consent == Consent.Given):
-          body
+    activationConsentChecker.checkConsent(event, aggregate, clusterWatchSynchronizer).flatTapT:
+      case Consent.Rejected => IO.right(())
+      case Consent.Given =>
+        body
 
 
 private object ClusterCommon:

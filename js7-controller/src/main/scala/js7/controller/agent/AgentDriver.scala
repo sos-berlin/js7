@@ -459,14 +459,14 @@ extends Service.StoppableByRequest:
     journal.persist:
       _.keyTo(AgentRefState).checked(agentPath)
         .map(_.nodeToLossNotConfirmedProblem)
-        .map: nodeToLossNodeNotConfirmed =>
+        .map: nodeToLossNotConfirmedProblem =>
           maybeProblem match
             case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
-              (!nodeToLossNodeNotConfirmed.get(problem.fromNodeId).contains(problem))
+              (!nodeToLossNotConfirmedProblem.get(problem.fromNodeId).contains(problem))
                 .thenList:
                   agentPath <-: AgentClusterWatchConfirmationRequired(problem)
             case None =>
-              nodeToLossNodeNotConfirmed.nonEmpty.thenList:
+              nodeToLossNotConfirmedProblem.nonEmpty.thenList:
                 agentPath <-: AgentClusterWatchManuallyConfirmed
     .rightAs(())
     .handleProblem: problem =>

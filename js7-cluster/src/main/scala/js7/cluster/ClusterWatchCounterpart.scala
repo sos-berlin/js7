@@ -129,7 +129,7 @@ extends Service.Trivial:
             body =
               check2(
                 clusterWatchId, request,
-                new Requested(clusterWatchId, request,
+                Requested(clusterWatchId, request,
                   clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)))
 
   private def check2(

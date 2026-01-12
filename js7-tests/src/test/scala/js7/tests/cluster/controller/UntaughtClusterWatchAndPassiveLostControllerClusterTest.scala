@@ -47,7 +47,6 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
       var backupController = backup.newController()
-      import primaryController.eventWatch
 
       val clusterCoupledConfirmed = primaryController.testEventBus
         .whenPFFuture[ClusterWatchCounterpart.TestConfirmed, Unit]:
@@ -55,7 +54,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
             case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterCoupled, _, _) =>
 
       withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
-        eventWatch.await[ClusterCoupled]()
+        primaryController.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
         clusterCoupledConfirmed.await(99.s)
 
@@ -94,12 +93,12 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
-        val eventId = eventWatch.lastAddedEventId
+        val eventId = primaryController.lastAddedEventId
         clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER").await(99.s).orThrow
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
-        val ClusterPassiveLost(`backupId`) = eventWatch.await[ClusterPassiveLost]()
+        val ClusterPassiveLost(`backupId`) = primaryController.await[ClusterPassiveLost]()
           .head.value.event: @unchecked
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
@@ -117,7 +116,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
           logger.info("Start Backup Controller")
           backupController = backup.newController()
 
-        eventWatch.await[ClusterCoupled](after = eventId)
+        primaryController.await[ClusterCoupled](after = eventId)
 
         primaryController.terminate().await(99.s)
         backupController.terminate(dontNotifyActiveNode = true).await(99.s)

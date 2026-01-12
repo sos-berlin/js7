@@ -106,8 +106,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
           controller.resetLastWatchedEventId()
           // Now, we as the user kill the primary node and confirm this to the ClusterWatch:
-          primaryDirector
-            .terminate(
+          primaryDirector.terminate(
               Some(SIGKILL),
               clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
             .await(99.s)
@@ -130,8 +129,8 @@ object UntaughtAgentClusterWatchTest:
   private val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
 
   private val subagentIds = Seq(
-    SubagentId("SUBAGENT-0"),
-    SubagentId("SUBAGENT-1"))
+    SubagentId("DIRECTOR-PRIMARY"),
+    SubagentId("DIRECTOR-BACKUP"))
 
   private val agentPath = AgentPath("AGENT")
   private val agentRef = AgentRef(agentPath, subagentIds)

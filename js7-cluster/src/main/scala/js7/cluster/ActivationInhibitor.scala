@@ -194,12 +194,14 @@ private object ActivationInhibitor:
   private[cluster] case class Inhibited(depth: Int) extends State:
     assertThat(depth >= 1)
 
+
   private final class Result(val peerClusterState: Option[ClusterState]):
     override def toString =
       peerClusterState match
         case None => "✔︎ Activation allowed"
         case Some(clusterState) =>
           s"⛔️ Activation inhibited due to peer clusterState=${clusterState.toShortString}"
+
 
   private final class InhibitActivationFailsForTestingException private[ActivationInhibitor]
   extends
