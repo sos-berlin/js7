@@ -88,19 +88,20 @@ extends Service.Trivial:
     clusterWatchIdChangeAllowed: Boolean = false,
     forceWhenUntaught: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
-    CorrelId.use: correlId =>
-      event match
-        case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
-          if !clusterState.setting.clusterWatchId.isDefined =>
-          IO.right(None)
+    logger.traceIO("applyEvent", event.toShortString):
+      CorrelId.use: correlId =>
+        event match
+          case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
+            if !clusterState.setting.clusterWatchId.isDefined =>
+            IO.right(None)
 
-        case _ =>
-          check(
-            clusterState.setting.clusterWatchId,
-            ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState,
-              forceWhenUntaught = forceWhenUntaught),
-            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
-          ).map(_.map(Some(_)))
+          case _ =>
+            check(
+              clusterState.setting.clusterWatchId,
+              ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState,
+                forceWhenUntaught = forceWhenUntaught),
+              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
+            ).map(_.map(Some(_)))
 
   private def check(
     clusterWatchId: Option[ClusterWatchId],
@@ -122,8 +123,8 @@ extends Service.Trivial:
             else
               LogLevel.None,
             "check",
-            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
-            // macOS `less` displays 🩶 with wrong width
+            args = s"$request, clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed",
+            // macOS `less` displays gray 🩶 with wrong width
             result = (a: Checked[ClusterWatchConfirmation]) =>
               if isHeartbeat && a.isRight then s"💚 $a" else a,
             body =

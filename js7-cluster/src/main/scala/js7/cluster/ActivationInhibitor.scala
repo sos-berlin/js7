@@ -62,7 +62,8 @@ private final class ActivationInhibitor private(
 
         case inhibited: Inhibited =>
           IO:
-            logger.info("⛔ Activation of this cluster node has been inhibited by the peer ⛔")
+            logger.info:
+              "⛔️ tryToActivate: Activation of this cluster node is currently inhibited by the peer"
             Right(inhibited -> Consent.Rejected)
 
   /** Tries to inhibit activation for `duration`.

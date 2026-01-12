@@ -35,7 +35,7 @@ final class ClusterWatch(
   private var _state: Option[State] = None
 
   def processRequest(request: ClusterWatchRequest): IO[Checked[Confirmed]] =
-    logger.debugIOWithResult("processRequest", request):
+    logger.debugIOWithResult(s"processRequest($request)"):
       lock.lock:
         IO.pure(request.checked).flatMapT: _ =>
           processRequest2(request)
