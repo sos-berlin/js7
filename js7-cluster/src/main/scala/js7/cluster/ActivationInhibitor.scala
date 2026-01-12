@@ -3,6 +3,7 @@ package js7.cluster
 import cats.effect.std.Supervisor
 import cats.effect.{IO, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.catsutils.CatsEffectExtensions.catchIntoChecked
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -12,10 +13,10 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.web.HttpClient
 import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ActivationInhibitor.*
 import js7.common.http.PekkoHttpClient
-import js7.data.Problems.ClusterActivationInhibitedByPeerProblem
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
 import js7.data.cluster.{ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.node.NodeId
@@ -166,26 +167,38 @@ private object ActivationInhibitor:
     admission: Admission,
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     duration: FiniteDuration)
-  : IO[Checked[Unit]] =
-    logger.infoIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
-      clusterNodeApi(admission, "tryInhibitActivationOfPeer").use: api =>
-        api.login() *>
-          api.executeClusterCommand:
-            ClusterInhibitActivation(duration)
-          .map(_.clusterState)
-          .map:
-            case None => Checked.unit
-            case Some(clusterState) =>
-              Left(ClusterActivationInhibitedByPeerProblem(ownId, peerId, clusterState))
-      .handleError: throwable =>
-        // We can only safely check if the peer is active. !!!
-        // All other response mean, we doesn't know for sure.
-        // Then we must allow the call to continue it's (otherwise checked!) activation.
-        // TODO On any error, we assume the peer is not alive or not active.
-        //  We should not be sure about this.
-        logger.info(s"Peer $peerId ${admission.uri} seems no longer to be active: ${
-          admission.uri} failed: ${throwable.toStringWithCauses}")
-        Checked.unit
+  : IO[Checked[Consent]] =
+    import admission.uri as peerUri
+    logger.debugIOWithResult(s"tryInhibitActivationOfPeer $peerId ${admission.uri}"):
+      val cmd = ClusterInhibitActivation(duration)
+      logger.info(s"tryInhibitActivationOfPeer $peerId: $cmd")
+      HttpClient.liftProblem:
+        clusterNodeApi(admission, "tryInhibitActivationOfPeer").use: api =>
+          api.login()
+            .productR:
+              api.executeClusterCommand(cmd)
+            .map(_.clusterState)
+      .catchIntoChecked
+      .map:
+        case Left(problem) =>
+          // We can only safely check if the peer is active. !!!
+          // All other response mean, we doesn't know for sure.
+          // Then we must allow the call to continue it's (otherwise checked!) activation.
+          // TODO On any error, we assume the peer is not alive or not active.
+          //  We should not be sure about this.
+          logger.info:
+            s"✔︎ Peer $peerId $peerUri appears not to be active: $peerUri failed: $problem"
+          Right(Consent.Given)
+
+        case Right(None) =>
+          // Peer inhibits its activation
+          logger.info(s"✔︎ Peer $peerId $peerUri gives consent and inhibits its activation for ${
+            duration.pretty}")
+          Right(Consent.Given)
+
+        case Right(Some(clusterState)) =>
+          logger.info(s"⛔️ Peer $peerId $peerUri is active")
+          Right(Consent.Rejected)
 
 
   private[cluster] sealed trait State

@@ -10,7 +10,7 @@ import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
-import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
+import js7.data.cluster.{ClusterWatchAskNodeLoss, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
@@ -65,7 +65,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
         backupController.testEventBus
           .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterFailedOver]:
             _.request match
-              case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
+              case ClusterWatchAskNodeLoss(_, _, _, event: ClusterFailedOver, _, _, _) => Some(event)
               case _ => None
           .await(99.s)
 

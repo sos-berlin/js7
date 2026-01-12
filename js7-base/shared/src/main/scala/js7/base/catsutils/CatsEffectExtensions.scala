@@ -108,6 +108,19 @@ object CatsEffectExtensions:
     def timeoutDefer[A1 >: A](duration: Duration)(fallback: => IO[A1]): IO[A1] =
       io.timeoutTo(duration, IO.defer(fallback))
 
+    /** Like racePair but resolves the returned OutcomeIO[x]. */
+    def raceBoth[B](other: IO[B]): IO[Either[(A, FiberIO[B]), (FiberIO[A], B)]] =
+      def resolve[X](outcome: OutcomeIO[X]): IO[X] =
+        outcome.match
+          case Outcome.Succeeded(io) => io
+          case o => IO.fromOutcome(o)
+      io.racePair:
+        other
+      .flatMap:
+        case Left((a, bFiber)) => resolve(a).map(a => Left(a -> bFiber))
+        case Right((aFiber, b)) => resolve(b).map(b => Right(aFiber -> b))
+
+
     def addElapsedToAtomicNanos(atomic: AtomicLong): IO[A] =
       io.timed.map: (duration, result) =>
         atomic += duration.toNanos
@@ -200,13 +213,7 @@ object CatsEffectExtensions:
 
     /** Like racePair but resolves the returned OutcomeIO[x]. */
     def raceBoth[L, R](left: IO[L], right: IO[R]): IO[Either[(L, FiberIO[R]), (FiberIO[L], R)]] =
-      def resolve[A](outcome: OutcomeIO[A]): IO[A] =
-        outcome.match
-          case Outcome.Succeeded(io) => io
-          case o => IO.fromOutcome(o)
-      IO.racePair(left, right).flatMap:
-        case Left((l, rFiber)) => resolve(l).map(l => Left(l -> rFiber))
-        case Right((lFiber, r)) => resolve(r).map(r => Right(lFiber -> r))
+      left.raceBoth(right)
 
     /** Like Cats raiseError but computes throwable anew for each execution. */
     def raiseError_[A](throwable: => Throwable): IO[A] =

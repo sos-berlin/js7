@@ -153,7 +153,7 @@ with EventDrivenState.Companion[ClusterState]:
     implicit val jsonCodec: TypedJsonCodec[HasNodes] = TypedJsonCodec(
       Subtype(deriveCodec[NodesAppointed]),
       Subtype(deriveCodec[PreparedToBeCoupled]),
-      Subtype(deriveCodec[Coupled]),
+      Subtype[Coupled],
       Subtype(deriveCodec[ActiveShutDown]),
       Subtype[PassiveLost],
       Subtype[FailedOver],
@@ -195,6 +195,8 @@ with EventDrivenState.Companion[ClusterState]:
     def withSetting(setting: ClusterSetting): Coupled =
       copy(setting = setting)
 
+  object Coupled:
+    given Codec.AsObject[Coupled] = deriveCodec
 
   /** The active node has shut down while `Coupled` and will continue to be active when restarted.
       The passive node must not fail-over.

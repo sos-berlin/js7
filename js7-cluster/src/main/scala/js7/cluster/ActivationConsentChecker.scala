@@ -2,16 +2,17 @@ package js7.cluster
 
 import cats.effect.{IO, ResourceIO}
 import js7.base.auth.Admission
-import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsEffectExtensions.{recoverFromProblemAndRetry, *}
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.system.startup.Halt.haltJava
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ActivationConsentChecker.*
-import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem}
+import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
 import js7.data.cluster.{ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.{NodeId, NodeNameToPassword}
@@ -32,12 +33,12 @@ private final class ActivationConsentChecker private(
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
     (using NodeNameToPassword[S])
   : IO[Checked[Consent]] =
-    logger.traceIOWithResult:
+    logger.traceIOWithResult("checkConsent", event.toShortString):
       // TODO inhibitActivationOfPeer solange andauern lassen, also wiederholen,
       //  bis das Event ausgegeben worden ist, vielleicht noch etwas darüber hinaus.
-      IO.pure:
+      IO:
         aggr.toPeerAndAdmission(ownId).flatMap: (peerId, admission, clusterState) =>
-          // Apply ClusterNodeLostEvent //
+          // Pre-apply ClusterNodeLostEvent //
           clusterState.applyEvent(event).flatMap:
             _.checkedSubtype[ClusterState.IsNodeLost]
           .map((peerId, admission, _))
@@ -46,6 +47,25 @@ private final class ActivationConsentChecker private(
       .flatTapT: consent =>
         IO.right(testEventBus.publish(consent))
 
+  /** Check consent of both ClusterWatch and peer in a two-phase-commit.
+    *
+    * First ask both ClusterWatch and peer concurrently to prepare for a ClusterNodeLostEvent event.
+    * If both agree, then notify ClusterWatch.
+    *
+    * The peer must not be active.
+    *
+    * In the first phase, the ClusterWatch is sent a ClusterWatchAskNodeLoss command, while
+    * the peer get a ClusterInhibitActivation command.
+    * The latter is expected to fail, which is interpreted as a non-active peer.
+    *
+    * In the second (commit) phase, the ClusterWatch is sent a ClusterWatchCommitNodeLoss command,
+    * which may fail.
+    *
+    * The transaction is time-limited.
+    *
+    * After the ClusterWatch has been successfully notified,
+    * the caller must emit the Cluster<NodeLostEvent.
+    */
   private def checkConsent2[S <: ClusterableState[S]](
     peerId: NodeId,
     admission: Admission,
@@ -54,12 +74,37 @@ private final class ActivationConsentChecker private(
     clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
   : IO[Checked[Consent]] =
     activationInhibitor.tryToActivate:
+      // Ask peer //
       inhibitActivationOfPeer(peerId, admission,
         duration = nodeLossClusterState.setting.timing.inhibitActivationDuration
-      ).flatMapT:
-        case Consent.Rejected => IO.right(Consent.Rejected)
-        case Consent.Given =>
-          askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer)
+      ).raceBoth:
+        // Concurrently ask ClusterWatch //
+        askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer, commit = false)
+      .map:
+        case Left(pair) => pair
+        case Right(pair) => pair.swap
+      .flatMap:
+        // One has answered, the other (a Fiber) is still on the way
+        case (Right(Consent.Given), other) =>
+          other.joinStd.flatMap:
+            case Right(Consent.Given) =>
+              // We could check for timeout here, but we let the ClusterWatch do it
+              // Commit //
+              askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer, commit = true)
+              // Now, if succeeded, the caller MUST emit the event //
+
+            case bad @ (Left(_) | Right(Consent.Rejected)) =>
+              IO.pure(bad)
+
+        case (bad @ (Left(_) | Right(Consent.Rejected)), other) =>
+          other.cancel.as(bad)
+      .recoverFromProblemAndRetry(()): (problem, _, retry) =>
+        if problem is ClusterWatchNotAskingProblem then
+          // Time elapsed
+          logger.debug(s"⟲  Delay 1s after ClusterWatchNotAskingProblem, then retry ...")
+          retry(()).delayBy(1.s/*TODO*/)
+        else
+          IO.left(problem)
 
   private def inhibitActivationOfPeer(
     peerId: NodeId,
@@ -67,26 +112,16 @@ private final class ActivationConsentChecker private(
     duration: FiniteDuration)
   : IO[Checked[Consent]] =
     ActivationInhibitor
-      .tryInhibitActivationOfPeer(
-        ownId, peerId, admission, clusterNodeApi,
-        duration = duration)
-      .map:
-        case Left(problem) =>
-          logger.info(s"⛔️ inhibitActivationOfPeer: $problem")
-          Right(Consent.Rejected)
-
-        case Right(()) =>
-          Right(Consent.Given)
+      .tryInhibitActivationOfPeer(ownId, peerId, admission, clusterNodeApi, duration)
 
   private def askClusterWatch(
     event: ClusterNodeLostEvent,
     nodeLossClusterState: ClusterState.IsNodeLost,
-    clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer])
+    clusterWatchSynchronizer: ClusterState.HasNodes => IO[ClusterWatchSynchronizer],
+    commit: Boolean)
   : IO[Checked[Consent]] =
     clusterWatchSynchronizer(nodeLossClusterState).flatMap:
-      _.applyEvent(event, nodeLossClusterState,
-        // Changed ClusterWatch must only confirm when taught and sure !!!
-        clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
+      _.askNodeLostEvent(event, nodeLossClusterState, commit = commit)
     .flatMap:
       case Left(problem) =>
         if problem.is(ClusterNodeLossNotConfirmedProblem)

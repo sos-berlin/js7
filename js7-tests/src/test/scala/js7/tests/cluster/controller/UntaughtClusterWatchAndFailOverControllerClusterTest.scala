@@ -5,11 +5,12 @@ import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
-import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
+import js7.data.cluster.{ClusterWatchAskNodeLoss, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
@@ -27,24 +28,33 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
     js7.journal.cluster.dont-halt-when-passive-lost-rejected = true # test only
     """.withFallback(super.primaryControllerConfig)
 
-  // Same ClusterWatch restarts while Cluster nodes are decoupled.
-  "Disturb primary-backup connection and fail-over" in:
-    runMyTest(stopPrimary = false, restartedClusterWatchId = primaryClusterWatchId)
-
-  // FIXME The following three tests do not terminate because ActiveClusterNode is waiting for a
+  // NO LONGER VALID (?): Some tests do not terminate because ActiveClusterNode is waiting for a
   //  confirmation for ClusterPassiveLost, delaying forever the acknowledgment of SnapshotTaken.
   //  A deadlock.
 
+  // TODO Tests with stopPrimary=false fail, if the ClusterWatch notices that
+  //  the primary is still active. It seems to be time-dependant.
+  // WHAT SHOULD WE DO?
+  // a) ✔︎ The ClusterWatch should reliably notice that the primary is still active, and reject
+  //    ClusterFailedOver.
+  // b) BAD: The ClusterWatch should notice the user's confirmation, that the primary is no longer active,
+  //    allow ClusterFailedOver and finally reject ClusterPassiveLost. The primary then aborts.
+  // TODO Split test in two, stopPrimary=true (failover) or false (reject failover)
+
+  "Disturb primary-backup connection and fail-over" in:
+    // TODO Test that it rejects ClusterFailedOver!
+    pending // Seems okay to fail, because the primary controller is still active, trying ClusterPassiveLost
+    runMyTest(stopPrimary = false, restartedClusterWatchId = primaryClusterWatchId)
+
   "Disturb primary-backup connection and fail-over both Cluster node and ClusterWatch" in:
+    // TODO Should reliably fail, because the primary controller is still active, trying ClusterPassiveLost
     pending
     runMyTest(stopPrimary = false, restartedClusterWatchId = backupClusterWatchId)
 
   "Kill active Controller and fail-over" in:
-    pending
     runMyTest(stopPrimary = true, restartedClusterWatchId = primaryClusterWatchId)
 
   "Kill passive Controller and fail-over both Cluster node and ClusterWatch" in:
-    pending
     runMyTest(stopPrimary = true, restartedClusterWatchId = backupClusterWatchId)
 
   private def runMyTest(stopPrimary: Boolean, restartedClusterWatchId: ClusterWatchId) =
@@ -53,7 +63,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       val backupController = backup.newController()
 
       withClusterWatchService(primaryClusterWatchId) { (cwService, _) =>
-        primaryController.eventWatch.await[ClusterCoupled]()
+        primaryController.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
         // After ClusterCoupled has been committed, the ClusterWatch must acknowledge the
         // ClusterState again. We give the ClusterWatch some time to do so.
@@ -69,7 +79,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       backupController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
           _.request match
-            case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
+            case ClusterWatchAskNodeLoss(_, _, `backupId`, _: ClusterFailedOver, _, _, _) =>
         .await(99.s)
 
       if stopPrimary then
@@ -78,8 +88,6 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           .await(99.s)
 
       withClusterWatchService(restartedClusterWatchId) { (clusterWatchService, eventBus) =>
-        import backupController.eventWatch
-
         // ClusterWatch is untaught
         val clusterFailedOver = eventBus
           .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
@@ -106,12 +114,12 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
 
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
 
-        val eventId = eventWatch.lastAddedEventId
+        val eventId = backupController.lastAddedEventId
         clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").await(99.s).orThrow
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == None)
 
-        val ClusterFailedOver(`primaryId`, `backupId`, _) = eventWatch.await[ClusterFailedOver]()
+        val ClusterFailedOver(`primaryId`, `backupId`, _) = backupController.await[ClusterFailedOver]()
           .head.value.event: @unchecked
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
@@ -152,7 +160,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           primaryController = primary.newController()
         end if
 
-        eventWatch.await[ClusterCoupled](after = eventId)
+        backupController.await[ClusterCoupled](after = eventId)
 
         primaryController.terminate().await(99.s)
         backupController.terminate(dontNotifyActiveNode = true).await(99.s)

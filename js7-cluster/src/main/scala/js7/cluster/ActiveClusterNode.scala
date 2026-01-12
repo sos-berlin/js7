@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.{Deferred, FiberIO, IO}
+import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import fs2.Stream
 import js7.base.auth.{Admission, UserAndPassword}
@@ -402,7 +403,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         import initialState.{passiveId, passiveUri, timing}
         CorrelId
           .bindNew:
-            fetchAndHandleAcknowledgedEventIds(passiveId, passiveUri, timing)
+            ().tailRecM: _ =>
+              fetchAndHandleAcknowledgedEventIds(passiveId, passiveUri, timing).flatMap:
+                case Right(()) if !stopAcknowledgingRequested && !stopRequested =>
+                  logger.info:
+                    "⟲ fetchAndHandleAcknowledgedEventIds terminated unexpectedly — restarting"
+                  IO.sleep(1.s).as(Left(()))
+                case o => IO.right(o)
           .tryIt
           .flatTap:
             case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
@@ -458,9 +465,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                       case problem: ClusterPassiveLostWhileFailedOverTestingProblem => // test only
                         journal.kill  // avoid taking a snapshot
                           .as(Left(problem))
-                  .map(_.flatMap:
-                    case Consent.Rejected => Checked.unit
-                    case Consent.Given => Left(missingHeartbeatProblem))
+                      case problem =>
+                        logger.warn(s"checkConsent: $problem")
+                        IO.right(Consent.Rejected)
+                    .map(_.flatMap:
+                      case Consent.Rejected => Checked.unit // Repeat event fetching
+                      case Consent.Given => Left(missingHeartbeatProblem))
 
                 case _ =>
                   IO.pure(Left(missingHeartbeatProblem))
@@ -468,9 +478,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         case o =>
           IO.pure(o)
       .tryIt.flatTap(tried => IO { tried match
-        case Success(Right(())) =>
-          if !stopAcknowledgingRequested && !stopRequested then
-            logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
+        case Success(Right(())) => ()
 
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")

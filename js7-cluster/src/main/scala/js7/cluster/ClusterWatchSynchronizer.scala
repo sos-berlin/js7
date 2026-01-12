@@ -21,7 +21,7 @@ import js7.base.utils.{AsyncLock, Atomic, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.data.Problems.ClusterModuleShuttingDownProblem
-import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverTestingProblem
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -88,6 +88,8 @@ private final class ClusterWatchSynchronizer(
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
     event match
       case _: ClusterPassiveLost =>
+        // Passive node replicates this event.
+        // When the active node detects the node loss, it calls askNodeLostEvent.
         suspendHeartbeat(IO.pure(updatedClusterState)):
           clusterWatch.applyEvent(event, updatedClusterState,
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
@@ -108,6 +110,25 @@ private final class ClusterWatchSynchronizer(
             .whenA(event.isInstanceOf[ClusterWatchRegistered])(IO:
               changeClusterState(updatedClusterState))
             .as(Checked.unit))
+
+  /** Called by the node which detects the node loss. */
+  def askNodeLostEvent(
+    event: ClusterNodeLostEvent,
+    updatedClusterState: ClusterState.IsNodeLost,
+    commit: Boolean)
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
+    event match
+      case _: ClusterPassiveLost =>
+        suspendHeartbeat(IO.pure(updatedClusterState)):
+          clusterWatch.askNodeLostEvent(event, updatedClusterState,
+            commit = commit,
+            clusterWatchIdChangeAllowed = false)
+
+      case _: ClusterFailedOver =>
+        clusterWatch.askNodeLostEvent(event, updatedClusterState,
+          commit = commit,
+          // We rely on a changed ClusterWatch confirming only when taught and sure !!!
+          clusterWatchIdChangeAllowed = true)
 
   def suspendHeartbeat[A](getClusterState: IO[ClusterState], forEvent: Boolean = false)
     (io: IO[Checked[A]])

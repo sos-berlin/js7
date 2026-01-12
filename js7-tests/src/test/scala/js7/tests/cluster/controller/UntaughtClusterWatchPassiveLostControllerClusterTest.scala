@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
-import js7.data.cluster.ClusterWatchCheckEvent
+import js7.data.cluster.ClusterWatchAskNodeLoss
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.tester.ScalaTestUtils.awaitAndAssert
 
@@ -35,7 +35,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
       primaryController.testEventBus
         .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterPassiveLost]:
           _.request match
-            case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _, _) => Some(event)
+            case ClusterWatchAskNodeLoss(_, _, _, event: ClusterPassiveLost, _, _, _) => Some(event)
             case _ => None
         .await(99.s)
 

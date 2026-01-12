@@ -74,6 +74,8 @@ object ClusterWatchProblems:
 
   case object NoClusterWatchProblem extends Problem.ArgumentlessCoded
 
+  case object ClusterWatchNotAskingProblem extends Problem.ArgumentlessCoded
+
   final case class ClusterWatchIdDoesNotMatchProblem(
     rejectedClusterWatchId: ClusterWatchId,
     requestedClusterWatchId: ClusterWatchId,
@@ -106,3 +108,14 @@ object ClusterWatchProblems:
 
 
   case object ClusterStateEmptyProblem extends Problem.ArgumentlessCoded
+
+
+  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
+    extends Problem.Coded:
+
+    def arguments: Map[String, String] = Map(
+      "from" -> from.string,
+      "clusterState" -> clusterState.toString)
+
+  // TODO Move InvalidClusterWatchHeartbeatProblem to js7-cluster-watch-api
+  object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion

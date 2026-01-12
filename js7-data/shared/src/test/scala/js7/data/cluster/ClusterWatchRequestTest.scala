@@ -5,7 +5,7 @@ import js7.base.log.CorrelId
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.web.Uri
-import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
+import js7.data.cluster.ClusterEvent.{ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.NodesAppointed
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.node.NodeId
@@ -64,6 +64,78 @@ final class ClusterWatchRequestTest extends OurTestSuite:
             }
           },
           "forceWhenUntaught": false
+        }""")
+
+    "ClusterWatchAskNodeLoss" in:
+      testJson[ClusterWatchRequest](
+        ClusterWatchAskNodeLoss(
+          RequestId(123),
+          CorrelId("TESTTEST"),
+          from = NodeId("A"),
+          ClusterPassiveLost(NodeId.primary),
+          ClusterState.PassiveLost(clusterSetting),
+          hold = 7.s,
+          forceWhenUntaught = true),
+        json"""{
+          "TYPE": "ClusterWatchAskNodeLoss",
+          "requestId": 123,
+          "correlId": "TESTTEST",
+          "from": "A",
+          "event": {
+            "TYPE": "ClusterPassiveLost",
+            "id": "Primary"
+          },
+          "clusterState": {
+            "TYPE": "PassiveLost",
+            "setting": {
+              "idToUri": {
+                "A": "https://A",
+                "B": "https://B"
+              },
+              "activeId": "A",
+              "timing": {
+                "heartbeat": 10,
+                "heartbeatTimeout": 20
+              }
+            }
+          },
+          "hold": 7,
+          "forceWhenUntaught": true
+        }""")
+
+    "ClusterWatchCommitNodeLoss" in:
+      testJson[ClusterWatchRequest](
+        ClusterWatchCommitNodeLoss(
+          RequestId(123),
+          CorrelId("TESTTEST"),
+          from = NodeId("A"),
+          ClusterPassiveLost(NodeId.primary),
+          ClusterState.PassiveLost(clusterSetting),
+          forceWhenUntaught = true),
+        json"""{
+          "TYPE": "ClusterWatchCommitNodeLoss",
+          "requestId": 123,
+          "correlId": "TESTTEST",
+          "from": "A",
+          "event": {
+            "TYPE": "ClusterPassiveLost",
+            "id": "Primary"
+          },
+          "clusterState": {
+            "TYPE": "PassiveLost",
+            "setting": {
+              "idToUri": {
+                "A": "https://A",
+                "B": "https://B"
+              },
+              "activeId": "A",
+              "timing": {
+                "heartbeat": 10,
+                "heartbeatTimeout": 20
+              }
+            }
+          },
+          "forceWhenUntaught": true
         }""")
 
     "ClusterWatchCheckState" in:

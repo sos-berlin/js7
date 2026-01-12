@@ -23,12 +23,12 @@ import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterModuleShuttingDownProblem
-import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost}
+import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodeLostEvent, ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchId, ClusterWatchRequest}
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordering.Implicits.*
@@ -102,6 +102,27 @@ extends Service.Trivial:
                 forceWhenUntaught = forceWhenUntaught),
               clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
             ).map(_.map(Some(_)))
+
+  /** Called by the node which detects the node loss. */
+  def askNodeLostEvent(
+    event: ClusterNodeLostEvent,
+    clusterState: ClusterState.IsNodeLost,
+    commit: Boolean,
+    clusterWatchIdChangeAllowed: Boolean)
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
+    logger.debugIO("askNodeLostEvent",
+      (event.toShortString, clusterState.toShortString, if commit then "COMMIT" else "ASK")
+    ):
+      CorrelId.use: correlId =>
+        check(
+          clusterState.setting.clusterWatchId,
+          if commit then
+            ClusterWatchCommitNodeLoss(_, correlId, ownId, event, clusterState)
+          else
+            ClusterWatchAskNodeLoss(_, correlId, ownId, event, clusterState,
+              hold = clusterConf.timing.clusterWatchHeartbeat/*too short?*/),
+          clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
+        ).map(_.map(Some(_)))
 
   private def check(
     clusterWatchId: Option[ClusterWatchId],
@@ -214,9 +235,12 @@ extends Service.Trivial:
               logger.warn(problem.toString)
 
           case _ =>
-            for confirmer <- confirm.manualConfirmer do
-              logger.info(s"‼️  ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
-                } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
+            if requested.request.isSubtypeOf[ClusterWatchCommitNodeLoss] then
+              for confirmer <- confirm.manualConfirmer do
+                logger.info(s"‼️  ${
+                  requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+                } has MANUALLY BEEN CONFIRMED by $confirmer ‼️")
+            end if
             requested.confirm(confirmation)
         .map(Right(_))
       .flatMapT: _ =>
