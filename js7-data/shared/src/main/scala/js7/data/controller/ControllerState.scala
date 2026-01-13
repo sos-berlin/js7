@@ -68,7 +68,7 @@ final case class ControllerState(
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   agentAttachments: ClientAttachments[AgentPath],
-  /** Used for OrderWatch to allow to attach it from Agent. */
+  /** Used for OrderWatch to allow attaching it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
   statistics: EngineStateStatistics,
