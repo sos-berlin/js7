@@ -31,7 +31,7 @@ object CatsUtils:
 
   private val logger = Logger[this.type]
 
-  def combine[A: Monoid](as: A*): A =
+  inline def combine[A: Monoid](as: A*): A =
     as.combineAll
 
   private def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =

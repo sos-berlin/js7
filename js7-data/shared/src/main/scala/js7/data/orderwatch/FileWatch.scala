@@ -8,6 +8,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.utils.CatsUtils.combine
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
@@ -60,7 +61,7 @@ extends OrderWatch:
       Left(FileWatch.FileWatchPatternDoesntMatchProblem(path / externalOrderName))
     else
       val checkedDefaultOrderId = OrderId.checked(s"file:${path.string}:$relativePath")
-      val scope = FileWatchScope(path, matcher) |+| EnvScope |+| NowScope(now)
+      val scope = combine(FileWatchScope(path, matcher), EnvScope, NowScope(now))
       (orderExpr, orderIdExpression) match
         case (Some(orderExpr), None) =>
           orderExpr.evalAs(using ObjectValue, scope).flatMap: obj =>

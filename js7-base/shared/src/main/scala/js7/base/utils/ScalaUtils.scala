@@ -23,7 +23,7 @@ import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, mutable}
+import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, immutable, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.quoted.{Expr, Quotes, Type}
@@ -466,10 +466,15 @@ object ScalaUtils:
        * <p>Use this method only once! */
       def toEagerSeq: Seq[A] =
         iterableOnce match
-          case o: scala.collection.immutable.List[A] => o
-          case o: scala.collection.immutable.ArraySeq[A] => o
-          case o: scala.collection.immutable.Queue[A] => o
+          case o: immutable.ArraySeq[A] => o
+          case o: IArray[A] @unchecked => o
+          case o: Vector[A] => o
+          case o: List[A] => o
+          case o: immutable.Queue[A] => o
           case o: fs2.Chunk[A @unchecked] => o.asSeq
+          case o: mutable.ArraySeq[A] @unchecked =>
+            immutable.ArraySeq.unsafeWrapArray:
+              o.toArray(using o.elemTag.asInstanceOf[ClassTag[A]])
           case _ => Vector.from(iterableOnce)
 
       def foldMap[B: Monoid as B](f: A => B): B =

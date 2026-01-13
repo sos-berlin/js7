@@ -4,23 +4,57 @@ import js7.base.problem.Checked
 import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Scope, ValueSearch}
+import scala.annotation.targetName
 
-private[expression] class CombinedScope(first: Scope, second: Scope)
-extends Scope:
+private[expression] trait CombinedScope extends Scope:
+
+  protected def scopes: Seq[Scope]
+
+  protected def find(f: Scope => Option[Checked[Value]]): Option[Checked[Value]]
 
   override def symbolValue(name: String): Option[Checked[Value]] =
-    first.symbolValue(name) orElse second.symbolValue(name)
+    find(_.symbolValue(name))
 
   override def namedValue(name: String): Option[Checked[Value]] =
-    first.namedValue(name) orElse second.namedValue(name)
+    find(_.namedValue(name))
 
   override def findValue(search: ValueSearch) =
-    first.findValue(search) orElse second.findValue(search)
+    find(_.findValue(search))
 
   override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
-    first.evalFunctionCall(functionCall) orElse second.evalFunctionCall(functionCall)
+    find(_.evalFunctionCall(functionCall))
 
   override def evalJobResourceVariable(v: JobResourceVariable)(implicit scope: Scope) =
-    first.evalJobResourceVariable(v) orElse second.evalJobResourceVariable(v)
+    find(_.evalJobResourceVariable(v))
 
-  override def toString = s"$first |+| $second"   // combine is associative
+  override def toString =
+    s"${scopes.mkString(" |+| ")}" // combine is associative
+
+
+object CombinedScope:
+
+  def apply(first: Scope, second: Scope): CombinedScope =
+    new PairCombinedScope(first, second)
+
+  inline def apply(scopes: Seq[Scope]): CombinedScope =
+    new SeqCombinedScope(scopes)
+
+  @targetName("applyVarargs")
+  inline def apply(inline scopes: Scope*): CombinedScope =
+    new SeqCombinedScope(scopes)
+
+
+  private final class PairCombinedScope(first: Scope, second: Scope)
+  extends CombinedScope:
+
+    protected def scopes: Seq[Scope] = first :: second :: Nil
+
+    protected def find(f: Scope => Option[Checked[Value]]): Option[Checked[Value]] =
+      f(first) orElse f(second)
+
+
+  final class SeqCombinedScope(protected val scopes: Seq[Scope])
+  extends CombinedScope:
+
+    protected def find(f: Scope => Option[Checked[Value]]): Option[Checked[Value]] =
+      scopes.view.flatMap(f).headOption

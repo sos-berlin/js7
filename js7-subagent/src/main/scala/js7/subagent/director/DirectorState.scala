@@ -3,6 +3,7 @@ package js7.subagent.director
 import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic}
@@ -117,7 +118,7 @@ private final case class DirectorState private(
                     idToDriver.get(subagentId)
                       .flatMap: driver =>
                         driver.serverMeteringScope()
-                          .map(_ |+| driver.subagentProcessCountScope |+| scope)
+                          .map(combine(_, driver.subagentProcessCountScope, scope))
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)

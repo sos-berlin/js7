@@ -3,6 +3,7 @@ package js7.data.state
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
+import js7.base.utils.CatsUtils.combine
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.AgentPath
@@ -187,11 +188,12 @@ trait StateView extends ItemContainer, EngineStateFunctions:
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
     for orderScopes <- toOrderScopes(order) yield
       val nowScope = NowScope(now)
-      orderScopes.pureOrderScope |+|
-        nowScope |+|
+      combine(
+        orderScopes.pureOrderScope,
+        nowScope,
         JobResourceScope(
           keyTo(JobResource),
-          useScope = orderScopes.variablelessOrderScope |+| nowScope)
+          useScope = orderScopes.variablelessOrderScope |+| nowScope))
 
   final def noticeScope(order: Order[Order.State]): Checked[Scope] =
     toOrderScopes(order).map(_.pureOrderScope)

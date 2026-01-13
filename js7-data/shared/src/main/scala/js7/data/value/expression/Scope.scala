@@ -4,6 +4,7 @@ import cats.Monoid
 import js7.base.problem.Checked
 import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
 import js7.base.utils.Lazy
+import js7.base.utils.ScalaUtils.syntax.toEagerSeq
 import js7.data.Problems.RecursiveEvaluationProblem
 import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
@@ -29,7 +30,7 @@ trait Scope:
 
   /** A variable like $variable.
     *
-    * @return None if variable is unknown and caller should look elsewhere. 
+    * @return None if variable is unknown and caller should look elsewhere.
     */
   def namedValue(name: String): Option[Checked[Value]] =
     None
@@ -85,6 +86,9 @@ object Scope extends Monoid[Scope]:
       case (a, EmptyScope) => a
       case (EmptyScope, b) => b
       case _ => CombinedScope(a, b)
+
+  override def combineAll(scopes: IterableOnce[Scope]): Scope =
+    CombinedScope(scopes.toEagerSeq)
 
   /** Optimized for empty nameToExpr. */
   def evalExpressionMap(nameToExpr: Map[String, Expression], scope: => Scope)

@@ -150,18 +150,18 @@ trait ProcessingOrderScopes extends OrderScopes:
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources =
-    js7JobVariablesScope |+| variablelessOrderScope |+| nowScope |+| fileValueScope
+    combine(js7JobVariablesScope, variablelessOrderScope, nowScope, fileValueScope)
 
   private lazy val jobResourceScope = JobResourceScope(
     jobResources.toKeyedMap(_.path),
     useScope = scopeForJobResources)
 
   final lazy val processingOrderScope =
-    js7JobVariablesScope |+| pureOrderScope |+| nowScope |+| jobResourceScope |+| fileValueScope
+    combine(js7JobVariablesScope, pureOrderScope, nowScope, jobResourceScope, fileValueScope)
 
   /** For Execute defaultArguments. */
   private lazy val scopeForExecuteDefaultArguments =
-    js7JobVariablesScope |+| pureOrderScope |+| jobResourceScope
+    combine(js7JobVariablesScope, pureOrderScope, jobResourceScope)
 
   protected[scopes] final def evalLazilyExecuteDefaultArguments(
     expressionMap: MapView[String, Expression])
