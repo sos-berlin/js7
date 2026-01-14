@@ -64,7 +64,7 @@ object ClusterConf:
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat = config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration
       heartbeatTimeout = config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration
-      timing <- ClusterTiming.checked(heartbeat, heartbeatTimeout)
+      timing <- ClusterTiming(heartbeat, heartbeatTimeout).checked
       clusterWatchId = config.optionAs[ClusterWatchId]("clusterWatchId")
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
