@@ -22,7 +22,7 @@ import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, targetName}
 import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, immutable, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
@@ -1165,6 +1165,19 @@ object ScalaUtils:
 
   def flattenToString[A](as: IterableOnce[A]*): String =
     as.view.flatten.mkString(" ")
+
+  /** Corrective variant of flattenToString in case an argument is a CharSequence.
+    *
+    * To avoid this: `flattenToString("ABC", Some("X")) == "A, B, C, X"
+    *
+    * Corrected: `flattenToString("ABC", Some("X")) == "ABC, X"
+    */
+  @deprecated @targetName("Wrap the CharSequence into Some(…)!")
+  def flattenToString[A](as: IterableOnce[A] | CharSequence*): String =
+    as.view.flatMap:
+      case a: IterableOnce[A @unchecked] => a
+      case a: CharSequence => Some(a)
+    .mkString(" ")
 
   def flatten[A](as: IterableOnce[A]*): Vector[A] =
     as.view.flatten.toVector

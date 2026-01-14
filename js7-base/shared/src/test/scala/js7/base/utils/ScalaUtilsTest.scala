@@ -20,6 +20,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
 import org.scalatest.matchers.should.Matchers.*
+import scala.annotation.nowarn
 import scala.collection.{MapView, View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.math.ScalaNumber
@@ -291,6 +292,15 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
     intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "Expected java.lang.String but got java.lang.Integer: 123"
+
+  "flattenToString" in:
+    //assert(flattenToString() == "")
+    //assert(flattenToString(Some("A"))) == "A")
+    assert(flattenToString(Some("A"), None, Some("B")) == "A B")
+
+  "flattenToString automatically wraps CharSequence into Some" in:
+    @nowarn("msg=deprecated") def withCharSequence() = flattenToString("A1", None, Some("B"))
+    assert(withCharSequence() == "A1 B")
 
   "ifCast" in:
     val s: Any = "Hej!"
