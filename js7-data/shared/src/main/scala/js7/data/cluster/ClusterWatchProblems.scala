@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.node.NodeId
-import scala.collection.immutable.Map.{Map1, Map2, Map3}
+import scala.collection.immutable.Map.{Map2, Map3}
 import scala.concurrent.duration.FiniteDuration
 
 object ClusterWatchProblems:
@@ -66,9 +66,11 @@ object ClusterWatchProblems:
       TypedJsonCodec[ClusterNodeLossNotConfirmedProblem](
         Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]))
 
-  final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded:
-    def arguments: Map[String, String] = Map1(
-      "nodeId", nodeId.toString)
+  final case class ClusterNodeIsNotLostProblem(nodeId: NodeId, info: String)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map2(
+      "nodeId", nodeId.toString,
+      "info", info)
 
   case object ClusterWatchRequestDoesNotMatchProblem extends Problem.ArgumentlessCoded
 

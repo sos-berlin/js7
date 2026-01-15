@@ -224,8 +224,12 @@ final class ClusterWatch(
         Right(lossRejected)
 
       case (maybeLossRejected, maybeClusterState) =>
-        val problem = ClusterNodeIsNotLostProblem(lostNodeId)
-        logger.debug(s"⚠️  $problem • ${flattenToString(maybeLossRejected, maybeClusterState)}")
+        val problem = ClusterNodeIsNotLostProblem(lostNodeId,
+          View(
+            maybeLossRejected,
+            Some(maybeClusterState.fold("untaught")(_.toShortString))
+          ).flatten.mkString(" • "))
+        logger.debug(s"⚠️  $problem${maybeLossRejected.fold("")(o => s" • $o")}")
         Left(problem)
 
   @TestOnly

@@ -323,7 +323,8 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     assert(watch.clusterNodeLossEventToBeConfirmed(aId) == None)
     assert(watch.clusterNodeLossEventToBeConfirmed(bId) == None)
     assert(watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER").await(99.s)
-      == Left(ClusterNodeIsNotLostProblem(passiveId)))
+      == Left(
+      ClusterNodeIsNotLostProblem(passiveId, "untaught")))
 
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -366,7 +367,8 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == None)
     assert(watch.manuallyConfirmNodeLoss(lostNodeId, "CONFIRMER").await(99.s)
-      == Left(ClusterNodeIsNotLostProblem(lostNodeId)))
+      == Left(
+      ClusterNodeIsNotLostProblem(lostNodeId, "untaught")))
 
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -428,17 +430,21 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
             .map(_.orThrow)
 
           confirmed <- watch.manuallyConfirmNodeLoss(activeId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(activeId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(activeId, "Coupled(Node:A is active)"))
 
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(passiveId, "Coupled(Node:A is active)"))
 
           _ <- IO.sleep(setting.timing.clusterWatchHeartbeatValidDuration)
           confirmed <- watch.manuallyConfirmNodeLoss(activeId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(activeId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(activeId, "Coupled(Node:A is active)"))
 
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(passiveId, "Coupled(Node:A is active)"))
 
           expectedClusterState = coupled.applyEvent(event)
             .orThrow.asInstanceOf[ClusterState.IsNodeLost]
@@ -470,9 +476,17 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
           _ = assert(watch.clusterState() == Right(expectedClusterState))
 
           confirmed <- watch.manuallyConfirmNodeLoss(activeId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(activeId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(activeId,
+              event match
+                case _: ClusterPassiveLost => "PassiveLost(Node:A is active)"
+                case _: ClusterFailedOver => "FailedOver(A --> B)"))
 
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
         yield
-          assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
+          assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(passiveId,
+              event match
+                case _: ClusterPassiveLost => "PassiveLost(Node:A is active)"
+                case _: ClusterFailedOver => "FailedOver(A --> B)"))
   }

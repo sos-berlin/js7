@@ -103,11 +103,11 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(primaryId)))
+          == Left(ClusterNodeIsNotLostProblem(primaryId, "PassiveLost(Node:Primary is active)")))
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(backupId)))
+          == Left(ClusterNodeIsNotLostProblem(backupId, "PassiveLost(Node:Primary is active)")))
 
         sys.props(testAckLossPropertyKey) = "false"
         sys.props(testHeartbeatLossPropertyKey) = "false"

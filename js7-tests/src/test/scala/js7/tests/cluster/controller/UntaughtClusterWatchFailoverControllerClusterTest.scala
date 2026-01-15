@@ -75,14 +75,14 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
           assert(clusterWatchService
             .manuallyConfirmNodeLoss(backupId, "CONFIRMER")
             .await(99.s)
-            == Left(ClusterNodeIsNotLostProblem(backupId)))
+            == Left(ClusterNodeIsNotLostProblem(backupId, "untaught")))
 
           // primaryId is lost. Wait until passive node has detected it.
           awaitAndAssert(
             clusterWatchService
               .manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
               .await(99.s)
-              != Left(ClusterNodeIsNotLostProblem(primaryId)))
+              != Left(ClusterNodeIsNotLostProblem(primaryId, "untaught")))
           clusterWatchService
             .manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
             .await(99.s).orThrow
@@ -103,7 +103,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
           assert(clusterWatchService
             .manuallyConfirmNodeLoss(backupId, "CONFIRMER")
             .await(99.s)
-            == Left(ClusterNodeIsNotLostProblem(backupId)))
+            == Left(ClusterNodeIsNotLostProblem(backupId, "FailedOver(Primary --> Backup)")))
 
           val expectedFailedOver = FailedOver(
             clusterSetting.copy(

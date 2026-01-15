@@ -5,7 +5,6 @@ import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.utils.Tests.isIntelliJIdea
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
@@ -124,11 +123,11 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(backupId)))
+          == Left(ClusterNodeIsNotLostProblem(backupId, "FailedOver(Primary --> Backup)")))
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(primaryId)))
+          == Left(ClusterNodeIsNotLostProblem(primaryId, "FailedOver(Primary --> Backup)")))
 
         if stopPrimary then
           logger.info("Start Primary Controller")
