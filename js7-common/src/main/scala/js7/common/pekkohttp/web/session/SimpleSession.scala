@@ -24,7 +24,7 @@ object SimpleSession:
       "lastUsedFor" -> lastUsed.what.asJson,
       "lastUsedAt" -> lastUsed.timestamp.asJson,
       "loggedInAt" -> o.sessionInit.loggedInAt.asJson,
-      "timeoutAt" ->
-        o.sessionInit.timeoutAt.map: timeoutAt =>
+      "until" ->
+        o.sessionInit.until.map: timeoutAt =>
           Timestamp.now + (timeoutAt - Deadline.now)
         .asJson)

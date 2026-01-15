@@ -48,7 +48,7 @@ final class SessionRegister[S <: Session: Tag] private(
 extends Service.TrivialReleasable:
 
   private val componentName = config.getString("js7.component.name")
-  private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
+  private val sessionLifetime = config.getDuration("js7.auth.session.lifetime").toFiniteDuration
 
   private val cell = AtomicCell[IO].of(State(Map.empty)).unsafeMemoize
   private val deferredSystemSession = Deferred.unsafe[IO, Checked[S]]
@@ -113,7 +113,7 @@ extends Service.TrivialReleasable:
               !state.tokenToSession.contains(token), "Duplicate generated SessionToken")
             val session = newSession:
               SessionInit(token, user, source, now,
-                timeoutAt = !isEternalSession ? (Deadline.now + sessionTimeout))
+                until = !isEternalSession ? (Deadline.now + sessionLifetime))
             session.lastUsed = Session.LastUsed("login", now)
             val entry = Entry(session)
 
@@ -141,11 +141,11 @@ extends Service.TrivialReleasable:
       Bean.sessionCount += 1
       IO.unlessA(isEternalSession):
         CatsDeadline.now.flatMap: now =>
-          val timeoutAt = now + sessionTimeout
+          val timeoutAt = now + sessionLifetime
           supervisor.supervise:
             cell.flatMap(_.update:
               _.deleteOnly(entry.session.sessionToken, "expired"))
-            .delayBy(sessionTimeout)
+            .delayBy(sessionLifetime)
           .map: fiber =>
             entry.timeoutFiber = Some(fiber)
       .as(entry.session.sessionToken)
@@ -276,7 +276,7 @@ object SessionRegister:
   @TestOnly
   val TestConfig: Config = config"""
     js7.component.name = "JS7 TEST"
-    js7.auth.session.timeout = ${TestTimeout.toMillis} milliseconds
+    js7.auth.session.lifetime = ${TestTimeout.toMillis} milliseconds
     """
 
   sealed trait SessionsMXBean:

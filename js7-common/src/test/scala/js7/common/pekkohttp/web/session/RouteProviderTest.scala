@@ -122,4 +122,4 @@ object RouteProviderTest:
   private val TestUser = SimpleUser(UserId("TEST-USER"), HashedPassword(SecretString("321"), _.reverse))
 
   final case class MySession(sessionInit: SessionInit) extends Session:
-    def withoutTimeout = copy(sessionInit = sessionInit.copy(timeoutAt = None))
+    def withoutTimeout = copy(sessionInit = sessionInit.copy(until = None))

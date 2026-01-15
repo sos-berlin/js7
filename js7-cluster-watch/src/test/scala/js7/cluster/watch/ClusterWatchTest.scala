@@ -17,7 +17,7 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, C
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
-import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss}
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import org.scalatest.Assertion
@@ -440,26 +440,32 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
           _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
-          expectedClusterState = coupled.applyEvent(event).orThrow.asInstanceOf[HasNodes]
+          expectedClusterState = coupled.applyEvent(event)
+            .orThrow.asInstanceOf[ClusterState.IsNodeLost]
 
           // Event is rejected because Node loss has not yet been confirmed
           response <- watch.processRequest:
-            ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState)
+            ClusterWatchAskNodeLoss(RequestId(123), correlId, from, event, expectedClusterState, 1.s)
           _ = assert(response == Left(ClusterNodeLossNotConfirmedProblem(from, event)))
           _ = assert(watch.clusterState() == Right(coupled))
 
           // Try to confirm a loss of the not lost Node
           notLostNodeId = setting.other(lostNodeId)
           confirmed <- watch.manuallyConfirmNodeLoss(notLostNodeId, "CONFIRMER")
-          _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(notLostNodeId)))
+          _ = assert(confirmed == Left:
+            ClusterNodeIsNotLostProblem(notLostNodeId, "Coupled(Node:A is active)"))
 
           // Confirm the loss of the Node
           _ <- watch.manuallyConfirmNodeLoss(lostNodeId, "CONFIRMER").map(_.orThrow)
 
-          //IO.sleep(setting.timing.clusterWatchHeartbeatValidDuration)
-          _ <- watch
-            .processRequest:
-              ClusterWatchCheckEvent(RequestId(123), correlId, notLostNodeId, event, expectedClusterState)
+          _ <-
+            watch.processRequest:
+              ClusterWatchAskNodeLoss(RequestId(123), correlId, notLostNodeId, event, expectedClusterState, 1.s)
+            .map(_.orThrow)
+
+          _ <-
+            watch.processRequest:
+              ClusterWatchCommitNodeLoss(RequestId(123), correlId, notLostNodeId, event, expectedClusterState)
             .map(_.orThrow)
           _ = assert(watch.clusterState() == Right(expectedClusterState))
 

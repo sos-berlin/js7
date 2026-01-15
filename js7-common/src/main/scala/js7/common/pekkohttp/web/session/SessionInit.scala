@@ -13,4 +13,4 @@ final case class SessionInit(
   loginUser: SimpleUser,
   source: String,
   loggedInAt: Timestamp,
-  private[session] timeoutAt: Option[Deadline] = None)
+  private[session] until: Option[Deadline] = None)
