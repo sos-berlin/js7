@@ -51,10 +51,10 @@ final class ClusterWatch(
       for case state: AskingNodeLoss <- _state do
         // Maybe invalidate current AskingNodeLoss
         if now >= state.until then
-          _state = state.savedNormal
+          _state = state.restoreNormal
           logger.debug(s"_state = $stateString, because AskingNodeLoss expired")
         else if !request.isSubtypeOf[ClusterWatchCommitNodeLoss] then
-          _state = state.savedNormal
+          _state = state.restoreNormal
           logger.debug(s"_state = ${_state getOrElse "untaught"
             }, restored because AskingNodeLoss is followed by ${request.toShortString}")
 
@@ -125,11 +125,11 @@ final class ClusterWatch(
                     updatedClusterState.checkedSubtype[ClusterState.IsNodeLost]
                       .map: updatedClusterState =>
                         _state = Some(AskingNodeLoss(
-                          clusterState = request.clusterState/*???*/,
+                          clusterState = request.clusterState,
                           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation,
                           request = request,
                           askedClusterState = updatedClusterState,
-                          lastHeartbeat = now/*???*/,
+                          lastHeartbeat = now,
                           until = now + request.hold,
                           savedNormal = state match
                             case state: Normal => Some(state)
@@ -142,7 +142,7 @@ final class ClusterWatch(
                 case Some(asking: AskingNodeLoss) =>
                   if asking.until <= now then
                     logger.warn(s"${request.toShortString} expires")
-                    _state = asking.savedNormal
+                    _state = asking.restoreNormal
                     logger.debug(s"_state = $stateString")
                     IO.left(ClusterWatchNotAskingProblem) // Client should ask again
                   else if updatedClusterState != asking.askedClusterState  then
@@ -377,6 +377,13 @@ final class ClusterWatch(
         Checked.unit
       else
         Left(ClusterWatchNotAskingProblem)
+
+    def restoreNormal: Option[State] =
+      savedNormal.map: normal =>
+        if normal.clusterState.activeId == request.from then
+          normal.copy(lastHeartbeat = lastHeartbeat)
+        else
+          normal
 
     override def toString =
       functionCallToString("AskingNodeLoss",
