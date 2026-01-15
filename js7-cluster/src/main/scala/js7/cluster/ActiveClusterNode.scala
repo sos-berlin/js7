@@ -31,7 +31,7 @@ import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, ClusterSwitchOverButNotCoupledProblem, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
 import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchProblems.{ClusterPassiveLostWhileFailedOverTestingProblem, ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
@@ -43,7 +43,7 @@ import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.FileJournal
 import js7.journal.problems.Problems.JournalKilledProblem
 import scala.concurrent.duration.*
-import scala.util.{Failure, Right, Success, Try}
+import scala.util.{Failure, NotGiven, Right, Success, Try}
 
 /** Active Cluster node active which is part of a cluster (ClusterState != Empty). */
 final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
@@ -649,15 +649,17 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   def onTerminatedUnexpectedly: IO[Checked[Unit]] =
     fetchingAcksTerminatedUnexpectedlyPromise.get.untry
 
-  private def persist(toEvents: ClusterState => Checked[Option[ClusterEvent]])
+  private def persist[E <: ClusterEvent](toEvents: ClusterState => Checked[Option[E]])
+    (using NotGiven[E <:< ClusterFailedOver/*ClusterNodeLostEvent*/])
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     suspendHeartbeat(forEvent = true):
       persistWithoutTouchingHeartbeat()(toEvents)
 
-  private def persistWithoutTouchingHeartbeat(
+  private def persistWithoutTouchingHeartbeat[E <: ClusterEvent](
     extraEvent: Option[ItemAttachedToMe] = None,
     forceClusterWatchWhenUntaught: Boolean = false)(
-    toEvents: ClusterState => Checked[Option[ClusterEvent]])
+    toEvents: ClusterState => Checked[Option[E]])
+    (using NotGiven[E <:< ClusterFailedOver/*ClusterNodeLostEvent*/])
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     IO.defer:
       assertThat(!clusterWatchSynchronizer.isHeartbeating)
