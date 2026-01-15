@@ -9,7 +9,7 @@ object Dependencies
   val pekkoVersion = "1.4.0"
   val pekkoHttpVersion = "1.3.0"
   val slf4jVersion = "2.0.17"  // See also plugins.sbt
-  val log4jVersion = "2.24.3"  // See also plugins.sbt
+  val log4jVersion = "2.25.3"  // See also plugins.sbt
 //val log4jVersion = "2.25.2"  // See also plugins.sbt      2.25.2 throws NullPointerException
   val catsVersion = "2.13.0"
   val catsEffectVersion = "3.6.3"
