@@ -308,10 +308,9 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     val eventBus = new ClusterWatchEventBus
     val watch = new ClusterWatch(
       checkActiveIsLost = _ => IO.right(()),
-      onUndecidableClusterNodeLoss = {
+      onUndecidableClusterNodeLoss =
         case Some(problem) => IO(eventBus.publish(problem))
-        case None => IO.unit
-      })
+        case None => IO.unit)
     val passiveLost = PassiveLost(setting)
     import passiveLost.{activeId, passiveId}
     val event = ClusterPassiveLost(passiveId)

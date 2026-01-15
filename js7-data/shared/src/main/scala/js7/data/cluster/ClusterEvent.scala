@@ -16,25 +16,30 @@ object ClusterEvent:
 
   final case class ClusterNodesAppointed(setting: ClusterSetting)
   extends ClusterEvent
+
   object ClusterNodesAppointed:
     def checked(setting: ClusterSetting): Checked[ClusterNodesAppointed] =
       Right(new ClusterNodesAppointed(setting.normalized))
+
 
   final case class ClusterCouplingPrepared(activeId: Id)
   extends ClusterEvent:
     override def toString = s"ClusterCouplingPrepared(activeId=$activeId)"
 
+
   final case class ClusterCoupled(activeId: Id)
   extends ClusterEvent:
     override def toString = s"ClusterCoupled(activeId=$activeId)"
+
 
   final case class ClusterSwitchedOver(activatedId: Id)
   extends ClusterEvent
 
   sealed trait ClusterNodeLostEvent extends ClusterEvent:
     def lostNodeId: Id
+
   object ClusterNodeLostEvent:
-    implicit val jsonCodec: TypedJsonCodec[ClusterNodeLostEvent] = TypedJsonCodec(
+    given TypedJsonCodec[ClusterNodeLostEvent] = TypedJsonCodec(
       Subtype(deriveCodec[ClusterFailedOver]),
       Subtype(deriveCodec[ClusterPassiveLost]))
 
@@ -46,28 +51,34 @@ object ClusterEvent:
     override def toString =
       s"ClusterFailedOver(${failedActiveId.string} --> ${activatedId.string}, $failedAt)"
 
+
   final case class ClusterPassiveLost(id: Id)
   extends ClusterNodeLostEvent:
     def lostNodeId: Id = id
   type ClusterActiveNodeShutDown = ClusterActiveNodeShutDown.type
+
   case object ClusterActiveNodeShutDown
   extends ClusterEvent
+
 
   type ClusterActiveNodeRestarted = ClusterActiveNodeRestarted.type
   case object ClusterActiveNodeRestarted
   extends ClusterEvent
 
+
   final case class ClusterSettingUpdated(passiveUri: Option[Uri] = None)
   extends ClusterEvent:
     assertThat(passiveUri.nonEmpty)
 
+
   final case class ClusterWatchRegistered(clusterWatchId: ClusterWatchId)
   extends ClusterEvent
+
 
   type ClusterResetStarted = ClusterResetStarted.type
   case object ClusterResetStarted extends ClusterEvent
 
-  implicit val jsonCodec: TypedJsonCodec[ClusterEvent] = TypedJsonCodec(
+  given TypedJsonCodec[ClusterEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterNodesAppointed]),
     Subtype(deriveCodec[ClusterCouplingPrepared]),
     Subtype(deriveCodec[ClusterCoupled]),

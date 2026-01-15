@@ -2,17 +2,15 @@ package js7.cluster.watch
 
 import cats.effect.IO
 import cats.syntax.option.*
-import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.SyncDeadline
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
-import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
+import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.ScalaUtils.{flattenToString, functionCallToString}
 import js7.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
@@ -20,7 +18,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostPro
 import js7.data.cluster.{ClusterState, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchRequest}
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 
 final class ClusterWatch(
   label: String = "",
@@ -112,7 +110,6 @@ final class ClusterWatch(
                         updatedClusterState.checkedSubtype[ClusterState.IsNodeLost]
                           .map: updatedClusterState =>
                             _state = Some(AskingNodeLoss(
-                              logger,
                               clusterState = request.clusterState/*???*/,
                               requireManualNodeLossConfirmation = requireManualNodeLossConfirmation,
                               request = request,
@@ -128,7 +125,6 @@ final class ClusterWatch(
                     updatedClusterState.checkedSubtype[ClusterState.IsNodeLost]
                       .map: updatedClusterState =>
                         _state = Some(AskingNodeLoss(
-                          logger,
                           clusterState = request.clusterState/*???*/,
                           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation,
                           request = request,
@@ -162,7 +158,6 @@ final class ClusterWatch(
                     val changed = !_state.flatMap(_.savedNormal).exists:
                       _.clusterState == updatedClusterState
                     _state = Some(Normal(
-                      logger,
                       updatedClusterState,
                       lastHeartbeat = now,
                       requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
@@ -186,7 +181,6 @@ final class ClusterWatch(
               val changed = !_state.flatMap(_.savedNormal).exists:
                 _.clusterState == updatedClusterState
               _state = Some(Normal(
-                logger,
                 updatedClusterState,
                 lastHeartbeat = now,
                 requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
@@ -200,20 +194,20 @@ final class ClusterWatch(
               .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
   end processRequest2
 
+  private def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
+    _nodeToLossRejected.get(event.lostNodeId).flatMap(_.manuallyConfirmed(event))
+
   // User manually confirms a ClusterNodeLostEvent event
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
     logger.debugIO("manuallyConfirmNodeLoss", (lostNodeId, confirmer)):
       lock.lock:
         IO:
-          matchRejectedNodeLostEvent(lostNodeId).map: lossRejected =>
+          matchConfirmationWithRejection(lostNodeId).map: lossRejected =>
             _nodeToLossRejected.clear()
             _nodeToLossRejected(lostNodeId) = lossRejected.copy(
               manualConfirmer = Some(confirmer))
 
-  private def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
-    _nodeToLossRejected.get(event.lostNodeId).flatMap(_.manuallyConfirmed(event))
-
-  private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Checked[LossRejected] =
+  private def matchConfirmationWithRejection(lostNodeId: NodeId): Checked[LossRejected] =
     (_nodeToLossRejected.get(lostNodeId), _state.flatMap(_.savedNormal).map(_.clusterState)) match
       case (Some(lossRejected), None)
         if lossRejected.event.lostNodeId == lostNodeId =>
@@ -244,7 +238,7 @@ final class ClusterWatch(
     clusterState().map(_.activeId == id)
 
   def clusterState(): Checked[HasNodes] =
-    _state.flatMap(_.savedNormal).toChecked(UntaughtClusterWatchProblem)
+    _state.flatMap(_.savedNormal).toRight(UntaughtClusterWatchProblem)
       .map(_.clusterState)
 
   private def stateString =
@@ -265,7 +259,6 @@ final class ClusterWatch(
   /** The ClusterWatch has two states: Normal, and AskingNodeLoss.
     */
   private[ClusterWatch] trait State:
-    val logger: ScalaLogger
     val clusterState: HasNodes
     val lastHeartbeat: SyncDeadline
     val requireManualNodeLossConfirmation: Boolean
@@ -348,7 +341,6 @@ final class ClusterWatch(
 
 
   private[ClusterWatch] final case class Normal(
-    logger: ScalaLogger,
     clusterState: HasNodes,
     lastHeartbeat: SyncDeadline,
     requireManualNodeLossConfirmation: Boolean)
@@ -367,7 +359,6 @@ final class ClusterWatch(
 
 
   private[ClusterWatch] final case class AskingNodeLoss(
-    logger: ScalaLogger,
     clusterState: ClusterState.HasNodes,
     lastHeartbeat: SyncDeadline,
     requireManualNodeLossConfirmation: Boolean,
@@ -409,7 +400,8 @@ object ClusterWatch:
     def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
       manualConfirmer.filter(_ => event == this.event)
 
-    override def toString = s"LossRejected(${event.toShortString}, $manualConfirmer)"
+    override def toString =
+      s"LossRejected(${event.toShortString}, confirmer=${manualConfirmer.getOrElse("none")})"
 
 
   private[watch] final case class Confirmed(manualConfirmer: Option[String] = None)
