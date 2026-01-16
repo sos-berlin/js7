@@ -31,6 +31,11 @@ chmod -R +x volumes/subagent-*/config/executables/*
   done
 )
 
+# volumes/HOST/log links to a log file
+for v in controller backup-controller proxy proxy-b cluster-watch cluster-watch-b provider subagent-1a subagent-1b subagent-1c subagent-2a; do
+  ln -snf data/logs/js7.log volumes/"$v"/log
+done
+
 build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
 
