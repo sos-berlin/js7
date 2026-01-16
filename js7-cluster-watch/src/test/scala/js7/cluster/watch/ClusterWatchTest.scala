@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.Confirmed
 import js7.common.message.ProblemCodeMessages
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -402,16 +402,19 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == None)
 
   "requireManualNodeLossConfirmation" - {
+    "ClusterPassiveLost" in:
+      import setting.{activeId, passiveId}
+      checkRequireNodeLossConfirm(
+        from = activeId,
+        ClusterPassiveLost(passiveId))
+
     "ClusterFailedOver" in:
       import setting.{activeId, passiveId}
-      checkRequireNodeLossConfirm(from = passiveId, ClusterFailedOver(activeId, activatedId = passiveId, failedAt))
+      checkRequireNodeLossConfirm(
+        from = passiveId,
+        ClusterFailedOver(activeId, activatedId = passiveId, failedAt))
 
-    //"ClusterPassiveLost" in {
-    //  import setting.{activeId, passiveId}
-    //  checkRequireNodeLossConfirm(from = activeId, ClusterPassiveLost(passiveId))
-    //}
-
-    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterFailedOver): IO[Assertion] =
+    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterNodeLostEvent): IO[Assertion] =
       val coupled = Coupled(setting)
       import coupled.{activeId, passiveId}
       import event.lostNodeId

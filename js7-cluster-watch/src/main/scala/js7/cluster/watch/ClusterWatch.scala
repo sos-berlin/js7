@@ -209,12 +209,8 @@ final class ClusterWatch(
 
   private def matchConfirmationWithRejection(lostNodeId: NodeId): Checked[LossRejected] =
     (_nodeToLossRejected.get(lostNodeId), _state.flatMap(_.savedNormal).map(_.clusterState)) match
-      case (Some(lossRejected), None)
+      case (Some(lossRejected), None | Some(_: Coupled))
         if lossRejected.event.lostNodeId == lostNodeId =>
-        Right(lossRejected)
-
-      case (Some(lossRejected), Some(Coupled(setting)))
-        if lossRejected.event.lostNodeId == lostNodeId && lostNodeId == setting.activeId =>
         Right(lossRejected)
 
       case (maybeLossRejected, maybeClusterState) =>
