@@ -208,11 +208,13 @@ object AgentCommand extends CommonCommand.Companion:
     override def toShortString =
       s"AttachItem(${item.key}${item.itemRevision.fold("")(o => "~" + o.number)})"
 
+
   final case class AttachSignedItem(signed: Signed[SignableItem])
   extends IsItemCommand:
     type Response = Response.Accepted
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
     override def toString: String = toShortString
+
   object AttachSignedItem:
     // Same serialization as SignedItemAdded event
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =

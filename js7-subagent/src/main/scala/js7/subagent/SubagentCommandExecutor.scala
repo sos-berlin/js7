@@ -30,7 +30,7 @@ private[subagent] final class SubagentCommandExecutor(
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
   : IO[Checked[numbered.value.Response]] =
     val command = numbered.value
-    logger.debugIO(s"executeCommand(#${numbered.number} $command)"):
+    logger.debugIO(s"executeCommand(#${numbered.number} ${command.toShortString})"):
       IO.defer:
         command.match
           case StartOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod) =>
