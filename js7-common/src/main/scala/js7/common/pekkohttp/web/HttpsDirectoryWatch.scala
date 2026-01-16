@@ -43,8 +43,9 @@ extends Service.StoppableByRequest:
       DirectoryWatch.stream(directory, directoryState, settings, files)
         .interruptWhenF(untilStopRequested)
         .debounce(settings.directorySilence) // Löscht DirectoryEvents! Sie werden nicht gebraucht
-        .tapEachChunk(events => logger.debug(s"HTTPS keys or certificates change signaled: ${
-          events.toArraySeq.distinct.mkString(", ")}"))
+        .tapEachChunk: events =>
+          logger.debug:
+            s"HTTPS keys or certificates change signaled: ${events.asSeq.distinct.mkString(", ")}"
         .evalTap: _ =>
           onHttpsKeyOrCertChanged
         .compile.drain
@@ -52,11 +53,14 @@ extends Service.StoppableByRequest:
 
   override def toString = s"HttpsDirectoryWatch(${files.mkString(", ")})"
 
+
 private object HttpsDirectoryWatch:
   private val logger = Logger[this.type]
 
   def service(
-    settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: IO[Unit])
+    settings: DirectoryWatchSettings,
+    files: Seq[Path],
+    onHttpsKeyOrCertChanged: IO[Unit])
   : ResourceIO[HttpsDirectoryWatch] =
-    Service.resource:
+    Service:
       new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)

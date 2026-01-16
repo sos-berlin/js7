@@ -136,17 +136,15 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
         else
           "No trusted certificate found")
 
-    val changedCert = ChangedKeyStoreResource.readAs[ByteArray]
+    lazy val changedCert = ChangedKeyStoreResource.readAs[ByteArray]
     var writtenLength = 0
-    lazy val fileChanged = Promise[Unit]()
-    lazy val restarted = Promise[Unit]()
+    val fileChanged = Promise[Unit]()
+    val restarted = Promise[Unit]()
 
-    "Write some bytes of server certificate" in:
-      fileChanged
+    "Write some bytes of server certificate, server should not restart" in:
       testEventBus.subscribe[PekkoWebServer.BeforeRestartEvent.type](_ =>
         fileChanged.trySuccess(()))
 
-      restarted
       testEventBus.subscribe[PekkoWebServer.RestartedEvent.type](_ =>
         restarted.trySuccess(()))
 
@@ -157,28 +155,28 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
       assert(!restarted.future.isCompleted)
 
-    "Write remaining of server certificate" in:
+    "Write remaining of server certificate, server should restart" in:
       if writtenLength == 0 then
         certFile := changedCert
       else
         certFile ++= changedCert.drop(writtenLength)
       restarted.future.await(99.s)
 
-      // Due to the second changed, the SinglePortPekkoWebServer is being restarted twice:
-      // 1) due to AutoRestartableService
-      // 2) due to seconds file change event
+      // Due to the second change, the SinglePortPekkoWebServer is being restarted twice:
+      // 1) due to surrounding PekkoWebServer
+      // 2) due to a second file change event
       // Not easy to detect that the second restart is not needed. But it's an unusual case.
       val until = now + 99.s
       var tried: Try[HttpResponse] = Failure(new RuntimeException("??"))
       while now < until && tried.isFailure do
-        tried = Try(http
-          .singleRequest(
-            HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
-            changedHttpsConnectionContext)
-          .await(99.s))
+        tried = Try:
+          http.singleRequest(
+              HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
+              changedHttpsConnectionContext)
+            .await(99.s)
       val response = tried.get
       assert(response.status == OK)
-      assert(Set("OKAY-2", "OKAY-3")(response.utf8String.await(99.s)))
+      assert(Set("OKAY-2", "OKAY-3").contains(response.utf8String.await(99.s)))
   }
 
 object PekkoWebServerHttpsChangeTest:

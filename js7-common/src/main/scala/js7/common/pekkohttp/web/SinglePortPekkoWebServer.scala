@@ -146,22 +146,24 @@ private object SinglePortPekkoWebServer:
 
     def start(binding: WebServerBinding, name: String): IO[Unit] =
       boundRoute.webServerRoute
-        .flatTap(realRoute => IO:
-          if _realRoute.compareAndSet(None, Some(Success(realRoute))) then
-            val serviceName = boundRoute.serviceName.ifNonEmpty.fold("")(_ + " ")
-            val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-            logger.info(s"$name ${serviceName}web services are available$securityHint"))
+        .flatTap: realRoute =>
+          IO:
+            if _realRoute.compareAndSet(None, Some(Success(realRoute))) then
+              val serviceName = boundRoute.serviceName.ifNonEmpty.fold("")(_ + " ")
+              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              logger.info(s"$name ${serviceName}web services are available$securityHint")
         .startAndForget
 
     def webServerRoute: Route =
-      extractRequest/*force recalculation with each call*/(_ =>
-        selectBoundRoute)
+      extractRequest/*force recalculation with each call*/: _ =>
+        selectBoundRoute
 
-    def selectBoundRoute: Route =
+    private def selectBoundRoute: Route =
       _realRoute.get() match
         case None => boundRoute.stillNotAvailableRoute
         case Some(Failure(t)) => throw t
         case Some(Success(realRoute)) => realRoute
+
 
   private object DelayedRouteDelegator:
     def start(binding: WebServerBinding, boundRoute: BoundRoute, name: String)
@@ -170,6 +172,7 @@ private object SinglePortPekkoWebServer:
         val r = new DelayedRouteDelegator(boundRoute)
         r.start(binding, name).as(r)
 
+
   private final case class Binding(
     webServerBinding: WebServerBinding,
     pekkoBinding: Http.ServerBinding,
@@ -177,7 +180,7 @@ private object SinglePortPekkoWebServer:
     shutdownDelay: FiniteDuration,
     whenTerminating: Deferred[IO, Deadline]):
 
-    val webServerPort: WebServerPort =
+    private def webServerPort: WebServerPort =
       webServerBinding.toWebServerPort
 
     def stop: IO[Unit] =

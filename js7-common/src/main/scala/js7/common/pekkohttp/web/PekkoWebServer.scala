@@ -78,15 +78,14 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
       .void
 
   private[web] def onHttpsKeyOrCertChanged: IO[Unit] =
-    logger.debugIO(IO.defer:
-      testEventBus.publish(BeforeRestartEvent)
-
-      portWebServersAllocated
-        .update: sequence =>
+    logger.debugIO:
+      IO.defer:
+        testEventBus.publish(BeforeRestartEvent)
+        portWebServersAllocated.update: sequence =>
           sequence
             .zip(bindingAndResources)
-            .parTraverse((checkFilesThenRestart).tupled)
-        .void)
+            .parTraverse(checkFilesThenRestart.tupled)
+        .void
 
   private def checkFilesThenRestart(
     previouslyAllocated: Option[Allocated[IO, SinglePortPekkoWebServer]],
@@ -100,10 +99,11 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
           case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
           case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
         (if diff.isEmpty then
-          if fileToTime.nonEmpty then logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
+          if fileToTime.nonEmpty then
+            logger.debug(s"🪱 onHttpsKeyOrCertChanged but no change detected")
           IO.pure(previouslyAllocated)
         else
-          logger.info(s"Restart HTTPS web server due to changed keys or certificates: ${
+          logger.info(s"⟲ Restart HTTPS web server $binding due to changed keys or certificates: ${
             diff.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")}")
           previouslyAllocated.fold(IO.unit)(_.release) *>
             startPortWebServer(bindingAndResource) <*
@@ -119,8 +119,8 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
       var errorLogged = false
       readFileTimes(binding)
         .flatMap: fileTimes =>
-          resource.toAllocated
-            .map(allo => (fileTimes -> allo).some)
+          resource.toAllocated.map: allo =>
+            (fileTimes -> allo).some
         .onErrorRestartLoop(()):
           case (throwable, _, retry) =>
             errorLogged = true
@@ -215,7 +215,7 @@ object PekkoWebServer:
 
         Service.resource:
           PekkoWebServer(
-            for webServerBinding <- webServerBindings.toVector yield
+            webServerBindings.toVector.map: webServerBinding =>
               BindingAndResource(
                 webServerBinding,
                 SinglePortPekkoWebServer.resource(
@@ -226,13 +226,11 @@ object PekkoWebServer:
                   httpsClientAuthRequired = httpsClientAuthRequired)),
             config)
 
-  private lazy val stillNotAvailableRoute: Route =
-    complete(WebServiceStillNotAvailableProblem)
-
 
   private final case class BindingAndResource(
     webServerBinding: WebServerBinding,
     resource: ResourceIO[SinglePortPekkoWebServer]):
+
     override def toString = webServerBinding.toString
 
 
@@ -247,8 +245,8 @@ object PekkoWebServer:
   trait BoundRoute:
     def serviceName: String
 
-    def stillNotAvailableRoute: Route =
-      PekkoWebServer.stillNotAvailableRoute
+    final val stillNotAvailableRoute: Route =
+      complete(WebServiceStillNotAvailableProblem)
 
     def webServerRoute: IO[Route]
 
