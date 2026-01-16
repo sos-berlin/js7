@@ -19,7 +19,7 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, DelayConf}
+import js7.base.utils.{Allocated, ConcurrentHashMap, DelayConf}
 import js7.base.web.Uri
 import js7.common.configuration.{BasicConfiguration, CommonConfiguration}
 import js7.common.pekkohttp.StandardMarshallers.*
@@ -31,7 +31,6 @@ import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.complete
 import org.apache.pekko.http.scaladsl.server.Route
 import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
@@ -42,7 +41,8 @@ final class PekkoWebServer private(bindingAndResources: Vector[BindingAndResourc
   (implicit testEventBus: StandardEventBus[Any])
 extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 
-  private val _addrToHttpsFileToTime = mutable.Map.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
+  private val _addrToHttpsFileToTime =
+    ConcurrentHashMap.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
 
   private[web] val webServerBindings =
     bindingAndResources.map(_.webServerBinding)
