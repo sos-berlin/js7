@@ -38,7 +38,7 @@ import js7.journal.log.JournalLogger.LoggablePersist
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.write.EventJournalWriter
 import scala.collection.IndexedSeqView
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
@@ -215,7 +215,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       state.updateWithResult: state =>
         IO:
           val ctx = TimeCtx(clock.now())
-          chunk.asSeq.view.scanLeft(state -> new ArrayBuffer[Checked[Applied]](chunk.size)):
+          chunk.asSeq.view.scanLeft(state -> new VectorBuilder[Checked[Applied]]):
             case ((state, results), queuedPersist) =>
               if _isSwitchedOver then
                 state -> (results += Left(ClusterNodeHasBeenSwitchedOverProblem))
@@ -231,7 +231,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                     ) -> (results += Right(applied))
           .last
       .map: results =>
-        chunk.zip(Chunk.from(results))
+        chunk.zip(Chunk.from(results.result()))
       .flatMap:
         _.flatTraverse:
           case (queuedPersist, Left(problem)) =>

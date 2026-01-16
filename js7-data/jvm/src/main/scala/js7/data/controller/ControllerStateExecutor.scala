@@ -553,8 +553,7 @@ object ControllerStateExecutor:
 
   private def optimizeKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
     val orderToIndex = mutable.Map[OrderId, Int]()
-    val buffer = mutable.ArrayBuffer[KeyedEvent[E]]()
-    buffer.sizeHint(keyedEvents.size)
+    val buffer = new mutable.ArrayBuffer[KeyedEvent[E]](keyedEvents.size)
     keyedEvents.foreach:
       case ke @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         def add() =
