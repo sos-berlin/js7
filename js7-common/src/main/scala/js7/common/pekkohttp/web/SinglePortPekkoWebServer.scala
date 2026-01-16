@@ -4,13 +4,12 @@ import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.io.https.{Https, HttpsConfig}
+import js7.base.io.https.Https
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
@@ -22,7 +21,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.extractRequest
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
-import org.apache.pekko.stream.TLSClientAuth
 import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.chaining.scalaUtilChainingOps
@@ -82,11 +80,17 @@ private object SinglePortPekkoWebServer:
         def bindHttps(https: WebServerBinding.Https): IO[Binding] =
           logger.info:
             s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}"
-          bind(
-            https,
-            Some(ConnectionContext.https(
-              Https.loadSSLContext(https.httpsConfig),
-              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+          IO.blocking:
+            // Read keystore ahead, because it may throw
+            Https.loadSSLContext(https.httpsConfig)
+          .flatMap: sslContext =>
+            bind(
+              https,
+              Some:
+                ConnectionContext.httpsServer: () =>
+                  Https.newServerSSLEngine(
+                    sslContext,
+                    httpsClientAuthRequired = httpsClientAuthRequired))
 
         def bind(
           binding: WebServerBinding,

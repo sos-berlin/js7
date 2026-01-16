@@ -3,7 +3,7 @@ package js7.base.io.https
 import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
-import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509ExtendedKeyManager, X509KeyManager, X509TrustManager}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, SSLEngine, TrustManagerFactory, X509ExtendedKeyManager, X509KeyManager, X509TrustManager}
 import js7.base.crypt.x509.X509Cert
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
@@ -36,6 +36,17 @@ object Https:
   private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"
 
   logger.debug(s"algorithm=$algorithm")
+
+  def newServerSSLEngine(
+    sslContext: SSLContext,
+    httpsClientAuthRequired: Boolean = false)
+  : SSLEngine =
+    // https://pekko.apache.org/docs/pekko-http/current/server-side/server-https-support.html
+    val engine = sslContext.createSSLEngine()
+    engine.setUseClientMode(false) // Server mode
+    if httpsClientAuthRequired then
+      engine.setNeedClientAuth(true)
+    engine
 
   def loadSSLContext(conf: HttpsConfig): SSLContext =
     val keyManagers = conf.keyStoreRef.fold(Array.empty[KeyManager])(keyStoreRefToKeyManagers)
