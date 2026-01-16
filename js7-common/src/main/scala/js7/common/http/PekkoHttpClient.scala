@@ -112,8 +112,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     if httpsConfig.keyStoreRef.isEmpty && httpsConfig.trustStoreRefs.isEmpty then
       http.defaultClientHttpsContext
     else
-      ConnectionContext.httpsClient(
-        loadSSLContext(httpsConfig.keyStoreRef, httpsConfig.trustStoreRefs))
+      ConnectionContext.httpsClient(loadSSLContext(httpsConfig))
 
   final def materializer: Materializer = implicitly[Materializer]
 

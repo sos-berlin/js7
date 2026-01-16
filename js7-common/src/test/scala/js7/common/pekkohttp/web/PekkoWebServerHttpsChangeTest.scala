@@ -15,7 +15,7 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.Https.loadSSLContext
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -109,7 +109,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   "HTTPS, unchanged key" in:
     val httpsConnectionContext1 = ConnectionContext.httpsClient(
-      loadSSLContext(trustStoreRefs = Seq(PekkoWebServerTest.ClientTrustStoreRef)))
+      loadSSLContext(HttpsConfig(trustStoreRefs = Seq(PekkoWebServerTest.ClientTrustStoreRef))))
 
     val response = http
       .singleRequest(
@@ -121,7 +121,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   "HTTPS, change client's trust certificate, then change server's key" - {
     lazy val changedHttpsConnectionContext = ConnectionContext.httpsClient(
-      loadSSLContext(trustStoreRefs = Seq(ChangedClientTrustStoreRef)))
+      loadSSLContext(HttpsConfig(trustStoreRefs = Seq(ChangedClientTrustStoreRef))))
 
     "Updated client does not match old server certificate" in:
       val e = intercept[javax.net.ssl.SSLHandshakeException]:

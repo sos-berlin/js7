@@ -4,7 +4,7 @@ import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.io.https.Https.loadSSLContext
+import js7.base.io.https.{Https, HttpsConfig}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
@@ -50,7 +50,7 @@ private object SinglePortPekkoWebServer:
     shutdownTimeout: FiniteDuration,
     shutdownDelay: FiniteDuration,
     httpsClientAuthRequired: Boolean)
-    (implicit actorSystem: ActorSystem)
+    (using actorSystem: ActorSystem)
   : ResourceIO[SinglePortPekkoWebServer] =
     Resource.suspend:
       memoize: /*saves the `revision` counter for multiple allocations*/
@@ -75,70 +75,61 @@ private object SinglePortPekkoWebServer:
     httpsClientAuthRequired: Boolean)
     (using actorSystem: ActorSystem)
   : ResourceIO[SinglePortPekkoWebServer] =
-    Service.resource(IO.defer:
-      val pekkoHttp = Http(actorSystem)
+    Service:
+      IO.defer:
+        val pekkoHttp = Http(actorSystem)
 
-      def bindHttps(https: WebServerBinding.Https): IO[Binding] =
-        logger.info:
-          s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}"
-        bind(
-          https,
-          Some:
-            ConnectionContext.https(
-              loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need))
-            // Non-deprecated solution ???
-            //https://pekko.apache.org/docs/pekko-http/current/server-side/server-https-support.html
-            //ConnectionContext.httpsServer: () =>
-            //  val sslContext = loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs)
-            //  val engine = sslContext.createSSLEngine()
-            //  if httpsClientAuthRequired then
-            //    engine.setUseClientMode(false) <-- What's this?
-            //    engine.setNeedClientAuth(true)
-            //  engine)
+        def bindHttps(https: WebServerBinding.Https): IO[Binding] =
+          logger.info:
+            s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}"
+          bind(
+            https,
+            Some(ConnectionContext.https(
+              Https.loadSSLContext(https.httpsConfig),
+              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
 
-      def bind(
-        binding: WebServerBinding,
-        httpsConnectionContext: Option[HttpsConnectionContext] = None)
-      : IO[Binding] =
-        IO.defer:
-          val serverBuilder = pekkoHttp
-            .newServerAt(
-              interface = binding.address.getAddress.getHostAddress,
-              port = binding.address.getPort)
-            .pipe: o =>
-              httpsConnectionContext.fold(o):
-                o.enableHttps
-            .withSettings:
-              ServerSettings(actorSystem).withParserSettings:
-                ParserSettings(actorSystem)
-                  .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
-                  .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)
+        def bind(
+          binding: WebServerBinding,
+          httpsConnectionContext: Option[HttpsConnectionContext] = None)
+        : IO[Binding] =
+          IO.defer:
+            val serverBuilder = pekkoHttp
+              .newServerAt(
+                interface = binding.address.getAddress.getHostAddress,
+                port = binding.address.getPort)
+              .pipe: o =>
+                httpsConnectionContext.fold(o):
+                  o.enableHttps
+              .withSettings:
+                ServerSettings(actorSystem).withParserSettings:
+                  ParserSettings(actorSystem)
+                    .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
+                    .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)
 
-          val (boundRoute, terminatingPromise) = makeBoundRoute()
-          val bindingString = s"${binding.scheme}://${binding.address.show}"
+            val (boundRoute, terminatingPromise) = makeBoundRoute()
+            val bindingString = s"${binding.scheme}://${binding.address.show}"
 
-          for
-            routeDelegator <- DelayedRouteDelegator.start(binding, boundRoute, bindingString)
-            pekkoBinding <-
-              IO.fromFuture: // fromFuture is uncancelable!
-                IO(serverBuilder.bind(routeDelegator.webServerRoute))
-              .flatTap: binding =>
-                IO.fromFuture(IO.pure(binding.whenTerminationSignalIssued))
-                  .flatMap(terminatingPromise.complete)
-                  .startAndForget
-          yield
-            // An info line will be logged by DelayedRouteDelegator
-            val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-            logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
-            Binding(binding, pekkoBinding, shutdownTimeout, shutdownDelay, terminatingPromise)
+            for
+              routeDelegator <- DelayedRouteDelegator.start(binding, boundRoute, bindingString)
+              pekkoBinding <-
+                IO.fromFuture: // fromFuture is uncancelable!
+                  IO(serverBuilder.bind(routeDelegator.webServerRoute))
+                .flatTap: binding =>
+                  IO.fromFuture(IO.pure(binding.whenTerminationSignalIssued))
+                    .flatMap(terminatingPromise.complete)
+                    .startAndForget
+            yield
+              // An info line will be logged by DelayedRouteDelegator
+              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
+              Binding(binding, pekkoBinding, shutdownTimeout, shutdownDelay, terminatingPromise)
 
-      webServerBinding.match
-        case o: WebServerBinding.Https => bindHttps(o)
-        case o: WebServerBinding.Http => bind(o)
-      .map: binding =>
-        new SinglePortPekkoWebServer(binding)
-    )
+        webServerBinding.match
+          case o: WebServerBinding.Https => bindHttps(o)
+          case o: WebServerBinding.Http => bind(o)
+        .map: binding =>
+          new SinglePortPekkoWebServer(binding)
+
 
   /** Returns 503 ServiceUnavailable until the Route is provided. */
   private final class DelayedRouteDelegator(boundRoute: BoundRoute):

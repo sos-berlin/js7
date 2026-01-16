@@ -37,12 +37,9 @@ object Https:
 
   logger.debug(s"algorithm=$algorithm")
 
-  def loadSSLContext(
-    keyStoreRef: Option[KeyStoreRef] = None,
-    trustStoreRefs: Seq[TrustStoreRef] = Nil)
-  : SSLContext =
-    val keyManagers = keyStoreRef.fold(Array.empty[KeyManager])(keyStoreRefToKeyManagers)
-    val trustManagers = trustStoreRefToKeyManagers(trustStoreRefs)
+  def loadSSLContext(conf: HttpsConfig): SSLContext =
+    val keyManagers = conf.keyStoreRef.fold(Array.empty[KeyManager])(keyStoreRefToKeyManagers)
+    val trustManagers = trustStoreRefToKeyManagers(conf.trustStoreRefs)
     val sslContext = SSLContext.getInstance("TLS")
     sslContext.init(
       keyManagers,
@@ -59,36 +56,32 @@ object Https:
       factory.init(keyStore, _))
     val keyManagers = factory.getKeyManagers
 
-    ref.alias.fold(keyManagers)(a =>
-      keyManagers.map {
+    ref.alias.fold(keyManagers): alias =>
+      keyManagers.map:
         case km: X509ExtendedKeyManager =>
-          new OneAliasX509ExtendedX509KeyManager(km, a)
+          new OneAliasX509ExtendedX509KeyManager(km, alias)
 
         case km: X509KeyManager =>
-          new OneAliasX509KeyManager {
+          new OneAliasX509KeyManager:
             val keyManager = km
-            val alias = a
-          }
+            val alias = alias
         case o => o
-      })
 
   private def trustStoreRefToKeyManagers(trustStoreRefs: Seq[TrustStoreRef]): Seq[X509TrustManager] =
-    trustStoreRefs
-      .flatMap { trustStoreRef =>
-        val factory = TrustManagerFactory.getInstance(algorithm)
-        factory.init(loadKeyStore(trustStoreRef, "trust"))
-        factory.getTrustManagers
-      }
-      .collect:
-        case o: X509TrustManager => Some(o)
-        case o =>
-          logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
-          None
-      .flatten
+    trustStoreRefs.flatMap: trustStoreRef =>
+      val factory = TrustManagerFactory.getInstance(algorithm)
+      factory.init(loadKeyStore(trustStoreRef, "trust"))
+      factory.getTrustManagers
+    .collect:
+      case o: X509TrustManager => Some(o)
+      case o =>
+        logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
+        None
+    .flatten
 
   private def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore =
-    autoClosing(storeRef.url.openStream())(
-      loadKeyStoreFromInputStream(_, storeRef.storePassword, storeRef.url.toString, kind))
+    autoClosing(storeRef.url.openStream()):
+      loadKeyStoreFromInputStream(_, storeRef.storePassword, storeRef.url.toString, kind)
 
   private[https] def loadKeyStoreFromInputStream(
     in: InputStream,
@@ -97,7 +90,7 @@ object Https:
     kind: String)
   : KeyStore =
     val sizeLimit = 10_000_000
-    val keyStore =
+    val keyStore: KeyStore =
       try
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
           .getOrElse(throw new RuntimeException(
@@ -106,9 +99,8 @@ object Https:
           pemToKeyStore(content.toInputStream, name = sourcePathToName(sourcePath))
         else
           pkcs12ToKeyStore(content.toInputStream, password)
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         throw new RuntimeException(s"Cannot load keystore '$sourcePath': $t", t)
-      }
     log(keyStore, sourcePath, kind)
     keyStore
 
@@ -118,12 +110,9 @@ object Https:
     keyStore
 
   private def certificateToString(cert: Certificate): String =
-    (cert match {
-      case cert: X509Certificate =>
-        X509Cert(cert).toLongString
-      case o =>
-        o.getType
-    })
+    cert match
+      case cert: X509Certificate => X509Cert(cert).toLongString
+      case o => o.getType
 
   private[https] def sourcePathToName(sourcePath: String): String =
     sourcePath.replace('\\', '/').lastIndexOf('/') match
@@ -151,11 +140,11 @@ object Https:
       logger.warn(s"Loaded empty $kind keystore $sourcePath")
     else
       logger.info(s"Loaded $kind keystore $sourcePath" +
-        iterator.map { case (alias, cert) =>
+        iterator.map:  (alias, cert) =>
           "\n  " +
             (keyStore.isKeyEntry(alias) ?? "Private key ") +
             (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
             certificateToString(cert) +
             " alias=" + alias +
             " (hashCode=" + cert.hashCode + ")"
-        }.mkString(""))
+        .mkString(""))

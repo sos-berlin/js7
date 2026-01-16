@@ -1,11 +1,10 @@
 package js7.common.pekkohttp.web.data
 
-import org.apache.pekko.http.scaladsl.model.Uri as PekkoUri
 import cats.syntax.either.*
 import cats.syntax.show.*
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Path
-import js7.base.io.https.{KeyStoreRef, StoreRef, TrustStoreRef}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, StoreRef, TrustStoreRef}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -13,6 +12,7 @@ import js7.base.utils.CatsUtils.*
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpUtils.RichPekkoAsUri
 import js7.common.internet.IP.inetSocketAddressShow
+import org.apache.pekko.http.scaladsl.model.Uri as PekkoUri
 
 /**
   * @author Joacim Zschimmer
@@ -73,6 +73,9 @@ object WebServerBinding:
 
     def storeRefs: Seq[StoreRef] =
       keyStoreRef +: trustStoreRefs
+
+    def httpsConfig: HttpsConfig =
+      HttpsConfig(Some(keyStoreRef), trustStoreRefs)
 
     //override def toString = super.toString +
     //  s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"

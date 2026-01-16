@@ -5,15 +5,15 @@ import java.nio.file.Path
 
 /** HTTPS parameters for clients. */
 final case class HttpsConfig(
-  keyStoreRef: Option[KeyStoreRef],
-  trustStoreRefs: Seq[TrustStoreRef]):
+  keyStoreRef: Option[KeyStoreRef] = None,
+  trustStoreRefs: Seq[TrustStoreRef] = Nil):
 
   override def toString =
     s"HttpsConfig(keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs)"
 
 
 object HttpsConfig:
-  val empty: HttpsConfig = HttpsConfig(None, Nil)
+  val empty: HttpsConfig = HttpsConfig()
 
   def fromConfig(config: Config, configDirectory: Path): HttpsConfig =
     HttpsConfig(

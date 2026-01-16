@@ -15,7 +15,7 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.Https.loadSSLContext
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
@@ -153,8 +153,8 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"))
           .await(99.s)
 
-    lazy val httpsConnectionContext =
-      ConnectionContext.httpsClient(loadSSLContext(trustStoreRefs = Seq(ClientTrustStoreRef)))
+    lazy val httpsConnectionContext = ConnectionContext.httpsClient:
+      loadSSLContext(HttpsConfig(trustStoreRefs = Seq(ClientTrustStoreRef)))
 
     "Hostname verification rejects 127.0.0.1" in:
       val e = intercept[javax.net.ssl.SSLHandshakeException]:
