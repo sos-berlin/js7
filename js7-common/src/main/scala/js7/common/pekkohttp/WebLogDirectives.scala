@@ -23,7 +23,7 @@ import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.headers.{Referer, `User-Agent`}
-import org.apache.pekko.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
+import org.apache.pekko.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpMessage, HttpRequest, HttpResponse, StatusCode}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive0, Route}
 import scala.concurrent.duration.*
@@ -89,45 +89,79 @@ trait WebLogDirectives extends ExceptionHandling:
     if !CorrelId.isEnabled then
       route
     else
-      mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId))(route)
+      mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId)):
+        route
 
   private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
     if !logRequest && !logResponse then
       pass
     else
-      if logRequest || webLogger.underlying.isTraceEnabled then
-        log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
       if logResponse then
-        val start = nanoTime
-        mapResponse { response =>
-          log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
-          meterTime(request, response, correlId, start)
-        }
+        mapRequest(meterRequestTime(_, correlId, nanoTime)).tflatMap: _ =>
+          val start = nanoTime
+          mapResponse: response =>
+            log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
+            meterResponseTime(request, response, correlId, start)
       else
         pass
+    end if
 
-  private def meterTime(request: HttpRequest, response: HttpResponse, correlId: CorrelId, start: Long)
+  private def meterRequestTime(request: HttpRequest, correlId: CorrelId, start: Long): HttpRequest =
+    request.entity match
+      case entity: HttpEntity.Strict =>
+        HttpMXBean.Bean.serverReceivedByteTotal += entity.data.size
+        if logRequest || webLogger.underlying.isTraceEnabled then
+          log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
+        request
+
+      case entity: HttpEntity.Chunked =>
+        logStream(request, request, entity, correlId, logLevel, start)
+
+      case _ =>
+        if logRequest || webLogger.underlying.isTraceEnabled then
+          log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
+        request
+
+  private def meterResponseTime(request: HttpRequest, response: HttpResponse, correlId: CorrelId, start: Long)
   : HttpResponse =
+    response.entity match
+      case entity: HttpEntity.Strict =>
+        HttpMXBean.Bean.serverSentByteTotal += entity.data.size
+        response
+
+      case entity: HttpEntity.Chunked =>
+        logStream(request, response, entity, correlId, logLevel, start)
+
+      case _ => response
+
+  private def logStream[A <: HttpMessage](
+    request: HttpRequest, message: A, entity: HttpEntity.Chunked,
+    correlId: CorrelId, logLevel: LogLevel, start: Long)
+  : message.Self =
     val since = now
     var chunkCount = 0L
     var byteCount = 0L
-    response.entity match
-      case entity: HttpEntity.Chunked =>
-        response.withEntity:
-          entity.copy(chunks =
-            entity.chunks.wireTap: part =>
-              chunkCount += 1
-              byteCount += part.data.size
-            .watchTermination(): (mat, future) =>
-              future.onComplete { tried =>
-                log(request, Some(response), correlId, logLevel, nanoTime - start,
-                  streamSuffix = // Timing of the stream, after response header has been sent
-                    chunkCount.toString + " chunks, " +
+    message.withEntity:
+      entity.copy(
+        chunks =
+          entity.chunks.wireTap: part =>
+            chunkCount += 1
+            byteCount += part.data.size
+            message match
+              case _: HttpRequest => HttpMXBean.Bean.serverReceivedByteTotal += part.data.size
+              case _: HttpResponse => HttpMXBean.Bean.serverSentByteTotal += part.data.size
+          .watchTermination(): (mat, future) =>
+            future.onComplete { tried =>
+              // Runs asynchronous in background
+              log(request,
+                (message: HttpMessage).ifSubtype[HttpResponse],
+                correlId, logLevel, nanoTime - start,
+                streamSuffix = // Timing of the stream, after response header has been sent
+                  chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
-                      tried.fold(t => " " + t.toStringWithCauses, _ => ""))
-              }(using ioRuntime.compute)
-              mat)
-      case _ => response
+                    tried.fold(t => " " + t.toStringWithCauses, _ => ""))
+            }(using ioRuntime.compute)
+            mat)
 
   private def log(request: HttpRequest, response: Option[HttpResponse],
     correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = "")
@@ -146,7 +180,7 @@ trait WebLogDirectives extends ExceptionHandling:
   private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
     nanos: Long, streamSuffix: String)
   : String =
-    val sb = new StringBuilder(512)
+    val sb = new StringBuilder(256)
 
     def appendHeader[A <: HttpHeader: ClassTag](): Unit =
       request.header3[A] match
@@ -154,12 +188,16 @@ trait WebLogDirectives extends ExceptionHandling:
         case Some(h) => appendQuotedString(sb, h.value)
 
     maybeResponse match
-      case Some(response) =>
-        if streamSuffix.nonEmpty then
-          sb.append("<-|") // Stream response ended
+      case None =>
+        if streamSuffix.isEmpty then
+          sb.append("-->")
         else
+          sb.append("|->") // Request stream ended
+      case Some(response) =>
+        if streamSuffix.isEmpty then
           sb.append(response.status.intValue)
-      case _ => sb.append("-->")
+        else
+          sb.append("<-|") // Response stream ended
     sb.append(' ')
     // Let SessionToken and request number look like in PekkoHttpClient
     sb.append(request.headers
@@ -172,13 +210,19 @@ trait WebLogDirectives extends ExceptionHandling:
     sb.append(request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP)
       .fold("-")(_.ip.getHostAddress))
     sb.append(' ')
-    sb.append(request.method.value.pipeIf(streamSuffix.nonEmpty)(_.toLowerCase(Locale.ROOT)))
+    if streamSuffix.nonEmpty then
+      sb.append(request.method.value.toLowerCase(Locale.ROOT))
+    else
+      sb.append(request.method.value)
     sb.append(' ')
     sb.append(request.uri)
     maybeResponse match
       case None =>
         appendHeader[Referer]()
         appendHeader[`User-Agent`]()
+        if streamSuffix.nonEmpty then
+          sb.append(" · ")
+          sb.append(streamSuffix)
 
       case Some(response) =>
         if response.status.isFailure then
@@ -197,16 +241,16 @@ trait WebLogDirectives extends ExceptionHandling:
               appendQuotedString(sb, response.status.reason)
         else response.entity match
           case entity: HttpEntity.Strict =>
-            sb.append(' ')
+            sb.append(" · ")
             sb.append(toKBGB(entity.data.length))
             sb.append(' ')
             sb.append(nanos.nanoseconds.pretty)
           case _ =>
             if streamSuffix.isEmpty then
-              sb.append(" STREAM... ")
+              sb.append(" · STREAM... ")
               sb.append(nanos.nanoseconds.pretty)
             else
-              sb.append(' ')
+              sb.append(" · ")
               sb.append(streamSuffix)
     sb.toString
 
