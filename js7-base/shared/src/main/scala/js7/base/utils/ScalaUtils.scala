@@ -339,6 +339,9 @@ object ScalaUtils:
       def checkedSubtype[B <: A : ClassTag]: Checked[B] =
         ScalaUtils.checkedCast[B](a)
 
+      def checkedCast[B: ClassTag]: Checked[B] =
+        ScalaUtils.checkedCast[B](a)
+
       def ifSubtype[B <: A : ClassTag]: Option[B] =
         val A = implicitClass[B]
         a != null && A.isAssignableFrom(a.getClass) thenSome

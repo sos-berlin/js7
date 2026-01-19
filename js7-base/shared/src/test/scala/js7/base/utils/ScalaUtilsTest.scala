@@ -875,7 +875,8 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       val s: AnyRef = "Hej!"
       val string = s.checkedSubtype[String]
       string shouldEqual Right("Hej!")
-      //assert(123.cast[String] == Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
+
+      assertDoesNotCompile("""Int.box(123).checkedSubtype[String]""")
       assert(null.asInstanceOf[String | Null].checkedSubtype[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
       assertDoesNotCompile("null.cast[String]")
       assertDoesNotCompile("string.cast[java.lang.Integer]")
@@ -890,6 +891,24 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       assert(((A2(): A).ifSubtype[A2]: Option[A2]) == Some(A2()))
       "A1().ifSubtype[A]" shouldNot compile
       "A1().ifSubtype[A2]" shouldNot compile
+
+    "checkedCast" in:
+      trait A
+      case class A1() extends A
+      case class A2() extends A
+      assert(((A1(): A).checkedCast[A]: Checked[A]) == Right(A1()))
+      assert(((A1(): A).checkedCast[A2]: Checked[A2]).isLeft)
+      assert(((A2(): A).checkedCast[A2]: Checked[A]) == Right(A2()))
+
+      val s: AnyRef = "Hej!"
+      val string = s.checkedCast[String]
+      string shouldEqual Right("Hej!")
+      assert(Int.box(123).checkedCast[String] ==
+        Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
+      assert(null.asInstanceOf[String | Null].checkedCast[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
+      assertDoesNotCompile("null.cast[String]")
+      assertDoesNotCompile("string.cast[java.lang.Integer]")
+      assertDoesNotCompile("A1().cast[A2]")
 
     "hideNullForJava" in:
       assert((("": String | Null).hideNullForJava: String) == "")
