@@ -38,7 +38,8 @@ object Event:
   transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event:
     final type KeyBase = E
 
-  @implicitNotFound("Events do not have the same key type, or a KeyCompanion[${E}] is missing")
+
+  @implicitNotFound("Events do not have the same key type, or KeyCompanion[${E}] is missing")
   trait KeyCompanion[E <: Event]:
     type Key
 
