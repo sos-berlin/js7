@@ -6,9 +6,8 @@ import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, Configuration as
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
-import java.io.{File, OutputStream, OutputStreamWriter}
+import java.io.{File, OutputStream}
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.data.{ByteArray, ByteSequence, Writable}
@@ -16,6 +15,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map1
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
@@ -117,10 +117,6 @@ object CirceUtils:
     colonLeft = "",
     lrbracketsEmpty = "")
 
-  object implicits:
-    implicit val CompactPrinter: Printer =
-      CirceUtils.CompactPrinter
-
   implicit final class RichCirceError(private val error: io.circe.Error) extends AnyVal:
     def toProblem: Problem =
       Problem.pure("JSON " + error.show
@@ -148,11 +144,13 @@ object CirceUtils:
       PrettyPrinter.print(Json.fromJsonObject(underlying))
 
   implicit final class RichJson(private val underlying: Json) extends AnyVal:
-    def toByteSequence[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
-      ByteSeq.fromString(compactPrint)
+    def toByteSequence[ByteSeq: ByteSequence as ByteSeq]: ByteSeq =
+      ByteSeq.readByteBuffer:
+        CompactPrinter.printToByteBuffer(underlying)
 
     def toByteArray: ByteArray =
-      ByteArray.fromString(compactPrint)
+      ByteArray.readByteBuffer:
+        CompactPrinter.printToByteBuffer(underlying)
 
     def compactPrint: String =
       CompactPrinter.print(underlying)
@@ -290,9 +288,8 @@ object CirceUtils:
 
   private final class JsonWritable[A: Encoder] extends Writable[A]:
     def writeToStream(a: A, out: OutputStream): Unit =
-      val w = new OutputStreamWriter(out, UTF_8)
-      w.write(a.asJson.compactPrint)
-      w.flush()
+      out.write(a.asJson.toByteArray.unsafeArray)
+      out.flush()
 
   object JsonStringInterpolator:
     def interpolate(sc: StringContext, args: Seq[Any]): String =
@@ -317,9 +314,11 @@ object CirceUtils:
         case _ =>
           anyToJson(arg, unknownToString = true).toString
 
+  @TestOnly
   def reparseJson[A](a: A, codec: Codec[A]): Either[circe.Error, A] =
     reparseJson(a)(using codec, codec)
 
+  @TestOnly
   def reparseJson[A](a: A)(implicit decoder: Decoder[A], encoder: Encoder[A])
   : Either[circe.Error, A] =
     parseJson(encoder(a).compactPrint)

@@ -321,7 +321,7 @@ object ByteSequence:
 
   private val maxShowLength = 32
 
-  def apply[A](implicit instance: ByteSequence[A]): ByteSequence[A] =
+  inline def apply[A](using inline instance: ByteSequence[A]): ByteSequence[A] =
     instance
 
   trait Ops[ByteSeq]:

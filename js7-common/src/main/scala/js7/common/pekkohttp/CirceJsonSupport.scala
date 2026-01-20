@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.HttpEntity
@@ -19,7 +20,7 @@ object CirceJsonSupport:
   implicit def jsonMarshaller[A](using encoder: Encoder[A]): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(`application/json`): value =>
       val jsonString = logException(s"jsonMarhaller(${encoder.getClass.getName})"):
-        value.asJson.compactPrint
+        value.asJson.toByteSequence[ByteString]
       HttpEntity(`application/json`, jsonString)
 
   private def logException[A](what: => String)(body: => A): A =
@@ -30,7 +31,7 @@ object CirceJsonSupport:
 
   given jsonToEntityMarshaller: ToEntityMarshaller[Json] =
     Marshaller.withFixedContentType(`application/json`): json =>
-      HttpEntity(`application/json`, json.compactPrint)
+      HttpEntity(`application/json`, json.toByteSequence[ByteString])
 
   implicit final def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
     entityToJsonUnmarshaller.map: json =>
