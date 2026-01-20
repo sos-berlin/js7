@@ -27,7 +27,7 @@ import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
-import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
+import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState_, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
 import js7.journal.FileJournal.*
 import js7.journal.FileJournalMXBean.Bean
 import js7.journal.configuration.JournalConf
@@ -383,7 +383,7 @@ object FileJournal:
       State(aggregate, aggregate, totalEventCount)
 
 
-  private[journal] final class QueuedPersist[S <: EventDrivenState[S, Event]](
+  private[journal] final class QueuedPersist[S <: EventDrivenState_[S, Event]](
     val persist: Persist[S, Event],
     val metering: CallMeter.Metering,
     val whenApplied: DeferredSink[IO, Checked[Persisted[S, Event]]],

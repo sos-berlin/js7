@@ -115,6 +115,6 @@ final class JournalHeaderTest extends OurTestSuite:
 
 
 object JournalHeaderTest:
-  final case class TestState() extends BasicState[TestState]:
+  final case class TestState() extends BasicState_[TestState]:
     def companion = TestState
   object TestState extends BasicState.Companion[TestState]

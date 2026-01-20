@@ -5,10 +5,10 @@ import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.EventCalc.OpaqueEventColl
-import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState, KeyedEvent}
+import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState_, KeyedEvent}
 import scala.reflect.ClassTag
 
-trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
+trait CommandToEventCalc[S <: EventDrivenState_[S, E], E <: Event, Ctx](
   using src: ScalaSourceLocation):
 
   private type CommandEventConverter[Cmd <: IsEventEmittingCommand] =
@@ -30,7 +30,7 @@ trait CommandToEventCalc[S <: EventDrivenState[S, E], E <: Event, Ctx](
 
 object CommandToEventCalc:
 
-  trait Companion[S <: EventDrivenState[S, E], E <: Event, Ctx]:
+  trait Companion[S <: EventDrivenState_[S, E], E <: Event, Ctx]:
 
     /** Convert a command to an `EventCalc`. */
     trait CommandEventConverter[Cmd <: IsEventEmittingCommand : ClassTag]:

@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState, MaybeTimestampedKeyedEvent, SnapshotableState, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTimestampedKeyedEvent, SnapshotableState, TimeCtx}
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
@@ -141,7 +141,7 @@ object JournalActor:
   object Input:
     private[journal] final case class Start[S <: SnapshotableState[S]](recovered: Recovered[S])
 
-    private[journal] final case class Store[S <: EventDrivenState[S, E], E <: Event](
+    private[journal] final case class Store[S <: EventDrivenState_[S, E], E <: Event](
       correlId: CorrelId,
       eventCalc: EventCalc[S, E, TimeCtx],
       journalingActor: ActorRef,

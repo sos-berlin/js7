@@ -216,9 +216,9 @@ trait StateView extends ItemContainer, EngineStateFunctions:
 
 
 object StateView:
-  val empty: StateView = DummyStateView()
+  val empty: StateView = NoStateView()
 
-  final case class DummyStateView(
+  private final case class NoStateView(
     isAgent: Boolean = false,
     controllerId: ControllerId = ControllerId("UNKNOWN"),
     idToOrder: Map[OrderId, Order[Order.State]] = Map.empty,
@@ -231,4 +231,4 @@ object StateView:
     def clusterState: ClusterState = ClusterState.Empty
 
     def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
-      Left(Problem.pure("DummyStateView"))
+      Left(Problem.pure("NoStateView"))

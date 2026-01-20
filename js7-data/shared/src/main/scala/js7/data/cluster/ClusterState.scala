@@ -11,13 +11,13 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventDriven, EventDrivenState, JournalPosition, KeyedEvent}
+import js7.data.event.{EventDriven, EventDrivenState, EventDrivenState_, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
 import scala.reflect.ClassTag
 
 sealed trait ClusterState
-extends EventDriven[ClusterState, ClusterEvent]
-with EventDrivenState[ClusterState, ClusterEvent]:
+extends EventDriven[ClusterState, ClusterEvent],
+  EventDrivenState_[ClusterState, ClusterEvent]:
 
   import ClusterState.*
 

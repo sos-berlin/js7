@@ -7,8 +7,10 @@ import scala.util.boundary
 
 /** An EventDrivenState with EventId. An aggregate. */
 trait JournaledState[S <: JournaledState[S]]
-extends EventDrivenState[S, Event]:
+extends EventDrivenState_[S, Event]:
   this: S =>
+
+  type This = S
 
   def companion: JournaledState.Companion[S]
 

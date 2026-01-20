@@ -4,7 +4,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.TestEvent.Added
 
 final case class TestState(string: String)
-extends EventDrivenState[TestState, TestEvent]:
+extends EventDrivenState_[TestState, TestEvent]:
 
   def companion = TestCase
 

@@ -1,12 +1,14 @@
 package js7.data.event
 
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.event.BasicState.*
 import fs2.Stream
 import js7.base.utils.MultipleLinesBracket.{Square, zipWithBracket}
+import js7.base.utils.ScalaUtils.syntax.*
 
-trait BasicState[S <: BasicState[S]]:
-  def companion: Companion[S]
+trait BasicState:
+
+  type This <: BasicState_[This]
+
+  def companion: BasicState.Companion[This]
 
   final def emitLineStream(emit: String => Unit): Unit =
     toLineStream.map(emit).compile.drain
@@ -21,10 +23,15 @@ trait BasicState[S <: BasicState[S]]:
     Stream.emit(toString)
 
 
+trait BasicState_[T <: BasicState_[T]] extends BasicState:
+  this: T =>
+  override type This = T
+
+
 object BasicState:
-  trait Companion[S <: BasicState[S]]:
-    implicit final val implicitBasicState: Companion[S] =
-      this
+
+  trait Companion[T <: BasicState_[T]]:
+    final given Companion[T] = this
 
     val name: String =
       getClass.shortClassName

@@ -34,7 +34,7 @@ final case class JournalHeader(
   js7Version: String,
   buildId: String):
 
-  def nextGeneration[S <: BasicState[S]](
+  def nextGeneration[S <: BasicState_[S]](
     eventId: EventId,
     totalEventCount: Long,
     totalRunningTime: FiniteDuration,
@@ -73,7 +73,7 @@ object JournalHeader:
           "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
         "JS7.Journal"))
 
-  def initial[S <: BasicState[S]](
+  def initial[S <: BasicState_[S]](
     journalId: JournalId = JournalId.random(),
     timestamp: Timestamp = Timestamp.now)
     (using S: BasicState.Companion[S])
@@ -97,7 +97,7 @@ object JournalHeader:
     ): file =>
       file.readLine().parseJsonAs[JournalHeader].orThrow
 
-  def checkedHeader[S <: BasicState[S]](
+  def checkedHeader[S <: BasicState_[S]](
     json: Json,
     journalFileForInfo: Path,
     expectedJournalId: JournalId)
@@ -120,7 +120,7 @@ object JournalHeader:
       _ <- checkedHeader(header, journalFileForInfo, expectedType, Some(expectedJournalId))
     yield header
 
-  def checkedHeader[S <: BasicState[S]](
+  def checkedHeader[S <: BasicState_[S]](
     header: JournalHeader, journalFileForInfo: Path, expectedJournalId: Option[JournalId])
     (implicit S: BasicState.Companion[S])
   : Checked[Unit] =

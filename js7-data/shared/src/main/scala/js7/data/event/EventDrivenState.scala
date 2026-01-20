@@ -7,14 +7,45 @@ import js7.data.event.EventDrivenState.*
 import scala.collection.immutable.Map.Map2
 import scala.util.boundary
 
-trait EventDrivenState[Self <: EventDrivenState[Self, E], -E <: Event] extends BasicState[Self]:
-  this: Self =>
+trait EventDrivenState[-E <: Event] extends BasicState:
 
-  override def companion: Companion[Self]
+  type This <: EventDrivenState_[This, E]
 
-  def applyKeyedEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
+  override def companion: Companion[This]
 
-  final def applyKeyedEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[E]): Checked[This]
+
+  def applyKeyedEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[This]
+
+  protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
+    Left(EventNotApplicableProblem(keyedEvent, this))
+
+
+object EventDrivenState:
+
+  trait Companion[S <: EventDrivenState_[S, ?]] extends BasicState.Companion[S]:
+    given Companion[S] = this
+
+    def updateStaticReference(s: S): Unit =
+      ()
+
+    override def toString: String = name
+
+
+  final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map2(
+      "event", keyedEvent.toString.truncateWithEllipsis(100),
+      "state", state.toString.truncateWithEllipsis(100))
+
+
+trait EventDrivenState_[T <: EventDrivenState_[T, E], -E <: Event]
+extends EventDrivenState[E], BasicState_[T]:
+  this: T =>
+
+  type This = T
+
+  final def applyKeyedEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[This] =
     var state = this
     var problem: Problem | Null = null
 
@@ -42,21 +73,3 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], -E <: Event] extends B
 
       case _ =>
         prblm.withPrefix(s"Event '$keyedEventOrStamped' cannot be applied to ${companion.name}:")
-
-  protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
-    Left(EventNotApplicableProblem(keyedEvent, this))
-
-
-object EventDrivenState:
-
-  trait Companion[S <: EventDrivenState[S, ?]] extends BasicState.Companion[S]:
-    given Companion[S] = this
-
-    override def toString: String = name
-
-
-  final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any)
-  extends Problem.Coded:
-    def arguments: Map[String, String] = Map2(
-      "event", keyedEvent.toString.truncateWithEllipsis(100),
-      "state", state.toString.truncateWithEllipsis(100))

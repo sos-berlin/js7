@@ -5,14 +5,16 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.EventDriven.*
 
 /** An event driven object with a known key. */
-trait EventDriven[+Self <: EventDriven[Self, E], E <: Event]:
-  this: Self =>
+trait EventDriven[+T <: EventDriven[T, E], E <: Event]:
+  this: T =>
 
-  def companion: Companion[EventDriven[Self, E], E]
+  type This <: T
 
-  def applyEvent(event: E): Checked[Self]
+  def companion: Companion[EventDriven[T, E], E]
 
-  final def applyEvents(events: IterableOnce[E]): Checked[Self] =
+  def applyEvent(event: E): Checked[T]
+
+  final def applyEvents(events: IterableOnce[E]): Checked[T] =
     var obj = this
     val it = events.iterator
     while it.hasNext do

@@ -16,7 +16,7 @@ import js7.data.plan.PlanId
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
-trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Self]:
+trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView_[Self]:
   this: Self =>
 
   def isAgent: Boolean

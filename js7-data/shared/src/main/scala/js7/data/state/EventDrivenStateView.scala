@@ -5,7 +5,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.event.{Event, EventDrivenState, SnapshotableState}
+import js7.data.event.{Event, EventDrivenState, EventDrivenState_}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderOrderAdded, OrderStateReset, OrderStdWritten}
@@ -16,14 +16,13 @@ import js7.data.workflow.instructions.LockInstruction
 import js7.data.workflow.position.WorkflowPosition
 import scala.reflect.ClassTag
 
-// TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
 /** The common part of ControllerState and AgentState. */
-trait EventDrivenStateView[Self <: EventDrivenStateView[Self]]
-extends EventDrivenState[Self, Event], StateView:
-  this: Self =>
+trait EventDrivenStateView
+extends EventDrivenState[Event], StateView:
+  type This <: EventDrivenStateView_[This]
 
   protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
-  : Checked[Self]
+  : Checked[This]
 
   protected final def update(
     updateOrders: Seq[Order[Order.State]] = Nil,
@@ -31,7 +30,7 @@ extends EventDrivenState[Self, Event], StateView:
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
-  : Checked[Self] =
+  : Checked[This] =
     for
       _ <- precheckUpdate(updateOrders, removeOrders, externalVanishedOrders,
         addItemStates, removeUnsignedSimpleItems)
@@ -47,7 +46,7 @@ extends EventDrivenState[Self, Event], StateView:
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
-  : Checked[Self]
+  : Checked[This]
 
   private def precheckUpdate(
     updatedOrders: Seq[Order[Order.State]] = Nil,
@@ -65,7 +64,40 @@ extends EventDrivenState[Self, Event], StateView:
     else
       Checked.unit
 
-  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
+  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This]
+
+  protected def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This]
+
+  protected final def findInstructionInCallStack[I <: Instruction: ClassTag](
+    workflowPosition: WorkflowPosition)
+  : Checked[I] =
+    for
+      pos <- workflowPosition.checkedParent
+      instr <- instruction_[I](pos).orElse(findInstructionInCallStack[I](pos))
+    yield
+      instr
+
+  protected final def checkChangedItem(item: UnsignedSimpleItem): Checked[Unit] =
+    Checked.unit
+
+  protected def removeNoticeExpectation(order: Order[ExpectingNotices])
+  : Checked[Seq[PlanSchemaState]] =
+    Left(Problem(s"removeNoticeExpectation not implemented for $companion"))
+
+
+object EventDrivenStateView:
+  trait Companion[T <: EventDrivenStateView_[T]]
+  extends EventDrivenState.Companion[T]:
+    override def updateStaticReference(engineState: T): Unit =
+      EngineStateMXBean.setEngineState(engineState)
+
+
+trait EventDrivenStateView_[T <: EventDrivenStateView_[T]]
+extends EventDrivenStateView, EventDrivenState_[T, Event]:
+  this: T =>
+  type This = T
+
+  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This] =
     event match
       case _: OrderAddedX | _: OrderEvent.OrderAttachedToAgent =>
         // Event is handled by one of ControllerState and AgentState only
@@ -78,7 +110,7 @@ extends EventDrivenState[Self, Event], StateView:
         // OrderStdWritten is not applied. But check OrderId.
         idToOrder.checked(orderId).rightAs(this)
 
-  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[Self] =
+  protected final def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This] =
     for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
@@ -180,26 +212,3 @@ extends EventDrivenState[Self, Event], StateView:
           update(updateOrders = updatedOrder :: Nil)
     yield
       result
-
-  protected final def findInstructionInCallStack[I <: Instruction: ClassTag](
-    workflowPosition: WorkflowPosition)
-  : Checked[I] =
-    for
-      pos <- workflowPosition.checkedParent
-      instr <- instruction_[I](pos).orElse(findInstructionInCallStack[I](pos))
-    yield
-      instr
-
-  protected final def checkChangedItem(item: UnsignedSimpleItem): Checked[Unit] =
-    Checked.unit
-
-  protected def removeNoticeExpectation(order: Order[ExpectingNotices])
-  : Checked[Seq[PlanSchemaState]] =
-    Left(Problem(s"removeNoticeExpectation not implemented for $companion"))
-
-
-object EventDrivenStateView:
-  trait Companion[S <: SnapshotableState[S] & StateView]
-  extends SnapshotableState.Companion[S]:
-    override def updateStaticReference(engineState: S): Unit =
-      EngineStateMXBean.setEngineState(engineState)

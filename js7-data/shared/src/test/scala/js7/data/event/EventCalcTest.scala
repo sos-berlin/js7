@@ -88,7 +88,7 @@ object EventCalcTest:
   private val logger = Logger[this.type]
 
   private final case class MyAggregate(n: Int)
-    extends EventDrivenState[MyAggregate, Added]:
+    extends EventDrivenState_[MyAggregate, Added]:
 
     def companion = MyAggregate
 

@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
   * <p>
   * Collects KeyedEvents while applying them to an EventDrivenState `S`.
   */
-final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private(
+final case class EventColl[S <: EventDrivenState_[S, E], E <: Event, Ctx] private(
   private val originalAggregate_ : S,
   timestampedKeyedEvents: Vector[MaybeTimestampedKeyedEvent[E]],
   aggregate: S,
@@ -141,11 +141,11 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   def forward: EventColl[S, E, Ctx] =
     EventColl[S, E, Ctx](aggregate, context)
 
-  def ifIs[S1 <: EventDrivenState[S1, E]](using ClassTag[S1]): Option[EventColl[S1, E, Ctx]] =
+  def ifIs[S1 <: EventDrivenState_[S1, E]](using ClassTag[S1]): Option[EventColl[S1, E, Ctx]] =
     implicitClass[S1].isAssignableFrom(aggregate.getClass) ?
       this.asInstanceOf[EventColl[S1,E, Ctx]]
 
-  def widen[S1  <: EventDrivenState[S1, ? >: E1], E1 >: E <: Event, Ctx1 <: Ctx]
+  def widen[S1  <: EventDrivenState_[S1, ? >: E1], E1 >: E <: Event, Ctx1 <: Ctx]
   : EventColl[S1, E1, Ctx] =
     this.asInstanceOf[EventColl[S1,E1, Ctx]]
 
@@ -157,18 +157,18 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
 object EventColl:
   private val logger = Logger[this.type]
 
-  def apply[S <: EventDrivenState[S, E], E <: Event](aggregate: S): EventColl[S, E, Unit] =
+  def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S): EventColl[S, E, Unit] =
     apply(aggregate, ())
 
-  def apply[S <: EventDrivenState[S, E], E <: Event, Ctx](aggregate: S, context: Ctx)
+  def apply[S <: EventDrivenState_[S, E], E <: Event, Ctx](aggregate: S, context: Ctx)
   : EventColl[S, E, Ctx] =
     new EventColl(aggregate, Vector.empty, aggregate, context)
 
   //<editor-fold desc="// (Tried to let Scala derive the S type parameter for add, keyedEvents)">
-  //def apply[S <: EventDrivenState[S, E], E <: Event](aggregate: S): KeyedEventsApply[S, E] =
+  //def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S): KeyedEventsApply[S, E] =
   //  new KeyedEventsApply[S, E](aggregate)
   //
-  //final class KeyedEventsApply[S <: EventDrivenState[S, E], E <: Event](private val aggregate: S)
+  //final class KeyedEventsApply[S <: EventDrivenState_[S, E], E <: Event](private val aggregate: S)
   //extends AnyVal:
   //  def apply(): EventColl[S, E, Unit] =
   //    new EventColl[S, E, Unit](aggregate, Vector.empty, aggregate, ())
@@ -185,17 +185,17 @@ object EventColl:
   //    body(EventColl(aggregate, context)).map(_.keyedEvents)
   //</editor-fold
 
-  def checkEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](aggregate: S, context: Ctx)
+  def checkEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](aggregate: S, context: Ctx)
     (keyedEvents: IterableOnce[KeyedEvent[E]])
   : Checked[Vector[KeyedEvent[E]]] =
     EventColl.keyedEvents(aggregate, context)(_.add(keyedEvents))
 
-  def keyedEvents[S <: EventDrivenState[S, E], E <: Event](aggregate: S)
+  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S)
     (body: EventColl[S, E, Any] => Checked[EventColl[S, E, Any]])
   : Checked[Vector[KeyedEvent[E]]] =
     keyedEvents[S, E, Any](aggregate, ())(body)
 
-  def keyedEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](
+  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](
     aggregate: S,
     context: Ctx)
     (body: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])

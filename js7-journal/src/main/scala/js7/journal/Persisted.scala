@@ -4,14 +4,14 @@ import cats.effect.IO
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.event.{Event, EventDrivenState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventDrivenState_, KeyedEvent, Stamped}
 import scala.collection.SeqView
 
 /** Persisted events.
   * @param originalAggregate The aggregate before the events have been applied.
   * @param stampedKeyedEvents
   * @param aggregate The aggregate with applied events. */
-final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
+final case class Persisted[S <: EventDrivenState_[S, E], +E <: Event](
   originalAggregate: S,
   stampedKeyedEvents: Vector[Stamped[KeyedEvent[E]]],
   aggregate: S):
@@ -44,10 +44,10 @@ final case class Persisted[S <: EventDrivenState[S, E], +E <: Event](
 
 object Persisted:
 
-  def empty[S <: EventDrivenState[S, E], E <: Event](aggregate: S): Persisted[S, E] =
+  def empty[S <: EventDrivenState_[S, E], E <: Event](aggregate: S): Persisted[S, E] =
     Persisted(aggregate, Vector.empty, aggregate)
 
-  extension [S <: EventDrivenState[S, E], E <: Event](io: IO[Checked[Persisted[S, E]]])
+  extension [S <: EventDrivenState_[S, E], E <: Event](io: IO[Checked[Persisted[S, E]]])
     /** Return the body if an event has been persisted. */
     def ifPersisted[U <: Unit](body: Persisted[S, E] => IO[U]): IO[Checked[Persisted[S, E]]] =
       io.flatMapT: persisted =>

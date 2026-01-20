@@ -29,7 +29,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
+import js7.data.state.{EngineStateStatistics, EventDrivenStateView, EventDrivenStateView_}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -50,7 +50,7 @@ final case class AgentState(
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]],
   statistics: EngineStateStatistics)
 extends SignedItemContainer,
-  EventDrivenStateView[AgentState],
+  EventDrivenStateView_[AgentState],
   SubagentDirectorState[AgentState],
   FileWatchStateRecoverer[AgentState],
   ClusterableState[AgentState]:

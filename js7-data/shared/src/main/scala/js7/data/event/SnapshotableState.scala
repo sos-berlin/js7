@@ -159,9 +159,6 @@ object SnapshotableState:
       .compile.drain
       recoverer.result()
 
-    def updateStaticReference(s: S): Unit =
-      ()
-
     private lazy val journalDecoder: Decoder[Any] =
       val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
       stampedEventDecoder or

@@ -7,10 +7,10 @@ import js7.data.board.NoticeId
 import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchemaState}
-import js7.data.state.EventDrivenStateView
+import js7.data.state.EventDrivenStateView_
 
 trait ControllerEventDrivenStateView[Self <: ControllerEventDrivenStateView[Self]]
-extends EventDrivenStateView[Self]:
+extends EventDrivenStateView_[Self]:
   this: Self =>
 
   def isNoticeAvailable(noticeId: NoticeId): L3

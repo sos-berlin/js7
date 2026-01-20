@@ -47,7 +47,7 @@ import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderN
 import js7.data.order.{Order, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
-import js7.data.state.{EngineStateStatistics, EventDrivenStateView}
+import js7.data.state.{EngineStateStatistics, EventDrivenStateView, EventDrivenStateView_}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownStarted, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -75,12 +75,14 @@ final case class ControllerState(
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
   SignedItemContainer,
-  EventDrivenStateView[ControllerState],
+  EventDrivenStateView_[ControllerState],
   ControllerStateView,
   ControllerEventDrivenStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
   ControllerStatePlanFunctions[ControllerState]:
+
+  type This = ControllerState
 
   override def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit[fs2.Pure, String]("ControllerState:\n")
