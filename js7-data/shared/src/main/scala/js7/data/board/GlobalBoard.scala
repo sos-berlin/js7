@@ -11,7 +11,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.item.{ItemRevision, UnsignedItemPath}
 import js7.data.order.Order
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.value.expression.Expression.{MissingConstant, expr}
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.{Expression, Scope}
@@ -43,7 +43,7 @@ extends
   def isGlobal: Boolean =
     true
 
-  def postingOrderToNotice(order: Order[Order.Ready], state: StateView, now: Timestamp)
+  def postingOrderToNotice(order: Order[Order.Ready], state: EngineState, now: Timestamp)
   : Checked[Notice] =
     for
       // Does this Scope make sense??? It differs from scope in expectingOrderToNoticeId.
@@ -54,7 +54,7 @@ extends
     yield
       notice
 
-  def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView): Checked[NoticeId] =
+  def expectingOrderToNoticeId(order: Order[Order.Ready], state: EngineState): Checked[NoticeId] =
     for
       scope <- state.toOrderScope(order)
       noticeKey <- expectOrderToNoticeKey.evalAsString(using scope)

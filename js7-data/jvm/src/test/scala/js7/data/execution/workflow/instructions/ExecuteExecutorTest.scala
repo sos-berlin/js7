@@ -24,7 +24,7 @@ import scala.collection.View
   */
 final class ExecuteExecutorTest extends OurTestSuite:
 
-  private lazy val stateView = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestStateView.of(
     orders = Some(orders),
     workflows = Some(Seq(workflow)))
   private lazy val executorService = new InstructionExecutorService(WallClock)
@@ -42,9 +42,9 @@ final class ExecuteExecutorTest extends OurTestSuite:
     for position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/) do
       val execute = workflow.instruction_[Execute](position).orThrow
       for order <- orders.filter(_.position == position) do
-        assert(executorService.toEvents(execute, order, stateView) ==
+        assert(executorService.toEvents(execute, order, engineState) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextMove(execute, order, stateView) ==
+        assert(executorService.nextMove(execute, order, engineState) ==
           Right(None))
 
   "skipIfNoAdmissionStartForOrderDay" - {
@@ -53,10 +53,10 @@ final class ExecuteExecutorTest extends OurTestSuite:
 
     "OrderId date has admission time" in:
       for orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready")) do
-        val order = stateView.idToOrder(orderId)
-        assert(executorService.toEvents(execute, order, stateView) ==
+        val order = engineState.idToOrder(orderId)
+        assert(executorService.toEvents(execute, order, engineState) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextMove(execute, order, stateView) ==
+        assert(executorService.nextMove(execute, order, engineState) ==
           Right(None))
 
     "OrderId date has no admission time" in:
@@ -64,12 +64,12 @@ final class ExecuteExecutorTest extends OurTestSuite:
         OrderId("#2021-09-02#2-Fresh"),
         OrderId("#2021-09-02#2-Ready"),
         OrderId("#2021-09-04#2-Ready")))
-        val order = stateView.idToOrder(orderId)
-        assert(executorService.toEvents(execute, order, stateView) ==
+        val order = engineState.idToOrder(orderId)
+        assert(executorService.toEvents(execute, order, engineState) ==
           Right(
             (order.id <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
               :: Nil))
-        assert(executorService.nextMove(execute, order, stateView) ==
+        assert(executorService.nextMove(execute, order, engineState) ==
           Right(Some(
             OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))))
   }

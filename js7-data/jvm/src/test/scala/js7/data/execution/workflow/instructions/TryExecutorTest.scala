@@ -25,14 +25,14 @@ import js7.tester.CirceJsonTester.testJson
 final class TryExecutorTest extends OurTestSuite:
 
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestStateView.of(
     orders = Some(Seq(AOrder)))
 
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "JSON" - {
     "try" in:
-      testJson(tryExecutor.nextMove(tryInstruction, AOrder, stateView).orThrow.get.to,
+      testJson(tryExecutor.nextMove(tryInstruction, AOrder, engineState).orThrow.get.to,
         json"""[ 7, "try+0", 0 ]""")
 
     "catch" in:
@@ -41,11 +41,11 @@ final class TryExecutorTest extends OurTestSuite:
   }
 
   "nextMove" in:
-    assert(executorService.nextMove(tryInstruction, AOrder, stateView) ==
+    assert(executorService.nextMove(tryInstruction, AOrder, engineState) ==
       Right(Some(OrderMoved(Position(7) / try_(0) % 0))))
 
   "toEvents" in:
-    assert(executorService.toEvents(tryInstruction, AOrder, stateView) ==
+    assert(executorService.toEvents(tryInstruction, AOrder, engineState) ==
       Right(Seq(AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
 
 

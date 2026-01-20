@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderPro
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached}
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -30,7 +30,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   type Instr = Execute
   val instructionClass = classOf[Execute]
 
-  def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
+  def toEvents(instruction: Execute, order: Order[Order.State], state: EngineState) =
     order.ifState[IsFreshOrReady].map: order =>
       for
         workflow <- state.idToWorkflow.checked(order.workflowId)
@@ -75,7 +75,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
     .getOrElse:
       Right(Nil)
 
-  private def checkSubagentBundle(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
+  private def checkSubagentBundle(order: Order[IsFreshOrReady], state: EngineState): Checked[Unit] =
     for
       scope <- state.toOrderScope(order)
       job <- state.workflowJob(order.workflowPosition)
@@ -91,7 +91,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
             .checked(o.toSubagentId)))
     yield ()
 
-  def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
+  def nextMove(instruction: Execute, order: Order[Order.State], state: EngineState) =
     for
       workflow <- state.idToWorkflow.checked(order.workflowId)
       given ZoneId <- workflow.timeZone.toZoneId
@@ -105,7 +105,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
     calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
     for
-      workflow <- calculator.stateView.idToWorkflow.checked(order.workflowId)
+      workflow <- calculator.engineState.idToWorkflow.checked(order.workflowId)
       given ZoneId <- workflow.timeZone.toZoneId
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)

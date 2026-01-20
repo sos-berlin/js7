@@ -22,7 +22,7 @@ import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderId, OrderMark, OrderOutcome}
 import js7.data.plan.PlanFinishedEvent
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
@@ -34,13 +34,13 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
+final class OrderEventSource(state: EngineState/*idToOrder must be a Map!!!*/)
   (using executorService: InstructionExecutorService):
 
   import executorService.clock
   import state.{idToWorkflow, isAgent, weHave}
 
-  // TODO Updates to StateView should be solved immutably. Refactor OrderEventSource?
+  // TODO Updates to EngineState should be solved immutably. Refactor OrderEventSource?
   private var idToOrder = state.idToOrder
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
@@ -585,7 +585,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 object OrderEventSource:
   private val logger = Logger[this.type]
 
-  inline def nextEvents(orderId: OrderId, state: StateView)(using InstructionExecutorService)
+  inline def nextEvents(orderId: OrderId, state: EngineState)(using InstructionExecutorService)
   : Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
     OrderEventSource(state).nextEvents(orderId)
 

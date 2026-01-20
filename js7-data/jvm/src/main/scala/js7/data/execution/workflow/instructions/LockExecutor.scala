@@ -5,7 +5,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.LockExecutor.*
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.LockInstruction
 
@@ -15,7 +15,7 @@ extends EventInstructionExecutor:
   type Instr = LockInstruction
   val instructionClass = classOf[LockInstruction]
 
-  def toEvents(instruction: LockInstruction, order: Order[Order.State], state: StateView) =
+  def toEvents(instruction: LockInstruction, order: Order[Order.State], state: EngineState) =
     detach(order)
       .orElse:
         start(order)
@@ -50,7 +50,7 @@ extends EventInstructionExecutor:
   override def onReturnFromSubworkflow(
     instr: LockInstruction,
     order: Order[Order.State],
-    state: StateView) =
+    state: EngineState) =
     Right:
       state.atController:
         OrderLocksReleased(instr.lockPaths) :: Nil

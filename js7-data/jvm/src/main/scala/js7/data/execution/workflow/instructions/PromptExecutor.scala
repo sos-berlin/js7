@@ -4,7 +4,7 @@ import js7.data.order.Order.Ready
 import js7.data.order.OrderEvent.OrderPrompted
 import js7.data.order.OrderObstacle.WaitingForCommand
 import js7.data.order.{Order, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.value.GoodValue
 import js7.data.workflow.instructions.Prompt
 
@@ -14,7 +14,7 @@ extends EventInstructionExecutor:
   type Instr = Prompt
   val instructionClass = classOf[Prompt]
 
-  def toEvents(prompt: Prompt, order: Order[Order.State], state: StateView) =
+  def toEvents(prompt: Prompt, order: Order[Order.State], state: EngineState) =
     detach(order)
       .orElse:
         start(order)

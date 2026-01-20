@@ -8,7 +8,7 @@ import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.InstructionExecutor.*
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
 
@@ -26,7 +26,7 @@ trait InstructionExecutor:
   : Checked[Set[OrderObstacle]] =
     noObstacles
 
-  def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
+  def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     order.position.parent match
       case None =>
@@ -50,7 +50,7 @@ trait EventInstructionExecutor extends InstructionExecutor:
   final def clock: WallClock =
     service.clock
 
-  def toEvents(instruction: Instr, order: Order[Order.State], stateView: StateView)
+  def toEvents(instruction: Instr, order: Order[Order.State], engineState: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]]
 
   protected final def start(order: Order[Order.State])
@@ -87,5 +87,5 @@ trait EventInstructionExecutor extends InstructionExecutor:
 
 
 trait PositionInstructionExecutor extends InstructionExecutor:
-  def nextMove(instruction: Instr, order: Order[Order.State], stateView: StateView)
+  def nextMove(instruction: Instr, order: Order[Order.State], engineState: EngineState)
   : Checked[Option[OrderMoved]]

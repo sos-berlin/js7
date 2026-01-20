@@ -66,11 +66,11 @@ object RetryExecutorTest:
     val order = Order(orderId, workflowId /: position, Order.Ready(),
       historicOutcomes = Vector:
         HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1))))
-    val stateView =
+    val engineState =
       new ControllerTestStateView(idToOrder = Map(order.id -> order)):
         override def instruction(position: WorkflowPosition) =
           if position == workflowId /: tryPosition then
             tryInstruction.copy(retryDelays = Some(delays.toVector))
           else
             Gap.empty
-    retryExecutor.toEvents(Retry(), order, stateView)
+    retryExecutor.toEvents(Retry(), order, engineState)

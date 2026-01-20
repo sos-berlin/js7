@@ -20,7 +20,7 @@ final class FailExecutorTest extends OurTestSuite:
 
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 
-  private lazy val stateView = new ControllerTestStateView(
+  private lazy val engineState = new ControllerTestStateView(
     idToOrder = Map(
       TestOrder.id -> TestOrder,
       ForkedOrder.id -> ForkedOrder,
@@ -41,16 +41,16 @@ final class FailExecutorTest extends OurTestSuite:
 
   "toEvents" - {
     "Fresh order will be started" in:
-      assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), stateView) ==
+      assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), engineState) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
 
     "Catchable Fail" - {
       "Detached order" in:
-        assert(failExecutor.toEvents(Fail(), TestOrder, stateView) ==
+        assert(failExecutor.toEvents(Fail(), TestOrder, engineState) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
 
       "Attached order" in:
-        assert(failExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), stateView) ==
+        assert(failExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), engineState) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
     }
   }

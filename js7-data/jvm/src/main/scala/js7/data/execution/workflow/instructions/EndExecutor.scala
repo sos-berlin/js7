@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.End
 
 private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
@@ -13,7 +13,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
   import service.instructionToExecutor
 
-  def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
+  def toEvents(instruction: End, order: Order[Order.State], state: EngineState) =
     order.position.parent
       .filter(_ => !order.isInOutermostBlock)
       .match
@@ -32,7 +32,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
           val instr = state.instruction(order.workflowId /: parentPos)
           service.onReturnFromSubworkflow(instr, order, state)
 
-  def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
+  def nextMove(instruction: End, order: Order[Order.State], state: EngineState) =
     Right:
       if order.isInOutermostBlock then
         None

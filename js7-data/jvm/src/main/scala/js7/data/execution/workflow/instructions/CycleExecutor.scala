@@ -11,7 +11,7 @@ import js7.data.order.Order.{BetweenCycles, Ready}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, Order, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 
@@ -21,7 +21,7 @@ extends EventInstructionExecutor:
   type Instr = Cycle
   val instructionClass = classOf[Cycle]
 
-  def toEvents(instr: Cycle, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Cycle, order: Order[Order.State], state: EngineState) =
     start(order)
       .orElse(order.ifState[Ready].map: order =>
         for
@@ -69,7 +69,7 @@ extends EventInstructionExecutor:
   private def endCycling(order: Order[Ready | BetweenCycles]): List[KeyedEvent[OrderMoved]] =
     (order.id <-: OrderMoved(order.position.increment)) :: Nil
 
-  override def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State], state: StateView)
+  override def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     locally:
       for
@@ -82,7 +82,7 @@ extends EventInstructionExecutor:
           calculator.nextCycleState(cycleState, clock.now()))
     .map(_ :: Nil)
 
-  private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
+  private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: EngineState) =
     for
       workflow <- state.keyToItem(Workflow).checked(order.workflowId)
       (_, calculator) <- toCalendarAndScheduleCalculator(workflow, cycle, state)
@@ -92,7 +92,7 @@ extends EventInstructionExecutor:
   private def toCalendarAndScheduleCalculator(
     workflow: Workflow,
     cycle: Cycle,
-    state: StateView)
+    state: EngineState)
   : Checked[(Calendar, ScheduleCalculator)] =
     for
       calendarPath <- workflow.calendarPath

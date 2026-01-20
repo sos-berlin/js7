@@ -7,7 +7,7 @@ import js7.data.event.EventColl
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.plan.PlanId
-import js7.data.state.{StateView, UniqueOrderIdScope}
+import js7.data.state.{EngineState, UniqueOrderIdScope}
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.workflow.instructions.AddOrder
 
@@ -17,7 +17,7 @@ extends EventInstructionExecutor:
   type Instr = AddOrder
   val instructionClass = classOf[AddOrder]
 
-  def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) =
+  def toEvents(addOrder: AddOrder, order: Order[Order.State], state: EngineState) =
     detach(order)
       .orElse:
         start(order)

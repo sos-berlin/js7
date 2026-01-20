@@ -5,7 +5,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Order
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderStickySubagentEntered, OrderStickySubagentLeaved}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.workflow.instructions.StickySubagent
 
@@ -16,7 +16,7 @@ extends EventInstructionExecutor:
   type Instr = StickySubagent
   val instructionClass = classOf[StickySubagent]
 
-  def toEvents(instr: StickySubagent, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: StickySubagent, order: Order[Order.State], state: EngineState) =
     if !order.isState[IsFreshOrReady] then
       Right(Nil)
     else if order.stickySubagents.nonEmpty then
@@ -41,6 +41,6 @@ extends EventInstructionExecutor:
   override def onReturnFromSubworkflow(
     instr: StickySubagent,
     order: Order[Order.State],
-    state: StateView) =
+    state: EngineState) =
     Right(
       (order.id <-: OrderStickySubagentLeaved) :: Nil)

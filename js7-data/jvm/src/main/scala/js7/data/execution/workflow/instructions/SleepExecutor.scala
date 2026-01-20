@@ -8,7 +8,7 @@ import js7.data.execution.workflow.instructions.SleepExecutor.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderSleeping, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{Order, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.value.NumberValue
 import js7.data.workflow.instructions.Sleep
 import scala.concurrent.duration.*
@@ -19,7 +19,7 @@ extends EventInstructionExecutor:
   type Instr = Sleep
   val instructionClass = classOf[Sleep]
 
-  def toEvents(instr: Sleep, order: Order[Order.State], state: StateView)
+  def toEvents(instr: Sleep, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderStarted | OrderSleeping | OrderMoved]]] =
     start(order).getOrElse:
       order.ifState[Order.Ready].map: order =>

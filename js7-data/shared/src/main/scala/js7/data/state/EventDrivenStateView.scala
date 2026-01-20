@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
 
 /** The common part of ControllerState and AgentState. */
 trait EventDrivenStateView
-extends EventDrivenState[Event], StateView:
+extends EventDrivenState[Event], EngineState:
   type This <: EventDrivenStateView_[This]
 
   protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)

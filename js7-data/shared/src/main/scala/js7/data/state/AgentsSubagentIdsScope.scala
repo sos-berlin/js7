@@ -9,24 +9,24 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListValue, StringValue, Value}
 import scala.collection.View
 
-final class AgentsSubagentIdsScope(state: StateView) extends Scope:
+final class AgentsSubagentIdsScope(engineState: EngineState) extends Scope:
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
   : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("subagentIds", None | Some(Nil)) =>
-        Some(subagentIds(state, None))
+        Some(subagentIds(engineState, None))
 
       case FunctionCall("subagentIds", Some(Seq(Argument(arg, None)))) =>
         Some(
           arg.evalAsString
             .flatMap(idString =>
-              subagentIds(state, Some(idString))))
+              subagentIds(engineState, Some(idString))))
 
       case _ =>
         super.evalFunctionCall(functionCall)
 
-  private def subagentIds(state: StateView, arg: Option[String]): Checked[ListValue] =
+  private def subagentIds(state: EngineState, arg: Option[String]): Checked[ListValue] =
     state.maybeAgentPath match
       case None =>
         Left(Problem(
@@ -47,7 +47,7 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope:
             ListValue(strings.toVector.sorted.map(StringValue(_))))
 
   private def subagentIds(agentPath: AgentPath): View[String] =
-    state
+    engineState
       .keyToItem(SubagentItem).values.view
       .filter(_.agentPath == agentPath)
       .map(_.id.string)

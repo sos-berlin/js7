@@ -19,7 +19,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 
 final class LockExecutorTest extends OurTestSuite:
 
-  private lazy val stateView = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestStateView.of(
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
     workflows = Some(Seq(workflow)),
     itemStates = Seq(
@@ -37,7 +37,7 @@ final class LockExecutorTest extends OurTestSuite:
 
   "Acquire too much" in:
     val order = freeLockOrder.withPosition(Position(1))
-    assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
+    assert(service.toEvents(workflow.instruction(order.position), order, engineState) ==
       Left(Problem("Cannot fulfill lock count=4 with Lock:FREE-LOCK limit=3")))
 
   "Lock cannot acquired and is queued" in:
@@ -57,7 +57,7 @@ final class LockExecutorTest extends OurTestSuite:
       OrderId("MULTIPLE-NOT-AVAILABLE"),
       workflow.id /: Position(4),
       Order.Ready())
-    assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
+    assert(service.toEvents(workflow.instruction(order.position), order, engineState) ==
       Right(Seq(
         order.id <-: OrderLocksQueued(List(
           LockDemand(exclusiveLock.path, None),
@@ -68,7 +68,7 @@ final class LockExecutorTest extends OurTestSuite:
       OrderId("MULTIPLE"),
       workflow.id /: Position(5),
       Order.Ready())
-    assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
+    assert(service.toEvents(workflow.instruction(order.position), order, engineState) ==
       Right(Seq(
         order.id <-: OrderLocksAcquired(List(
           LockDemand(exclusiveLock.path),
@@ -79,14 +79,14 @@ final class LockExecutorTest extends OurTestSuite:
       OrderId("MULTIPLE"),
       workflow.id /: (Position(5) / BranchId.Lock % 1),
       Order.Ready())
-    assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
+    assert(service.toEvents(workflow.instruction(order.position), order, engineState) ==
       Right(Seq(
         order.id <-: OrderLocksReleased(List(
           exclusiveLock.path,
           freeLock.path)))))
 
   private def check(order: Order[Order.State], event: OrderLockEvent): Unit =
-    assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
+    assert(service.toEvents(workflow.instruction(order.position), order, engineState) ==
       Right(Seq(order.id <-: event)))
 
 

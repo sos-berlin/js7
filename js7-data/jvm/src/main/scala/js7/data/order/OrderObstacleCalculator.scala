@@ -10,14 +10,14 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.JobKey
 import js7.data.order.Order.Processing
 import js7.data.order.OrderObstacle.{AgentProcessLimitReached, WaitingForAdmission, WaitingForCommand, WaitingForOtherTime}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import scala.collection.{View, mutable}
 
-final class OrderObstacleCalculator(val stateView: StateView):
+final class OrderObstacleCalculator(val engineState: EngineState):
 
   // TODO Slow !!!
   def waitingForAdmissionOrderCount(now: Timestamp): Int =
-    ordersToObstacles(stateView.idToOrder.keys.view, now)
+    ordersToObstacles(engineState.idToOrder.keys.view, now)
       .orThrow // no exception expected
       .count:
         _._2.exists:
@@ -39,7 +39,7 @@ final class OrderObstacleCalculator(val stateView: StateView):
     (implicit instructionExecutorService: InstructionExecutorService)
   : Checked[Set[OrderObstacle]] =
     for
-      order <- stateView.idToOrder.checked(orderId)
+      order <- engineState.idToOrder.checked(orderId)
       a <- instructionExecutorService.toObstacles(order, this)
       b = orderStateToObstacles(order)
       c = order.isSuspendedOrStopped.thenSet[OrderObstacle](WaitingForCommand)
@@ -47,7 +47,7 @@ final class OrderObstacleCalculator(val stateView: StateView):
       a ++ b ++ c ++ workflowSuspendedObstacle(order)
 
   private def workflowSuspendedObstacle(order: Order[Order.State]) =
-    stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
+    engineState.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
 
   private def orderStateToObstacles(order: Order[Order.State]): Set[OrderObstacle] =
     val result = mutable.Set.empty[OrderObstacle]
@@ -62,8 +62,8 @@ final class OrderObstacleCalculator(val stateView: StateView):
 
     if order.isState[Order.IsFreshOrReady] then
       for agentPath <- order.attached do
-        val limit = stateView.keyToItem(AgentRef).get(agentPath).flatMap(_.processLimit)
-        if limit.exists(_ <= stateView.slowProcessingOrderCount(agentPath)) then
+        val limit = engineState.keyToItem(AgentRef).get(agentPath).flatMap(_.processLimit)
+        if limit.exists(_ <= engineState.slowProcessingOrderCount(agentPath)) then
           result += AgentProcessLimitReached
     result.toSet
 
@@ -73,9 +73,9 @@ final class OrderObstacleCalculator(val stateView: StateView):
     _jobToOrderCount.computeIfAbsent(
       jobKey,
       jobKey =>
-        stateView.idToWorkflow.get(jobKey.workflowId)
+        engineState.idToWorkflow.get(jobKey.workflowId)
           .fold(0): workflow =>
-            stateView.orders.view
+            engineState.orders.view
               .count(order =>
                 order.state.isInstanceOf[Processing] &&
                   order.workflowId == jobKey.workflowId &&

@@ -7,7 +7,7 @@ import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFinished, OrderMoved, OrderOutcomeAdded}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction}
 import js7.data.workflow.position.*
@@ -19,7 +19,7 @@ extends EventInstructionExecutor:
   type Instr = Finish
   val instructionClass = classOf[Finish]
 
-  def toEvents(instr: Finish, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Finish, order: Order[Order.State], state: EngineState) =
     detach(order)
       .orElse:
         start(order)
@@ -29,7 +29,7 @@ extends EventInstructionExecutor:
           .flatMap: workflow =>
             execute(instr, order, workflow, state)
 
-  private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: StateView)
+  private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     order.state match
       case _: Order.Ready =>

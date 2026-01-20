@@ -6,7 +6,7 @@ import js7.data.execution.workflow.OrderEventSource.leaveBlocks
 import js7.data.execution.workflow.instructions.BreakExecutor.*
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderFinished}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.Break
 
@@ -17,7 +17,7 @@ extends EventInstructionExecutor:
   type Instr = Break
   val instructionClass = classOf[Break]
 
-  def toEvents(instr: Break, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Break, order: Order[Order.State], state: EngineState) =
     // OrderStarted may be needed if Order is placed into a Cycle block
     start(order)
       .getOrElse:

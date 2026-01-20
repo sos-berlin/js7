@@ -10,7 +10,7 @@ import js7.data.execution.workflow.instructions.AdmissionTimeExecutor.*
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOutcomeAdded, OrderWaitingForAdmission}
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.AdmissionTime
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -22,7 +22,7 @@ extends EventInstructionExecutor:
   type Instr = AdmissionTime
   val instructionClass = classOf[AdmissionTime]
 
-  def toEvents(instr: AdmissionTime, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: AdmissionTime, order: Order[Order.State], state: EngineState) =
     if !order.isState[IsFreshOrReady] && !order.isState[Order.WaitingForAdmission] then
       Right(Nil)
     else

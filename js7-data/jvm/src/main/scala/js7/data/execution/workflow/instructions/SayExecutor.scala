@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.data.order.Order
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderMoved, OrderSaid}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.Say
 
 private[instructions] final class SayExecutor(
@@ -13,7 +13,7 @@ extends EventInstructionExecutor:
   type Instr = Say
   val instructionClass = classOf[Say]
 
-  def toEvents(instr: Say, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Say, order: Order[Order.State], state: EngineState) =
     if !order.isState[IsFreshOrReady] then
       Right(Nil)
     else

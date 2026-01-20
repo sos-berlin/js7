@@ -28,7 +28,7 @@ import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
-trait StateView extends ItemContainer, EngineStateFunctions:
+trait EngineState extends ItemContainer, EngineStateFunctions:
 
   def isAgent: Boolean
 
@@ -215,8 +215,8 @@ trait StateView extends ItemContainer, EngineStateFunctions:
         .flatMap(op)
 
 
-object StateView:
-  val empty: StateView = NoStateView()
+object EngineState:
+  val empty: EngineState = NoStateView()
 
   private final case class NoStateView(
     isAgent: Boolean = false,
@@ -227,7 +227,7 @@ object StateView:
     idToWorkflow: PartialFunction[WorkflowId, Workflow] = Map.empty,
     keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] = MapView.empty,
     keyToItem: MapView[InventoryItemKey, InventoryItem] = MapView.empty)
-  extends StateView:
+  extends EngineState:
     def clusterState: ClusterState = ClusterState.Empty
 
     def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =

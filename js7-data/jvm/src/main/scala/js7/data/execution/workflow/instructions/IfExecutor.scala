@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Order
 import js7.data.order.Order.{Broken, Failed, FailedWhileFresh}
 import js7.data.order.OrderEvent.OrderMoved
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -17,7 +17,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   type Instr = If
   val instructionClass = classOf[If]
 
-  def toEvents(instruction: If, order: Order[Order.State], state: StateView) =
+  def toEvents(instruction: If, order: Order[Order.State], state: EngineState) =
     if order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed] then
       Right(Nil)
     else
@@ -25,7 +25,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
         .map(_.map(order.id <-: _))
         .map(_.toList)
 
-  def nextMove(instruction: If, order: Order[Order.State], state: StateView) =
+  def nextMove(instruction: If, order: Order[Order.State], state: EngineState) =
     // order may be predicted and different from actual idToOrder(order.id)
     for
       scope <- state.toOrderScope(order)

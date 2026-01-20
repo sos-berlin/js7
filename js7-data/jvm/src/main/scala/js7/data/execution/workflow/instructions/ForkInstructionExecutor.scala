@@ -14,7 +14,7 @@ import js7.data.execution.workflow.instructions.ForkInstructionExecutor.*
 import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.value.Value
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.ForkInstruction
@@ -26,13 +26,13 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   protected val service: InstructionExecutorService
   private implicit val implicitService: InstructionExecutorService = service
 
-  protected def toForkedEvent(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
+  protected def toForkedEvent(fork: Instr, order: Order[Order.IsFreshOrReady], state: EngineState)
   : Checked[OrderForked]
 
-  protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
+  protected def forkResult(fork: Instr, order: Order[Order.Forked], state: EngineState,
     now: Timestamp): OrderOutcome.Completed
 
-  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView)
+  final def toEvents(fork: Instr, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     readyOrStartable(order)
       .map: order =>
@@ -54,7 +54,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
       .getOrElse:
         Right(Nil)
 
-  private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
+  private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: EngineState)
   : Checked[List[OrderActorEvent]] =
     // toForkedEvent may be called three times:
     // 1) to predict the Agent and before OrderAttachable
@@ -107,13 +107,13 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   override final def onReturnFromSubworkflow(
     fork: Instr,
     childOrder: Order[Order.State],
-    state: StateView)
+    state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     Right(
       tryJoinChildOrder(fork, childOrder, state)
         .toList)
 
-  private def tryJoinChildOrder(fork: Instr, childOrder: Order[Order.State], state: StateView)
+  private def tryJoinChildOrder(fork: Instr, childOrder: Order[Order.State], state: EngineState)
   : Option[KeyedEvent[OrderActorEvent]] =
     if childOrder.isAttached then
       Some(childOrder.id <-: OrderDetachable)
@@ -128,7 +128,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   private final def toJoined(
     order: Order[Order.Forked],
     fork: Instr,
-    state: StateView)
+    state: EngineState)
   : Option[KeyedEvent[OrderActorEvent]] =
     if order.isAttached then
       Some(order.id <-: OrderDetachable)
@@ -145,12 +145,12 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
           else
             forkResult(fork, order, state, now))
 
-  private def childOrderIsJoinable(state: StateView, parentOrder: Order[Order.Forked], childOrderId: OrderId): Boolean =
+  private def childOrderIsJoinable(state: EngineState, parentOrder: Order[Order.Forked], childOrderId: OrderId): Boolean =
     state.idToOrder.get(childOrderId).exists: childOrder =>
      state.childOrderIsJoinable(childOrder, parentOrder)
 
   protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,
-    state: StateView, now: Timestamp)
+    state: EngineState, now: Timestamp)
   : Checked[Vector[(String, Value)]] =
     state.idToOrder.checked(childOrderId)
       .flatMap(childOrder =>
@@ -180,7 +180,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   protected[instructions] final def predictControllerOrAgent(
     order: Order[Order.IsFreshOrReady],
     orderForked: OrderForked,
-    state: StateView)
+    state: EngineState)
   : Checked[Option[Option[AgentPath]]] =
     if orderForked.children.sizeIs == 0 then
       Right(None) // No children, Order can stay where it is
@@ -227,7 +227,7 @@ object ForkInstructionExecutor:
   // The Order child syntax is based on the reserved character '|'.
   // It is not possible to generate a child order but with Fork.
   // So we can safely generate child orders because only Fork can do this.
-  private def checkOrderIdCollisions(orderForked: OrderForked, state: StateView): Checked[Unit] =
+  private def checkOrderIdCollisions(orderForked: OrderForked, state: EngineState): Checked[Unit] =
     val duplicates = orderForked.children.map(_.orderId).flatMap(state.idToOrder.get)
     if duplicates.nonEmpty then
       // Internal error, maybe a lost OrderDetached event

@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderMoved
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchId.try_
@@ -14,10 +14,10 @@ extends PositionInstructionExecutor, EventInstructionExecutor:
   type Instr = TryInstruction
   val instructionClass = classOf[TryInstruction]
 
-  def nextMove(instruction: TryInstruction, order: Order[Order.State], state: StateView) =
+  def nextMove(instruction: TryInstruction, order: Order[Order.State], state: EngineState) =
     Right(Some(nextOrderMoved(order)))
 
-  def toEvents(instruction: TryInstruction, order: Order[Order.State], stateView: StateView) =
+  def toEvents(instruction: TryInstruction, order: Order[Order.State], engineState: EngineState) =
     Right:
       order.ifState[Order.IsFreshOrReady].map: order =>
         order.id <-: nextOrderMoved(order)

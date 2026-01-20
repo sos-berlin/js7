@@ -9,14 +9,14 @@ import js7.data.controller.{ControllerEventDrivenStateView, ControllerState}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 
 trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
 
   type Instr <: ConsumeNotices | ExpectNotices
 
-  final def toEvents(instr: Instr, order: Order[Order.State], state: StateView)
+  final def toEvents(instr: Instr, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     detach(order)
       .orElse:

@@ -11,22 +11,22 @@ trait EngineStateMXBean:
   this: EngineStateMXBean.Bean =>
 
   def getClusterStateCode: Int =
-    stateView.clusterState.asCode.index
+    engineState.clusterState.asCode.index
 
   def getOrderCount: Int =
-    stateView.idToOrder.size
+    engineState.idToOrder.size
 
   def getOrderStatusToCount: JMap[String, java.lang.Integer] =
-    stateView.idToOrder
+    engineState.idToOrder
       .groupMapReduce(_._2.state.getClass.cachedSimpleScalaName)(_ => 1)(_ + _)
       .view.mapValues(Int.box).asJava
 
   def getStatisticsEventToTotal: JMap[String, java.lang.Long] =
-    stateView.statistics.eventCounter.eventToCount
+    engineState.statistics.eventCounter.eventToCount
       .view.mapValues(Long.box).asJava
 
   def getStatisticsEventTotal: Long =
-    stateView.statistics.eventCounter.totalEventCount
+    engineState.statistics.eventCounter.totalEventCount
 
   def getJVMRunningSeconds: Double =
     ManagementFactory.getRuntimeMXBean.getUptime / 1000.0
@@ -42,13 +42,13 @@ object EngineStateMXBean:
     for
       bean <- registerStaticMBean("EngineState", bean)
       _ <- Resource.onFinalize(IO:
-        bean.setEngineState(StateView.empty))
+        bean.setEngineState(EngineState.empty))
     yield
       bean
 
   private final class Bean private[EngineStateMXBean] extends EngineStateMXBean:
-    protected var stateView: StateView = StateView.empty
+    protected var engineState: EngineState = EngineState.empty
 
     // "inline" hides method from JMX
-    inline def setEngineState(o: StateView): Unit =
-      stateView = o
+    inline def setEngineState(o: EngineState): Unit =
+      engineState = o

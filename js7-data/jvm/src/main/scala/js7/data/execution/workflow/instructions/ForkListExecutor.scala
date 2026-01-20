@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
 import js7.data.order.OrderEvent.OrderForked
 import js7.data.order.{Order, OrderOutcome}
-import js7.data.state.{AgentsSubagentIdsScope, StateView}
+import js7.data.state.{AgentsSubagentIdsScope, EngineState}
 import js7.data.value.{ListValue, NumberValue, ObjectValue}
 import js7.data.workflow.instructions.ForkList
 import scala.collection.View
@@ -19,7 +19,7 @@ extends ForkInstructionExecutor:
   type Instr = ForkList
   val instructionClass = classOf[ForkList]
 
-  protected def toForkedEvent(fork: ForkList, order: Order[Order.IsFreshOrReady], state: StateView)
+  protected def toForkedEvent(fork: ForkList, order: Order[Order.IsFreshOrReady], state: EngineState)
   : Checked[OrderForked] =
     for
       scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
@@ -47,7 +47,7 @@ extends ForkInstructionExecutor:
     yield
       OrderForked(children)
 
-  protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
+  protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: EngineState,
     now: Timestamp) =
     OrderOutcome.Completed.fromChecked(
       for

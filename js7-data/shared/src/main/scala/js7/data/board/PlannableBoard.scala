@@ -7,7 +7,7 @@ import js7.base.time.Timestamp
 import js7.data.board.PlannableBoard.*
 import js7.data.item.ItemRevision
 import js7.data.order.{FreshOrder, Order}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, Scope}
 
@@ -34,13 +34,13 @@ extends
   def isGlobal: Boolean =
     false
 
-  def freshOrderToNoticeKey(order: FreshOrder, state: StateView)
+  def freshOrderToNoticeKey(order: FreshOrder, engineState: EngineState)
   : Checked[NoticeKey] =
-    val scope = state.toPlanOrderScope(order)
+    val scope = engineState.toPlanOrderScope(order)
     postingOrderToNoticeKey(scope)
 
-  def postingOrderToNotice(order: Order[Order.Ready], state: StateView): Checked[Notice] =
-    val scope = state.toPlanOrderScope(order)
+  def postingOrderToNotice(order: Order[Order.Ready], engineState: EngineState): Checked[Notice] =
+    val scope = engineState.toPlanOrderScope(order)
     for
       noticeKey <- postingOrderToNoticeKey(scope)
       notice <- toNotice(order.planId / noticeKey)(scope)
@@ -54,8 +54,8 @@ extends
     yield
       noticeKey
 
-  def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView): Checked[NoticeId] =
-    val scope = state.toPlanOrderScope(order)
+  def expectingOrderToNoticeId(order: Order[Order.Ready], engineState: EngineState): Checked[NoticeId] =
+    val scope = engineState.toPlanOrderScope(order)
     for
       noticeKey <- expectOrderToNoticeKey.evalAsString(using scope)
     yield

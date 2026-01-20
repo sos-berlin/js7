@@ -28,7 +28,7 @@ import js7.tester.CirceJsonTester.testJson
 final class IfExecutorTest extends OurTestSuite:
 
   private val ifExecutor = IfExecutor(InstructionExecutorService(WallClock))
-  private lazy val stateView = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestStateView.of(
     orders = Some(Seq(AOrder, BOrder)),
     workflows = Some(Seq(Workflow.of(TestWorkflowId))))
   private lazy val executorService = InstructionExecutorService(WallClock)
@@ -36,40 +36,40 @@ final class IfExecutorTest extends OurTestSuite:
   "JSON BranchId" - {
     "then" in:
       testJson(
-        ifExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to,
+        ifExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to,
         json"""[ 7, "then", 0 ]""")
 
     "else" in:
       testJson(
-        ifExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to,
+        ifExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to,
         json"""[ 7, "else", 0 ]""")
   }
 
   "If true" in:
     assert:
-      executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to ==
+      executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to ==
         Position(7) / Then % 0
 
   "If false" in:
     assert:
-      executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
+      executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to ==
         Position(7) / Else % 0
 
   "If false, no else branch" in:
-    assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
+    assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, engineState).orThrow.get.to ==
       Position(8))
 
   "Named value comparison" in:
     val expr = Equal(NamedValue("A"), StringConstant("AA"))
-    assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) ==
+    assert(executorService.nextMove(ifThenElse(expr), AOrder, engineState) ==
       Right(Some(OrderMoved(Position(7) / Then % 0))))
 
-    assert(executorService.nextMove(ifThenElse(expr), BOrder, stateView) ==
+    assert(executorService.nextMove(ifThenElse(expr), BOrder, engineState) ==
       Right(Some(OrderMoved(Position(7) / Else % 0))))
 
   "Error in expression" in:
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
+    assert(executorService.nextMove(ifThenElse(expr), AOrder, engineState) == Left(Problem("Not a valid number: X")))
 
   "JS-2134 else if" in:
     val instr =
@@ -83,7 +83,7 @@ final class IfExecutorTest extends OurTestSuite:
         Workflow.of(ElseJob)
 
     testJson(
-      ifExecutor.nextMove(instr, AOrder, stateView).orThrow.get.to,
+      ifExecutor.nextMove(instr, AOrder, engineState).orThrow.get.to,
       json"""[ 7, "then+3", 0 ]""")
 
 

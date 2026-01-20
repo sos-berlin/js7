@@ -7,7 +7,7 @@ import js7.data.execution.workflow.instructions.RetryExecutor.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderRetrying}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{Order, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -22,7 +22,7 @@ extends EventInstructionExecutor:
   type Instr = Retry
   val instructionClass = classOf[Retry]
 
-  def toEvents(retry: Retry, order: Order[Order.State], state: StateView) =
+  def toEvents(retry: Retry, order: Order[Order.State], state: EngineState) =
     if !order.isState[Order.Ready] then
       Right(Nil)
     else

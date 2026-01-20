@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderStopped
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.Stop
 
 private[instructions] final class StopExecutor(
@@ -12,7 +12,7 @@ extends EventInstructionExecutor:
   type Instr = Stop
   val instructionClass = classOf[Stop]
 
-  def toEvents(instr: Stop, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Stop, order: Order[Order.State], state: EngineState) =
     detach(order)
       .orElse:
         start(order)

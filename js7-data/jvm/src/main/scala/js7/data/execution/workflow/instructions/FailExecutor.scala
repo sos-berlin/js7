@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.data.order.OrderEvent.OrderFailedIntermediate_
 import js7.data.order.{Order, OrderOutcome}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.instructions.Fail
 
 private[instructions] final class FailExecutor(protected val service: InstructionExecutorService)
@@ -10,7 +10,7 @@ extends EventInstructionExecutor:
   type Instr = Fail
   val instructionClass = classOf[Fail]
 
-  def toEvents(fail: Fail, order: Order[Order.State], state: StateView) =
+  def toEvents(fail: Fail, order: Order[Order.State], state: EngineState) =
     start(order)
       .getOrElse:
         order.state match

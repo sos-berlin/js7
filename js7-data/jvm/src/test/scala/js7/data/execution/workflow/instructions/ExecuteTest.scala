@@ -28,7 +28,7 @@ final class ExecuteTest extends OurTestSuite:
     Seq(Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable("?")))))
   private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
-  private val stateView = ControllerTestStateView.of(
+  private val engineState = ControllerTestStateView.of(
     workflows = Some(Seq(workflow)))
 
   "toOutcome" in:
@@ -46,4 +46,4 @@ final class ExecuteTest extends OurTestSuite:
   private def toEvents(outcome: OrderOutcome): Seq[KeyedEvent[OrderActorEvent]] =
     val order = Order(orderId, workflow.id /: (Position(0)), Order.Processed,
       historicOutcomes = Vector(HistoricOutcome(Position(0), outcome)))
-    executeExecutor.toEvents(executeAnonymous, order, stateView).orThrow
+    executeExecutor.toEvents(executeAnonymous, order, engineState).orThrow

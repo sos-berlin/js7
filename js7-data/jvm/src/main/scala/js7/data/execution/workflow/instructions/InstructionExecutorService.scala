@@ -8,7 +8,7 @@ import js7.base.utils.SubclassToX
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
-import js7.data.state.StateView
+import js7.data.state.EngineState
 import js7.data.workflow.Instruction
 import org.jetbrains.annotations.TestOnly
 
@@ -49,40 +49,40 @@ final class InstructionExecutorService(val clock: WallClock):
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     classToExecutor.checked(instr.getClass).orThrow
 
-  def nextMove(instruction: Instruction, order: Order[Order.State], stateView: StateView)
+  def nextMove(instruction: Instruction, order: Order[Order.State], engineState: EngineState)
   : Checked[Option[OrderMoved]] =
     instructionToExecutor(instruction) match
       case executor: PositionInstructionExecutor =>
-        executor.nextMove(instruction.asInstanceOf[executor.Instr], order, stateView)
+        executor.nextMove(instruction.asInstanceOf[executor.Instr], order, engineState)
       case _ => Right(None)
 
   @TestOnly
-  def toEvents(orderId: OrderId, stateView: StateView)
+  def toEvents(orderId: OrderId, engineState: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     for
-      order <- stateView.idToOrder.checked(orderId)
-      events <- toEvents(stateView.instruction(order.workflowPosition), order, stateView)
+      order <- engineState.idToOrder.checked(orderId)
+      events <- toEvents(engineState.instruction(order.workflowPosition), order, engineState)
     yield events
 
   @TestOnly
-  def toEvents(order: Order[Order.State], stateView: StateView)
+  def toEvents(order: Order[Order.State], engineState: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
-    toEvents(stateView.instruction(order.workflowPosition), order, stateView)
+    toEvents(engineState.instruction(order.workflowPosition), order, engineState)
 
-  def toEvents(instruction: Instruction, order: Order[Order.State], stateView: StateView)
+  def toEvents(instruction: Instruction, order: Order[Order.State], engineState: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     instructionToExecutor(instruction) match
       case exec: EventInstructionExecutor =>
-        exec.toEvents(instruction.asInstanceOf[exec.Instr], order, stateView)
+        exec.toEvents(instruction.asInstanceOf[exec.Instr], order, engineState)
       case _ =>
         Right(Nil)
 
-  def onReturnFromSubworkflow(instr: Instruction, order: Order[Order.State], state: StateView)
+  def onReturnFromSubworkflow(instr: Instruction, order: Order[Order.State], state: EngineState)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     val executor = instructionToExecutor(instr)
     executor.onReturnFromSubworkflow(instr.asInstanceOf[executor.Instr], order, state)
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
-    instructionToExecutor(calculator.stateView.instruction(order.workflowPosition))
+    instructionToExecutor(calculator.engineState.instruction(order.workflowPosition))
       .toObstacles(order, calculator)

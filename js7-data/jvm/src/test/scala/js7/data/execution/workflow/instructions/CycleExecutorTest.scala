@@ -321,7 +321,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       timeZone = Timezone(zoneId.getId),
       calendarPath = Some(calendar.path))
 
-    lazy val stateView = AgentTestStateView(
+    lazy val engineState = AgentTestStateView(
       idToWorkflow = Map(workflow.id -> workflow),
       keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 
@@ -337,19 +337,19 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         index = 1))))
 
     "now < next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:44")).toEvents(order, stateView) ==
+      assert(executorService(local("2021-10-01T07:44")).toEvents(order, engineState) ==
         Right(List(order.id <-: OrderCycleStarted())))
 
     "now == next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:45")).toEvents(order, stateView) ==
+      assert(executorService(local("2021-10-01T07:45")).toEvents(order, engineState) ==
         Right(List(order.id <-: OrderCycleStarted())))
 
     "now > next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:46")).toEvents(order, stateView) ==
+      assert(executorService(local("2021-10-01T07:46")).toEvents(order, engineState) ==
         Right(List(order.id <-: OrderCycleStarted())))
 
     "now >= end => OrderCyclingPrepared to change the scheme" in:
-      assert(executorService(local("2021-10-01T08:00")).toEvents(order, stateView) ==
+      assert(executorService(local("2021-10-01T08:00")).toEvents(order, engineState) ==
         Right(List(order.id <-: OrderCyclingPrepared(CycleState(
           next = local("2021-10-01T12:20"),
           end  = local("2021-10-02T00:00"),
@@ -425,7 +425,7 @@ object CycleExecutorTest:
     dateOffset = ScheduleTester.dateOffset)
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock):
-    private val stateView = AgentTestStateView(
+    private val engineState = AgentTestStateView(
       idToWorkflow = Map(workflow.id -> workflow),
       keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 
@@ -439,13 +439,13 @@ object CycleExecutorTest:
     var order: Order[Order.State] = initialOrder
 
     def nextInstruction =
-      stateView.instruction(order.workflowPosition)
+      engineState.instruction(order.workflowPosition)
 
     def nextPosition =
-      executorService.nextMove(nextInstruction, order, stateView)
+      executorService.nextMove(nextInstruction, order, engineState)
 
     def step(): Seq[OrderEvent.OrderActorEvent] =
-      val keyedEvents = executorService.toEvents(nextInstruction, order, stateView).orThrow
+      val keyedEvents = executorService.toEvents(nextInstruction, order, engineState).orThrow
       for ke <- keyedEvents do logger.debug(s"${clock.now()} $ke")
       assert(keyedEvents.forall(_.key == order.id))
       val events = keyedEvents.map(_.event)
