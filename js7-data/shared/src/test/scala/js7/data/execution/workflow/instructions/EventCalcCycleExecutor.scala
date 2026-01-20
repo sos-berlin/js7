@@ -10,11 +10,11 @@ import js7.data.execution.workflow.instructions.ScheduleCalculator.Do
 import js7.data.order.Order.{BetweenCycles, Fresh, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved, OrderStarted}
 import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
-import js7.data.state.EventDrivenStateView_
+import js7.data.state.EngineState_
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 
-private[instructions] final class EventCalcCycleExecutor[S <: EventDrivenStateView_[S]]:
+private[instructions] final class EventCalcCycleExecutor[S <: EngineState_[S]]:
 
   def toEventCalc(orderId: OrderId)
   : EventCalc[S, OrderStarted | OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =

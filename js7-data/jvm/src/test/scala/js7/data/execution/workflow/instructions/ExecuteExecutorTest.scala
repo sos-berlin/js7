@@ -12,7 +12,7 @@ import js7.data.execution.workflow.instructions.ExecuteExecutorTest.*
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAttachable, OrderMoved}
 import js7.data.order.{Order, OrderId}
-import js7.data.state.ControllerTestStateView
+import js7.data.state.ControllerTestState
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -24,7 +24,7 @@ import scala.collection.View
   */
 final class ExecuteExecutorTest extends OurTestSuite:
 
-  private lazy val engineState = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestState.of(
     orders = Some(orders),
     workflows = Some(Seq(workflow)))
   private lazy val executorService = new InstructionExecutorService(WallClock)

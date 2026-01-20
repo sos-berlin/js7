@@ -24,7 +24,7 @@ import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
 import js7.data.plan.PlanFinishedEvent
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.state.{ControllerTestStateView, OrderEventHandler, TestStateView}
+import js7.data.state.{ControllerTestState, OrderEventHandler, TestEngineState}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
@@ -54,7 +54,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     for isAgent <- Seq(false, true) do s"isAgent=$isAgent" in:
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
       val eventSource = new OrderEventSource(
-        TestStateView.of(
+        TestEngineState.of(
           isAgent = isAgent,
           orders = Some(Seq(order)),
           workflows = Some(Seq(ForkWorkflow))))
@@ -1112,7 +1112,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = templateOrder.copy(attachedState = attachedState)
       body(
         order,
-        new OrderEventSource(TestStateView.of(
+        new OrderEventSource(TestEngineState.of(
           isAgent = isAgent,
           orders = Some(Seq(order)),
           workflows = Some(Seq(ForkWorkflow)))))
@@ -1175,7 +1175,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       def testResume(workflow: Workflow, from: Position, to: Position)
       : Checked[List[OrderEvent.OrderActorEvent]] =
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready(), isSuspended = true)
-        def eventSource = new OrderEventSource(ControllerTestStateView.of(
+        def eventSource = new OrderEventSource(ControllerTestState.of(
           orders = Some(Seq(order)),
           workflows = Some(Seq(workflow)),
           itemStates = Seq(LockState(Lock(lockPath)))))
@@ -1186,7 +1186,7 @@ final class OrderEventSourceTest extends OurTestSuite:
   "Failed" in:
     lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
     val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
-    val eventSource = new OrderEventSource(ControllerTestStateView.of(
+    val eventSource = new OrderEventSource(ControllerTestState.of(
       orders = Some(Seq(order)),
       workflows = Some(Seq(workflow))))
     assert(eventSource.nextEvents(order.id) == Nil)
@@ -1217,7 +1217,7 @@ final class OrderEventSourceTest extends OurTestSuite:
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
-      new OrderEventSource(ControllerTestStateView.of(
+      new OrderEventSource(ControllerTestState.of(
         orders = Some(Seq(order)),
         workflows = Some(Seq(workflow))))
 
@@ -1334,7 +1334,7 @@ final class OrderEventSourceTest extends OurTestSuite:
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
 
-      def eventSource = new OrderEventSource(ControllerTestStateView.of(
+      def eventSource = new OrderEventSource(ControllerTestState.of(
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow))))
 
@@ -1389,7 +1389,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(ControllerTestStateView.of(
+      def liveEventSource = new OrderEventSource(ControllerTestState.of(
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow)),
         itemStates = Seq(
@@ -1464,7 +1464,7 @@ object OrderEventSourceTest:
     private val inProcess = mutable.Set.empty[OrderId]
 
     private def eventSource(isAgent: Boolean) =
-      new OrderEventSource(TestStateView.of(
+      new OrderEventSource(TestEngineState.of(
         isAgent = isAgent,
         orders = Some(idToOrder.values),
         workflows = Some(idToWorkflow.values)))
@@ -1544,7 +1544,7 @@ object OrderEventSourceTest:
     workflow: Workflow,
     orders: Iterable[Order[Order.State]],
     isAgent: Boolean) =
-    new OrderEventSource(TestStateView.of(
+    new OrderEventSource(TestEngineState.of(
       isAgent = isAgent,
       orders = Some(orders),
       workflows = Some(Seq(workflow))))

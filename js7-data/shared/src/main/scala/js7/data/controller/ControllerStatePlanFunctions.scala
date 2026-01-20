@@ -15,15 +15,15 @@ import js7.data.order.OrderEvent.OrderStateReset
 import js7.data.order.{Order, OrderEvent}
 import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
 import js7.data.plan.{Plan, PlanId, PlanSchemaId, PlanSchemaState}
-import js7.data.state.EventDrivenStateView_
+import js7.data.state.EngineState_
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View}
 
 /** Contains some of the ControllerState's Plan functions.
   */
 transparent trait ControllerStatePlanFunctions[Self <: ControllerStatePlanFunctions[Self]]
-// Extend EventDrivenStateView to make abstract function implementation visible:
-extends EventDrivenStateView_[Self]:
+// Extend EngineState_ to make abstract function implementation visible:
+extends EngineState_[Self]:
   this: Self =>
 
   override protected def removeNoticeExpectation(order: Order[ExpectingNotices])

@@ -8,7 +8,7 @@ import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.instructions.RetryExecutorTest.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderRetrying}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.ControllerTestStateView
+import js7.data.state.ControllerTestState
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -67,7 +67,7 @@ object RetryExecutorTest:
       historicOutcomes = Vector:
         HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1))))
     val engineState =
-      new ControllerTestStateView(idToOrder = Map(order.id -> order)):
+      new ControllerTestState(idToOrder = Map(order.id -> order)):
         override def instruction(position: WorkflowPosition) =
           if position == workflowId /: tryPosition then
             tryInstruction.copy(retryDelays = Some(delays.toVector))

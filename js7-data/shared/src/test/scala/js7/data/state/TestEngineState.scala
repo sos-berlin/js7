@@ -7,16 +7,17 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
 import js7.data.cluster.ClusterState
-import js7.data.controller.{ControllerEventDrivenStateView, ControllerId, ControllerStatePlanFunctions}
-import js7.data.event.{Event, EventDrivenState, KeyedEvent}
+import js7.data.controller.{ControllerEngineState, ControllerId, ControllerStatePlanFunctions}
+import js7.data.event.{Event, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.PlanId
+import js7.data.state
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
-trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView_[Self]:
+trait TestEngineState[Self <: TestEngineState[Self]] extends EngineState_[Self]:
   this: Self =>
 
   def isAgent: Boolean
@@ -84,7 +85,7 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView_[S
     Right(x)
 
 
-object TestStateView:
+object TestEngineState:
 
   def of(
     isAgent: Boolean,
@@ -92,24 +93,24 @@ object TestStateView:
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
     itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  : TestStateView[?] =
+  : TestEngineState[?] =
     if isAgent then
-      AgentTestStateView.of(controllerId, orders,workflows, itemStates)
+      AgentTestEngineState.of(controllerId, orders,workflows, itemStates)
     else
-      ControllerTestStateView.of(controllerId, orders,workflows, itemStates)
+      ControllerTestState.of(controllerId, orders,workflows, itemStates)
 
 
-case class ControllerTestStateView(
+case class ControllerTestState(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends
-  TestStateView[ControllerTestStateView],
-  ControllerEventDrivenStateView[ControllerTestStateView],
-  ControllerStatePlanFunctions[ControllerTestStateView]:
+  TestEngineState[ControllerTestState],
+  ControllerEngineState[ControllerTestState],
+  ControllerStatePlanFunctions[ControllerTestState]:
 
-  val companion: ControllerTestStateView.type = ControllerTestStateView
+  def companion: ControllerTestState.type = ControllerTestState
 
   def isAgent = false
   def clusterState: ClusterState = ClusterState.Empty
@@ -118,44 +119,44 @@ extends
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]],
     keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState])
-  : ControllerTestStateView =
+  : ControllerTestState =
     copy(
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
   protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
-  : Checked[ControllerTestStateView] =
+  : Checked[ControllerTestState] =
     idToOrder.checkNoDuplicate(order.id).map: _ =>
       copy(idToOrder = idToOrder.updated(order.id, order))
 
   protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
-  : Checked[ControllerTestStateView] =
+  : Checked[ControllerTestState] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
 
-object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView]:
+object ControllerTestState extends EngineState.Companion[ControllerTestState]:
 
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
     itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  : ControllerTestStateView =
-    ControllerTestStateView(
+  : ControllerTestState =
+    ControllerTestState(
       controllerId,
       idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
       idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
       keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
 
 
-case class AgentTestStateView(
+case class AgentTestEngineState(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
-extends TestStateView[AgentTestStateView]:
+extends TestEngineState[AgentTestEngineState]:
 
-  val companion: AgentTestStateView.type = AgentTestStateView
+  def companion: AgentTestEngineState.type = AgentTestEngineState
 
   def isAgent = true
   def clusterState: ClusterState.Empty.type = ClusterState.Empty
@@ -164,22 +165,21 @@ extends TestStateView[AgentTestStateView]:
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]],
     keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState])
-  : AgentTestStateView =
+  : AgentTestEngineState =
     copy(
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
 
-
-object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView]:
+object AgentTestEngineState extends EngineState.Companion[AgentTestEngineState]:
 
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
     itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  : AgentTestStateView =
-    AgentTestStateView(
+  : AgentTestEngineState =
+    AgentTestEngineState(
       controllerId,
       idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
       idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),

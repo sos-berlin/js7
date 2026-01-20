@@ -10,7 +10,7 @@ import js7.data.job.PathExecutable
 import js7.data.lock.{Acquired, Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{LockDemand, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
 import js7.data.order.{Order, OrderId}
-import js7.data.state.ControllerTestStateView
+import js7.data.state.ControllerTestState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -19,7 +19,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 
 final class LockExecutorTest extends OurTestSuite:
 
-  private lazy val engineState = ControllerTestStateView.of(
+  private lazy val engineState = ControllerTestState.of(
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
     workflows = Some(Seq(workflow)),
     itemStates = Seq(

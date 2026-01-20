@@ -1,14 +1,13 @@
 package js7.data.controller
 
 import js7.base.problem.{Checked, Problem}
-import js7.data.board.{BoardPath, BoardState}
+import js7.data.board.BoardPath
 import js7.data.state.EngineStateFunctions
 import js7.data.workflow.instructions.NoticeInstruction
 import js7.data.workflow.position.WorkflowPosition
+import scala.reflect.ClassTag
 
-trait ControllerStateView extends EngineStateFunctions:
-
-  def checkedBoardState(path: BoardPath): Checked[BoardState]
+trait ControllerStateNoticeFunctions extends EngineStateFunctions:
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =

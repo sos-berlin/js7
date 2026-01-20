@@ -30,7 +30,7 @@ private final class ControllerStateRecoverer
 extends
   SnapshotableStateRecoverer[ControllerState],
   StandardsRecoverer,
-  ControllerStateView,
+  ControllerStateNoticeFunctions,
   OrderWatchStateHandler[ControllerStateRecoverer]:
 
   protected val S = ControllerState

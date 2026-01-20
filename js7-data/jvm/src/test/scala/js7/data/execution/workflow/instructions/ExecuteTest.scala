@@ -10,7 +10,7 @@ import js7.data.event.KeyedEvent
 import js7.data.job.{InternalExecutable, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.ControllerTestStateView
+import js7.data.state.ControllerTestState
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -28,7 +28,7 @@ final class ExecuteTest extends OurTestSuite:
     Seq(Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable("?")))))
   private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
-  private val engineState = ControllerTestStateView.of(
+  private val engineState = ControllerTestState.of(
     workflows = Some(Seq(workflow)))
 
   "toOutcome" in:

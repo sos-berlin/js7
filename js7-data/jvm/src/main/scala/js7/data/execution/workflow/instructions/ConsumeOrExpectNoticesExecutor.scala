@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifEmpty
 import js7.data.board.{BoardState, GlobalBoard, PlannableBoard}
-import js7.data.controller.{ControllerEventDrivenStateView, ControllerState}
+import js7.data.controller.{ControllerEngineState, ControllerState}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected}
@@ -22,7 +22,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
       .orElse:
         start(order)
       .orElse:
-        val controllerState = state.asInstanceOf[/*ControllerState*/ControllerEventDrivenStateView[?]]
+        val controllerState = state.asInstanceOf[/*ControllerState*/ControllerEngineState[?]]
         order.ifState[Order.Ready].map: order =>
           instr.referencedBoardPaths.toVector
             .traverse:

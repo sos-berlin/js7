@@ -21,7 +21,7 @@ import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
@@ -29,7 +29,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.state.{EngineStateStatistics, EventDrivenStateView, EventDrivenStateView_}
+import js7.data.state.{EngineState, EngineStateStatistics, EngineState_}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -49,8 +49,8 @@ final case class AgentState(
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]],
   statistics: EngineStateStatistics)
-extends SignedItemContainer,
-  EventDrivenStateView_[AgentState],
+extends 
+  EngineState_[AgentState],
   SubagentDirectorState[AgentState],
   FileWatchStateRecoverer[AgentState],
   ClusterableState[AgentState]:
@@ -395,7 +395,7 @@ extends SignedItemContainer,
 
 object AgentState
 extends
-  EventDrivenStateView.Companion[AgentState],
+  EngineState.Companion[AgentState],
   ClusterableState.Companion[AgentState],
   ItemContainer.Companion[AgentState]:
 

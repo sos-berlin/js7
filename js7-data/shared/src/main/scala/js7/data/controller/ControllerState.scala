@@ -32,7 +32,7 @@ import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -47,12 +47,13 @@ import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderN
 import js7.data.order.{Order, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
-import js7.data.state.{EngineStateStatistics, EventDrivenStateView, EventDrivenStateView_}
+import js7.data.state.{EngineState, EngineStateStatistics}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutdownStarted, SubagentShutdownV7}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.instructions.ConsumeNotices
+import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
@@ -74,10 +75,8 @@ final case class ControllerState(
   statistics: EngineStateStatistics,
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
-  SignedItemContainer,
-  EventDrivenStateView_[ControllerState],
-  ControllerStateView,
-  ControllerEventDrivenStateView[ControllerState],
+  ControllerEngineState[ControllerState],
+  ControllerStateNoticeFunctions,
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
   ControllerStatePlanFunctions[ControllerState]:
@@ -961,7 +960,7 @@ extends
 
 object ControllerState
 extends
-  EventDrivenStateView.Companion[ControllerState],
+  EngineState.Companion[ControllerState],
   ClusterableState.Companion[ControllerState],
   ItemContainer.Companion[ControllerState]:
 

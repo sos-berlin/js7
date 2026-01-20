@@ -5,8 +5,9 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
-import js7.data.board.BoardPathExpression.syntax.*
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
+import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.*
@@ -15,7 +16,7 @@ import js7.data.order.OrderEvent.OrderMoved.NoNotice
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
-import js7.data.state.ControllerTestStateView
+import js7.data.state.ControllerTestState
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.ConsumeNotices
@@ -344,7 +345,7 @@ object ConsumeNoticesExecutorTest:
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"), instr)
     val order = Order(orderId, workflow.id /: Position(0), Order.Ready(), planId = planId,
       arguments = Map("ARG" -> StringValue("🔸")))
-    val controllerState = ControllerTestStateView.of(
+    val controllerState = ControllerTestState.of(
       workflows = Some(Seq(workflow)),
       orders = Some(Seq(order)),
       itemStates =
@@ -384,3 +385,5 @@ object ConsumeNoticesExecutorTest:
     case Posted
     /** Same as a missing NoticeState. */
     case Unknown
+
+  intelliJuseImport(boardPathToExpr)
