@@ -15,23 +15,23 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class EventCalcTest extends OurTestSuite:
 
-  "test" in:
+  "Test combine with different Ctx" in:
     trait X:
       def value: String
 
-    val a: EventCalc[TestState, TestEvent, Any] =
-      EventCalc.pure(TestEvent.Added("»"))
+    val a: EventCalcCtx[TestState, TestEvent, Any] =
+      EventCalcCtx.pure(TestEvent.Added("»"))
 
-    val b: EventCalc[TestState, TestEvent.Added, TimeCtx] =
-      EventCalc.single: _ =>
-        TestEvent.Added(EventCalc.now.toString)
+    val b: EventCalcCtx[TestState, TestEvent.Added, TimeCtx] =
+      EventCalcCtx.single: _ =>
+        TestEvent.Added(EventCalcCtx.context.now.toString)
 
-    val c: EventCalc[TestState, TestEvent.Added, X] =
-      EventCalc.single: _ =>
-        TestEvent.Added(EventCalc.context.value)
+    val c: EventCalcCtx[TestState, TestEvent.Added, X] =
+      EventCalcCtx.single: _ =>
+        TestEvent.Added(EventCalcCtx.context.value)
 
-    val combined: EventCalc[TestState, TestEvent, TimeCtx & X] =
-      EventCalc.combineAll(Seq(a.widen, b.widen, c.widen))
+    val combined: EventCalcCtx[TestState, TestEvent, TimeCtx & X] =
+      EventCalcCtx.combineAll(Seq(a.widen, b.widen, c.widen))
 
     val (events, testState) = combined.calculateEventsAndAggregate(
       TestState("START"),
@@ -50,22 +50,22 @@ final class EventCalcTest extends OurTestSuite:
   "combineAll" - {
     "empty sequence" in:
       val a = MyAggregate(0)
-      val coll = EventCalc.combineAll(Nil).calculate(a, ()).orThrow
+      val coll = EventCalcCtx.combineAll(Nil).calculate(a, ()).orThrow
       assert(!coll.hasEvents && (coll.aggregate eq a))
 
     "combineAll and Problem" in:
-      val combined = EventCalc.combineAll[MyAggregate, Added, Unit](List(
-        EventCalc.pure(Added(1)),
-        EventCalc.problem(Problem("PROBLEM")),
-        EventCalc(coll => throw new AssertionError("MUST NOT BE CALLED"))))
+      val combined = EventCalcCtx.combineAll[MyAggregate, Added, Unit](List(
+        EventCalcCtx.pure(Added(1)),
+        EventCalcCtx.problem(Problem("PROBLEM")),
+        EventCalcCtx(coll => throw new AssertionError("MUST NOT BE CALLED"))))
       assert:
-        combined.calculate(EventColl(MyAggregate(0))) == Left(Problem("PROBLEM"))
+        combined.calculate(EventCollCtx(MyAggregate(0))) == Left(Problem("PROBLEM"))
 
     "combineAll does not overflow the stack, and speed test" in:
       def run(n: Int): FiniteDuration =
-        val eventCalc: EventCalc[MyAggregate, Added, Any] =
-          val singleEventCalc = EventCalc.pure[MyAggregate, Added, Any](Added(1))
-          EventCalc.combineAll:
+        val eventCalc: EventCalcCtx[MyAggregate, Added, Any] =
+          val singleEventCalc = EventCalcCtx.pure[MyAggregate, Added, Any](Added(1))
+          EventCalcCtx.combineAll:
             Iterator.fill(n)(singleEventCalc)
 
         val t = Deadline.now

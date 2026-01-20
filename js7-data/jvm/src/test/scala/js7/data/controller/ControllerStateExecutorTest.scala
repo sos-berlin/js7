@@ -570,7 +570,7 @@ object ControllerStateExecutorTest:
         agentPath, InternalExecutable("UNKNOWN")))
 
 
-  private class Executor(var coll: EventColl[ControllerState, Event, TimeCtx]):
+  private class Executor(var coll: EventColl[ControllerState, Event]):
     def controllerState = coll.aggregate
 
     def this(controllerState: ControllerState = ControllerState.empty) =
@@ -586,7 +586,7 @@ object ControllerStateExecutorTest:
         update(coll)
         coll.keyedEvents.toVector
 
-    def execute[E <: Event, Ctx >: TimeCtx](eventCalc: EventCalc[ControllerState, E, Ctx])
+    def execute[E <: Event](eventCalc: EventCalc[ControllerState, E])
     : Checked[Seq[KeyedEvent[Event]]] =
       for
         coll <- coll.add(eventCalc)
@@ -614,7 +614,7 @@ object ControllerStateExecutorTest:
         update(coll)
         subsequentEvents.keyedEvents.toVector
 
-    private def update(coll: EventColl[ControllerState, Event, TimeCtx]): Unit =
+    private def update(coll: EventColl[ControllerState, Event]): Unit =
       assert(coll.originalAggregate == this.coll.aggregate) // fails better then eq
       assert(coll.originalAggregate eq this.coll.aggregate)
       assert(coll.aggregate.toRecovered == coll.aggregate)

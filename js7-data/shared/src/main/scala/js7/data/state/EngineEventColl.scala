@@ -8,7 +8,7 @@ import js7.data.order.{Order, OrderId}
 object EngineEventColl:
 
   object extensions:
-    extension [S <: EngineState_[S], E <: Event, Ctx](coll: EventColl[S, E, Ctx])
+    extension [S <: EngineState_[S], E <: Event](coll: EventColl[S, E])
       def idToOrder: PartialFunction[OrderId, Order[Order.State]] =
         coll.aggregate.idToOrder
 

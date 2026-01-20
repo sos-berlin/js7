@@ -17,7 +17,7 @@ import js7.data.workflow.instructions.Cycle
 private[instructions] final class EventCalcCycleExecutor[S <: EngineState_[S]]:
 
   def toEventCalc(orderId: OrderId)
-  : EventCalc[S, OrderStarted | OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
+  : EventCalc[S, OrderStarted | OrderCycleStarted | OrderCyclingPrepared | OrderMoved] =
     EventCalc: coll =>
       for
         coll <- startOrder(orderId).calculate(coll)
@@ -34,14 +34,14 @@ private[instructions] final class EventCalcCycleExecutor[S <: EngineState_[S]]:
       yield
         coll
 
-  private def startOrder(orderId: OrderId): EventCalc[S, OrderStarted, TimeCtx] =
+  private def startOrder(orderId: OrderId): EventCalc[S, OrderStarted] =
     EventCalc.checked: controllerState =>
       controllerState.idToOrder.checked(orderId).map: order =>
         order.ifState[Fresh].map: order =>
           order.id <-: OrderStarted
 
   private def readyToEvents(instr: Cycle, order: Order[Ready])
-  : EventCalc[S, OrderCyclingPrepared | OrderMoved, TimeCtx] =
+  : EventCalc[S, OrderCyclingPrepared | OrderMoved] =
     EventCalc: coll =>
       for
         workflow <- coll.aggregate.keyToItem(Workflow).checked(order.workflowId)
@@ -66,7 +66,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EngineState_[S]]:
         coll
 
   private def betweenCyclesToEvents(instr: Cycle, order: Order[BetweenCycles])
-  : EventCalc[S, OrderCycleStarted | OrderCyclingPrepared | OrderMoved, TimeCtx] =
+  : EventCalc[S, OrderCycleStarted | OrderCyclingPrepared | OrderMoved] =
     EventCalc: coll =>
       order.state.cycleState match
         case None =>
@@ -96,7 +96,7 @@ private[instructions] final class EventCalcCycleExecutor[S <: EngineState_[S]]:
     order.id <-: OrderMoved(order.position.increment)
 
   def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State])
-  : EventCalc[S, OrderCycleFinished, TimeCtx] =
+  : EventCalc[S, OrderCycleFinished] =
     EventCalc.checked: controllerState =>
       for
         calculator <- toScheduleCalculator(order, instr, controllerState)

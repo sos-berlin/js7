@@ -4,162 +4,144 @@ import cats.Monoid
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.ScalaUtils.syntax.toEagerSeq
+import js7.data.event
+import js7.data.event.EventCalcCtx.OpaqueEventCollCtx
 import js7.data.event.KeyedEvent.NoKey
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 
 /** Calculator for EventColl.
   *
-  * In essence, a function `EventColl => Checked[EventColl]`
+  * In essence, a function `EventCollCtx => Checked[EventColl]`
   */
-final class EventCalc[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-  private val function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]]):
+final class EventCalcCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+  private val function: EventCollCtx[S, E, Ctx] => Checked[EventCollCtx[S, E, Ctx]]):
 
   @TestOnly
   def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
     calculate(aggregate, context).map: coll =>
       coll.keyedEvents.toVector -> coll.aggregate
 
-  /** Returns an EventColl containing the calculated events and aggregate. */
-  def calculate(aggregate: S, context: Ctx): Checked[EventColl[S, E, Ctx]] =
-    calculate[S, E, Ctx](EventColl(aggregate, context))
+  /** Returns an EventCollCtx containing the calculated events and aggregate. */
+  def calculate(aggregate: S, context: Ctx): Checked[EventCollCtx[S, E, Ctx]] =
+    calculate[S, E, Ctx](EventCollCtx(aggregate, context))
 
-  /** Returns an EventColl containing the calculated events and aggregate.
+  /** Returns an EventCollCtx containing the calculated events and aggregate.
     * <p>Simply calls  `function`. */
   inline def calculate[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1](
-    eventColl: EventColl[S1, E1, Ctx & Ctx1])
-  : Checked[EventColl[S1, E1, Ctx & Ctx1]] =
+    eventColl: EventCollCtx[S1, E1, Ctx & Ctx1])
+  : Checked[EventCollCtx[S1, E1, Ctx & Ctx1]] =
     widen[S1, E1, Ctx & Ctx1].function(eventColl)
 
   inline def widen[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1]
-  : EventCalc[S1, E1, Ctx & Ctx1] =
-    this.asInstanceOf[EventCalc[S1, E1, Ctx & Ctx1]]
+  : EventCalcCtx[S1, E1, Ctx & Ctx1] =
+    this.asInstanceOf[EventCalcCtx[S1, E1, Ctx & Ctx1]]
 
 
-object EventCalc:
+object EventCalcCtx:
 
-  private val Empty: EventCalc[?, ?, ?] =
-    EventCalc(Right(_))
+  private val Empty: EventCalcCtx[?, ?, ?] =
+    EventCalcCtx(Right(_))
 
-  inline def empty[S <: EventDrivenState_[S, E], E <: Event, Ctx]: EventCalc[S, E, Ctx] =
+  inline def empty[S <: EventDrivenState_[S, E], E <: Event, Ctx]: EventCalcCtx[S, E, Ctx] =
     Empty.asInstanceOf
 
   inline def apply[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
-  : EventCalc[S, E, Ctx] =
-    coll(function)
+    inline function: EventCollCtx[S, E, Ctx] => Checked[EventCollCtx[S, E, Ctx]])
+  : EventCalcCtx[S, E, Ctx] =
+    new EventCalcCtx(function)
 
-  inline def coll[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline function: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
-  : EventCalc[S, E, Ctx] =
-    new EventCalc(function)
+  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem): EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx(_ => Left(problem))
 
-  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem): EventCalc[S, E, Ctx] =
-    EventCalc(_ => Left(problem))
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    keyedEvent: MaybeTimestampedKeyedEvent[E])
+  : EventCalcCtx[S, E, Ctx] =
+    pureEvent(keyedEvent)
+
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    inline keyedEvents: MaybeTimestampedKeyedEvent[E]*)
+  : EventCalcCtx[S, E, Ctx] =
+    pureEvents(keyedEvents)
+
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    inline keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalcCtx[S, E, Ctx] =
+    pureEvents(keyedEvents)
+
+  def pureNoKey[S <: EventDrivenState_[S, E], E <: NoKeyEvent, Ctx](events: Iterable[E])
+  : EventCalcCtx[S, E, Ctx] =
+    val eagerlyComputedKeyedEvents = events.view.map(NoKey <-: _).toVector
+    EventCalcCtx(_.add(eagerlyComputedKeyedEvents))
+
+  def pureEvent[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    keyedEvent: MaybeTimestampedKeyedEvent[E])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx(_.addEvent(keyedEvent))
+
+  private def pureEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalcCtx[S, E, Ctx] =
+    val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
+    EventCalcCtx(_.addEvents(eagerlyComputedKeyedEvents))
 
   def single[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toKeyedEvent: S => OpaqueEventColl[S, E, Ctx] ?=> KeyedEvent[E])
-  : EventCalc[S, E, Ctx] =
-    EventCalc: coll =>
+    toKeyedEvent: S => OpaqueEventCollCtx[S, E, Ctx] ?=> KeyedEvent[E])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx: coll =>
       coll.addEvent:
         toKeyedEvent(coll.aggregate)(using coll)
 
   inline def maybe[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline toKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> Option[MaybeTimestampedKeyedEvent[E]])
-  : EventCalc[S, E, Ctx] =
+    inline toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> Option[MaybeTimestampedKeyedEvent[E]])
+  : EventCalcCtx[S, E, Ctx] =
     multiple(toKeyedEvents)
 
-  def multiple[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> IterableOnce[MaybeTimestampedKeyedEvent[E]])
-  : EventCalc[S, E, Ctx] =
-    EventCalc: coll =>
-      coll.addEvents:
-        toKeyedEvents(coll.aggregate)(using coll)
-
   def checked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toCheckedKeyedEvents: S => OpaqueEventColl[S, E, Ctx] ?=> Checked[IterableOnce[KeyedEvent[E]]])
-  : EventCalc[S, E, Ctx] =
-    EventCalc: coll =>
+    toCheckedKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> Checked[IterableOnce[KeyedEvent[E]]])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx: coll =>
       coll.addChecked:
         toCheckedKeyedEvents(coll.aggregate)(using coll)
 
   def addChecked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
     keyedEvents: Checked[IterableOnce[KeyedEvent[E]]])
-  : EventCalc[S, E, Ctx] =
+  : EventCalcCtx[S, E, Ctx] =
     val eagerlyComputedKeyedEvents = keyedEvents.map(_.toEagerSeq)
-    EventCalc(_.addChecked(eagerlyComputedKeyedEvents))
+    EventCalcCtx(_.addChecked(eagerlyComputedKeyedEvents))
 
-  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvent: MaybeTimestampedKeyedEvent[E])
-  : EventCalc[S, E, Ctx] =
-    pureEvent(keyedEvent)
+  def multiple[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx: coll =>
+      coll.addEvents:
+        toKeyedEvents(coll.aggregate)(using coll)
 
-  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline keyedEvents: MaybeTimestampedKeyedEvent[E]*)
-  : EventCalc[S, E, Ctx] =
-    pureEvents(keyedEvents)
+  opaque type OpaqueEventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] =
+    EventCollCtx[S, E, Ctx]
 
-  inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
-  : EventCalc[S, E, Ctx] =
-    pureEvents(keyedEvents)
-
-  //inline def pure[K, E1 <: E](key: K)(events: Iterable[E1])
-  //  (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
-  //  (using /*erased*/ ev: K =:= E1.Key)
-  //: Checked[EventCalc[S, E, Ctx] =
-  //  pureWithKey[K, E1](key)(events)
-
-  def pureNoKey[S <: EventDrivenState_[S, E], E <: NoKeyEvent, Ctx](events: Iterable[E])
-  : EventCalc[S, E, Ctx] =
-    val eagerlyComputedKeyedEvents = events.view.map(NoKey <-: _).toVector
-    EventCalc(_.add(eagerlyComputedKeyedEvents))
-
-  def pureEvent[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvent: MaybeTimestampedKeyedEvent[E])
-  : EventCalc[S, E, Ctx] =
-    EventCalc(_.addEvent(keyedEvent))
-
-  private def pureEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
-  : EventCalc[S, E, Ctx] =
-    val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
-    EventCalc(_.addEvents(eagerlyComputedKeyedEvents))
-
-  opaque type OpaqueEventColl[S <: EventDrivenState_[S, E], E <: Event, Ctx] = EventColl[S, E, Ctx]
-
-  def context[S <: EventDrivenState_[S, E], E <: Event, Ctx](using coll: OpaqueEventColl[S, E, Ctx])
+  def context[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+                                                              using coll: OpaqueEventCollCtx[S, E, Ctx])
   : Ctx =
     coll.context
-
-  /** TODO Don't use this, use `now`. */
-  inline def clock[S <: EventDrivenState_[S, E], E <: Event](
-    using coll: OpaqueEventColl[S, E, TimeCtx])
-  : WallClock =
-    context.clock
-
-  def now[S <: EventDrivenState_[S, E], E <: Event](using coll: OpaqueEventColl[S, E, TimeCtx])
-  : Timestamp =
-    coll.context.now
-
 
   // Monoid //
 
   private sealed trait DummyAggregate extends EventDrivenState_[DummyAggregate, Event]
 
-  private val GenericMonoid: Monoid[EventCalc[DummyAggregate, Event, Any]] =
-    type MyEventCalc = EventCalc[DummyAggregate, Event, Any]
-    new Monoid[MyEventCalc]:
-      def empty = Empty.asInstanceOf[MyEventCalc]
+  private val GenericMonoid: Monoid[EventCalcCtx[DummyAggregate, Event, Any]] =
+    type MyEventCalcCtx = EventCalcCtx[DummyAggregate, Event, Any]
+    new Monoid[MyEventCalcCtx]:
+      def empty = Empty.asInstanceOf[MyEventCalcCtx]
 
-      def combine(a: MyEventCalc, b: MyEventCalc): MyEventCalc =
-        EventCalc: coll =>
+      def combine(a: MyEventCalcCtx, b: MyEventCalcCtx): MyEventCalcCtx =
+        EventCalcCtx: coll =>
           a.calculate(coll).flatMap(b.calculate)
 
       // This implementation of combineAll avoids a hidden flatMap recursion
-      override def combineAll(as: IterableOnce[MyEventCalc]): MyEventCalc =
-        type MyEventColl = EventColl[DummyAggregate, Event, Any]
-        EventCalc[DummyAggregate, Event, Any]: coll =>
+      override def combineAll(as: IterableOnce[MyEventCalcCtx]): MyEventCalcCtx =
+        type MyEventColl = EventCollCtx[DummyAggregate, Event, Any]
+        EventCalcCtx[DummyAggregate, Event, Any]: coll =>
           val it = as.iterator
 
           @tailrec def loop(coll: MyEventColl): Checked[MyEventColl] =
@@ -172,10 +154,107 @@ object EventCalc:
 
           loop(coll)
 
-  given monoid: [S <: EventDrivenState_[S, E], E <: Event, Ctx] => Monoid[EventCalc[S, E, Ctx]] =
+  given monoid: [S <: EventDrivenState_[S, E], E <: Event, Ctx] => Monoid[EventCalcCtx[S, E, Ctx]] =
     GenericMonoid.asInstanceOf
 
   def combineAll[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    eventCalcs: IterableOnce[EventCalc[S, E, Ctx]])
-  : EventCalc[S, E, Ctx] =
+    eventCalcs: IterableOnce[EventCalcCtx[S, E, Ctx]])
+  : EventCalcCtx[S, E, Ctx] =
     monoid.combineAll(eventCalcs)
+
+
+
+/** A `EventCalcCtx` with a `TimeCtx`.
+  * <p>
+  * This is the regulary used Ctx type-parameter.
+  */
+type EventCalc[S <: EventDrivenState_[S, E], E <: Event] =
+  EventCalcCtx[S, E, TimeCtx]
+
+
+object EventCalc:
+
+  inline def empty[S <: EventDrivenState_[S, E], E <: Event]: EventCalc[S, E] =
+    EventCalcCtx.empty
+
+  inline def apply[S <: EventDrivenState_[S, E], E <: Event](
+    inline function: EventColl[S, E] => Checked[EventColl[S, E]])
+  : EventCalc[S, E] =
+    EventCalcCtx(function)
+
+  inline def problem[S <: EventDrivenState_[S, E], E <: Event](inline problem: Problem)
+  : EventCalc[S, E] =
+    EventCalcCtx.problem(problem)
+
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event](
+    keyedEvent: MaybeTimestampedKeyedEvent[E])
+  : EventCalc[S, E] =
+    EventCalcCtx.pure(keyedEvent)
+
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event](
+    inline keyedEvents: MaybeTimestampedKeyedEvent[E]*)
+  : EventCalc[S, E] =
+    EventCalcCtx.pure(keyedEvents)
+
+  inline def pure[S <: EventDrivenState_[S, E], E <: Event](
+    inline keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalc[S, E] =
+    EventCalcCtx.pure(keyedEvents)
+
+  inline def pureNoKey[S <: EventDrivenState_[S, E], E <: NoKeyEvent](
+    inline events: Iterable[E])
+  : EventCalc[S, E] =
+    EventCalcCtx.pureNoKey(events)
+
+  inline def pureEvent[S <: EventDrivenState_[S, E], E <: Event](
+    inline keyedEvent: MaybeTimestampedKeyedEvent[E])
+  : EventCalc[S, E] =
+    EventCalcCtx.pureEvent(keyedEvent)
+
+  inline def single[S <: EventDrivenState_[S, E], E <: Event](
+    inline toKeyedEvent: S => OpaqueEventColl[S, E] ?=> KeyedEvent[E])
+  : EventCalc[S, E] =
+    EventCalcCtx.single(toKeyedEvent)
+
+  inline def maybe[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    inline toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> Option[MaybeTimestampedKeyedEvent[E]])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx.maybe(toKeyedEvents)
+
+  inline def checked[S <: EventDrivenState_[S, E], E <: Event](
+    inline toCheckedKeyedEvents:
+      S => OpaqueEventColl[S, E] ?=> Checked[IterableOnce[KeyedEvent[E]]])
+  : EventCalc[S, E] =
+    EventCalcCtx.checked(toCheckedKeyedEvents)
+
+  inline def addChecked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
+    inline keyedEvents: Checked[IterableOnce[KeyedEvent[E]]])
+  : EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx.addChecked(keyedEvents)
+
+  inline def multiple[S <: EventDrivenState_[S, E], E <: Event](
+    inline toKeyedEvents: S => OpaqueEventColl[S, E] ?=> IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalc[S, E] =
+    EventCalcCtx.multiple(toKeyedEvents)
+
+  opaque type OpaqueEventColl[S <: EventDrivenState_[S, E], E <: Event] =
+    EventCalcCtx.OpaqueEventCollCtx[S, E, TimeCtx]
+
+  def context[S <: EventDrivenState_[S, E], E <: Event](using coll: OpaqueEventColl[S, E])
+  : TimeCtx =
+    EventCalcCtx.context
+
+  def now[S <: EventDrivenState_[S, E], E <: Event](using coll: OpaqueEventColl[S, E])
+  : Timestamp =
+    EventCalcCtx.context.now
+
+  /** TODO Don't use this, use `now`. */
+  inline def clock[S <: EventDrivenState_[S, E], E <: Event](
+    using coll: OpaqueEventColl[S, E])
+  : WallClock =
+    context.clock
+
+  inline def combineAll[S <: EventDrivenState_[S, E], E <: Event](
+    inline eventCalcs: IterableOnce[EventCalc[S, E]])
+  : EventCalc[S, E] =
+    EventCalcCtx.combineAll(eventCalcs)

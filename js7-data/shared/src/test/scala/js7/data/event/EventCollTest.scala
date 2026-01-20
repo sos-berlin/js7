@@ -19,7 +19,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addEvent" in:
     val coll =
-      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+      val coll = EventCollCtx[TestState, TestEvent, Unit](TestState(""), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -34,7 +34,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addEvent with failing event" in :
     val checked =
-      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+      val coll = EventCollCtx[TestState, TestEvent, Unit](TestState(""), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -45,7 +45,7 @@ final class EventCollTest extends OurTestSuite:
     assert(checked == Left(EventNotApplicableProblem(InvalidEvent, TestState("A"))))
 
   "addEvents" in:
-    val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+    val coll = EventCollCtx[TestState, TestEvent, Unit](TestState(""), ())
       .addEvents(Seq(Added("A"), Added(",B")))
       .orThrow
     assert(coll.aggregate == TestState("A,B"))
@@ -57,7 +57,7 @@ final class EventCollTest extends OurTestSuite:
     val orderId = OrderId("ORDER")
     val workflow = Workflow.of(WorkflowPath("W") ~ "1")
     val coll =
-      val coll = EventColl[ControllerState, Event, Unit](ControllerState.empty, ())
+      val coll = EventCollCtx[ControllerState, Event, Unit](ControllerState.empty, ())
       val signer = ControllerState.toItemSigner(SillySigner.Default)
       locally:
         for
@@ -82,9 +82,9 @@ final class EventCollTest extends OurTestSuite:
       locally:
         for
           _ <- Checked.unit
-          coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
+          coll = EventCollCtx[TestState, TestEvent, Unit](TestState(""), ())
           coll <- coll.addEvent(Added("A"))
-          coll <- coll.addEventCalc(EventCalc.pure(Added(",B")))
+          coll <- coll.addEventCalc(EventCalcCtx.pure(Added(",B")))
         yield
           coll
       .orThrow
@@ -95,7 +95,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addColl" in:
     val aColl =
-      val coll = EventColl[TestState, TestEvent, Unit](TestState("START:"), ())
+      val coll = EventCollCtx[TestState, TestEvent, Unit](TestState("START:"), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -103,7 +103,7 @@ final class EventCollTest extends OurTestSuite:
           coll
       .orThrow
     val bColl =
-      val coll = EventColl[TestState, TestEvent, Unit](aColl.aggregate, ())
+      val coll = EventCollCtx[TestState, TestEvent, Unit](aColl.aggregate, ())
       locally:
         for
           coll <- coll.addEvent(Added(",B"))

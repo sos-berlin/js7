@@ -122,7 +122,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
           val barrier2 = new CyclicBarrier(2)
           journal.persist:
             // Block the first persist operation
-            EventCalc[TestState, TestEvent, TimeCtx]: coll =>
+            EventCalc[TestState, TestEvent]: coll =>
               blocking:
                 barrier1.await()
                 barrier2.await()
@@ -199,7 +199,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
       ): journal =>
         (1 to n).to(ArraySeq).parTraverse: i =>
           journal.persist:
-            EventCalc[TestState, TestEvent, TimeCtx]:
+            EventCalc[TestState, TestEvent]:
               _.add(toEvents(i))
         .timed.flatMap: (duration, _) =>
           IO:

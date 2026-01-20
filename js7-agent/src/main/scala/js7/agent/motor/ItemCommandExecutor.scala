@@ -261,10 +261,10 @@ private final class ItemCommandExecutor(
 
   private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
   : IO[Checked[Persisted[AgentState, E]]] =
-    journal.persist(EventCalc.checked[AgentState, E, TimeCtx](toEvents(_)))
+    journal.persist(EventCalc.checked[AgentState, E](toEvents(_)))
       .flatTapT(onPersisted)
 
-  private def persist[E <: Event](eventCalc: EventCalc[AgentState, E, TimeCtx])
+  private def persist[E <: Event](eventCalc: EventCalc[AgentState, E])
   : IO[Checked[Persisted[AgentState, E]]] =
     journal.persist(eventCalc)
       .flatTapT(onPersisted)

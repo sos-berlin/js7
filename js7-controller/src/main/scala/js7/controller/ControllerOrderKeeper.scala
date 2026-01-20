@@ -307,7 +307,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       become("becomingReady")(becomingReady)
 
       persist(
-        EventCalc[ControllerState, Event, TimeCtx]: coll =>
+        EventCalc[ControllerState, Event]: coll =>
           for
             coll <- coll.add:
               !coll.aggregate.controllerMetaState.isDefined thenSome:
@@ -470,7 +470,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
               logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
               Future.successful(None)
             else
-              val eventCalc = EventCalc[ControllerState, Event, TimeCtx]: coll =>
+              val eventCalc = EventCalc[ControllerState, Event]: coll =>
                 // TODO On error, invalidate only affected Order or Agent
                 stampedAgentEvents.view.foldEithers(coll):
                   case (coll, Stamped(_, ts, keyedEvent)) =>
@@ -611,7 +611,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     case Internal.PlanIsDue(planId) =>
       plans.deleteSchedule(planId)
       persist(
-        EventCalc.multiple[ControllerState, Event, TimeCtx]: controllerState =>
+        EventCalc.multiple[ControllerState, Event]: controllerState =>
           for
             planSchemaState <- controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId).toList
             plan <- planSchemaState.plan(planId.planKey).toOption.toList
@@ -961,7 +961,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     )(handle)
 
   private def executeCommandAndPersistAndHandle2[R <: ControllerCommand.Response](
-    eventCalc: EventCalc[ControllerState, Event, TimeCtx])
+    eventCalc: EventCalc[ControllerState, Event])
     (handle: Persisted[ControllerState, Event] => Checked[R])
   : Future[Checked[R]] =
     eventCalc.calculate(controllerState(), TimeCtx(clock.now())) match
@@ -996,7 +996,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     agentRegister.insert(agent.path, entry)
     entry
 
-  private def persistTransactionAndSubsequentEvents[A](coll: EventColl[ControllerState, Event, TimeCtx])
+  private def persistTransactionAndSubsequentEvents[A](coll: EventColl[ControllerState, Event])
     (callback: Persisted[ControllerState, Event] => A)
   : Future[A] =
     persist(
@@ -1005,7 +1005,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       CommitOptions.Transaction
     )(callback)
 
-  private def addSubsequentEvents: EventCalc[ControllerState, Event, TimeCtx] =
+  private def addSubsequentEvents: EventCalc[ControllerState, Event] =
     EventCalc: coll =>
       ControllerStateExecutor.addSubsequentEvents(coll)
 

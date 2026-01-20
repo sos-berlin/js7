@@ -3,11 +3,11 @@ package js7.controller.command
 import com.typesafe.config.Config
 import js7.data.command.CommandToEventCalc
 import js7.data.controller.ControllerState
-import js7.data.event.{Event, TimeCtx}
+import js7.data.event.Event
 import scala.collection.immutable.ArraySeq
 
 final class ControllerCommandToEventCalc(config: Config)
-extends CommandToEventCalc[ControllerState, Event, TimeCtx]:
+extends CommandToEventCalc[ControllerState, Event]:
 
   protected val cmdExecutors =
     ArraySeq(
@@ -34,4 +34,4 @@ extends CommandToEventCalc[ControllerState, Event, TimeCtx]:
 
 
 object ControllerCommandToEventCalc
-extends CommandToEventCalc.Companion[ControllerState, Event, TimeCtx]
+extends CommandToEventCalc.Companion[ControllerState, Event]

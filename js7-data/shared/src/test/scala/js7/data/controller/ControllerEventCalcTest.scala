@@ -8,13 +8,13 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.{BoardPath, PlannableBoard}
 import js7.data.controller.ControllerEvent.ControllerInitialized
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventCalc, EventColl, NoKeyEvent, TimeCtx}
+import js7.data.event.{EventCalc, EventCalcCtx, EventCollCtx, NoKeyEvent, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.plan.{PlanSchema, PlanSchemaId}
 import js7.data.state.EngineStateStatistics
 
-/** Test EventCalc[ControllerState, Event, TimeCtx]. */
+/** Test EventCalc[ControllerState, Event]. */
 final class ControllerEventCalcTest extends OurTestSuite:
 
   "Combine two EventCalcs and calculate events and aggregate" in:
@@ -24,23 +24,23 @@ final class ControllerEventCalcTest extends OurTestSuite:
     val board = PlannableBoard(BoardPath("BOARD"), itemRevision = Some(ItemRevision(0)))
 
     // First EventCalc //
-    val controllerInitialized: EventCalc[ControllerState, ControllerInitialized, TimeCtx] =
+    val controllerInitialized: EventCalcCtx[ControllerState, ControllerInitialized, TimeCtx] =
       EventCalc.single: _ =>
         NoKey <-: ControllerInitialized(ControllerId("Controller"), EventCalc.now)
 
     // Second EventCalc //
-    val itemAdded: EventCalc[ControllerState, InventoryItemEvent, Any] =
-      EventCalc.pure(
+    val itemAdded: EventCalcCtx[ControllerState, InventoryItemEvent, Any] =
+      EventCalcCtx.pure(
         NoKey <-: UnsignedSimpleItemAdded(planSchema),
         NoKey <-: UnsignedSimpleItemAdded(board))
 
     // Combined EventCalc //
-    val eventCalc: EventCalc[ControllerState, NoKeyEvent, TimeCtx] =
+    val eventCalc: EventCalcCtx[ControllerState, NoKeyEvent, TimeCtx] =
       controllerInitialized.widen |+| itemAdded.widen
 
     // Calculate EventColl with events and aggregate //
     val context = TimeCtx(initiallyStartedAt)
-    val eventColl: EventColl[ControllerState, NoKeyEvent, TimeCtx] =
+    val eventColl: EventCollCtx[ControllerState, NoKeyEvent, TimeCtx] =
       eventCalc.calculate(ControllerState.empty, context).orThrow
 
     assert(eventColl.keyedEvents.toVector == Vector(

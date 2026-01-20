@@ -59,7 +59,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     super.postStop()
 
   protected final def persistKeyedEventIO[A](
-    eventCalc: EventCalc[S, E, TimeCtx], async: Boolean = false)
+    eventCalc: EventCalc[S, E], async: Boolean = false)
     (callback: Persisted[S, E] => A)
   : IO[Checked[A]] =
     promiseIO[Checked[A]]: promise =>
@@ -68,7 +68,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   /** Fast lane for events not affecting the journaled state. */
   @TestOnly
   protected final def persistKeyedEventAcceptEarlyIO[EE <: E](
-    eventCalc: EventCalc[S, EE, TimeCtx],
+    eventCalc: EventCalc[S, EE],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Accepted]] =
     promiseIO[Checked[Accepted]]: promise =>
@@ -90,7 +90,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       callback(persisted.stampedKeyedEvents.head, persisted.aggregate)
 
   protected final def persist[EE <: E, A](
-    eventCalc: EventCalc[S, EE, TimeCtx],
+    eventCalc: EventCalc[S, EE],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
     callback: Persisted[S, EE] => A)
@@ -99,7 +99,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       .map(_.orThrow)(using ioRuntime.compute)
 
   protected final def persistKeyedEventsReturnChecked[EE <: E, A](
-    eventCalc: EventCalc[S, EE, TimeCtx],
+    eventCalc: EventCalc[S, EE],
     options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
     callback: Persisted[S, EE] => A)
@@ -108,7 +108,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       callback)
 
   private def persistEventCalcReturnChecked2[EE <: E, A](
-    eventCalc: EventCalc[S, EE, TimeCtx],
+    eventCalc: EventCalc[S, EE],
     options: CommitOptions,
     async: Boolean = false,
     dontCrashActorOnFailure: Boolean = false)(
@@ -169,7 +169,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       beginStashing(firstName)
 
   protected[journal] def journaling: Receive =
-    case Persist(eventCalc: EventCalc[S, E, TimeCtx] @unchecked, async, callback, promise) =>
+    case Persist(eventCalc: EventCalc[S, E] @unchecked, async, callback, promise) =>
       promise.completeWith:
         persist(eventCalc, async = async): persisted =>
           try Right(callback(persisted))
@@ -288,13 +288,13 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     override def toString = s"Deferred(${async ?? "async"})"
 
   private case class Persist[A](
-    eventCalc: EventCalc[S, E, TimeCtx],
+    eventCalc: EventCalc[S, E],
     async: Boolean = false,
     callback: Persisted[S, E] => A,
     promise: Promise[Checked[A]])
 
   private case class PersistAcceptEarly(
-    eventCalc: EventCalc[S, E, TimeCtx],
+    eventCalc: EventCalc[S, E],
     options: CommitOptions,
     promise: Promise[Checked[Accepted]])
 

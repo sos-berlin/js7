@@ -41,7 +41,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   final def persist[E <: Event](
     options: CommitOptions = CommitOptions.default,
     since: Deadline = Deadline.now)
-    (eventCalc: EventCalc[S, E, TimeCtx])
+    (eventCalc: EventCalc[S, E])
   : IO[Checked[Persisted[S, E]]] =
     persist_(
       Persist(options, since)(eventCalc))
@@ -76,7 +76,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   : IO[Checked[Persisted[S, E]]] =
     persistChecked()(aggregateToEvents)
 
-  final def persist[E <: Event](eventCalc: EventCalc[S, E, TimeCtx]): IO[Checked[Persisted[S, E]]] =
+  final def persist[E <: Event](eventCalc: EventCalc[S, E]): IO[Checked[Persisted[S, E]]] =
     persist_(Persist(eventCalc))
 
   inline final def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =

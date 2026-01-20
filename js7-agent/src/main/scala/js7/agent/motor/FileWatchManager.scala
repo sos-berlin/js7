@@ -190,7 +190,7 @@ extends
     fileWatch: FileWatch,
     directory: Path,
     dirEventSeqs: Seq[DirectoryEvent])
-  : EventCalc[AgentState, OrderWatchEvent, TimeCtx] =
+  : EventCalc[AgentState, OrderWatchEvent] =
     EventCalc.multiple: agentState =>
       agentState.keyTo(FileWatchState).get(fileWatch.path)
         // Ignore late events after FileWatch has been removed

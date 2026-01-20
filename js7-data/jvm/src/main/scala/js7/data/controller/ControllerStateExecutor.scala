@@ -14,7 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.board.NoticeEventSource
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventCalc, EventColl, KeyedEvent, TimeCtx}
+import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
@@ -47,7 +47,7 @@ object ControllerStateExecutor:
   private lazy val nowScope = NowScope()
 
   def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
-  : EventCalc[ControllerState, OrderAddedEvent, Any] =
+  : EventCalc[ControllerState, OrderAddedEvent] =
     EventCalc.checked: controllerState =>
       freshOrders.checkUniquenessBy(_.id) *>
         freshOrders.flatTraverse:
@@ -112,7 +112,7 @@ object ControllerStateExecutor:
     yield
       position
 
-  def startResetAgent(agentPath: AgentPath, force: Boolean): EventCalc[ControllerState, Event, TimeCtx] =
+  def startResetAgent(agentPath: AgentPath, force: Boolean): EventCalc[ControllerState, Event] =
     EventCalc: coll =>
       for
         coll <- coll.add:
@@ -137,7 +137,7 @@ object ControllerStateExecutor:
         coll
 
   private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
-  : EventCalc[ControllerState, OrderCoreEvent, TimeCtx] =
+  : EventCalc[ControllerState, OrderCoreEvent] =
     EventCalc.checked: controllerState =>
       given InstructionExecutorService = InstructionExecutorService(EventCalc.clock)
       val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
@@ -149,12 +149,12 @@ object ControllerStateExecutor:
       yield
         orderEvents ++ fail.view.map(order.id <-: _)
 
-  def addSubsequentEvents(coll: EventColl[ControllerState, Event, TimeCtx])
-  : Checked[EventColl[ControllerState, Event, TimeCtx]] =
+  def addSubsequentEvents(coll: EventColl[ControllerState, Event])
+  : Checked[EventColl[ControllerState, Event]] =
     addSubsequentEvents(coll, 0)
 
-  private def addSubsequentEvents(coll: EventColl[ControllerState, Event, TimeCtx], recursion: Int)
-  : Checked[EventColl[ControllerState, Event, TimeCtx]] =
+  private def addSubsequentEvents(coll: EventColl[ControllerState, Event], recursion: Int)
+  : Checked[EventColl[ControllerState, Event]] =
     directSubsequentEvents(coll) match
       case Left(problem) => Left(problem)
       case Right(subcoll) =>
@@ -170,13 +170,13 @@ object ControllerStateExecutor:
             case Right(subcoll2) => coll.add(subcoll2)
 
   /** Returns the directly subsequent events. */
-  def directSubsequentEvents(coll: EventColl[ControllerState, Event, TimeCtx])
-  : Checked[EventColl[ControllerState, Event, TimeCtx]] =
+  def directSubsequentEvents(coll: EventColl[ControllerState, Event])
+  : Checked[EventColl[ControllerState, Event]] =
     // (looks like an EventCalc, but has a different semantic)
     eventsToTouchedThings(coll).flatMap: tuple =>
       touchedThingsToSubsequentEvents.tupled(tuple).calculate(coll)
 
-  private def eventsToTouchedThings(coll: EventColl[ControllerState, Event, TimeCtx])
+  private def eventsToTouchedThings(coll: EventColl[ControllerState, Event])
   : Checked[(
     collection.Set[InventoryItemKey],
     collection.Set[OrderId],
@@ -253,7 +253,7 @@ object ControllerStateExecutor:
     detachedItems1: collection.Set[InventoryItemKey],
     detachedWorkflows: collection.Seq[(WorkflowId, AgentPath)],
     deletedWorkflows: collection.Seq[WorkflowId])
-  : EventCalc[ControllerState, Event, TimeCtx] =
+  : EventCalc[ControllerState, Event] =
     EventCalc: coll =>
       val detachedItems = mutable.Set.empty[InventoryItemKey] ++ detachedItems1
       for
@@ -354,7 +354,7 @@ object ControllerStateExecutor:
         coll
 
   private def nextItemAttachedStateEvents(itemKeys: Iterable[InventoryItemKey])
-  : EventCalc[ControllerState, ItemAttachedStateEvent, Any] =
+  : EventCalc[ControllerState, ItemAttachedStateEvent] =
     EventCalc: coll =>
       coll.addEventCalc:
         itemKeys.view
@@ -363,7 +363,7 @@ object ControllerStateExecutor:
           .foldMonoids
 
   private def nextItemAttachedStateEventsForItem(item: InventoryItem)
-  : EventCalc[ControllerState, ItemAttachedStateEvent, Any] =
+  : EventCalc[ControllerState, ItemAttachedStateEvent] =
     EventCalc: coll =>
       coll.aggregate.itemToAgentToAttachedState.get(item.key) match
         case Some(agentPathToAttached) =>
@@ -413,7 +413,7 @@ object ControllerStateExecutor:
               item.dedicatedAgentPath.map(NoKey <-: ItemAttachable(item.key, _))
 
   private def derivedWorkflowPathControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
-  : EventCalc[ControllerState, ItemAttachedStateEvent, Any] =
+  : EventCalc[ControllerState, ItemAttachedStateEvent] =
     EventCalc.maybe: controllerState =>
       // Implicitly detach WorkflowPathControl from agentPath
       // when the last version of WorkflowPath has been detached
@@ -435,7 +435,7 @@ object ControllerStateExecutor:
               case Attachable | Attached(_) => detach(controllerState, controlPath, agentPath))
 
   private def derivedWorkflowControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
-  : EventCalc[ControllerState, ItemAttachedStateEvent, Any] =
+  : EventCalc[ControllerState, ItemAttachedStateEvent] =
     EventCalc.multiple: controllerState =>
       // Implicitly detach WorkflowControl from agentPath when Workflow has been detached
       if controllerState.itemToAgentToAttachedState.contains(workflowId) then
@@ -461,7 +461,7 @@ object ControllerStateExecutor:
       NoKey <-: ItemDetached(itemKey, agentPath)
 
   def updatedWorkflowPathControlAttachedEvents(workflowPathControl: WorkflowPathControl)
-  : EventCalc[ControllerState, ItemAttachable, Any] =
+  : EventCalc[ControllerState, ItemAttachable] =
     EventCalc.multiple: controllerState =>
       controllerState
         .repo.pathToItems(Workflow)
@@ -495,7 +495,7 @@ object ControllerStateExecutor:
 
   // TODO Try to call with only relevant OrderIDs
   //  For example, don't call with all orders waiting for a single-order lock.
-  def nextOrderEvents(orderIds: Iterable[OrderId]): EventCalc[ControllerState, Event, TimeCtx] =
+  def nextOrderEvents(orderIds: Iterable[OrderId]): EventCalc[ControllerState, Event] =
     EventCalc.multiple: controllerState_ =>
       var controllerState = controllerState_
       val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | PlanFinishedEvent]]

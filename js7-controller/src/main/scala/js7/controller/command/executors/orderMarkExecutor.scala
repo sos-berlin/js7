@@ -73,7 +73,7 @@ private[command] def resumeOrdersExecutor: CommandEventConverter[ResumeOrders] =
 private def executeOrderMarkCommands[Cmd <: ControllerCommand](
   orderIds: Iterable[OrderId])
   (toEvents: (OrderEventSource, OrderId) => Checked[List[OrderActorEvent]])
-: EventCalc[ControllerState, Event, TimeCtx] =
+: EventCalc[ControllerState, Event] =
   EventCalc.checked: controllerState =>
     if !orderIds.areUnique then
       Left(Problem.pure("OrderIds must be unique"))

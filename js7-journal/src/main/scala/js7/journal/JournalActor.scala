@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTimestampedKeyedEvent, SnapshotableState, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTimestampedKeyedEvent, SnapshotableState}
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
@@ -39,7 +39,7 @@ extends Actor, Stash:
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   def receive: Receive = receiveGet orElse:
-    case Input.Store(correlId, eventCalc: EventCalc[S, Event, TimeCtx] @unchecked, replyTo, options, since, commitLater, callersItem) =>
+    case Input.Store(correlId, eventCalc: EventCalc[S, Event] @unchecked, replyTo, options, since, commitLater, callersItem) =>
       val sender = this.sender()
       if journal.isStopping then
         //for o <- timestamped do logger.debug:
@@ -143,7 +143,7 @@ object JournalActor:
 
     private[journal] final case class Store[S <: EventDrivenState_[S, E], E <: Event](
       correlId: CorrelId,
-      eventCalc: EventCalc[S, E, TimeCtx],
+      eventCalc: EventCalc[S, E],
       journalingActor: ActorRef,
       options: CommitOptions,
       since: Deadline,
