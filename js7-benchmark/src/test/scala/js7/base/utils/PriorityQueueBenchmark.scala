@@ -10,7 +10,7 @@ import scala.util.Random
   * <p>
   *   start with:
   * <p>
-  *   `sbt js7-benchmark/Jmh/run js7.base.utilsPriorityQueueBenchmark`
+  *   `sbt js7-benchmark/Jmh/run js7.base.utils.PriorityQueueBenchmark`
   */
 @BenchmarkMode(Array(Mode.Throughput))
 @Warmup(time = 1, iterations = 5)
