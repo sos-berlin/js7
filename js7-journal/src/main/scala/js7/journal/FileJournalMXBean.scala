@@ -1,15 +1,28 @@
 package js7.journal
 
+import java.nio.file.Files
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.journal.data.JournalLocation
+import js7.journal.files.JournalFiles.listJournalFiles
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.util.control.NonFatal
 
 sealed trait FileJournalMXBean:
   this: FileJournalMXBean.Bean =>
 
   def getFileSize: Long =
     fileSize
+
+  def getAllFileSize: Long =
+    // OPTIMISE Ask JournalEventWatch.fileEventIdToHistoric, but this is incomplete, because
+    // unused files are evicted (maybe heap consumption doesn't matter?)
+    journalLocation.fold(0L): loc =>
+      listJournalFiles(loc.fileBase).view.map: journalFile =>
+        try Files.size(journalFile.file)
+        catch case NonFatal(e) => 0L
+      .sum
 
   def getEventTotal: Long =
     eventTotal.get
@@ -46,7 +59,8 @@ sealed trait FileJournalMXBean:
 
 object FileJournalMXBean:
 
-  final class Bean extends FileJournalMXBean:
+  final class Bean(protected val journalLocation: Option[JournalLocation])
+  extends FileJournalMXBean:
     protected val sinceStart = Deadline.now
     private[journal] val totalOperatingTimeUntilStart = Atomic(ZeroDuration)
 
@@ -72,4 +86,4 @@ object FileJournalMXBean:
 
   object Bean:
     /** Use this when you don't need a FileJournalMXBean. */
-    val dummy = new Bean
+    val dummy = Bean(None)

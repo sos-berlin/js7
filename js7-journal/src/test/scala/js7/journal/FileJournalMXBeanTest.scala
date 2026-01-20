@@ -9,7 +9,7 @@ final class FileJournalMXBeanTest extends OurAsyncTestSuite:
 
   "FileSize" in :
     val beanName = toMBeanName("FileJournalMXBeanTest-Journal")
-    registerMBean(beanName)(IO(new FileJournalMXBean.Bean)).use: bean =>
+    registerMBean(beanName)(IO(FileJournalMXBean.Bean(None))).use: bean =>
       IO:
         bean.fileSize = 123
         val beanServer = ManagementFactory.getPlatformMBeanServer

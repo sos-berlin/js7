@@ -354,7 +354,8 @@ object FileJournal:
     eventIdGenerator: Option[EventIdGenerator] = None)
   : ResourceIO[FileJournal[S]] =
     for
-      bean <- registerMBean[IO]("Journal", new FileJournalMXBean.Bean)
+      bean <- registerMBean("Journal"):
+        IO(FileJournalMXBean.Bean(Some(recovered.journalLocation)))
       journal <- Service.resource:
         for
           queue <- Queue.unbounded[IO, Option[QueuedPersist[S]]]

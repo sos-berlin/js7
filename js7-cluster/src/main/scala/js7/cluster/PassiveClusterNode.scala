@@ -800,7 +800,7 @@ object PassiveClusterNode:
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
   private val PassiveClusterNodeShutdownProblem = Problem("PassiveClusterNode has been shut down")
 
-  def resource[F[_]: Sync, S <: ClusterableState[S]: ClusterableState.Companion](
+  def resource[F[_]: Sync as F, S <: ClusterableState[S]: ClusterableState.Companion](
     setting: ClusterSetting,
     recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
     activeNodeName: NodeName,
@@ -816,7 +816,8 @@ object PassiveClusterNode:
       ioRuntime: IORuntime)
   : Resource[F, PassiveClusterNode[S]] =
     for
-      bean <- registerMBean[F]("Journal", new FileJournalMXBean.Bean) // TODO Use a passive cluster bean!
+      bean <- registerMBean("Journal"):
+        F.delay(new FileJournalMXBean.Bean(Some(recovered.journalLocation))) // TODO Use a passive cluster bean!
     yield
       PassiveClusterNode(setting, recovered, activeNodeName, passiveUserId,
         eventIdGenerator, initialFileEventId, otherFailed, clusterConf, common, bean)
