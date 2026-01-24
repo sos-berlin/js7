@@ -114,6 +114,11 @@ object BranchPath:
       def dropLastBranchId: Position =
         segments.init % segments.last.nr
 
+      def dropUntilMoveBoundary: BranchPath =
+        segments.reverse
+          .dropWhile(_.branchId.isNoMoveBoundary)
+          .reverse
+
       /** Returns 0 if not in a try/catch-block. */
       def tryCount: Int =
         calculateTryCount(segments.reverse)

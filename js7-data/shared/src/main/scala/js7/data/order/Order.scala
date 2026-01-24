@@ -546,10 +546,12 @@ extends
 
       case OrderStickySubagentLeaved =>
         if isDetachedOrAttached && stickySubagents.nonEmpty then
-          position.parent
-            .toChecked(inapplicableProblem)
-            .map: stickySubagentPosition =>
-              withPosition(stickySubagentPosition.increment)
+          val branchPath = position.branchPath.dropUntilMoveBoundary // in case of failure
+          if !branchPath.lastOption.map(_.branchId).contains(BranchId.StickySubagent) then
+            inapplicable
+          else
+            Right:
+              withPosition(branchPath.dropLastBranchId.increment)
                 .copy(
                   stickySubagents = stickySubagents.tail)
         else
