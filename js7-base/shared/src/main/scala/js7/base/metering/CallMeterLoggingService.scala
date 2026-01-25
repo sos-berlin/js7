@@ -4,6 +4,7 @@ import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.log.LogLevel
 import js7.base.metering.CallMeterLoggingService.*
 import js7.base.service.Service
 import scala.collection.mutable
@@ -18,15 +19,15 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
     startService:
       fs2.Stream.fixedRate[IO](conf.logEvery).evalTap: _ =>
         IO:
-          logAndStartNewDiff()
+          logAndStartNewDiff(LogLevel.Trace)
       .interruptWhenF(untilStopRequested)
       .compile.drain
       .guarantee:
-        IO(logAndStartNewDiff())
+        IO(logAndStartNewDiff(LogLevel.Debug))
 
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
-  private def logAndStartNewDiff(): Unit =
-    CallMeter.log: m =>
+  private def logAndStartNewDiff(logLevel: LogLevel): Unit =
+    CallMeter.log(logLevel): m =>
       val name = m.callMeter.name
       val diff = lastMeasurements.get(name).fold(m)(m.diff)
       lastMeasurements(name) = m

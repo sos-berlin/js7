@@ -166,7 +166,7 @@ final class PlanOpenCloseTest
         execCmd:
           ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> dayAfterTomorrow)))
 
-        // Tomorrow's Plan as been removed
+        // Tomorrow's Plan has been removed
         assert(controllerState.toPlan.isEmpty)
 
     "AddOrder instruction may add an Order to the own closed Plan" in:

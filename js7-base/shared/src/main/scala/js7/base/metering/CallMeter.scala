@@ -3,8 +3,9 @@ package js7.base.metering
 import cats.effect.{IO, SyncIO}
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.catsutils.CatsEffectExtensions.run
-import js7.base.log.Logger
+import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.metering.CallMeter.*
 import js7.base.system.MBeanUtils
 import js7.base.time.ScalaTime.*
@@ -133,10 +134,10 @@ object CallMeter:
     _callMeters.get
 
   def logAll(): Unit =
-    log()
+    log()()
 
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
-  private[metering] def log(f: Measurement => Measurement = identity): Unit =
+  private[metering] def log(logLevel: LogLevel = Trace)(f: Measurement => Measurement = identity): Unit =
     if logger.isTraceEnabled then
       CallMeter.callMeters.view.filter(_.total > 0).map: callMeter =>
         f(callMeter.measurement())
@@ -144,7 +145,7 @@ object CallMeter:
       .map(_.asString)
       .toVector // Compute first, then log quickly:
       .foreachWithBracket(Square): (measurementString, bracket) =>
-        logger.trace(s"$bracket $measurementString")
+        logger.log(logLevel, s"$bracket $measurementString")
 
   //private def logAndResetAbove(minimumQuote: Double): Unit =
   //  if logger.isTraceEnabled then

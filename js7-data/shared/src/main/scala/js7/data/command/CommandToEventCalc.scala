@@ -23,7 +23,7 @@ trait CommandToEventCalc[S <: EventDrivenState_[S, E], E <: Event](
     cmdClassToExecutor.get(cmd.getClass) match
       case None =>
         EventCalc.problem:
-          Problem(s"${cmd.getClass.scalaName} is not a registered command ($src)")
+          Problem(s"${cmd.getClass.shortClassName} is not a registered command ($src)")
       case Some(cmdToEventCalc) =>
         cmdToEventCalc.toEventCalc(cmd.asInstanceOf[cmdToEventCalc.Command])
 

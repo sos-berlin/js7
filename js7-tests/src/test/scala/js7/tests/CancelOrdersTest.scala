@@ -1084,17 +1084,18 @@ final class CancelOrdersTest
   "Speed test Expression with real ControllerState" in :
     withItem(Workflow.empty): workflow =>
       val wp = workflow.id /: Position(0)
-      val orders = (1 to 100_000).view.map: i =>
+      val n = 100_000
+      val orders = (1 to n).view.map: i =>
         Order(OrderId(i.toString), wp, Order.Fresh())
       .toVector
       val expr = expr"substring(orderId, 0, 1) != '7'"
-      (1 to (if isIntelliJIdea then 20 else 1)).foreach: _ =>
+      (1 to (if isIntelliJIdea then 3 else 1)).foreach: _ =>
         val t = Deadline.now
         val result = orders.traverse: order =>
           controllerState.toOrderScope(order).flatMap: scope =>
             expr.eval(using scope)
         val elapsed = t.elapsed
-        logInfo(itemsPerSecondString(elapsed, orders.size, "evaluations"))
+        logInfo(s"With $n orders: ${itemsPerSecondString(elapsed, orders.size, "evaluations")}")
         assert(result.rightAs(()) == Checked.unit)
 
   private def logInfo(line: String) =
