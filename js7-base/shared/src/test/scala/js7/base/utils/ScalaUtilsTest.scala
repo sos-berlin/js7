@@ -291,7 +291,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     val s: Any = "Hej!"
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
-    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "Expected java.lang.String but got java.lang.Integer: 123"
+    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "checkedCast: Expected java.lang.String but got java.lang.Integer: 123"
 
   "flattenToString" in:
     //assert(flattenToString() == "")
@@ -904,7 +904,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       val string = s.checkedCast[String]
       string shouldEqual Right("Hej!")
       assert(Int.box(123).checkedCast[String] ==
-        Left(Problem("Expected java.lang.String but got java.lang.Integer: 123")))
+        Left(Problem("checkedCast: Expected java.lang.String but got java.lang.Integer: 123")))
       assert(null.asInstanceOf[String | Null].checkedCast[String].left.exists(_.throwable.isInstanceOf[NullPointerException]))
       assertDoesNotCompile("null.cast[String]")
       assertDoesNotCompile("string.cast[java.lang.Integer]")

@@ -298,4 +298,4 @@ transparent trait AdHocLogger:
         " " + e.substring(i + 1)
       else
         ""
-    s"${isTest ?? "🟪"}:${lineNr.value}$method - $msg"
+    s"${isTest ?? "🟪"} Line ${lineNr.value}$method - $msg"

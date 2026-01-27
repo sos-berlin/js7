@@ -1154,13 +1154,13 @@ object ScalaUtils:
 
   /** Prefer cast method over this! */
   def checkedCast[A: ClassTag](o: Any): Checked[A] =
-    checkedCast[A](o, Problem(s"Expected ${implicitClass[A].getName} but got ${
+    checkedCast[A](o, Problem(s"checkedCast: Expected ${implicitClass[A].getName} but got ${
       o.getClass.getName}: ${o.toString.truncateWithEllipsis(30)}"))
 
   def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] =
     val A = implicitClass[A]
     if o == null then
-      Left(Problem.fromThrowable(new NullPointerException(s"Expected ${A.getName}, found: null")))
+      Left(Problem.fromThrowable(new NullPointerException(s"checkedCast: Expected ${A.getName}, found: null")))
     else if A.isAssignableFrom(o.getClass) then
       Right(o.asInstanceOf[A])
     else
