@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, mkStringLimited, toEagerSeq}
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.KeyedEvent.NoKey
+import scala.annotation.targetName
 import scala.collection.IndexedSeqView
 import scala.reflect.ClassTag
 
@@ -32,14 +33,52 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   inline def hasEvents: Boolean =
     timestampedKeyedEvents.nonEmpty
 
+  inline def apply[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
+    add(keyedEvent)
+
+  @targetName("applyKeyedEventsVarargs")
+  inline def apply[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*): Checked[EventCollCtx[S, E, Ctx]] =
+    add(keyedEvents)
+
+  inline def apply[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    add(keyedEvents)
+
+  inline def apply(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    add(keyedEvents)
+
+  inline def apply[K, E1 <: E](key: K)(events: Iterable[E1])
+                              (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
+                              (using /*erased*/ ev: K =:= E1.Key)
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    add(key)(events)
+
+  inline def apply[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalcCtx[S, E1, Ctx1])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    add(eventCalc)
+
+  @targetName("applyMaybeEventCalc")
+  inline def apply[E1 <: E, Ctx1 >: Ctx](eventCalc: Option[EventCalcCtx[S, E1, Ctx1]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    add(eventCalc)
+
+  inline def apply(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
+    add(other)
+
   inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
     addEvent(keyedEvent)
+
+  @targetName("addKeyedEventsVarargs")
+  inline def add[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*): Checked[EventCollCtx[S, E, Ctx]] =
+    addEvents(keyedEvents)
 
   inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents(keyedEvents)
 
-  inline def add(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def add(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
     addChecked(keyedEvents)
 
   inline def add[K, E1 <: E](key: K)(events: Iterable[E1])
@@ -55,9 +94,16 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   inline def add(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
     addColl(other)
 
+  @targetName("addMaybeEventCalc")
+  inline def add[E1 <: E, Ctx1 >: Ctx](eventCalc: Option[EventCalcCtx[S, E1, Ctx1]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    eventCalc.fold(nix)(addEventCalc)
+
   def addEvent[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
-    aggregate.applyKeyedEvent(keyedEvent.keyedEvent).map: updated =>
-      update(keyedEvent :: Nil, updated)
+    val keyedEvents = keyedEvent :: Nil
+    logProblem(keyedEvents):
+      aggregate.applyKeyedEvent(keyedEvent.keyedEvent).map: updated =>
+        update(keyedEvents, updated)
 
   def addChecked(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
@@ -93,23 +139,29 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
     eventCalc.calculate(this)
 
   def addColl(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
-    if other.originalAggregate_ ne aggregate then
-      // This should not happen, despite it is returned as a Problem
-      val problem = Problem.pure("EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate")
-      logger.error(s"EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate",
-        new Exception(problem.toString))
-      aggregate.emitLineStream(o => logger.warn(s"aggregate=$o"))
-      other.originalAggregate_.emitLineStream(o => logger.warn(s"other.originalAggregate=$o"))
-      other.aggregate.emitLineStream(o => logger.warn(s"other.aggregate=$o"))
-      Left(problem)
-    else
-      Right:
-        if !other.hasEvents then
-          this
-        else if !hasEvents then
-          other
-        else
-          update(other.timestampedKeyedEvents, other.aggregate)
+    logProblem(other.timestampedKeyedEvents):
+      if other.originalAggregate_ ne aggregate then
+        // This should not happen, despite it is returned as a Problem
+        val problem = Problem.pure("EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate")
+        logger.error(s"EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate",
+          new Exception(problem.toString))
+        aggregate.emitLineStream(o => logger.warn(s"aggregate=$o"))
+        other.originalAggregate_.emitLineStream(o => logger.warn(s"other.originalAggregate=$o"))
+        other.aggregate.emitLineStream(o => logger.warn(s"other.aggregate=$o"))
+        Left(problem)
+      else
+        Right:
+          if !other.hasEvents then
+            this
+          else if !hasEvents then
+            other
+          else
+            update(other.timestampedKeyedEvents, other.aggregate)
+
+  /** Add nothing, return `this` `Coll` unchanged.
+    */
+  inline def nix: Right[Problem, this.type] =
+    Right(this)
 
   /** Collect events calculated from `iterable` and fail-fast with first problem. */
   def iterate[A](iterable: IterableOnce[A])
@@ -123,6 +175,12 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
         case Right(o) => coll = o
     Right(coll)
 
+  //private def updateX(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]], body: => Checked[S])
+  //: Checked[EventCollCtx[S, E, Ctx]] =
+  //  logProblem(keyedEvents):
+  //    body.map: updated =>
+  //      update(keyedEvents, updated)
+
   private def update(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]], updatedAggregate: S)
   : EventCollCtx[S, E, Ctx] =
     if keyedEvents.isEmpty then
@@ -133,6 +191,20 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
       copy(
         timestampedKeyedEvents = timestampedKeyedEvents ++ keyedEvents,
         aggregate = updatedAggregate)
+
+  private def logProblem[A](
+    keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]])
+    (body: => Checked[A])
+  : Checked[A] =
+    body match
+      case Left(problem) =>
+        logger.debug(
+          s"❓ EventColl[${aggregate.companion.name}]: $problem",
+          new Exception(problem.toString))
+        keyedEvents.foreachWithBracket(): (e, br) =>
+          logger.debug(s"$br${e.keyedEvent}")
+      case _ =>
+    body
 
   def foreachLog(body: String => Unit): Unit =
     keyedEvents.foreachWithBracket(): (ke, br) =>

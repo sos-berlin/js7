@@ -127,10 +127,10 @@ object EventCalcCtx:
 
   // Monoid //
 
-  private sealed trait DummyAggregate extends EventDrivenState_[DummyAggregate, Event]
+  private sealed trait SomeAggregate extends EventDrivenState_[SomeAggregate, Event]
 
-  private val GenericMonoid: Monoid[EventCalcCtx[DummyAggregate, Event, Any]] =
-    type MyEventCalcCtx = EventCalcCtx[DummyAggregate, Event, Any]
+  private val GenericMonoid: Monoid[EventCalcCtx[SomeAggregate, Event, Any]] =
+    type MyEventCalcCtx = EventCalcCtx[SomeAggregate, Event, Any]
     new Monoid[MyEventCalcCtx]:
       def empty = Empty.asInstanceOf[MyEventCalcCtx]
 
@@ -140,8 +140,8 @@ object EventCalcCtx:
 
       // This implementation of combineAll avoids a hidden flatMap recursion
       override def combineAll(as: IterableOnce[MyEventCalcCtx]): MyEventCalcCtx =
-        type MyEventColl = EventCollCtx[DummyAggregate, Event, Any]
-        EventCalcCtx[DummyAggregate, Event, Any]: coll =>
+        type MyEventColl = EventCollCtx[SomeAggregate, Event, Any]
+        EventCalcCtx[SomeAggregate, Event, Any]: coll =>
           val it = as.iterator
 
           @tailrec def loop(coll: MyEventColl): Checked[MyEventColl] =
