@@ -38,7 +38,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
     ).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
 
-  "AnswerOrderPrompt does not execute following If statement" in:
+  "AnswerOrderPrompt does not execute following If statement (JS-2002)" in:
     val orderId = OrderId("FAILING")
     controller.api.addOrder(FreshOrder(orderId, failingWorkflow.path))
       .await(99.s).orThrow
@@ -47,7 +47,8 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(failingWorkflow.id),
-      OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
+      OrderStarted,
+      OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
       OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN"))),
@@ -68,7 +69,8 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflowId),
-      OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
+      OrderStarted,
+      OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
       OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),

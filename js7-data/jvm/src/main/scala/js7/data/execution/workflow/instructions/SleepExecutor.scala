@@ -55,7 +55,7 @@ object SleepExecutor:
   private[instructions] def bigDecimalSecondsToDuration(number: BigDecimal): FiniteDuration =
     val nanos = number * 1_000_000_000
     if nanos > Long.MaxValue then
-      1.h * 24 * 365 * 100
+      (100 * 365).days
     else if nanos < 0 then
       ZeroDuration
     else
