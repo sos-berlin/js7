@@ -252,6 +252,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     assert(events == Seq(
       OrderAdded(failAtControllerWorkflow.id),
       OrderStickySubagentEntered(aAgentPath),
+      OrderMoved(Position(0) / "stickySubagent" % 0 / "then" % 0),
       OrderStarted,
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderStickySubagentLeaved,
@@ -265,13 +266,14 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     assert(events == Seq(
       OrderAdded(failAtAgentWorkflow.id),
       OrderStickySubagentEntered(aAgentPath),
+      OrderMoved(Position(0) / "stickySubagent" % 0 / "then" % 0),
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderStarted,
 
       OrderProcessingStarted(aSubagentId, stick = true),
       OrderProcessed(OrderOutcome.succeeded),
-      OrderMoved(Position(0) / "stickySubagent" % 1),
+      OrderMoved(Position(0) / "stickySubagent" % 0 / "then" % 1),
 
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderStickySubagentLeaved,
@@ -387,12 +389,15 @@ object StickySubagentTest:
     Seq:
       StickySubagent(aAgentPath, None):
         Workflow.of:
-          Fail())
+          If(true):
+            Fail())
 
   private val failAtAgentWorkflow = Workflow(
     WorkflowPath("FAILING-IN-AGENT") ~ "INITIAL",
     Seq:
       StickySubagent(aAgentPath, None):
-        Workflow.of(
-          EmptyJob.execute(aAgentPath),
-          Fail()))
+        Workflow.of:
+          If(true):
+            Workflow.of(
+              EmptyJob.execute(aAgentPath),
+              Fail()))
