@@ -30,7 +30,7 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
     if !count.forall(_ <= limit) then
       Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
     else if acquired.isAcquiredBy(orderId) then
-      Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
+      Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(item.path))
     else if queue contains orderId then
       Left(Problem(s"$orderId already queues for $lockPath"))
     else orderId.allParents.find(acquired.isAcquiredBy) match
@@ -97,11 +97,11 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
 
   private def toLockState(result: Either[LockRefusal, Acquired]): Checked[LockState] =
     result
-      .left.map(refusal => refusal.toProblem(lock.path))
+      .left.map(refusal => refusal.toProblem(item.path))
       .map(acquired =>
         copy(acquired = acquired))
 
-  private def lockPath = lock.path
+  private def lockPath = item.path
 
   //TODO Break snapshot into smaller parts: private def toSnapshot: Stream[IO, Any] = ...
 

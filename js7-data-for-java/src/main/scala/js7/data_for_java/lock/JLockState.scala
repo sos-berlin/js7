@@ -15,11 +15,11 @@ extends JJsonable[JLockState]:
 
   @Nonnull
   def lockPath: LockPath =
-    asScala.lock.path
+    asScala.item.path
 
   @Nonnull
   def lock: Lock =
-    asScala.lock
+    asScala.item
 
   @Nonnull
   def isAvailable: Boolean =
