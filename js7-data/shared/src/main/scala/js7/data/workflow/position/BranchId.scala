@@ -66,8 +66,10 @@ object BranchId:
   val AdmissionTime: Named = BranchId("admissionTime")
 
   /** Set of BranchIds an Order is movable through. */
-  private[BranchId] val NoMoveBoundary = Set[BranchId](Then, Else, Try_, Catch_, Cycle/*???*/, Options)
-  private[BranchId] val NoMoveBoundaryPrefixes = Seq(ThenPrefix, TryPrefix, CatchPrefix, CyclePrefix/*???*/)
+  private[BranchId] val NoMoveBoundary: Set[BranchId] =
+    Set(Then, Else, Try_, Catch_, Cycle, Options, AdmissionTime)
+  private[BranchId] val NoMoveBoundaryPrefixes =
+    Seq(ThenPrefix, TryPrefix, CatchPrefix, CyclePrefix)
 
   implicit def apply(branchId: String): Named = Named(branchId)
 
