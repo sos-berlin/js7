@@ -36,7 +36,8 @@ final case class Uri(string: String) extends GenericString:
 
   def stripPath: Uri =
     string match
-      case StripPathRegex(result) => if result == string then this else Uri(result)
+      case StripPathRegex(result: String) =>
+        if result == string then this else Uri(result)
       case _ => this
 
 

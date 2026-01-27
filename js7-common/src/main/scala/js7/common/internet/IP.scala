@@ -33,9 +33,9 @@ object IP:
 
     def apply(string: String): InetSocketAddress =
       try string match
-        case StandardRegex(host, port) => useDefaults(host, port)
-        case IPv6Regex(host, port) => useDefaults(host, port)
-        case IPv6Host(host) => useDefaults(host, defaultPortString)
+        case StandardRegex(host: String, port: String) => useDefaults(host, port)
+        case IPv6Regex(host: String, port: String) => useDefaults(host, port)
+        case IPv6Host(host: String) => useDefaults(host, defaultPortString)
         case "" => makeInetSocketAddress(defaultHost, defaultPortString)
         case _ if string.forall(_.isDigit) => makeInetSocketAddress(defaultHost, string)
         case _ => makeInetSocketAddress(string, defaultPortString)
@@ -56,8 +56,8 @@ object IP:
 
     def apply(string: String): InetSocketAddress =
       string match
-        case StandardRegex(host, port) => makeInetSocketAddress(host, port)
-        case IPv6Regex(host, port) => makeInetSocketAddress(host, port)
+        case StandardRegex(host: String, port: String) => makeInetSocketAddress(host, port)
+        case IPv6Regex(host: String, port: String) => makeInetSocketAddress(host, port)
         case _ => throw new IllegalArgumentException("ipAddress:port or [ip6Address]:port expected")
 
     private def makeInetSocketAddress(host: String, port: String) =

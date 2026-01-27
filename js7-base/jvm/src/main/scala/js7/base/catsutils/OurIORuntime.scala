@@ -195,7 +195,7 @@ object OurIORuntime:
   private[catsutils] val ThreadCount: As[String, Int] =
     val Fraction = "([0-9]+)/([0-9]+)".r
     locally:
-      case Fraction(numerator, denominator) =>
+      case Fraction(numerator: String, denominator: String) =>
         val m = denominator.toInt
         if m == 0 then throw
           new IllegalArgumentException("Zero denominator in ThreadCount configuration entry")

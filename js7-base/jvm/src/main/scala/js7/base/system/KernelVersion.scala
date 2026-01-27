@@ -20,15 +20,21 @@ private object KernelVersion:
   private val logger = Logger[this.type]
   val Unknown = KernelVersion("UNKNOWN-KERNEL", Nil)
 
-  private val Singleton = ignoreError { KernelVersion(sys.props("os.name"), parseVersion(sys.props("os.version"))) } sideEffect { o => logger.info(s"$o") }
+  private val Singleton =
+    ignoreError:
+      KernelVersion(
+        sys.props("os.name").nn,
+        parseVersion(sys.props("os.version").nn))
+    .sideEffect: o =>
+      logger.info(s"$o")
 
-  private def parseVersion(string: String) = string.split("[.-]").take(3).map(_.toInt).toList
+  private def parseVersion(string: String) =
+    string.split("[.-]").take(3).map(_.toInt).toList
 
   private def ignoreError(body: => KernelVersion): KernelVersion =
     try body
-    catch
-      case NonFatal(t) =>
-        logger.warn(s"Ignored: $t", t)
-        Unknown
+    catch case NonFatal(t) =>
+      logger.warn(s"Ignored: $t", t)
+      Unknown
 
   def apply(): KernelVersion = Singleton

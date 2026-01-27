@@ -20,8 +20,8 @@ final class UniqueOrderIdScopeTest extends OurTestSuite:
     val n = if Tests.isIntelliJIdea then 1_000_000 else 100_000
 
     "ORDER-%d, pattern ends with %d" in:
-      val idToX = (1 to n).map(i => OrderId(s"ORDER-$i") -> ()).toMap
-      val scope = UniqueOrderIdScope(idToX.keySet)
+      val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i")).toSet
+      val scope = UniqueOrderIdScope(orderIds)
       val uniqueOrderId = expr(""" uniqueOrderId("ORDER-%d") """)
       assert(uniqueOrderId.eval(using scope) == Right(StringValue(s"ORDER-${n + 1}")))
 
@@ -31,8 +31,8 @@ final class UniqueOrderIdScopeTest extends OurTestSuite:
       note(s"uniqueOrderId: $result")
 
     "ORDER-%d-X (random pattern)" in:
-      val idToX = (1 to n).map(i => OrderId(s"ORDER-$i-X") -> ()).toMap
-      val scope = UniqueOrderIdScope(idToX.keySet)
+      val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i-X")).toSet
+      val scope = UniqueOrderIdScope(orderIds)
       val uniqueOrderId = expr(""" uniqueOrderId("ORDER-%d-X") """)
       assert(uniqueOrderId.eval(using scope) == Right(StringValue(s"ORDER-${n + 1}-X")))
 

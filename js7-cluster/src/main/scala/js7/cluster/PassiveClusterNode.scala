@@ -702,7 +702,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match
       case (_, StampedHeartbeatByteArray, _)
-      if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
+      if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).nn.toBoolean) =>
         logger.warn("TEST: Suppressing the received heartbeat")
         false
       case _ => true

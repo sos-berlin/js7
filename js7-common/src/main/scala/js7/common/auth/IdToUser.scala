@@ -68,7 +68,7 @@ extends (UserId => Option[U]):
           hashedPassword,
           raw.permissions.flatMap: p =>
             toPermission.get(p).tap: maybe =>
-              if maybe.isEmpty then 
+              if maybe.isEmpty then
                 logger.warn(s"${raw.userId} has unknown '$p' permission"),
           raw.distinguishedNames)
 
@@ -147,10 +147,10 @@ object IdToUser:
 
   private def toHashedPassword(userId: UserId, encodedPassword: SecretString) =
     encodedPassword.string match
-      case PasswordRegex("plain", pw) =>
+      case PasswordRegex("plain", pw: String) =>
         Some(HashedPassword(SecretString(pw), identityHasher))
 
-      case PasswordRegex("sha512", pw) =>
+      case PasswordRegex("sha512", pw: String) =>
         Some(HashedPassword(SecretString(pw.toLowerCase(Locale.ROOT)), Hasher.sha512))
 
       case "" =>

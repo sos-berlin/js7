@@ -39,7 +39,7 @@ object StartUp:
       logger.debug("TRACE level logging is enabled")
 
     logClasspathOnce: // Log only once (for tests running controller and agents in same JVM)
-      val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
+      val paths = sys.props("java.class.path").nn.split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
       for o <- paths do
         logger.debug(Logger.Java, s"Classpath $o")

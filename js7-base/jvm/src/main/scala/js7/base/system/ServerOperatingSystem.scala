@@ -117,7 +117,7 @@ object ServerOperatingSystem:
           val lines = ("/usr/bin/sw_vers").!!.trim.split('\n').toVector
           def read(key: String): Option[String] =
             lines.collectFirst:
-              case RegEx(`key`, value) => value
+              case RegEx(`key`, value: String) => value
           Vector(
             read("ProductName"),
             read("ProductVersion"),
@@ -145,7 +145,7 @@ object ServerOperatingSystem:
             val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
             autoClosing(new FileInputStream("/proc/cpuinfo")): in =>
               fromInputStream(in).getLines().collectFirst:  // We return the model of the first core
-                case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
+                case CpuModelRegex(model: String) => model.trim.replaceAll("""[ \t\n]+""", " ")
           .toOption.flatten
       fromOS orElse sys.props.get("os.arch")
 

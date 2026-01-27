@@ -1320,15 +1320,13 @@ object ScalaUtils:
         catch case NonFatal(e) =>
           Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
 
-  private def findUnique(exists: String => Boolean)
-    (make: Int => String)
-  : String =
+  private def findUnique(exists: String => Boolean)(make: Int => String): String =
     var i = 1
     while true do
       val s = make(i)
       if !exists(s) then return s
       i += 1
-    null.asInstanceOf[String]
+    null.asInstanceOf[String] // unreachable code
 
   /** Like a `let a <- expr in body(a)`. */
   final inline def eval[A, B](inline expr: A)(inline body: A => B): B =

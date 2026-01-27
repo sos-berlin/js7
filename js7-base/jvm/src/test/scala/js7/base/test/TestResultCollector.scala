@@ -49,12 +49,12 @@ private object TestResultCollector:
       val msg = "Shutdown hook\n" + threadToTrace.size.toString + " threads:\n" +
         "━" * 80 + "\n" +
         threadToTrace.view.map(_._1.getName)
-          .groupBy(name => ThreadNameRegex.findAllIn(name.reverse).group(2).reverse)
+          .groupBy(name => ThreadNameRegex.findAllIn(name.reverse).group(2).nn.reverse)
           .view
-          .map { case (groupName, names) =>
-            val n = names.size
-            "- " + groupName + ((n > 1) ?? s" $n×")
-          }
+          .map:
+            case (groupName, names) =>
+              val n = names.size
+              "- " + groupName + ((n > 1) ?? s" $n×")
           .toVector
           .sorted
           .mkString("\n")
