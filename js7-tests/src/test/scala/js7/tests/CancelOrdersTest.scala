@@ -904,10 +904,10 @@ final class CancelOrdersTest
             case ((pids, killedByScriptPids), line) =>
               logger.info(s"> $line")
               val startedPids = pidRegex.findAllMatchIn(line)
-                .flatMap(_.subgroups.map(o => Pid(o.toLong)))
+                .flatMap(_.subgroups.map(o => Pid(o.nn.toLong)))
 
               val addedToBeKilledByTrapPids = killedByTrapRegex.findAllMatchIn(line)
-                .flatMap(_.subgroups.map(o => Pid(o.toLong)))
+                .flatMap(_.subgroups.map(o => Pid(o.nn.toLong)))
               (pids ++ startedPids) -> (killedByScriptPids ++ addedToBeKilledByTrapPids)
           .evalTap((pids, kPids) => IO:
             pids.requireUniqueness

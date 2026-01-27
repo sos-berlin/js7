@@ -209,7 +209,7 @@ object Openssl:
 
     val opensslCnf = runProcess(s"$openssl version -a")
       .split('\n')
-      .collectFirst { case OpensslDir(dir) => dir }
+      .collectFirst { case OpensslDir(dir: String) => dir }
       .map: dir =>
         lazy val cygwinOpensslCnf = Path.of("""c:\cygwin64""") / dir / "openssl.cnf"
         lazy val winGitOpensslCnf = Path.of("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"

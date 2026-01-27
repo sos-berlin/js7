@@ -694,7 +694,7 @@ object PekkoHttpClient:
 
       case t: pekko.stream.StreamTcpException =>
         t.getMessage match
-          case PekkoTcpCommandRegex(command, host_) =>
+          case PekkoTcpCommandRegex(command, host_ : String) =>
             val host = host_.replace("/<unresolved>", "")
             val prefix = s"TCP $command $host"
             t.getCause match

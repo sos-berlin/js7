@@ -18,7 +18,7 @@ object OldScheduleXmlParser:
   private implicit val StringAsLocalTime: As[String, LocalTime] =
     val ParseRegex = """([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?""".r
     As:
-      case ParseRegex(hours, minutes, seconds) =>
+      case ParseRegex(hours: String, minutes: String, seconds) =>
         LocalTime.of(hours.toInt, minutes.toInt, Option(seconds).getOrElse("0").toInt)
       case o => throw new IllegalArgumentException(s"Not a local time: '$o'")
 

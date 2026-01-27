@@ -46,7 +46,8 @@ object Version extends GenericString.Checked_[Version]:
 
   override def checked(string: String): Checked[Version] =
     string match
-      case VersionRegex(major, minor, patch, patch2, prereleaseGroup, buildGroup) =>
+      case VersionRegex(major: String, minor: String, patch: String,
+        patch2, prereleaseGroup, buildGroup) =>
         val prerelease = Option(prereleaseGroup).fold[List[String]](Nil)(_.split("\\.").toList)
         val build = Option(buildGroup).fold[List[String]](Nil)(_.split("\\.").toList)
         catchExpected[NumberFormatException](

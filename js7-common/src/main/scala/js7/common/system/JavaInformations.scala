@@ -34,4 +34,4 @@ object JavaInformations:
   lazy val implementationVersion: String =
     try classOf[Runtime].getMethod("version").invoke(null).toString
     catch
-      case _: Throwable => sys.props("java.version")
+      case _: Throwable => sys.props("java.version").nn

@@ -33,7 +33,7 @@ extends AutoCloseable:
 
   private def lineToNamedvalue(line: String): (String, StringValue) =
     line match
-      case ReturnValuesRegex(name, value) => name.trim -> StringValue(value.trim)
+      case ReturnValuesRegex(name: String, value: String) => name.trim -> StringValue(value.trim)
       case _ => throw IllegalArgumentException:
         "Not the expected syntax NAME=VALUE in files denoted by environment variable " +
           s"$varName: $line"

@@ -522,7 +522,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
               clusterConf.testAckLossPropertyKey.fold(stream): k => // Testing only
                 var logged = false
                 stream.filter: _ =>
-                  val suppress = sys.props(k).toBoolean
+                  val suppress = sys.props(k).nn.toBoolean
                   if suppress then
                     logger.warn:
                       s"❌❌ Received acknowledgements are suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k"

@@ -76,7 +76,7 @@ object CommandLineArguments:
 
   private def toArgument(string: String): Argument =
     string match
-      case OptionWithValueRegex(key, value) => NameValue(key, value)
+      case OptionWithValueRegex(key: String, value: String) => NameValue(key, value)
       case "-" => ValueOnly("-")
       case o if string.startsWith("-") && string.endsWith("-") => Switch(o dropRight 1, false)
       case o if string.startsWith("-") => Switch(o, true)
