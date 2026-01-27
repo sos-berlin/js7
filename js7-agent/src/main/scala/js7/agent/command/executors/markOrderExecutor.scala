@@ -2,18 +2,18 @@ package js7.agent.command.executors
 
 import js7.agent.command.AgentCommandToEventCalc.CommandEventConverter
 import js7.agent.data.commands.AgentCommand.MarkOrder
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.event.EventCalc
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.state.EngineEventColl.extensions.order
 
 private[command] def markOrderExecutor =
-  CommandEventConverter.checked[MarkOrder]: (cmd, agentState) =>
+  CommandEventConverter.coll[MarkOrder]: (cmd, coll) =>
     import cmd.orderId
-    agentState.idToOrder.checked(orderId).flatMap: order =>
-      if order.isDetaching then
-        Right(Nil)
-      else
-        OrderEventSource(agentState)(using InstructionExecutorService(EventCalc.context.clock))
-          .markOrder(orderId, cmd.mark).map: events =>
-            events.map(orderId <-: _)
+    for
+      order <- coll.order(orderId)
+      coll <-
+        if order.isDetaching then
+          coll.nix
+        else
+          coll:
+            OrderEventSource.markOrder(orderId, cmd.mark)
+    yield coll

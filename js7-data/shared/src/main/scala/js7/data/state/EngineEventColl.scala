@@ -6,9 +6,14 @@ import js7.data.event.{Event, EventCalc, EventColl}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 
-type EngineEventCalc[S <: EngineState_[S]] = EventCalc[S, Event]
+type EngineEventCalc[S <: EngineState_[S]] =
+  EngineEventCalc_[S, Event]
 
-type EngineEventColl[S <: EngineState_[S]] = EventColl[S, Event]
+type EngineEventCalc_[S <: EngineState_[S], E <: Event] =
+  EventCalc[S, E]
+
+type EngineEventColl_[S <: EngineState_[S], E <: Event] =
+  EventColl[S, E]
 
 object EngineEventColl:
 
@@ -35,3 +40,12 @@ object EngineEventColl:
         useOrder(orderId): order =>
           workflow(order.workflowId).map:
             order -> _
+
+      //def atController[E1 <: Event](orderId: OrderId)(other: => EventCalc[S, E1])
+      //: Checked[EventColl[S, OrderDetachable | E1]] =
+      //  if coll.aggregate.isAgent then
+      //    coll.widen[S, OrderDetachable | E1].addEvent:
+      //      orderId <-: OrderDetachable
+      //  else
+      //    coll.widen[S, OrderDetachable | E1].addEventCalc:
+      //      other

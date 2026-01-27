@@ -204,7 +204,7 @@ object ControllerStatePlanFunctions:
         for
           boardState <- controllerState.keyTo(BoardState).checked(boardPath)
           _ <- checkIsOtherBoardType(boardState.item, newBoard)
-          coll <- coll.add:
+          coll <- coll:
             NoKey <-: UnsignedSimpleItemChanged:
               newBoard.withRevision(Some(boardState.item.nextRevision))
           coll <- coll.addChecked:

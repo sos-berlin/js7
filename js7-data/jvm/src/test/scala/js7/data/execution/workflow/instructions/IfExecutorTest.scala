@@ -4,8 +4,8 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.time.WallClock
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.IfExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
@@ -15,7 +15,7 @@ import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, If}
+import js7.data.workflow.instructions.{EmptyInstruction, Execute, If}
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
@@ -27,49 +27,60 @@ import js7.tester.CirceJsonTester.testJson
   */
 final class IfExecutorTest extends OurTestSuite:
 
-  private val ifExecutor = IfExecutor(InstructionExecutorService(WallClock))
-  private lazy val engineState = ControllerTestState.of(
-    orders = Some(Seq(AOrder, BOrder)),
-    workflows = Some(Seq(Workflow.of(TestWorkflowId))))
-  private lazy val executorService = InstructionExecutorService(WallClock)
+  private lazy val engineState = ControllerState.forTest(
+    orders = Seq(AOrder, BOrder),
+    workflows = Seq(Workflow.of(TestWorkflowId)))
 
   "JSON BranchId" - {
     "then" in:
       testJson(
-        ifExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to,
-        json"""[ 7, "then", 0 ]""")
+        IfExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to,
+        json"""[ 1, "then", 0 ]""")
 
     "else" in:
       testJson(
-        ifExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to,
-        json"""[ 7, "else", 0 ]""")
+        IfExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to,
+        json"""[ 1, "else", 0 ]""")
   }
 
   "If true" in:
     assert:
-      executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to ==
-        Position(7) / Then % 0
+      nextMove(ifThenElse(BooleanConstant(true)), AOrder) ==
+        Right(Some(OrderMoved(Position(1) / Then % 0)))
 
   "If false" in:
     assert:
-      executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to ==
-        Position(7) / Else % 0
+      nextMove(ifThenElse(BooleanConstant(false)), AOrder) ==
+        Right(Some(OrderMoved(Position(1) / Else % 0)))
 
   "If false, no else branch" in:
-    assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, engineState).orThrow.get.to ==
-      Position(8))
+    assert:
+      nextMove(ifThen(BooleanConstant(false)), AOrder) ==
+        Right(Some(OrderMoved(Position(2))))
 
   "Named value comparison" in:
     val expr = Equal(NamedValue("A"), StringConstant("AA"))
-    assert(executorService.nextMove(ifThenElse(expr), AOrder, engineState) ==
-      Right(Some(OrderMoved(Position(7) / Then % 0))))
+    assert:
+      nextMove(ifThenElse(expr), AOrder) ==
+        Right(Some(OrderMoved(Position(1) / Then % 0)))
 
-    assert(executorService.nextMove(ifThenElse(expr), BOrder, engineState) ==
-      Right(Some(OrderMoved(Position(7) / Else % 0))))
+    assert:
+      nextMove(ifThenElse(expr), BOrder) ==
+        Right(Some(OrderMoved(Position(1) / Else % 0)))
 
   "Error in expression" in:
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(executorService.nextMove(ifThenElse(expr), AOrder, engineState) == Left(Problem("Not a valid number: X")))
+    assert(nextMove(ifThenElse(expr), AOrder) == Left(Problem("Not a valid number: X")))
+
+  private def nextMove(instr: If, order: Order[Order.State]) =
+    assert(order.position == Position(1))
+    val engineState = ControllerTestState.of(
+      orders = Some(Seq(order)),
+      workflows = Some(Seq(Workflow.of(
+        TestWorkflowId,
+        EmptyInstruction(),
+        instr))))
+    InstructionExecutor.nextMove(order.id, engineState)
 
   "JS-2134 else if" in:
     val instr =
@@ -83,15 +94,15 @@ final class IfExecutorTest extends OurTestSuite:
         Workflow.of(ElseJob)
 
     testJson(
-      ifExecutor.nextMove(instr, AOrder, engineState).orThrow.get.to,
-      json"""[ 7, "then+3", 0 ]""")
+      IfExecutor.nextMove(instr, AOrder, engineState).orThrow.get.to,
+      json"""[ 1, "then+3", 0 ]""")
 
 
 object IfExecutorTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
-  private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,
+  private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(1), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA"))))))
-  private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
+  private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(1), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX"))))))
   private val ThenJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
   private val Then2Job = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN-2")))

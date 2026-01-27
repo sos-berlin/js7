@@ -1,25 +1,22 @@
 package js7.data.execution.workflow.instructions
 
+import js7.data.event.EventCalc
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderDetachable, OrderNoticesConsumed}
-import js7.data.state.EngineState
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderNoticesConsumed}
+import js7.data.state.EngineStateExtensions.atController
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.ConsumeNotices
 
-private[instructions] final class ConsumeNoticesExecutor(
-  protected val service: InstructionExecutorService)
-extends
-  ConsumeOrExpectNoticesExecutor:
+private[instructions] object ConsumeNoticesExecutor extends ConsumeOrExpectNoticesExecutor:
 
   type Instr = ConsumeNotices
   val instructionClass = classOf[ConsumeNotices]
 
-  override def onReturnFromSubworkflow(
+  override final def onReturnFromSubworkflow[S <: EngineState_[S]](
     instr: ConsumeNotices,
-    order: Order[Order.State],
-    state: EngineState) =
-    Right(List:
-      order.id <-: (
-        if order.isAttached then
-          OrderDetachable
-        else
-          OrderNoticesConsumed()))
+    order: Order[Order.State])
+  : EventCalc[S, OrderCoreEvent] =
+    EventCalc: coll =>
+      coll:
+       coll.aggregate.atController(order.id):
+          OrderNoticesConsumed()

@@ -12,6 +12,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
@@ -34,6 +35,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentShutdown, SubagentShutd
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.MapView
 
 /**
@@ -49,7 +51,7 @@ final case class AgentState(
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]],
   statistics: EngineStateStatistics)
-extends 
+extends
   EngineState_[AgentState],
   SubagentDirectorState[AgentState],
   FileWatchStateRecoverer[AgentState],
@@ -413,6 +415,18 @@ extends
   protected val inventoryItems = Vector(
     AgentRef, SubagentItem, SubagentBundle,
     FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl)
+
+
+  @TestOnly
+  def forTest(
+    orders: Iterable[Order[Order.State]] = Nil,
+    workflows: IterableOnce[Workflow] = Nil,
+    itemStates: IterableOnce[UnsignedSimpleItemState] = Nil)
+  : AgentState =
+    AgentState.empty.copy(
+      idToOrder = orders.toEagerSeq.toKeyedMap(_.id),
+      idToWorkflow = workflows.toEagerSeq.toKeyedMap(_.id),
+      keyToUnsignedItemState_ = itemStates.toEagerSeq.toKeyedMap(_.path))
 
 
   final case class AgentMetaState(

@@ -2,57 +2,62 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.event.KeyedEvent
+import js7.base.time.Timestamp
+import js7.data.event.EventColl.extensions.now
+import js7.data.event.{EventCalc, KeyedEvent}
+import js7.data.execution.workflow.OrderEventSource.moveOrderToNextInstruction
 import js7.data.execution.workflow.instructions.SleepExecutor.*
-import js7.data.order.OrderEvent.{OrderMoved, OrderSleeping, OrderStarted}
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderSleeping}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
-import js7.data.order.{Order, OrderObstacleCalculator}
-import js7.data.state.EngineState
+import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
+import js7.data.state.EngineState_
 import js7.data.value.NumberValue
 import js7.data.workflow.instructions.Sleep
 import scala.concurrent.duration.*
 
-private[instructions] final class SleepExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
+private object SleepExecutor extends EventInstructionExecutor_[Sleep]:
 
-  type Instr = Sleep
-  val instructionClass = classOf[Sleep]
-
-  def toEvents(instr: Sleep, order: Order[Order.State], state: EngineState)
-  : Checked[List[KeyedEvent[OrderStarted | OrderSleeping | OrderMoved]]] =
-    start(order).getOrElse:
-      order.ifState[Order.Ready].map: order =>
-        for
-          scope <- state.toImpureOrderExecutingScope(order, clock.now())
-          value <- instr.duration.eval(using scope).map(_.missingTo(NumberValue.Zero))
-          number <- value.toNumberValue
-          duration = bigDecimalSecondsToDuration(number.number)
-        yield
-          if duration.isPositive then
-            (order.id <-: OrderSleeping(clock.now() + duration)) :: Nil
-          else
-            (order.id <-: OrderMoved(order.position.increment)) :: Nil
+  def toEventCalc[S <: EngineState_[S]](instr: Sleep, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    useOrder(orderId): (coll, order) =>
+      order.ifState[Order.IsFreshOrReady].map: order =>
+        start(coll, orderId): (coll, order) =>
+          for
+            scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.now)
+            value <- instr.duration.eval(using scope).map(_.missingTo(NumberValue.Zero))
+            numberValue <- value.toNumberValue
+            duration = bigDecimalSecondsToDuration(numberValue.number)
+            coll <-
+              if duration.isPositive then
+                coll:
+                  order.id <-: OrderSleeping(coll.now + duration)
+              else
+                coll:
+                  moveOrderToNextInstruction(order)
+          yield coll
       .orElse:
         order.ifState[Order.Sleeping].map: order =>
-          Right:
-            order.state.until <= clock.now() thenList:
-              order.id <-: OrderMoved(order.position.increment)
+          if order.state.until <= coll.now then
+            coll:
+              moveOrderToNextInstruction(order)
+          else
+            coll.nix
       .getOrElse:
-        Right(Nil)
+        coll.nix
 
-  override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
+  override def toObstacles(
+    order: Order[Order.State],
+    calculator: OrderObstacleCalculator,
+    now: Timestamp)
+  : Checked[Set[OrderObstacle]] =
     order.state match
       case Order.Sleeping(until) =>
         Right(Set(WaitingForOtherTime(until)))
 
       case _ =>
-        super.toObstacles(order, calculator)
+        super.toObstacles(order, calculator, now)
 
-
-object SleepExecutor:
-
-  private[instructions] def bigDecimalSecondsToDuration(number: BigDecimal): FiniteDuration =
+  def bigDecimalSecondsToDuration(number: BigDecimal): FiniteDuration =
     val nanos = number * 1_000_000_000
     if nanos > Long.MaxValue then
       (100 * 365).days

@@ -3,9 +3,7 @@ package js7.controller.command.executors
 import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.ControlWorkflow
 import js7.data.controller.ControllerStateExecutor
-import js7.data.event.EventCalc
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId}
 
@@ -24,6 +22,5 @@ private[command] def controlWorkflowExecutor: CommandEventConverter[ControlWorkf
       val event = if isNew then UnsignedItemAdded(item) else UnsignedItemChanged(item)
       Vector(event)
         .concat:
-          val instrService = InstructionExecutorService(EventCalc.clock)
           ControllerStateExecutor.updatedWorkflowControlAttachedEvents(controllerState, item)
         .map(NoKey <-: _)

@@ -52,6 +52,13 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
 
   def statistics: EngineStateStatistics
 
+  /** @return `false`, if the Order must not execute an `Instruction`. */
+  final def isOrderExecutable(order: Order[Order.State]): Boolean =
+    weHave(order) &&
+      !order.isState[Order.IsTerminated] &&
+      !order.isState[Order.IsFailed] &&
+      !order.isState[Order.Broken]
+
   final def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
       order.isAttached && isAgent
@@ -117,7 +124,7 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
       isOrderProcessable2(order) ? order
 
   private def isOrderProcessable2(order: Order[Order.State]): Boolean =
-    instruction(order.workflowPosition).isInstanceOf[Execute]
+    instructionIs[Execute](order.workflowPosition)
       && order.isAttached
       && !isOrderAtStopPosition(order)
       && !isOrderAtBreakpoint(order)
@@ -172,7 +179,7 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
         order.state.eq(Cancelled) ||
         order.isState[Order.Ready] &&
           order.position.parent.contains(parent.position) &&
-          instruction(order.workflowPosition).isInstanceOf[End])
+          instructionIs[End](order.workflowPosition))
 
   final def isSuspendedOrStopped(order: Order[Order.State]): Boolean =
     order.isSuspendedOrStopped || isWorkflowSuspended(order.workflowPath)

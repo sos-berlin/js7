@@ -3,20 +3,20 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.ZeroDuration
+import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.event.KeyedEvent
+import js7.data.controller.ControllerState
+import js7.data.event.{EventColl, KeyedEvent}
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.*
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.NoticeState.{Announced, Posted, Unknown}
 import js7.data.order.OrderEvent.OrderMoved.NoNotice
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
-import js7.data.state.ControllerTestState
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.ConsumeNotices
@@ -340,14 +340,14 @@ object ConsumeNoticesExecutorTest:
     boardExpr: BoardPathExpression,
     whenNotAnnounced: WhenNotAnnounced,
     boardToNoticeState: Map[BoardPath, NoticeState] = Map.empty)
-  : Checked[List[OrderEvent.OrderActorEvent]] =
+  : Checked[List[OrderCoreEvent]] =
     val instr = ConsumeNotices(boardExpr, whenNotAnnounced = whenNotAnnounced, Workflow.empty)
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"), instr)
     val order = Order(orderId, workflow.id /: Position(0), Order.Ready(), planId = planId,
       arguments = Map("ARG" -> StringValue("🔸")))
-    val controllerState = ControllerTestState.of(
-      workflows = Some(Seq(workflow)),
-      orders = Some(Seq(order)),
+    val controllerState = ControllerState.forTest(
+      workflows = Seq(workflow),
+      orders = Seq(order),
       itemStates =
         boardPaths.map: boardPath =>
           BoardState(
@@ -373,11 +373,13 @@ object ConsumeNoticesExecutorTest:
                       case Posted => Map(noticeKey -> NoticePlace(Some(Notice(boardPath / plannedNoticeKey))))
                       case Unknown => Map.empty)))))
 
-    ConsumeNoticesExecutor:
-      InstructionExecutorService(TestWallClock(ts"2024-11-25T12:00:00Z"))
-    .toEvents(instr, order, controllerState)
-    .map(_.map:
-      case KeyedEvent(`orderId`, event) => event)
+    ConsumeNoticesExecutor.toEventCalc(instr, order.id)
+      .calculateEvents:
+        EventColl(controllerState, ts"2024-11-25T12:00:00Z")
+      .map:
+        _.map:
+          case KeyedEvent(`orderId`, event) => event
+        .toList
 
 
   private[instructions] enum NoticeState:

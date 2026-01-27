@@ -9,6 +9,7 @@ import js7.data.event.EventCalcCtx.OpaqueEventCollCtx
 import js7.data.event.KeyedEvent.NoKey
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
+import scala.collection.IndexedSeqView
 
 /** Calculator for EventColl.
   *
@@ -22,16 +23,57 @@ final class EventCalcCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx](
     calculate(aggregate, context).map: coll =>
       coll.keyedEvents.toVector -> coll.aggregate
 
-  /** Returns an EventCollCtx containing the calculated events and aggregate. */
+  /** Return an EventCollCtx containing the calculated events and aggregate. */
   def calculate(aggregate: S, context: Ctx): Checked[EventCollCtx[S, E, Ctx]] =
-    calculate[S, E, Ctx](EventCollCtx(aggregate, context))
+    addTo[S, E, Ctx](EventCollCtx(aggregate, context))
 
-  /** Returns an EventCollCtx containing the calculated events and aggregate.
-    * <p>Simply calls  `function`. */
-  inline def calculate[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1](
-    eventColl: EventCollCtx[S1, E1, Ctx & Ctx1])
+  /** Return an EventCollCtx containing the calculated events and aggregate.
+    * <p>Simply calls  `function` with the `forward`ed (emptied) `coll`.
+    * <p>Try to avoid this method.
+    * @see ifHasEventsAddToCollElse
+    * @see addTo
+    */
+  def calculate[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1](
+    coll: EventCollCtx[S1, E1, Ctx & Ctx1])
   : Checked[EventCollCtx[S1, E1, Ctx & Ctx1]] =
-    widen[S1, E1, Ctx & Ctx1].function(eventColl)
+    addTo[S1, E1, Ctx1](coll.forward/*exclude events from the result*/)
+
+  /** Return an EventCollCtx containing the calculated events and aggregate.
+    * <p>Simply calls `function` with the provided `coll`.
+    * The calculated events are appended to `coll`.
+    * <p>
+    * If you want only the calculated events, use `calculateEvents`.
+    * If `coll` is not a `forward`ed `EventCollCtx`,
+    * the result contains the events from `coll` and the calculated events appended.
+    */
+  inline def addTo[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1](
+    coll: EventCollCtx[S1, E1, Ctx & Ctx1])
+  : Checked[EventCollCtx[S1, E1, Ctx & Ctx1]] =
+    widen[S1, E1, Ctx & Ctx1].function(coll)
+
+  ///** Returns the calculated events.
+  //  */
+  //def calculateEvents[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event](
+  //  coll: EventCollCtx[S1, E1, Ctx])
+  //: Checked[IndexedSeqView[KeyedEvent[E1]]] =
+  //  calculate[S1, E1, Ctx](coll).map(_.keyedEvents)
+
+  /** Return the calculated events.
+    * <p>See `calculate`.
+    */
+  def calculateEvents(coll: EventCollCtx[S, E, Ctx]): Checked[IndexedSeqView[KeyedEvent[E]]] =
+    calculate[S, E, Ctx](coll).map(_.keyedEvents)
+
+  /** Add this to coll or, if coll has no events, execute the body
+    */
+  def ifHasEventsAddToCollElse(coll: EventCollCtx[S, E, Ctx])
+    (whenNoEvents: => Checked[EventCollCtx[S, E, Ctx]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    addTo(coll).flatMap: newColl =>
+      if newColl.hasMoreEventsThan(coll) then
+        Right(newColl)
+      else
+        whenNoEvents
 
   inline def widen[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event, Ctx1]
   : EventCalcCtx[S1, E1, Ctx & Ctx1] =
@@ -136,7 +178,8 @@ object EventCalcCtx:
 
       def combine(a: MyEventCalcCtx, b: MyEventCalcCtx): MyEventCalcCtx =
         EventCalcCtx: coll =>
-          a.calculate(coll).flatMap(b.calculate)
+          a.calculate(coll).flatMap: a =>
+            a.addEventCalc(b)
 
       // This implementation of combineAll avoids a hidden flatMap recursion
       override def combineAll(as: IterableOnce[MyEventCalcCtx]): MyEventCalcCtx =

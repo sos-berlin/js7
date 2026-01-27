@@ -1,45 +1,43 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
-import js7.data.state.EngineState
+import cats.syntax.traverse.*
+import js7.base.problem.Checked
+import js7.data.event.EventCalc
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderFinished, OrderMoved}
+import js7.data.order.{Order, OrderId}
+import js7.data.state.{EngineState, EngineState_}
 import js7.data.workflow.instructions.End
 
-private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor, PositionInstructionExecutor:
+private object EndExecutor extends EventInstructionExecutor_[End], PositionInstructionExecutor:
 
-  type Instr = End
-  val instructionClass = classOf[End]
+  def toEventCalc[S <: EngineState_[S]](instr: End, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    useOrder(orderId): (coll, order) =>
+      order.position.parent
+        .filter(_ => !order.isInOutermostBlock)
+        .match
+          case None =>
+            order.state match
+              case _: Order.IsFreshOrReady =>
+                detach(coll, order): coll =>
+                  start(coll, orderId): (coll, order) =>
+                    coll:
+                      orderId <-: OrderFinished()
 
-  import service.instructionToExecutor
+              case _ => coll.nix
 
-  def toEvents(instruction: End, order: Order[Order.State], state: EngineState) =
-    order.position.parent
-      .filter(_ => !order.isInOutermostBlock)
-      .match
-        case None =>
-          order.state match
-            case _: Order.IsFreshOrReady =>
-              detach(order)
-                .orElse(
-                  start(order))
-                .getOrElse(Right(
-                  (order.id <-: OrderFinished()) :: Nil))
+          case Some(parentPos) =>
+            coll.aggregate.instruction(order.workflowId /: parentPos).flatMap: instr =>
+              coll:
+                InstructionExecutor.onReturnFromSubworkflow(instr, order)
 
-            case _ => Right(Nil)
-
-        case Some(parentPos) =>
-          val instr = state.instruction(order.workflowId /: parentPos)
-          service.onReturnFromSubworkflow(instr, order, state)
-
-  def nextMove(instruction: End, order: Order[Order.State], state: EngineState) =
-    Right:
-      if order.isInOutermostBlock then
-        None
-      else
-        for
-          parentPos <- order.position.parent
-          exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
-          next <- exec.subworkflowEndToPosition(parentPos)
-        yield
-          OrderMoved(next)
+  def nextMove(instruction: Instr, order: Order[Order.State], engineState: EngineState)
+  : Checked[Option[OrderMoved]] =
+    if order.isInOutermostBlock then
+      Right(None)
+    else
+      order.position.parent.flatMap: parentPos =>
+        engineState.instruction(order.workflowId /: parentPos).traverse: instr =>
+          InstructionExecutor(instr).subworkflowEndToPosition(parentPos).map: next =>
+            OrderMoved(next)
+      .sequence

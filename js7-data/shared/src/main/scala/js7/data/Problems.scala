@@ -45,10 +45,6 @@ object Problems:
     def arguments: Map[String, String] = Map(
       "path" -> itemPath.toString)
 
-  final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded:
-    def arguments: Map[String, String] = Map(
-      "orderId" -> orderId.string)
-
   trait KeyedEventProblem extends Problem.Coded:
     def key: Any
 

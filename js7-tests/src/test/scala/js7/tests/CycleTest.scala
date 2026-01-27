@@ -24,7 +24,7 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStateReset, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStateReset, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -806,7 +806,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
   "Resume with invalid Cycle BranchId lets the Order fail" in:
     clock.resetTo(local("2023-03-21T00:00"))
     val workflow = Workflow(
-      WorkflowPath("BROKEN-WORKFLOW"),
+      WorkflowPath("INVALID-BRANCHID-WORKFLOW"),
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
@@ -815,18 +815,17 @@ with ControllerAgentForScalaTest with ScheduleTester:
             EmptyJob.execute(agentPath),
             Stop())))
     withItem(workflow) { workflow =>
-      val orderId = OrderId("#2023-03-21#BROKEN")
+      val orderId = OrderId("#2023-03-21#INVALID-BRANCHID")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      controller.api
-        .executeCommand(
-          ResumeOrder(orderId, position = Some(Position(0) / "cycle+💣" % 2)))
-        .await(99.s).orThrow
-      eventWatch.await[OrderBroken](_.key == orderId)
+      execCmd:
+        ResumeOrder(orderId, position = Some(Position(0) / "cycle+💣" % 2))
+      eventWatch.await[OrderFailed](_.key == orderId)
 
-      execCmd(CancelOrders(Seq(orderId)))
+      execCmd:
+        CancelOrders(Seq(orderId))
       eventWatch.await[OrderTerminated](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 
@@ -851,9 +850,6 @@ with ControllerAgentForScalaTest with ScheduleTester:
           OrderOutcomeAdded:
             OrderOutcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣")),
           OrderFailed(Position(0) / "cycle+💣" % 2),
-          OrderOutcomeAdded:
-            OrderOutcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣")),
-          OrderBroken(None),
           OrderCancelled,
           OrderDeleted))
     }

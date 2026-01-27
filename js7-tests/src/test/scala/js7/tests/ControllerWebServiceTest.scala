@@ -352,11 +352,12 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
           "responses": [
             {
               "TYPE": "Problem",
-              "code": "UnknownOrder",
               "arguments": {
-                "orderId": "UNKNOWN"
+                "key": "Order:UNKNOWN",
+                "type": "OrderId"
               },
-              "message": "Unknown Order:UNKNOWN"
+              "code": "UnknownKey",
+              "message": "No such OrderId: Order:UNKNOWN"
             }, {
               "TYPE": "Accepted"
             }

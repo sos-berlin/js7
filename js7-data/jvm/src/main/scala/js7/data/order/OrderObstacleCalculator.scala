@@ -3,10 +3,10 @@ package js7.data.order
 import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
-import js7.base.time.{Timestamp, WallClock}
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentRef
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.execution.workflow.instructions.InstructionExecutor
 import js7.data.job.JobKey
 import js7.data.order.Order.Processing
 import js7.data.order.OrderObstacle.{AgentProcessLimitReached, WaitingForAdmission, WaitingForCommand, WaitingForOtherTime}
@@ -26,21 +26,18 @@ final class OrderObstacleCalculator(val engineState: EngineState):
 
   def ordersToObstacles(orderIds: Iterable[OrderId], now: Timestamp)
   : Checked[View[(OrderId, Set[OrderObstacle])]] =
-    val instructionService = new InstructionExecutorService(WallClock.fixed(now))
     orderIds
       .toVector
       .traverse: orderId =>
-        orderToObstacles(orderId)(using instructionService)
-          .map(obstacles => orderId -> obstacles)
+        orderToObstacles(orderId, now).map: obstacles =>
+          orderId -> obstacles
       .map:
         _.view.filter(_._2.nonEmpty)
 
-  def orderToObstacles(orderId: OrderId)
-    (implicit instructionExecutorService: InstructionExecutorService)
-  : Checked[Set[OrderObstacle]] =
+  def orderToObstacles(orderId: OrderId, now: Timestamp): Checked[Set[OrderObstacle]] =
     for
       order <- engineState.idToOrder.checked(orderId)
-      a <- instructionExecutorService.toObstacles(order, this)
+      a <- InstructionExecutor.toObstacles(order, this, now)
       b = orderStateToObstacles(order)
       c = order.isSuspendedOrStopped.thenSet[OrderObstacle](WaitingForCommand)
     yield

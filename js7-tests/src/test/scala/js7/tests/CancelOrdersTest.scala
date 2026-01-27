@@ -13,6 +13,7 @@ import js7.base.io.process.{Pid, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -24,7 +25,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
+import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
 import js7.data.command.{CancellationMode, SuspensionMode}
@@ -363,7 +364,7 @@ final class CancelOrdersTest
     assert(controller.api.executeCommand(
       CancelOrders(Set(OrderId("UNKNOWN")), CancellationMode.FreshOnly)
     ).await(99.seconds) ==
-      Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
+      Left(UnknownKeyProblem("OrderId", OrderId("UNKNOWN"))))
 
   "Cancel multiple orders with Batch" in:
     val orders = for i <- 1 to 3 yield

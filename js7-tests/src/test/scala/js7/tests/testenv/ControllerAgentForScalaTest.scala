@@ -23,7 +23,6 @@ import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
 import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
 import js7.data.controller.{ControllerCommand, ControllerState}
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
@@ -81,8 +80,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   protected final def orderToObstacles(orderId: OrderId)(implicit clock: WallClock)
   : Checked[Set[OrderObstacle]] =
-    val service = new InstructionExecutorService(clock)
-    orderObstacleCalculator.orderToObstacles(orderId)(using service)
+    orderObstacleCalculator.orderToObstacles(orderId, clock.now())
 
   protected final def orderObstacleCalculator: OrderObstacleCalculator =
     new OrderObstacleCalculator(controllerState)

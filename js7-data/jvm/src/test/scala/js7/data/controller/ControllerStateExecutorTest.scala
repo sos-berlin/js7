@@ -5,7 +5,6 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
@@ -15,7 +14,6 @@ import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, KeyedEvent, TimeCtx}
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -258,7 +256,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
     def applyEvents(keyedEvents: KeyedEvent[Event]*) =
       val executor = Executor(_controllerState)
       val result = executor.applyWithSubsequentEvents:
-        EventColl(_controllerState, TimeCtx(ts"2025-04-26T12:00:00Z"))
+        EventColl(_controllerState, ts"2025-04-26T12:00:00Z")
           .add(keyedEvents).orThrow.keyedEvents.toVector
       updated = executor.controllerState
       result
@@ -361,8 +359,8 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           bOrderId <-: OrderAdded(bWorkflow.id)
         )) == Right(Seq(
           bOrderId <-: OrderStarted,
-          aOrderId <-: OrderAttachable(aAgentRef.path),
           bOrderId <-: OrderLocksAcquired(List(LockDemand(lock.path))),
+          aOrderId <-: OrderAttachable(aAgentRef.path),
           bOrderId <-: OrderAttachable(bAgentRef.path))))
 
       assert(
@@ -506,10 +504,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
 object ControllerStateExecutorTest:
 
-  private val timeCtx = TimeCtx(ts"2025-04-29T12:00:00Z")
-  private implicit val instructionExecutorService: InstructionExecutorService =
-    new InstructionExecutorService(WallClock)
-
+  private val now = ts"2025-04-29T12:00:00Z"
   private val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
 
   private val aSubagentId = SubagentId("A-SUBAGENT")
@@ -574,7 +569,7 @@ object ControllerStateExecutorTest:
     def controllerState = coll.aggregate
 
     def this(controllerState: ControllerState = ControllerState.empty) =
-      this(EventColl(controllerState, timeCtx))
+      this(EventColl(controllerState, now))
 
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[Seq[AnyKeyedEvent]] =

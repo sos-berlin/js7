@@ -8,27 +8,28 @@ import js7.data.order.{Order, OrderOutcome}
 import js7.data.state.EngineState
 import js7.data.workflow.instructions.Fork
 
-private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor, ForkInstructionExecutor:
+private object ForkExecutor extends ForkInstructionExecutor[Fork]:
 
-  type Instr = Fork
-  val instructionClass = classOf[Fork]
-
-  protected def toForkedEvent(fork: Instr, order: Order[Order.IsFreshOrReady], state: EngineState)
+  protected def toForkedEvent(
+    fork: Instr,
+    order: Order[Order.IsFreshOrReady],
+    engineState: EngineState,
+    now: Timestamp)
   : Checked[OrderForked] =
-    for
-      children <- fork.branches
-        .traverse: branch =>
-          order.id.withChild(branch.id.string)
-            .map(childOrderId => OrderForked.Child(branch.id, childOrderId))
-    yield
+    fork.branches.traverse: branch =>
+      order.id.withChild(branch.id.string).map: childOrderId =>
+        OrderForked.Child(branch.id, childOrderId)
+    .map: children =>
       OrderForked(children)
 
-  protected def forkResult(fork: Fork, order: Order[Order.Forked], state: EngineState, now: Timestamp)
+  protected def forkResult(
+    fork: Fork,
+    order: Order[Order.Forked],
+    engineState: EngineState,
+    now: Timestamp)
   : OrderOutcome.Completed =
-    OrderOutcome.Completed.fromChecked(
-      fork.branches
-        .traverse: branch =>
-          calcResult(branch.result, order.id / branch.id.string, state, now)
-        .map: results =>
-          OrderOutcome.Succeeded(results.view.flatten.toMap))
+    OrderOutcome.Completed.fromChecked:
+      fork.branches.traverse: branch =>
+        calcResult(branch.result, order.id / branch.id.string, engineState, now)
+      .map: results =>
+        OrderOutcome.Succeeded(results.view.flatten.toMap)

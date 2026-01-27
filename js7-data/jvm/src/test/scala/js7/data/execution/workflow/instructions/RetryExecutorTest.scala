@@ -3,16 +3,17 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{Timestamp, WallClock}
+import js7.data.controller.ControllerState
+import js7.data.event.EventColl
 import js7.data.execution.workflow.instructions.RetryExecutorTest.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderRetrying}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.ControllerTestState
 import js7.data.value.NamedValues
-import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
+import js7.data.workflow.instructions.{EmptyInstruction, Gap, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.concurrent.duration.*
 
@@ -20,6 +21,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 final class RetryExecutorTest extends OurTestSuite:
+
   "toEvents" in:
     assert(toEvents(Position(1)) == Left(Problem("Not in a try or catch block")))
     assert(toEvents(tryPosition) == Left(Problem("Not in a try or catch block")))
@@ -56,21 +58,21 @@ final class RetryExecutorTest extends OurTestSuite:
 object RetryExecutorTest:
   private val now = ts"2019-03-08T12:00:00Z"
   private val orderId = OrderId("ORDER-A")
-  private val tryPosition = Position(7)
+  private val tryPosition = Position(1)
   private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
-  private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
-
-  private val retryExecutor = new RetryExecutor(new InstructionExecutorService(WallClock.fixed(now)))
+  private val tryInstruction = TryInstruction(
+    Workflow.of(EmptyInstruction()),
+    Workflow.of(EmptyInstruction()))
 
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) =
     val order = Order(orderId, workflowId /: position, Order.Ready(),
       historicOutcomes = Vector:
         HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1))))
-    val engineState =
-      new ControllerTestState(idToOrder = Map(order.id -> order)):
-        override def instruction(position: WorkflowPosition) =
-          if position == workflowId /: tryPosition then
-            tryInstruction.copy(retryDelays = Some(delays.toVector))
-          else
-            Gap.empty
-    retryExecutor.toEvents(Retry(), order, engineState)
+    val engineState = ControllerState.forTest(
+      orders = Seq(order),
+      workflows = Seq(
+        Workflow.of(workflowId,
+          Gap(),
+          tryInstruction.copy(retryDelays = Some(delays.toVector)))))
+    RetryExecutor.toEventCalc(Retry(), order.id).calculateEvents(EventColl(engineState, now))
+      .map(_.toList)

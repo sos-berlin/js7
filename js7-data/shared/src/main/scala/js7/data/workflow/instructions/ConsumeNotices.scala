@@ -3,14 +3,10 @@ package js7.data.workflow.instructions
 import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.L3
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardPathExpression, NoticeId}
-import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
+import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
-import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{SkipWhenNoNotice, Wait}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
@@ -42,27 +38,6 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.WithInstructionBlock:
 
   def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths
-
-  protected def fulfilledEvents(
-    order: Order[Order.Ready | Order.ExpectingNotices],
-    noticeIds: Vector[NoticeId],
-    consumedNoticeIds: Vector[NoticeId],
-    exprResult: L3)
-  : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
-    exprResult match
-      case L3.False => Nil
-      case L3.True => OrderNoticesConsumptionStarted(noticeIds) :: Nil
-      case L3.Unknown =>
-        whenNotAnnounced match
-          case Wait => Nil
-
-          case SkipWhenNoNotice if consumedNoticeIds.isEmpty =>
-            OrderNoticesRead
-              :: OrderMoved(order.position.increment, Some(OrderMoved.NoNotice))
-              :: Nil
-
-          case _ =>
-            OrderNoticesConsumptionStarted(noticeIds) :: Nil
 
   def withoutBlocks: ConsumeNotices =
     copy(subworkflow = Workflow.empty)

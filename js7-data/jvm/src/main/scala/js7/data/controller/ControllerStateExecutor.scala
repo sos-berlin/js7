@@ -13,21 +13,21 @@ import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.board.NoticeEventSource
+import js7.data.controller.{ControllerEventCalc, ControllerEventColl}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.LockState
-import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderExternalVanished, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderAwoke, OrderDeleted, OrderDetached, OrderExternalVanished, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderProcessed, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
-import js7.data.plan.PlanFinishedEvent
+import js7.data.state.EngineEventColl.extensions.order
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -36,8 +36,8 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
-import scala.collection.immutable.{ArraySeq, VectorBuilder}
-import scala.collection.{View, mutable}
+import scala.collection.immutable.ArraySeq
+import scala.collection.{View, immutable, mutable}
 import scala.language.implicitConversions
 
 object ControllerStateExecutor:
@@ -115,19 +115,19 @@ object ControllerStateExecutor:
   def startResetAgent(agentPath: AgentPath, force: Boolean): EventCalc[ControllerState, Event] =
     EventCalc: coll =>
       for
-        coll <- coll.add:
+        coll <- coll:
           agentPath <-: AgentResetStarted(force = force)
-        coll <- coll.add:
+        coll <- coll:
           coll.aggregate.keyTo(SubagentItemState).values.view
             .filter(_.item.agentPath == agentPath)
             .map(_.path <-: SubagentReset)
-        coll <- coll.add:
+        coll <- coll:
           coll.aggregate.idToOrder.values.view
             .filter(_.isAtAgent(agentPath))
             .map: order =>
-              forciblyDetachOrder(order, agentPath)
+              forciblyDetachOrder(order.id, agentPath)
             .toVector.combineAll
-        coll <- coll.add:
+        coll <- coll:
           coll.aggregate.itemToAgentToAttachedState.to(View)
             .filter(_._2.contains(agentPath))
             .map(_._1)
@@ -136,18 +136,26 @@ object ControllerStateExecutor:
       yield
         coll
 
-  private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
-  : EventCalc[ControllerState, OrderCoreEvent] =
-    EventCalc.checked: controllerState =>
-      given InstructionExecutorService = InstructionExecutorService(EventCalc.clock)
+  private def forciblyDetachOrder(orderId: OrderId, agentPath: AgentPath): ControllerEventCalc =
+    EventCalc: coll =>
       val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
       for
-        orderEvents <- order.forceDetach(outcome).map(_._1).map(_.map(order.id <-: _))
-        detachedState <- controllerState.applyKeyedEvents(orderEvents)
-        fail <- OrderEventSource(detachedState)
-          .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
+        order <- coll.order(orderId)
+        coll <- coll:
+          order.ifState[Order.Processing].map: _ =>
+            orderId <-: OrderProcessed(outcome)
+        coll <- coll:
+          orderId <-: OrderDetached
+        coll <- coll.addWithKey(order.id):
+          order.resetState // Reset state to allow failing the order
+        order <- coll.order(orderId)
+        coll <- coll:
+          order.ifState[Order.DelayedAfterError].map: _ =>
+            orderId <-: OrderAwoke
+        coll <- coll:
+          OrderEventSource.fail(orderId, Some(outcome), uncatchable = true)
       yield
-        orderEvents ++ fail.view.map(order.id <-: _)
+        coll
 
   def addSubsequentEvents(coll: EventColl[ControllerState, Event])
   : Checked[EventColl[ControllerState, Event]] =
@@ -161,7 +169,7 @@ object ControllerStateExecutor:
         if !subcoll.hasEvents then
           Right(coll)
         else if isStrict && recursion > 10 && coll.keyedEvents.endsWith(subcoll.keyedEvents) then
-          subcoll.foreachLog(o => logger.error(s"addSubsequentEvents recursion=$recursion $o"))
+          subcoll.foreachEventString(o => logger.error(s"addSubsequentEvents recursion=$recursion $o"))
           throw new AssertionError("addSubsequentEvents endless recursion")
         else
           // TODO Avoid recursion
@@ -174,7 +182,8 @@ object ControllerStateExecutor:
   : Checked[EventColl[ControllerState, Event]] =
     // (looks like an EventCalc, but has a different semantic)
     eventsToTouchedThings(coll).flatMap: tuple =>
-      touchedThingsToSubsequentEvents.tupled(tuple).calculate(coll)
+      coll.addEventCalc:
+        touchedThingsToSubsequentEvents.tupled(tuple)
 
   private def eventsToTouchedThings(coll: EventColl[ControllerState, Event])
   : Checked[(
@@ -258,9 +267,12 @@ object ControllerStateExecutor:
       val detachedItems = mutable.Set.empty[InventoryItemKey] ++ detachedItems1
       for
         coll <- Right(coll.forward)
-        coll <- coll.add:
-          nextItemAttachedStateEvents(touchedItemKeys)
-        coll <- coll.add:
+        coll <-
+          if touchedItemKeys.isEmpty then
+            coll.nix
+          else
+            coll(nextItemAttachedStateEvents(touchedItemKeys))
+        coll <- coll:
           detachWorkflowCandidates.view
             .filter(coll.aggregate.keyToItem.contains)
             .filter(coll.aggregate.isObsoleteItem)
@@ -272,7 +284,7 @@ object ControllerStateExecutor:
                   case (agentPath, Attached(_)) =>
                     detachedItems += workflowId
                     NoKey <-: ItemDetachable(workflowId, agentPath))
-        coll <- coll.add:
+        coll <- coll:
           detachedWorkflows.view
             .flatMap: (workflowId, agentPath) =>
               val workflowControlId = WorkflowControlId(workflowId)
@@ -281,7 +293,7 @@ object ControllerStateExecutor:
                 .exists(_.isAttachableOrAttached)
                 .thenSome:
                   NoKey <-: ItemDetachable(workflowControlId, agentPath)
-        coll <- coll.add:
+        coll <- coll:
           (detachWorkflowCandidates.view ++ detachedItems)
             .filter(coll.aggregate.keyToItem.contains)
             .filterNot(coll.aggregate.itemToAgentToAttachedState.contains)
@@ -305,7 +317,7 @@ object ControllerStateExecutor:
             .map: itemKey =>
               NoKey <-: ItemDeleted(itemKey)
             .toSet
-        coll <- coll.add:
+        coll <- coll:
           detachedItems.view
             .filterNot(coll.aggregate.keyToItem.contains)
             .filter:
@@ -321,7 +333,7 @@ object ControllerStateExecutor:
                 false
             .map: itemKey =>
               NoKey <-: ItemDeleted(itemKey)
-        coll <- coll.add:
+        coll <- coll:
           deletedWorkflows.view
             .filterNot(coll.aggregate.keyToItem.contains)
             .flatMap:
@@ -346,9 +358,9 @@ object ControllerStateExecutor:
 
               case _ =>
                 Nil
-        coll <- coll.add:
+        coll <- coll:
           nextOrderEvents(touchedOrderIds)
-        coll <- coll.add:
+        coll <- coll:
           nextOrderWatchOrderEvents(coll.aggregate)
       yield
         coll
@@ -375,11 +387,11 @@ object ControllerStateExecutor:
                 case WorkflowId.as(workflowId) =>
                   if coll.aggregate.isObsoleteItem(workflowId) then
                     for
-                      coll <- coll.add:
+                      coll <- coll:
                         derivedWorkflowPathControlEvent(workflowId, agentPath)
-                      coll <- coll.add:
+                      coll <- coll:
                         derivedWorkflowControlEvent(workflowId, agentPath)
-                      coll <- coll.add:
+                      coll <- coll:
                         detachEvent
                     yield
                       coll
@@ -388,10 +400,10 @@ object ControllerStateExecutor:
 
                 case itemKey =>
                   if coll.aggregate.deletionMarkedItems contains itemKey then
-                    coll.add:
+                    coll:
                       detachEvent
                   else
-                    coll.add:
+                    coll:
                       item.itemRevision != revision thenSome:
                         item.dedicatedAgentPath match
                           case Some(`agentPath`) | None =>
@@ -409,7 +421,7 @@ object ControllerStateExecutor:
           if coll.aggregate.deletionMarkedItems.contains(item.key) then
             Right(coll)
           else
-            coll.add:
+            coll:
               item.dedicatedAgentPath.map(NoKey <-: ItemAttachable(item.key, _))
 
   private def derivedWorkflowPathControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
@@ -493,63 +505,78 @@ object ControllerStateExecutor:
   : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =
     controllerState.ow.nextEvents(addOrder(controllerState, _, _))
 
-  // TODO Try to call with only relevant OrderIDs
+  // TODO Try to call with only relevant OrderIds
   //  For example, don't call with all orders waiting for a single-order lock.
-  def nextOrderEvents(orderIds: Iterable[OrderId]): EventCalc[ControllerState, Event] =
-    EventCalc.multiple: controllerState_ =>
-      var controllerState = controllerState_
-      val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | PlanFinishedEvent]]
-      var nextIndex = 0L
+  def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerEventCalc =
+    val queue = OrderQueue()
 
-      final case class Entry(orderId: OrderId, priority: BigDecimal, index: Long)
-      extends Ordered[Entry]:
-        def compare(o: Entry): Int =
-          priority compare o.priority match
-            case 0 => o.index compare index // Reverse, because early index has higher priority
-            case n => n
+    @tailrec
+    def loop(coll: ControllerEventColl): Checked[ControllerEventColl] =
+      if queue.isEmpty then
+        Right(coll)
+      else
+        //<editor-fold desc="if isTest ...">
+        if isTest && coll.keyedEvents.size >= 1_000_000 then
+          for (ke, i) <- coll.keyedEvents.view.take(1000).zipWithIndex do
+            logger.error(s"$i: $ke")
+          throw new AssertionError(s"🔥 ${coll.keyedEvents.size} events generated, probably a loop")
+        end if
+        //</editor-fold>
 
-      def toEntry(orderId: OrderId): Option[Entry] =
-        controllerState.idToOrder.get(orderId).map: order =>
-          val i = nextIndex
-          nextIndex += 1
-          Entry(orderId, order.priority, i)
+        if queue.isEmpty then
+          Right(coll)
+        else
+          val orderId = queue.dequeue()
+          OrderEventSource.nextEvents(orderId).calculate(coll) match
+            case Left(problem) => Left(problem)
+            case Right(coll2) =>
+              if coll2.hasEvents then
+                val touchedOrderIds = coll2.keyedEvents.view
+                  .collect:
+                    case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
+                  .flatMap:
+                    keyedEventToPendingOrderIds(coll2.aggregate, _)
+                  .toSet
+                  //TODO Keep ordering? .toVector.distinct
+                // TODO avoid duplicates in queue
+                queue.enqueue(touchedOrderIds, coll.aggregate.idToOrder)
+              end if
+              coll.add(coll2) match
+                case Left(problem) => Left(problem)
+                case Right(coll3) => loop(coll3)
 
-      val queue = mutable.PriorityQueue.from(orderIds.view.flatMap(toEntry))
+    EventCalc[ControllerState, Event]: coll =>
+      queue.enqueue(orderIds, coll.aggregate.idToOrder)
+      loop(coll)
 
-      @tailrec def loop(): Unit =
-        if queue.nonEmpty then
-          val orderId = queue.dequeue().orderId
-          if controllerState.idToOrder contains orderId then {
-            given InstructionExecutorService = InstructionExecutorService(EventCalc.clock)
-            val keyedEvents = OrderEventSource(controllerState).nextEvents(orderId)
-            if keyedEvents.nonEmpty then
-              for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
-                logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
-              controllerState.applyKeyedEvents(keyedEvents) match
-                case Left(problem) =>
-                  logger.error(s"$orderId: $problem")  // Should not happen
-                case Right(state) =>
-                  controllerState = state
-                  _keyedEvents ++= keyedEvents
-                  queue ++= keyedEvents.view
-                    .collect:
-                      case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
-                    .flatMap(keyedEventToPendingOrderIds(controllerState, _))
-                    .toSet.view.flatMap(toEntry)
+  private final class OrderQueue:
+    import OrderQueue.NextOrder
+    private val queue = mutable.PriorityQueue.empty[NextOrder]
 
-                  //<editor-fold desc="if isTest ...">
-                  if isTest && _keyedEvents.size >= 1_000_000 then
-                    for (ke, i) <- _keyedEvents.result().view.take(1000).zipWithIndex do
-                      logger.error(s"$i: $ke")
-                    throw new AssertionError(
-                      s"🔥 ${_keyedEvents.size} events generated, probably a loop")
-                  end if
-                  //</editor-fold>
-          }
-          loop()
+    def isEmpty =
+      queue.isEmpty
 
-      loop()
-      _keyedEvents.result()
+    def dequeue(): OrderId =
+      queue.dequeue().orderId
+
+    def enqueue(orderIds: Iterable[OrderId], idToOrder: Map[OrderId, Order[Order.State]]): Unit =
+      queue ++= orderIds.view.flatMap(idToOrder.get).map(NextOrder(_))
+
+  private object OrderQueue:
+    /** Only for nextOrderEvents. */
+    private final case class NextOrder(orderId: OrderId, priority: BigDecimal, index: Long)
+      extends Ordered[NextOrder]:
+      def compare(o: NextOrder): Int =
+        priority compare o.priority match
+          case 0 => o.index compare index // Reverse, because early index has higher priority
+          case n => n
+
+    private object NextOrder:
+      // Lower index means higher priority, when order.priority is equal
+      private var nextIndex = 0L // Increments indefinitely
+      def apply(order: Order[Order.State]): NextOrder =
+        nextIndex += 1
+        NextOrder(order.id, order.priority, nextIndex)
 
   private def optimizeKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
     val orderToIndex = mutable.Map[OrderId, Int]()
@@ -578,17 +605,20 @@ object ControllerStateExecutor:
   private def keyedEventToPendingOrderIds(
     controllerState: ControllerState,
     keyedEvent: KeyedEvent[OrderEvent])
-  : View[OrderId] =
-    keyedEvent.key +: keyedEvent.event.match
+  : immutable.Iterable[OrderId] =
+    keyedEvent.event.match
       case OrderLocksReleased(lockPaths) =>
-        lockPaths.view
-          .flatMap(controllerState.keyTo(LockState).get)
-          .flatMap(_.queue)
+        keyedEvent.key +:
+          lockPaths
+            .flatMap: lockPath =>
+              controllerState.keyTo(LockState).get(lockPath)
+            .flatMap(_.queue /*OrderIds queuing for this lock*/)
 
       case OrderForked(children) =>
-        children.view.map(_.orderId)
+        children.map(_.orderId)
 
       case orderOrderAdded: OrderOrderAdded =>
-        View.Single(orderOrderAdded.orderId)
+        keyedEvent.key :: orderOrderAdded.orderId :: Nil
 
-      case _ => View.empty
+      case _ =>
+        keyedEvent.key :: Nil

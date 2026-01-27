@@ -1,27 +1,28 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.order.OrderEvent.OrderFailedIntermediate_
-import js7.data.order.{Order, OrderOutcome}
-import js7.data.state.EngineState
+import js7.data.event.EventCalc
+import js7.data.execution.workflow.OrderEventSource.fail
+import js7.data.order.Order.Ready
+import js7.data.order.OrderEvent.OrderCoreEvent
+import js7.data.order.{OrderId, OrderOutcome}
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.Fail
 
-private[instructions] final class FailExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
-  type Instr = Fail
-  val instructionClass = classOf[Fail]
+object FailExecutor extends EventInstructionExecutor_[Fail]:
 
-  def toEvents(fail: Fail, order: Order[Order.State], state: EngineState) =
-    start(order)
-      .getOrElse:
-        order.state match
-          case _: Order.Ready =>
-            val msg = fail.message
-              .map(messageExpr => state
-                .toImpureOrderExecutingScope(order, clock.now())
-                .flatMap(messageExpr.evalAsString(using _))
-                .fold(_.toString, identity))
-            val outcome = OrderOutcome.Failed(msg, fail.namedValues, uncatchable = fail.uncatchable)
-            val event = OrderFailedIntermediate_(Some(outcome))
-            Right((order.id <-: event) :: Nil)
-
-          case _ => Right(Nil)
+  def toEventCalc[S <: EngineState_[S]](instr: Fail, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    // Should the order really start ???
+    EventCalc: coll =>
+      start(coll, orderId): (coll, order) =>
+        order.ifState[Ready].map: order =>
+          val msg = instr.message.map: messageExpr =>
+            coll.aggregate.toImpureOrderExecutingScope(order, coll.context.now).flatMap: scope =>
+              messageExpr.evalAsString(using scope)
+            .fold(_.toString, identity)
+          coll.add:
+            fail[S](orderId, Some:
+              OrderOutcome.Failed(msg, instr.namedValues, uncatchable = instr.uncatchable),
+              uncatchable = instr.uncatchable)
+        .getOrElse:
+          coll.nix

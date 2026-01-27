@@ -5,8 +5,6 @@ import java.util.Objects.requireNonNull
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.time.JavaTimeConverters.AsScalaInstant
-import js7.base.time.WallClock
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.controller.JControllerState
@@ -50,10 +48,8 @@ object JOrderPredicates:
     now: Instant)
   : Predicate =
     val cls = JOrderObstacle.toScalaClass(obstacleClass)
-    val service = new InstructionExecutorService(WallClock.fixed(now.toTimestamp))
-
     order => new OrderObstacleCalculator(state.asScala)
-      .orderToObstacles(order.id)(using service)
+      .orderToObstacles(order.id, now.toTimestamp)
       .exists(_.exists(cls.isInstance(_)))
 
   @Nonnull

@@ -1,19 +1,19 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
-import js7.data.order.Order
-import js7.data.order.OrderEvent.OrderDetachable
-import js7.data.state.EngineState
+import js7.data.event.EventCalc
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderDetachable}
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.Gap
 
-private[instructions] final class GapExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
+object GapExecutor extends EventInstructionExecutor_[Gap]:
 
-  type Instr = Gap
-  val instructionClass = classOf[Gap]
-
-  def toEvents(instruction: Gap, order: Order[Order.State], state: EngineState) =
-    if !order.isAttached then
-      Left(Problem.pure(s"Gap instruction but order is not attached to an agent: $order"))
-    else
-      Right((order.id <-: OrderDetachable) :: Nil)
+  def toEventCalc[S <: EngineState_[S]](instr: Gap, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    useOrder(orderId): (coll, order) =>
+      if !order.isAttached then
+        Left(Problem.pure(s"Gap instruction but order is not attached to an agent: $order"))
+      else
+        coll:
+          order.id <-: OrderDetachable

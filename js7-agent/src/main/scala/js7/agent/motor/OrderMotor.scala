@@ -21,13 +21,13 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.MultipleLinesBracket.zipWithBracket
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.command.CancellationMode
 import js7.data.event.{Event, EventCalc, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.InventoryItem
 import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted}
 import js7.data.order.{Order, OrderId}
@@ -47,7 +47,6 @@ private final class OrderMotor private(
     dispatcher: Dispatcher[IO])
 extends Service.StoppableByRequest:
 
-  private given InstructionExecutorService = InstructionExecutorService(clock)
   private val agentCommandToEventCalc = AgentCommandToEventCalc(agentConf)
   private val orderToEntry = AsyncMap[OrderId, OrderEntry]
   private[motor] val jobMotorKeeper =
@@ -221,7 +220,7 @@ extends Service.StoppableByRequest:
       .compile.drain
 
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
-    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
+    //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
     IO.whenA(orderIds.nonEmpty):
       clock.lockIO: delayNow =>
         // persist may be delayed a little by the journal, so `delayNow` may be in the past.
@@ -230,13 +229,14 @@ extends Service.StoppableByRequest:
         // FIRST, persist non-delayed Orders //
         journal.persist:
           // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
-          EventCalc.combineAll:
-            orderIds.view.map: orderId =>
-              EventCalc.multiple: (agentState: AgentState) =>
-                if agentState.idToOrder.get(orderId).exists(o => !o.isDelayed(delayNow)) then
-                  OrderEventSource.nextEvents(orderId, agentState)
-                else
-                  Nil
+          orderIds.view.map: orderId =>
+            EventCalc[AgentState, Event]: coll =>
+              if coll.aggregate.idToOrder.get(orderId).exists(o => !o.isDelayed(delayNow)) then
+                coll:
+                  OrderEventSource.nextEvents(orderId)
+              else
+                coll.nix
+          .foldMonoids
         .ifPersisted:
           onPersisted
         .map(_.orThrow) // TODO throws

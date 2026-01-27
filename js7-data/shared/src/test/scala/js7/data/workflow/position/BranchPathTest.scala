@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.data.order.CycleState
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.tester.CirceJsonTester.testJson
@@ -75,6 +76,58 @@ final class BranchPathTest extends OurTestSuite:
     intercept[IllegalStateException] { Nil.dropChild }
     assert((Position(1) / "A").dropChild == Nil)
     assert((Position(1) / "A" % 2 / "B").dropChild == Position(1) / "A")
+
+  "dropUntilMoveBoundary" in:
+    assert(BranchPath.empty.dropUntilMoveBoundary.isEmpty)
+    assert(List(Segment(7, BranchId.Then)).dropUntilMoveBoundary.isEmpty)
+    assert(List(Segment(7, BranchId.then_(1))).dropUntilMoveBoundary.isEmpty)
+    assert(List(Segment(7, BranchId.Else)).dropUntilMoveBoundary.isEmpty)
+
+    assert:
+      List(Segment(7, BranchId.fork("A")))
+        .dropUntilMoveBoundary == List(Segment(7, BranchId.fork("A")))
+    assert:
+      List(Segment(7, BranchId.ForkList))
+        .dropUntilMoveBoundary == List(Segment(7, BranchId.ForkList))
+    assert:
+      List(Segment(7, BranchId.Options)).dropUntilMoveBoundary.isEmpty
+    assert:
+      List(Segment(7, BranchId.StickySubagent))
+        .dropUntilMoveBoundary == Position(7) / BranchId.StickySubagent
+
+    assert:
+      List(
+        Segment(0, BranchId.Then),
+        Segment(0, BranchId.then_(1)),
+        Segment(0, BranchId.Else),
+        Segment(0, BranchId.Try_),
+        Segment(0, BranchId.try_(1)),
+        Segment(0, BranchId.Catch_),
+        Segment(0, BranchId.catch_(1)),
+        Segment(0, BranchId.Cycle),
+        Segment(0, BranchId.cycle(CycleState.empty)),
+        Segment(0, BranchId.Options),
+        Segment(0, BranchId.AdmissionTime),
+      ).dropUntilMoveBoundary.isEmpty
+    assert:
+      List(
+        Segment(0, BranchId.Then),
+        Segment(0, BranchId.StickySubagent),
+        Segment(0, BranchId.Then),
+        Segment(0, BranchId.then_(1)),
+        Segment(0, BranchId.Else),
+        Segment(0, BranchId.Try_),
+        Segment(0, BranchId.try_(1)),
+        Segment(0, BranchId.Catch_),
+        Segment(0, BranchId.catch_(1)),
+        Segment(0, BranchId.Cycle),
+        Segment(0, BranchId.cycle(CycleState.empty)),
+        Segment(0, BranchId.AdmissionTime),
+        Segment(0, BranchId.Options),
+      ).dropUntilMoveBoundary ==
+        List(
+          Segment(0, BranchId.Then),
+          Segment(0, BranchId.StickySubagent))
 
   "parent" in:
     assert(Nil.parent.isEmpty)

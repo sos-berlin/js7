@@ -1,25 +1,25 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
+import js7.base.time.AdmissionTimeScheme
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{AdmissionTimeScheme, WallClock}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.benchmark.OurBenchmark
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, MaybeTimestampedKeyedEvent, TimeCtx}
+import js7.data.event.{EventColl, TimeCtx}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemRevision, VersionId}
+import js7.data.order.OrderEvent.OrderCoreEvent
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.Schedule.Scheme
 import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Measurement, Mode, Param, Warmup}
-import scala.compiletime.uninitialized
+import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Measurement, Mode, Warmup}
 
 /** Benchmark for EventColl, using CycleExecutor as an example.
   * <p>
@@ -64,28 +64,8 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
           SignedString("???", GenericSignature("???", "???"))))))
       .orThrow
 
-  private val myOldCycleExecutor = CycleExecutor(InstructionExecutorService(WallClock))
-
-  @Param(Array(1_000_000.toString))
-  private var size: Int = uninitialized
-
   @Benchmark
-  def oldCycleExecutor: (Seq[AnyKeyedEvent], ControllerState) =
-    val keyedEvents = myOldCycleExecutor.toEvents(cycle, order, controllerState)
-      .orThrow
-    keyedEvents -> controllerState.applyKeyedEvents(keyedEvents).orThrow
-
-  private val myTestCycleExecutor = EventCalcCycleExecutor[ControllerState]
-
-  @Benchmark
-  def eventCalcCycleExecutor: (Seq[MaybeTimestampedKeyedEvent[Event]], ControllerState) =
-    val coll = myTestCycleExecutor.toEventCalc(orderId)
+  def eventCalcCycleExecutor: EventColl[ControllerState, OrderCoreEvent] =
+    CycleExecutor.toEventCalc[ControllerState](cycle, orderId)
       .calculate(controllerState, TimeCtx(ts"2025-03-14T12:00:00Z"))
       .orThrow
-    coll.timestampedKeyedEvents -> coll.aggregate
-
-
-//object EventCalcCycleExecutorBenchmark:
-//  def main(args: Array[String]): Int=
-//    OurBenchmark.runBenchmark(classOf[EventCalcCycleExecutorBenchmark])
-//    0

@@ -3,10 +3,13 @@ package js7.data.controller
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import fs2.Stream
+import io.circe.syntax.EncoderOps
 import js7.base.annotation.slow
 import js7.base.auth.UserId
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
+import js7.base.crypt.silly.SillySigner
 import js7.base.fs2utils.StreamExtensions.appendOne
 import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
@@ -38,6 +41,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
@@ -55,6 +59,7 @@ import js7.data.value.Value
 import js7.data.workflow.instructions.ConsumeNotices
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -688,6 +693,10 @@ extends
   : Checked[ControllerState] =
     ControllerState.addOrders(this, orders, allowClosedPlan = allowClosedPlan)
 
+  @TestOnly
+  def updateOrder(order: Order[Order.State]): This =
+    copy(idToOrder = idToOrder.updated(order.id, order))
+
   protected def update_(
     updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
@@ -1051,6 +1060,31 @@ extends
   object implicits:
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
+
+  @TestOnly
+  def forTest(
+    controllerId: ControllerId = ControllerId("CONTROLLER"),
+    orders: IterableOnce[Order[Order.State]] = Nil,
+    workflows: IterableOnce[Workflow] = Nil,
+    itemStates: IterableOnce[UnsignedSimpleItemState] = Nil)
+  : ControllerState =
+    val controllerState = ControllerState.empty
+    controllerState.copy(
+      controllerMetaState = ControllerState.empty.controllerMetaState.copy(controllerId = controllerId),
+      idToOrder = orders.toEagerSeq.toKeyedMap(_.id),
+      repo =
+        ControllerState.empty.repo.applyEvents:
+          workflows.toEagerSeq.groupBy(_.id.versionId).flatMap: (versionId, workflows) =>
+            VersionAdded(versionId) ::
+              workflows.toList.map: workflow =>
+                VersionedItemAdded:
+                  Signed(
+                    workflow,
+                    SillySigner.Default.toSignedString(workflow.asJson.compactPrint))
+        .orThrow,
+      keyToUnsignedItemState_ = controllerState.keyToUnsignedItemState_
+        ++ itemStates.toEagerSeq.toKeyedMap(_.path)
+    ).finish.orThrow
 
   private def update(
     s: ControllerState,

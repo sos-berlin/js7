@@ -13,48 +13,43 @@ import js7.data.value.{ListValue, NumberValue, ObjectValue}
 import js7.data.workflow.instructions.ForkList
 import scala.collection.View
 
-private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
-extends ForkInstructionExecutor:
+object ForkListExecutor extends ForkInstructionExecutor[ForkList]:
 
-  type Instr = ForkList
-  val instructionClass = classOf[ForkList]
-
-  protected def toForkedEvent(fork: ForkList, order: Order[Order.IsFreshOrReady], state: EngineState)
+  protected def toForkedEvent(
+    instr: ForkList,
+    order: Order[Order.IsFreshOrReady],
+    engineState: EngineState,
+    now: Timestamp)
   : Checked[OrderForked] =
-    for
-      scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
-      scope =  scope0 |+| new AgentsSubagentIdsScope(state)
-      elements <- fork.children.evalAsVector(using scope)
-      childIds <- elements
-        .traverseWithIndexM { case (element, i) =>
-          fork.childToId
-            .eval(View(element, NumberValue(i)))(using scope)
+      for
+        scope0 <- engineState.toImpureOrderExecutingScope(order, now)
+        scope = scope0 |+| AgentsSubagentIdsScope(engineState)
+        elements <- instr.children.evalAsVector(using scope)
+        childIds <- elements.traverseWithIndexM: (element, i) =>
+          instr.childToId.eval(View(element, NumberValue(i)))(using scope)
             .flatMap(_.toStringValueString)
-        }
-      _ <- childIds.checkUniqueness
-        .left.map(Problem(s"Duplicate child IDs in ${fork.children}: ") |+| _)
-      argsOfChildren <- elements
-        .traverseWithIndexM { case (element, i) =>
-          fork.childToArguments
-            .eval(View(element, NumberValue(i)))(using scope)
+        _ <- childIds.checkUniqueness
+          .left.map(Problem(s"Duplicate child IDs in ${instr.children}: ") |+| _)
+        argsOfChildren <- elements.traverseWithIndexM: (element, i) =>
+          instr.childToArguments.eval(View(element, NumberValue(i)))(using scope)
             .flatMap(_.as[ObjectValue])
-        }
-      children <- childIds.zip(argsOfChildren)
-        .traverse { case (childId, args) =>
+        children <- childIds.zip(argsOfChildren).traverse: (childId, args) =>
           order.id.withChild(childId)
             .map(OrderForked.Child(_, args.nameToValue))
-        }
-    yield
-      OrderForked(children)
+      yield
+        OrderForked(children)
 
-  protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: EngineState,
+  protected def forkResult(
+    fork: ForkList,
+    order: Order[Order.Forked],
+    state: EngineState,
     now: Timestamp) =
     OrderOutcome.Completed.fromChecked(
       for
         results <- order.state.children
           .map(_.orderId)
-          .traverse(childOrderId =>
-            calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now))
+          .traverse: childOrderId =>
+            calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now)
       yield
         OrderOutcome.Succeeded(results.view
           .flatten

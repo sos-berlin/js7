@@ -39,6 +39,6 @@ extends CommandEventConverter[AddOrders]:
       cmd.orders.traverse: order =>
         coll.aggregate.checkPlanIsOpen(order.planId)
       .flatMap: _ =>
-        ControllerStateExecutor
-          .addOrders(cmd.orders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-          .calculate(coll)
+        coll:
+          ControllerStateExecutor
+            .addOrders(cmd.orders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)

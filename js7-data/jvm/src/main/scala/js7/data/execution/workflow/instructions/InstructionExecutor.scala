@@ -1,91 +1,128 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.WallClock
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.agent.AgentPath
-import js7.data.event.KeyedEvent
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SubclassToX
+import js7.data.event.{EventCalc, EventColl, KeyedEvent}
+import js7.data.execution.workflow.OrderEventSource
+import js7.data.execution.workflow.OrderEventSource.moveOrder
 import js7.data.execution.workflow.instructions.InstructionExecutor.*
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderMoved, OrderStarted}
-import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
-import js7.data.state.EngineState
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderMoved}
+import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
+import js7.data.state.EngineEventColl.extensions.order
+import js7.data.state.{EngineState, EngineState_}
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
+import org.jetbrains.annotations.TestOnly
 
-/**
-  * @author Joacim Zschimmer
-  */
 trait InstructionExecutor:
   type Instr <: Instruction
 
-  protected val service: InstructionExecutorService
-
   def instructionClass: Class[? <: Instr]
 
-  def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
+  def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator, now: Timestamp)
   : Checked[Set[OrderObstacle]] =
     noObstacles
 
-  def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: EngineState)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+  def onReturnFromSubworkflow[S <: EngineState_[S]](instr: Instr, order: Order[Order.State])
+  : EventCalc[S, OrderCoreEvent] =
     order.position.parent match
       case None =>
         // Does not happen
-        Left(Problem.pure(s"onReturnFromSubworkflow but no parent position for ${order.id}"))
+        EventCalc.problem:
+          Problem.pure(s"onReturnFromSubworkflow but no parent position for ${order.id}")
 
       case Some(parentPos) =>
-        Right(
-          (order.id <-: OrderMoved(parentPos.increment)) :: Nil)
+        moveOrder(order.id, parentPos.increment).widen
 
   def subworkflowEndToPosition(parentPos: Position): Option[Position] =
     None
 
 
 object InstructionExecutor:
-  private def noObstacles: Checked[Set[OrderObstacle]] =
+  private val logger = Logger[this.type]
+
+  private val classToExecutor =
+    SubclassToX.by[Instruction, InstructionExecutor](_.instructionClass,
+      EmptyExecutor,
+      EndExecutor,
+      ExecuteExecutor,
+      FailExecutor,
+      FinishExecutor,
+      ForkExecutor,
+      ForkListExecutor,
+      GapExecutor,
+      IfExecutor,
+      TryExecutor,
+      LockExecutor,
+      PostNoticesExecutor,
+      ExpectNoticesExecutor,
+      ConsumeNoticesExecutor,
+      PromptExecutor,
+      RetryExecutor,
+      AddOrderExecutor,
+      StickySubagentExecutor,
+      OptionsExecutor,
+      StopExecutor,
+      BreakOrderExecutor,
+      CycleExecutor,
+      AdmissionTimeExecutor,
+      SleepExecutor,
+      SayExecutor,
+      BreakExecutor)
+
+  private val noObstacles: Checked[Set[OrderObstacle]] =
     Right(Set.empty)
 
+  private[instructions] inline def apply(instr: Instruction): InstructionExecutor =
+    byInstr(instr)
 
-trait EventInstructionExecutor extends InstructionExecutor:
-  final def clock: WallClock =
-    service.clock
+  private def byInstr(instr: Instruction): InstructionExecutor =
+    classToExecutor.checked(instr.getClass).orThrow
 
-  def toEvents(instruction: Instr, order: Order[Order.State], engineState: EngineState)
-  : Checked[List[KeyedEvent[OrderActorEvent]]]
+  def nextMove(orderId: OrderId, engineState: EngineState): Checked[Option[OrderMoved]] =
+    engineState.idToOrder.checked(orderId).flatMap: order =>
+      engineState.instruction(order.workflowPosition).flatMap: instr =>
+        byInstr(instr) match
+          case executor: PositionInstructionExecutor =>
+            executor.nextMove(instr.asInstanceOf[executor.Instr], order, engineState)
+          case _ => Right(None)
 
-  protected final def start(order: Order[Order.State])
-  : Option[Checked[List[KeyedEvent[OrderStarted]]]] =
-    for maybeStartable <- maybeStart(order) yield
-      Right(maybeStartable.map(order.id <-: _).toList)
+  @TestOnly
+  def testToEvents[S <: EngineState_[S]](
+    orderId: OrderId,
+    engineState: S,
+    now: Timestamp = Timestamp("2099-01-01T00:00:00Z"))
+  : Checked[List[KeyedEvent[OrderCoreEvent]]] =
+    toEventCalc(orderId)
+      .calculateEvents(EventColl(engineState, now))
+      .map(_.toList)
 
-  private def maybeStart(order: Order[Order.State]): Option[Option[OrderStarted]] =
-    order.isState[Order.Fresh] ?
-      (!isDelayed(order) ?
-        OrderStarted)
+  def toEventCalc[S <: EngineState_[S]](orderId: OrderId): EventCalc[S, OrderCoreEvent] =
+    EventCalc: coll =>
+      for
+        order <- coll.order(orderId)
+        instr <- coll.aggregate.instruction(order.workflowPosition)
+        coll <- coll:
+          byInstr(instr) match
+            case executor: EventInstructionExecutor =>
+              executor.toEventCalc(instr.asInstanceOf[executor.Instr], orderId)
+            case _ =>
+              EventCalc.empty
+      yield
+        if !coll.hasEvents then
+          logger.trace(s"🪱 ${instr.getClass.shortClassName} returned no event for $order")
+        coll
 
-  protected final def isStartable(order: Order[Order.State]): Boolean =
-    order.isState[Order.Fresh] && !isDelayed(order)
+  def onReturnFromSubworkflow[S <: EngineState_[S]](
+    instr: Instruction, order: Order[Order.State])
+  : EventCalc[S, OrderCoreEvent] =
+    val executor = byInstr(instr)
+    executor.onReturnFromSubworkflow(instr.asInstanceOf[executor.Instr], order)
 
-  protected final def readyOrStartable(order: Order[Order.State])
-  : Option[Order[Order.IsFreshOrReady]] =
-    order
-      .ifState[Order.Ready]
-      .orElse(order
-        .ifState[Order.Fresh]
-        .filterNot(isDelayed))
-
-  private def isDelayed(order: Order[Order.State]): Boolean =
-    order.isDelayed(clock.now())
-
-  protected final def attach(order: Order[Order.State], agentPath: AgentPath)
-  : Option[Checked[List[KeyedEvent[OrderAttachable]]]] =
-    order.isDetached ? Right((order.id <-: OrderAttachable(agentPath)) :: Nil)
-
-  protected final def detach(order: Order[Order.State])
-  : Option[Checked[List[KeyedEvent[OrderDetachable]]]] =
-    order.isAttached ? Right((order.id <-: OrderDetachable) :: Nil)
-
-
-trait PositionInstructionExecutor extends InstructionExecutor:
-  def nextMove(instruction: Instr, order: Order[Order.State], engineState: EngineState)
-  : Checked[Option[OrderMoved]]
+  def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator, now: Timestamp)
+  : Checked[Set[OrderObstacle]] =
+    calculator.engineState.instruction(order.workflowPosition).flatMap: instr =>
+      byInstr(instr).toObstacles(order, calculator, now)

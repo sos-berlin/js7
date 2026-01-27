@@ -4,8 +4,8 @@ import cats.syntax.option.*
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpression.syntax.{&, boardPathToExpr, |}
@@ -25,7 +25,6 @@ import scala.concurrent.duration.*
 import scala.language.implicitConversions
 
 final class PostNoticesExecutorTest extends OurTestSuite:
-  private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
 
   "PostNotices and ExpectNotices" in:
     var state =
@@ -45,12 +44,9 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     locally:
       state = state.applyKeyedEvent(postingOrderId <-: OrderAdded(postingWorkflow.id)).orThrow
 
-      val startedEvents = executorService.toEvents(postingOrderId, state).orThrow
-      assert(startedEvents == Seq(postingOrderId <-: OrderStarted))
-      state = state.applyKeyedEvents(startedEvents).orThrow
-
-      val events = executorService.toEvents(postingOrderId, state).orThrow
+      val events = InstructionExecutor.testToEvents(postingOrderId, state, clockTimestamp).orThrow
       assert(events == Seq(
+        postingOrderId <-: OrderStarted,
         postingOrderId <-: OrderNoticePosted(notice0.id, notice0.endOfLife),
         postingOrderId <-: OrderNoticePosted(notice1.id, notice1.endOfLife),
         postingOrderId <-: OrderMoved(Position(1))))
@@ -64,12 +60,9 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     locally:
       state = state.applyKeyedEvent(expectingOrderId <-: OrderAdded(expecting02or13Workflow.id)).orThrow
 
-      val startedEvents = executorService.toEvents(expectingOrderId, state).orThrow
-      assert(startedEvents == Seq(expectingOrderId <-: OrderStarted))
-      state = state.applyKeyedEvents(startedEvents).orThrow
-
-      val events = executorService.toEvents(expectingOrderId, state).orThrow
+      val events = InstructionExecutor.testToEvents(expectingOrderId, state, clockTimestamp).orThrow
       assert(events == Seq(
+        expectingOrderId <-: OrderStarted,
         expectingOrderId <-: OrderNoticesExpected(Vector(
           notice0.id,
           notice2.id,
@@ -95,12 +88,9 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     locally:
       state = state.applyKeyedEvent(otherExpectingOrderId <-: OrderAdded(expecting0Workflow.id)).orThrow
 
-      val startedEvents = executorService.toEvents(otherExpectingOrderId, state).orThrow
-      assert(startedEvents == Seq(otherExpectingOrderId <-: OrderStarted))
-      state = state.applyKeyedEvents(startedEvents).orThrow
-
-      val events = executorService.toEvents(otherExpectingOrderId, state).orThrow
+      val events = InstructionExecutor.testToEvents(otherExpectingOrderId, state, clockTimestamp).orThrow
       assert(events == Seq(
+        otherExpectingOrderId <-: OrderStarted,
         otherExpectingOrderId <-: OrderNoticesExpected(Vector(
           otherNotice0.id))))
 
@@ -124,7 +114,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
     // PostNotice board2
     locally:
-      val events = executorService.toEvents(postingOrderId, state).orThrow
+      val events = InstructionExecutor.testToEvents(postingOrderId, state, clockTimestamp).orThrow
       assert(events == Seq(
         postingOrderId <-: OrderNoticePosted(notice2.id, notice2.endOfLife),
         postingOrderId <-: OrderMoved(Position(2)),

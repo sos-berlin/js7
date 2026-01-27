@@ -185,9 +185,6 @@ extends
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderFailedIntermediate_(_) =>
-        inapplicable  // Intermediate event, internal only
-
       case OrderCatched(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
@@ -733,6 +730,9 @@ extends
       .toVector
       .toMap
 
+  def isStartable(now: Timestamp): Boolean =
+    isState[Fresh] && isDetachedOrAttached && !isSuspendedOrStopped && !isDelayed(now)
+
   def isStarted: Boolean =
     isState[IsStarted]
 
@@ -965,36 +965,6 @@ extends
       order.state.go(order.asInstanceOf[Order[order.state.Self]])
     .getOrElse:
       Left(GoOrderInapplicableProblem(id))
-
-  def forceDetach(outcome: OrderOutcome.Disrupted)
-  : Checked[(Vector[OrderCoreEvent], Order[Order.State])] =
-    var _order = Checked(this: Order[State])
-    val _events = Vector.newBuilder[OrderCoreEvent]
-
-    for order <- _order do
-      order.ifState[Order.Processing].foreach: _ =>
-        val event = OrderProcessed(outcome)
-        _events += event
-        _order = order.applyEvent(event)
-
-    for order <- _order do
-      val event = OrderDetached
-      _events += event
-      _order = order.applyEvent(event)
-
-    // Reset state to allow to fail the order
-    for order <- _order do
-      val events = order.resetState
-      _events ++= events
-      _order = order.applyEvents(events)
-
-    for order <- _order do
-      order.ifState[Order.DelayedAfterError].foreach: _ =>
-        val event = OrderAwoke
-        _events += event
-        _order = order.applyEvent(event)
-
-    _order.map(o => (_events.result(), o))
 
   /** Reset the Order's State if possible. */
   def resetState: List[OrderStateReset] =

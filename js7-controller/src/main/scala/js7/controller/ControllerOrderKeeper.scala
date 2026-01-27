@@ -48,7 +48,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttingDownProblem, ControllerIsSwitchingOverProblem}
 import js7.core.command.CommandMeta
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.{ClusterModuleShuttingDownProblem, UnknownOrderProblem}
+import js7.data.Problems.ClusterModuleShuttingDownProblem
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown, AgentStarted}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
@@ -309,17 +309,17 @@ extends Stash, JournalingActor[ControllerState, Event]:
       persist(
         EventCalc[ControllerState, Event]: coll =>
           for
-            coll <- coll.add:
+            coll <- coll:
               !coll.aggregate.controllerMetaState.isDefined thenSome:
                 NoKey <-: ControllerEvent.ControllerInitialized(
                   controllerConfiguration.controllerId,
                   journal.initiallyStartedAt)
             timezone <- Timezone.checked(ZoneId.systemDefault.getId)
-            coll <- coll.add:
+            coll <- coll:
               NoKey <-: ControllerEvent.ControllerReady(
                 timezone,
                 totalRunningTime = journal.totalRunningTime)
-            coll <- coll.add:
+            coll <- coll:
               ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate)
           yield
             coll
@@ -476,15 +476,15 @@ extends Stash, JournalingActor[ControllerState, Event]:
                   case (coll, Stamped(_, ts, keyedEvent)) =>
                     keyedEvent match
                       case KeyedEvent(orderId: OrderId, _: OrderCancellationMarked) =>
-                        coll.add:
+                        coll:
                           orderId <-: OrderCancellationMarkedOnAgent ^ ts
 
                       case KeyedEvent(orderId: OrderId, _: OrderSuspensionMarked) =>
-                        coll.add:
+                        coll:
                           orderId <-: OrderSuspensionMarkedOnAgent ^ ts
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                        coll.add:
+                        coll:
                           val evt = orderId <-: event.match
                             // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                             case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath)
@@ -492,24 +492,24 @@ extends Stash, JournalingActor[ControllerState, Event]:
                           evt ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentStarted) =>
-                        coll.add:
+                        coll:
                           agentEntry.agentPath <-: AgentStarted ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
-                        coll.add:
+                        coll:
                           agentEntry.agentPath <-: AgentReady(timezone, platformInfo) ^ ts
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentShutDown) =>
-                        coll.add:
+                        coll:
                           agentEntry.agentPath <-: AgentShutDown ^ ts
 
                       case KeyedEvent(_: NoKey, ItemAttachedToMe(item)) =>
-                        coll.add:
+                        coll:
                           // COMPATIBLE with v2.1
                           NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)
 
                       case KeyedEvent(_: NoKey, SignedItemAttachedToMe(signed)) =>
-                        coll.add:
+                        coll:
                           // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                           val item = signed.value
                           NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)
@@ -524,7 +524,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                         coll.add(keyedEvent).flatMap: coll =>
                           event match
                             case event: ExternalOrderVanished =>
-                              coll.add:
+                              coll:
                                 coll.aggregate.ow.toOrderExternalVanished(path, event)
 
                             case _ =>
@@ -534,13 +534,13 @@ extends Stash, JournalingActor[ControllerState, Event]:
                         Right(coll)
 
                       case KeyedEvent(_: SubagentId, event: SubagentItemStateEvent) =>
-                        coll.add:
+                        coll:
                           event match
                             case _: SubagentEventsObserved => None // Not needed
                             case _ => Some(keyedEvent)
 
                       case ke @ KeyedEvent(_: NoKey, _: ClusterEvent) =>
-                        coll.add:
+                        coll:
                           agentPath <-: AgentMirroredEvent(ke)
 
                       case _ =>
@@ -553,16 +553,14 @@ extends Stash, JournalingActor[ControllerState, Event]:
                 EventCalc: coll =>
                   for
                     coll <- coll.addEventCalc(eventCalc)
-                    coll <-
-                      coll.add:
-                        // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-                        // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
-                        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-                        coll.hasEvents thenSome
-                          agentPath <-: AgentEventsObserved(agentEventId)
-                    coll <-
-                      coll.addEventCalc:
-                        addSubsequentEvents
+                    coll <- coll:
+                      // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+                      // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+                      // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+                      coll.hasEvents thenSome
+                        agentPath <-: AgentEventsObserved(agentEventId)
+                    coll <- coll:
+                      subsequentEvents
                   yield
                     coll,
                 CommitOptions(
@@ -666,7 +664,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
         case calendar: Calendar =>
           CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
       })
-      coll <- EventColl(controllerState(), TimeCtx(clock.now())).add(keyedEvents)
+      coll <- EventColl(controllerState(), clock.now()).add(keyedEvents)
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
@@ -1001,11 +999,11 @@ extends Stash, JournalingActor[ControllerState, Event]:
   : Future[A] =
     persist(
       EventCalc.pure:
-        addSubsequentEvents.calculate(coll).orThrow.timestampedKeyedEvents,
+        coll.addEventCalc(subsequentEvents).orThrow.timestampedKeyedEvents,
       CommitOptions.Transaction
     )(callback)
 
-  private def addSubsequentEvents: EventCalc[ControllerState, Event] =
+  private def subsequentEvents: EventCalc[ControllerState, Event] =
     EventCalc: coll =>
       ControllerStateExecutor.addSubsequentEvents(coll)
 
@@ -1469,10 +1467,6 @@ private[controller] object ControllerOrderKeeper:
       promise: Promise[Option[EventId]])
 
     final case class AgentDriverStopped(agentPath: AgentPath)
-
-  private implicit final class RichIdToOrder(private val idToOrder: Map[OrderId, Order[Order.State]])
-  extends AnyVal:
-    def checked(orderId: OrderId) = idToOrder.get(orderId).toChecked(UnknownOrderProblem(orderId))
 
   private case class AgentEntry(
     agentRef: AgentRef,

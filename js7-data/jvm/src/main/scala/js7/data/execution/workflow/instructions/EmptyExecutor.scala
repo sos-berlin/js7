@@ -1,20 +1,20 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.order.Order
+import js7.data.event.EventCalc
+import js7.data.execution.workflow.OrderEventSource.moveOrderToNextInstruction
 import js7.data.order.Order.IsFreshOrReady
-import js7.data.order.OrderEvent.OrderMoved
-import js7.data.state.EngineState
+import js7.data.order.OrderEvent.OrderCoreEvent
+import js7.data.order.OrderId
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.EmptyInstruction
 
-private[instructions] final class EmptyExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
+private object EmptyExecutor extends EventInstructionExecutor_[EmptyInstruction]:
 
-  type Instr = EmptyInstruction
-  val instructionClass = classOf[EmptyInstruction]
-
-  def toEvents(instr: EmptyInstruction, order: Order[Order.State], state: EngineState) =
-    order.ifState[IsFreshOrReady].map: order =>
-      Right:
-        (order.id <-: OrderMoved(order.position.increment)) :: Nil
-    .getOrElse:
-      Right(Nil)
+  def toEventCalc[S <: EngineState_[S]](instr: EmptyInstruction, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    useOrder(orderId): (coll, order) =>
+      order.ifState[IsFreshOrReady].map: order =>
+        coll:
+          moveOrderToNextInstruction(order)
+      .getOrElse:
+        coll.nix

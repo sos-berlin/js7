@@ -9,13 +9,15 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
+import js7.base.utils.ScalaUtils.syntax
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
+import js7.data.controller.ControllerState
+import js7.data.event.EventColl
 import js7.data.execution.workflow.instructions.CycleExecutorTest.*
 import js7.data.order.Order.{BetweenCycles, Finished, Ready}
-import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
-import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
-import js7.data.state.AgentTestEngineState
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
+import js7.data.order.{CycleState, Order, OrderId}
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, ImplicitEnd, Schedule}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -321,40 +323,42 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       timeZone = Timezone(zoneId.getId),
       calendarPath = Some(calendar.path))
 
-    lazy val engineState = AgentTestEngineState(
-      idToWorkflow = Map(workflow.id -> workflow),
-      keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
-
-    def executorService(ts: Timestamp) =
-      new InstructionExecutorService(WallClock.fixed(ts))
-
-    lazy val order: Order[Order.State] = Order(
-      OrderId("2021-10-02"),
-      (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
-      BetweenCycles(Some(CycleState(
-        next = local("2021-10-01T07:44"),
-        end  = local("2021-10-02T00:00"),
-        index = 1))))
+    val orderId = OrderId("2021-10-02")
+    lazy val engineState = ControllerState.forTest(
+      orders = Seq(
+        Order(
+          OrderId("2021-10-02"),
+          (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
+          BetweenCycles(Some(CycleState(
+            next = local("2021-10-01T07:44"),
+            end = local("2021-10-02T00:00"),
+            index = 1))))),
+      workflows = Seq(workflow),
+      itemStates = Seq(CalendarState(calendar)))
 
     "now < next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:44")).toEvents(order, engineState) ==
-        Right(List(order.id <-: OrderCycleStarted())))
+      assert:
+        InstructionExecutor.testToEvents(orderId, engineState, local("2021-10-01T07:44")) ==
+        Right(List(orderId <-: OrderCycleStarted()))
 
     "now == next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:45")).toEvents(order, engineState) ==
-        Right(List(order.id <-: OrderCycleStarted())))
+      assert:
+        InstructionExecutor.testToEvents(orderId, engineState, local("2021-10-01T07:45")) ==
+        Right(List(orderId <-: OrderCycleStarted()))
 
     "now > next => OrderCycleStarted" in:
-      assert(executorService(local("2021-10-01T07:46")).toEvents(order, engineState) ==
-        Right(List(order.id <-: OrderCycleStarted())))
+      assert:
+        InstructionExecutor.testToEvents(orderId, engineState, local("2021-10-01T07:46")) ==
+        Right(List(orderId <-: OrderCycleStarted()))
 
     "now >= end => OrderCyclingPrepared to change the scheme" in:
-      assert(executorService(local("2021-10-01T08:00")).toEvents(order, engineState) ==
-        Right(List(order.id <-: OrderCyclingPrepared(CycleState(
+      assert:
+        InstructionExecutor.testToEvents(orderId, engineState, local("2021-10-01T08:00")) ==
+        Right(List(orderId <-: OrderCyclingPrepared(CycleState(
           next = local("2021-10-01T12:20"),
           end  = local("2021-10-02T00:00"),
           index = 1,
-          schemeIndex = 1)))))
+          schemeIndex = 1))))
 
     "Same with Stepper" in:
       val clock = TestWallClock(local("2021-10-01T07:31"))
@@ -425,29 +429,30 @@ object CycleExecutorTest:
     dateOffset = ScheduleTester.dateOffset)
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock):
-    private val engineState = AgentTestEngineState(
-      idToWorkflow = Map(workflow.id -> workflow),
-      keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
-
-    private val executorService = new InstructionExecutorService(clock)
-
-    val initialOrder: Order[Order.State] = Order(
+    val initialOrder = Order(
       orderId,
       workflow.id /: Position(0),
       Ready())
+    private var engineState = ControllerState.forTest(
+      orders = Seq(initialOrder),
+      workflows = Seq(workflow),
+      itemStates = Seq(CalendarState(calendar)))
 
-    var order: Order[Order.State] = initialOrder
+    def order: Order[Order.State] =
+      engineState.idToOrder(orderId)
 
     def nextInstruction =
-      engineState.instruction(order.workflowPosition)
+      engineState.instruction(order.workflowPosition).orThrow
 
     def nextPosition =
-      executorService.nextMove(nextInstruction, order, engineState)
+      InstructionExecutor.nextMove(order.id, engineState)
 
-    def step(): Seq[OrderEvent.OrderActorEvent] =
-      val keyedEvents = executorService.toEvents(nextInstruction, order, engineState).orThrow
-      for ke <- keyedEvents do logger.debug(s"${clock.now()} $ke")
-      assert(keyedEvents.forall(_.key == order.id))
-      val events = keyedEvents.map(_.event)
-      order = order.applyEvents(events).orThrow
-      events
+    def step(): Seq[OrderCoreEvent] =
+      val coll = InstructionExecutor
+        .toEventCalc(orderId)
+        .calculate(EventColl(engineState, clock.now()))
+        .orThrow
+
+      coll.foreachEventString(o => logger.debug(s"${clock.now()} $o"))
+      engineState = coll.aggregate
+      coll.keyedEvents.map(_.event).toVector

@@ -543,7 +543,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     execCmd(CancelOrders(Seq(orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
-      OrderStarted,
+      //OrderStarted,
       OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
         "Cannot fulfill lock count=2 with Lock:LOCK limit=1"))),
       OrderFailed(Position(0)),

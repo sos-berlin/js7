@@ -17,8 +17,7 @@ import js7.data.state
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
-trait TestEngineState[Self <: TestEngineState[Self]] extends EngineState_[Self]:
-  this: Self =>
+trait TestEngineState extends EngineState:
 
   def isAgent: Boolean
   def controllerId: ControllerId
@@ -29,7 +28,7 @@ trait TestEngineState[Self <: TestEngineState[Self]] extends EngineState_[Self]:
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]] = idToOrder,
     keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = keyToUnsignedItemState_)
-  : Self
+  : This
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match
@@ -63,7 +62,7 @@ trait TestEngineState[Self <: TestEngineState[Self]] extends EngineState_[Self]:
       override def values = items
 
   protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
-  : Checked[Self] =
+  : Checked[This] =
     Left(Problem.pure("addOrders is not implemented"))
 
   protected def update_(
@@ -72,32 +71,24 @@ trait TestEngineState[Self <: TestEngineState[Self]] extends EngineState_[Self]:
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState],
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath])
-  : Checked[Self] =
+  : Checked[This] =
     // Do not touch unused entries, they may be a NotImplementedMap
-    var x = this
-    if removeOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder -- removeOrders)
-    if updateOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ updateOrders.map(o => o.id -> o))
+    var x: TestEngineState = this
+    if removeOrders.nonEmpty then
+      x = x.copyX(idToOrder = idToOrder -- removeOrders)
+        .asInstanceOf[TestEngineState]
+    if updateOrders.nonEmpty then
+      x = x.copyX(idToOrder = idToOrder ++ updateOrders.map(o => o.id -> o))
+        .asInstanceOf[TestEngineState]
     // externalVanishedOrders ???
     if removeUnsignedSimpleItems.nonEmpty then
       x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeUnsignedSimpleItems)
-    if addItemStates.nonEmpty then x = x.copyX(
-      keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
-    Right(x)
-
-
-object TestEngineState:
-
-  def of(
-    isAgent: Boolean,
-    controllerId: ControllerId = ControllerId("CONTROLLER"),
-    orders: Option[Iterable[Order[Order.State]]] = None,
-    workflows: Option[Iterable[Workflow]] = None,
-    itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  : TestEngineState[?] =
-    if isAgent then
-      AgentTestEngineState.of(controllerId, orders,workflows, itemStates)
-    else
-      ControllerTestState.of(controllerId, orders,workflows, itemStates)
+        .asInstanceOf[TestEngineState]
+    if addItemStates.nonEmpty then
+      x = x.copyX(
+        keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
+        .asInstanceOf[TestEngineState]
+    Right(x.asInstanceOf[This])
 
 
 case class ControllerTestState(
@@ -106,7 +97,8 @@ case class ControllerTestState(
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends
-  TestEngineState[ControllerTestState],
+  TestEngineState,
+  EngineState_[ControllerTestState],
   ControllerEngineState[ControllerTestState],
   ControllerStatePlanFunctions[ControllerTestState]:
 
@@ -124,18 +116,11 @@ extends
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
-  protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
-  : Checked[ControllerTestState] =
-    idToOrder.checkNoDuplicate(order.id).map: _ =>
-      copy(idToOrder = idToOrder.updated(order.id, order))
-
   protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
   : Checked[ControllerTestState] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
-
 object ControllerTestState extends EngineState.Companion[ControllerTestState]:
-
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
@@ -149,37 +134,39 @@ object ControllerTestState extends EngineState.Companion[ControllerTestState]:
       keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
 
 
-case class AgentTestEngineState(
+final case class AgentTestState private(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
-extends TestEngineState[AgentTestEngineState]:
+extends
+  TestEngineState, EngineState_[AgentTestState]:
 
-  def companion: AgentTestEngineState.type = AgentTestEngineState
+  def companion: AgentTestState.type = AgentTestState
 
   def isAgent = true
   def clusterState: ClusterState.Empty.type = ClusterState.Empty
   def statistics = EngineStateStatistics.empty
 
+  def addOrder(order: Order[Order.State]): AgentTestState =
+    copy(idToOrder = idToOrder.updated(order.id, order))
+
   def copyX(
     idToOrder: Map[OrderId, Order[Order.State]],
     keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState])
-  : AgentTestEngineState =
+  : AgentTestState =
     copy(
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
-
-object AgentTestEngineState extends EngineState.Companion[AgentTestEngineState]:
-
+object AgentTestState extends EngineState.Companion[AgentTestState]:
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
     itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  : AgentTestEngineState =
-    AgentTestEngineState(
+  : AgentTestState =
+    AgentTestState(
       controllerId,
       idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
       idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),

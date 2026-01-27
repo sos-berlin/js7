@@ -11,13 +11,13 @@ import js7.base.io.file.FileUtils.touchFile
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.calendar.{Calendar, CalendarPath}
@@ -720,7 +720,7 @@ final class SuspendResumeOrdersTest
 
   "Suspend unknown order" in:
     assert(executeCommand(SuspendOrders(Set(OrderId("UNKNOWN")))).await(99.s) ==
-      Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
+      Left(UnknownKeyProblem("OrderId", OrderId("UNKNOWN"))))
 
   "Suspend multiple orders with Batch" in:
     deleteIfExists(triggerFile)

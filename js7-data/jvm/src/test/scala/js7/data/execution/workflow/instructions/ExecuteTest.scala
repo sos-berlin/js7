@@ -4,13 +4,13 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.time.WallClock
+import js7.base.time.TimestampForTests.ts
 import js7.data.agent.AgentPath
-import js7.data.event.KeyedEvent
+import js7.data.controller.ControllerState
+import js7.data.event.{EventColl, KeyedEvent}
 import js7.data.job.{InternalExecutable, RelativePathExecutable, ReturnCodeMeaning}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderFailed, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.ControllerTestState
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -21,15 +21,15 @@ import js7.data.workflow.{Workflow, WorkflowPath}
   * @author Joacim Zschimmer
   */
 final class ExecuteTest extends OurTestSuite:
+
   private val executable = RelativePathExecutable("EXECUTABLE", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9))
   private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), executable))
   private val orderId = OrderId("ORDER")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "VERSION",
     Seq(Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable("?")))))
-  private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
-  private val engineState = ControllerTestState.of(
-    workflows = Some(Seq(workflow)))
+  private val engineState = ControllerState/*AgentState is inaccessible here*/.forTest(
+    workflows = Seq(workflow))
 
   "toOutcome" in:
     val namedValues = Map("a" -> StringValue("A"))
@@ -40,10 +40,16 @@ final class ExecuteTest extends OurTestSuite:
   "toEvents" in:
     assert(toEvents(OrderOutcome.Succeeded(NamedValues.rc(0))) == Seq(orderId <-: OrderMoved(Position(1))))
     assert(toEvents(OrderOutcome.Succeeded(NamedValues.rc(1))) == Seq(orderId <-: OrderMoved(Position(1))))
-    assert(toEvents(OrderOutcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailedIntermediate_()))
-    assert(toEvents(OrderOutcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailedIntermediate_()))
+    assert(toEvents(OrderOutcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailed(Position(0))))
+    assert(toEvents(OrderOutcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailed(Position(0))))
 
-  private def toEvents(outcome: OrderOutcome): Seq[KeyedEvent[OrderActorEvent]] =
-    val order = Order(orderId, workflow.id /: (Position(0)), Order.Processed,
+  private def toEvents(outcome: OrderOutcome): Seq[KeyedEvent[OrderCoreEvent]] =
+    val order = Order(orderId, workflow.id /: Position(0), Order.Processed,
       historicOutcomes = Vector(HistoricOutcome(Position(0), outcome)))
-    executeExecutor.toEvents(executeAnonymous, order, engineState).orThrow
+    val myEngineState = engineState.copy(
+      idToOrder = engineState.idToOrder.updated(order.id, order))
+
+    ExecuteExecutor.toEventCalc(executeAnonymous, orderId)
+      .calculateEvents(EventColl(myEngineState, ts"2026-01-21T12:00:00Z"))
+      .orThrow
+      .toVector

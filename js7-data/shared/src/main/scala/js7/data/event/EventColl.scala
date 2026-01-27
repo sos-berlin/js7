@@ -5,8 +5,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, foreachWithBracket, mkStringLimited, toEagerSeq}
-import js7.base.utils.Tests.isIntelliJIdea
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, foreachWithBracket, mkStringLimited, toEagerSeq}
+import js7.base.utils.Tests.{isIntelliJIdea, isStrict}
 import js7.data.event.KeyedEvent.NoKey
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
   * <p>
   * Collects KeyedEvents while applying them to an EventDrivenState `S`.
   *
-  * @tparam Ctx Users immutable context. May be Unit.
+  * @tparam Ctx Callers immutable context. May be anything, for instance, `TimeCtx` or `Unit`.
   */
 final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] private(
   private val originalAggregate_ : S,
@@ -33,24 +33,34 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   inline def hasEvents: Boolean =
     timestampedKeyedEvents.nonEmpty
 
-  inline def apply[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def eventCount: Int =
+    timestampedKeyedEvents.size
+
+  inline def apply[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1])
+  : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvent)
 
   @targetName("applyKeyedEventsVarargs")
-  inline def apply[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def apply[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*)
+  : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
   inline def apply[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
+  @targetName("apply_Checked_Single")
+  inline def apply(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    addChecked(keyedEvent)
+
   inline def apply(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
   inline def apply[K, E1 <: E](key: K)(events: Iterable[E1])
-                              (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
-                              (using /*erased*/ ev: K =:= E1.Key)
+    (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
+    (using /*erased*/ ev: K =:= E1.Key)
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(key)(events)
 
@@ -66,16 +76,23 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   inline def apply(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
     add(other)
 
-  inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1])
+  : Checked[EventCollCtx[S, E, Ctx]] =
     addEvent(keyedEvent)
 
-  @targetName("addKeyedEventsVarargs")
-  inline def add[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*): Checked[EventCollCtx[S, E, Ctx]] =
+  @targetName("add_KeyedEvents_varargs")
+  inline def add[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*)
+  : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents(keyedEvents)
 
   inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents(keyedEvents)
+
+  @targetName("add_Checked_Single")
+  inline def add(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    addChecked(keyedEvent)
 
   inline def add(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
@@ -87,12 +104,16 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   : Checked[EventCollCtx[S, E, Ctx]] =
     addWithKey[K, E1](key)(events)
 
-  inline def add[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalcCtx[S, E1, Ctx1])
+  inline def add[E1 <: E, Ctx1 >: Ctx](inline eventCalc: EventCalcCtx[S, E1, Ctx1])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEventCalc(eventCalc)
 
-  inline def add(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def add(inline other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
     addColl(other)
+
+  @targetName("add_Checked_EventColl")
+  inline def add(inline other: Checked[EventCollCtx[S, E, Ctx]]): Checked[EventCollCtx[S, E, Ctx]] =
+    addCheckedColl(other)
 
   @targetName("addMaybeEventCalc")
   inline def add[E1 <: E, Ctx1 >: Ctx](eventCalc: Option[EventCalcCtx[S, E1, Ctx1]])
@@ -102,8 +123,14 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   def addEvent[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
     val keyedEvents = keyedEvent :: Nil
     logProblem(keyedEvents):
+      logEvents(keyedEvents)
       aggregate.applyKeyedEvent(keyedEvent.keyedEvent).map: updated =>
-        update(keyedEvents, updated)
+        append(keyedEvents, updated)
+
+  @targetName("addChecked_single")
+  def addChecked(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    addChecked(keyedEvent.map(_ :: Nil))
 
   def addChecked(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
@@ -117,6 +144,15 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
       events.view.map: event =>
         KeyedEvent.any(key, event).asInstanceOf[KeyedEvent[E]]
 
+  def addWithKey[K, E1 <: E](key: K)(events: Checked[Iterable[E1]])
+    (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
+    (using /*erased*/ ev: K =:= E1.Key)
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    addChecked:
+      events.map:
+        _.view.map: event =>
+          KeyedEvent.any(key, event).asInstanceOf[KeyedEvent[E]]
+
   def addNoKey[E1 <: E](events: Iterable[E1])(using E1 <:< NoKeyEvent)
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents:
@@ -126,37 +162,43 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   def addEvents(keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     val eventSeq = keyedEvents.toEagerSeq
-    if eventSeq.isEmpty then
-      Right(this)
-    else
-      aggregate.applyKeyedEvents(eventSeq.view.map(_.keyedEvent)).map: updated =>
-        copy(
-          timestampedKeyedEvents = timestampedKeyedEvents ++ eventSeq,
-          aggregate = updated)
+    logProblem(eventSeq):
+      if eventSeq.isEmpty then
+        Right(this)
+      else
+        logEvents(eventSeq)
+        aggregate.applyKeyedEvents(eventSeq.view.map(_.keyedEvent)).map: updated =>
+          append(eventSeq, updated)
 
-  def addEventCalc[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalcCtx[S, E1, Ctx1])
+  inline def addEventCalc[E1 <: E, Ctx1 >: Ctx](eventCalc: EventCalcCtx[S, E1, Ctx1])
   : Checked[EventCollCtx[S, E, Ctx]] =
-    eventCalc.calculate(this)
+    eventCalc.addTo(this)
+
+  inline def addCheckedEventCalc[E1 <: E, Ctx1 >: Ctx](
+    eventCalc: Checked[EventCalcCtx[S, E1, Ctx1]])
+  : Checked[EventCollCtx[S, E, Ctx]] =
+    eventCalc.flatMap(_.addTo(this))
+
+  def addCheckedColl(other: Checked[EventCollCtx[S, E, Ctx]]): Checked[EventCollCtx[S, E, Ctx]] =
+    other.flatMap(addColl)
 
   def addColl(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
-    logProblem(other.timestampedKeyedEvents):
-      if other.originalAggregate_ ne aggregate then
-        // This should not happen, despite it is returned as a Problem
-        val problem = Problem.pure("EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate")
-        logger.error(s"EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate",
-          new Exception(problem.toString))
-        aggregate.emitLineStream(o => logger.warn(s"aggregate=$o"))
-        other.originalAggregate_.emitLineStream(o => logger.warn(s"other.originalAggregate=$o"))
-        other.aggregate.emitLineStream(o => logger.warn(s"other.aggregate=$o"))
-        Left(problem)
-      else
-        Right:
-          if !other.hasEvents then
-            this
-          else if !hasEvents then
-            other
-          else
-            update(other.timestampedKeyedEvents, other.aggregate)
+    if other.originalAggregate_ ne aggregate then
+      val problem = Problem.pure:
+        if other.originalAggregate eq originalAggregate then
+          "❌ EventColl.addColl: both EventColls have the same originalAggregate (no addColl required?)"
+        else
+          "❌ EventColl.addColl: other.originalAggregate doesn't match this.aggregate"
+      logAddCollDifference(other, problem)
+      Left(problem)
+    else
+      Right:
+        if !other.hasEvents then
+          this
+        else if !hasEvents then
+          other
+        else
+          append(other.timestampedKeyedEvents, other.aggregate)
 
   /** Add nothing, return `this` `Coll` unchanged.
     */
@@ -179,34 +221,49 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   //: Checked[EventCollCtx[S, E, Ctx]] =
   //  logProblem(keyedEvents):
   //    body.map: updated =>
-  //      update(keyedEvents, updated)
+  //      append(keyedEvents, updated)
 
-  private def update(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]], updatedAggregate: S)
+  private def append(
+    keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]],
+    updatedAggregate: S)
   : EventCollCtx[S, E, Ctx] =
     if keyedEvents.isEmpty then
       assertThat(updatedAggregate eq aggregate)
       this
     else
-      if isIntelliJIdea then ()//foreachLog(logger.trace)
       copy(
         timestampedKeyedEvents = timestampedKeyedEvents ++ keyedEvents,
         aggregate = updatedAggregate)
 
-  private def logProblem[A](
-    keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]])
-    (body: => Checked[A])
+  private def logProblem[A](keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]])(body: => Checked[A])
   : Checked[A] =
     body match
       case Left(problem) =>
+        keyedEvents.foreachWithBracket(): (e, br) =>
+          logger.debug(s"❓ $br${e.keyedEvent}")
         logger.debug(
           s"❓ EventColl[${aggregate.companion.name}]: $problem",
           new Exception(problem.toString))
-        keyedEvents.foreachWithBracket(): (e, br) =>
-          logger.debug(s"$br${e.keyedEvent}")
+        () // line for breakpoint
       case _ =>
     body
 
-  def foreachLog(body: String => Unit): Unit =
+  private inline def logEvents(inline keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]]): Unit =
+    if false && isIntelliJIdea then
+      logEvents2(keyedEvents)
+    def logEvents2(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]]) =
+      keyedEvents.foreachWithBracket()((ke, br) => logger.trace(s"🔸$br$ke".trim))
+
+  private def logAddCollDifference(other: EventCollCtx[S, E, Ctx], problem: Problem): Unit =
+    logger.error(problem.toString, new Exception(problem.toString))
+    // BIG LOG
+    aggregate.emitLineStream(o => logger.info(s"aggregate=$o"))
+    foreachEventString(o => logger.info(s"this.keyedEvents: $o"))
+    other.originalAggregate_.emitLineStream(o => logger.info(s"other.originalAggregate=$o"))
+    other.foreachEventString(o => logger.info(s"other.keyedEvents: $o"))
+    other.aggregate.emitLineStream(o => logger.info(s"other.aggregate=$o"))
+
+  def foreachEventString(body: String => Unit): Unit =
     keyedEvents.foreachWithBracket(): (ke, br) =>
       body(s"$br$ke".trim)
 
@@ -215,15 +272,50 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
 
   /** Set originalAggregate to aggregate and remove the events. */
   def forward: EventCollCtx[S, E, Ctx] =
-    EventCollCtx[S, E, Ctx](aggregate, context)
+    if !hasEvents then
+      this
+    else
+      EventCollCtx[S, E, Ctx](aggregate, context)
+
+  /** Set originalAggregate to aggregate and remove the events.
+    *
+    * @tparam E1 can be any subtype of `Event`,
+    *            because the returned `EventColl` has still no events.
+    */
+  def forwardAs[E1 <: E]: EventCollCtx[S, E1, Ctx] =
+    if !hasEvents then
+      this.asInstanceOf[EventCollCtx[S, E1, Ctx]]
+    else
+      new EventCollCtx[S, E1, Ctx](aggregate, Vector.empty, aggregate, context)
+
+  /** Checks if this is a extension of `coll`, with more events than `coll`.
+    * <p>
+    *   Both EventColls must have the same originalAggregate.
+    *   `coll` must start with the same events as `this`.
+    */
+  def hasMoreEventsThan(coll: EventCollCtx[S, E, Ctx]): Boolean =
+    if isStrict then
+      assertThat((originalAggregate eq coll.originalAggregate)
+        && eventCount >= coll.eventCount
+        && coll.keyedEvents.indices.forall(i => coll.keyedEvents(i) eq keyedEvents(i)))
+    eventCount > coll.eventCount
 
   def ifIs[S1 <: EventDrivenState_[S1, E]](using ClassTag[S1]): Option[EventCollCtx[S1, E, Ctx]] =
     implicitClass[S1].isAssignableFrom(aggregate.getClass) ?
       this.asInstanceOf[EventCollCtx[S1,E, Ctx]]
 
-  def widen[S1  <: EventDrivenState_[S1, ? >: E1], E1 >: E <: Event, Ctx1 <: Ctx]
+  def widen[S1 <: EventDrivenState_[S1, ? >: E1], E1 >: E <: Event]
   : EventCollCtx[S1, E1, Ctx] =
     this.asInstanceOf[EventCollCtx[S1,E1, Ctx]]
+
+  /** Try to down-cast S to S1. */
+  def narrowAggregate[S1 <: EventDrivenState_[S1, E]: ClassTag]
+  : Checked[EventColl[S1, E]] =
+    if implicitClass[S1].isAssignableFrom(aggregate.getClass) then
+      Right(this.asInstanceOf[EventColl[S1, E]])
+    else
+      Problem:
+        s"EventColl: expected ${implicitClass[S1].shortClassName}, but it's a ${aggregate.companion}"
 
   override def toString =
     s"EventCollCtx[${aggregate.companion.name}](${
@@ -231,7 +323,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
 
 
 object EventCollCtx:
-  private val logger = Logger[this.type]
+  private val logger = Logger[EventColl.type]
 
   def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S): EventCollCtx[S, E, Unit] =
     apply(aggregate, ())
@@ -290,18 +382,23 @@ type EventColl[S <: EventDrivenState_[S, E], E <: Event] =
 object EventColl:
   private val logger = Logger[this.type]
 
+  object extensions:
+    extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
+      def now: Timestamp =
+        eventColl.context.now
+
   def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, now: Timestamp)
   : EventColl[S, E] =
-    EventColl(aggregate, TimeCtx(now))
+    EventCollCtx(aggregate, TimeCtx(now))
 
-  def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
-  : EventColl[S, E] =
-    EventCollCtx(aggregate, ctx)
+  //def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
+  //: EventColl[S, E] =
+  //  EventCollCtx(aggregate, ctx)
 
-  /** Returns a `EventCollCtx` with `context: Unit`. */
-  inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
-  : EventCollCtx[S, E, Unit] =
-    EventCollCtx(aggregate)
+  ///** Returns a `EventCollCtx` with `context: Unit`. */
+  //inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
+  //: EventCollCtx[S, E, Unit] =
+  //  EventCollCtx(aggregate)
 
   def checkEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
     (keyedEvents: IterableOnce[KeyedEvent[E]])
@@ -316,10 +413,10 @@ object EventColl:
   def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
     (body: EventColl[S, E] => Checked[EventColl[S, E]])
   : Checked[Vector[KeyedEvent[E]]] =
-    body(EventColl(aggregate, ctx)).map(_.keyedEvents.toVector)
+    body(EventCollCtx(aggregate, ctx))
+      .map(_.keyedEvents.toVector)
 
-  inline def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](
-    inline aggregate: S)
+  inline def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
     (inline body: EventCollCtx[S, E, Any] => Checked[EventCollCtx[S, E, Any]])
   : Checked[Vector[KeyedEvent[E]]] =
     EventCollCtx.keyedEvents(aggregate)(body)

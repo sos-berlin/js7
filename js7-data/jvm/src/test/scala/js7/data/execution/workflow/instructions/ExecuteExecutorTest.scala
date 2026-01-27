@@ -5,14 +5,15 @@ import java.time.{LocalDate, LocalTime}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, WallClock, WeekdayPeriod}
+import js7.base.time.TimestampForTests.ts
+import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.execution.workflow.instructions.ExecuteExecutorTest.*
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAttachable, OrderMoved}
 import js7.data.order.{Order, OrderId}
-import js7.data.state.ControllerTestState
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -24,10 +25,9 @@ import scala.collection.View
   */
 final class ExecuteExecutorTest extends OurTestSuite:
 
-  private lazy val engineState = ControllerTestState.of(
-    orders = Some(orders),
-    workflows = Some(Seq(workflow)))
-  private lazy val executorService = new InstructionExecutorService(WallClock)
+  private lazy val engineState = ControllerState.forTest(
+    orders = orders,
+    workflows = Seq(workflow))
 
   "orderIdToDate" in:
     assert(orderIdToDate(OrderId("x")) == None)
@@ -42,9 +42,9 @@ final class ExecuteExecutorTest extends OurTestSuite:
     for position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/) do
       val execute = workflow.instruction_[Execute](position).orThrow
       for order <- orders.filter(_.position == position) do
-        assert(executorService.toEvents(execute, order, engineState) ==
+        assert(InstructionExecutor.testToEvents(order.id, engineState, now) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextMove(execute, order, engineState) ==
+        assert(InstructionExecutor.nextMove(order.id, engineState) ==
           Right(None))
 
   "skipIfNoAdmissionStartForOrderDay" - {
@@ -53,33 +53,47 @@ final class ExecuteExecutorTest extends OurTestSuite:
 
     "OrderId date has admission time" in:
       for orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready")) do
-        val order = engineState.idToOrder(orderId)
-        assert(executorService.toEvents(execute, order, engineState) ==
-          Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextMove(execute, order, engineState) ==
-          Right(None))
+        val myEngineState = engineState.copy(
+          idToOrder = engineState.idToOrder.updatedWith(orderId): maybeOrder =>
+            Some(maybeOrder.get.withPosition(position)))
+        assert:
+          InstructionExecutor.testToEvents(orderId, myEngineState) ==
+            Right:
+              (orderId <-: OrderAttachable(agentPath)) :: Nil
+        assert:
+          InstructionExecutor.nextMove(orderId, myEngineState) ==
+            Right(None)
 
     "OrderId date has no admission time" in:
-      for (orderId <- View(
+      for orderId <- View(
         OrderId("#2021-09-02#2-Fresh"),
         OrderId("#2021-09-02#2-Ready"),
-        OrderId("#2021-09-04#2-Ready")))
-        val order = engineState.idToOrder(orderId)
-        assert(executorService.toEvents(execute, order, engineState) ==
-          Right(
-            (order.id <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
-              :: Nil))
-        assert(executorService.nextMove(execute, order, engineState) ==
-          Right(Some(
-            OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))))
+        OrderId("#2021-09-04#2-Ready"))
+      do
+        val myEngineState = engineState.copy(
+          idToOrder = engineState.idToOrder.updatedWith(orderId): maybeOrder =>
+            Some(maybeOrder.get.withPosition(position)))
+        assert:
+          InstructionExecutor.testToEvents(orderId, myEngineState) ==
+            Right:
+              (orderId <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
+                :: Nil
+        assert:
+          InstructionExecutor.nextMove(orderId, myEngineState) ==
+            Right(Some:
+              OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))
   }
 
 
 object ExecuteExecutorTest:
 
+  private val now = ts"2026-01-21T12:00:00Z"
+
   private val admissionTimeScheme = AdmissionTimeScheme(Seq(
     WeekdayPeriod(FRIDAY, LocalTime.of(8, 0), 25.h)))
+
   private val agentPath = AgentPath("AGENT")
+
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "VERSION", Seq(
     /*0*/Execute(WorkflowJob(agentPath, InternalExecutable("?"))),
     /*1*/Execute(WorkflowJob(

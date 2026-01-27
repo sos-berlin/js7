@@ -48,6 +48,7 @@ object Event:
     override val toString: String =
       getClass.shortClassName
 
+
   transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E]:
     type Key = K
 

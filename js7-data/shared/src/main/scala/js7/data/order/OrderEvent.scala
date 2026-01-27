@@ -588,11 +588,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def apply(movedTo: Position) = new OrderCaught(movedTo, None)
 
 
-  /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
-   * `OrderStopped`,  */
-  final case class OrderFailedIntermediate_(outcome: Option[OrderOutcome.NotSucceeded] = None)
-  extends OrderActorEvent
-
   final case class OrderRetrying(
     delayedUntil: Option[Timestamp] = None,
     movedTo: Option[Position] = None /*COMPATIBLE with v2.7.1*/)

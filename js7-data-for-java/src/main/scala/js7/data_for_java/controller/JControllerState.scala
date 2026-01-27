@@ -8,7 +8,6 @@ import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
-import js7.base.time.WallClock
 import js7.base.utils.MoreJavaConverters.asJava
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
@@ -17,7 +16,6 @@ import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
@@ -265,10 +263,8 @@ extends JJournaledState[JControllerState, ControllerState]:
   @Nonnull
   def orderToObstacles(@Nonnull orderId: OrderId, @Nonnull now: Instant)
   : VEither[Problem, java.util.Set[JOrderObstacle]] =
-    val service = new InstructionExecutorService(
-      WallClock.fixed(now.toTimestamp))
     orderObstacleCalculator
-      .orderToObstacles(orderId)(using service)
+      .orderToObstacles(orderId, now.toTimestamp)
       .map(_.map(JOrderObstacle(_)).asJava)
       .toVavr
 

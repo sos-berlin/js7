@@ -150,8 +150,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             case false => IO.pure(Chunk.singleton(queuedPersist))
             case true => queuedPersist.onCanceled.as(Chunk.empty)
         .flatMap: chunk =>
-          applyEventCalcs(chunk)
-            .addElapsedToAtomicNanos(bean.eventCalcNanos)
+          meterEventCalc:
+            applyEventCalcs(chunk)
+              .addElapsedToAtomicNanos(bean.eventCalcNanos)
       .filter(_.nonEmpty)
       .prefetch // Process upstream concurrently //
       // Jsonize and write to file //
@@ -635,5 +636,6 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 private[journal] object Committer:
   private val logger = Logger[this.type]
   private val meterEstimatedSnapshotSize = CallMeter("FileJournal.estimatedSnapshotSize")
+  private val meterEventCalc = CallMeter("FileJournal.EventCalc")
   private val meterJsonWrite = CallMeter("FileJournal.jsonWrite")
   private val meterAck = CallMeter("FileJournal.ack")

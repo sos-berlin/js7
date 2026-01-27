@@ -25,12 +25,12 @@ private[command] def controlWorkflowPathExecutor: CommandEventConverter[ControlW
           ++ cmd.skip.filter(_._2).keys)
 
       for
-        coll <- coll.add:
+        coll <- coll:
           if isNew then
             NoKey <-: UnsignedSimpleItemAdded(item)
           else
             NoKey <-: UnsignedSimpleItemChanged(item)
-        coll <- coll.add:
+        coll <- coll:
           ControllerStateExecutor.updatedWorkflowPathControlAttachedEvents(item)
       yield
         coll

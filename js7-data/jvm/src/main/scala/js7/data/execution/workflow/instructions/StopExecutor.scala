@@ -1,21 +1,16 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.order.Order
-import js7.data.order.OrderEvent.OrderStopped
-import js7.data.state.EngineState
+import js7.data.event.EventCalc
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderStopped}
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.Stop
 
-private[instructions] final class StopExecutor(
-  protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
+private object StopExecutor extends EventInstructionExecutor_[Stop]:
 
-  type Instr = Stop
-  val instructionClass = classOf[Stop]
-
-  def toEvents(instr: Stop, order: Order[Order.State], state: EngineState) =
-    detach(order)
-      .orElse:
-        start(order)
-      .getOrElse:
-        Right:
-          (order.id <-: OrderStopped) :: Nil
+  def toEventCalc[S <: EngineState_[S]](instr: Stop, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    detachOrder(orderId): (coll, order) =>
+      start(coll, orderId): (coll, order) =>
+        coll:
+          orderId <-: OrderStopped

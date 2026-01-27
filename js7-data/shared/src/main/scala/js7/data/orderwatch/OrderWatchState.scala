@@ -39,7 +39,7 @@ final case class OrderWatchState(
   private[orderwatch] val orderAddedQueue: Set[ExternalOrderName] = Set.empty,
   // orderExternalVanishedQueue is required only when Controller version crosses v2.8.3 and
   // the previous version emitted ExternalOrderVanished but not OrderExternalVanished events.
-  // Since 2.8.3, both events are emitted in the same transaction.
+  // Since v2.8.3, both events are emitted in the same transaction.
   private[orderwatch] val orderExternalVanishedQueue: Set[ExternalOrderName] = Set.empty) // COMPATIBLE with before v2.8.3
 extends
   UnsignedSimpleItemState with EventDriven[OrderWatchState, OrderWatchEvent]:

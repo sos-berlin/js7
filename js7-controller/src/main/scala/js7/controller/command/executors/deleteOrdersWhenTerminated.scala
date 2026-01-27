@@ -2,21 +2,19 @@ package js7.controller.command.executors
 
 import cats.syntax.traverse.*
 import js7.base.problem.Problem
+import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem}
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
-import js7.data.event.EventCalc
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 
 private[command] def deleteOrdersWhenTerminatedExecutor
 : CommandEventConverter[DeleteOrdersWhenTerminated] =
-  CommandEventConverter.checked[DeleteOrdersWhenTerminated]: (cmd, controllerState) =>
-    val instrService = InstructionExecutorService(EventCalc.clock)
-    val orderEventSource = new OrderEventSource(controllerState)(using instrService)
+  CommandEventConverter.coll[DeleteOrdersWhenTerminated]: (cmd, coll) =>
     cmd.orderIds.toVector
-      .traverse(controllerState.idToOrder.checked)
+      .traverse:
+        coll.aggregate.idToOrder.checked
       .traverse: orders =>
         orders.traverse: order =>
           if order.parent.isDefined then
@@ -26,9 +24,8 @@ private[command] def deleteOrdersWhenTerminatedExecutor
           else
             Right(order)
       .flatten
-      .traverse(_
-        .filterNot(_.deleteWhenTerminated)
-        .traverse:
-          orderEventSource.orderDeletionEvent)
-      .flatten
-      .map(_.flatten)
+      .flatMap: orders =>
+        coll:
+          orders.filterNot(_.deleteWhenTerminated).map:
+            OrderEventSource.orderDeletionEvent
+          .foldMonoids

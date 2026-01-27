@@ -1,29 +1,22 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.board.NoticeEventSource
-import js7.data.controller.ControllerState
-import js7.data.order.Order
-import js7.data.state.EngineState
+import js7.data.event.EventCalc
+import js7.data.order.OrderEvent.OrderCoreEvent
+import js7.data.order.{Order, OrderId}
+import js7.data.state.EngineState_
 import js7.data.workflow.instructions.PostNotices
 
-private[instructions] final class PostNoticesExecutor(
-  protected val service: InstructionExecutorService)
-extends EventInstructionExecutor:
+private object PostNoticesExecutor extends EventInstructionExecutor_[PostNotices]:
 
-  type Instr = PostNotices
-  val instructionClass = classOf[PostNotices]
+  private val noticeEventSource = NoticeEventSource(forCommand = false)
 
-  private val noticeEventSource = NoticeEventSource(clock)
-
-  def toEvents(instr: PostNotices, order: Order[Order.State], state: EngineState) =
-    detach(order)
-      .orElse:
-        start(order)
-      .orElse:
-        val controllerState = state.asInstanceOf[ControllerState]
+  def toEventCalc[S <: EngineState_[S]](instr: PostNotices, orderId: OrderId)
+  : EventCalc[S, OrderCoreEvent] =
+    detachOrder(orderId): (coll, order) =>
+      start(coll, orderId): (coll, order) =>
         order.ifState[Order.Ready].map: order =>
-          noticeEventSource.postNotices(instr.boardPaths, order, controllerState)
-            .left.map(_.withPrefix(s"${instr.getClass.shortClassName}:"))
-      .getOrElse:
-        Right(Nil)
+          coll:
+            noticeEventSource.postNotices(instr.boardPaths, order)
+        .getOrElse:
+          coll.nix
