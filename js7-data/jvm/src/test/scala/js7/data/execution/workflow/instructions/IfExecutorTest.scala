@@ -10,7 +10,6 @@ import js7.data.execution.workflow.instructions.IfExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.ControllerTestState
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
@@ -74,12 +73,12 @@ final class IfExecutorTest extends OurTestSuite:
 
   private def nextMove(instr: If, order: Order[Order.State]) =
     assert(order.position == Position(1))
-    val engineState = ControllerTestState.of(
-      orders = Some(Seq(order)),
-      workflows = Some(Seq(Workflow.of(
+    val engineState = ControllerState.forTest(
+      orders = Seq(order),
+      workflows = Seq(Workflow.of(
         TestWorkflowId,
         EmptyInstruction(),
-        instr))))
+        instr)))
     InstructionExecutor.nextMove(order.id, engineState)
 
   "JS-2134 else if" in:

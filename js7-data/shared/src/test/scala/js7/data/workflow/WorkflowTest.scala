@@ -745,16 +745,19 @@ final class WorkflowTest extends OurTestSuite:
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
-        LockInstruction.single(a, None, Workflow.of(
-          Execute(job),
-          If(BooleanConstant(true)):
-            Workflow.of(
-              LockInstruction.single(b, None, Workflow.of(
-              Execute(job),
-              Fork.of:
-                "BRANCH" -> Workflow.of:
-                  LockInstruction.single(c, None, Workflow.of:
-                    Execute(job)))))))))
+        LockInstruction.single(a, None):
+          Workflow.of(
+            Execute(job),
+            If(BooleanConstant(true)):
+              Workflow.of(
+                LockInstruction.single(b, None):
+                  Workflow.of(
+                    Execute(job),
+                    Fork.of:
+                      "BRANCH" -> Workflow.of:
+                        LockInstruction.single(c, None):
+                          Workflow.of:
+                            Execute(job))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c, AgentPath("AGENT")))
 
   "referencedBoardPaths" in:
@@ -934,9 +937,10 @@ final class WorkflowTest extends OurTestSuite:
       lazy val lockWorkflow = Workflow(WorkflowPath("TEST") ~ "1",
         Vector(
           AExecute,
-          LockInstruction.single(LockPath("LOCK"), None, Workflow.of:
-            If(BooleanConstant(true)):
-              AExecute)),
+          LockInstruction.single(LockPath("LOCK"), None):
+            Workflow.of:
+              If(BooleanConstant(true)):
+                AExecute),
         Map(
           AJobName -> AJob))
 
@@ -1023,9 +1027,9 @@ final class WorkflowTest extends OurTestSuite:
   "Workflow with a Lock and a Job" in:
     Workflow(WorkflowPath("WORKFLOW"),
         Vector(
-          LockInstruction.single(
-            LockPath("LOCK"), count = None, Workflow.of(
-              Execute.Named(WorkflowJob.Name("JOB"))))),
+          LockInstruction.single(LockPath("LOCK")):
+            Workflow.of:
+              Execute.Named(WorkflowJob.Name("JOB"))),
         Map(
           WorkflowJob.Name("JOB") -> AJob))
       .completelyChecked
@@ -1073,10 +1077,11 @@ final class WorkflowTest extends OurTestSuite:
     "reduceForAgent with LockInstruction" in:
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
-            AExecute,
-            Fork.of(
-              "🥕" -> Workflow.of(AExecute))))),
+          LockInstruction.single(LockPath("LOCK")):
+            Workflow.of(
+              AExecute,
+              Fork.of:
+                "🥕" -> Workflow.of(AExecute))),
         Map(AJobName -> AJob))
       assert(workflow.reduceForAgent(AAgentPath) eq workflow)
       assert(workflow.reduceForAgent(BAgentPath) == Workflow.of(Gap()))
@@ -1084,14 +1089,15 @@ final class WorkflowTest extends OurTestSuite:
     "reduceForAgent with LockInstruction and more (1)" in:
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
-            If(BooleanConstant(true)):
-              Workflow.of(
-                TryInstruction(Workflow.empty, Workflow.empty),
-                Fail()),
-            AExecute,
-            Fork.of(
-              "🥕" -> Workflow.of(AExecute))))),
+          LockInstruction.single(LockPath("LOCK")):
+            Workflow.of(
+              If(BooleanConstant(true)):
+                Workflow.of(
+                  TryInstruction(Workflow.empty, Workflow.empty),
+                  Fail()),
+              AExecute,
+              Fork.of(
+                "🥕" -> Workflow.of(AExecute)))),
         Map(AJobName -> AJob))
       assert(workflow.reduceForAgent(AAgentPath) eq workflow)
       assert(workflow.reduceForAgent(BAgentPath) == Workflow.of(Gap()))
@@ -1099,41 +1105,9 @@ final class WorkflowTest extends OurTestSuite:
     "reduceForAgent with LockInstruction and if" in:
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
-            AExecute,
-            If(BooleanConstant(true)).Then:
-              Workflow.of(
-                BExecute,
-                TryInstruction(Workflow.empty, Workflow.empty),
-                Fail())
-            .Else:
-              BExecute,
-            AExecute))),
-        Map(
-          AJobName -> AJob,
-          BJobName -> BJob))
-
-      assert(workflow.reduceForAgent(AAgentPath) ==
-        Workflow(WorkflowPath.Anonymous,
-          Vector(
-            LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
+          LockInstruction.single(LockPath("LOCK")):
+            Workflow.of(
               AExecute,
-              If(BooleanConstant(true)).Then:
-                Workflow.of(
-                  Gap(),
-                  TryInstruction(Workflow.empty, Workflow.empty),
-                  Fail())
-              .Else:
-                Gap(),
-              AExecute))),
-          Map(
-            AJobName -> AJob)))
-
-      assert(workflow.reduceForAgent(BAgentPath) ==
-        Workflow(WorkflowPath.Anonymous,
-          Vector(
-            LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
-              Gap(),
               If(BooleanConstant(true)).Then:
                 Workflow.of(
                   BExecute,
@@ -1141,7 +1115,42 @@ final class WorkflowTest extends OurTestSuite:
                   Fail())
               .Else:
                 BExecute,
-              Gap()))),
+              AExecute)),
+        Map(
+          AJobName -> AJob,
+          BJobName -> BJob))
+
+      assert(workflow.reduceForAgent(AAgentPath) ==
+        Workflow(WorkflowPath.Anonymous,
+          Vector(
+            LockInstruction.single(LockPath("LOCK")):
+              Workflow.of(
+                AExecute,
+                If(BooleanConstant(true)).Then:
+                  Workflow.of(
+                    Gap(),
+                    TryInstruction(Workflow.empty, Workflow.empty),
+                    Fail())
+                .Else:
+                  Gap(),
+                AExecute)),
+          Map(
+            AJobName -> AJob)))
+
+      assert(workflow.reduceForAgent(BAgentPath) ==
+        Workflow(WorkflowPath.Anonymous,
+          Vector(
+            LockInstruction.single(LockPath("LOCK")):
+              Workflow.of(
+                Gap(),
+                If(BooleanConstant(true)).Then:
+                  Workflow.of(
+                    BExecute,
+                    TryInstruction(Workflow.empty, Workflow.empty),
+                    Fail())
+                .Else:
+                  BExecute,
+                Gap())),
           Map(
             BJobName -> BJob)))
 

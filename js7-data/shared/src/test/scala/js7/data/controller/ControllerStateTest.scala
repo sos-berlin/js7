@@ -475,12 +475,13 @@ object ControllerStateTest:
     itemRevision = Some(ItemRevision(1)))
 
   private val versionId = VersionId("1.0")
-  private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
-    LockInstruction.single(lock.path, None, Workflow.of(
-      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
-        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
-        jobResourcePaths = Seq(jobResource.path))))),
-    ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
+  private[controller] val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ versionId,
+    LockInstruction.single(lock.path, None):
+      Workflow.of:
+        Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
+          jobResourcePaths = Seq(jobResource.path))),
+    ExpectNotices(BoardPathExpression.ExpectNotice(board.path)))
   private val signedWorkflow = itemSigner.sign(workflow)
   private[controller] val fileWatch = FileWatch(
     OrderWatchPath("WATCH"),

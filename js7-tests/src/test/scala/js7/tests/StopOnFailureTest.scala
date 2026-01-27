@@ -90,12 +90,12 @@ final class StopOnFailureTest
   "Fail in two nested Lock instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-LOCK-WORKFLOW"),
       Options(stopOnFailure = true):
-        LockInstruction.single(aLockPath,
-          lockedWorkflow = Workflow.of(
+        LockInstruction.single(aLockPath):
+          Workflow.of(
             EmptyJob.execute(agentPath),
-            LockInstruction.single(bLockPath,
-              lockedWorkflow = Workflow.of(
-                FailingJob.execute(agentPath))))))
+            LockInstruction.single(bLockPath):
+              Workflow.of:
+                FailingJob.execute(agentPath)))
 
     withItem(workflow): workflow =>
       val orderId = OrderId("NESTED-LOCKS")
@@ -144,9 +144,9 @@ final class StopOnFailureTest
   "Cancel a stopped locking Order" in:
     val workflow = Workflow.of(WorkflowPath("LOCK-CANCEL-WORKFLOW"),
       Options(stopOnFailure = true):
-        LockInstruction.single(aLockPath,
-          lockedWorkflow = Workflow.of:
-            FailingJob.execute(agentPath)))
+        LockInstruction.single(aLockPath):
+          Workflow.of:
+            FailingJob.execute(agentPath))
 
     withItem(workflow): workflow =>
       val orderId = OrderId("CANCEL-IN-LOCK")

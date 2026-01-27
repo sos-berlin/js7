@@ -180,20 +180,16 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     val workflow1 = updateItem(Workflow(
       WorkflowPath("RELEASE-2"),
       Seq:
-        LockInstruction.single(
-          limit2LockPath,
-          count = Some(1),
-          lockedWorkflow = Workflow.of:
-            Prompt(expr"'PROMPT'"))))
+        LockInstruction.single(limit2LockPath, count = Some(1)):
+          Workflow.of:
+            Prompt(expr"'PROMPT'")))
 
     val workflow2 = updateItem(Workflow(
       WorkflowPath("WORKFLOW-2"),
       Seq:
-        LockInstruction.single(
-          limit2LockPath,
-          count = Some(2),
-          lockedWorkflow = Workflow.of:
-            Prompt(expr"'PROMPT'"))))
+        LockInstruction.single(limit2LockPath, count = Some(2)):
+          Workflow.of:
+            Prompt(expr"'PROMPT'")))
 
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
@@ -271,16 +267,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       WorkflowPath("FAILED-ORDER"),
       Seq(
         EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
-        LockInstruction.single(
-          lockPath,
-          count = None,
-          lockedWorkflow = Workflow.of(
+        LockInstruction.single(lockPath):
+          Workflow.of(
             EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
-            LockInstruction.single(
-              lock2Path,
-              count = None,
-              lockedWorkflow = Workflow.of(
-                Fail())))))))
+            LockInstruction.single(lock2Path):
+              Workflow.of:
+                Fail()))))
 
     assert(workflow.referencedItemPaths.toSet == Set(lockPath, lock2Path, agentPath))
 
@@ -457,10 +449,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       WorkflowPath("FINISH"),
       Seq(
         EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
-        LockInstruction.single(
-          lockPath,
-          count = None,
-          lockedWorkflow = Workflow.of(Finish())))))
+        LockInstruction.single(lockPath):
+          Workflow.of:
+            Finish())))
 
     val orderId = OrderId("🟫")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -503,10 +494,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         Fork.forTest(Seq(Fork.Branch(
           ForkBranchId("BRANCH"),
           Workflow.of(
-            LockInstruction.single(
-              lockPath,
-              count = None,
-              lockedWorkflow = Workflow.of(Finish())))))))))
+            LockInstruction.single(lockPath):
+              Workflow.of:
+                Finish())))))))
 
     val orderId = OrderId("🟣")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -768,9 +758,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     val queueingWorkflow = updateItem(Workflow(
       WorkflowPath("CANCEL-WHILE-QUEUING-FOR-LOCKING"),
       Seq(
-        LockInstruction.single(lockPath,
-          count = None,
-          lockedWorkflow = Workflow.empty))))
+        LockInstruction.single(lockPath):
+          Workflow.empty)))
     val orderId = OrderId("CANCEL-WHILE-QUEUING-FOR-LOCK")
     controller.api.addOrder(FreshOrder(orderId, queueingWorkflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
@@ -839,15 +828,15 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     val exclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("EXCLUSIVE-WORKFLOW"),
       Seq(
-        LockInstruction.single(limit2LockPath,
-          count = None,
-          lockedWorkflow = Workflow.of(Prompt(expr"'?'"))))))
+        LockInstruction.single(limit2LockPath):
+          Workflow.of:
+            Prompt(expr"'?'"))))
     val nonExclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("NON-EXCLUSIVE-WORKFLOW"),
       Seq(
-        LockInstruction.single(limit2LockPath,
-          count = Some(2),
-          lockedWorkflow = Workflow.of(Prompt(expr"'?'"))))))
+        LockInstruction.single(limit2LockPath, count = Some(2)):
+          Workflow.of:
+            Prompt(expr"'?'"))))
 
     locally:
       // First exclusive, then non-exclusive is queued
@@ -901,14 +890,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       Seq(
         TryInstruction(
           Workflow.of(
-            LockInstruction.single(lockPath,
-              count = None,
-              lockedWorkflow = Workflow.of(
-                FailingJob.execute(agentPath)))),
-          Workflow.of(
-            Retry()),
-            retryDelays = Some(Vector(0.s)),
-            maxTries = Some(2))))
+            LockInstruction.single(lockPath):
+              Workflow.of:
+                FailingJob.execute(agentPath)),
+          Workflow.of:
+            Retry(),
+          retryDelays = Some(Vector(0.s)),
+          maxTries = Some(2))))
 
     withItem(workflow) { workflow =>
       val orderId = OrderId("RETRY-LOCK")
@@ -950,17 +938,16 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
   "JS-2015 Lock in Try/Retry with delay" in:
     val workflow = Workflow(
       WorkflowPath("RETRY-LOCK"),
-      Seq(
+      Seq:
         TryInstruction(
-          Workflow.of(
-            LockInstruction.single(lockPath,
-              count = None,
-              lockedWorkflow = Workflow.of(
-                FailingJob.execute(agentPath)))),
+          Workflow.of:
+            LockInstruction.single(lockPath):
+              Workflow.of:
+                FailingJob.execute(agentPath),
           Workflow.of(
             Retry()),
             retryDelays = Some(Vector(1.ms)),
-            maxTries = Some(2))))
+            maxTries = Some(2)))
 
     withItem(workflow, awaitDeletion = true) { workflow =>
       val orderId = OrderId("RETRY-LOCK")
@@ -1009,10 +996,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       val workflow = Workflow(
         WorkflowPath("LOCK-CONTINUE-QUEUED"),
         Seq:
-          LockInstruction.single(lockPath,
-            count = None,
-            lockedWorkflow = Workflow.of(
-              Prompt(expr"'PROMPT'"))))
+          LockInstruction.single(lockPath):
+            Workflow.of:
+              Prompt(expr"'PROMPT'"))
 
       withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
@@ -1072,11 +1058,10 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       val workflow = Workflow(
         WorkflowPath("LOCK-CONTINUE-QUEUED"),
         Seq:
-          LockInstruction.single(lockPath,
-            count = None,
-            lockedWorkflow = Workflow.of(
+          LockInstruction.single(lockPath):
+            Workflow.of(
               Prompt(expr"'PROMPT'"),
-              Fail())))
+              Fail()))
 
       withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
@@ -1136,10 +1121,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         WorkflowPath("STOP-ON-FAILURE-LOCK"),
         Seq:
           Options(stopOnFailure = true):
-            LockInstruction.single(lockPath,
-              count = None,
-              lockedWorkflow = Workflow.of(
-                Fail())))
+            LockInstruction.single(lockPath):
+              Workflow.of:
+                Fail())
 
       withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
@@ -1361,11 +1345,10 @@ object LockTest:
 
   private val promptInLockWorkflow = Workflow(
     WorkflowPath("PROMPT-IN-LOCK") ~ "INITIAL",
-    Seq(
-      LockInstruction.single(lockPath,
-        count = None,
-        lockedWorkflow = Workflow.of(
-          Prompt(StringConstant("PROMPT"))))))
+    Seq:
+      LockInstruction.single(lockPath):
+        Workflow.of:
+          Prompt(StringConstant("PROMPT")))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

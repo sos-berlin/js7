@@ -542,11 +542,10 @@ object ControllerStateExecutorTest:
 
   private val bWorkflow = Workflow(
     WorkflowPath("B-WORKFLOW") ~ v1,
-    Seq(
-      LockInstruction.single(
-        lock.path,
-        None,
-        Workflow.of(execute(bAgentRef.path)))),
+    Seq:
+      LockInstruction.single(lock.path, None):
+        Workflow.of:
+          execute(bAgentRef.path),
     orderPreparation = OrderPreparation(OrderParameterList(View(
       requiredParameter,
       OrderParameter("hasDefault", StringConstant("DEFAULT")),

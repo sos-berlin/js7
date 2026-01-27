@@ -15,7 +15,8 @@ final class LockInstructionTest extends OurTestSuite:
   "JSON" in:
     // COMPATIBLE with v2.4
     testJsonDecoder[Instruction.Labeled](
-      LockInstruction.single(LockPath("LOCK"), count = None, lockedWorkflow = Workflow.of()),
+      LockInstruction.single(LockPath("LOCK"), count = None):
+        Workflow.empty,
       json"""{
         "TYPE": "Lock",
         "lockPath": "LOCK",
@@ -26,11 +27,8 @@ final class LockInstructionTest extends OurTestSuite:
 
     // COMPATIBLE with v2.4
     testJsonDecoder[Instruction.Labeled](
-      LockInstruction.single(
-        LockPath("LOCK"),
-        count = Some(3),
-        lockedWorkflow = Workflow.of(),
-        sourcePos = Some(SourcePos(1, 2))),
+      LockInstruction.single(LockPath("LOCK"), count = Some(3), sourcePos = Some(SourcePos(1, 2))):
+        Workflow.empty,
       json"""{
         "TYPE": "Lock",
         "lockPath": "LOCK",

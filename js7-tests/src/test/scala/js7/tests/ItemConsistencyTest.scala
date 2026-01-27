@@ -79,9 +79,10 @@ object ItemConsistencyTest:
   private val versionId = VersionId("1")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId,
     Vector(
-      LockInstruction.single(lock.path, None, Workflow.of(
-        EmptyJob.execute(agentPath,
-          jobResourcePaths = Seq(jobResource.path))))))
+      LockInstruction.single(lock.path, None):
+        Workflow.of:
+          EmptyJob.execute(agentPath,
+            jobResourcePaths = Seq(jobResource.path))))
 
   private val fileWatch = FileWatch(OrderWatchPath("ORDER-WATCH"), workflow.path, agentPath,
     expr("'/dev/null'"))

@@ -75,8 +75,8 @@ object LockInstruction:
   def single(
     lockPath: LockPath,
     count: Option[Int] = None,
-    lockedWorkflow: Workflow,
     sourcePos: Option[SourcePos] = None)
+    (lockedWorkflow: Workflow)
   : LockInstruction =
     checked(lockPath, count, lockedWorkflow, sourcePos).orThrow
 

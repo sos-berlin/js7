@@ -340,11 +340,10 @@ object ResetAgentTest:
   private val lockWorkflow = Workflow(WorkflowPath("LOCK-WORKFLOW") ~ "INITIAL",
     Vector(
       TryInstruction(
-        Workflow.of(
-          LockInstruction.single(lock.path, None, Workflow.of(
-            TestJob.execute(
-              agentPath,
-              jobResourcePaths = Seq(jobResource.path))))),
+        Workflow.of:
+          LockInstruction.single(lock.path, None):
+            Workflow.of:
+              TestJob.execute(agentPath, jobResourcePaths = Seq(jobResource.path)),
         Workflow.empty)))
 
   private val cycleWorkflow = Workflow(WorkflowPath("CYCLE-WORKFLOW") ~ "INITIAL",
