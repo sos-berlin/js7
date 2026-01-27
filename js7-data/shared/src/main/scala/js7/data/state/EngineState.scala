@@ -212,14 +212,16 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
 
   final def foreachLockDemand[A](demands: Seq[LockDemand])(op: (LockState, Option[Int]) => Checked[A])
   : Checked[Seq[A]] =
+    val keyToLockState = keyTo(LockState)
     demands.traverse: demand =>
-      keyTo(LockState).checked(demand.lockPath)
+      keyToLockState.checked(demand.lockPath)
         .flatMap(op(_, demand.count))
 
   final def foreachLock[A](lockPaths: Seq[LockPath])(op: LockState => Checked[A])
   : Checked[Seq[A]] =
+    val keyToLockState = keyTo(LockState)
     lockPaths.traverse: lockPath =>
-      keyTo(LockState).checked(lockPath)
+      keyToLockState.checked(lockPath)
         .flatMap(op)
 
   protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
