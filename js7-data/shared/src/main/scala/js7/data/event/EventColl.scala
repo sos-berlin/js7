@@ -3,10 +3,10 @@ package js7.data.event
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Assertions.{assertIfStrict, assertThat}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, foreachWithBracket, mkStringLimited, toEagerSeq}
-import js7.base.utils.Tests.{isIntelliJIdea, isStrict}
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.KeyedEvent.NoKey
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
@@ -270,6 +270,9 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   def keyedEvents: IndexedSeqView[KeyedEvent[E]] =
     timestampedKeyedEvents.view.map(_.keyedEvent)
 
+  def keyedEventList: List[KeyedEvent[E]] =
+    keyedEvents.toList
+
   /** Set originalAggregate to aggregate and remove the events. */
   def forward: EventCollCtx[S, E, Ctx] =
     if !hasEvents then
@@ -294,10 +297,11 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
     *   `coll` must start with the same events as `this`.
     */
   def hasMoreEventsThan(coll: EventCollCtx[S, E, Ctx]): Boolean =
-    if isStrict then
-      assertThat((originalAggregate eq coll.originalAggregate)
-        && eventCount >= coll.eventCount
-        && coll.keyedEvents.indices.forall(i => coll.keyedEvents(i) eq keyedEvents(i)))
+    assertThat((originalAggregate eq coll.originalAggregate) && eventCount >= coll.eventCount)
+    assertIfStrict(coll.keyedEvents.indices.forall(i => coll.keyedEvents(i) eq keyedEvents(i)))
+    unsafeHasMoreEventsThan(coll)
+
+  private[event] inline def unsafeHasMoreEventsThan(coll: EventCollCtx[S, E, Ctx]): Boolean =
     eventCount > coll.eventCount
 
   def ifIs[S1 <: EventDrivenState_[S1, E]](using ClassTag[S1]): Option[EventCollCtx[S1, E, Ctx]] =
@@ -353,23 +357,6 @@ object EventCollCtx:
   //    body(EventCollCtx(aggregate, context)).map(_.keyedEvents)
   //</editor-fold
 
-  def checkEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](aggregate: S, context: Ctx)
-    (keyedEvents: IterableOnce[KeyedEvent[E]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    EventCollCtx.keyedEvents(aggregate, context)(_.add(keyedEvents))
-
-  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S)
-    (body: EventCollCtx[S, E, Any] => Checked[EventCollCtx[S, E, Any]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    keyedEvents[S, E, Any](aggregate, ())(body)
-
-  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    aggregate: S,
-    context: Ctx)
-    (body: EventCollCtx[S, E, Ctx] => Checked[EventCollCtx[S, E, Ctx]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    body(EventCollCtx(aggregate, context)).map(_.keyedEvents.toVector)
-
 
 /** A `EventCollCtx` with a `TimeCtx`.
   * <p>
@@ -382,41 +369,17 @@ type EventColl[S <: EventDrivenState_[S, E], E <: Event] =
 object EventColl:
   private val logger = Logger[this.type]
 
-  object extensions:
-    extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
-      def now: Timestamp =
-        eventColl.context.now
-
   def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, now: Timestamp)
   : EventColl[S, E] =
     EventCollCtx(aggregate, TimeCtx(now))
 
-  //def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
-  //: EventColl[S, E] =
-  //  EventCollCtx(aggregate, ctx)
+  /** Returns a `EventCollCtx` with `context: Unit`. */
+  inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
+  : EventCollCtx[S, E, Unit] =
+    EventCollCtx(aggregate)
 
-  ///** Returns a `EventCollCtx` with `context: Unit`. */
-  //inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
-  //: EventCollCtx[S, E, Unit] =
-  //  EventCollCtx(aggregate)
 
-  def checkEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
-    (keyedEvents: IterableOnce[KeyedEvent[E]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    EventColl.keyedEvents(aggregate, ctx)(_.add(keyedEvents))
-
-  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, now: Timestamp)
-    (body: EventColl[S, E] => Checked[EventColl[S, E]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    keyedEvents(aggregate, TimeCtx(now))(body)
-
-  def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, ctx: TimeCtx)
-    (body: EventColl[S, E] => Checked[EventColl[S, E]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    body(EventCollCtx(aggregate, ctx))
-      .map(_.keyedEvents.toVector)
-
-  inline def keyedEvents[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
-    (inline body: EventCollCtx[S, E, Any] => Checked[EventCollCtx[S, E, Any]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    EventCollCtx.keyedEvents(aggregate)(body)
+  object extensions:
+    extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
+      def now: Timestamp =
+        eventColl.context.now

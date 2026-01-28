@@ -13,15 +13,10 @@ import scala.collection.IndexedSeqView
 
 /** Calculator for EventColl.
   *
-  * In essence, a function `EventCollCtx => Checked[EventColl]`
+  * In essence, a function `EventCollCtx => Checked[EventCollCtx]`
   */
 final class EventCalcCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx](
   private val function: EventCollCtx[S, E, Ctx] => Checked[EventCollCtx[S, E, Ctx]]):
-
-  @TestOnly
-  def calculateEventsAndAggregate(aggregate: S, context: Ctx): Checked[(Vector[KeyedEvent[E]], S)] =
-    calculate(aggregate, context).map: coll =>
-      coll.keyedEvents.toVector -> coll.aggregate
 
   /** Return an EventCollCtx containing the calculated events and aggregate. */
   def calculate(aggregate: S, context: Ctx): Checked[EventCollCtx[S, E, Ctx]] =
@@ -51,12 +46,23 @@ final class EventCalcCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx](
   : Checked[EventCollCtx[S1, E1, Ctx & Ctx1]] =
     widen[S1, E1, Ctx & Ctx1].function(coll)
 
-  ///** Returns the calculated events.
-  //  */
-  //def calculateEvents[S1 >: S <: EventDrivenState_[S1, E1], E1 >: E <: Event](
-  //  coll: EventCollCtx[S1, E1, Ctx])
-  //: Checked[IndexedSeqView[KeyedEvent[E1]]] =
-  //  calculate[S1, E1, Ctx](coll).map(_.keyedEvents)
+  inline def |+|(other: EventCalcCtx[S, E, Ctx]): EventCalcCtx[S, E, Ctx] =
+    append(other)
+
+  def append(other: EventCalcCtx[S, E, Ctx]): EventCalcCtx[S, E, Ctx] =
+    EventCalcCtx: coll =>
+      calculate(coll).flatMap: myColl =>
+        myColl.addEventCalc(other)
+
+  @TestOnly // Seems not to be typesafe
+  def untypedCalculateEventList(aggregate: EventDrivenState[E], ctx: Ctx)
+  : Checked[List[KeyedEvent[E]]] =
+    calculateEventList:
+      EventCollCtx(aggregate.asInstanceOf[S], ctx)
+
+  @TestOnly
+  def calculateEventList(coll: EventCollCtx[S, E, Ctx]): Checked[List[KeyedEvent[E]]] =
+    calculateEvents(coll).map(_.toList)
 
   /** Return the calculated events.
     * <p>See `calculate`.
@@ -70,7 +76,7 @@ final class EventCalcCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx](
     (whenNoEvents: => Checked[EventCollCtx[S, E, Ctx]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addTo(coll).flatMap: newColl =>
-      if newColl.hasMoreEventsThan(coll) then
+      if newColl.unsafeHasMoreEventsThan(coll) then
         Right(newColl)
       else
         whenNoEvents
@@ -163,7 +169,7 @@ object EventCalcCtx:
     EventCollCtx[S, E, Ctx]
 
   def context[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-                                                              using coll: OpaqueEventCollCtx[S, E, Ctx])
+    using coll: OpaqueEventCollCtx[S, E, Ctx])
   : Ctx =
     coll.context
 
@@ -177,9 +183,7 @@ object EventCalcCtx:
       def empty = Empty.asInstanceOf[MyEventCalcCtx]
 
       def combine(a: MyEventCalcCtx, b: MyEventCalcCtx): MyEventCalcCtx =
-        EventCalcCtx: coll =>
-          a.calculate(coll).flatMap: a =>
-            a.addEventCalc(b)
+        a.append(b)
 
       // This implementation of combineAll avoids a hidden flatMap recursion
       override def combineAll(as: IterableOnce[MyEventCalcCtx]): MyEventCalcCtx =

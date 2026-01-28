@@ -200,21 +200,21 @@ object ControllerStatePlanFunctions:
       (convertNoticeKey: PlannedNoticeKey => Checked[Option[PlannedNoticeKey]])
     : Checked[Seq[KeyedEvent[Event]]] =
       val boardPath = newBoard.path
-      EventColl.keyedEvents(controllerState): coll =>
-        for
-          boardState <- controllerState.keyTo(BoardState).checked(boardPath)
-          _ <- checkIsOtherBoardType(boardState.item, newBoard)
-          coll <- coll:
-            NoKey <-: UnsignedSimpleItemChanged:
-              newBoard.withRevision(Some(boardState.item.nextRevision))
-          coll <- coll.addChecked:
-            changeBoardTypeOrderAndNoticeEvents(
-              newBoard.path,
-              fromPlanSchemaId, toPlanSchemaId,
-              endOfLife, controllerState,
-              convertNoticeKey)
-        yield
-          coll
+      for
+        coll = EventColl(controllerState)
+        boardState <- controllerState.keyTo(BoardState).checked(boardPath)
+        _ <- checkIsOtherBoardType(boardState.item, newBoard)
+        coll <- coll:
+          NoKey <-: UnsignedSimpleItemChanged:
+            newBoard.withRevision(Some(boardState.item.nextRevision))
+        coll <- coll.addChecked:
+          changeBoardTypeOrderAndNoticeEvents(
+            newBoard.path,
+            fromPlanSchemaId, toPlanSchemaId,
+            endOfLife, controllerState,
+            convertNoticeKey)
+      yield
+        coll.keyedEvents.toVector
 
     private def checkIsOtherBoardType(board: BoardItem, newBoard: BoardItem): Checked[Unit] =
       (board, newBoard) match

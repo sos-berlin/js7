@@ -33,19 +33,20 @@ final class EventCalcTest extends OurTestSuite:
     val combined: EventCalcCtx[TestState, TestEvent, TimeCtx & X] =
       EventCalcCtx.combineAll(Seq(a.widen, b.widen, c.widen))
 
-    val (events, testState) = combined.calculateEventsAndAggregate(
-      TestState("START"),
-      new TimeCtx with X:
-        def now = ts"2025-03-13T12:00:00Z"
-        def value = "«"
-    ).orThrow
+    val coll = combined.calculate:
+      EventCollCtx(
+        TestState("START"),
+        new TimeCtx with X:
+          def now = ts"2025-03-13T12:00:00Z"
+          def value = "«")
+    .orThrow
 
-    assert(events == Seq(
+    assert(coll.keyedEventList == Seq(
         NoKey <-: TestEvent.Added("»"),
         NoKey <-: TestEvent.Added("2025-03-13T12:00:00Z"),
         NoKey <-: TestEvent.Added("«")))
 
-    assert(testState == TestState("START»2025-03-13T12:00:00Z«"))
+    assert(coll.aggregate == TestState("START»2025-03-13T12:00:00Z«"))
 
   "combineAll" - {
     "empty sequence" in:
