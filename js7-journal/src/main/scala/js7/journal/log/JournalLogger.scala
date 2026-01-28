@@ -58,14 +58,15 @@ private[journal] final class JournalLogger(
         logPersists(myPersists, committedAt):
           logCommittedEvents
 
-      def isLoggable(stamped: Stamped[AnyKeyedEvent]) =
-        val event = stamped.value.event
-        infoLoggableEventClasses.contains(event.getClass) || !event.isSucceeded
+      if infoLogEvents.nonEmpty then
+        def isLoggable(stamped: Stamped[AnyKeyedEvent]) =
+          val event = stamped.value.event
+          infoLoggableEventClasses.contains(event.getClass) || !event.isSucceeded
 
-      val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
-      if loggablePersists.nonEmpty then
-        logPersists(loggablePersists.toVector.view, committedAt, isLoggable):
-          infoLogPersist
+        val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
+        if loggablePersists.nonEmpty then
+          logPersists(loggablePersists.toVector.view, committedAt, isLoggable):
+            infoLogPersist
 
   def suppress(supressed: Boolean): Unit =
     this.suppressed = supressed

@@ -45,6 +45,7 @@ import js7.data.subagent.SubagentCommand.{DedicateSubagent, ShutDown}
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
+import js7.journal.configuration.JournalConf
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.crashpidfile.{CrashPidFile, CrashPidFileService}
 import js7.launcher.process.PipedProcess
@@ -238,6 +239,7 @@ object Subagent:
     val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
       .orThrow
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
+    val journalConf = JournalConf.fromConfig(config)
 
     logger.debugResource:
       import testWiring.testEventBus
@@ -268,11 +270,11 @@ object Subagent:
         signatureVerifier <- DirectoryWatchingSignatureVerifier.Provider(clock, config)
           .prepare.orThrow
           .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
-        journal <- MemoryJournal.resource(
+        journal <- MemoryJournal.service(
           SubagentState.empty,
           size = config.getInt("js7.journal.memory.event-count"),
           waitingFor = "JS7 Agent Director",
-          infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+          infoLogEvents = JournalConf.infoLogEvents(config))
         shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown]).toResource
         supervisor <- Supervisor[IO]
         subagent <- Service.resource:

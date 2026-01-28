@@ -54,4 +54,11 @@ object JournalConf:
       deleteObsoleteFiles = config.getBoolean("js7.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
       slowCheckState = slowCheckState,
-      infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+      infoLogEvents = infoLogEvents(config))
+
+  def infoLogEvents(config: Config): Set[String] =
+    // Read with as[Boolean| to allow overriding with a system property which is a String.
+    if config.as[Boolean]("js7.journal.log.suppress-info-events", false) then
+      Set.empty
+    else
+      config.seqAs[String]("js7.journal.log.info-events").toSet
