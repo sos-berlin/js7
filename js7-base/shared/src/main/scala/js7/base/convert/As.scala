@@ -24,7 +24,7 @@ object As:
   implicit object StringAsBoolean extends As[String, Boolean]:
     val StringToBooleanMap: Map[String, Boolean] =
       Map(
-        "true"  -> true , "on"  -> true , "yes" -> true,
+        "true"  -> true , "on"  -> true , "yes" -> true, "" -> true,
         "false" -> false, "off" -> false, "no"  -> false)
 
     def apply(o: String): Boolean =

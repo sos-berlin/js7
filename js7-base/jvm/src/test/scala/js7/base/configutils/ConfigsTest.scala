@@ -4,6 +4,7 @@ import cats.Monoid
 import cats.syntax.semigroup.*
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import java.nio.file.Path
+import java.util.Properties
 import js7.base.configutils.Configs.*
 import js7.base.configutils.ConfigsTest.*
 import js7.base.generic.GenericString
@@ -44,10 +45,16 @@ final class ConfigsTest extends OurTestSuite:
 
   "boolean" in:
     for ((v, ks) <- List(false -> List("false", "off", "no"),
-                        true -> List("true", "on", "yes"));
+                         true -> List("true", "on", "yes"));
          k <- ks)
       assert(TestConfig.getBoolean(k) == v)
       assert(TestConfig.as[Boolean](k) == v)
+    assert(config""" flag="" """.as[Boolean]("flag") == true)
+
+  "boolean with empty string" in:
+    val properties = new Properties
+    properties.put("flag", "")
+    assert(ConfigFactory.parseProperties(properties).as[Boolean]("flag") == true)
 
   "checkedPath" in:
     assert(TestConfig.checkedPath("string") (path => Right(TestConfig.getString(path))) == Right("STRING"))

@@ -44,8 +44,9 @@ final class AsTest extends OurTestSuite:
 
   "StringAsBoolean" in:
     val conv = implicitly[As[String, Boolean]]
-    intercept[IllegalArgumentException] { conv("") }
+    //intercept[IllegalArgumentException] { conv("") }
     intercept[IllegalArgumentException] { conv("1") } .getMessage shouldEqual "Boolean value true or false expected, not: 1"
+    assert(conv("")) // This allows -Dflag instead of -Dflag=true
     assert(conv("true"))
     assert(conv("on"))
     assert(conv("yes"))
