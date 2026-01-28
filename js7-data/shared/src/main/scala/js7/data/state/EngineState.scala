@@ -23,7 +23,7 @@ import js7.data.plan.PlanSchemaState
 import js7.data.state.EngineState.*
 import js7.data.state.EngineStateStatistics
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowScope, OrderScopes}
+import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NoNowScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, Execute, LockInstruction, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
@@ -193,18 +193,22 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
     toOrderScopes(order).map(_.pureOrderScope)
 
   /** An impure (unstable, non-repeatable) Scope. */
-  final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
-    for orderScopes <- toOrderScopes(order) yield
-      val nowScope = NowScope(now)
+  final def toImpureOrderExecutingScope(
+    order: Order[Order.State],
+    exceptionOrTime: Exception | Timestamp)
+  : Checked[Scope] =
+    val eitherExceptionOrTime = exceptionOrTime match
+      case e: Exception => Left(e)
+      case t: Timestamp => Right(t)
+    toOrderScopes(order).map: orderScopes =>
+      val nowScope = eitherExceptionOrTime.fold(NoNowScope(_), NowScope(_))
       combine(
         orderScopes.pureOrderScope,
         nowScope,
         JobResourceScope(
           keyToItem(JobResource),
-          useScope = orderScopes.variablelessOrderScope |+| nowScope))
-
-  final def noticeScope(order: Order[Order.State]): Checked[Scope] =
-    toOrderScopes(order).map(_.pureOrderScope)
+          useScope = orderScopes.variablelessOrderScope |+| nowScope,
+          throwException = eitherExceptionOrTime.left.toOption))
 
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     idToWorkflow.checked(order.workflowId).map:

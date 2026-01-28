@@ -8,7 +8,13 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 
-final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp])
+/**
+  * @param throwException Exception to throw when the clock is to be queried.
+  */
+final class TimestampScope(
+  name: String,
+  lazyTimestamp: => Option[Timestamp],
+  throwException: => Option[Exception] = None)
 extends Scope:
   private lazy val maybeTimestamp = lazyTimestamp
 
@@ -17,6 +23,7 @@ extends Scope:
     functionCall match
       case FunctionCall(`name`, arguments) =>
         // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
+        throwException.foreach(throw _)
         Some:
           arguments match
             case Some(Seq(
@@ -47,8 +54,3 @@ extends Scope:
     yield StringValue(result)
 
   override def toString = s"TimestampScope('$name')"
-
-
-object TimestampScope:
-  def apply(name: String, lazyTimestamp: => Option[Timestamp]): Scope =
-    new TimestampScope(name, lazyTimestamp)
