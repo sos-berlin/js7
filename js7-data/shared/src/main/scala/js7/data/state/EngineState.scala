@@ -200,7 +200,7 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
         orderScopes.pureOrderScope,
         nowScope,
         JobResourceScope(
-          keyTo(JobResource),
+          keyToItem(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope))
 
   final def noticeScope(order: Order[Order.State]): Checked[Scope] =
