@@ -47,17 +47,19 @@ if [ -n "$javaHome" ]; then :
 fi
 
 standardJavaOptions=()
-standardJavaOptions+=("-Dfile.encoding=UTF-8")
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
-standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
   standardJavaOptions+=("-XX:+UseCompactObjectHeaders")
 fi
+standardJavaOptions+=("-XX:+UseStringDeduplication")
+standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 if [[ "$JAVA_VERSION_MAJOR" -ge 24 ]]; then
-  # Because of libraries compiled with Scala <3.8, which use old-style LazyVals
+  # Due to libraries compiled with Scala <3.8, which use old-style LazyVals
   standardJavaOptions+=("--sun-misc-unsafe-memory-access=allow")
 fi
-standardJavaOptions+=("-XX:+UseStringDeduplication")
+if [[ "$JAVA_VERSION_MAJOR" -lt 18 ]]; then
+  standardJavaOptions+=("-Dfile.encoding=UTF-8")
+fi
 
 
 timestamp() {
