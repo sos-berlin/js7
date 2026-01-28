@@ -269,7 +269,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
             succeed
 
   private def journal(size: Int = Int.MaxValue): ResourceIO[MemoryJournal[TestState]] =
-    MemoryJournal.resource(
+    MemoryJournal.service(
       TestState.empty,
       size = size,
       infoLogEvents = Set.empty,

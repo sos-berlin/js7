@@ -198,7 +198,7 @@ object MemoryJournal:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: JournaledState[S]](
+  def service[S <: JournaledState[S]](
     initial: S,
     size: Int,
     waitingFor: String = "releaseEvents",
