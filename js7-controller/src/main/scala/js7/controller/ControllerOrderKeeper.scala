@@ -60,6 +60,7 @@ import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
+import js7.data.event.EventColl.extensions.now
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
@@ -320,7 +321,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                 timezone,
                 totalRunningTime = journal.totalRunningTime)
             coll <- coll:
-              ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate)
+              ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate, coll.now)
           yield
             coll
       ) { persisted =>

@@ -8,6 +8,7 @@ import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders}
 import js7.data.controller.ControllerStateExecutor
 import js7.data.event.EventCalc
+import js7.data.event.EventColl.extensions.now
 
 private[command] final class AddOrderExecutor(config: Config)
 extends CommandEventConverter[AddOrder]:
@@ -16,16 +17,18 @@ extends CommandEventConverter[AddOrder]:
   private val logger = Logger[this.type]
 
   def toEventCalc(cmd: AddOrder) =
-    EventCalc.checked: controllerState =>
-      controllerState.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
-        ControllerStateExecutor
-          .addOrder(controllerState, cmd.order, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-          .map:
-            case Left(existing) =>
-              logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
-              Nil
-            case Right(orderAddedEvents) =>
-              orderAddedEvents.toKeyedEvents
+    EventCalc: coll =>
+      coll:
+        coll.aggregate.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
+          ControllerStateExecutor
+            .addOrder(coll.aggregate, cmd.order, coll.now,
+              suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+            .map:
+              case Left(existing) =>
+                logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
+                Nil
+              case Right(orderAddedEvents) =>
+                orderAddedEvents.toKeyedEvents
 
 
 private[command] final class AddOrdersExecutor(config: Config)
