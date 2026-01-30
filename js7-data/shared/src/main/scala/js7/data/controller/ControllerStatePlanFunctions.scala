@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{L3, StandardMapView}
-import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved}
+import js7.data.board.NoticeEvent.NoticeMoved
 import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedBoardId, PlannedNoticeKey}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventColl, KeyedEvent}
@@ -13,8 +13,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.OrderStateReset
 import js7.data.order.{Order, OrderEvent}
-import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
-import js7.data.plan.{Plan, PlanId, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanFinishedEvent, PlanId, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EngineState_
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View}
@@ -99,7 +98,7 @@ extends EngineState_[Self]:
 
   /** Return PlanFinished event if Plan should be finished. */
   final def maybePlanFinished(planId: PlanId, now: Timestamp)
-  : Checked[View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]]] =
+  : Checked[View[KeyedEvent[PlanFinishedEvent]]] =
     for
       planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
       plan <- planSchemaState.plan(planId.planKey)
@@ -214,7 +213,7 @@ object ControllerStatePlanFunctions:
             endOfLife, controllerState,
             convertNoticeKey)
       yield
-        coll.keyedEvents.toVector
+        coll.keyedEventList
 
     private def checkIsOtherBoardType(board: BoardItem, newBoard: BoardItem): Checked[Unit] =
       (board, newBoard) match

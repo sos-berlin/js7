@@ -1,16 +1,17 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked.{Ops, catchNonFatalFlatten}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl.extensions.now
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.fail
-import js7.data.order.OrderEvent.{OrderAttachable, OrderCoreEvent, OrderDetachable, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAttachable, OrderCoreEvent, OrderDetachable, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.state.EngineEventColl.extensions.{order, orderAndWorkflow}
 import js7.data.state.EngineState_
@@ -54,13 +55,19 @@ private trait EventInstructionExecutor extends InstructionExecutor:
     agentPath: AgentPath)
     (body: => EventCalc[S, OrderCoreEvent])
   : EventCalc[S, OrderCoreEvent] =
-    EventCalc: coll =>
-      if order.isDetached then
-        coll:
-          order.id <-: OrderAttachable(agentPath)
-      else
-        coll:
-          body
+    if order.isDetached then
+      // Can only happen at the Controller
+      EventCalc.pure:
+        order.id <-: OrderAttachable(agentPath)
+    else if order.isAttached then
+      EventCalc: coll =>
+        if coll.aggregate.isAgent then
+          coll:
+            body
+        else
+          coll.nix
+    else
+      EventCalc.empty
 
   protected final def detachOrder[S <: EngineState_[S]](orderId: OrderId)
     (body: (EventColl[ControllerState, OrderCoreEvent], Order[Order.State]) =>
@@ -87,14 +94,16 @@ private trait EventInstructionExecutor extends InstructionExecutor:
       coll.nix
 
   protected final def useOrderAndWorkflow[S <: EngineState_[S]](orderId: OrderId)
-    (body: (EventColl[S, OrderCoreEvent], Order[Order.State], Workflow) => Checked[EventColl[S, OrderCoreEvent]])
+    (body: (EventColl[S, OrderCoreEvent], Order[Order.State], Workflow) =>
+      Checked[EventColl[S, OrderCoreEvent]])
   : EventCalc[S, OrderCoreEvent] =
     EventCalc: coll =>
       coll.orderAndWorkflow(orderId).flatMap: (order, workflow) =>
         body(coll, order, workflow)
 
   protected final def useOrder[S <: EngineState_[S]](orderId: OrderId)
-    (body: (EventColl[S, OrderCoreEvent], Order[Order.State]) => Checked[EventColl[S, OrderCoreEvent]])
+    (body: (EventColl[S, OrderCoreEvent], Order[Order.State]) =>
+      Checked[EventColl[S, OrderCoreEvent]])
   : EventCalc[S, OrderCoreEvent] =
     EventCalc: coll =>
       coll.order(orderId).flatMap: order =>
@@ -107,11 +116,25 @@ private trait EventInstructionExecutor extends InstructionExecutor:
         order.ifState[Order.Fresh]
           .filterNot(_.isDelayed(now))
 
+  protected def predictNextAgent[S <: EngineState_[S]](
+    order: Order[Order.State],
+    coll: EventColl[S, OrderCoreEvent])
+  : Checked[Option[AgentPath]] =
+    catchNonFatalFlatten:
+      OrderEventSource.anticipateNextOrderMoved(order.id)
+        .calculateEvents(coll.forwardAs[OrderMoved]).map: moves =>
+          for
+            workflow <- coll.aggregate.idToWorkflow.get(order.workflowId)
+            agentPath <- workflow.agentPath(
+              position = moves.lastOption.fold(order.position)(_.event.to))
+          yield
+            agentPath
+
   /** On problem, let the order properly fail, and continue execution.<p>
     * Normally, a failed `EventColl` would result in a `OutcomeDisrupted`.
-    * `catchProblemAsFailure` emits a `Outcome.Failed` instead.
+    * `catchProblemAsOrderFailure` emits a `Outcome.Failed` instead.
     */
-  protected final def catchProblemAsFailure[S <: EngineState_[S]](
+  protected final def catchProblemAsOrderFailure[S <: EngineState_[S]](
     coll: EventColl[S, OrderCoreEvent],
     orderId: OrderId)
     (checked: Checked[EventColl[S, OrderCoreEvent]])

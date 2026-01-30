@@ -210,7 +210,7 @@ extends EventInstructionExecutor_[Instr]:
     else
       order
         .newForkedOrders(orderForked).traverse: order =>
-          OrderEventSource.predictNextAgent(order, coll)
+          predictNextAgent(order, coll)
         .map(_.toSet)
       .map: controllerOrAgents =>
         // None means Controller or the location is irrelevant (not distinguishable for now)

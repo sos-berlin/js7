@@ -10,6 +10,7 @@ import js7.data.execution.workflow.instructions.RetryExecutor.*
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderRetrying}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
+import js7.data.state.EngineEventColl.extensions.order
 import js7.data.state.EngineState_
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.*
@@ -20,6 +21,7 @@ private object RetryExecutor extends EventInstructionExecutor_[Retry]:
   def toEventCalc[S <: EngineState_[S]](instr: Retry, orderId: OrderId)
   : EventCalc[S, OrderCoreEvent] =
     useOrderAndWorkflow(orderId): (coll, order, workflow) =>
+      val orderId = order.id
       if !order.isState[Order.Ready] then
         coll.nix
       else
@@ -42,7 +44,7 @@ private object RetryExecutor extends EventInstructionExecutor_[Retry]:
                   case at if delay >= 10.s => at.roundToNextSecond
                   case at => at
                 coll:
-                  order.id <-: OrderRetrying(Some(nextTimestamp))
+                  orderId <-: OrderRetrying(Some(nextTimestamp))
               else
                 for
                   coll <- coll:

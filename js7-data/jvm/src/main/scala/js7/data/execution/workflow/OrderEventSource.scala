@@ -7,11 +7,9 @@ import js7.base.metering.CallMeter
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
-import js7.data.agent.AgentPath
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerState
@@ -35,12 +33,13 @@ import js7.data.workflow.{Workflow, WorkflowPathControlPath}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 
-/**
-  * @author Joacim Zschimmer
-  */
+// Test is in js7-test subproject, because it uses AgentState
+
 object OrderEventSource:
   private val logger = Logger[this.type]
   private val meterNextEvents = CallMeter("OrderEventSource.nextEvents")
+
+  type ResultEvent = OrderCoreEvent | PlanFinishedEvent
 
   @TestOnly
   def nextEvents[S <: EngineState_[S]](orderId: OrderId, engineState: S, now: Timestamp)
@@ -86,17 +85,6 @@ object OrderEventSource:
             logger.debug(s"💥 $orderId execution failed: $problem")
             coll:
               failOrBreak(order, problem)
-      //match
-      //  case left @ Left(_) => left
-      //  case right @ Right(coll) =>
-      //    logger.whenTraceEnabled:
-      //      logger.trace(s"🪱 nextEvents($orderId) returned no events · ${
-      //        coll.aggregate.idToOrder.get(orderId).fold("non-existent"): order =>
-      //          val instr = coll.aggregate.instruction(order.workflowPosition)
-      //            .fold(identity, identity)
-      //          s"${instr.getClass.shortClassName} · $order"
-      //      }")
-      //    right
 
   private def nextEvent2[S <: EngineState_[S]](order: Order[Order.State])
   : EventCalc[S, OrderCoreEvent] =
@@ -267,7 +255,7 @@ object OrderEventSource:
 
   private def orderMarkEvent[S <: EngineState_[S]](order: Order[Order.State])
   : EventCalc[S, OrderCoreEvent] =
-    order.mark.toList.map:
+    order.mark.fold(EventCalc.empty):
       case OrderMark.Cancelling(mode) =>
         tryCancel(order, mode)
 
@@ -282,7 +270,6 @@ object OrderEventSource:
         // to the Agent.
         // The Agent executes the MarkOrder command immediately
         EventCalc.empty
-    .foldMonoids
 
   def markOrder[S <: EngineState_[S]](orderId: OrderId, mark: OrderMark): EventCalc[S, OrderCoreEvent] =
     //assertThat(coll.aggregate.isAgent)
@@ -483,33 +470,19 @@ object OrderEventSource:
             moveOrderToNextInstruction(order, forCommand = true)
         yield coll
 
-  def predictNextAgent[S <: EngineState_[S]](
-    order: Order[Order.State],
-    coll: EventColl[S, OrderCoreEvent])
-  : Checked[Option[AgentPath]] =
-    catchNonFatalFlatten:
-      anticipateNextOrderMoved(order.id)
-        .calculateEvents(coll.forwardAs[OrderMoved]).map: moves =>
-          for
-            workflow <- coll.aggregate.idToWorkflow.get(order.workflowId)
-            agentPath <- workflow.agentPath(
-              position = moves.lastOption.fold(order.position)(_.event.to))
-          yield
-            agentPath
-
   def moveOrderToNextInstruction[S <: EngineState_[S]](
     order: Order[Order.State],
     reason: Option[OrderMoved.Reason] = None,
     forCommand: Boolean = false)
   : EventCalc[S, OrderMoved] =
-    moveOrder(order.id, order.position.increment, reason, forCommand = forCommand)
+    moveOrder(order.id, to = order.position.increment, reason, forCommand = forCommand)
 
   def moveOrderDownToBranch[S <: EngineState_[S]](
     order: Order[Order.State],
     branchId: BranchId,
     reason: Option[OrderMoved.Reason] = None)
   : EventCalc[S, OrderMoved] =
-    moveOrder(order.id, order.position / branchId % 0, reason)
+    moveOrder(order.id, to = order.position / branchId % 0, reason)
 
   def moveOrder[S <: EngineState_[S]](
     orderId: OrderId,
@@ -526,11 +499,12 @@ object OrderEventSource:
     else
       anticipateNextOrderMoved(orderId, Some(event))
 
-  private def anticipateNextOrderMoved[S <: EngineState_[S]](
+  private[workflow] def anticipateNextOrderMoved[S <: EngineState_[S]](
     orderId: OrderId,
     firstOrderMoved: Option[OrderMoved] = None)
   : EventCalc[S, OrderMoved] =
     EventCalc: coll =>
+
       //@tailrec ???
       def loop(order: Order[Order.State], visited: Vector[OrderMoved], coll: EventColl[S, OrderMoved])
       : Checked[Vector[OrderMoved]] =
@@ -566,7 +540,7 @@ object OrderEventSource:
       firstOrderMoved match
         // TODO Simplify this code
         case None =>
-          coll.useOrder(orderId): order =>
+          coll.order(orderId).flatMap: order =>
             coll.addWithKey(orderId):
               loop(order, Vector.empty, coll.forwardAs)
         case Some(orderMoved) =>

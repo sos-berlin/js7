@@ -25,7 +25,7 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
             addedOrderIdString <- instr.orderId.evalAsString(
               using scope |+| UniqueOrderIdScope(coll.aggregate.idToOrder.keySet))
             planId <- instr.planId.fold(Checked(order.planId))(PlanId.evalPlanIdExpr(_, scope))
-            coll <- catchProblemAsFailure(coll, orderId):
+            coll <- catchProblemAsOrderFailure(coll, orderId):
               for
                 addedOrderId <- OrderId.checked(addedOrderIdString)
                 _ <- coll.aggregate

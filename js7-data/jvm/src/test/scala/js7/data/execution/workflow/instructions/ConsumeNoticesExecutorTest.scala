@@ -374,12 +374,11 @@ object ConsumeNoticesExecutorTest:
                       case Unknown => Map.empty)))))
 
     ConsumeNoticesExecutor.toEventCalc(instr, order.id)
-      .calculateEvents:
+      .calculateEventList:
         EventColl(controllerState, ts"2024-11-25T12:00:00Z")
       .map:
         _.map:
           case KeyedEvent(`orderId`, event) => event
-        .toList
 
 
   private[instructions] enum NoticeState:

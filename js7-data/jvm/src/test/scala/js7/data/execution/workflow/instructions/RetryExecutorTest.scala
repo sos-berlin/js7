@@ -74,5 +74,5 @@ object RetryExecutorTest:
         Workflow.of(workflowId,
           Gap(),
           tryInstruction.copy(retryDelays = Some(delays.toVector)))))
-    RetryExecutor.toEventCalc(Retry(), order.id).calculateEvents(EventColl(engineState, now))
-      .map(_.toList)
+    RetryExecutor.toEventCalc(Retry(), order.id)
+      .calculateEventList(EventColl(engineState, now))

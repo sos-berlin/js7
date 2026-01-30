@@ -50,6 +50,5 @@ final class ExecuteTest extends OurTestSuite:
       idToOrder = engineState.idToOrder.updated(order.id, order))
 
     ExecuteExecutor.toEventCalc(executeAnonymous, orderId)
-      .calculateEvents(EventColl(myEngineState, ts"2026-01-21T12:00:00Z"))
+      .calculateEventList(EventColl(myEngineState, ts"2026-01-21T12:00:00Z"))
       .orThrow
-      .toVector

@@ -34,8 +34,7 @@ final class FailExecutorTest extends OurTestSuite:
           workflows = Seq(workflow))
         assert:
           InstructionExecutor.toEventCalc(order.id)
-            .calculateEvents(EventColl(controllerState, now))
-            .map(_.toList) ==
+            .calculateEventList(EventColl(controllerState, now)) ==
             Right(List(
               order.id <-: OrderStarted,
               order.id <-: OrderOutcomeAdded(OrderOutcome.failed),
@@ -48,8 +47,7 @@ final class FailExecutorTest extends OurTestSuite:
             workflows = Seq(workflow))
           assert:
             InstructionExecutor.toEventCalc(order.id)
-              .calculateEvents(EventColl(controllerState, now))
-              .map(_.toList) ==
+              .calculateEventList(EventColl(controllerState, now)) ==
               Right(List(
                 order.id <-: OrderOutcomeAdded(OrderOutcome.failed),
                 order.id <-: OrderFailed(Position(1))))

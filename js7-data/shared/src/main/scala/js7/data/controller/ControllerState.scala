@@ -1063,14 +1063,14 @@ extends
 
   @TestOnly
   def forTest(
-    controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: IterableOnce[Order[Order.State]] = Nil,
     workflows: IterableOnce[Workflow] = Nil,
     itemStates: IterableOnce[UnsignedSimpleItemState] = Nil)
   : ControllerState =
     val controllerState = ControllerState.empty
     controllerState.copy(
-      controllerMetaState = ControllerState.empty.controllerMetaState.copy(controllerId = controllerId),
+      controllerMetaState = ControllerState.empty.controllerMetaState.copy(
+        controllerId = ControllerId("CONTROLLER")),
       idToOrder = orders.toEagerSeq.toKeyedMap(_.id),
       repo =
         ControllerState.empty.repo.applyEvents:

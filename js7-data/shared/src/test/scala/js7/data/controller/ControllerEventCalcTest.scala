@@ -1,6 +1,5 @@
 package js7.data.controller
 
-import cats.syntax.semigroup.*
 import js7.base.test.OurTestSuite
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.Timezone
@@ -43,7 +42,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
     val eventColl: EventCollCtx[ControllerState, NoKeyEvent, TimeCtx] =
       eventCalc.calculate(ControllerState.empty, context).orThrow
 
-    assert(eventColl.keyedEvents.toVector == Vector(
+    assert(eventColl.keyedEventList == List(
       NoKey <-: ControllerInitialized(ControllerId("Controller"), initiallyStartedAt),
       NoKey <-: UnsignedSimpleItemAdded(planSchema),
       NoKey <-: UnsignedSimpleItemAdded(board)))
