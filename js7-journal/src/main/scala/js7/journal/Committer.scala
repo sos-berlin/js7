@@ -28,7 +28,6 @@ import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Committer.*
 import js7.journal.FileJournal.*
@@ -269,8 +268,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       .map: coll =>
         if conf.slowCheckState && coll.hasEvents then
           assertIsRecoverable(state.uncommitted, coll.keyedEvents)
-        val stamped = coll.timestampedKeyedEvents.map: o =>
-          eventIdGenerator.stamp(o.keyedEvent, timestampMillis = o.maybeMillisSinceEpoch)
+        val stamped = coll.timestampedKeyedEvents.map(eventIdGenerator.stamp)
         val aggregate = stamped.lastOption.fold(coll.aggregate): last =>
           coll.aggregate.withEventId(last.eventId)
         Applied.fromQueueEntry(queuedPersist,

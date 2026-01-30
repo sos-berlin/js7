@@ -139,7 +139,7 @@ final case class Plan(
           !isStrict !! Problem(s"$id is already $newStatus")
 
   def maybePlanFinished(now: Timestamp, finishedPlanRetentionPeriod: FiniteDuration)
-  : View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]] =
+  : View[KeyedEvent[PlanFinishedEvent]] =
     if status != Closed || orderIds.nonEmpty then
       View.empty
     else

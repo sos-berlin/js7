@@ -162,12 +162,12 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
         .stream(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
         .filter(_.value.key == order.id)
         .map(o => o.copy(value = o.value.event))
-        .takeThrough { case Stamped(_, _, event) =>
-          if order.deleteWhenTerminated then
-            event != OrderDeleted && !event.isInstanceOf[OrderFailed]
-          else
-            !event.isInstanceOf[OrderTerminated]
-        }
+        .takeThrough:
+          case Stamped(_, _, event) =>
+            if order.deleteWhenTerminated then
+              event != OrderDeleted && !event.isInstanceOf[OrderFailed]
+            else
+              !event.isInstanceOf[OrderTerminated]
         .compile
         .toVector
         .logWhenItTakesLonger(s"runOrder(${order.id})")

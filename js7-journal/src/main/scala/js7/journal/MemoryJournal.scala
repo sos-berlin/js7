@@ -87,8 +87,7 @@ extends
           for
             coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now()))
             updated <- aggregate.applyKeyedEvents(coll.keyedEvents)
-            stampedEvents = coll.timestampedKeyedEvents.map: o =>
-              eventIdGenerator.stamp(o.keyedEvent, o.maybeMillisSinceEpoch)
+            stampedEvents = coll.timestampedKeyedEvents.map(eventIdGenerator.stamp)
           yield
             // Limit acq to size to allow more stampedEvents than size.
             // FIXME But then, the late releaseN releases to much, shifting the semaphore limit upwards.

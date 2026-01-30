@@ -59,4 +59,4 @@ object JournaledState:
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S], HasEventCodec:
 
-    given journalStateCompanion: Companion[S] = this
+    given journaledStateCompanion: Companion[S] = this

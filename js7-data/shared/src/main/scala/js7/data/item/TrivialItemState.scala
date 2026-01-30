@@ -1,6 +1,5 @@
 package js7.data.item
 
-import fs2.{Pure, Stream}
 import js7.base.problem.Checked
 
 /** For orthogonality, an InventoryItem which is also an (empty) InventoryItemState. */
@@ -17,9 +16,6 @@ extends InventoryItemState, InventoryItem:
 
   final def updateItem(item: companion.Item): Checked[companion.ItemState] =
     Right(item.toInitialItemState)
-
-  override final def toSnapshotStream: Stream[Pure, A] =
-    Stream.emit(item) // This InventoryItem is the InventoryItemState
 
 
 object TrivialItemState:
