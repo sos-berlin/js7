@@ -50,7 +50,7 @@ final class OrderEventSourceTest extends OurTestSuite:
 
     def testX[S <: EngineState_[S]](order: Order[Order.State], engineState: S) =
       val now = ts"2026-01-21T12:00:00Z"
-      assert(OrderEventSource.nextEvents(order.id).calculateEventList(EventColl(engineState, now)) ==
+      assert(OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(engineState, now)) ==
         Right(List:
           order.id <-: OrderMoved(order.position))) // Move to same InstructionNr to repeat the job
 
@@ -220,7 +220,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           testController(freshOrder, detached): (order, controllerState) =>
             assert:
-              OrderEventSource.nextEvents(order.id).calculateEventList(EventColl(controllerState, now)) ==
+              OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(controllerState, now)) ==
                 Right(Seq(
                   order.id <-: OrderStarted,
                   order.id <-: OrderForked(Vector(
@@ -257,11 +257,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attaching" in :
           assert:
             testController2(freshOrder, attaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, attaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -309,11 +309,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Seq:
               freshOrder.id <-: OrderDetachable)
 
@@ -362,11 +362,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detaching" in :
           assert:
             testController2(freshOrder, detaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, detaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -418,7 +418,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(readyOrder, attachedState = detached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq(readyOrder.id <-: orderForked))
 
           assert:
@@ -435,11 +435,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attaching" in :
           assert:
             testController2(readyOrder, attaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -485,11 +485,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq:
               readyOrder.id <-: OrderDetachable)
 
@@ -534,11 +534,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detaching" in :
           assert:
             testController2(readyOrder, detaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, detaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -582,11 +582,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         val processingOrder = unmarkedOrder.copy(state = Order.Processing(subagentId))
         assert:
           testController2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
         assert:
           testAgent2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
 
         assert:
@@ -641,18 +641,18 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(freshOrder, detached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Seq:
               freshOrder.id <-: OrderCancelled)
 
         "Attached" in :
           assert:
             testController2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Seq:
               freshOrder.id <-: OrderDetachable)
 
@@ -714,17 +714,17 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(readyOrder, detached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq(readyOrder.id <-: orderForked))
 
         "Attached" in :
           assert:
             testController2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq:
               readyOrder.id <-: OrderDetachable)
 
@@ -779,11 +779,11 @@ final class OrderEventSourceTest extends OurTestSuite:
 
         assert:
           testController2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
         assert:
           testAgent2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
 
         assert:
@@ -842,7 +842,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(readyOrder, detached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq:
               readyOrder.id <-: OrderSuspended)
 
@@ -911,11 +911,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq:
               readyOrder.id <-: OrderDetachable)
 
@@ -984,11 +984,11 @@ final class OrderEventSourceTest extends OurTestSuite:
 
         assert:
           testController2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
         assert:
           testAgent2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
 
         assert:
@@ -1052,7 +1052,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(readyOrder, detached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq(
               readyOrder.id <-: OrderResumed(),
               readyOrder.id <-: OrderForked(Vector(
@@ -1090,11 +1090,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Seq(
               readyOrder.id <-: OrderResumed(),
               readyOrder.id <-: OrderDetachable))
@@ -1161,7 +1161,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(freshOrder, detached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -1201,11 +1201,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attaching" in :
           assert:
             testController2(freshOrder, attaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, attaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -1275,11 +1275,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, attached):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -1338,11 +1338,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detaching" in :
           assert:
             testController2(freshOrder, detaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
           assert:
             testAgent2(freshOrder, detaching):
-              OrderEventSource.nextEvents(freshOrder.id)
+              OrderEventSource.nextStepEvents(freshOrder.id)
             == Right(Nil)
 
           assert:
@@ -1405,7 +1405,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           assert:
             testController2(readyOrder, detached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -1439,11 +1439,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attaching" in :
           assert:
             testController2(readyOrder, attaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -1500,11 +1500,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Attached" in :
           assert:
             testController2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, attached):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -1552,11 +1552,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detaching" in :
           assert:
             testController2(readyOrder, detaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
           assert:
             testAgent2(readyOrder, detaching):
-              OrderEventSource.nextEvents(readyOrder.id)
+              OrderEventSource.nextStepEvents(readyOrder.id)
             == Right(Nil)
 
           assert:
@@ -1609,11 +1609,11 @@ final class OrderEventSourceTest extends OurTestSuite:
         val processingOrder = suspendedOrder.copy(state = Order.Processing(subagentId))
         assert:
           testController2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
         assert:
           testAgent2(processingOrder, attached):
-            OrderEventSource.nextEvents(processingOrder.id)
+            OrderEventSource.nextStepEvents(processingOrder.id)
           == Right(Nil)
         assert:
           testController2(processingOrder, attached):
@@ -1779,7 +1779,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       orders = Seq(order),
       workflows = Seq(workflow))
     assert:
-      OrderEventSource.nextEvents(order.id)
+      OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(controllerState, now))
         == Right(Nil)
     assert:
@@ -1865,14 +1865,14 @@ final class OrderEventSourceTest extends OurTestSuite:
 
     "Fresh at try instruction -> OrderMoved" in :
       val order = Order(orderId, workflow.id /: Position(0), Order.Fresh())
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
 
     "Ready at instruction -> OrderMoved" in :
       val order = Order(orderId, workflow.id /: Position(0), Order.Ready())
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
@@ -1881,7 +1881,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val pos = Position(0) / try_(0) % 0 / try_(0) % 0
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0)))
@@ -1890,7 +1890,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val pos = Position(0) / try_(0) % 0 / catch_(0) % 0
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / catch_(0) % 0)))
@@ -1899,7 +1899,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val pos = Position(0) / catch_(0) % 0
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderFailed(pos)))
@@ -1908,7 +1908,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val pos = Position(0) / catch_(0) % 1 / try_(0) % 0
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
@@ -1917,7 +1917,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val pos = Position(0) / catch_(0) % 0
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(Position(0), failed7)))
-      assert(OrderEventSource.nextEvents(order.id)
+      assert(OrderEventSource.nextStepEvents(order.id)
         .calculateEventList(EventColl(newControllerState(order), now)) ==
         Right(Seq:
           order.id <-: OrderFailed(pos)))
@@ -1927,7 +1927,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert:
-        OrderEventSource.nextEvents(order.id)
+        OrderEventSource.nextStepEvents(order.id)
           .calculateEventList(EventColl(newControllerState(order), now)) ==
           Right(Seq:
             order.id <-: OrderFailed(pos))
@@ -1986,7 +1986,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         bChild.id <-: OrderFailedInFork(bChild.position)))
 
       val nextEventCalc: EventCalc[ControllerState, OrderEvent | PlanFinishedEvent] =
-        (OrderEventSource.nextEvents(aChild.id) |+| OrderEventSource.nextEvents(bChild.id)).widen
+        (OrderEventSource.nextStepEvents(aChild.id) |+| OrderEventSource.nextStepEvents(bChild.id)).widen
 
       // TODO Is FailedInFork replaceable by Ready and !lastOutcome.isSucceeded?
 
@@ -1996,19 +1996,19 @@ final class OrderEventSourceTest extends OurTestSuite:
             |Order:ORDER|🍋 Failed"""
             .stripMargin)))
       assert:
-        (OrderEventSource.nextEvents(aChild.id) |+| OrderEventSource.nextEvents(bChild.id))
+        (OrderEventSource.nextStepEvents(aChild.id) |+| OrderEventSource.nextStepEvents(bChild.id))
           .widen.calculateEventList(coll) == Right(List(orderJoined))
 
       assert:
-        OrderEventSource.nextEvents(aChild.id).widen.calculateEventList(coll) ==
+        OrderEventSource.nextStepEvents(aChild.id).widen.calculateEventList(coll) ==
           Right(Seq:
             orderJoined)
       assert:
-        OrderEventSource.nextEvents(bChild.id).widen.calculateEventList(coll) ==
+        OrderEventSource.nextStepEvents(bChild.id).widen.calculateEventList(coll) ==
           Right(Seq:
             orderJoined)
       assert:
-        OrderEventSource.nextEvents(forkingOrder.id).widen.calculateEventList(coll) ==
+        OrderEventSource.nextStepEvents(forkingOrder.id).widen.calculateEventList(coll) ==
           Right(Seq:
             orderJoined)
   }
@@ -2105,7 +2105,7 @@ object OrderEventSourceTest:
             List(orderId <-: OrderProcessed(OrderOutcome.succeededRC0))
 
           case _ =>
-            OrderEventSource.nextEvents(orderId)
+            OrderEventSource.nextStepEvents(orderId)
               .untypedCalculateEventList(newEngineState(isAgent = order.isAttached), TimeCtx(now))
               .orThrow
 

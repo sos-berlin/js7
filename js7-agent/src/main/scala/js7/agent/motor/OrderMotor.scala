@@ -21,7 +21,6 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.base.utils.Collections.implicits.*
 import js7.base.utils.MultipleLinesBracket.zipWithBracket
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRef}
@@ -173,34 +172,6 @@ extends Service.StoppableByRequest:
       jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
-  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing)
-  : IO[Unit] =
-    persisted.keyedEvents.toVector.flatTraverse:
-      case KeyedEvent(orderId: OrderId, event) =>
-        event.match
-          case event: OrderForked =>
-            IO.pure(event.children.map(_.orderId))
-
-          case OrderKillingMarked(Some(kill)) =>
-            persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
-              jobMotorKeeper.maybeKillOrder(order, kill)
-            .as(Vector.empty)
-
-          case OrderDetachable | OrderDetached =>
-            jobMotorKeeper.onOrderDetached(orderId, persisted.originalAggregate) *>
-              orderToEntry.remove(orderId).flatMapSome:
-                _.cancelSchedule
-              .as(Vector.empty)
-
-          case _ =>
-            IO.pure(Vector.empty)
-        .map: touchedOrderIds =>
-          touchedOrderIds :+ orderId
-      case _ =>
-        IO.pure(Vector.empty)
-    .flatMap: (touchedOrderIds: Seq[OrderId]/*IntelliJ*/) =>
-      enqueue(touchedOrderIds.distinct)
-
   private def enqueue(orderId: OrderId): IO[Unit] =
     enqueue(orderId :: Nil)
 
@@ -222,21 +193,19 @@ extends Service.StoppableByRequest:
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
     IO.whenA(orderIds.nonEmpty):
-      clock.lockIO: delayNow =>
-        // persist may be delayed a little by the journal, so `delayNow` may be in the past.
+      clock.lockIO: now =>
+        // persist may be delayed a little by the journal, so `now` may be in the past.
         // Any we call isDelayed/ifDelayed three times.
         // But this way, we are sure to use the proper current AgentState.
         // FIRST, persist non-delayed Orders //
         journal.persist:
           // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
-          orderIds.view.map: orderId =>
-            EventCalc[AgentState, Event]: coll =>
-              if coll.aggregate.idToOrder.get(orderId).exists(o => !o.isDelayed(delayNow)) then
-                coll:
-                  OrderEventSource.nextEvents(orderId)
-              else
-                coll.nix
-          .foldMonoids
+          EventCalc[AgentState, Event]: coll =>
+            val idToOrder = coll.aggregate.idToOrder
+            coll:
+              OrderEventSource.nextEvents:
+                orderIds.view.filter: orderId =>
+                  idToOrder.get(orderId).exists(o => !o.isDelayed(now))
         .ifPersisted:
           onPersisted
         .map(_.orThrow) // TODO throws
@@ -245,10 +214,10 @@ extends Service.StoppableByRequest:
           // SECOND, schedule delayed Orders //
           scheduleDelayedOrders:
             orders.flatMap: order =>
-              order.ifDelayed(delayNow).map(order.id -> _)
+              order.ifDelayed(now).map(order.id -> _)
           .productR:
             // Maybe start jobs //
-            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(delayNow))
+            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
             jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, persisted.aggregate)
 
   private def scheduleDelayedOrders(orderIds: Iterable[(OrderId, Timestamp)]): IO[Unit] =
@@ -259,6 +228,32 @@ extends Service.StoppableByRequest:
           entry.schedule(delayUntil):
             enqueue(orderId)
     .compile.drain
+
+  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing)
+  : IO[Unit] =
+    persisted.keyedEvents.toVector.flatTraverse:
+      case KeyedEvent(orderId: OrderId, event) =>
+        event match // Similar to keyedEventToPendingOrderIds ???
+          case event: OrderForked =>
+            IO.pure(event.children.map(_.orderId) :+ orderId)
+
+          case OrderKillingMarked(Some(kill)) =>
+            persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
+              jobMotorKeeper.maybeKillOrder(order, kill)
+            .as(Vector(orderId))
+
+          case OrderDetachable | OrderDetached =>
+            jobMotorKeeper.onOrderDetached(orderId, persisted.originalAggregate) *>
+              orderToEntry.remove(orderId).flatMapSome:
+                _.cancelSchedule
+              .as(Vector(orderId))
+
+          case _ =>
+            IO.pure(Vector(orderId))
+      case _ =>
+        IO.pure(Vector.empty)
+    .flatMap: (touchedOrderIds: Seq[OrderId] /*IntelliJ*/) =>
+      enqueue(touchedOrderIds.distinct)
 
   override def toString = "OrderMotor"
 

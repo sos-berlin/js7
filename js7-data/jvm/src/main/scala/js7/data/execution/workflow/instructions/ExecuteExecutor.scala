@@ -75,6 +75,8 @@ object ExecuteExecutor extends
                         coll:
                           fail[S](order.id, Some(OrderOutcome.Disrupted(problem)))
                       case Right(()) =>
+                        // Director's OrderMotor trys to execute the job
+                        // OrderProcessingStarted event will be emitted by the SubagentDriver
                         coll.nix
       yield
         events

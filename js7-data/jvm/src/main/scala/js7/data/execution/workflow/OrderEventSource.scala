@@ -8,22 +8,21 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
-import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl.extensions.*
-import js7.data.event.{EventCalc, EventCalcCtx, EventColl, KeyedEvent}
+import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.instructions.{FinishExecutor, InstructionExecutor}
 import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsDelayingRetry, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.{OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderFailed, OrderFailedInFork, OrderGoMarked, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStateReset, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
-import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
 import js7.data.plan.PlanFinishedEvent
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.EngineEventColl.extensions.{order, orderAndWorkflow, useOrder, workflow}
-import js7.data.state.EngineStateExtensions.{atController, orderToInstruction}
+import js7.data.state.EngineStateExtensions.{atController, keyedEventToPendingOrderIds, orderToInstruction}
 import js7.data.state.{EngineState, EngineState_}
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, LockInstruction, Options, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
@@ -31,6 +30,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position, TryBranchId}
 import js7.data.workflow.{Workflow, WorkflowPathControlPath}
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 // Test is in js7-test subproject, because it uses AgentState
 
@@ -40,8 +40,98 @@ object OrderEventSource:
 
   type ResultEvent = OrderCoreEvent | PlanFinishedEvent
 
-  def nextEvents[S <: EngineState_[S]](orderId: OrderId)
-  : EventCalc[S, OrderEvent | PlanFinished | NoticeDeleted | PlanDeleted] =
+  def nextEvents[S <: EngineState_[S]](orderId: OrderId): EventCalc[S, ResultEvent] =
+    nextEvents(orderId :: Nil)
+
+  // TODO Try to call with only relevant OrderIds
+  //  For example, don't call with all orders waiting for a single-order lock.
+  /** Returns all next events for the `orderIds`.
+    * <p>
+    * Plus recursively all next events of touched OrderIds.
+    */
+  def nextEvents[S <: EngineState_[S]](orderIds: Iterable[OrderId]): EventCalc[S, ResultEvent] =
+    val queue = OrderQueue()
+
+    @tailrec
+    def loop(coll: EventColl[S, ResultEvent]): Checked[EventColl[S, ResultEvent]] =
+      if queue.isEmpty then
+        Right(coll)
+      else
+        //<editor-fold desc="if isTest ...">
+        if isTest && coll.keyedEvents.size >= 1_000_000 then
+          for (ke, i) <- coll.keyedEvents.view.take(1000).zipWithIndex do
+            logger.error(s"$i: $ke")
+          throw new AssertionError(s"🔥 ${coll.keyedEvents.size} events generated, probably a loop")
+        end if
+        //</editor-fold>
+
+        if queue.isEmpty then
+          Right(coll)
+        else
+          val orderId = queue.dequeue()
+          val prevEventCount = coll.eventCount
+          coll.add:
+            nextStepEvents(orderId)
+          match
+            case Left(problem) => Left(problem)
+            case Right(coll) =>
+              if coll.eventCount > prevEventCount then
+                val touchedOrderIds = coll.keyedEvents.view
+                  .slice(prevEventCount, coll.eventCount)
+                  .collect:
+                    case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
+                  .flatMap:
+                    coll.aggregate.keyedEventToPendingOrderIds
+                  .toSeq.distinct
+                val idToOrder = coll.aggregate.idToOrder
+                queue.enqueue(touchedOrderIds.flatMap(idToOrder.get))
+              end if
+              loop(coll)
+
+    EventCalc[S, ResultEvent]: coll =>
+      val idToOrder = coll.aggregate.idToOrder
+      queue.enqueue(orderIds.flatMap(idToOrder.get))
+      loop(coll)
+
+
+  private final class OrderQueue:
+    import OrderQueue.NextOrder
+    private val queue = mutable.PriorityQueue.empty[NextOrder]
+    private val isQueued = mutable.Set.empty[OrderId]
+
+    def isEmpty =
+      queue.isEmpty
+
+    def enqueue(orders: Iterable[Order[Order.State]]): Unit =
+      val add = orders.filterNot(o => isQueued(o.id)).map(NextOrder(_)).toSeq
+      queue ++= add
+      isQueued ++= add.view.map(_.orderId)
+
+    def dequeue(): OrderId =
+      val orderId = queue.dequeue().orderId
+      isQueued -= orderId
+      orderId
+
+  private object OrderQueue:
+    /** Only for nextOrderEvents. */
+    private final case class NextOrder(orderId: OrderId, priority: BigDecimal, index: Long)
+      extends Ordered[NextOrder]:
+      def compare(o: NextOrder): Int =
+        priority compare o.priority match
+          case 0 => o.index compare index // Reverse, because early index has higher priority
+          case n => n
+
+    // Lower index means higher priority, when order.priority is equal
+    private var nextIndex = 0L // Increments indefinitely
+    private def NextOrder(order: Order[Order.State]): NextOrder =
+      nextIndex += 1
+      NextOrder(order.id, order.priority, nextIndex)
+  end OrderQueue
+
+
+  /** Trys to execute one instruction and some position-changing instructions. */
+  def nextStepEvents[S <: EngineState_[S]](orderId: OrderId)
+  : EventCalc[S, ResultEvent] =
     EventCalc: coll =>
      meterNextEvents:
       coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
@@ -224,7 +314,7 @@ object OrderEventSource:
               order.id <-: marked
 
   private def maybeOrderDeleted[S <: EngineState_[S]](order: Order[Order.State])
-  : EventCalc[S, OrderDeleted | PlanFinished | NoticeDeleted | PlanDeleted] =
+  : EventCalc[S, OrderDeleted | PlanFinishedEvent] =
     order.maybeDeleted.fold(EventCalc.empty): orderDeleted =>
       EventCalc: coll =>
         coll.ifIs[ControllerState].map: coll =>

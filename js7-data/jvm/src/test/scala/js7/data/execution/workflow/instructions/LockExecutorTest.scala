@@ -243,7 +243,7 @@ object LockExecutorTest:
 
   private def checkedNextEvents(orderId: OrderId)(coll: ControllerEventColl): Checked[ControllerEventColl] =
     @tailrec def loop(coll: ControllerEventColl, i: Int): Checked[ControllerEventColl] =
-      OrderEventSource.nextEvents(orderId).addTo(coll) match
+      OrderEventSource.nextStepEvents(orderId).addTo(coll) match
         case Left(problem) => Left(problem)
         case Right(result) =>
           if result.hasMoreEventsThan(coll) then
