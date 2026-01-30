@@ -445,7 +445,7 @@ object CycleExecutorTest:
       engineState.instruction(order.workflowPosition).orThrow
 
     def nextPosition =
-      InstructionExecutor.nextMove(order.id, engineState)
+      InstructionExecutor.nextMove(order, engineState)
 
     def step(): Seq[OrderCoreEvent] =
       val coll = InstructionExecutor

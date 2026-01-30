@@ -109,16 +109,11 @@ object OrderEventSource:
                 else
                   for
                     coll <- coll:
-                      InstructionExecutor.toEventCalc(orderId)
+                      InstructionExecutor.toEventCalc(order)
                     coll <-
-                      if coll.aggregate.idToOrder.contains(orderId) then
+                      coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
                         coll:
-                          // Still required, because some other events than OrderMoved move too,
-                          // without calling anticipateNextOrderMoved.
-                          // May anticipateNextOrderMoved only, when last event is such an event.
-                          anticipateNextOrderMoved(order.id)
-                      else
-                        coll.nix
+                          anticipateNextOrderMoved(order)
                   yield coll
 
   private def failOrBreak[S <: EngineState_[S]](order: Order[Order.State], problem: Problem)
@@ -209,9 +204,9 @@ object OrderEventSource:
       EventCalc: coll =>
         for
           forkPosition <- order.forkPosition
-          fork <- coll.aggregate.instruction_[ForkInstruction](order.workflowId /: forkPosition)
+          instr <- coll.aggregate.instruction_[ForkInstruction](order.workflowId /: forkPosition)
           coll <- coll:
-            InstructionExecutor.onReturnFromSubworkflow(fork, order)
+            InstructionExecutor.onReturnFromSubworkflow(instr, order)
         yield
           coll
     else
@@ -475,17 +470,17 @@ object OrderEventSource:
     reason: Option[OrderMoved.Reason] = None,
     forCommand: Boolean = false)
   : EventCalc[S, OrderMoved] =
-    moveOrder(order.id, to = order.position.increment, reason, forCommand = forCommand)
+    moveOrder(order, to = order.position.increment, reason, forCommand = forCommand)
 
   def moveOrderDownToBranch[S <: EngineState_[S]](
     order: Order[Order.State],
     branchId: BranchId,
     reason: Option[OrderMoved.Reason] = None)
   : EventCalc[S, OrderMoved] =
-    moveOrder(order.id, to = order.position / branchId % 0, reason)
+    moveOrder(order, to = order.position / branchId % 0, reason)
 
   def moveOrder[S <: EngineState_[S]](
-    orderId: OrderId,
+    order: Order[Order.State],
     to: Position,
     reason: Option[OrderMoved.Reason] = None,
     forCommand: Boolean = false)
@@ -495,15 +490,16 @@ object OrderEventSource:
       // A command must not execute the following, possibly failing if-instructions.
       // therefore, we emit only a single OrderMoved event.
       EventCalc.pure:
-        orderId <-: event
+        order.id <-: event
     else
-      anticipateNextOrderMoved(orderId, Some(event))
+      anticipateNextOrderMoved(order, Some(event))
 
   private[workflow] def anticipateNextOrderMoved[S <: EngineState_[S]](
-    orderId: OrderId,
+    order: Order[Order.State],
     firstOrderMoved: Option[OrderMoved] = None)
   : EventCalc[S, OrderMoved] =
     EventCalc: coll =>
+      val orderId = order.id
 
       //@tailrec ???
       def loop(order: Order[Order.State], visited: Vector[OrderMoved], coll: EventColl[S, OrderMoved])
@@ -540,9 +536,8 @@ object OrderEventSource:
       firstOrderMoved match
         // TODO Simplify this code
         case None =>
-          coll.order(orderId).flatMap: order =>
-            coll.addWithKey(orderId):
-              loop(order, Vector.empty, coll.forwardAs)
+          coll.addWithKey(orderId):
+            loop(order, Vector.empty, coll.forwardAs)
         case Some(orderMoved) =>
           coll:
             orderId <-: orderMoved
@@ -567,7 +562,7 @@ object OrderEventSource:
             case Some(orderMoved) =>
               Right(Some(orderMoved))
             case None =>
-              InstructionExecutor.nextMove(order.id, coll.aggregate)
+              InstructionExecutor.nextMove(order, coll.aggregate)
     yield
       maybeMoved
 

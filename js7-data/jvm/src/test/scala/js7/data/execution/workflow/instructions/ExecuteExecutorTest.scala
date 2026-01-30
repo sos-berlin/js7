@@ -44,7 +44,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
       for order <- orders.filter(_.position == position) do
         assert(InstructionExecutor.testToEvents(order.id, engineState, now) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(InstructionExecutor.nextMove(order.id, engineState) ==
+        assert(InstructionExecutor.nextMove(order, engineState) ==
           Right(None))
 
   "skipIfNoAdmissionStartForOrderDay" - {
@@ -61,7 +61,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
             Right:
               (orderId <-: OrderAttachable(agentPath)) :: Nil
         assert:
-          InstructionExecutor.nextMove(orderId, myEngineState) ==
+          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState) ==
             Right(None)
 
     "OrderId date has no admission time" in:
@@ -79,7 +79,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
               (orderId <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
                 :: Nil
         assert:
-          InstructionExecutor.nextMove(orderId, myEngineState) ==
+          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState) ==
             Right(Some:
               OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))
   }

@@ -79,7 +79,7 @@ final class IfExecutorTest extends OurTestSuite:
         TestWorkflowId,
         EmptyInstruction(),
         instr)))
-    InstructionExecutor.nextMove(order.id, engineState)
+    InstructionExecutor.nextMove(order, engineState)
 
   "JS-2134 else if" in:
     val instr =

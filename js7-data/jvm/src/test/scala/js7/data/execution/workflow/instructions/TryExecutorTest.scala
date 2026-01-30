@@ -40,14 +40,13 @@ final class TryExecutorTest extends OurTestSuite:
   }
 
   "nextMove" in:
-    assert(InstructionExecutor.nextMove(AOrder.id, engineState) ==
+    assert(InstructionExecutor.nextMove(AOrder, engineState) ==
       Right(Some(OrderMoved(Position(1) / try_(0) % 0))))
 
   "toEvents" in:
     assert:
       InstructionExecutor.toEventCalc(AOrder.id).
-        calculateEvents(EventColl(engineState, now))
-        .map(_.toList) ==
+        calculateEventList(EventColl(engineState, now)) ==
         Right(List(AOrder.id <-: OrderMoved(Position(1) / try_(0) % 0)))
 
 

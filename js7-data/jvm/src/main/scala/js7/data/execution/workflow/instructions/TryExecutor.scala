@@ -20,7 +20,7 @@ private object TryExecutor extends
     useOrder(orderId): (coll, order) =>
       coll:
         order.ifState[Order.IsFreshOrReady].map: order =>
-          moveOrder(order.id, nextPosition(order))
+          moveOrder(order, nextPosition(order))
 
   override def nextMove(instruction: TryInstruction, order: Order[Order.State], state: EngineState) =
     Right(Some(nextOrderMoved(order)))

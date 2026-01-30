@@ -121,7 +121,7 @@ private trait EventInstructionExecutor extends InstructionExecutor:
     coll: EventColl[S, OrderCoreEvent])
   : Checked[Option[AgentPath]] =
     catchNonFatalFlatten:
-      OrderEventSource.anticipateNextOrderMoved(order.id)
+      OrderEventSource.anticipateNextOrderMoved(order)
         .calculateEvents(coll.forwardAs[OrderMoved]).map: moves =>
           for
             workflow <- coll.aggregate.idToWorkflow.get(order.workflowId)

@@ -26,7 +26,7 @@ private object IfExecutor extends EventInstructionExecutor_[If], PositionInstruc
             coll.nix
           case Some(OrderMoved(to, reason)) =>
             coll:
-              moveOrder(orderId, to, reason)
+              moveOrder(order, to, reason)
 
   def nextMove(instruction: If, order: Order[Order.State], state: EngineState) =
     // order may be predicted and different from actual idToOrder(order.id)

@@ -35,7 +35,7 @@ trait InstructionExecutor:
           Problem.pure(s"onReturnFromSubworkflow but no parent position for ${order.id}")
 
       case Some(parentPos) =>
-        moveOrder(order.id, parentPos.increment).widen
+        moveOrder(order, parentPos.increment).widen
 
   def subworkflowEndToPosition(parentPos: Position): Option[Position] =
     None
@@ -82,13 +82,12 @@ object InstructionExecutor:
   private def byInstr(instr: Instruction): InstructionExecutor =
     classToExecutor.checked(instr.getClass).orThrow
 
-  def nextMove(orderId: OrderId, engineState: EngineState): Checked[Option[OrderMoved]] =
-    engineState.idToOrder.checked(orderId).flatMap: order =>
-      engineState.instruction(order.workflowPosition).flatMap: instr =>
-        byInstr(instr) match
-          case executor: PositionInstructionExecutor =>
-            executor.nextMove(instr.asInstanceOf[executor.Instr], order, engineState)
-          case _ => Right(None)
+  def nextMove(order: Order[Order.State], engineState: EngineState): Checked[Option[OrderMoved]] =
+    engineState.instruction(order.workflowPosition).flatMap: instr =>
+      byInstr(instr) match
+        case executor: PositionInstructionExecutor =>
+          executor.nextMove(instr.asInstanceOf[executor.Instr], order, engineState)
+        case _ => Right(None)
 
   @TestOnly
   def testToEvents[S <: EngineState_[S]](
@@ -100,10 +99,17 @@ object InstructionExecutor:
       .calculateEvents(EventColl(engineState, now))
       .map(_.toList)
 
+  @TestOnly
   def toEventCalc[S <: EngineState_[S]](orderId: OrderId): EventCalc[S, OrderCoreEvent] =
     EventCalc: coll =>
+      coll.order(orderId).flatMap: order =>
+        coll:
+          toEventCalc[S](order)
+
+  def toEventCalc[S <: EngineState_[S]](order: Order[Order.State]): EventCalc[S, OrderCoreEvent] =
+    EventCalc: coll =>
+      val orderId = order.id
       for
-        order <- coll.order(orderId)
         instr <- coll.aggregate.instruction(order.workflowPosition)
         coll <- coll:
           byInstr(instr) match
@@ -117,7 +123,8 @@ object InstructionExecutor:
         coll
 
   def onReturnFromSubworkflow[S <: EngineState_[S]](
-    instr: Instruction, order: Order[Order.State])
+    instr: Instruction,
+    order: Order[Order.State])
   : EventCalc[S, OrderCoreEvent] =
     val executor = byInstr(instr)
     executor.onReturnFromSubworkflow(instr.asInstanceOf[executor.Instr], order)

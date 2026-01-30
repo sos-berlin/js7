@@ -48,9 +48,10 @@ private object RetryExecutor extends EventInstructionExecutor_[Retry]:
               else
                 for
                   coll <- coll:
-                    order.id <-: OrderRetrying()
+                    orderId <-: OrderRetrying()
+                  order <- coll.order(orderId)
                   coll <- coll:
-                    moveOrder(order.id, nextTryPos)
+                    moveOrder(order, nextTryPos)
                 yield coll
 
   override def toObstacles(
