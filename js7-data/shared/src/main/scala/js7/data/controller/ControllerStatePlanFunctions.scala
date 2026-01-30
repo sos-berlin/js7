@@ -133,6 +133,16 @@ extends EngineState_[Self]:
       final def get(planId: PlanId) =
         toPlanSchemaState.get(planId.planSchemaId).flatMap(_.toPlan.get(planId.planKey))
 
+  def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
+    checkPlanAcceptsOrders(planId, allowClosedPlan = false)
+
+  def checkPlanAcceptsOrders(planId: PlanId, allowClosedPlan: Boolean): Checked[Unit] =
+    for
+      planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
+      _ <- planSchemaState.checkPlanAcceptsOrders(planId.planKey, allowClosedPlan)
+    yield
+      ()
+
   @TestOnly
   def toNoticePlace: MapView[NoticeId, NoticePlace] =
     new StandardMapView[NoticeId, NoticePlace]:

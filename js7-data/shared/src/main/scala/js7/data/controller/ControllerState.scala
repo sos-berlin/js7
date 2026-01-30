@@ -43,7 +43,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
@@ -75,7 +75,6 @@ final case class ControllerState(
   statistics: EngineStateStatistics,
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
-  ControllerEngineState[ControllerState],
   ControllerStateNoticeFunctions,
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
@@ -483,6 +482,15 @@ extends
           updated.copy(
             workflowToOrders = workflowToOrders
               .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
+
+      case orderAdded: OrderAddedX =>
+        val addedOrderId = orderAdded.ownOrderId getOrElse orderId
+        for
+          _ <- idToOrder.checkNoDuplicate(addedOrderId)
+          r <- addOrders(Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil,
+            allowClosedPlan = true/*the issuer of the event has already checked this*/)
+        yield
+          r
 
       case _ =>
         super.applyOrderEvent(orderId, event)
