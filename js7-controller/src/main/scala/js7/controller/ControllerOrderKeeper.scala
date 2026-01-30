@@ -320,7 +320,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                 timezone,
                 totalRunningTime = journal.totalRunningTime)
             coll <- coll.add:
-              ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate)
+              ControllerStateExecutor.nextOrderWatchOrderEvents(coll.aggregate, coll.context.now)
           yield
             coll
       ) { persisted =>

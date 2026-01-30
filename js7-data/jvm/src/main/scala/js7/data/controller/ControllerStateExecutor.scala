@@ -6,6 +6,7 @@ import cats.syntax.show.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.{RichIterable, RichIterableOnce}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isStrict, isTest}
@@ -44,20 +45,21 @@ object ControllerStateExecutor:
   private val logger = Logger[this.type]
 
   // Same clock time for a chunk of operations
-  private lazy val nowScope = NowScope()
 
   def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
   : EventCalc[ControllerState, OrderAddedEvent] =
-    EventCalc.checked: controllerState =>
-      freshOrders.checkUniquenessBy(_.id) *>
-        freshOrders.flatTraverse:
-          addOrder(controllerState, _, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-            .map(_.toOption.toList.flatMap(_.toKeyedEvents))
+    EventCalc: coll =>
+      coll:
+        freshOrders.checkUniquenessBy(_.id) *>
+          freshOrders.flatTraverse:
+            addOrder(coll.aggregate, _, coll.context.now, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+              .map(_.toOption.toList.flatMap(_.toKeyedEvents))
 
   /** @return Right(Left(existingOrder)). */
   def addOrder(
     controllerState: ControllerState,
     order: FreshOrder,
+    now: Timestamp,
     externalOrderKey: Option[ExternalOrderKey] = None,
     suppressOrderIdCheckFor: Option[String] = None)
   : Checked[Either[Order[Order.State], OrderAddedEvents]] =
@@ -67,12 +69,13 @@ object ControllerStateExecutor:
       else
         order.id.checkedNameSyntax
     .productR:
-      addOrderWithPrecheckedId(controllerState, order, externalOrderKey)
+      addOrderWithPrecheckedId(controllerState, order, externalOrderKey, now)
 
   private def addOrderWithPrecheckedId(
     controllerState: ControllerState,
     freshOrder: FreshOrder,
-    externalOrderKey: Option[ExternalOrderKey])
+    externalOrderKey: Option[ExternalOrderKey],
+    now: Timestamp)
   : Checked[Either[Order[Order.State], OrderAddedEvents]] =
     controllerState.idToOrder.get(freshOrder.id) match
       case Some(existing) =>
@@ -82,7 +85,8 @@ object ControllerStateExecutor:
         for
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
-            freshOrder, controllerState.controllerId, controllerState.keyToItem(JobResource), nowScope)
+            freshOrder, controllerState.controllerId, controllerState.keyToItem(JobResource),
+            NowScope(now))
           _ <- controllerState.checkPlanAcceptsOrders(freshOrder.planId, allowClosedPlan = true)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
@@ -349,7 +353,7 @@ object ControllerStateExecutor:
         coll <- coll.add:
           nextOrderEvents(touchedOrderIds)
         coll <- coll.add:
-          nextOrderWatchOrderEvents(coll.aggregate)
+          nextOrderWatchOrderEvents(coll.aggregate, coll.context.now)
       yield
         coll
 
@@ -489,9 +493,10 @@ object ControllerStateExecutor:
       .map:
         ItemAttachable(workflowControl.id, _)
 
-  def nextOrderWatchOrderEvents(controllerState: ControllerState)
+  def nextOrderWatchOrderEvents(controllerState: ControllerState, now: Timestamp)
   : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =
-    controllerState.ow.nextEvents(addOrder(controllerState, _, _))
+    controllerState.ow.nextEvents: (order: FreshOrder, ext: Option[ExternalOrderKey]) =>
+      addOrder(controllerState, order, now, ext)
 
   // TODO Try to call with only relevant OrderIDs
   //  For example, don't call with all orders waiting for a single-order lock.

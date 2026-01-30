@@ -16,16 +16,18 @@ extends CommandEventConverter[AddOrder]:
   private val logger = Logger[this.type]
 
   def toEventCalc(cmd: AddOrder) =
-    EventCalc.checked: controllerState =>
-      controllerState.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
-        ControllerStateExecutor
-          .addOrder(controllerState, cmd.order, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-          .map:
-            case Left(existing) =>
-              logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
-              Nil
-            case Right(orderAddedEvents) =>
-              orderAddedEvents.toKeyedEvents
+    EventCalc: coll =>
+      coll:
+        coll.aggregate.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
+          ControllerStateExecutor
+            .addOrder(coll.aggregate, cmd.order, coll.context.now,
+              suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+            .map:
+              case Left(existing) =>
+                logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
+                Nil
+              case Right(orderAddedEvents) =>
+                orderAddedEvents.toKeyedEvents
 
 
 private[command] final class AddOrdersExecutor(config: Config)
