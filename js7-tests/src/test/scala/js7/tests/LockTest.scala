@@ -26,6 +26,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant, expr}
+import js7.data.workflow
 import js7.data.workflow.instructions.{Fail, Finish, Fork, ForkBranchId, LockInstruction, Options, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -1319,6 +1320,58 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         AgentPath("AGENT") -> Attached(Some(ItemRevision(0)))),
       SubagentId("B-AGENT-0") -> Map(
         AgentPath("B-AGENT") -> Attached(Some(ItemRevision(0))))))
+
+  "Try catch, fork and lock" in :
+    // This was part of OrderEventSourceTest.
+    val lockPath = LockPath("MY-LOCK")
+    val lock1Path = LockPath("MY-LOCK-1")
+    val lock2Path = LockPath("MY-LOCK-2")
+    val workflow = Workflow.of(
+      LockInstruction.single(lockPath):
+        Workflow.of:
+          TryInstruction(
+            Workflow.of:
+              Fork(
+                Vector(
+                "🥕" -> Workflow.of(
+                  EmptyJob.execute(agentPath),
+                  Fail()),
+                "🍋" -> Workflow.of:
+                  LockInstruction(Seq(LockDemand(lock1Path), LockDemand(lock2Path))):
+                    Workflow.of(
+                      EmptyJob.execute(agentPath),
+                      Fail())),
+                joinIfFailed = true),
+            Workflow.of:
+              EmptyJob.execute(agentPath)))
+
+    withItems((
+      Lock(lockPath),
+      Lock(lock1Path),
+      Lock(lock2Path)
+    )): ( _, _, _) =>
+      withItem(workflow, awaitDeletion = true): workflow =>
+        controller.resetLastWatchedEventId()
+        val orderId = OrderId("ORDER")
+        controller.runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+
+        assert:
+          controller.eventWatch
+            .keyedEvents[OrderCoreEvent](after = controller.eventWatch.lastWatchedEventId)
+            .filter: ke =>
+              ke.event.isInstanceOf[OrderForked] ||
+              ke.event.isInstanceOf[OrderJoined] ||
+              ke.event.isInstanceOf[OrderLocksAcquired] ||
+              ke.event.isInstanceOf[OrderLocksReleased] ||
+              ke.event.isInstanceOf[OrderFinished]
+          == Seq(
+            orderId <-: OrderLocksAcquired(List(LockDemand(lockPath, None))),
+            orderId <-: OrderForked(Vector("🥕" -> orderId / "🥕", "🍋" -> orderId / "🍋")),
+            orderId / "🍋" <-: OrderLocksAcquired(List(LockDemand(lock1Path, None), LockDemand(lock2Path, None))),
+            orderId / "🍋" <-: OrderLocksReleased(List(lock1Path, lock2Path)),
+            orderId <-: OrderJoined(OrderOutcome.Failed(Some("Order:ORDER|🥕 Failed;\nOrder:ORDER|🍋 Failed"))),
+            orderId <-: OrderLocksReleased(List(lockPath)),
+            orderId <-: OrderFinished())
 
   private def defineWorkflow(workflowNotation: String): Workflow =
     defineWorkflow(workflowPath, workflowNotation)

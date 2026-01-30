@@ -14,7 +14,7 @@ import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl.extensions.*
-import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent}
+import js7.data.event.{EventCalc, EventCalcCtx, EventColl, KeyedEvent}
 import js7.data.execution.workflow.instructions.{FinishExecutor, InstructionExecutor}
 import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsDelayingRetry, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.{OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderFailed, OrderFailedInFork, OrderGoMarked, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStateReset, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
@@ -30,7 +30,6 @@ import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position, TryBranchId}
 import js7.data.workflow.{Workflow, WorkflowPathControlPath}
-import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 
 // Test is in js7-test subproject, because it uses AgentState
@@ -40,15 +39,6 @@ object OrderEventSource:
   private val meterNextEvents = CallMeter("OrderEventSource.nextEvents")
 
   type ResultEvent = OrderCoreEvent | PlanFinishedEvent
-
-  @TestOnly
-  def nextEvents[S <: EngineState_[S]](orderId: OrderId, engineState: S, now: Timestamp)
-  : Checked[Vector[KeyedEvent[OrderEvent | PlanFinished | NoticeDeleted | PlanDeleted]]] =
-    nextEvents[S](orderId)
-      .calculateEvents:
-        EventColl[S, Event](engineState, now)
-          .forwardAs[OrderEvent | PlanFinished | NoticeDeleted | PlanDeleted]
-      .map(_.toVector)
 
   def nextEvents[S <: EngineState_[S]](orderId: OrderId)
   : EventCalc[S, OrderEvent | PlanFinished | NoticeDeleted | PlanDeleted] =
