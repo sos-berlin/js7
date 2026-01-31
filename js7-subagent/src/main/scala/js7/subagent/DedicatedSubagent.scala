@@ -127,22 +127,24 @@ extends Service.StoppableByRequest:
   private def logWhileStopping(body: IO[Unit]): IO[Unit] =
     IO.defer:
       val orderCount = orderIdToJobDriver.size
-      val sym = BlockingSymbol()
-      if orderCount > 0 then
+      if orderCount == 0 then
+        body
+      else
+        val sym = BlockingSymbol()
         sym.onInfo()
         logger.info(s"🟡 Stopping, waiting for $orderCount processes")
-      Delayer.continually():
-        IO:
-          val orderIds = orderIdToJobDriver.unsafeToMap.keys
-          if orderIds.nonEmpty then
-            sym.onInfo()
-            logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
-              orderIds.toArray.sorted.mkStringLimited(3)}")
-      .background.surround:
-        body
-      .productR:
-        IO:
-          logger.log(sym.relievedLogLevel, s"🟢 All processes completed")
+        Delayer.continually():
+          IO:
+            val orderIds = orderIdToJobDriver.unsafeToMap.keys
+            if orderIds.nonEmpty then
+              sym.onInfo()
+              logger.info(s"🟡 Stopping, still waiting for ${orderIds.size} processes: ${
+                orderIds.toArray.sorted.mkStringLimited(3)}")
+        .background.surround:
+          body
+        .productR:
+          IO:
+            logger.log(sym.relievedLogLevel, s"🟢 All processes completed")
 
   def stopWorkflowJobs(workflow: Workflow): IO[Unit] =
     IO.defer:

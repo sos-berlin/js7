@@ -1239,7 +1239,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
 
   final case class Ready(ignoreAdmissionTime: Boolean = false)
-  extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable
+  extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable:
+    override def toString = if ignoreAdmissionTime then "Ready(ignoreAdmissionTime)" else "Ready"
 
   object Ready:
     private val ready = new Ready()

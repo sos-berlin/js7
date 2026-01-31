@@ -590,7 +590,8 @@ lazy val `js7-core` = project
     libraryDependencies ++=
       pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
-      scalaCheck % "test" ++ log4j % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
       lmaxDisruptor % "test"
   }
 

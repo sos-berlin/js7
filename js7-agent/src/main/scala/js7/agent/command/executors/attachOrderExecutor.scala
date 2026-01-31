@@ -8,7 +8,7 @@ import js7.data.agent.Problems.AgentDuplicateOrder
 
 private[command] def attachOrderExecutor =
   CommandEventConverter.checked[AttachOrder]: (cmd, agentState) =>
-    import cmd.order
+    val order = cmd.order
     order.attached.flatMap: agentPath =>
       if agentPath != agentState.meta.agentPath then
         Left(Problem(s"Wrong $agentPath"))

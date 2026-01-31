@@ -9,6 +9,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.reflect.ClassTag
 
+// TODO Move functions to EngineStateExtensions and dissolve this trait
 trait EngineStateFunctions:
 
   protected def idToWorkflow: PartialFunction[WorkflowId, Workflow]
