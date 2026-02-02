@@ -88,9 +88,13 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   final def getOrElseUpdate(key: K, value: => IO[V])
     (using sourcecode.Enclosing)
   : IO[V] =
-    update(key):
-      case Some(existing) => IO.pure(existing)
-      case None => value
+    IO.defer:
+      _map.get(key) match
+        case Some(key) => IO.pure(key)
+        case None =>
+          update(key):
+            case Some(existing) => IO.pure(existing)
+            case None => value
 
   final def put(key: K, value: V)(using sourcecode.Enclosing): IO[V] =
     lockKeeper.lock(key):

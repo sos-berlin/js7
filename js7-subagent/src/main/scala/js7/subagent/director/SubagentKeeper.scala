@@ -5,6 +5,7 @@ import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.instances.option.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
+import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
@@ -26,7 +27,7 @@ import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, LockKeeper, SetOnce}
+import js7.base.utils.{Allocated, ConcurrentHashMap, LockKeeper, SetOnce}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -69,7 +70,7 @@ extends Service.StoppableByRequest:
     .orThrow
   private lazy val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
   private val stateVar = AsyncVariable(DirectorState.initial(directorConf))
-  private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
+  private val orderToWaitForSubagent = ConcurrentHashMap[OrderId, Deferred[IO, Unit]]()
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
   private val eventCallbackOnce = SetOnce[EventCallback]
@@ -374,10 +375,12 @@ extends Service.StoppableByRequest:
   : ResourceIO[Deferred[IO, Unit]] =
     Resource
       .eval(Deferred[IO, Unit])
-      .flatMap: canceledDeferred =>
+      .flatTap: canceledDeferred =>
         Resource.make(
-          acquire = orderToWaitForSubagent.put(orderId, canceledDeferred))(
-          release = _ => orderToWaitForSubagent.remove(orderId).void)
+          acquire = IO:
+            orderToWaitForSubagent.put(orderId, canceledDeferred))(
+          release = _ => IO[Unit]:
+            orderToWaitForSubagent.remove(orderId))
 
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
@@ -416,16 +419,16 @@ extends Service.StoppableByRequest:
         _.state.subagentBundleId contains bundleId
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
+    // TODO Race condition?
     IO.defer:
-      // TODO Race condition?
-      orderToWaitForSubagent.get(orderId).fold(IO.unit):
-        _.complete(())
-      .productR:
-        IO.defer:
-          orderToSubagent.get(orderId) match
-            case None => IO(logger.error:
-              s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
-            case Some(driver) => driver.killProcess(orderId, signal)
+      orderToWaitForSubagent.get(orderId).foldMap:
+        _.complete(()).void
+    .productR:
+      IO.defer:
+        orderToSubagent.get(orderId) match
+          case None => IO(logger.error:
+            s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
+          case Some(driver) => driver.killProcess(orderId, signal)
 
   def resetAllSubagents(except: Set[SubagentId]): IO[Unit] =
     logger.traceIO:

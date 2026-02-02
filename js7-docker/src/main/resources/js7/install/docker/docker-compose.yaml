@@ -19,7 +19,7 @@ services:
       "js7-controller",
       "--arg0=js7-controller",
       "-J-Xmx200m",
-      "--processor-limit=1/4"
+      "--processor-limit=2/10"
     ]
     #networks:
     #  - default
@@ -76,7 +76,7 @@ services:
       "js7-subagent",
       "--arg0=js7-subagent-1a",
       "-J-Xmx200m",
-      "--processor-limit=1/4"
+      "--processor-limit=4/10"
     ]
     #cpus: 14
     working_dir: /home/js7

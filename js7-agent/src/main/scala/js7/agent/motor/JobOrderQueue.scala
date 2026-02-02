@@ -81,34 +81,10 @@ private object JobOrderQueue:
 
 
   private final class MutableOrderQueue:
-    private val queue = mutable.ListBuffer.empty[Entry]
-    // isQueued is for optimisation
-    private val isQueued = mutable.Set.empty[OrderId]
-
-    /** @return removed Entry. */
-    def enqueue(order: Order[IsFreshOrReady], metering: CallMeter.Metering): Option[Entry] =
-      synchronized:
-        val result = remove(order.id)
-        queue += Entry(order, metering)
-        isQueued += order.id
-        result
-
-    def dequeueNext(): Entry =
-      synchronized:
-        val entry = queue.remove(0)
-        isQueued -= entry.order.id
-        entry
-
-    // Slow !!!
-    def remove(orderId: OrderId): Option[Entry] =
-      synchronized:
-        if isQueued.remove(orderId) then
-          meterRemove:
-            queue.indexWhere(_.order.id == orderId) match
-              case -1 => None
-              case i => Some(queue.remove(i))
-        else
-          None
+    // nextIndex must never reach Long.MaxValue
+    private var nextIndex: Long = 0L
+    private val queue = mutable.SortedMap.empty[java.lang.Long, Entry]
+    private val orderToIndex = mutable.Map.empty[OrderId, Long]
 
     def isEmpty: Boolean =
       synchronized:
@@ -119,7 +95,32 @@ private object JobOrderQueue:
 
     def length: Int =
       synchronized:
-        queue.length
+        queue.size
+
+    /** @return removed Entry. */
+    def enqueue(order: Order[IsFreshOrReady], metering: CallMeter.Metering): Option[Entry] =
+      synchronized:
+        val result = remove_(order.id)
+        nextIndex += 1
+        val i = Long.box(nextIndex)
+        queue.update(i, Entry(order, metering))
+        orderToIndex.update(order.id, i)
+        result
+
+    def dequeueNext(): Entry =
+      synchronized:
+        val (i, entry) = queue.head
+        queue.remove(i)
+        orderToIndex -= entry.order.id
+        entry
+
+    def remove(orderId: OrderId): Option[Entry] =
+      synchronized:
+        remove_(orderId)
+
+    private def remove_(orderId: OrderId): Option[Entry] =
+      orderToIndex.remove(orderId).flatMap: index =>
+        queue.remove(index)
 
     override def toString =
       synchronized:

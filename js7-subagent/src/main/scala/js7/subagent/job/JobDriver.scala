@@ -36,7 +36,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
   private val lastProcessTerminated = SetOnce[Deferred[IO, Unit]]
 
   private def precheckAndWarn: IO[Unit] =
-    IO(checkedJobLauncher)
+    IO.pure(checkedJobLauncher)
       .flatMapT:
         _.precheck
       .flatMap:
