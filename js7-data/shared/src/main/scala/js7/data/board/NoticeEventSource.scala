@@ -9,7 +9,6 @@ import js7.base.utils.{L3, ScalaUtils}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId, PlannableBoard}
 import js7.data.controller.{ControllerCommand, ControllerState}
-import js7.data.event.EventColl.extensions.now
 import js7.data.event.{EventCalc, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.moveOrderToNextInstruction
 import js7.data.order.Order.ExpectingNotices

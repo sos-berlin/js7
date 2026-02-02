@@ -357,6 +357,10 @@ object EventCollCtx:
   //    body(EventCollCtx(aggregate, context)).map(_.keyedEvents)
   //</editor-fold
 
+  extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
+    def now: Timestamp =
+      eventColl.context.now
+
 
 /** A `EventCollCtx` with a `TimeCtx`.
   * <p>
@@ -377,9 +381,3 @@ object EventColl:
   inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)
   : EventCollCtx[S, E, Unit] =
     EventCollCtx(aggregate)
-
-
-  object extensions:
-    extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
-      def now: Timestamp =
-        eventColl.context.now

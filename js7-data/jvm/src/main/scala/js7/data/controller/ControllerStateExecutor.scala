@@ -15,7 +15,6 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerEventCalc
-import js7.data.event.EventColl.extensions.now
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource

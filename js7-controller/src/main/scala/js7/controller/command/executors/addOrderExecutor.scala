@@ -8,7 +8,6 @@ import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders}
 import js7.data.controller.ControllerStateExecutor
 import js7.data.event.EventCalc
-import js7.data.event.EventColl.extensions.now
 
 private[command] final class AddOrderExecutor(config: Config)
 extends CommandEventConverter[AddOrder]:

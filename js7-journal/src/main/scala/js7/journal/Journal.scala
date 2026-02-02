@@ -4,7 +4,7 @@ import cats.effect.IO
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, NoKeyEvent, Stamped, TimeCtx}
+import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, NoKeyEvent, Stamped}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.watch.EventWatch
 import scala.annotation.targetName

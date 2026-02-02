@@ -40,7 +40,7 @@ private object RetryExecutor extends EventInstructionExecutor_[Retry]:
                 fail[S](orderId)
             case (_, delay) =>
               if delay.isPositive then
-                val nextTimestamp = coll.context.now + delay match
+                val nextTimestamp = coll.now + delay match
                   case at if delay >= 10.s => at.roundToNextSecond
                   case at => at
                 coll:

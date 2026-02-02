@@ -7,7 +7,6 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.event.EventColl.extensions.now
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.fail

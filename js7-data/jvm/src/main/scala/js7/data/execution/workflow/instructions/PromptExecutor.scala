@@ -20,7 +20,7 @@ private object PromptExecutor extends EventInstructionExecutor_[Prompt]:
       start(coll, orderId): (coll, order) =>
         order.ifState[Ready].map: _ =>
           for
-            given Scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.context.now)
+            given Scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.now)
             question <- instr.question.evalAs[GoodValue]
             coll <-
               coll:

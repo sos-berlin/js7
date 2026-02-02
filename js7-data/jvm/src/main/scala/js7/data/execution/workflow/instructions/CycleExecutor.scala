@@ -49,7 +49,7 @@ private object CycleExecutor extends EventInstructionExecutor_[Cycle]:
               schemeIndex = -1,
               periodIndex = -1,
               index = 0),
-            coll.context.now)
+            coll.now)
           match
             case Some(cycleState) =>
               coll:
@@ -70,7 +70,7 @@ private object CycleExecutor extends EventInstructionExecutor_[Cycle]:
 
         case Some(cycleState) =>
           toScheduleCalculator(order, instr, coll.aggregate).flatMap:
-            _.onNextCycleIsDue(cycleState, coll.context.now)
+            _.onNextCycleIsDue(cycleState, coll.now)
           .flatMap:
             case Do.KeepWaiting =>
               coll.nix
@@ -99,7 +99,7 @@ private object CycleExecutor extends EventInstructionExecutor_[Cycle]:
           .toChecked(Problem(s"${order.id} Cycle Position expected: ${order.position}"))
         cycleState <- branchId.toCycleState
         coll <- coll:
-          order.id <-: OrderCycleFinished(calculator.nextCycleState(cycleState, coll.context.now))
+          order.id <-: OrderCycleFinished(calculator.nextCycleState(cycleState, coll.now))
       yield coll
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: EngineState) =

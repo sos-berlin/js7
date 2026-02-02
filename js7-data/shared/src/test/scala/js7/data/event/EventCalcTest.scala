@@ -5,7 +5,6 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventCalcTest.*
 import js7.data.event.KeyedEvent.NoKey
@@ -15,12 +14,15 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class EventCalcTest extends OurTestSuite:
 
-  "Test combine with different Ctx" in:
+  "Combine different Ctx to a union type" in:
     trait X:
-      def value: String
+      def xValue: String
+
+    trait Y:
+      def yValue: String
 
     val a: EventCalcCtx[TestState, TestEvent, Any] =
-      EventCalcCtx.pure(TestEvent.Added("»"))
+      EventCalcCtx.pure(TestEvent.Added("(Any)"))
 
     val b: EventCalcCtx[TestState, TestEvent.Added, TimeCtx] =
       EventCalcCtx.single: _ =>
@@ -30,23 +32,23 @@ final class EventCalcTest extends OurTestSuite:
       EventCalcCtx.single: _ =>
         TestEvent.Added(EventCalcCtx.context.value)
 
-    val combined: EventCalcCtx[TestState, TestEvent, TimeCtx & X] =
+    val combined: EventCalcCtx[TestState, TestEvent, X & Y] =
       EventCalcCtx.combineAll(Seq(a.widen, b.widen, c.widen))
 
     val coll = combined.calculate:
       EventCollCtx(
         TestState("START"),
-        new TimeCtx with X:
-          def now = ts"2025-03-13T12:00:00Z"
-          def value = "«")
+        new X with Y:
+          def xValue = "(X)"
+          def yValue = "(Y)")
     .orThrow
 
     assert(coll.keyedEventList == Seq(
-        NoKey <-: TestEvent.Added("»"),
-        NoKey <-: TestEvent.Added("2025-03-13T12:00:00Z"),
-        NoKey <-: TestEvent.Added("«")))
+        NoKey <-: TestEvent.Added("(Any)"),
+        NoKey <-: TestEvent.Added("(X)"),
+        NoKey <-: TestEvent.Added("(Y)")))
 
-    assert(coll.aggregate == TestState("START»2025-03-13T12:00:00Z«"))
+    assert(coll.aggregate == TestState("START(Any)(X)(Y)"))
 
   "combineAll" - {
     "empty sequence" in:

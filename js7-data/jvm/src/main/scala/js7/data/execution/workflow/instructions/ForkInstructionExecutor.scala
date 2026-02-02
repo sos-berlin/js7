@@ -44,13 +44,13 @@ extends EventInstructionExecutor_[Instr]:
   def toEventCalc[S <: EngineState_[S]](instr: Instr, orderId: OrderId)
   : EventCalc[S, OrderCoreEvent] =
     useOrder(orderId): (coll, order) =>
-      ifReadyOrStartable(order, coll.context.now).map: order =>
+      ifReadyOrStartable(order, coll.now).map: order =>
         coll:
           forkOrder(instr, order)
       .orElse:
         order.ifState[Order.Forked].map: order =>
           coll:
-            toJoined(order, instr, coll.aggregate, coll.context.now)
+            toJoined(order, instr, coll.aggregate, coll.now)
       .orElse:
         order.ifState[Order.Processed].map: order =>
           if order.lastOutcome.isSucceeded then
@@ -135,7 +135,7 @@ extends EventInstructionExecutor_[Instr]:
   : EventCalc[S, OrderCoreEvent] =
     EventCalc: coll =>
       coll:
-        tryJoinChildOrder(fork, order, coll.aggregate, coll.context.now)
+        tryJoinChildOrder(fork, order, coll.aggregate, coll.now)
 
   private def tryJoinChildOrder(fork: Instr, childOrder: Order[Order.State], state: EngineState, now: Timestamp)
   : Option[KeyedEvent[OrderCoreEvent]] =

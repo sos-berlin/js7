@@ -17,7 +17,7 @@ object FailExecutor extends EventInstructionExecutor_[Fail]:
       start(coll, orderId): (coll, order) =>
         order.ifState[Ready].map: order =>
           val msg = instr.message.map: messageExpr =>
-            coll.aggregate.toImpureOrderExecutingScope(order, coll.context.now).flatMap: scope =>
+            coll.aggregate.toImpureOrderExecutingScope(order, coll.now).flatMap: scope =>
               messageExpr.evalAsString(using scope)
             .fold(_.toString, identity)
           coll.add:
