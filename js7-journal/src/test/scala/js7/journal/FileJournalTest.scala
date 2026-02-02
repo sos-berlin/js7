@@ -24,7 +24,7 @@ import js7.base.time.{TestWallClock, WallClock}
 import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
+import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.FileJournalTest.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
