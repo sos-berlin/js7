@@ -8,8 +8,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.agent.AgentPath
-import js7.data.event.EventColl.extensions.now
+import js7.data.agent.{AgentPath, AtController, AtControllerOrAgent}
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.{fail, moveOrderToNextInstruction}
@@ -79,7 +78,7 @@ extends EventInstructionExecutor_[Instr]:
       for
         maybeAttachOrDetach <-
           instr.agentPath.map: agentPath =>
-            Right(Some(Some(agentPath)))
+            Right(Some(agentPath))
           .getOrElse:
             /// Predict Controller or Agent for execution of the fork instruction. ///
             // To achieve this, we try-run the fork instruction
@@ -89,12 +88,12 @@ extends EventInstructionExecutor_[Instr]:
                 coll:
                   order.id <-: orderForked
               order <- coll.order(order.id).flatMap(_.checkedState[Forked])
-              agentPath <- predictControllerOrAgent(order, orderForked, coll)
+              maybeControllerOrAgent <- predictControllerOrAgent(order, orderForked, coll)
               // The resulting coll is thrown away
-            yield agentPath
+            yield maybeControllerOrAgent
           .map:
-            _.flatMap: maybeAgentPath =>
-              attachOrDetach(order, maybeAgentPath)
+            _.flatMap: controllerOrAgent =>
+              attachOrDetach(order, controllerOrAgent)
         coll <-
           maybeAttachOrDetach.map: event =>
             coll:
@@ -112,14 +111,14 @@ extends EventInstructionExecutor_[Instr]:
 
   private def attachOrDetach(
     order: Order[Order.IsFreshOrReady],
-    agentPath: Option[AgentPath])
+    atControllerOrAgent: AtControllerOrAgent)
   : Option[OrderCoreEvent] =
-    agentPath match
-      case None =>
+    atControllerOrAgent match
+      case AtController =>
         // Order must be at Controller
         order.isAttached ? OrderDetachable
 
-      case Some(agentPath) =>
+      case agentPath: AgentPath =>
         // Order must be at agentPath
         order.attachedState match
           case Some(Order.Attached(`agentPath`)) =>
@@ -196,22 +195,23 @@ extends EventInstructionExecutor_[Instr]:
           Some(s"${order.id} ${order.lastOutcome.show}"))
       .mkString(";\n")
 
-  // Forking many children at Controller and then attached all to their first agent is inefficient.
-  // Here we decide where to attach the forking order before generating child orders.
-  // Right(None): No prediction
-  // Right(Some(None)): Controller
+  /** Predict where to execute a Fork instruction.
+    * <p>
+    * Forking many children at Controller and then attached all to their first agent is inefficient.
+    * Here we decide where to attach the forking order before generating child orders.
+    * @return Right(None): No prediction
+    */
   protected[instructions] final def predictControllerOrAgent[S <: EngineState_[S]](
     order: Order[Order.Forked],
     orderForked: OrderForked,
     coll: EventColl[S, OrderCoreEvent])
-  : Checked[Option[Option[AgentPath]]] =
+  : Checked[Option[AtControllerOrAgent]] =
     if orderForked.children.isEmpty then
       Right(None) // No children, Order can stay where it is
     else
-      order
-        .newForkedOrders(orderForked).traverse: order =>
-          predictNextAgent(order, coll)
-        .map(_.toSet)
+      order.newForkedOrders(orderForked).traverse: order =>
+        predictNextAgent(order, coll)
+      .map(_.toSet)
       .map: controllerOrAgents =>
         // None means Controller or the location is irrelevant (not distinguishable for now)
         if controllerOrAgents.sizeIs == 1 then
@@ -222,23 +222,23 @@ extends EventInstructionExecutor_[Instr]:
               // If parent order's attachment and the orders first agent differs,
               // detach the parent order!
               (agentPath != childrensAgentPath) ?
-                None // Transfer back to Controller
+                AtController // Transfer back to Controller
 
             case (Some(Order.Attached(_)), None) =>
               // If the orders first location is the Controller or irrelevant,
               // then we prefer to detach the parent order.
-              enoughChildren ? None
+              enoughChildren ? AtController
 
             case (None, Some(childrensAgentPath)) =>
               // Attach the forking order to the children's agent
-              enoughChildren ? Some(childrensAgentPath)
+              enoughChildren ? childrensAgentPath
 
             case _ =>
               None
         else // Child orders may start at different agents
           // Transfer back to Controller
           // Inefficient if only one of many children changes the agent !!!
-          order.isAttached ? None
+          order.isAttached ? AtController
 
 
 object ForkInstructionExecutor:

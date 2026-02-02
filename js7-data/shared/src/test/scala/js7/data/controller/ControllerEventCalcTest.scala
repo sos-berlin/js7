@@ -12,7 +12,6 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.plan.{PlanSchema, PlanSchemaId}
 import js7.data.state.EngineStateStatistics
-
 /** Test EventCalc[ControllerState, Event]. */
 final class ControllerEventCalcTest extends OurTestSuite:
 
@@ -24,8 +23,9 @@ final class ControllerEventCalcTest extends OurTestSuite:
 
     // First EventCalc //
     val controllerInitialized: EventCalcCtx[ControllerState, ControllerInitialized, TimeCtx] =
-      EventCalc.single: _ =>
-        NoKey <-: ControllerInitialized(ControllerId("Controller"), EventCalc.now)
+      EventCalc: coll =>
+        coll:
+          NoKey <-: ControllerInitialized(ControllerId("Controller"), coll.now)
 
     // Second EventCalc //
     val itemAdded: EventCalcCtx[ControllerState, InventoryItemEvent, Any] =

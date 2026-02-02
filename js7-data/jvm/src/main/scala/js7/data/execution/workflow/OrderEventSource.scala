@@ -1,12 +1,12 @@
 package js7.data.execution.workflow
 
-import js7.base.time.ScalaTime.*
 import cats.instances.either.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
@@ -14,8 +14,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerState
-import js7.data.event.EventColl.extensions.*
-import js7.data.event.{EventCalc, EventColl, KeyedEvent}
+import js7.data.event.{EventCalc, EventCalcCtx, EventColl, KeyedEvent}
 import js7.data.execution.workflow.instructions.{FinishExecutor, InstructionExecutor}
 import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsDelayingRetry, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.{OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderFailed, OrderFailedInFork, OrderGoMarked, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStateReset, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
@@ -682,7 +681,7 @@ object OrderEventSource:
     events: List[OrderCoreEvent])
   : EventCalc[S, OrderCoreEvent] =
     leaveBlocks(orderId, workflow,
-      _ => EventCalc.pure(events.map(orderId <-: _)),
+      _ => EventCalcCtx.pure(events.map(orderId <-: _)),
       until = _ => false)
 
   def leaveBlocks[S <: EngineState_[S]](

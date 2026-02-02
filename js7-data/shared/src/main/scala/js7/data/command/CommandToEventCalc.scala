@@ -4,7 +4,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.scalasource.ScalaSourceLocation
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.data.event.EventCalc.OpaqueEventColl
 import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState_, KeyedEvent}
 import scala.reflect.ClassTag
 
@@ -42,8 +41,7 @@ object CommandToEventCalc:
 
     object CommandEventConverter:
       def checked[Cmd <: IsEventEmittingCommand : ClassTag](
-        toCheckedKeyedEvents: (Cmd, S) => OpaqueEventColl[S, E] ?=>
-          Checked[IterableOnce[KeyedEvent[E]]])
+        toCheckedKeyedEvents: (Cmd, S) => Checked[IterableOnce[KeyedEvent[E]]])
       : CommandEventConverter[Cmd] =
         eventCalc: cmd =>
           EventCalc.checked: aggregate =>

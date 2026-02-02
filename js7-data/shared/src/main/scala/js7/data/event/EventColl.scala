@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
   *
   * @tparam Ctx Callers immutable context. May be anything, for instance, `TimeCtx` or `Unit`.
   */
-final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] private(
+final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] private(
   private val originalAggregate_ : S,
   timestampedKeyedEvents: Vector[MaybeTimestampedKeyedEvent[E]],
   aggregate: S,
@@ -73,7 +73,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(eventCalc)
 
-  inline def apply(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def apply(other: EventCollCtx[S, E, Any]): Checked[EventCollCtx[S, E, Ctx]] =
     add(other)
 
   inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1])
@@ -108,11 +108,11 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEventCalc(eventCalc)
 
-  inline def add(inline other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def add(inline other: EventCollCtx[S, E, Any]): Checked[EventCollCtx[S, E, Ctx]] =
     addColl(other)
 
   @targetName("add_Checked_EventColl")
-  inline def add(inline other: Checked[EventCollCtx[S, E, Ctx]]): Checked[EventCollCtx[S, E, Ctx]] =
+  inline def add(inline other: Checked[EventCollCtx[S, E, Any]]): Checked[EventCollCtx[S, E, Ctx]] =
     addCheckedColl(other)
 
   @targetName("addMaybeEventCalc")
@@ -179,10 +179,10 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   : Checked[EventCollCtx[S, E, Ctx]] =
     eventCalc.flatMap(_.addTo(this))
 
-  def addCheckedColl(other: Checked[EventCollCtx[S, E, Ctx]]): Checked[EventCollCtx[S, E, Ctx]] =
+  def addCheckedColl(other: Checked[EventCollCtx[S, E, Any]]): Checked[EventCollCtx[S, E, Ctx]] =
     other.flatMap(addColl)
 
-  def addColl(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
+  def addColl(other: EventCollCtx[S, E, Any]): Checked[EventCollCtx[S, E, Ctx]] =
     if other.originalAggregate_ ne aggregate then
       val problem = Problem.pure:
         if other.originalAggregate eq originalAggregate then
@@ -196,7 +196,10 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
         if !other.hasEvents then
           this
         else if !hasEvents then
-          other
+          if other.context.asInstanceOf[AnyRef] eq context.asInstanceOf[AnyRef] then
+            other.asInstanceOf[EventCollCtx[S, E, Ctx]]
+          else
+            other.copy(context = context)
         else
           append(other.timestampedKeyedEvents, other.aggregate)
 
@@ -205,11 +208,11 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   inline def nix: Right[Problem, this.type] =
     Right(this)
 
-  /** Collect events calculated from `iterable` and fail-fast with first problem. */
-  def fold[A](iterable: IterableOnce[A])
-    (toColl: (EventCollCtx[S, E, Ctx], A) => Checked[EventCollCtx[S, E, Ctx]])
-  : Checked[EventCollCtx[S, E, Ctx]] =
-    var coll = this
+  /** Collect events calculated from `iterable` and fail-fast on first problem. */
+  def fold[A, Ctx1 >: Ctx](iterable: IterableOnce[A])
+    (toColl: (EventCollCtx[S, E, Ctx1], A) => Checked[EventCollCtx[S, E, Ctx1]])
+  : Checked[EventCollCtx[S, E, Ctx1]] =
+    var coll: EventCollCtx[S, E, Ctx1] = this
     val it = iterable.iterator
     while it.hasNext do
       toColl(coll, it.next()) match
@@ -254,7 +257,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
     def logEvents2(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]]) =
       keyedEvents.foreachWithBracket()((ke, br) => logger.trace(s"🔸$br$ke".trim))
 
-  private def logAddCollDifference(other: EventCollCtx[S, E, Ctx], problem: Problem): Unit =
+  private def logAddCollDifference(other: EventCollCtx[S, E, Any], problem: Problem): Unit =
     logger.error(problem.toString, new Exception(problem.toString))
     // BIG LOG
     aggregate.emitLineStream(o => logger.info(s"aggregate=$o"))
@@ -296,12 +299,12 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
     *   Both EventColls must have the same originalAggregate.
     *   `coll` must start with the same events as `this`.
     */
-  def hasMoreEventsThan(coll: EventCollCtx[S, E, Ctx]): Boolean =
+  def hasMoreEventsThan(coll: EventCollCtx[S, E, Any]): Boolean =
     assertThat((originalAggregate eq coll.originalAggregate) && eventCount >= coll.eventCount)
     assertIfStrict(coll.keyedEvents.indices.forall(i => coll.keyedEvents(i) eq keyedEvents(i)))
     unsafeHasMoreEventsThan(coll)
 
-  private[event] inline def unsafeHasMoreEventsThan(coll: EventCollCtx[S, E, Ctx]): Boolean =
+  private[event] inline def unsafeHasMoreEventsThan(coll: EventCollCtx[S, E, Any]): Boolean =
     eventCount > coll.eventCount
 
   def ifIs[S1 <: EventDrivenState_[S1, E]](using ClassTag[S1]): Option[EventCollCtx[S1, E, Ctx]] =

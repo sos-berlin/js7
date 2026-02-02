@@ -24,13 +24,15 @@ final class EventCalcTest extends OurTestSuite:
     val a: EventCalcCtx[TestState, TestEvent, Any] =
       EventCalcCtx.pure(TestEvent.Added("(Any)"))
 
-    val b: EventCalcCtx[TestState, TestEvent.Added, TimeCtx] =
-      EventCalcCtx.single: _ =>
-        TestEvent.Added(EventCalcCtx.context.now.toString)
+    val b: EventCalcCtx[TestState, TestEvent.Added, X] =
+      EventCalcCtx: coll =>
+        coll:
+          TestEvent.Added(coll.context.xValue)
 
-    val c: EventCalcCtx[TestState, TestEvent.Added, X] =
-      EventCalcCtx.single: _ =>
-        TestEvent.Added(EventCalcCtx.context.value)
+    val c: EventCalcCtx[TestState, TestEvent.Added, Y] =
+      EventCalcCtx: coll =>
+        coll:
+          TestEvent.Added(coll.context.yValue)
 
     val combined: EventCalcCtx[TestState, TestEvent, X & Y] =
       EventCalcCtx.combineAll(Seq(a.widen, b.widen, c.widen))
