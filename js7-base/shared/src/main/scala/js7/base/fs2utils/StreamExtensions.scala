@@ -2,20 +2,18 @@ package js7.base.fs2utils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.std.AtomicCell
-import cats.effect.{Concurrent, Deferred, IO, Ref, Sync, Temporal}
+import cats.effect.{Concurrent, IO, Ref, Sync, Temporal}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
 import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
-import fs2.concurrent.Signal
 import fs2.{Chunk, Pull, RaiseThrowable, Stream}
 import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
-import scala.annotation.targetName
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -296,45 +294,6 @@ object StreamExtensions:
     : Stream[F2, O] =
       stream.interruptWhen(haltOnCompletion.attempt)
 
-    def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltWhenTrue: Stream[F2, Boolean])
-    : Stream[F2, O] =
-      stream.interruptWhen(haltWhenTrue)
-        .prefetch // prefetch avoids interruption / cancellation of the downstream
-
-    /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
-      */
-    def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](
-      haltWhenTrue: Deferred[F2, Either[Throwable, Unit]])
-    : Stream[F2, O] =
-      stream.interruptWhen(haltWhenTrue.get)
-        .prefetch // prefetch avoids interruption / cancellation of the downstream
-
-    /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
-      */
-    def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](signal: Signal[F2, Boolean])
-    : Stream[F2, O] =
-      stream.interruptWhen(signal)
-        .prefetch // prefetch avoids interruption / cancellation of the downstream
-
-    /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-     * <p>The asynchronous boundary avoids cancellation of the downstream operations.
-     */
-    def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltOnSignal: F2[Either[Throwable, Unit]])
-    : Stream[F2, O] =
-      stream.interruptWhen(haltOnSignal)
-        .prefetch // prefetch avoids interruption / cancellation of the downstream
-
-    /** Like `interruptWhen` but inserts an asynchronous boundary after `interruptWhen`.
-      * <p>The asynchronous boundary avoids cancellation of the downstream operations.
-      */
-    @targetName("interruptUpstreamWhenUnit")
-    def interruptUpstreamWhen[F2[x] >: F[x]: Concurrent](haltOnCompletion: F2[Unit])
-    : Stream[F2, O] =
-      stream.interruptWhen(haltOnCompletion.attempt)
-        .prefetch // prefetch avoids interruption / cancellation of the downstream
-
     def logTiming(
       toCount: O => Long = simpleCount,
       onComplete: (FiniteDuration, Long, ExitCase) => F[Unit],
@@ -348,6 +307,7 @@ object StreamExtensions:
             count += toCount(a)
             a
           .onFinalizeCase: exitCase =>
+
             onComplete(startedAt.elapsed, count, exitCase)
 
 

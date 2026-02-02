@@ -5,7 +5,7 @@ import cats.effect.{FiberIO, IO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.CatsExtensions.tryIt
-import js7.base.fs2utils.StreamExtensions.interruptUpstreamWhen
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.completedL
@@ -92,7 +92,8 @@ private trait CommandDispatcher:
         // Save queue, because it may change with stop and start
         val queue = this.queue
         queue.stream
-          .interruptUpstreamWhen(processingAllowed.whenOff)
+          .interruptWhenF(processingAllowed.whenOff)
+          .prefetch // avoids cancellation of the downstream
           .evalMap: numbered =>
             numbered.value.correlId.bind:
               executeCommandNow(subagentRunId, numbered)

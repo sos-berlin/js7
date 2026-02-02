@@ -196,7 +196,7 @@ extends Service.StoppableByRequest:
               stream.chunks
             else
               stream.groupWithin(chunkSize = conf.eventBufferSize, delay)
-          .interruptUpstreamWhen(untilStopRequested)
+          .interruptWhenF(untilStopRequested)
           .evalMapChunk: chunk =>
             // When the other cluster node may have failed-over,
             // wait until we know that it hasn't (or this node is aborted).
