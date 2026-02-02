@@ -336,11 +336,20 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
 
+
   object OrderForked:
     final case class Child(
       orderId: OrderId,
       arguments: Map[String, Value],
-      branchId: Option[ForkBranchId] = None)
+      branchId: Option[ForkBranchId] = None):
+
+      override def toString =
+        s"${branchId.fold("")(_.string + ": ")}$orderId${
+          if arguments.isEmpty then
+            ""
+          else
+            " " + arguments.map(o => s"${o._1}=${o._2}").mkString("{", ", ", "}")
+        }"
 
     object Child:
       def apply(branchId: ForkBranchId, orderId: OrderId): Child =

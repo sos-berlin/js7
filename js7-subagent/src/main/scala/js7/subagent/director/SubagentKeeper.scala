@@ -218,7 +218,10 @@ extends Service.StoppableByRequest:
             && currentOrder.copy[Order.Ready](state = Order.Ready())
             == order.copy[Order.Ready](state = Order.Ready())
           then
-            logger.debug(s"🪱 $orderId OrderProcessingStarted has already been emitted")
+            // This is because OrderMotor repeats because OrderProcessingStarted is
+            // emitted asynchronously.
+            // --> Let OrderMotor or ExecuteExecutor emit OrderProcessingStarted
+            logger.trace(s"🪱 $orderId OrderProcessingStarted has already been emitted")
           else
             logger.debug:
               s"🪱 $orderId has concurrently been changed, no OrderProcessingStarted is emitted"
