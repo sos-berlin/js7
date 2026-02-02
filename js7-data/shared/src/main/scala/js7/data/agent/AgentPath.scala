@@ -9,11 +9,14 @@ import js7.data.item.UnsignedSimpleItemPath
   * @author Joacim Zschimmer
   */
 final case class AgentPath private(string: String)
-extends UnsignedSimpleItemPath, DelegateId, ClusterId:
+extends UnsignedSimpleItemPath, DelegateId, ClusterId, AtControllerOrAgent:
 
   protected type Self = AgentPath
 
   val companion: AgentPath.type = AgentPath
+
+  def maybeAgentPath: Some[AgentPath] =
+    Some(this)
 
   override def toString = s"Agent:$string"  // instead of AgentRef:
 
@@ -33,3 +36,11 @@ extends DelegateId.Companion[AgentPath], UnsignedSimpleItemPath.Companion[AgentP
   @javaApi
   def of(validName: String): AgentPath =
     mayThrow(validName)
+
+
+sealed trait AtControllerOrAgent:
+  def maybeAgentPath: Option[AgentPath]
+
+
+case object AtController extends AtControllerOrAgent:
+  def maybeAgentPath: None.type = None

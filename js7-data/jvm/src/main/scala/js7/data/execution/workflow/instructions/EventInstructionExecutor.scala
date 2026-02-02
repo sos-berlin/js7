@@ -5,7 +5,7 @@ import js7.base.problem.Checked.{Ops, catchNonFatalFlatten}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AtController, AtControllerOrAgent}
 import js7.data.controller.ControllerState
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
@@ -115,20 +115,6 @@ private trait EventInstructionExecutor extends InstructionExecutor:
         order.ifState[Order.Fresh]
           .filterNot(_.isDelayed(now))
 
-  protected def predictNextAgent[S <: EngineState_[S]](
-    order: Order[Order.State],
-    coll: EventColl[S, OrderCoreEvent])
-  : Checked[Option[AgentPath]] =
-    catchNonFatalFlatten:
-      OrderEventSource.anticipateNextOrderMoved(order)
-        .calculateEvents(coll.forwardAs[OrderMoved]).map: moves =>
-          for
-            workflow <- coll.aggregate.idToWorkflow.get(order.workflowId)
-            agentPath <- workflow.agentPath(
-              position = moves.lastOption.fold(order.position)(_.event.to))
-          yield
-            agentPath
-
   /** On problem, let the order properly fail, and continue execution.<p>
     * Normally, a failed `EventColl` would result in a `OutcomeDisrupted`.
     * `catchProblemAsOrderFailure` emits a `Outcome.Failed` instead.
@@ -141,6 +127,25 @@ private trait EventInstructionExecutor extends InstructionExecutor:
     checked.recoverProblem: problem =>
       coll:
         fail(orderId, Some(OrderOutcome.Failed.fromProblem(problem)))
+
+
+object EventInstructionExecutor:
+
+  def predictNextAgent[S <: EngineState_[S]](
+    order: Order[Order.State],
+    coll: EventColl[S, OrderCoreEvent])
+  : Checked[AtControllerOrAgent] =
+    catchNonFatalFlatten:
+      OrderEventSource.anticipateNextOrderMoved(order)
+        .calculateEvents(coll.forwardAs[OrderMoved]).map: moves =>
+          locally:
+            for
+              workflow <- coll.aggregate.idToWorkflow.get(order.workflowId)
+              agentPath <- workflow.agentPath(
+                position = moves.lastOption.fold(order.position)(_.event.to))
+            yield
+              agentPath
+          .getOrElse(AtController)
 
 
 private trait EventInstructionExecutor_[Instr_ <: Instruction](using ClassTag[Instr_])

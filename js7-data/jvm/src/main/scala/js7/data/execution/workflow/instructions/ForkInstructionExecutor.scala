@@ -12,6 +12,7 @@ import js7.data.agent.{AgentPath, AtController, AtControllerOrAgent}
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.{fail, moveOrderToNextInstruction}
+import js7.data.execution.workflow.instructions.EventInstructionExecutor.predictNextAgent
 import js7.data.order.Order.{Cancelled, Forked}
 import js7.data.order.OrderEvent.{OrderAttachable, OrderCoreEvent, OrderDetachable, OrderForked, OrderJoined}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
@@ -199,7 +200,7 @@ extends EventInstructionExecutor_[Instr]:
     * <p>
     * Forking many children at Controller and then attached all to their first agent is inefficient.
     * Here we decide where to attach the forking order before generating child orders.
-    * @return Right(None): No prediction
+    * @return Right(None): No prediction, leave Order where it is
     */
   protected[instructions] final def predictControllerOrAgent[S <: EngineState_[S]](
     order: Order[Order.Forked],
@@ -215,9 +216,10 @@ extends EventInstructionExecutor_[Instr]:
       .map: controllerOrAgents =>
         // None means Controller or the location is irrelevant (not distinguishable for now)
         if controllerOrAgents.sizeIs == 1 then
+          val controllerOrAgent = controllerOrAgents.head
           // All children start at the Controller or the same Agent
           val enoughChildren = orderForked.children.sizeIs >= MinimumChildCountForParentAttachment
-          (order.attachedState, controllerOrAgents.head) match
+          (order.attachedState, controllerOrAgent.maybeAgentPath) match
             case (Some(Order.Attached(agentPath)), Some(childrensAgentPath)) =>
               // If parent order's attachment and the orders first agent differs,
               // detach the parent order!
