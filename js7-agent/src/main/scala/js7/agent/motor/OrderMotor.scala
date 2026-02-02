@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.motor.OrderMotor.*
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -28,8 +28,9 @@ import js7.data.command.CancellationMode
 import js7.data.event.{Event, EventCalc, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.item.InventoryItem
-import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, OrderKillingMarked, OrderProcessed, OrderProcessingStarted}
-import js7.data.order.{Order, OrderId}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderKillingMarked, OrderProcessed, OrderProcessingStarted}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.state.EngineStateExtensions.keyedEventToPendingOrderIds
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.WorkflowPathControl
 import js7.journal.{FileJournal, Persisted}
@@ -177,83 +178,97 @@ extends Service.StoppableByRequest:
 
   private def enqueue(orderIds: Seq[OrderId]): IO[Unit] =
     IO.whenA(orderIds.nonEmpty):
+      //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### enqueue ${enc.value}$br$orderId"))
       bean.orderQueueLength += orderIds.size
       orderQueue.offer(Some(orderIds))
 
   private def runOrderPipeline: IO[Unit] =
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
-      .chunks.map: chunk =>
+      .chunks.evalMap: chunk =>
         bean.orderQueueLength := 0 // Queue seems to ignore added duplicates ???
-        val orderIds = chunk.toVector.flatten: Vector[OrderId]
-        orderIds
-      .evalMap: orderIds =>
-        continueOrders(orderIds.distinct)
+        continueOrders(chunk.asSeq.flatten.distinct)
       .compile.drain
 
-  private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
+  private def continueOrders(orderIds: Seq[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
-    IO.whenA(orderIds.nonEmpty):
-      clock.lockIO: now =>
-        // persist may be delayed a little by the journal, so `now` may be in the past.
-        // Any we call isDelayed/ifDelayed three times.
-        // But this way, we are sure to use the proper current AgentState.
-        // FIRST, persist non-delayed Orders //
-        journal.persist:
-          // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
-          EventCalc[AgentState, Event]: coll =>
-            val idToOrder = coll.aggregate.idToOrder
-            coll:
-              OrderEventSource.nextEvents:
-                orderIds.view.filter: orderId =>
-                  idToOrder.get(orderId).exists(o => !o.isDelayed(now))
-        .ifPersisted:
-          onPersisted
-        .map(_.orThrow) // TODO throws
-        .flatMap: persisted =>
-          val orders = orderIds.flatMap(persisted.aggregate.idToOrder.get)
-          // SECOND, schedule delayed Orders //
-          scheduleDelayedOrders:
-            orders.flatMap: order =>
-              order.ifDelayed(now).map(order.id -> _)
-          .productR:
-            // Maybe start jobs //
-            val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
-            jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, persisted.aggregate)
+    persistNextEvents(orderIds).orThrow
+      .flatTap: persisted =>
+        scheduleDelayedOrders(orderIds, persisted.aggregate)
+      .flatMap: persisted =>
+        tryStartJobs(orderIds, persisted.aggregate)
 
-  private def scheduleDelayedOrders(orderIds: Iterable[(OrderId, Timestamp)]): IO[Unit] =
-    fs2.Stream.iterable(orderIds).zipWithBracket().evalMap:
-      case ((orderId, delayUntil), br) =>
-        orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
-          logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
-          entry.schedule(delayUntil):
-            enqueue(orderId)
-    .compile.drain
+  private def persistNextEvents(orderIds: Seq[OrderId]): IO[Checked[Persisted[AgentState, Event]]] =
+    //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### persistNextEvents $br$orderId"))
+    clock.lockIO: now =>
+      // persist may be delayed a little by the journal, so `now` may be in the past.
+      // Any we call isDelayed/ifDelayed three times.
+      // But this way, we are sure to use the proper current AgentState.
+      // FIRST, persist non-delayed Orders //
+      journal.persist:
+        // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
+        EventCalc[AgentState, Event]: coll =>
+          val idToOrder = coll.aggregate.idToOrder
+          coll:
+            OrderEventSource.nextEvents:
+              orderIds/*.view.filter: orderId =>
+                idToOrder.get(orderId).exists: order =>
+                  // Filter early, because no Events will be emitted, anyway:
+                  !order.isDelayed(coll.now)*/
+    .ifPersisted: persisted =>
+      onPersisted(persisted)
 
-  private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing)
+  private def scheduleDelayedOrders(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
+    IO.defer:
+      val now = clock.now()
+      val orderIdToDelayUntil: Seq[(OrderId, Timestamp)] =
+        orderIds.flatMap(agentState.idToOrder.get).flatMap: order =>
+          order.ifDelayed(now).map(order.id -> _)
+      fs2.Stream.iterable(orderIdToDelayUntil).zipWithBracket().evalMap:
+        case ((orderId, delayUntil), br) =>
+          orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+            logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
+            entry.schedule(delayUntil):
+              enqueue(orderId)
+      .compile.drain
+
+  private def tryStartJobs(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
+    clock.lockIO: now =>
+      val orders = orderIds.flatMap(agentState.idToOrder.get)
+      val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
+      //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### tryStartJobs $br$orderId"))
+      jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, agentState)
+
+  private def onPersisted(persisted: Persisted[AgentState, Event])
   : IO[Unit] =
-    persisted.keyedEvents.toVector.flatTraverse:
-      case KeyedEvent(orderId: OrderId, event) =>
-        event match // Similar to keyedEventToPendingOrderIds ???
-          case event: OrderForked =>
-            IO.pure(event.children.map(_.orderId) :+ orderId)
+    onPersistedHandleOrders(persisted) *>
+      onPersistedEnqueue(persisted)
 
+  private def onPersistedHandleOrders(persisted: Persisted[AgentState, Event]): IO[Unit] =
+    persisted.keyedEvents.foldMap:
+      case KeyedEvent(orderId: OrderId, event) =>
+        event match
           case OrderKillingMarked(Some(kill)) =>
             persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
               jobMotorKeeper.maybeKillOrder(order, kill)
-            .as(Vector(orderId))
 
           case OrderDetachable | OrderDetached =>
             jobMotorKeeper.onOrderDetached(orderId, persisted.originalAggregate) *>
               orderToEntry.remove(orderId).flatMapSome:
                 _.cancelSchedule
-              .as(Vector(orderId))
+              .void
 
-          case _ =>
-            IO.pure(Vector(orderId))
+          case _ => IO.unit
       case _ =>
-        IO.pure(Vector.empty)
-    .flatMap: (touchedOrderIds: Seq[OrderId] /*IntelliJ*/) =>
-      enqueue(touchedOrderIds.distinct)
+        IO.unit
+
+  private def onPersistedEnqueue(persisted: Persisted[AgentState, Event]): IO[Unit] =
+    enqueue:
+      persisted.keyedEvents.flatMap:
+        case keyedEvent @ KeyedEvent(orderId: OrderId, _) =>
+          persisted.aggregate.keyedEventToPendingOrderIds:
+            keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]]
+        case _ => Nil
+      .iterator.distinct.toVector
 
   override def toString = "OrderMotor"
 
