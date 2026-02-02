@@ -1,9 +1,11 @@
 package js7.base.fs2utils
 
 import cats.effect.*
+import cats.effect.kernel.Outcome.Canceled
 import cats.effect.testkit.TestControl
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pipe, Pull, Stream}
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
@@ -148,8 +150,101 @@ final class Fs2Test extends OurAsyncTestSuite:
         case _ => fail("ArraySlice expected")
   }
 
+  "interruptWhen cancels upstream and downstream IOs !!" - {
+    "interruptWhen cancels the upstream" in:
+      for
+        signal <- SignallingRef[IO].of(false)
+        deferred <- Deferred[IO, OutcomeIO[Unit]]
+        stream = Stream.unit
+          .evalMap: _ =>
+            // Cancelled due to interruptWhen
+            IO.sleep(3.s).guaranteeCase(deferred.complete(_).void)
+          .interruptWhen(signal)
+        fiber <- stream.compile.toList.timed.start
+        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- signal.set(true)
+        (duration, result) <- fiber.joinStd
+        outcome <- deferred.get
+      yield
+        assert(result.isEmpty & outcome == Outcome.Canceled() & (duration < 1.s))
+
+    "interruptWhen cancels the downstream, too (!)" in:
+      for
+        signal <- SignallingRef[IO].of(false)
+        deferred <- Deferred[IO, OutcomeIO[Unit]]
+        stream = Stream.unit
+          .interruptWhen(signal)
+          .evalMap: _ =>
+            // Cancelled due to interruptWhen
+            IO.sleep(3.s).guaranteeCase:
+              deferred.complete(_).void
+        fiber <- stream.compile.toList.timed.start
+        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- signal.set(true)
+        (duration, result) <- fiber.joinStd
+        outcome <- deferred.get
+      yield
+        assert(result.isEmpty & outcome == Outcome.Canceled() & (duration < 1.s))
+
+    "interruptWhen doesn't cancel a merged-in stream" in:
+      for
+        signal <- SignallingRef[IO].of(false)
+        deferred <- Deferred[IO, OutcomeIO[String]]
+        stream = Stream.unit
+          .interruptWhen(signal)
+          .merge:
+            // Not cancelled
+            Stream.eval:
+              IO.sleep(300.ms).as("OK").guaranteeCase:
+                deferred.complete(_).void
+        fiber <- stream.compile.toList.timed.start
+        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- signal.set(true)
+        (duration, result) <- fiber.joinStd
+        outcome <- deferred.get
+      yield
+        assert(result == List((), "OK") & outcome.isSuccess & (duration >= 300.ms))
+
+    "interruptWhen doesn't cancel a downstream after *prefetch*" in:
+      for
+        signal <- SignallingRef[IO].of(false)
+        deferred <- Deferred[IO, OutcomeIO[String]]
+        stream = Stream.unit
+          .interruptWhen(signal)
+          .prefetch // Only upstream is interrupted (cancelled)
+          .evalMap: _ =>
+            IO.sleep(300.ms).as("OK").guaranteeCase:
+              deferred.complete(_).void
+        fiber <- stream.compile.toList.timed.start
+        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- signal.set(true)
+        (duration, result) <- fiber.joinStd
+        outcome <- deferred.get
+      yield
+        assert(result == List("OK") & outcome.isSuccess & (duration >= 300.ms))
+
+    "interruptWhen doesn't cancel a downstream after *prefetch* (2)" in:
+      pending // ???
+      for
+        signal <- SignallingRef[IO].of(false)
+        deferred <- Deferred[IO, OutcomeIO[String]]
+        stream = Stream.unit[IO]
+          .prefetch // Only upstream is interrupted (cancelled)
+          .evalMap: _ =>
+            IO.sleep(300.ms).as("OK").guaranteeCase:
+              deferred.complete(_).void
+          .interruptWhen(signal)
+        fiber <- stream.compile.toList.timed.start
+        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- signal.set(true)
+        (duration, result) <- fiber.joinStd
+        outcome <- deferred.get
+      yield
+        assert(result == List("OK") & outcome.isSuccess & (duration >= 300.ms))
+  }
+
   if false then // Manual test. Start with -Xmx10m
-    "Recursive streams do not eat heap" in:
+    "Recursive streams doesn't eat heap" in:
       def f(i: Int): Stream[IO, Int] =
         var last = i
         Stream.emit(i)

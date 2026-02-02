@@ -3,7 +3,6 @@ package js7.base.fs2utils
 import cats.effect.IO
 import cats.effect.std.Mutex
 import fs2.concurrent.SignallingRef
-import js7.base.fs2utils.StreamExtensions.interruptUpstreamWhen
 import js7.base.fs2utils.StreamQueue.*
 import scala.collection.mutable
 
@@ -41,7 +40,7 @@ private final class StreamQueue[K, V] private(
       .repeat
       .takeWhile(_ != End)
       .asInstanceOf[fs2.Stream[IO, V]]
-      .interruptUpstreamWhen[IO](stopSignal)
+      .interruptWhen[IO](stopSignal)
 
   private def dequeueNext: IO[V | End] =
     availableSignal.discrete
