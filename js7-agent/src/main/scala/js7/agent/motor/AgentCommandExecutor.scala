@@ -25,7 +25,7 @@ import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, ScalaUtils}
 import js7.cluster.WorkingClusterNode
-import js7.core.command.{CommandMeta, CommandRegister}
+import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import js7.data.Problems.ClusterSwitchOverButNotCoupledProblem
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -73,6 +73,7 @@ extends
 
   def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     executeCommand(command, meta)
+      .logWhenItTakesLonger(command.toShortString)
 
   private def executeCommand(
     command: AgentCommand,
@@ -82,21 +83,47 @@ extends
     register.resource[IO](command, meta, CorrelId.current, batchId).use: run =>
       command match
         case Batch(wrappedCommands) =>
-          // Execute one command after the other
-          fs2.Stream.iterable(wrappedCommands)
-            .evalMap: wrapped =>
-              val CorrelIdWrapped(subcorrelId, cmd) = wrapped
-              subcorrelId.orNew.bind:
-                executeCommand(cmd, meta, batchId orElse Some(run.correlId))
-            .compile
-            .toVector
-            .map(AgentCommand.Batch.Response(_))
-            .catchAsChecked
+          executeBatch(wrappedCommands, run, meta, batchId)
 
         case command: AgentCommand.NonBatch =>
           logger.debugIO(run.toString):
             executeCommand2(command, run.correlId, meta, batchId = None)
-          .logWhenItTakesLonger(run.toString)
+
+  private def executeBatch(
+    wrappedCommands: Seq[CorrelIdWrapped[AgentCommand]],
+    run: CommandRun[AgentCommand],
+    meta: CommandMeta,
+    batchId: Option[CorrelId])
+  : IO[Checked[AgentCommand.Response]] =
+    // Execute one command after the other, use one commit
+    fs2.Stream.iterable(wrappedCommands)
+      .map: wrapped =>
+        wrapped.value match
+          case cmd: AgentCommand.IsOrderCommand => true -> wrapped
+          case _ => false -> wrapped
+      .groupAdjacentBy(_._1)
+      .evalMap:
+        case (true, chunk) =>
+          // Execute multiple IsOrderCommand in one Journal transaction
+          checkedAgentMotor.flatMap:
+            case Left(problem) =>
+              chunk.traverse(_ => IO.left(problem))
+            case Right(agentMotor) =>
+              agentMotor.executeOrderCommands:
+                chunk.map:
+                  _._2.value/*omit CorrelId!*/.asInstanceOf[AgentCommand.IsOrderCommand]
+                .asSeq
+              .map:
+                fs2.Chunk.from
+        case (false, chunk) =>
+          chunk.map(_._2).traverse:
+            case CorrelIdWrapped(subcorrelId, cmd) =>
+              subcorrelId.orNew.bind:
+                executeCommand(cmd, meta, batchId orElse Some(run.correlId))
+      .unchunks
+      .compile.toVector
+      .map(AgentCommand.Batch.Response(_))
+      .catchAsChecked
 
   private def executeCommand2(
     command: AgentCommand.NonBatch,

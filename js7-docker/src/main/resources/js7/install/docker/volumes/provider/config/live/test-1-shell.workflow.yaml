@@ -42,7 +42,7 @@ jobs:
         #!/usr/bin/env bash
         echo "🐟  Here is job-1"
         sleep 0.1
-    processLimit: 1000
+    processLimit: 50
   job-2:
     agentPath: "agent-1"
     executable:
@@ -51,4 +51,4 @@ jobs:
         #!/usr/bin/env bash
         echo "🕷️  Here is job-2"
         sleep 0.1
-    processLimit: 1000
+    processLimit: 50

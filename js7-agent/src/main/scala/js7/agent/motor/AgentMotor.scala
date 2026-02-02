@@ -98,7 +98,8 @@ extends Service.StoppableByRequest:
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
     cmd match
       case cmd: IsOrderCommand =>
-        orderMotor.executeOrderCommand(cmd)
+        orderMotor.executeOrderCommands(cmd :: Nil)
+          .map(_.head)
 
       case cmd: IsItemCommand  =>
         itemCommandExecutor.executeItemCommand(cmd)
@@ -108,6 +109,10 @@ extends Service.StoppableByRequest:
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ => IO.left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}"))
+
+  def executeOrderCommands(cmds: Seq[AgentCommand.IsOrderCommand])
+  : IO[Seq[Checked[AgentCommand.Response]]] =
+    orderMotor.executeOrderCommands(cmds)
 
   def resetBareSubagents: IO[Unit] =
     journal.aggregate.flatMap: agentState =>

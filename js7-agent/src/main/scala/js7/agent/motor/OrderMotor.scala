@@ -4,6 +4,7 @@ import cats.effect.kernel.Resource
 import cats.effect.std.{Dispatcher, Queue}
 import cats.effect.{IO, Ref, ResourceIO}
 import cats.syntax.traverse.*
+import cats.syntax.parallel.*
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -117,13 +118,19 @@ extends Service.StoppableByRequest:
           .handleProblemWith: problem =>
             IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
 
-  def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
-    journal.persist:
-      combineWithFollowingEvents:
-        agentCommandToEventCalc.commandToEventCalc(cmd)
-    .ifPersisted:
-      onPersisted
-    .rightAs(AgentCommand.Response.Accepted)
+  def executeOrderCommands(cmds: Seq[AgentCommand.IsOrderCommand])
+  : IO[Seq[Checked[AgentCommand.Response]]] =
+    journal.persistMultiple:
+      cmds.map: cmd =>
+        combineWithFollowingEvents:
+          agentCommandToEventCalc.commandToEventCalc(cmd)
+    .flatMap: (seq: Seq[Checked[Persisted[AgentState, Event]]]) =>
+      seq.parTraverse: checked =>
+        checked.traverse: persisted =>
+          persisted.ifNonEmpty:
+            onPersisted(persisted)
+          .rightAs(AgentCommand.Response.Accepted)
+        .map(_.flatten)
 
   private def combineWithFollowingEvents(eventCalc: EventCalc[AgentState, Event])
   : EventCalc[AgentState, Event] =

@@ -37,7 +37,7 @@ jobs:
       className: "js7.subagent.jobs.TestJob"
       arguments:
         stdout: "'🐟  Here is JOB-1'"
-    processLimit: 1000
+    processLimit: 50
 
   JOB-2:
     agentPath: "agent-1"
@@ -46,4 +46,4 @@ jobs:
       className: "js7.subagent.jobs.TestJob"
       arguments:
         stdout: "'🕷️  Here is JOB-2'"
-    processLimit: 1000
+    processLimit: 50
