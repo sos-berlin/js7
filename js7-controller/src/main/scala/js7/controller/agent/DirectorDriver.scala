@@ -9,7 +9,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.fs2utils.StreamExtensions.{interruptUpstreamWhen, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -215,15 +215,17 @@ extends Service.StoppableByRequest:
         IO(logger.debug:
           s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping")
       else
-        val reducedStampedEvents = stampedEvents.dropWhile: stamped =>
-          val drop = stamped.eventId <= adoptedEventId
-          if drop then logger.debug(s"Drop duplicate received event: $stamped")
-          drop
-        IO.whenA(reducedStampedEvents.nonEmpty):
-          val lastEventId = stampedEvents.last.eventId
-          // The events must be journaled and handled by ControllerOrderKeeper
-          adoptedEventId = lastEventId
-          adoptEvents(reducedStampedEvents)
+        IO.uncancelable: _ =>
+          // Update of adoptedEventId and adoptEvents must run atomically
+          val reducedStampedEvents = stampedEvents.dropWhile: stamped =>
+            val drop = stamped.eventId <= adoptedEventId
+            if drop then logger.debug(s"Drop duplicate received event: $stamped")
+            drop
+          IO.whenA(reducedStampedEvents.nonEmpty):
+            val lastEventId = stampedEvents.last.eventId
+            // The events must be journaled and handled by ControllerOrderKeeper
+            adoptedEventId = lastEventId
+            adoptEvents(reducedStampedEvents)
     ))
 
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
