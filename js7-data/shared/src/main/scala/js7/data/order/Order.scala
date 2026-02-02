@@ -643,14 +643,16 @@ extends
     isFailed && isFailable
 
   def isFailed: Boolean =
-    lastOutcome match
+    lastOutcome.match
+      case _: OrderOutcome.IsSucceeded => false
+
       // Do not fail but let ExecuteExecutor repeat the job:
       case OrderOutcome.Disrupted(OrderOutcome.Disrupted.ProcessLost(_), _) => false
 
       // Let ExecuteExecutor handle this case (and fail then):
       case OrderOutcome.Killed(_) => !isState[Processed]
 
-      case o => !o.isSucceeded
+      case o => true
 
   /** Looks through OrderCaught. */
   def hasTimedOut: Boolean =

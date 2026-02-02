@@ -27,7 +27,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.calendar.Calendar
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventCalc, KeyedEvent, TimeCtx}
+import js7.data.event.{Event, KeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.job.JobResource
@@ -88,8 +88,11 @@ private final class ItemCommandExecutor(
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
-        persist(ItemAttachedToMe(item))
-          .rightAs(AgentCommand.Response.Accepted)
+        journal.persist:
+          ItemAttachedToMe(item)
+        .flatTapT:
+          onPersisted
+        .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
         IO.left(Problem.pure(s"AgentCommand.AttachItem(${item.key}) for unknown InventoryItem"))
@@ -102,7 +105,7 @@ private final class ItemCommandExecutor(
       case Right(signerIds) =>
         logger.info(Logger.SignatureVerified,
           s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
-        persist: agentState =>
+        journal.persist: agentState =>
           signed.value match
             case workflow: Workflow =>
               agentState.idToWorkflow.get(workflow.id) match
@@ -129,13 +132,17 @@ private final class ItemCommandExecutor(
             case _ =>
               Left(Problem.pure:
                 s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")
+        .flatTapT:
+          onPersisted
         .rightAs(AgentCommand.Response.Accepted)
 
   private def detachItem(itemKey: InventoryItemKey): IO[Checked[AgentCommand.Response]] =
     def persistItemDetachedIfExists =
-      persist: agentState =>
+      journal.persist: agentState =>
         ifItemKeyExists(agentState):
           ItemDetached(itemKey, agentPath)
+      .flatTapT:
+        onPersisted
 
     def ifItemKeyExists[E <: InventoryItemEvent](agentState: AgentState)(event: => E) =
       Right:
@@ -253,21 +260,6 @@ private final class ItemCommandExecutor(
       Map(
         NodeId.primary -> subagentItems(0).uri,
         NodeId.backup -> subagentItems(1).uri)
-
-  private def persist[E <: Event](keyedEvent: KeyedEvent[E])
-  : IO[Checked[Persisted[AgentState, E]]] =
-    journal.persist(keyedEvent)
-      .flatTapT(onPersisted)
-
-  private def persist[E <: Event](toEvents: AgentState => Checked[IterableOnce[KeyedEvent[E]]])
-  : IO[Checked[Persisted[AgentState, E]]] =
-    journal.persist(EventCalc.checked[AgentState, E](toEvents(_)))
-      .flatTapT(onPersisted)
-
-  private def persist[E <: Event](eventCalc: EventCalc[AgentState, E])
-  : IO[Checked[Persisted[AgentState, E]]] =
-    journal.persist(eventCalc)
-      .flatTapT(onPersisted)
 
   private def onPersisted[E <: Event](persisted: Persisted[AgentState, Event]): IO[Checked[Unit]] =
     if persisted.isEmpty then
