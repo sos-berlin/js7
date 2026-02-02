@@ -1,5 +1,6 @@
 package js7.data.execution.workflow
 
+import js7.base.time.ScalaTime.*
 import cats.instances.either.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
@@ -40,9 +41,6 @@ object OrderEventSource:
 
   type ResultEvent = OrderCoreEvent | PlanFinishedEvent
 
-  def nextEvents[S <: EngineState_[S]](orderId: OrderId): EventCalc[S, ResultEvent] =
-    nextEvents(orderId :: Nil)
-
   // TODO Try to call with only relevant OrderIds
   //  For example, don't call with all orders waiting for a single-order lock.
   /** Returns all next events for the `orderIds`.
@@ -82,20 +80,37 @@ object OrderEventSource:
                     case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
                   .flatMap:
                     coll.aggregate.keyedEventToPendingOrderIds
-                  .toSeq.distinct
+                  .iterator.distinct.toSeq
                 val idToOrder = coll.aggregate.idToOrder
                 queue.enqueue(touchedOrderIds.flatMap(idToOrder.get))
               end if
               loop(coll)
 
+    val t = System.nanoTime()
     EventCalc[S, ResultEvent]: coll =>
       val idToOrder = coll.aggregate.idToOrder
-      queue.enqueue(orderIds.flatMap(idToOrder.get))
-      loop(coll)
+      val orderIds_ = orderIds.toEagerSeq
+      queue.enqueue(orderIds_.flatMap(idToOrder.get))
+      loop(coll).map: coll2 =>
+        //<editor-fold desc="if false && isTest ...">
+        if false && isTest then // Log if no events have been emitted for some OrderIds
+          // Maybe irrelevant, because it seems that a useless call doesn't take too much time ...
+          if coll2 eq coll then
+            logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: nothing done · ${
+              orderIds_}")
+          else if orderIds_.sizeIs > 1 then
+            val eventless = orderIds_.filter:
+              coll2.keyedEvents.collect:
+                case KeyedEvent(orderId: OrderId, _: OrderEvent) => orderId
+              .toSet
+            logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: no events for ${
+              eventless}")
+        //</editor-fold>
+        coll2
 
 
   private final class OrderQueue:
-    import OrderQueue.NextOrder
+    import OrderQueue.*
     private val queue = mutable.PriorityQueue.empty[NextOrder]
     private val isQueued = mutable.Set.empty[OrderId]
 
@@ -103,7 +118,7 @@ object OrderEventSource:
       queue.isEmpty
 
     def enqueue(orders: Iterable[Order[Order.State]]): Unit =
-      val add = orders.filterNot(o => isQueued(o.id)).map(NextOrder(_)).toSeq
+      val add = orders.filterNot(o => isQueued(o.id)).map(toNextOrder).toSeq
       queue ++= add
       isQueued ++= add.view.map(_.orderId)
 
@@ -123,7 +138,7 @@ object OrderEventSource:
 
     // Lower index means higher priority, when order.priority is equal
     private var nextIndex = 0L // Increments indefinitely
-    private def NextOrder(order: Order[Order.State]): NextOrder =
+    private def toNextOrder(order: Order[Order.State]): NextOrder =
       nextIndex += 1
       NextOrder(order.id, order.priority, nextIndex)
   end OrderQueue
@@ -134,67 +149,67 @@ object OrderEventSource:
   : EventCalc[S, ResultEvent] =
     EventCalc: coll =>
      meterNextEvents:
-      coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
-        if !coll.aggregate.weHave(order) then
-          coll.nix
-        else
-          maybeOrderDeleted(order).widen.ifHasEventsAddToCollElse(coll):
-            for
-              coll <- coll:
-                orderMarkEvent(order) // event if Order is Broken
-              order <- coll.order(orderId)
-              coll <-
-                if order.isState[Order.Broken] then
-                  coll.nix
-                else if order.isSuspendedOrStopped then
-                  coll.nix
-                else if coll.aggregate.isOrderAtBreakpoint(order) then
-                  coll:
-                    coll.aggregate.atController(orderId):
-                      OrderSuspended
-                else if coll.aggregate.isWorkflowSuspended(order.workflowPath) then
-                  coll.nix
-                else if order.shouldFail then
-                  coll:
-                    fail[S](orderId, uncatchable = isUncatchable(order.lastOutcome))
-                else
-                  coll:
-                    nextEvent2(order)
-            yield coll.widen
-          .recoverProblem: problem =>
-            logger.debug(s"💥 $orderId execution failed: $problem")
-            coll:
-              failOrBreak(order, problem)
+      catchNonFatalFlatten:
+        coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
+          if !coll.aggregate.weHave(order) then
+            coll.nix
+          else
+            maybeOrderDeleted(order).widen.ifHasEventsAddToCollElse(coll):
+              for
+                coll <- coll:
+                  orderMarkEvent(order) // event if Order is Broken
+                order <- coll.order(orderId)
+                coll <-
+                  if order.isState[Order.Broken] then
+                    coll.nix
+                  else if order.isSuspendedOrStopped then
+                    coll.nix
+                  else if coll.aggregate.isOrderAtBreakpoint(order) then
+                    coll:
+                      coll.aggregate.atController(orderId):
+                        OrderSuspended
+                  else if coll.aggregate.isWorkflowSuspended(order.workflowPath) then
+                    coll.nix
+                  else if order.shouldFail then
+                    coll:
+                      fail[S](orderId, uncatchable = isUncatchable(order.lastOutcome))
+                  else
+                    coll:
+                      nextStepEvents2(order)
+              yield coll.widen
+            .recoverProblem: problem =>
+              logger.debug(s"💥 $orderId execution failed: $problem")
+              coll:
+                failOrBreak(order, problem)
 
-  private def nextEvent2[S <: EngineState_[S]](order: Order[Order.State])
+  private def nextStepEvents2[S <: EngineState_[S]](order: Order[Order.State])
   : EventCalc[S, OrderCoreEvent] =
     val orderId = order.id
     EventCalc: coll =>
-      catchNonFatalFlatten:
-        awokeEvent(order, coll.now).ifNonEmpty.map: events =>
-          coll.addWithKey(orderId):
-            events
-        .getOrElse:
-          joinedEvents(order).ifHasEventsAddToCollElse(coll):
-            if coll.aggregate.isOrderAtStopPosition(order) then
+      awokeEvent(order, coll.now).ifNonEmpty.map: events =>
+        coll.addWithKey(orderId):
+          events
+      .getOrElse:
+        joinedEvents(order).ifHasEventsAddToCollElse(coll):
+          if coll.aggregate.isOrderAtStopPosition(order) then
+            coll:
+              FinishExecutor.toEventCalc(Finish(), orderId)
+          else
+            ifSkippedDueToWorkflowPathControlThenMove(coll, order).map: orderMoved =>
               coll:
-                FinishExecutor.toEventCalc(Finish(), orderId)
-            else
-              ifSkippedDueToWorkflowPathControlThenMove(coll, order).map: orderMoved =>
-                coll:
-                  orderId <-: orderMoved
-              .getOrElse:
-                if !coll.aggregate.isOrderExecutable(order) then // Since v2.8.3
-                  coll.nix
-                else
-                  for
-                    coll <- coll:
-                      InstructionExecutor.toEventCalc(order)
-                    coll <-
-                      coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
-                        coll:
-                          anticipateNextOrderMoved(order)
-                  yield coll
+                orderId <-: orderMoved
+            .getOrElse:
+              if !coll.aggregate.isOrderExecutable(order) then // Since v2.8.3
+                coll.nix
+              else
+                for
+                  coll <- coll:
+                    InstructionExecutor.toEventCalc(order)
+                  coll <-
+                    coll.aggregate.idToOrder.get(orderId).fold(coll.nix): order =>
+                      coll:
+                        anticipateNextOrderMoved(order)
+                yield coll
 
   private def failOrBreak[S <: EngineState_[S]](order: Order[Order.State], problem: Problem)
   : EventCalc[S, OrderCoreEvent] =
@@ -278,7 +293,6 @@ object OrderEventSource:
   private def joinedEvents[S <: EngineState_[S]](order: Order[Order.State])
   : EventCalc[S, OrderCoreEvent] =
     if order.parent.isDefined
-      && order.isDetachedOrAttached
       && (order.isState[FailedInFork] || order.isState[Cancelled])
     then
       EventCalc: coll =>
