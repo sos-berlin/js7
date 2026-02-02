@@ -4,6 +4,9 @@ import cats.effect.kernel.{DeferredSink, DeferredSource}
 import cats.effect.std.Queue
 import cats.effect.{Deferred, IO, Ref, ResourceIO}
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
+import cats.syntax.parallel.*
+import fs2.Chunk
 import fs2.concurrent.SignallingRef
 import izumi.reflect.Tag
 import java.nio.file.Files.{delete, exists}
@@ -49,7 +52,7 @@ import scala.util.control.NonFatal
 final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   recovered: Recovered[S],
   val conf: JournalConf,
-  protected val persistQueue: Queue[IO, Option[QueuedPersist[S]]],
+  protected val persistQueue: Queue[IO, Option[Chunk[QueuedPersist[S]]]],
   protected val restartSnapshotTimerSignal: SignallingRef[IO, Unit],
   protected val requireClusterAck: SignallingRef[IO, Boolean],
   protected val ackSignal: SignallingRef[IO, EventId],
@@ -153,10 +156,11 @@ extends
         persistQueue.tryTake.flatMap:
           case None => IO.right(())
           case Some(None) => IO.left(())
-          case Some(Some(queuedEntry)) =>
-            queuedEntry.whenApplied.complete(problem) *>
-              queuedEntry.whenPersisted.complete(problem)
-                .as(Left(()))
+          case Some(Some(queuedEntries)) =>
+            queuedEntries.foldMap: queuedEntry =>
+              queuedEntry.whenApplied.complete(problem) *>
+                queuedEntry.whenPersisted.complete(problem).void
+            .as(Left(()))
 
   // TODO Prefer proper initialization and termination order
   override def stop: IO[Unit] =
@@ -184,43 +188,61 @@ extends
         if wasAck then
           logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
 
-  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
-    if isTest then assertThat(!persist.commitOptions.commitLater/*not implemented*/)
-    //meterPersist:
-    enqueue(persist)
-      .flatMap: (canceledRef, _, whenPersisted) =>
-        whenPersisted.get
-          .onCancel:
-            canceledRef.set(true)
+  protected def persistSingle[E <: Event](persist: Persist[S, E])
+  : IO[Checked[Persisted[S, E]]] =
+    if isTest then assertThat(!persist.commitOptions.commitLater /*not implemented*/)
+    enqueue(Chunk.singleton(persist)).flatMap: chunk =>
+      val (canceledRef, _, whenPersisted) = chunk(0)
+      whenPersisted.get
+        .onCancel:
+          canceledRef.set(true)
+
+  override protected def persistMultiple[E <: Event](persists: Chunk[Persist[S, E]])
+  : IO[Chunk[Checked[Persisted[S, E]]]] =
+    //if persists.size == 1 then
+    //  persistSingle(persists(0)).map(Chunk.singleton)
+    //else
+      if isTest then assertThat(!persists.exists(_.commitOptions.commitLater/*not implemented*/))
+      enqueue(persists).flatMap: chunk =>
+        chunk.parTraverse: (canceledRef, _, whenPersisted) =>
+          whenPersisted.get
+            .onCancel:
+              canceledRef.set(true)
 
   // TODO Visible only for legacy JournalActor.
-  private[journal] def enqueue[E <: Event](persist: Persist[S, E])
-  : IO[(
+  private[journal] def enqueue[E <: Event](persists: fs2.Chunk[Persist[S, E]])
+  : IO[fs2.Chunk[(
       cancel: Ref[IO, Boolean],
       whenApplied: DeferredSource[IO, Checked[Persisted[S, E]]],
       whenPersisted: DeferredSource[IO, Checked[Persisted[S, E]]]
-    )] =
+    )]] =
     // TODO ?
     // WHEN STOPPED WHILE SWITCHING OVER:
     // We ignore the event and do not notify the caller,
     // because it would crash and disturb the process of switching-over.
     // (so AgentDriver with AgentReady event)
     IO.defer:
-      val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
-      val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
-      val queuedPersist = QueuedPersist[S](
-        persist.widen[S, Event],
-        persistMeter.startMetering(),
-        whenApplied, whenPersisted)
+      val queuedPersists =
+        persists.map: persist =>
+          val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
+          val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
+          QueuedPersist[S](
+            persist.widen[S, Event],
+            persistMeter.startMetering(),
+            whenApplied, whenPersisted)
       IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
         case Left(problem) =>
-          whenApplied.complete(Left(problem)) *> whenPersisted.complete(Left(problem))
+          queuedPersists.foldMap:
+            _.completePersistedWithProblem(problem)
         case Right(()) =>
-          persistQueue.offer(Some(queuedPersist))
+          IO.whenA(queuedPersists.nonEmpty):
+            persistQueue.offer(Some(queuedPersists))
       .as:
-        (queuedPersist.canceled,
-          whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
-          whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
+        queuedPersists.map: queuedPersist =>
+          type D = DeferredSource[IO, Checked[Persisted[S, E]]]
+          (queuedPersist.canceled,
+            queuedPersist.whenApplied.asInstanceOf[D],
+            queuedPersist.whenPersisted.asInstanceOf[D])
 
   def onPassiveNodeHasAcknowledged(eventId: EventId): IO[Unit] =
     ackSignal.update: lastAck =>
@@ -345,7 +367,6 @@ extends
 object FileJournal:
 
   private val logger = Logger[this.type]
-  //private val meterPersist = CallMeter("FileJournal.persist")
   private[journal] val persistMeter = CallMeter("FileJournal.persist")
 
   def service[S <: SnapshotableState[S]: {SnapshotableState.Companion, Tag}](
@@ -358,7 +379,7 @@ object FileJournal:
         IO(FileJournalMXBean.Bean(Some(recovered.journalLocation)))
       journal <- Service.resource:
         for
-          queue <- Queue.unbounded[IO, Option[QueuedPersist[S]]]
+          queue <- Queue.unbounded[IO, Option[Chunk[QueuedPersist[S]]]]
           requireClusterAck <- SignallingRef[IO].of:
             recovered.clusterState.isInstanceOf[ClusterState.Coupled]
           ackSignal <- SignallingRef[IO].of(EventId.BeforeFirst)

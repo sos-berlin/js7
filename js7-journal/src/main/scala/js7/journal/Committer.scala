@@ -2,6 +2,7 @@ package js7.journal
 
 import cats.effect.kernel.{DeferredSink, Outcome}
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
+import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
@@ -132,6 +133,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(persistQueue, conf.concurrentPersistLimit)
+          .mapChunks(_.flatten)
           .through:
             commitPipeline
           .interruptWhenF(whenBeingKilled.get)

@@ -27,7 +27,13 @@ trait Journal[S <: JournaledState[S]] extends Service:
 
   def whenNoFailoverByOtherNode: IO[Unit]
 
-  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]]
+  protected def persistSingle[E <: Event](persist: Persist[S, E])
+  : IO[Checked[Persisted[S, E]]]
+
+  protected def persistMultiple[E <: Event](persists: fs2.Chunk[Persist[S, E]])
+  : IO[fs2.Chunk[Checked[Persisted[S, E]]]] =
+    persists.traverse: persist =>
+      persistSingle(persist)
 
   final def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[S, E]]] =
     persist[E]():
@@ -43,8 +49,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
     since: Deadline = Deadline.now)
     (eventCalc: EventCalc[S, E])
   : IO[Checked[Persisted[S, E]]] =
-    persist_(
-      Persist(options, since)(eventCalc))
+    persist(Persist(options, since)(eventCalc))
 
   @targetName("persist_rightNoKeys")
   final def persist[E <: NoKeyEvent](aggregateToEvents: S => IterableOnce[E])
@@ -77,13 +82,18 @@ trait Journal[S <: JournaledState[S]] extends Service:
     persistChecked()(aggregateToEvents)
 
   final def persist[E <: Event](eventCalc: EventCalc[S, E]): IO[Checked[Persisted[S, E]]] =
-    persist_(Persist(eventCalc))
+    persist(Persist(eventCalc))
+
+  final def persistMultiple[E <: Event](eventCalcs: Seq[EventCalc[S, E]])
+  : IO[IndexedSeq[Checked[Persisted[S, E]]]] =
+    persistMultiple(fs2.Chunk.from(eventCalcs.map(Persist(_))))
+      .map(_.asSeq)
 
   inline final def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
-    persist_(persist)
+    persistSingle(persist)
 
   final def persistOne[E <: Event](keyedEvent: KeyedEvent[E])
-  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persist[E]():
       EventCalc.pure(keyedEvent)
     .map(_ flatMap: persisted =>

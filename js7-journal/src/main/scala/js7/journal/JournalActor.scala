@@ -53,8 +53,10 @@ extends Actor, Stash:
             callersItem))
       else
         journal.enqueue:
-          Persist(options.copy(commitLater = commitLater), since)(eventCalc)
-        .flatMap: (_, whenApplied, whenCommitted) =>
+          fs2.Chunk.singleton:
+            Persist(options.copy(commitLater = commitLater), since)(eventCalc)
+        .flatMap: chunk =>
+          val (_, whenApplied, whenCommitted) = chunk(0)
           whenApplied.get.map(_.map(_ -> whenCommitted))
         .awaitInfinite match
           case Left(problem) =>

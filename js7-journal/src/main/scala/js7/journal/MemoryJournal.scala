@@ -79,7 +79,8 @@ extends
   def unsafeUncommittedAggregate(): S =
     _aggregate
 
-  protected def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
+  override protected def persistSingle[E <: Event](persist: Persist[S, E])
+  : IO[Checked[Persisted[S, E]]] =
     aggregateLock.lock:
       IO.defer:
         val aggregate = _aggregate
