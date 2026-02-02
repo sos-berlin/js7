@@ -119,10 +119,23 @@ extends Service.StoppableByRequest:
 
   def executeOrderCommand(cmd: AgentCommand.IsOrderCommand): IO[Checked[AgentCommand.Response]] =
     journal.persist:
-      agentCommandToEventCalc.commandToEventCalc(cmd)
+      combineWithFollowingEvents:
+        agentCommandToEventCalc.commandToEventCalc(cmd)
     .ifPersisted:
       onPersisted
     .rightAs(AgentCommand.Response.Accepted)
+
+  private def combineWithFollowingEvents(eventCalc: EventCalc[AgentState, Event])
+  : EventCalc[AgentState, Event] =
+    EventCalc[AgentState, Event]: coll =>
+      for
+        firstColl <- eventCalc.calculate(coll)
+        coll <- coll.addColl(firstColl)
+        coll <- coll:
+          OrderEventSource.nextEvents(orderIds =
+            firstColl.keyedEvents.collect:
+              case KeyedEvent(orderId: OrderId, _) => orderId)
+      yield coll
 
   def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
     item match
