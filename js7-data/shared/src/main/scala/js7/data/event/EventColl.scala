@@ -206,7 +206,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
     Right(this)
 
   /** Collect events calculated from `iterable` and fail-fast with first problem. */
-  def iterate[A](iterable: IterableOnce[A])
+  def fold[A](iterable: IterableOnce[A])
     (toColl: (EventCollCtx[S, E, Ctx], A) => Checked[EventCollCtx[S, E, Ctx]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     var coll = this

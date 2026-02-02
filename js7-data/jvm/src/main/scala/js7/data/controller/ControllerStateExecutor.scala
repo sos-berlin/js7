@@ -382,7 +382,7 @@ object ControllerStateExecutor:
     EventCalc: coll =>
       coll.aggregate.itemToAgentToAttachedState.get(item.key) match
         case Some(agentPathToAttached) =>
-          coll.iterate(agentPathToAttached):
+          coll.fold(agentPathToAttached):
             case (coll, (agentPath, Attached(revision))) =>
               def detachEvent = detach(coll.aggregate, item.key, agentPath)
 
