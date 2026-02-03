@@ -48,7 +48,7 @@ extends AutoCloseable:
 
   private given IORuntime = ioRuntime
 
-  private val actorSystemLazy = Lazy(newActorSystem(
+  private val actorSystemLazy = Lazy.blocking(newActorSystem(
     "JS7-Proxy",
     executionContext = ioRuntime.compute))
   private lazy val actorSystem = actorSystemLazy()

@@ -29,7 +29,7 @@ trait ServiceProviderRoute:
   private lazy val services: Seq[RouteService] =
     findServices[RouteService]()
 
-  private val lazyServiceProviderRoute = Lazy[Route]:
+  private val lazyServiceProviderRoute = Lazy.blocking[Route]:
     val servicePathRoutes: Seq[(RouteService, String, Route, Set[Permission])] =
       for
         service <- services

@@ -77,7 +77,7 @@ sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
 object Lazy:
 
   def apply[A](eval: => A): Lazy[A] =
-    blocking(eval)
+    nonBlocking(eval)
 
   def blocking[A](eval: => A): Lazy[A] =
     new Lazy(eval, scala.concurrent.blocking(_))
