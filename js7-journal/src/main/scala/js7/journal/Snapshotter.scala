@@ -78,7 +78,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
         totalEventCount = state.totalEventCount,
         totalRunningTime = totalRunningTime.roundUpToNext(1.ms),
         timestamp = clock.now())
-      logger.info(s"Starting new journal file #${journalHeader.generation} ${file.getFileName
+      logger.info(s"STARTING NEW EMPTY JOURNAL file #${journalHeader.generation} ${file.getFileName
         } with a snapshot ${if conf.syncOnCommit then "(using sync)" else "(no sync)"}")
       logger.debug(journalHeader.toString)
 

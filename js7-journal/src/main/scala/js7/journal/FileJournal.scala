@@ -112,8 +112,6 @@ extends
     IO.defer:
       bean.totalOperatingTimeUntilStart := lastJournalHeader.totalRunningTime
       for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
-      if lastJournalHeader.eventId == EventId.BeforeFirst then
-        logger.info("Starting a new empty journal")
       logger.whenTraceEnabled:
         logger.debug("Logger isTraceEnabled=true")
       if conf.slowCheckState then
