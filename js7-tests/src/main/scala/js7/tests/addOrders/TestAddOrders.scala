@@ -81,8 +81,9 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
   private def addOrders(orderIds: Iterable[OrderId]): IO[Checked[Unit]] =
     logger.debugIO:
       controllerApi.addOrders:
-        Stream.iterable(orderIds).map:
-          FreshOrder(_, workflowPath, deleteWhenTerminated = true)
+        Stream.iterable:
+          orderIds.map:
+            FreshOrder(_, workflowPath, deleteWhenTerminated = true)
       .rightAs(())
 
 
@@ -100,8 +101,10 @@ object TestAddOrders:
 
     def onOrdersAdded(duration: FiniteDuration) =
       IO:
+        val line = durationAndPerSecondString(duration, settings.orderCount, "orders added")
+        logger.info(line)
         myPrint("\r" + ClearLine +
-          durationAndPerSecondString(duration, settings.orderCount, "orders added") +
+          line +
           ClearLine + "\n" + ClearLine)
 
     def onStatisticsUpdate(statistics: Statistics) =
