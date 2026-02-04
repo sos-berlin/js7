@@ -499,7 +499,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             chunks =
               chunked.chunks.map: chunk =>
                 byteTotal += chunk.data.size
-                if !dontLog && !logger.isTraceEnabled then
+                if !dontLog && logger.isTraceEnabled then
                   def arrow = if chunk.isLastChunk then lastArrow else msgArrow
                   def string =
                     if isUtf8 then

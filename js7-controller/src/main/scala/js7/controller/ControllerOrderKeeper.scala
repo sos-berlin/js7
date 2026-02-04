@@ -759,14 +759,16 @@ extends Stash, JournalingActor[ControllerState, Event]:
             logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
             Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = true))
           else
-            handleEvents(persisted)
+            handleEvents(persisted) // TODO Do this after AddOrder command has been responded
             Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = false))
         .flatMap: o =>
           testAddOrderDelay.unsafeToFuture().map(_ => o) // test only
 
       case cmd: ControllerCommand.AddOrders =>
+        if cmd.orders.sizeIs >= 1000 then
+          logger.trace(s"AddOrders ${cmd.orders.size} orders")
         executeCommandAndPersistAndHandle(cmd): persisted =>
-          handleEvents(persisted)
+          handleEvents(persisted) // TODO Do this after AddOrder command has been responded
           // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
           orderQueue.enqueue(cmd.orders.view.map(_.id))
           Right(ControllerCommand.AddOrders.Response(persisted.aggregate.eventId))
