@@ -17,6 +17,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.targetName
+import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq
 import scala.language.implicitConversions
@@ -111,6 +112,14 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
         unsafeWrap(array)
       case _ =>
         unsafeWrap(chunk.toArray)
+
+  def newBuilder(sizeInt: Int = -1): Builder
+
+  trait Builder:
+    def isEmpty: Boolean
+    def append(byteSeq: ByteSeq): this.type
+    def clear(): this.type
+    def result(): ByteSeq
 
   /** Fast only when ByteSeq wraps a single Array. */
   def toChunk(byteSeq: ByteSeq): fs2.Chunk[Byte] =

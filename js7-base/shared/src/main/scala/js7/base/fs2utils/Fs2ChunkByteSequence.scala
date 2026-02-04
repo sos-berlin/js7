@@ -24,6 +24,27 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
   def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): Chunk[Byte] =
     Chunk.array(bytes, offset, length)
 
+  def newBuilder(sizeHint: Int): Builder =
+    new Builder:
+      private var builder = Chunk.newBuilder[Byte]
+      private var _isEmpty = true
+
+      def isEmpty =
+        _isEmpty
+
+      def append(chunk: Chunk[Byte]) =
+        if chunk.nonEmpty then
+          builder += chunk
+          _isEmpty = false
+        this
+
+      def clear() =
+        builder = Chunk.newBuilder[Byte]
+        this
+
+      def result() =
+        builder.result
+
   override def isEmpty(chunk: Chunk[Byte])(using @unused Eq: Eq[Chunk[Byte]]): Boolean =
     chunk.isEmpty
 

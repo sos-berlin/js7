@@ -12,6 +12,7 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
 import scala.annotation.unused
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 final class ByteArray private(val unsafeArray: Array[Byte]):
 
@@ -116,6 +117,35 @@ object ByteArray extends ByteSequence[ByteArray]:
       unsafeWrap(bytes)
     else
       unsafeWrap(bytes.slice(offset, offset + length))
+
+  def newBuilder(sizeHint: Int): Builder =
+    // Could be more little efficient by using an own implementation
+    new Builder:
+      private val builder = new mutable.ArrayBuffer[Byte](
+        if sizeHint >= 0 then
+          sizeHint
+        else
+          ArrayBuffer.DefaultInitialSize
+      )
+
+      def isEmpty =
+        builder.isEmpty
+
+      def append(byteArray: ByteArray) =
+        builder.addAll/*efficient?*/(byteArray.unsafeArray)
+        this
+
+      def clear() =
+        builder.clear()
+        this
+
+      def result() =
+        if builder.isEmpty then
+          empty
+        else
+          val array = new Array[Byte](builder.length)
+          builder.copyToArray(array)
+          ByteArray.unsafeWrap(array)
 
   def length(byteArray: ByteArray): Int =
     byteArray.length

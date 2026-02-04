@@ -81,3 +81,21 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
 
   override def parseJson(byteString: ByteString): Checked[Json] =
     byteString.decodeString(UTF_8).parseJson
+
+  def newBuilder(sizeHint: Int): Builder =
+    new Builder:
+      private val builder = ByteString.newBuilder
+
+      def isEmpty =
+        builder.isEmpty
+
+      def append(byteString: ByteString) =
+        builder.append(byteString)
+        this
+
+      def clear() =
+        builder.clear()
+        this
+      
+      def result() =
+        builder.result()
