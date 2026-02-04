@@ -78,7 +78,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       backupController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
           _.request match
-            case ClusterWatchAskNodeLoss(_, _, `backupId`, _: ClusterFailedOver, _, _, _) =>
+            case ClusterWatchAskNodeLoss(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
         .await(99.s)
 
       if stopPrimary then

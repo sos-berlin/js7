@@ -74,8 +74,7 @@ final class ClusterWatchRequestTest extends OurTestSuite:
           from = NodeId("A"),
           ClusterPassiveLost(NodeId.primary),
           ClusterState.PassiveLost(clusterSetting),
-          hold = 7.s,
-          forceWhenUntaught = true),
+          hold = 7.s),
         json"""{
           "TYPE": "ClusterWatchAskNodeLoss",
           "requestId": 123,
@@ -99,8 +98,7 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               }
             }
           },
-          "hold": 7,
-          "forceWhenUntaught": true
+          "hold": 7
         }""")
 
     "ClusterWatchCommitNodeLoss" in:
@@ -110,8 +108,7 @@ final class ClusterWatchRequestTest extends OurTestSuite:
           CorrelId("TESTTEST"),
           from = NodeId("A"),
           ClusterPassiveLost(NodeId.primary),
-          ClusterState.PassiveLost(clusterSetting),
-          forceWhenUntaught = true),
+          ClusterState.PassiveLost(clusterSetting)),
         json"""{
           "TYPE": "ClusterWatchCommitNodeLoss",
           "requestId": 123,
@@ -134,8 +131,7 @@ final class ClusterWatchRequestTest extends OurTestSuite:
                 "heartbeatTimeout": 20
               }
             }
-          },
-          "forceWhenUntaught": true
+          }
         }""")
 
     "ClusterWatchCheckState" in:

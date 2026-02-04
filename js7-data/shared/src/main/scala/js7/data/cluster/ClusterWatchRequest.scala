@@ -67,9 +67,10 @@ final case class ClusterWatchAskNodeLoss(
   from: NodeId,
   event: ClusterNodeLostEvent,
   clusterState: ClusterState.IsNodeLost,
-  hold: FiniteDuration,
-  forceWhenUntaught: Boolean = false)
+  hold: FiniteDuration)
 extends ClusterWatchEventRequest:
+
+  def forceWhenUntaught = false
 
   def maybeEvent: Some[ClusterNodeLostEvent] =
     Some(event)
@@ -83,9 +84,10 @@ final case class ClusterWatchCommitNodeLoss(
   correlId: CorrelId,
   from: NodeId,
   event: ClusterNodeLostEvent,
-  clusterState: ClusterState.IsNodeLost,
-  forceWhenUntaught: Boolean = false)
+  clusterState: ClusterState.IsNodeLost)
 extends ClusterWatchEventRequest:
+
+  def forceWhenUntaught = false
 
   def maybeEvent: Some[ClusterNodeLostEvent] =
     Some(event)

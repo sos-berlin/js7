@@ -35,7 +35,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
       primaryController.testEventBus
         .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterPassiveLost]:
           _.request match
-            case ClusterWatchAskNodeLoss(_, _, _, event: ClusterPassiveLost, _, _, _) => Some(event)
+            case ClusterWatchAskNodeLoss(_, _, _, event: ClusterPassiveLost, _, _) => Some(event)
             case _ => None
         .await(99.s)
 

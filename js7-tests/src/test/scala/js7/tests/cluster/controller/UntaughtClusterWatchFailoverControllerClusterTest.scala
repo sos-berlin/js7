@@ -65,7 +65,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
         backupController.testEventBus
           .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterFailedOver]:
             _.request match
-              case ClusterWatchAskNodeLoss(_, _, _, event: ClusterFailedOver, _, _, _) => Some(event)
+              case ClusterWatchAskNodeLoss(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
               case _ => None
           .await(99.s)
 

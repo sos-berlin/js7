@@ -66,7 +66,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       primaryController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
           _.request match
-            case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _, _) =>
+            case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
         .await(99.s)
 
       if stopBackup then
