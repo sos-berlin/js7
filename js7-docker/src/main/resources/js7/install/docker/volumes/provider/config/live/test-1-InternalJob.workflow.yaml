@@ -32,6 +32,7 @@ instructions:
 jobs:
   JOB-1:
     agentPath: "agent-1"
+    subagentBundleIdExpr: "\"\""
     executable:
       TYPE: "InternalExecutable"
       className: "js7.subagent.jobs.TestJob"
@@ -41,6 +42,7 @@ jobs:
 
   JOB-2:
     agentPath: "agent-1"
+    subagentBundleIdExpr: "\"\""
     executable:
       TYPE: "InternalExecutable"
       className: "js7.subagent.jobs.TestJob"

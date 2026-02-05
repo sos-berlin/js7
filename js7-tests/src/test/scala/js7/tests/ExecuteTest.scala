@@ -26,6 +26,7 @@ import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineP
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.OrderObstacle.{agentProcessLimitReached, jobProcessLimitReached}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
+import js7.data.subagent.SubagentBundleId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -242,6 +243,15 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderOutcome.Succeeded.rc(22),
         OrderOutcome.Succeeded.rc(33)),
       orderArguments = Map("orderExitCode" -> NumberValue(44)))
+
+  // Local Subagent
+  addExecuteTest(
+    Execute:
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(returnCodeScript(0)),
+        subagentBundleId = Some(StringConstant(SubagentBundleId.LocalSubagentString))),
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(0)))
 
   "Execute instruction arguments refer order named values" in:
     val executable = ShellScriptExecutable(

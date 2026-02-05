@@ -106,14 +106,13 @@ object ExecuteExecutor extends
     for
       scope <- engineState.toOrderScope(order)
       job <- engineState.workflowJob(order.workflowPosition)
-      maybeSubagentBundleId <- job.subagentBundleId.traverse(_
-        .evalAsString(using scope)
-        .flatMap(SubagentBundleId.checked))
-      maybeSubagentBundle <- maybeSubagentBundleId
-        .traverse: o =>
-          engineState.keyToItem(SubagentBundle).get(o).map(Right(_))
-            .getOrElse:
-              engineState.keyToItem(SubagentItem).checked(o.toSubagentId)
+      maybeSubagentBundleId <- job.subagentBundleId.flatTraverse:
+        _.evalAsString(using scope).flatMap:
+          SubagentBundleId.checkedOrLocal
+      maybeSubagentBundle <- maybeSubagentBundleId.traverse: bundleId =>
+        engineState.keyToItem(SubagentBundle).get(bundleId)
+          .map(Right(_)).getOrElse:
+            engineState.keyToItem(SubagentItem).checked(bundleId.toSubagentId)
     yield ()
 
   override def nextMove(instruction: Execute, order: Order[Order.State], state: EngineState) =

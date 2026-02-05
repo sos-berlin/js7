@@ -2,6 +2,7 @@ package js7.data.subagent
 
 import js7.base.annotation.javaApi
 import js7.base.auth.UserId
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.delegate.DelegateId
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
@@ -21,6 +22,13 @@ extends UnsignedSimpleItemPath, DelegateId, InventoryItemPath.AttachableToAgent:
 object SubagentBundleId
 extends DelegateId.Companion[SubagentBundleId],
   UnsignedSimpleItemPath.Companion[SubagentBundleId]:
+
+  val LocalSubagentString = ""
+
+  def checkedOrLocal(string: String): Checked[Option[SubagentBundleId]] =
+    string match
+      case LocalSubagentString => Right(None)
+      case _ => checked(string).map(Some(_))
 
   def fromSubagentId(subagentId: SubagentId): SubagentBundleId =
     SubagentBundleId(subagentId.string)

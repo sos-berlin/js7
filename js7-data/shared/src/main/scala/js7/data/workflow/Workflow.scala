@@ -201,13 +201,11 @@ extends VersionedItem, TrivialItemState[Workflow]:
       knownSubagentBundleIds)
 
   private[workflow] def knownSubagentBundleIds: Set[SubagentBundleId] =
-    workflowJobs.view.flatMap(_
-      .subagentBundleId
-      .flatMap(_
-        .evalAsString(using Scope.empty)
-        .flatMap(SubagentBundleId.checked)
-        .toOption))
-      .toSet
+    workflowJobs.view.flatMap:
+      _.subagentBundleId.flatMap:
+        _.evalAsString(using Scope.empty).toOption.flatMap: string =>
+          SubagentBundleId.checkedOrLocal(string).toOption.flatten
+    .toSet
 
   def referencedAgentPaths: Set[AgentPath] =
     workflowJobs.map(_.agentPath).toSet

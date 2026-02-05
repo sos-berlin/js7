@@ -3,9 +3,9 @@ package js7.subagent.director
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.instances.option.*
+import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
-import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import fs2.{Chunk, Stream}
@@ -364,9 +364,13 @@ extends Service.StoppableByRequest:
       for
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toOrderScope(order)
-        jobsBundleId <- job.subagentBundleId
-          .traverse(_.evalAsString(using scope)
-          .flatMap(SubagentBundleId.checked))
+        jobsBundleId <- job.subagentBundleId.traverse:
+          _.evalAsString(using scope)
+            .flatMap:
+              case SubagentBundleId.LocalSubagentString =>
+                Right(SubagentBundleId.fromSubagentId(localSubagentId))
+              case string =>
+                SubagentBundleId.checked(string)
       yield
         determineSubagentBundle(order, agentPath, jobsBundleId)
 
@@ -708,7 +712,6 @@ object SubagentKeeper:
     subagentBundleId: Option[SubagentBundleId],
     subagentDriver: SubagentDriver,
     stick: Boolean)
-
 
   private[director] final case class DeterminedSubagentBundle(
     maybeSubagentBundleId: Option[SubagentBundleId],

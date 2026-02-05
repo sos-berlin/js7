@@ -60,6 +60,9 @@ final class WorkflowPrinter(sb: StringBuilder):
     for o <- job.sigkillDelay do
       sb.append(", sigkillDelay=")
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
+    for o <- job.subagentBundleId do
+      sb.append(", subagentBundleId=")
+      sb.append(o)
     job.executable match
       case executable: ProcessExecutable =>
         executable.returnCodeMeaning match

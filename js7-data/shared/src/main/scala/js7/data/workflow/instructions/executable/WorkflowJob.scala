@@ -47,7 +47,9 @@ final case class WorkflowJob(
     subagentBundleId.fold(Checked.unit): expr =>
       if expr.isPure then
         // A pure expression can be checked beforehand
-        expr.evalAsString(using Scope.empty).flatMap(SubagentBundleId.checked).rightAs(())
+        expr.evalAsString(using Scope.empty).flatMap:
+          SubagentBundleId.checkedOrLocal
+        .rightAs(())
       else
         Checked.unit
 
