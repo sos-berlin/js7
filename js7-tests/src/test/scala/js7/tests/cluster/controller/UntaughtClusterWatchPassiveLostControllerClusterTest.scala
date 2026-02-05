@@ -6,8 +6,8 @@ import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
-import js7.data.cluster.ClusterWatchAskNodeLoss
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
+import js7.data.cluster.{ClusterWatchAskNodeLoss, Confirmer}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 
 final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester:
@@ -41,12 +41,12 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
 
       withClusterWatchService() { (clusterWatch, _) =>
         // ClusterWatch is untaught
-        assert(clusterWatch.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").await(99.s)
+        assert(clusterWatch.manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER")).await(99.s)
           == Left(ClusterNodeIsNotLostProblem(primaryId, "untaught")))
 
         // backupId is lost. Wait until active node has detected it.
         awaitAndAssert(
-          clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER").await(99.s)
+          clusterWatch.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER")).await(99.s)
             != Left(ClusterNodeIsNotLostProblem(backupId, "untaught")))
 
         primaryController.eventWatch.await[ClusterPassiveLost]()

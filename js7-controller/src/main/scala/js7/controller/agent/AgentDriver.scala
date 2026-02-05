@@ -44,8 +44,8 @@ import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired,
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
@@ -399,7 +399,7 @@ extends Service.StoppableByRequest:
 
   def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
     clusterWatchAllocated.checked
-      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
+      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer)))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): IO[Unit] =
     startDirectorDriverFiber

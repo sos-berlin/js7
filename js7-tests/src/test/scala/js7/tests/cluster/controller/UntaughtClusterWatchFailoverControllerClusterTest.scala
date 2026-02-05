@@ -10,7 +10,7 @@ import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
-import js7.data.cluster.{ClusterWatchAskNodeLoss, ClusterWatchId}
+import js7.data.cluster.{ClusterWatchAskNodeLoss, ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
@@ -73,18 +73,18 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
             // ClusterWatch is untaught
             // backupId ist not lost
           assert(clusterWatchService
-            .manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+            .manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER"))
             .await(99.s)
             == Left(ClusterNodeIsNotLostProblem(backupId, "untaught")))
 
           // primaryId is lost. Wait until passive node has detected it.
           awaitAndAssert(
             clusterWatchService
-              .manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+              .manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
               .await(99.s)
               != Left(ClusterNodeIsNotLostProblem(primaryId, "untaught")))
           clusterWatchService
-            .manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+            .manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
             .await(99.s).orThrow
 
           val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
@@ -101,7 +101,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
             == ClusterWatchRegistered(clusterWatchService.clusterWatchId))
 
           assert(clusterWatchService
-            .manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+            .manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER"))
             .await(99.s)
             == Left(ClusterNodeIsNotLostProblem(backupId, "FailedOver(Primary --> Backup)")))
 

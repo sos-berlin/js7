@@ -15,7 +15,7 @@ import js7.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem, UntaughtClusterWatchProblem}
-import js7.data.cluster.{ClusterState, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchRequest}
+import js7.data.cluster.{ClusterState, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchRequest, Confirmer}
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
@@ -194,11 +194,11 @@ final class ClusterWatch(
               .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
   end processRequest2
 
-  private def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
+  private def manuallyConfirmed(event: ClusterNodeLostEvent): Option[Confirmer] =
     _nodeToLossRejected.get(event.lostNodeId).flatMap(_.manuallyConfirmed(event))
 
   // User manually confirms a ClusterNodeLostEvent event
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: Confirmer): IO[Checked[Unit]] =
     logger.debugIO("manuallyConfirmNodeLoss", (lostNodeId, confirmer)):
       lock.lock:
         IO:
@@ -263,11 +263,11 @@ final class ClusterWatch(
 
     def processRequest(
       request: ClusterWatchRequest,
-      manuallyConfirmed: ClusterNodeLostEvent => Option[String],
+      manuallyConfirmed: ClusterNodeLostEvent => Option[Confirmer],
       checkActiveIsLost: ClusterState.HasNodes => IO[Checked[Unit]],
       opString: => String)
       (using now: SyncDeadline.Now)
-    : IO[Checked[(manualConfirmer: Option[String], clusterState: HasNodes)]] =
+    : IO[Checked[(manualConfirmer: Option[Confirmer], clusterState: HasNodes)]] =
       import request.{from, maybeEvent, clusterState as reportedClusterState}
 
       if !request.isSubtypeOf[ClusterWatchAskNodeLoss]
@@ -398,13 +398,13 @@ object ClusterWatch:
   /** ClusterNodeLossEvent has been rejected, but the user may confirm it later. */
   private case class LossRejected(
     event: ClusterNodeLostEvent,
-    manualConfirmer: Option[String] = None):
+    manualConfirmer: Option[Confirmer] = None):
 
-    def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
+    def manuallyConfirmed(event: ClusterNodeLostEvent): Option[Confirmer] =
       manualConfirmer.filter(_ => event == this.event)
 
     override def toString =
       s"LossRejected(${event.toShortString}, confirmer=${manualConfirmer.getOrElse("none")})"
 
 
-  private[watch] final case class Confirmed(manualConfirmer: Option[String] = None)
+  private[watch] final case class Confirmed(manualConfirmer: Option[Confirmer] = None)
