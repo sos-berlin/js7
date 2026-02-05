@@ -32,6 +32,7 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic.extensions.+=
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -514,6 +515,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
             Stream.emit(Left(EndOfJournalFileMarker))
 
           case Right((fileLength, line, journalRecord)) =>
+            val t = System.nanoTime()
             out.write(line.toByteBuffer)
             // Already logged by PekkoHttpClient:
             //logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
@@ -524,6 +526,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
             if isSnapshotTaken then
               ensureEqualState(continuation, recoverer.result())
             recoverer.put(journalRecord)  // throws on invalid event
+            bean.jsonWriteNanos += System.nanoTime() - t
 
             Stream.exec:
               IO.whenA(isSnapshotTaken):

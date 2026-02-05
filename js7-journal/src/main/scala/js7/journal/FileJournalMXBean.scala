@@ -71,7 +71,7 @@ object FileJournalMXBean:
     private[journal] val commitTotal = Atomic(0L)
     private[journal] val flushTotal = Atomic(0L)
     private[journal] val eventCalcNanos = Atomic(0L)
-    private[journal] val jsonWriteNanos = Atomic(0L)
+    private[js7] val jsonWriteNanos = Atomic(0L)
     private[journal] val ackNanos = Atomic(0L)
     private[js7] var activeHeartbeatDelay: FiniteDuration | Null = null
 
