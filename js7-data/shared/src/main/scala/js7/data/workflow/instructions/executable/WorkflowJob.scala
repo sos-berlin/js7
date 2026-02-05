@@ -141,10 +141,7 @@ object WorkflowJob:
             case None => c.get[Option[Expression]]("subagentSelectionIdExpr") // COMPATIBLE with v2.7.1
           .flatMap:
             case Some(expr: Expression) => Right(Some(expr))
-            case None =>
-              c.get[Option[Expression]]("subagentBundleIdExpr").flatMap:
-                case Some(expr) => Right(Some(expr))
-                case None => c.get[Option[Expression]]("subagentBundleIdExpr") // COMPATIBLE with v2.7.1
+            case None => c.get[Option[Expression]]("subagentBundleIdExpr")
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
