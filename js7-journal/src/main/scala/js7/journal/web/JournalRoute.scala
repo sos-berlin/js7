@@ -2,6 +2,7 @@ package js7.journal.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.flatMap.*
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
@@ -42,7 +43,6 @@ trait JournalRoute extends RouteProvider:
   private lazy val maximumStreamingTimeout: Option[FiniteDuration] =
     config.maybeFiniteDuration("js7.web.server.services.event.streaming.timeout").orThrow
 
-
   protected final def journalRoute: Route =
     get:
       pathEnd:
@@ -71,18 +71,18 @@ trait JournalRoute extends RouteProvider:
                         .streamFile(journalPosition,
                           timeout = timeout.merge(maximumStreamingTimeout)(_ min _),
                           markEOF = markEOF, onlyAcks = returnAck)
-                        .map(_.map(_
-                          .interruptWhenF(shutdownSignaled)
-                          .map(if returnAck then toLength else toContent)
-                          .pipeIf(heartbeat.isDefined)(_
-                            .keepAlive(heartbeat.get, IO.pure(PekkoHttpClient.HttpHeartbeatByteArray)))
-                          .map(_.toChunk).unchunks
-                          .chunkLimit(httpChunkSize)
-                          .map(_.toByteString)
-                          //.splitBigByteSeqs(httpChunkSize)
-                          //TODO ? .chunk(httpChunkSize) --> byteStrings.sum(_.length) <= httpChunkSize
-                          /*.map(HttpEntity.Chunk(_))
-                          .toPekkoSourceForHttpResponse*/))
+                        .mapmap:
+                          _.interruptWhenF(shutdownSignaled)
+                            .map(if returnAck then toLength else toContent)
+                            .pipeIf(heartbeat.isDefined):
+                              _.keepAlive(heartbeat.get, IO.pure(PekkoHttpClient.HttpHeartbeatByteArray))
+                            .chunks
+                            .map:
+                              _.map(_.toChunk).flatten
+                            .unchunks
+                            .chunkLimit(httpChunkSize)
+                            .map:
+                              _.toByteString
 
 
 object JournalRoute:

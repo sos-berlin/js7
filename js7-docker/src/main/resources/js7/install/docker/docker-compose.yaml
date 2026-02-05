@@ -18,15 +18,14 @@ services:
     command: [
       "js7-controller",
       "--arg0=js7-controller",
-      "-J-Xmx200m",
-      "--processor-limit=2/10"
+      "-J-Xmx256m",
+      "--processor-limit=5/30"
     ]
     #networks:
     #  - default
     ports:
       - "127.0.0.1:4443:4443"
       - "127.0.0.1:4444:4444"
-    #cpus: 16
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -49,10 +48,9 @@ services:
     command: [
       "js7-controller",
       "--arg0=js7-backup-controller",
-      "-J-Xmx200m",
-      "--processor-limit=1/8"
+      "-J-Xmx256m",
+      "--processor-limit=1/20"
     ]
-    #cpus: 8
     #networks:
     #  - default
     #ports:
@@ -75,10 +73,9 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1a",
-      "-J-Xmx200m",
-      "--processor-limit=4/10"
+      "-J-Xmx256m",
+      "--processor-limit=7/20"
     ]
-    #cpus: 14
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -98,10 +95,9 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1b",
-      "-J-Xmx200m",
-      "--processor-limit=1/4"
+      "-J-Xmx256m",
+      "--processor-limit=3/20"
     ]
-    #cpus: 8
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -121,10 +117,9 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1c",
-      "-J-Xmx200m",
-      "--processor-limit=1/8"
+      "-J-Xmx256m",
+      "--processor-limit=2/20"
     ]
-    #cpus: 4
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -144,10 +139,9 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-2a",
-      "-J-Xmx200m",
-      "--processor-limit=1/8"
+      "-J-Xmx256m",
+      "--processor-limit=1/20"
     ]
-    #cpus: 7
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -173,7 +167,7 @@ services:
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443"
     ]
-    #cpus: 0.5
+    cpus: 0.2
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -198,7 +192,7 @@ services:
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443"
     ]
-    #cpus: 0.5
+    cpus: 0.2
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -225,7 +219,7 @@ services:
       "--processor-limit=1",
       "--controller-uri=https://js7-controller:4443"
     ]
-    #cpus: 0.5
+    cpus: 0.2
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -243,12 +237,12 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy",
-      "-J-Xmx200m",
+      "-J-Xmx256m",
       "--processor-limit=1",
       #"--cluster-watch-id=PROXY",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]
-    #cpus: 2
+    cpus: 0.2
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
@@ -267,12 +261,12 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy-b",
-      "-J-Xmx200m",
+      "-J-Xmx256m",
       "--processor-limit=1",
       #"--cluster-watch-id=PROXY-B",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]
-    #cpus: 1
+    cpus: 0.2
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
