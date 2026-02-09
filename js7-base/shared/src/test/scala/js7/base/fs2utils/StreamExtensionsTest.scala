@@ -63,6 +63,39 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       //assert(stream.fillUpChunks(limit = 3).chunks.toList == List(
       //  Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8, 9, 10), Chunk(11, 12, 13), Chunk(14, 15)))
 
+    "chunkWeighted" - {
+      "empty stream" in :
+        val strings = Stream.empty.covaryOutput[String]
+        val grouped = strings.chunkWeighted(10)(_.length)
+        assert(grouped.toList.isEmpty)
+
+      "single string exceeding limit starts its own chunk" in :
+        val limit = 5
+        val strings = Stream("abcdefgh")
+        val grouped = strings.chunkWeighted(limit)(_.length)
+        assert(grouped.toList == List(Chunk("abcdefgh")))
+
+      "group strings by length" in :
+        val limit = 10
+        val strings = Stream("a", "bb", "ccc", "dddd", "eeeee", "ffffff") ++ Stream("xxxx", "yyyyyyyy")
+
+        val grouped: Stream[Pure, Chunk[String]] =
+          strings.chunkWeighted(limit)(_.length)
+
+        val result = grouped.toList
+
+        // "a" (1), "bb" (2), "ccc" (3), "dddd" (4) -> sum 10 <= 10. Chunk("a", "bb", "ccc", "dddd")
+        // "eeeee" (5), "ffffff" (6) -> sum 11 > 10.
+        //   "eeeee" (5) starts new chunk.
+        //   "ffffff" (6) -> 5 + 6 = 11 > 10. "ffffff" starts new chunk.
+
+        assert(result == List(
+          Chunk("a", "bb", "ccc", "dddd"),
+          Chunk("eeeee"),
+          Chunk("ffffff", "xxxx"),
+          Chunk("yyyyyyyy")))
+    }
+    
     "onStart" in:
       val subscribed = Atomic(0)
       val stream: Stream[IO, Int] =

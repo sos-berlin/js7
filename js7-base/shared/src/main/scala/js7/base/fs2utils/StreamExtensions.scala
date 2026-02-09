@@ -121,15 +121,34 @@ object StreamExtensions:
                 .filter(_.nonEmpty)
               case _ => Stream.empty
 
-    /** Provisional to group elements into chunks, for better throughput. */
-    def chunkProvisional(using Temporal[F]): Stream[F, O] =
-      import ProvisionalAssumptions.streamChunks.elementsPerChunkLimit
-      chunkProvisional(elementsPerChunkLimit)
+    /** Like `chunkN` but returns Chunks until a weighted limit is reached.
+      * <p>
+      *   Upstream big elements will not be split and are returned as is (bigger then limit)
+      * <p>
+      * See also [[Fs2Utils.unfoldEvalWeighted]]
+      */
+    def chunkWeighted(limit: Int)(weight: O => Int): Stream[F, Chunk[O]] =
+      stream.pull.uncons.flatMap:
+        case Some((chunk, next)) =>
+          def go(s: Stream[F, O], acc: VectorBuilder[O], accWeight: Int): Pull[F, Chunk[O], Unit] =
+            s.pull.uncons1.flatMap:
+              case Some((o, next)) =>
+                val w = weight(o)
+                if accWeight + w <= limit || acc.isEmpty then
+                  acc += o
+                  go(next, acc, accWeight + w)
+                else
+                  val chunk = acc.result()
+                  acc.clear()
+                  acc += o
+                  Pull.output1(Chunk.from(chunk)) >> go(next, acc, w)
+              case None =>
+                Pull.output1(Chunk.from(acc.result()))
 
-    /** Provisional to group elements into chunks, for better throughput. */
-    def chunkProvisional(chunkSize: Int)(using Temporal[F]): Stream[F, O] =
-      import ProvisionalAssumptions.streamChunks.groupWithinDelay
-      stream.groupWithin(chunkSize, groupWithinDelay).unchunks
+          go(Stream.chunk(chunk) ++ next, new VectorBuilder[O], 0)
+        case None =>
+          Pull.done
+      .stream
 
     /** Similar to FS2 groupWithin.
      *
