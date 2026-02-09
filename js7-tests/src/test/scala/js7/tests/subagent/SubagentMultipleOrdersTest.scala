@@ -43,7 +43,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
               case OrderProcessingStarted(_, None, false, None) =>
                 OrderProcessingStarted(anySubagentId)
               case o => o
-            } == Seq(
+            } == Vector(
               OrderAdded(workflow.id),
               OrderAttachable(agentPath),
               OrderAttached(agentPath),
