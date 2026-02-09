@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.Show
 import java.math.{MathContext, RoundingMode}
+import java.util.concurrent.TimeUnit.{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, SECONDS}
 import js7.base.convert.As
 import js7.base.utils.Ascii.isAsciiDigit
 import js7.base.utils.ScalaUtils.syntax.*
