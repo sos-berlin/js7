@@ -1,14 +1,15 @@
 package js7.journal.watch
 
 import cats.effect.IO
+import cats.effect.kernel.Sync.Type.Blocking
 import cats.syntax.option.*
 import com.typesafe.config.Config
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import java.nio.file.Path
-import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2Utils.unfoldEvalWeighted
 import js7.base.log.Logger
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -148,17 +149,19 @@ extends AutoCloseable:
   final def snapshot: Stream[IO, Any] =
     JournalReader.snapshot(journalLocation.S, journalFile, expectedJournalId)
 
-  final def rawSnapshot: Stream[IO, ByteArray] =
-    JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
+  final def rawSnapshot(chunkContentLimit: Int): Stream[IO, Chunk[ByteArray]] =
+    JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId,
+      chunkContentLimit = chunkContentLimit)
 
   /** Observes a journal file lines and length. */
   final def streamFile(position: Long, timeout: Option[FiniteDuration],
-    markEOF: Boolean = false, onlyAcks: Boolean)
-  : Stream[IO, PositionAnd[ByteArray]] =
+    markEOF: Boolean = false, onlyAcks: Boolean,
+    chunkContentSize: Int)
+  : Stream[IO, Chunk[PositionAnd[ByteArray]]] =
     for
       jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
       until <- Stream.eval(timeout.fold(IO.none)(t => SyncDeadline.usingNow(now ?=> Some(now + t))))
-      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
+      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks, chunkContentSize)
     yield
       o
 
@@ -168,10 +171,11 @@ extends AutoCloseable:
     position: Long,
     until: Option[SyncDeadline],
     markEOF: Boolean,
-    onlyAcks: Boolean)
-  : Stream[IO, PositionAnd[ByteArray]] =
+    onlyAcks: Boolean,
+    chunkContentSize: Int)
+  : Stream[IO, Chunk[PositionAnd[ByteArray]]] =
     Stream.suspend:
-      def streamNext(position: Long): Stream[IO, PositionAnd[ByteArray]] =
+      def streamNext(position: Long): Stream[IO, Chunk[PositionAnd[ByteArray]]] =
         // Do not logger.streamTrace this nor use onFinished! It would break tail recursion.
         Stream.eval:
           whenDataAvailableAfterPosition(position, until.map(_.toCatsDeadline))
@@ -204,16 +208,15 @@ extends AutoCloseable:
               .concat:
                 (eof && markEOF) ? PositionAnd(lastPosition, EndOfJournalFileMarker)
 
-            Stream.fromIterator[IO](
-                iterator,
-                chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit)
-              .append:
-                // To be sure, .append must be lazy for lastPosition and
-                // to avoid heap and stack consumption
-                if eof then
-                  Stream.empty
-                else
-                  streamNext(lastPosition)
+            unfoldEvalWeighted[PositionAnd[ByteArray]](chunkContentSize, _.value.length, Blocking):
+              iterator.hasNext ? iterator.next()
+            .append:
+              // To be sure, .append must be lazy for lastPosition and
+              // to avoid heap and stack consumption
+              if eof then
+                Stream.empty
+              else
+                streamNext(lastPosition)
 
       jsonSeqReader.seek(position)
       streamNext(position)

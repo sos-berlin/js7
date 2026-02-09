@@ -97,7 +97,7 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
       val iterator = Iterator("", "abcdefghijk", "123456789ABC", "abcdefghijk")
       unfoldEvalWeighted[String](10, _.length)[IO]:
         iterator.hasNext ? iterator.next
-      .chunks.compile.toList.map: chunks =>
+      .compile.toList.map: chunks =>
         assert(chunks == List(
           fs2.Chunk("", "abcdefghijk"),
           fs2.Chunk("123456789ABC"),
@@ -108,7 +108,7 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
         Iterator("", "a", "bc", "def", "ghij", "klmnop", "", "xy", "", "123456789ABC", "Z")
       unfoldEvalWeighted[String](10, _.length)[IO]:
         iterator.hasNext ? iterator.next
-      .chunks.compile.toList.map: chunks =>
+      .compile.toList.map: chunks =>
         assert(chunks == List(
           fs2.Chunk("", "a", "bc", "def", "ghij"),
           fs2.Chunk("klmnop", "", "xy", ""),

@@ -132,10 +132,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
     getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
-      _.map:
-        case HttpHeartbeatByteArray => heartbeatAsChunk
-        case o => fs2.Chunk.singleton(o)
-      .unchunks
+      _.mapChunks: chunk =>
+        chunk.flatMap:
+          case HttpHeartbeatByteArray => heartbeatAsChunk
+          case o => fs2.Chunk.singleton(o)
       .mapParallelBatch(prefetch = myPrefetch):
         _.parseJsonAs[A].orThrow
 
@@ -166,11 +166,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         // See above Pekko's stream.idleTimout
         //.pipeMaybe(idleTimeout): (stream, t) =>
         //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(uri, t)))
-        .map:
-          _.flatMap:
-            case HttpHeartbeatByteArray => heartbeatAsChunk
-            case o => fs2.Chunk.singleton(o)
-        .unchunks
+        .mapChunks: chunks =>
+          chunks.flatMap: chunk =>
+            chunk.flatMap:
+              case HttpHeartbeatByteArray => heartbeatAsChunk
+              case o => fs2.Chunk.singleton(o)
         .recoverWith:
           ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded)
       .recover(ignoreIdleTimeout)

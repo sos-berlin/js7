@@ -562,7 +562,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                     lastProperEventPosition = fileLength
             .append:
               if isReplicatingHeadOfFile then
-                Stream.emit(Right(()))
+                Stream.empty
               else
                 if recoverer.isInCommittedEventsSection then
                   // An open transaction may be rolled back, so we do not notify about these events
@@ -573,7 +573,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                 journalRecord match
                   case JournalSeparators.Commit =>
                     eventWatch.onEventsCommitted(PositionAnd(fileLength, recoverer.eventId), 1)
-                    Stream.emit(Right(()))
+                    Stream.empty
 
                   case Stamped(_, _, KeyedEvent(_, event)) =>
                     bean.addEventCount(1)
@@ -624,20 +624,19 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                             awaitingCoupledEvent = false
                             Stream.exec:
                               releaseEvents
-                            .as(Right(()))
 
                           case ClusterResetStarted =>
                             assertThat(activeId != ownId)
-                            Stream.eval(IO
-                              .sleep(1.s) // Allow event acknowledgment !!!
-                              .as(Left(PassiveClusterNodeResetProblem)))
+                            Stream.eval:
+                              IO.sleep(1.s) // Allow event acknowledgment !!!
+                            .as(Left(PassiveClusterNodeResetProblem))
 
                           case _ =>
-                            Stream.emit(Right(()))
+                            Stream.empty
                       case _ =>
-                        Stream.emit(Right(()))
+                        Stream.empty
                   case _ =>
-                    Stream.emit(Right(()))
+                    Stream.empty
         .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
         .takeThrough(_ => !shouldActivate(recoverer.clusterState))
         .recoverWith:

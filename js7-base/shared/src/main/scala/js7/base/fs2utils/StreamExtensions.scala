@@ -11,6 +11,9 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, Monoid, effect}
 import fs2.{Chunk, Pull, RaiseThrowable, Stream}
+import js7.base.data.ByteSequence
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
@@ -122,7 +125,7 @@ object StreamExtensions:
                 .filter(_.nonEmpty)
               case _ => Stream.empty
 
-    /** Like `chunkN` but returns Chunks until a weighted limit is reached.
+  /** Like `chunkN` but returns Chunks until a weighted limit is reached.
       * <p>
       *   Upstream big elements will not be split and are returned as is (bigger then limit)
       * <p>
@@ -377,6 +380,19 @@ object StreamExtensions:
   extension[F[_]](stream: Stream[F, Char])
     def charToString: Stream[F, String] =
       stream.chunks.map(_.convertToString)
+
+
+  extension[F[_]](stream: Stream[F, Chunk[Byte]])
+    def rechunkBytes(limit: Int): Stream[F, Chunk[Byte]] =
+      stream.combineWeightedInChunk(limit)(_.length)
+        .unchunks
+        .chunkLimit(limit)
+
+
+  extension[F[_], ByteSeq: ByteSequence](stream: Stream[F, Chunk[ByteSeq]])
+    def chunkLimitBytes(limit: Int): Stream[F, Chunk[Byte]] =
+      stream.mapChunks(_.flatMap(_.flatMap(_.toChunk)))
+        .chunkLimit(limit)
 
 
   extension[A](stream: Stream[IO, A])

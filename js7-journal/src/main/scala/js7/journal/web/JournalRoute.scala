@@ -2,14 +2,13 @@ package js7.journal.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.flatMap.*
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, interruptWhenF}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient
@@ -25,6 +24,7 @@ import js7.journal.web.JournalRoute.*
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
+import scala.util.chaining.scalaUtilChainingOps
 
 // TODO Similar to GenericEventRoute
 // Test is Controller's JournalRouteTest
@@ -67,22 +67,19 @@ trait JournalRoute extends RouteProvider:
                   case Left(problem) => complete(problem)
                   case Right((journalPosition, returnAck)) =>
                     completeWithCheckedStream(JournalContentType):
-                      eventWatch
-                        .streamFile(journalPosition,
+                      eventWatch.streamFile(journalPosition,
                           timeout = timeout.merge(maximumStreamingTimeout)(_ min _),
-                          markEOF = markEOF, onlyAcks = returnAck)
+                          markEOF = markEOF, onlyAcks = returnAck,
+                          chunkContentSize = httpChunkSize)
                         .mapmap:
                           _.interruptWhenF(shutdownSignaled)
-                            .map(if returnAck then toLength else toContent)
+                            .map: chunk =>
+                              if returnAck then chunk.map(toLength) else chunk.map(_.value)
                             .pipeIf(heartbeat.isDefined):
-                              _.keepAlive(heartbeat.get, IO.pure(PekkoHttpClient.HttpHeartbeatByteArray))
-                            .chunks
-                            .map:
-                              _.map(_.toChunk).flatten
-                            .unchunks
-                            .chunkLimit(httpChunkSize)
-                            .map:
-                              _.toByteString
+                              _.keepAlive(heartbeat.get,
+                                IO.pure(fs2.Chunk.singleton(PekkoHttpClient.HttpHeartbeatByteArray)))
+                            .chunkLimitBytes(httpChunkSize)
+                            .map(_.toByteString)
 
 
 object JournalRoute:
@@ -93,9 +90,6 @@ object JournalRoute:
       case "" => Right(false)
       case "ack" => Right(true)
       case _ => Left(Problem(s"Invalid parameter: return=$returnType"))
-
-  private def toContent(o: PositionAnd[ByteArray]) =
-    o.value
 
   private def toLength(o: PositionAnd[ByteArray]): ByteArray =
     if o.value != EndOfJournalFileMarker then

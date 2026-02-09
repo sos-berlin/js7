@@ -239,21 +239,19 @@ extends AutoCloseable,
     checkedCurrentEventReader.orThrow.onEventsCommitted(positionAndEventId, n = n)
     onEventsCommitted(positionAndEventId.value)
 
-  def snapshotAfter(after: EventId): Option[Stream[IO, Any]] =
-    rawSnapshotAfter(after)
-      .map(_.mapParallelBatch():
-        _.parseJsonAs(using journalLocation.snapshotObjectJsonCodec).orThrow)
+  def snapshotAfter(after: EventId, chunkContentLimit: Int): Option[Stream[IO, Any]] =
+    rawSnapshotAfter(after, chunkContentLimit).map:
+      _.unchunks.mapParallelBatch():
+        _.parseJsonAs(using journalLocation.snapshotObjectJsonCodec).orThrow
 
-  def rawSnapshotAfter(after: EventId): Option[Stream[IO, ByteArray]] =
+  def rawSnapshotAfter(after: EventId, chunkContentLimit: Int): Option[Stream[IO, fs2.Chunk[ByteArray]]] =
     maybeCurrentEventReader match
       case Some(current) if current.fileEventId <= after =>
-        Some(current.rawSnapshot)
+        Some(current.rawSnapshot(chunkContentLimit))
       case _ =>
-        historicJournalFileAfter(after)
-          .map { historicJournalFile =>
-            logger.debug(s"Reading snapshot from $historicJournalFile")
-            historicJournalFile.eventReader.rawSnapshot
-          }
+        historicJournalFileAfter(after).map: historicJournalFile =>
+          logger.debug(s"Reading snapshot from $historicJournalFile")
+          historicJournalFile.eventReader.rawSnapshot(chunkContentLimit)
 
   /**
     * @return `IO(None)` torn, `after` < `tornEventId`
@@ -304,8 +302,8 @@ extends AutoCloseable,
     checkedCurrentEventReader.map(_.journalPosition)
 
   def streamFile(journalPosition: JournalPosition,
-    timeout: Option[FiniteDuration], markEOF: Boolean, onlyAcks: Boolean)
-  : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]] =
+    timeout: Option[FiniteDuration], markEOF: Boolean, onlyAcks: Boolean, chunkContentSize: Int)
+  : IO[Checked[Stream[IO, fs2.Chunk[PositionAnd[ByteArray]]]]] =
     IO.defer:
       import journalPosition.{fileEventId, position}
 
@@ -321,7 +319,10 @@ extends AutoCloseable,
               case None =>
                 Right(Stream.empty) // JournalEventWatch has been closed
               case Some(currentEventReader) =>
-                Right(currentEventReader.streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+                Right:
+                  currentEventReader.streamFile(position, timeout,
+                    markEOF = markEOF, onlyAcks = onlyAcks,
+                    chunkContentSize = chunkContentSize)
 
           case _ =>
             val maybeEventReader = maybeCurrentEventReader
@@ -335,17 +336,18 @@ extends AutoCloseable,
                 IO.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
 
               case Some(eventReader) =>
-                IO(Right(eventReader
-                  .streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
-                  .pipeIf(onlyAcks)(_
-                    // Never acknowledge events written by this active cluster node
-                    // to other wanna-be active nodes!
-                    // We could acknowledge events until failover, but it's not worth it,
-                    // because the wanna-be active node should shut down immediately.
-                    //.takeWhile(_ => !_isActiveNode)
-                    .evalTap(_ => IO.whenA(isActiveNode):
-                      logger.warn(AckFromActiveClusterNodeProblem.toString)
-                      IO.raiseError(AckFromActiveClusterNodeProblem.throwable)))))
+                IO(Right:
+                  eventReader.streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks,
+                      chunkContentSize = chunkContentSize)
+                    .pipeIf(onlyAcks)(_
+                      // Never acknowledge events written by this active cluster node
+                      // to other wanna-be active nodes!
+                      // We could acknowledge events until failover, but it's not worth it,
+                      // because the wanna-be active node should shut down immediately.
+                      //.takeWhile(_ => !_isActiveNode)
+                      .evalTap(_ => IO.whenA(isActiveNode):
+                        logger.warn(AckFromActiveClusterNodeProblem.toString)
+                        IO.raiseError(AckFromActiveClusterNodeProblem.throwable))))
 
   private def lastEventId =
     synchronized:

@@ -90,14 +90,15 @@ trait RealEventWatch extends EventWatch:
                   val stream = closeableIteratorToStream(
                     iterator,
                     chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit
-                  ).map: o =>
-                    lastEventId = o.eventId
-                    limit -= 1
-                    o
+                  ).mapChunks: chunk =>
+                    chunk.last.foreach: stamped =>
+                      lastEventId = stamped.eventId
+                    limit -= chunk.size
+                    chunk
                   // Closed-over lastEventId and limit are updated as stream is consumed,
                   // therefore defer access to final values (see above)
                   Some((stream, IO(request.copy[E](
-                    after = lastEventId, limit = limit, timeout = originalTimeout))))
+                    after = lastEventId, limit = limit max 0, timeout = originalTimeout))))
     .flatten
 
   final def streamEventIds(maybeTimeout: Option[FiniteDuration] = None)

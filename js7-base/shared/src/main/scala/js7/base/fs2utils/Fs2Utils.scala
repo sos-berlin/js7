@@ -6,6 +6,7 @@ import cats.syntax.monoid.*
 import fs2.{Chunk, Pipe}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
@@ -58,6 +59,9 @@ object Fs2Utils:
   /** Like [[fs2.Stream.unfoldChunkEval]] but returns Chunks until a weighted limit is reached.
     * <p>
     * Upstream big elements will not be split and are returned as is (bigger then limit)
+    *
+    * @param limit The weight limit, must be > 0
+    * @param weight The weight of an element, must be >= 0
     */
   def unfoldEvalWeighted[O](
     limit: Int,
@@ -65,17 +69,19 @@ object Fs2Utils:
     hint: Sync.Type = Sync.Type.Delay)
     [F[_]: Sync as F]
     (next: => Option[O])
-  : fs2.Stream[F, O] =
+  : fs2.Stream[F, Chunk[O]] =
     fs2.Stream.suspend:
+      assertThat(limit > 0)
       val builder = new VectorBuilder[O]
       var accWeight = 0L
-      fs2.Stream.unfoldChunkEval(()): _ =>
+      fs2.Stream.unfoldEval(()): _ =>
         F.suspend(hint):
           @tailrec def loop(): Vector[O] =
             next match
               case None => Vector.empty
               case Some(o) =>
-                val oWeight = weight(o) max 0
+                val oWeight = weight(o)
+                assertThat(oWeight >= 0)
                 val w = accWeight + oWeight
                 if w < limit then
                   builder += o
@@ -98,4 +104,5 @@ object Fs2Utils:
           result.nonEmpty ? (fs2.Chunk.from(result) -> ())
       .append:
         // lazily add the remaining carry
-        fs2.Stream.iterable(builder.result())
+        fs2.Stream.iterable:
+          builder.nonEmpty ? fs2.Chunk.from(builder.result())

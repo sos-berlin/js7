@@ -1,8 +1,5 @@
 package js7.base
 
-import js7.base.time.ScalaTime.DurationRichInt
-import scala.concurrent.duration.FiniteDuration
-
 object ProvisionalAssumptions:
 
   /** Use for Stream#chunkProvisional extension method.
@@ -15,4 +12,3 @@ object ProvisionalAssumptions:
     private val heapLimit = 100_000_000 // Bytes
 
     val elementsPerChunkLimit: Int = heapLimit / elementSizeLimit
-    val groupWithinDelay: FiniteDuration = 10.ms

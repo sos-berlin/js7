@@ -1,13 +1,15 @@
 package js7.journal.recover
 
+import cats.effect.kernel.Sync.Type.Blocking
 import cats.effect.{IO, Resource}
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import io.circe.Json
 import java.nio.file.Path
 import js7.base.ProvisionalAssumptions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2Utils.unfoldEvalWeighted
 import js7.base.fs2utils.StreamExtensions.{+:, mapParallelBatch}
 import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.closeOnError
@@ -74,12 +76,11 @@ extends AutoCloseable:
             chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit)
           .mapParallelBatch()(json => S.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
 
-  private[recover] def readSnapshotRaw: Stream[IO, ByteArray] =
+  private[recover] def readSnapshotRaw(chunkContentLimit: Int): Stream[IO, Chunk[ByteArray]] =
     synchronized:
-      rawJournalHeader.value +:
-        Stream.fromIterator[IO](
-          untilNoneIterator(nextSnapshotRaw().map(_.value)),
-          chunkSize = 1/*???*/)
+      fs2.Chunk.singleton(rawJournalHeader.value) +:
+        unfoldEvalWeighted[ByteArray](chunkContentLimit, _.length, Blocking)[IO]:
+          nextSnapshotRaw().map(_.value)
 
   private def nextSnapshotJson(): Option[Json] =
     nextSnapshotRaw().map(jsonReader.toJson).map(_.value)
@@ -219,9 +220,13 @@ object JournalReader:
   : Stream[IO, Any] =
     snapshot_(_.readSnapshot)(S, journalFile, expectedJournalId)
 
-  def rawSnapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
-  : Stream[IO, ByteArray] =
-    snapshot_(_.readSnapshotRaw)(S, journalFile, expectedJournalId)
+  def rawSnapshot(
+    S: SnapshotableState.HasCodec,
+    journalFile: Path,
+    expectedJournalId: JournalId,
+    chunkContentLimit: Int)
+  : Stream[IO, Chunk[ByteArray]] =
+    snapshot_(_.readSnapshotRaw(chunkContentLimit))(S, journalFile, expectedJournalId)
 
   private def snapshot_[A](f: JournalReader => Stream[IO, A])
     (S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)

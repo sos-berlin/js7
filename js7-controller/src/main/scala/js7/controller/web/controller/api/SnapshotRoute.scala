@@ -5,9 +5,10 @@ import cats.effect.unsafe.IORuntime
 import io.circe.Encoder
 import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.data.ByteSequence.ops.*
+import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, interruptWhenF}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -54,7 +55,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
             .interruptWhenF(shutdownSignaled)
 
   private def historicSnapshot(eventId: EventId): Route =
-    eventWatch.rawSnapshotAfter(after = eventId) match
+    eventWatch.rawSnapshotAfter(after = eventId, chunkContentLimit = httpChunkSize) match
       case None =>
         complete(SnapshotForUnknownEventIdProblem(eventId))
 
@@ -63,8 +64,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
           ioRoute:
             completeWithIOStream(`application/x-ndjson`):
               stream
-                .map(_.toChunk)
-                .unchunks
-                .chunkLimit(httpChunkSize)  // TODO Maybe fill-up chunks
+                .mapChunks(_.flatMap(_.flatMap(_.toChunk)))
+                .chunkN(httpChunkSize)
                 .map(_.toByteString)
                 .interruptWhenF(shutdownSignaled)

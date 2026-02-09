@@ -74,9 +74,10 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             .await(99.s).strict
 
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.streamFile(journalPosition, timeout = 0.s.some)
+          eventWatch.streamFile(journalPosition, timeout = 0.s.some, chunkContentSize = 1)
             .await(99.s)
             .orThrow
+            .unchunks
             .map(o => o.value.utf8String.parseJson.orThrow)
             .tail
             .compile.toList
@@ -330,7 +331,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
           eventWatch.onEventsCommitted(writer.lastWrittenEventId)
 
-          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst, chunkContentLimit = 1): @unchecked
           // Contains only JournalHeader
           assert(stream.compile.toList.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
       }
@@ -344,25 +345,25 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         eventWatch.onJournalingStarted(journalLocation.file(after), journalId,
           lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally:
-          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst, chunkContentLimit = 1): @unchecked
           // Contains only JournalHeader
           assert(stream.compile.toList.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         locally:
-          val Some(stream) = eventWatch.snapshotAfter(99L): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(99L, chunkContentLimit = 1): @unchecked
           // Contains only JournalHeader
           assert(stream.compile.toList.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         locally:
-          val Some(stream) = eventWatch.snapshotAfter(100L): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(100L, chunkContentLimit = 1): @unchecked
           assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
           }.compile.toList.await(99.s) == 100L :: snapshotObjects)
         locally:
-          val Some(stream) = eventWatch.snapshotAfter(101L): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(101L, chunkContentLimit = 1): @unchecked
           assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
@@ -376,17 +377,21 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
 
   "streamFile" in:
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s.some).await(99.s)
-        == Left(Problem("Unknown journal file=123")))
+      assert:
+        eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s.some, chunkContentSize = 1)
+          .await(99.s)
+          == Left(Problem("Unknown journal file=123"))
 
       val jsons = mutable.Buffer[Json]()
       val observing = eventWatch
-        .streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s.some)
+        .streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s.some,
+          chunkContentSize = 1)
         .await(99.s)
         .orThrow
         .handleErrorWith:
           case _: EventReader.TimeoutException => Stream.empty
           case t => Stream.raiseError[IO](t)
+        .unchunks
         .foreach(o => IO:
           jsons += o.value.utf8String.parseJsonOrThrow)
         .compile.drain

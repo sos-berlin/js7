@@ -177,8 +177,9 @@ object JournaledProxy:
           idleTimeout = recouplingStreamReaderConf.timeout)
         .map:
           _.recoverWith(PekkoHttpClient.warnIdleTimeout)
-        .flatTap(_ => IO:
-          addToTornOlder = ZeroDuration)
+        .map: o =>
+          addToTornOlder = ZeroDuration
+          o
 
     override def onCoupled(api: RequiredApi_[S], after: EventId) =
       IO:

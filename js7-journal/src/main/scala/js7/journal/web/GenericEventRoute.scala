@@ -10,6 +10,7 @@ import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.Environment
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.configutils.Configs.RichConfig
+import js7.base.data.ByteArray.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -21,11 +22,11 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
 import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeParallel}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeJson}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
-import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.web.serviceprovider.StampedEventFilter
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
@@ -42,7 +43,6 @@ import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
-
 /**
   * @author Joacim Zschimmer
   */
@@ -153,7 +153,7 @@ trait GenericEventRoute extends RouteProvider:
             eventWatch.checkEventId(request.after, request.tornOlder) >> Right:
               eventStream(request, isRelevantEvent, eventWatch, maybeServerMetering)
                 .through:
-                  encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                  encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch)
                 // Heartbeat only if it's faster then serverMetering
                 .pipeMaybe(maybeHeartbeat.filter(h => maybeServerMetering.forall(h < _))):
                   (stream, h) =>
@@ -189,7 +189,7 @@ trait GenericEventRoute extends RouteProvider:
                 .append:
                   eventStream(tailRequest, isRelevantEvent, eventWatch)
                 .through:
-                  encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                  encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch)
                 .interruptWhenF(shutdownSignaled)
 
     private def eventStream(
@@ -198,6 +198,7 @@ trait GenericEventRoute extends RouteProvider:
       eventWatch: EventWatch,
       serverMetering: Option[FiniteDuration] = None)
     : Stream[IO, Stamped[AnyKeyedEvent]] =
+      // TODO Don't use Scala classes, use ByteArrays directly. Don't filter. Simplify EventRequest
       filterStream:
         eventWatch.stream(request, predicate)
           .pipeMaybe(serverMetering): (stream, serverMetering) =>

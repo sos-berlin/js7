@@ -7,11 +7,11 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.fs2utils.StreamExtensions.rechunkBytes
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.utils.Assertions.assertThat
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
 import js7.common.http.StreamingSupport.*
@@ -27,6 +27,7 @@ import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Dire
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
+import scala.util.chaining.scalaUtilChainingOps
 
 /**
   * @author Joacim Zschimmer
@@ -253,7 +254,7 @@ object PekkoHttpServerUtils:
   : Route =
     completeWithCheckedStream(`application/x-ndjson`):
       stream.map(_.map:
-        _.through(encodeParallel(httpChunkSize = chunkSize, prefetch = prefetch)))
+        _.through(encodeJson(httpChunkSize = chunkSize, prefetch = prefetch)))
 
   def completeWithCheckedStream(contentType: ContentType)
     (checkedStream: IO[Checked[Stream[IO, ByteString]]])
@@ -317,14 +318,16 @@ object PekkoHttpServerUtils:
     keepAlive: FiniteDuration,
     prefetch: Int = 0)
   : Pipe[IO, A, ByteString] =
-    _.through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
+    _.through(encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch))
       .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
 
-  def encodeParallel[A: Encoder](httpChunkSize: Int, prefetch: Int = 0)
-  : Pipe[IO, A, ByteString] =
-    _.mapParallelBatch(/*responsive = true,*//* prefetch = prefetch*/)(_
-        .asJson
-        .toByteSequence[fs2.Chunk[Byte]] ++ fs2.Chunk.singleton('\n'.toByte))
-      .unchunks
-      .chunkLimit(httpChunkSize)
-      .map(_.toByteSequence[ByteString])
+  def encodeJson[A: Encoder](httpChunkSize: Int, prefetch: Int = 0): Pipe[IO, A, ByteString] =
+    _.mapChunks: chunk =>
+      chunk.map: a =>
+        a.asJson.toByteSequence[fs2.Chunk[Byte]] ++ LFChunk
+    .rechunkBytes(httpChunkSize)
+    .map:
+      _.toByteString
+        .tap(byteString => assertThat(byteString.length <= httpChunkSize))
+
+  private val LFChunk: fs2.Chunk[Byte] = fs2.Chunk.singleton('\n')
