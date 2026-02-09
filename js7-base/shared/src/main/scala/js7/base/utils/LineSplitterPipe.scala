@@ -7,12 +7,11 @@ import js7.base.data.{ByteArray, ByteSequence}
   * Splits a stream of UTF-8-encoded ByteSeqs into lines, separated by LF.
   */
 final class LineSplitterPipe[F[_], ByteSeq](using ByteSeq: ByteSequence[ByteSeq])
-extends Pipe[F, ByteSeq, ByteArray]:
+extends Pipe[F, ByteSeq, Chunk[ByteArray]]:
 
   private val byteSeqToLines = LineSplitter[ByteSeq]
 
-  def apply(stream: Stream[F, ByteSeq]): Stream[F, ByteArray] =
+  def apply(stream: Stream[F, ByteSeq]): Stream[F, Chunk[ByteArray]] =
     stream.map: byteSeq =>
       Chunk.from(byteSeqToLines(byteSeq))
     .filter(_.nonEmpty)
-    .unchunks

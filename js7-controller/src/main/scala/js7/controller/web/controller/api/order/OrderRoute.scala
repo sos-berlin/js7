@@ -83,6 +83,7 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
           _.map { o => byteCount += o.length; o }
         .through:
           LineSplitterPipe()
+        .unchunks
         .mapParallelBatch(prefetch = prefetch):
           _.parseJsonAs[FreshOrder]
         .compile
@@ -128,7 +129,9 @@ trait OrderRoute extends ControllerRouteProvider, EntitySizeLimitProvider:
           completeIO:
             httpEntity.dataBytes
               .asFs2Stream(bufferSize = prefetch)
-              .through(LineSplitterPipe())
+              .through:
+                LineSplitterPipe()
+              .unchunks
               .mapParallelBatch():
                 _.parseJsonAs[OrderId].orThrow
               .compile

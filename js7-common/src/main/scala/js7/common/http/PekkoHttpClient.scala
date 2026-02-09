@@ -166,10 +166,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         // See above Pekko's stream.idleTimout
         //.pipeMaybe(idleTimeout): (stream, t) =>
         //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(uri, t)))
-        .mapChunks: 
+        .map:
           _.flatMap:
             case HttpHeartbeatByteArray => heartbeatAsChunk
             case o => fs2.Chunk.singleton(o)
+        .unchunks
         .recoverWith:
           ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded)
       .recover(ignoreIdleTimeout)

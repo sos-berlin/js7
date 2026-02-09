@@ -56,6 +56,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
               .asFs2Stream(bufferSize = prefetch)
               .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
               .through(LineSplitterPipe())
+              .unchunks
               .mapParallelBatch():
                 _.parseJsonAs[ItemOperation].orThrow
             VerifiedUpdateItems.fromOperations(operations, verify, user)

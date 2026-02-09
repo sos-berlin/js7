@@ -204,7 +204,9 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       response.entity.withoutSizeLimit.dataBytes
         .asFs2Stream()
-        .through(LineSplitterPipe())
+        .through:
+          LineSplitterPipe()
+        .unchunks
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .compile.toList
         .await(99.s)
