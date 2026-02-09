@@ -93,10 +93,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     eventWatch.awaitNext[OrderFinished](_.key == orderId)
 
     /// Delete the FileWatch ///
+    val eventId = controller.lastAddedEventId
     controller.api.updateItems(Stream(DeleteSimple(fileWatch.path))).await(99.s).orThrow
-    eventWatch.awaitNext[OrderDeleted](_.key == orderId)
+    eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == fileWatch.path, after = eventId)
     delete(file)
-    eventWatch.awaitNext[ItemDeleted](_.event.key == fileWatch.path)
 
     updateItems(fileWatch)
     eventWatch.awaitNext[ItemAttached](_.event.key == fileWatch.path)
