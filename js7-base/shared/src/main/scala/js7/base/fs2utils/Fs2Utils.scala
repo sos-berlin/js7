@@ -1,10 +1,14 @@
 package js7.base.fs2utils
 
 import cats.effect.IO
+import cats.effect.kernel.Sync
 import cats.syntax.monoid.*
 import fs2.{Chunk, Pipe}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.utils.ScalaUtils.syntax.*
+import scala.annotation.tailrec
+import scala.collection.immutable.VectorBuilder
 
 object Fs2Utils:
 
@@ -50,3 +54,48 @@ object Fs2Utils:
         case (builder, _, chunk) if chunk.nonEmpty => chunk
         //case x => Chunk.empty
       .unchunks
+
+  /** Like [[fs2.Stream.unfoldChunkEval]] but returns Chunks until a weighted limit is reached.
+    * <p>
+    * Upstream big elements will not be split and are returned as is (bigger then limit)
+    */
+  def unfoldEvalWeighted[O](
+    limit: Int,
+    weight: O => Int,
+    hint: Sync.Type = Sync.Type.Delay)
+    [F[_]: Sync as F]
+    (next: => Option[O])
+  : fs2.Stream[F, O] =
+    fs2.Stream.suspend:
+      val builder = new VectorBuilder[O]
+      var accWeight = 0L
+      fs2.Stream.unfoldChunkEval(()): _ =>
+        F.suspend(hint):
+          @tailrec def loop(): Vector[O] =
+            next match
+              case None => Vector.empty
+              case Some(o) =>
+                val oWeight = weight(o) max 0
+                val w = accWeight + oWeight
+                if w < limit then
+                  builder += o
+                  accWeight = w
+                  loop()
+                else
+                  if w == limit || accWeight == 0 then
+                    builder += o
+                    val result = builder.result()
+                    builder.clear()
+                    accWeight = 0
+                    result
+                  else
+                    val result = builder.result()
+                    builder.clear()
+                    builder += o // Carry over
+                    accWeight = oWeight
+                    result
+          val result = loop()
+          result.nonEmpty ? (fs2.Chunk.from(result) -> ())
+      .append:
+        // lazily add the remaining carry
+        fs2.Stream.iterable(builder.result())

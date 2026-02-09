@@ -1,11 +1,13 @@
 package js7.base.fs2utils
 
-import fs2.{Pure, Stream, Chunk}
+import cats.effect.IO
+import fs2.{Chunk, Pure, Stream}
 import js7.base.data.ByteArray
-import js7.base.fs2utils.Fs2Utils.combineByteSeqs
-import js7.base.test.OurTestSuite
+import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, unfoldEvalWeighted}
+import js7.base.test.OurAsyncTestSuite
+import js7.base.utils.ScalaUtils.syntax.*
 
-final class Fs2UtilsTest extends OurTestSuite:
+final class Fs2UtilsTest extends OurAsyncTestSuite:
 
   "combineByteSeqs" - {
     "empty" in:
@@ -81,4 +83,35 @@ final class Fs2UtilsTest extends OurTestSuite:
 
     def line(string: String) =
       ByteArray(string + "\n")
+  }
+
+  "unfoldEvalWeighted" - {
+    "Empty" in:
+      val iterator = Iterator.empty[String]
+      unfoldEvalWeighted[String](10, _.length)[IO]:
+        iterator.hasNext ? iterator.next
+      .compile.toList.map: list =>
+        assert(list.isEmpty)
+
+    "Big Strings" in:
+      val iterator = Iterator("", "abcdefghijk", "123456789ABC", "abcdefghijk")
+      unfoldEvalWeighted[String](10, _.length)[IO]:
+        iterator.hasNext ? iterator.next
+      .chunks.compile.toList.map: chunks =>
+        assert(chunks == List(
+          fs2.Chunk("", "abcdefghijk"),
+          fs2.Chunk("123456789ABC"),
+          fs2.Chunk("abcdefghijk")))
+
+    "Standard" in:
+      val iterator =
+        Iterator("", "a", "bc", "def", "ghij", "klmnop", "", "xy", "", "123456789ABC", "Z")
+      unfoldEvalWeighted[String](10, _.length)[IO]:
+        iterator.hasNext ? iterator.next
+      .chunks.compile.toList.map: chunks =>
+        assert(chunks == List(
+          fs2.Chunk("", "a", "bc", "def", "ghij"),
+          fs2.Chunk("klmnop", "", "xy", ""),
+          fs2.Chunk("123456789ABC"),
+          fs2.Chunk("Z")))
   }
