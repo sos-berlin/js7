@@ -267,37 +267,38 @@ extends
 
   protected def releaseObsoleteEvents: IO[Unit] =
     IO.whenA(conf.deleteObsoleteFiles):
-      for
-        state <- state.value
-        requireAck <- requireClusterAck.get
-        lastAck <- ackSignal.get
-        _ <- IO.defer:
-          val committed = state.committed
-          val clusterState = committed.clusterState
-          IO.whenA(
-            clusterState == ClusterState.Empty ||
-              requireAck
-                // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
-                // requireClusterAck. We must not delete the file when cluster is being decoupled.
-                && (clusterState.isInstanceOf[ClusterState.Coupled] ||
-                clusterState.isInstanceOf[ClusterState.ActiveShutDown])
-                && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAck)
-          ):
-            val eventId =
-              if clusterState == ClusterState.Empty then
-                committed.eventId
-              else
-                // Do not release the just acknowledged last Event of a journal file
-                // (i.e. the last acknowledged event is the last event of a journal file)
-                // because after restart, the passive node continues reading the journal file
-                // (only to get end-of-file). Subtract 1 to avoid this.
-                (lastAck - 1) max EventId.BeforeFirst
-            releaseObsoleteEventsUntil:
-              committed.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds)
-            .productR:
-              IO:
-                releaseEventIdsAfterClusterCoupledAck = None
-      yield ()
+      logger.traceIO("releaseObsoleteEvents"):
+        for
+          state <- state.value
+          requireAck <- requireClusterAck.get
+          lastAck <- ackSignal.get
+          _ <- IO.defer:
+            val committed = state.committed
+            val clusterState = committed.clusterState
+            IO.whenA(
+              clusterState == ClusterState.Empty ||
+                requireAck
+                  // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
+                  // requireClusterAck. We must not delete the file when cluster is being decoupled.
+                  && (clusterState.isInstanceOf[ClusterState.Coupled] ||
+                  clusterState.isInstanceOf[ClusterState.ActiveShutDown])
+                  && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAck)
+            ):
+              val eventId =
+                if clusterState == ClusterState.Empty then
+                  committed.eventId
+                else
+                  // Do not release the just acknowledged last Event of a journal file
+                  // (i.e. the last acknowledged event is the last event of a journal file)
+                  // because after restart, the passive node continues reading the journal file
+                  // (only to get end-of-file). Subtract 1 to avoid this.
+                  (lastAck - 1) max EventId.BeforeFirst
+              releaseObsoleteEventsUntil:
+                committed.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds)
+              .productR:
+                IO:
+                  releaseEventIdsAfterClusterCoupledAck = None
+        yield ()
 
   private def releaseObsoleteEventsUntil(untilEventId: EventId): IO[Unit] =
     val committedState = state.get.committed

@@ -478,7 +478,12 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     /** Wait for acknowledgement of passive cluster node.
       *
-      * On ClusterPassiveLost terminate with false. */
+      * On ClusterPassiveLost terminate with false.
+      *
+      * @param lastStamped only for logging
+      * @param n number of events, only for logging
+      * @return true iff the passive node has acknowledged the events.
+      */
     private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]], n: Int)
     : IO[Boolean] =
       requireClusterAck.get.flatMap: requireAck =>
@@ -493,44 +498,45 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                 meterAck:
                   ackSignal.waitUntil(eventId <= _).as(true)
                     .addElapsedToAtomicNanos(bean.ackNanos)
-              .race:
-                // Cancel waiting on ClusterPassiveLost
-                requireClusterAck.waitUntil(!_) *> IO:
-                  logger.debug:
-                    "requireClusterAck has become false, now cancel waiting for acknowledgement"
-                  false
-              .map(_.merge)
+                  .race:
+                    // Cancel waiting on ClusterPassiveLost
+                    requireClusterAck.waitUntil(!_) *> IO:
+                      logger.debug:
+                        "requireClusterAck has become false, now cancel waiting for acknowledgement"
+                      false
+                  .map(_.merge)
 
     private def logWaitingForAck[A](
       eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]], n: Int)
       (body: IO[A])
     : IO[A] =
-      IO.defer:
-        val sym = new BlockingSymbol
-        val since = Deadline.now
-        body
-          .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
-            //val lastStampedEvent = persistBuffer.view
-            //  .collect { case o: StandardPersist => o }
-            //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
-            //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
-            //  .toString.truncateWithEllipsis(200))
-            ackSignal.get.flatMap: lastAck =>
-              IO:
-                sym.onWarn()
-                val event = lastStamped.fold(""): stamped =>
-                  s" ${stamped.value.event.getClass.simpleScalaName}"
-                logger.warn(s"$sym Waiting for ${
-                  elapsed.pretty} for acknowledgement from passive cluster node of ${
-                  n} events until $eventId${
-                  event}, last acknowledged: ${EventId.toString(lastAck)}")
-          .productL:
-            whenDeferred(sym.warnLogged):
-              IO:
-                logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
-                  since.elapsed.pretty}")
-          .productL:
-            IO(sym.clear())
+      logger.traceIO(s"waitForAck $eventId awaiting ack for $n events"):
+        IO.defer:
+          val sym = new BlockingSymbol
+          val since = Deadline.now
+          body
+            .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
+              //val lastStampedEvent = persistBuffer.view
+              //  .collect { case o: StandardPersist => o }
+              //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
+              //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
+              //  .toString.truncateWithEllipsis(200))
+              ackSignal.get.flatMap: lastAck =>
+                IO:
+                  sym.onWarn()
+                  val event = lastStamped.fold(""): stamped =>
+                    s" ${stamped.value.event.getClass.simpleScalaName}"
+                  logger.warn(s"$sym Waiting for ${
+                    elapsed.pretty} for acknowledgement from passive cluster node of ${
+                    n} events until $eventId${
+                    event}, last acknowledged: ${EventId.toString(lastAck)}")
+            .productL:
+              whenDeferred(sym.warnLogged):
+                IO:
+                  logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
+                    since.elapsed.pretty}")
+            .productL:
+              IO(sym.clear())
   end CommitterService // object
 
 

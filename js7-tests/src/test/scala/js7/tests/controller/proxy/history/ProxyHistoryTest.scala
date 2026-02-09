@@ -100,7 +100,6 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
           var proxyStartedReceived = false
           try
             controllerApi.eventAndStateStream(new StandardEventBus, Some(lastState.eventId))
-              .evalTap(es => IO(logger.debug(s"observe ${es.stampedEvent}")))
               .takeThrough:
                 case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                   finished = true
