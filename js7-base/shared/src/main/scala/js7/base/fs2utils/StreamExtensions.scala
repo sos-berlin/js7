@@ -5,15 +5,16 @@ import cats.effect.std.AtomicCell
 import cats.effect.{Concurrent, IO, Ref, Sync, Temporal}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
+import cats.syntax.foldable.*
 import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
-import cats.{Applicative, ApplicativeError, Eq, effect}
+import cats.{Applicative, ApplicativeError, Eq, Monoid, effect}
 import fs2.{Chunk, Pull, RaiseThrowable, Stream}
-import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
+import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -45,6 +46,7 @@ object StreamExtensions:
           val (a, b) = remainder.splitAt(myGroupSize)
           remainder = b
           a
+
 
   extension (chunk: Chunk[Char])
     def convertToString: String =
@@ -108,7 +110,6 @@ object StreamExtensions:
             .chunks
             .evalTap: chunk =>
               cell.getAndUpdate(_ ++= chunk.asSeq)
-            // Emit a Beat after the required period of silence
             .addAfterIdle(duration - FiniteDuration.Epsilon, F.pure(Beat))
             // Add a Beat to the end to emit the remaining elements
             .appendOne(Beat)
@@ -198,6 +199,34 @@ object StreamExtensions:
           go(timedPull, Chunk.empty, 0)
         .stream
         .filter(_.nonEmpty)
+
+    /** Combine elements in each Chunk until a weighted limit is reached.
+      *
+      * Upstream chunks will not be split.*/
+    def combineWeightedInChunk(limit: Int)(weight: O => Int)(using O: Monoid[O]): Stream[F, O] =
+      stream.mapChunks: chunk =>
+        val chunks = new VectorBuilder[O]
+        val nextO = new VectorBuilder[O]
+        var size = 0L
+        val it = chunk.iterator
+        @tailrec def loop(): Unit =
+          if it.hasNext then
+            val o = it.next()
+            val w = weight(o)
+            require(w >= 0, s"combineWeightedInChunk($limit): weight(o) must be non-negative, but was $w")
+            if size + w <= limit || size == 0 then
+              size += w
+              nextO += o
+            else
+              chunks += nextO.result().combineAll
+              nextO.clear()
+              nextO += o
+              size = w
+            loop()
+        loop()
+        if nextO.nonEmpty then
+          chunks += nextO.result().combineAll
+        Chunk.from(chunks.result())
 
     /** Repeat endlessly the last element, or return the empty Stream iff this is empty. */
     def repeatLast: Stream[F, O] =

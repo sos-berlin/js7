@@ -95,7 +95,46 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
           Chunk("ffffff", "xxxx"),
           Chunk("yyyyyyyy")))
     }
-    
+
+    "combineWeightedInChunk" - {
+      "empty stream" in :
+        val strings = Stream.empty.covaryOutput[String]
+        val grouped = strings.combineWeightedInChunk(10)(_.length)
+        assert(grouped.toList.isEmpty)
+
+      "single string exceeding limit starts its own chunk" in :
+        val limit = 5
+        val strings = Stream("abcdefgh")
+        val grouped = strings.combineWeightedInChunk(limit)(_.length)
+        assert(grouped.toList == List("abcdefgh"))
+
+      "group strings by length with limit" in :
+        val limit = 5
+        val strings = Stream("a", "bb", "ccc", "dddd", "eeeee", "ffffff") ++ Stream("xxxx", "yyyyyyyy")
+
+        val grouped: Stream[Pure, String] =
+          strings.combineWeightedInChunk(limit)(_.length)
+
+        assert(grouped.toList == List("abb", "ccc", "dddd", "eeeee", "ffffff", "xxxx", "yyyyyyyy"))
+
+      "respects chunk boundaries" in :
+        val limit = 5
+        val stream = Stream("a", "bb") ++
+          Stream("cc", "ddd") ++
+          Stream("e") ++
+          Stream("fffff") ++
+          Stream("gggggg", "hhhh")
+
+        val grouped = stream.combineWeightedInChunk(limit)(_.length)
+        val result = grouped.toList
+
+        assert(result == List(
+          "abb", "ccddd",
+          "e",
+          "fffff",
+          "gggggg", "hhhh"))
+    }
+
     "onStart" in:
       val subscribed = Atomic(0)
       val stream: Stream[IO, Int] =
