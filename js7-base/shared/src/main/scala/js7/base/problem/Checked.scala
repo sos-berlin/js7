@@ -130,12 +130,19 @@ object Checked:
 
     /** Converts the `Checked` into an `Option`, executing the `sideEffect` if `Invalid`.
       */
-    def onProblem(sideEffect: Problem => Unit): Option[A] =
+    def problemToNone(sideEffect: Problem => Unit): Option[A] =
       underlying match
         case Left(problem) =>
           sideEffect(problem)
           None
-        case Right(a) =>  Some(a)
+        case Right(a) =>
+          Some(a)
+
+    def onProblem(sideEffect: Problem => Unit): Checked[A] =
+      underlying match
+        case Left(problem) => sideEffect(problem)
+        case o =>
+      underlying
 
     def handleProblem[B](f: Problem => B): A | B =
       underlying match

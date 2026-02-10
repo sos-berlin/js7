@@ -1188,7 +1188,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             val orderEventHandler = new OrderEventHandler(controllerState.repo.idTo(Workflow))
             val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
-            for followUps <- checkedFollowUps.onProblem(p => logger.error(p)) do  // TODO OrderBroken on error?
+            for followUps <- checkedFollowUps.problemToNone(p => logger.error(p)) do  // TODO OrderBroken on error?
               followUps foreach:
                 case FollowUp.AddChild(childOrder) =>
                   dependentOrderIds += childOrder.id
@@ -1369,7 +1369,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             signedWorkflow <- controllerState().repo.idToSigned(Workflow)(order.workflowId)
             agentEntry <- agentRegister.checked(agentPath)
           yield (signedWorkflow, agentEntry)
-        ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
+        ).problemToNone(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
 
       case _ => None
 
@@ -1382,7 +1382,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       if !orderEntry.isDetaching then
         controllerState().idToOrder.checked(orderId)
           .flatMap(_.detaching)
-          .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
+          .problemToNone(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
           .foreach { agentPath =>
             agentRegister.get(agentPath).map(_.agentDriver) match
               case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentPath")

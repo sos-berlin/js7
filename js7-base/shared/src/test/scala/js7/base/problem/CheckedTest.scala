@@ -147,9 +147,9 @@ final class CheckedTest extends OurAsyncTestSuite:
     assert(Left(Problem("X")).mapProblem(p => Problem(s"/$p/")) == Left(Problem("/X/")))
 
   "onProblem" in:
-    assert(Right(1).onProblem(_ => throw new NotImplementedError) == 1.some)
+    assert(Right(1).problemToNone(_ => throw new NotImplementedError) == 1.some)
     var flag = false
-    assert((Left(Problem("X")): Checked[String]).onProblem(_ => flag = true) == none)
+    assert((Left(Problem("X")): Checked[String]).problemToNone(_ => flag = true) == none)
     assert(flag)
 
   "onProblem in F[_]" in:

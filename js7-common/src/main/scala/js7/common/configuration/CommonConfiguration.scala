@@ -28,12 +28,13 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris, BasicConfigurat
   lazy val httpsConfig: HttpsConfig =
     HttpsConfig(
       keyStoreRef =
-        (if config.hasPath("js7.web.https.client-keystore") then
-          KeyStoreRef.fromSubconfig(config.getConfig("js7.web.https.client-keystore"),
-            defaultFile = configDirectory.resolve("private/https-client-keystore.p12"))
-        else
-          keyStoreRef
-        ).onProblem(p => logger.debug(s"No keystore: $p")),
+        locally:
+          if config.hasPath("js7.web.https.client-keystore") then
+            KeyStoreRef.fromSubconfig(config.getConfig("js7.web.https.client-keystore"),
+              defaultFile = configDirectory.resolve("private/https-client-keystore.p12"))
+          else
+            keyStoreRef
+        .problemToNone(problem => logger.debug(s"No keystore: $problem")),
       trustStoreRefs)
 
   final lazy val trustStoreRefs: Seq[TrustStoreRef] =
