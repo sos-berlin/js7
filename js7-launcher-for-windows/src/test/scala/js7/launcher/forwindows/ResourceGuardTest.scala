@@ -1,14 +1,14 @@
 package js7.launcher.forwindows
 
-import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
-import js7.base.time.ScalaTime.*
+import cats.effect.IO
+import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
-final class ResourceGuardTest extends OurTestSuite:
+final class ResourceGuardTest extends OurAsyncTestSuite:
 
   private given ExecutionContext = ioRuntime.compute
 
@@ -42,21 +42,26 @@ final class ResourceGuardTest extends OurTestSuite:
     val released = Atomic(0)
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
     val notReleased = Atomic(0)
-    val futures = for _ <- 1 to (sys.runtime.availableProcessors / 2).min(1) yield
-      Future:
-        var stop = false
-        while !stop do
-          g.use:
-            case Some("RESOURCE") =>
-              assert(released.get() == 0)
-              notReleased += 1
-            case Some(_) =>
-              fail()
-            case None =>
-              stop = true
-    sleep(100.ms)
-    awaitAndAssert(notReleased.get() > 1)
-    g.releaseAfterUse()
-    futures.await(99.s)
-    assert(released.get() == 1)
-    assert(notReleased.get() > 1)
+
+    val loopUntilReleased = IO:
+      var stop = false
+      while !stop do
+        g.use:
+          case Some("RESOURCE") => // not released
+            assert(released.get() == 0)
+            notReleased += 1
+          case Some(_) =>
+            fail()
+          case None => // released
+            stop = true
+
+    val minimum = 100_000
+    val n = sys.runtime.availableProcessors
+    (1 to n).foldMap(_ => loopUntilReleased).both:
+      IO.blocking:
+        awaitAndAssert(notReleased.get() >= minimum)
+        g.releaseAfterUse()
+    .map:
+      case ((), ()) =>
+        assert(released.get() == 1)
+        assert(notReleased.get() >= minimum)
