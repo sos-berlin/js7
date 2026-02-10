@@ -4,7 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessExtensions.onExitIO
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -120,11 +120,17 @@ final class PipedProcess private(
     processKillerAlloc.release
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
-    logger.traceIO(s"pumpStdoutAndStderrToSink")(IO
-      .both(
-        pumpOutErrToSink(Stdout, process.stdout),
-        pumpOutErrToSink(Stderr, process.stderr))
-      .void)
+    logger.traceIO(s"pumpStdoutAndStderrToSink"):
+      // If one channel fails, continue with the other channel
+      pumpOutErrToSink(Stdout, process.stdout).bothOutcome:
+        pumpOutErrToSink(Stderr, process.stderr)
+      .flatMap:
+        case (Outcome.Succeeded(_), stderrOutcome) =>
+          IO.fromOutcome(stderrOutcome)
+        case (stdoutFailed, stderrOutcome) =>
+          if !stderrOutcome.isSuccess then logger.error(s"While reading stderr: $stderrOutcome")
+          IO.fromOutcome(stdoutFailed)
+      .void
 
   private def pumpOutErrToSink(outErr: StdoutOrStderr, in: InputStream): IO[Unit] =
     stdObservers
