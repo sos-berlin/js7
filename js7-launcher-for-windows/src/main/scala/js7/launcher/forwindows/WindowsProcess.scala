@@ -230,7 +230,7 @@ private[launcher] object WindowsProcess:
   private def redirectToHandle(stdFile: Int, redirect: Redirect): Redirection =
     redirect.`type` match
       case INHERIT =>
-        new Redirection(kernel32.GetStdHandle(stdFile), false, INVALID_HANDLE_VALUE)
+        new Redirection(kernel32.GetStdHandle(stdFile), false, Handle.invalid)
 
       case PIPE =>
         stdFile match

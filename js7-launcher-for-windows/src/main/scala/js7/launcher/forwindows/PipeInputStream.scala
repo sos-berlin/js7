@@ -5,7 +5,7 @@ import com.sun.jna.ptr.IntByReference
 import java.io.InputStream
 import js7.launcher.forwindows.WindowsApi.{call, kernel32}
 
-private abstract class PipeInputStream(pipeHandle: HANDLE) extends InputStream:
+private abstract class PipeInputStream(pipeHandle: Handle) extends InputStream:
   private lazy val myBuffer = new Array[Byte](4096)
 
   def read(): Int =
@@ -26,7 +26,7 @@ private abstract class PipeInputStream(pipeHandle: HANDLE) extends InputStream:
     var brokenPipe = false
     val bytesRead = new IntByReference
     call("ReadFile", "PipeInputStream"):
-      val ok = kernel32.ReadFile(pipeHandle, a, len, bytesRead, null)
+      val ok = kernel32.ReadFile(pipeHandle.handle, a, len, bytesRead, null)
       if !ok && kernel32.GetLastError == ERROR_BROKEN_PIPE then
         brokenPipe = true
         true // no error
