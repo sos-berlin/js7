@@ -19,8 +19,8 @@ sealed trait ClusterWatchRequest:
   def requestId: RequestId
   def correlId: CorrelId
   def from: NodeId
-  def clusterState: HasNodes
   def maybeEvent: Option[ClusterEvent]
+  def clusterState: HasNodes
   def forceWhenUntaught: Boolean
   def toShortString: String
 
@@ -28,6 +28,9 @@ sealed trait ClusterWatchRequest:
     maybeEvent match
       case Some(event: ClusterNodeLostEvent) => event.lostNodeId == lostNodeId
       case _ => false
+
+
+sealed trait ClusterWatchNonCommitRequest extends ClusterWatchRequest
 
 
 sealed trait ClusterWatchEventRequest extends ClusterWatchRequest:
@@ -47,7 +50,7 @@ final case class ClusterWatchCheckEvent(
   event: ClusterEvent,
   clusterState: ClusterState.HasNodes,
   forceWhenUntaught: Boolean = false)
-extends ClusterWatchEventRequest:
+extends ClusterWatchEventRequest, ClusterWatchNonCommitRequest:
 
   def maybeEvent: Some[ClusterEvent] =
     Some(event)
@@ -68,7 +71,7 @@ final case class ClusterWatchAskNodeLoss(
   event: ClusterNodeLostEvent,
   clusterState: ClusterState.IsNodeLost,
   hold: FiniteDuration)
-extends ClusterWatchEventRequest:
+extends ClusterWatchEventRequest, ClusterWatchNonCommitRequest:
 
   def forceWhenUntaught = false
 
@@ -101,7 +104,7 @@ final case class ClusterWatchCheckState(
   correlId: CorrelId,
   from: NodeId,
   clusterState: ClusterState.HasNodes)
-extends ClusterWatchRequest:
+extends ClusterWatchNonCommitRequest:
   def checked: Checked[this.type] =
     if from != clusterState.activeId then
       Left(InvalidClusterWatchHeartbeatProblem(from, clusterState))

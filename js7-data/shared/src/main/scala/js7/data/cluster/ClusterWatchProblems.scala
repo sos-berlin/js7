@@ -54,6 +54,7 @@ object ClusterWatchProblems:
     ClusterPassiveLostWhileFailedOverTestingProblem.type
   case object ClusterPassiveLostWhileFailedOverTestingProblem extends Problem.ArgumentlessCoded
 
+  /** User's confirmation a lost Cluster node is missing. */
   final case class ClusterNodeLossNotConfirmedProblem(
     fromNodeId: NodeId,
     event: ClusterNodeLostEvent)
