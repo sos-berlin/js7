@@ -1,5 +1,6 @@
 package js7.launcher.forwindows
 
+import cats.effect.IO
 import com.sun.jna.platform.win32.Advapi32Util.getEnvironmentBlock
 import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinBase.*
@@ -73,6 +74,10 @@ extends Js7Process:
     new PipeInputStream(redirection.pipeHandle):
       override def close(): Unit = redirection.closePipe()
 
+  def release: IO[Unit] =
+    IO.blocking:
+      hProcessGuard.releaseAfterUse()
+
   def destroy(): Unit =
     destroyForcibly()
 
@@ -116,7 +121,6 @@ extends Js7Process:
         val terminated = waitForSingleObject(hProcess, timeout)
         if terminated then
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
-          hProcessGuard.releaseAfterUse()
         terminated
 
   lazy val maybeHandle =

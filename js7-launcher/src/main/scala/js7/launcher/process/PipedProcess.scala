@@ -115,6 +115,8 @@ final class PipedProcess private(
         case Right((terminationFiber, _)) =>
           // Stdout and stderr ended or ignored after SIGKILL //
           terminationFiber.joinStd
+      .guarantee:
+        process.release
 
   def release: IO[Unit] =
     processKillerAlloc.release

@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.IO
 import java.io.{InputStream, OutputStream}
 import scala.concurrent.duration.FiniteDuration
 
@@ -26,3 +27,5 @@ trait Js7Process:
   def waitFor(duration: FiniteDuration): Boolean
 
   def maybeHandle: Option[ProcessHandle]
+
+  def release: IO[Unit]
