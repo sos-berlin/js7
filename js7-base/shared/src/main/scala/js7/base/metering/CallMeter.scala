@@ -138,7 +138,7 @@ object CallMeter:
 
   /** Logs the difference to last measurement, then safes the current measurement as the last one. */
   private[metering] def log(logLevel: LogLevel = Trace)(f: Measurement => Measurement = identity): Unit =
-    if logger.isTraceEnabled then
+    if logger.isEnabled(logLevel) then
       CallMeter.callMeters.view.filter(_.total > 0).map: callMeter =>
         f(callMeter.measurement())
       .filter(_.total > 0)

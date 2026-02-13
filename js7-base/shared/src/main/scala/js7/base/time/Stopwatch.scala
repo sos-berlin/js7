@@ -3,6 +3,7 @@ package js7.base.time
 import java.lang.System.nanoTime
 import java.text.{DecimalFormat, DecimalFormatSymbols}
 import java.util.Locale
+import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -18,6 +19,9 @@ final class Stopwatch:
 
   def result(n: Long, ops: String = "ops"): Result =
     Result(duration, n, ops)
+
+  def itemsPerSecondStringBold(n: Long, ops: String = "ops"): String =
+    bold(itemsPerSecondString(n, ops))
 
   def itemsPerSecondString(n: Long, ops: String = "ops"): String =
     Stopwatch.itemsPerSecondString(duration, n, ops)
@@ -135,9 +139,9 @@ object Stopwatch:
 
     def toShortString: String =
       if n == 0 || !showPerSecond then
-        s"${duration.pretty}/$n$gapOps"
+        s"⏱️  ${duration.pretty}/$n$gapOps"
       else
-        s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
+        s"⏱️  ${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
 
     def countAndPerSecondString: String =
       if n == 0 then

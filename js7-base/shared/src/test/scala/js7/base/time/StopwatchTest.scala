@@ -17,7 +17,7 @@ final class StopwatchTest extends OurTestSuite:
     assert(itemsPerSecondString(2.s, 3_000_000, "items") == "⏱️  2s/3m items (⌀0.67µs), 1500k items/s")
 
   "durationAndPerSecondString" in:
-    assert(durationAndPerSecondString(2.s, 3000) == "2s/3000 ops, 1500 ops/s")
+    assert(durationAndPerSecondString(2.s, 3000) == "⏱️  2s/3000 ops, 1500 ops/s")
 
   "numberAndPerSecondString" in:
     assert(numberAndPerSecondString(2.s, 3000) == "3000 ops, 1500/s")
