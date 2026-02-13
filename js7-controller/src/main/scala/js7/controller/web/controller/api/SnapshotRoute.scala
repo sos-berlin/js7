@@ -6,9 +6,9 @@ import io.circe.Encoder
 import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.data.ByteArray
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, interruptWhenF}
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`

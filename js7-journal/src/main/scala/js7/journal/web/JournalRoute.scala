@@ -8,7 +8,6 @@ import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, interruptWhenF}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient
@@ -24,7 +23,6 @@ import js7.journal.web.JournalRoute.*
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
-import scala.util.chaining.scalaUtilChainingOps
 
 // TODO Similar to GenericEventRoute
 // Test is Controller's JournalRouteTest
