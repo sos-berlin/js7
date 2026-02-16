@@ -133,6 +133,10 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def runCommitPipeline: IO[Unit] =
       logger.traceIO:
         fs2.Stream.fromQueueNoneTerminated(persistQueue, conf.concurrentPersistLimit)
+          // With bigger conf.concurrentPersistLimit, we need more memory.
+          // Events have very different sizes, OrderStdoutWritten may require ~3*8KiB.
+          // TODO How to limit memory usage of a chunk?
+          // We want to allow many small events.
           .mapChunks(_.flatten)
           .through:
             commitPipeline
