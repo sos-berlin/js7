@@ -90,7 +90,7 @@ extends
           if versionId == this.currentVersionId && addedSet.isEmpty && removedEvents.isEmpty
             && (changed.nonEmpty || removed.nonEmpty) then
             // Ignore same version with empty difference if it is not a versionId-only UpdateRepo
-            emptyEventBlock
+            EventBlock.empty
           else
             NonEmptyEventBlock(versionId, removedEvents, addedOrChanged)
 
@@ -332,7 +332,10 @@ extends
     for signed <- anyIdToSigned(id) yield
       signed.copy(signed.value.as(using A))
 
-  /** Returns the VersionedItem for a VersionedItemId. */
+  /** Returns the VersionedItem for a VersionedItemId.
+    *
+    * @see [[toMaybeSigned]], a variant which returns an Option.
+    */
   def anyIdToSigned(id: VersionedItemId_): Checked[Signed[VersionedItem]] =
     for
       versionToSignedItem <- pathToVersionToSignedItems.checked(id.path)
@@ -348,6 +351,35 @@ extends
           yield fb
         : Checked[Option[Signed[VersionedItem]]]
       signedItem <- maybeItem.toChecked(VersionedItemRemovedProblem(id.path))
+    yield
+      signedItem
+
+  def toMaybeItem(id: VersionedItemId_): Option[VersionedItem] =
+    toMaybeSigned(id).map(_.value)
+
+  /** Returns the VersionedItem for a VersionedItemId. */
+  def toMaybeSigned[A <: VersionedItem](A: VersionedItem.Companion[A])(id: VersionedItemId[A.Path])
+  : Option[Signed[A]] =
+    for signed <- toMaybeSigned(id) yield
+      signed.copy(signed.value.as(using A))
+
+  /** Returns the VersionedItem for a VersionedItemId.
+    *
+    * @see [[anyIdToSigned]], a variant which returns a Checked.
+    */
+  def toMaybeSigned(id: VersionedItemId_): Option[Signed[VersionedItem]] =
+    for
+      versionToSignedItem <- pathToVersionToSignedItems.get(id.path)
+      signedItem <-
+        versionToSignedItem
+          .collectFirst:
+            case Version(id.versionId, o) => o
+          .orElse:
+            for
+              history <- historyBefore(id.versionId).toOption
+              fb <- findInHistory(versionToSignedItem, history.contains)
+            yield fb
+          .flatten
     yield
       signedItem
 
@@ -586,7 +618,8 @@ object Repo extends EventDriven.Companion[Repo, VersionedEvent]:
     override def toString = s"-${versionId.string}"
 
   /** None: not known at or before this VersionId; Some(None): removed at or before this VersionId. */
-  private def findInHistory(versions: List[Version], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
+  private def findInHistory(versions: List[Version], isKnownVersion: VersionId => Boolean)
+  : Option[Option[Signed[VersionedItem]]] =
     versions
       .view
       .dropWhile(e => !isKnownVersion(e.versionId))

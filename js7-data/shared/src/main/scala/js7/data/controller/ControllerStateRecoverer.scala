@@ -61,14 +61,14 @@ extends
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow]:
       def isDefinedAt(workflowId: WorkflowId) =
-        repo.idToSigned(Workflow)(workflowId).isRight
+        repo.toMaybeSigned(Workflow)(workflowId).isDefined
 
       def apply(workflowId: WorkflowId): Workflow =
         repo.idToSigned(Workflow)(workflowId).orThrow.value
 
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
-        repo.idToSigned(Workflow)(workflowId)
-          .fold(_ => default(workflowId), _.value)
+        repo.toMaybeSigned(Workflow)(workflowId)
+          .fold(default(workflowId))(_.value)
 
   def checkedBoardState(path: BoardPath): Checked[BoardState] =
     _keyToUnsignedItemState.checked(path).asInstanceOf[Checked[BoardState]]
