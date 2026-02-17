@@ -850,7 +850,7 @@ extends
     new MapView[InventoryItemKey, InventoryItem]:
       def get(itemKey: InventoryItemKey) =
         itemKey match
-          case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
+          case id: VersionedItemId_ => repo.toMaybeItem(id)
           case key: VersionedControlId_ => keyToUnsignedItemState_.get(key).map(_.item)
           case path: SimpleItemPath => pathToItem.get(path)
 
@@ -888,14 +888,14 @@ extends
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow]:
       def isDefinedAt(workflowId: WorkflowId) =
-        repo.idToSigned(Workflow)(workflowId).isRight
+        repo.toMaybeSigned(Workflow)(workflowId).isDefined
 
       def apply(workflowId: WorkflowId): Workflow =
         repo.idToSigned(Workflow)(workflowId).orThrow.value
 
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
-        repo.idToSigned(Workflow)(workflowId)
-          .fold(_ => default(workflowId), _.value)
+        repo.toMaybeSigned(Workflow)(workflowId)
+          .fold(default(workflowId))(_.value)
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
     repo.pathToId(workflowPath)
@@ -907,7 +907,7 @@ extends
     new MapView[SignableItemKey, Signed[SignableItem]]:
       def get(itemKey: SignableItemKey): Option[Signed[SignableItem]] =
         itemKey match
-          case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption
+          case id: VersionedItemId_ => repo.toMaybeSigned(id)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path)
 
       def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
