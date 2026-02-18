@@ -48,7 +48,7 @@ final class SessionRegister[S <: Session: Tag] private(
 extends Service.TrivialReleasable:
 
   private val componentName = config.getString("js7.component.name")
-  private val sessionLifetime = config.getDuration("js7.auth.session.lifetime").toFiniteDuration
+  private val sessionLifetime = config.getDuration("js7.auth.session.timeout").toFiniteDuration
 
   private val cell = AtomicCell[IO].of(State(Map.empty)).unsafeMemoize
   private val deferredSystemSession = Deferred.unsafe[IO, Checked[S]]
@@ -276,7 +276,7 @@ object SessionRegister:
   @TestOnly
   val TestConfig: Config = config"""
     js7.component.name = "JS7 TEST"
-    js7.auth.session.lifetime = ${TestTimeout.toMillis} milliseconds
+    js7.auth.session.timeout = ${TestTimeout.toMillis} milliseconds
     """
 
   sealed trait SessionsMXBean:
