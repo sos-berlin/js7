@@ -143,7 +143,7 @@ final class RepoTest extends OurTestSuite:
         assert(eventBlock.nonEmpty)
         repo = repo.applyEvents(eventBlock.events).orThrow
 
-        assert(repo.itemsToEventBlock(v1, sign(a1) :: Nil) == Right(repo.emptyEventBlock))
+        assert(repo.itemsToEventBlock(v1, sign(a1) :: Nil) == Right(repo.EventBlock.empty))
 
       "but not if no items should be changed" in:
         var repo = emptyRepo
