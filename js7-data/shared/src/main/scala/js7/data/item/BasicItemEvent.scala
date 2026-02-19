@@ -20,13 +20,16 @@ object BasicItemEvent:
   extends ForClient:
     def attachedState: None.type = None
 
+
   final case class ItemDeleted(key: InventoryItemKey)
   extends ForClient
+
 
   sealed trait ItemAttachedStateEvent
   extends ForClient:
     def delegateId: DelegateId
     def attachedState: ItemAttachedState
+
   object ItemAttachedStateEvent:
     def apply(key: InventoryItemKey, delegateId: DelegateId, attachedState: ItemAttachedState)
     : ItemAttachedStateEvent =
@@ -39,9 +42,11 @@ object BasicItemEvent:
     : Some[(InventoryItemKey, DelegateId, ItemAttachedState)] =
       Some((event.key, event.delegateId, event.attachedState))
 
+
   final case class ItemAttachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent:
     def attachedState: ItemAttachedState = Attachable
+
   object ItemAttachable:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttachable] =
@@ -51,12 +56,14 @@ object BasicItemEvent:
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
       yield ItemAttachable(key, delegateId)
 
+
   final case class ItemAttached(
     key: InventoryItemKey,
     override val itemRevision: Option[ItemRevision],
     delegateId: DelegateId)
   extends ItemAttachedStateEvent:
     def attachedState: ItemAttachedState = Attached(itemRevision)
+
   object ItemAttached:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttached] =
@@ -66,6 +73,7 @@ object BasicItemEvent:
         rev <- c.get[Option[ItemRevision]]("itemRevision")
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
       yield ItemAttached(key, rev, delegateId)
+
 
   /** Agent only. */
   final case class ItemAttachedToMe(item: InventoryItem)
@@ -80,6 +88,7 @@ object BasicItemEvent:
   extends ForDelegate:
     def item: SignableItem = signed.value
     def key: SignableItemKey = item.key
+
   object SignedItemAttachedToMe:
     def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemAttachedToMe] =
       new Codec.AsObject[SignedItemAttachedToMe]:
@@ -92,6 +101,7 @@ object BasicItemEvent:
   final case class ItemDetachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent:
     def attachedState: ItemAttachedState = Detachable
+
   object ItemDetachable:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetachable] =
@@ -101,9 +111,11 @@ object BasicItemEvent:
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
       yield ItemDetachable(key, delegateId)
 
+
   final case class ItemDetachingFromMe(key: InventoryItemKey)
   extends ForDelegate:
     def attachedState: ItemAttachedState.Detached.type = Detached
+
   object ItemDetachingFromMe:
     def jsonCodec[S](implicit S: ItemContainer.Companion[S])
     : Codec.AsObject[ItemDetachingFromMe] =
@@ -111,9 +123,11 @@ object BasicItemEvent:
       intelliJuseImport((inventoryItemKeyJsonCodec, delegateIdJsonCodec))
       deriveCodec[ItemDetachingFromMe]
 
+
   final case class ItemDetached(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent, ForDelegate:
     def attachedState: ItemAttachedState = Detached
+
   object ItemDetached:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetached] =

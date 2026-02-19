@@ -13,6 +13,7 @@ object UnsignedItemEvent:
   // Restricted to VersionedControl Items
   // but may replace UnsignedSimpleItemEvent in future !!!
 
+
   sealed trait UnsignedItemAddedOrChanged
   extends UnsignedItemEvent, ItemAddedOrChanged:
     override def itemRevision =
@@ -20,16 +21,20 @@ object UnsignedItemEvent:
 
     def item: VersionedControl
     assertThat(item.itemRevision.isDefined)
+
   object UnsignedItemAddedOrChanged:
     def unapply(event: UnsignedItemAddedOrChanged): Some[VersionedControl] = Some(event.item)
+
 
   final case class UnsignedItemAdded(item: VersionedControl)
   extends UnsignedItemAddedOrChanged:
     def key: VersionedControlId_ = item.key
 
+
   final case class UnsignedItemChanged(item: VersionedControl)
   extends UnsignedItemAddedOrChanged:
     def key: VersionedControlId_ = item.key
+
 
   implicit def jsonCodec[S](implicit S: ItemContainer.Companion[S])
   : TypedJsonCodec[UnsignedItemEvent] =

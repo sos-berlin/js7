@@ -481,6 +481,7 @@ extends
       def ids = Nil
       def items = Nil
 
+
   sealed case class NonEmptyEventBlock(
     versionId: VersionId,
     removedEvents: Seq[VersionedItemRemoved],

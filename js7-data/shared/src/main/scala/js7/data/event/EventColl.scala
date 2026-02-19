@@ -141,7 +141,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, Ctx] pri
   def addColl(other: EventCollCtx[S, E, Ctx]): Checked[EventCollCtx[S, E, Ctx]] =
     logProblem(other.timestampedKeyedEvents):
       if other.originalAggregate_ ne aggregate then
-        // This should not happen, despite it is returned as a Problem
+        // This should not happen, despite it is returned as a Problem                                                             n
         val problem = Problem.pure("EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate")
         logger.error(s"EventCollCtx.addColl: coll.originalAggregate doesn't match aggregate",
           new Exception(problem.toString))
