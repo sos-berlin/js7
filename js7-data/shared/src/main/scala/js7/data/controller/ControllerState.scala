@@ -290,26 +290,32 @@ extends
                   case jobResource: JobResource =>
                     pathToSignedSimpleItem
                       .insert(jobResource.path -> Signed(jobResource, signedString))
-                      .map(o => copy(pathToSignedSimpleItem = o))
+                      .map(o => copy(
+                        pathToSignedSimpleItem = o,
+                        deletionMarkedItems = deletionMarkedItems - item.key))
 
               case SignedItemChanged(Signed(item, signedString)) =>
                 item match
                   case jobResource: JobResource =>
                     Right(copy(
-                      pathToSignedSimpleItem = pathToSignedSimpleItem +
-                        (jobResource.path -> Signed(jobResource, signedString))))
+                      pathToSignedSimpleItem = pathToSignedSimpleItem
+                        .updated(jobResource.path, Signed(jobResource, signedString)),
+                      deletionMarkedItems = deletionMarkedItems - item.key))
 
           case event: UnsignedItemEvent =>
             event match
               case UnsignedItemAdded(item: VersionedControl) =>
                 keyToUnsignedItemState_
                   .insert(item.key, item.toInitialItemState)
-                  .map(o => copy(keyToUnsignedItemState_ = o))
+                  .map(o => copy(
+                    keyToUnsignedItemState_ = o,
+                    deletionMarkedItems = deletionMarkedItems - item.key))
 
               case UnsignedItemChanged(item: VersionedControl) =>
                 Right(copy(
                   keyToUnsignedItemState_ = keyToUnsignedItemState_
-                    .updated(item.key, item.toInitialItemState)))
+                    .updated(item.key, item.toInitialItemState),
+                  deletionMarkedItems = deletionMarkedItems - item.key))
 
           case event: BasicItemEvent.ForClient =>
             event match

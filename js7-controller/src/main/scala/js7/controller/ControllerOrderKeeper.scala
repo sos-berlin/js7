@@ -64,7 +64,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
+import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedItem, UnsignedItemKey}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
@@ -1299,7 +1299,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             workflow.referencedAttachableToAgentSignablePaths
               .flatMap(controllerState().pathToSignedSimpleItem.get)
               .appended(signedWorkflow)
-              .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
+              .filter(signedItem => isNotAttached(signedItem.value, agentPath))
               .map(signedItem =>
                 agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)))
 
@@ -1343,7 +1343,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
     // Workflow does not return those SubagentBundles which are referenced via
     // a variable expression.
-    // So we attach all SubagentBundles which contain a SubagentId of the Agent
+    // So we attach all SubagentBundles containing a SubagentId of the Agent
     result ++= controllerState().keyToItem(SubagentBundle)
       .filter(_
         ._2.subagentIds
@@ -1359,7 +1359,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       .map(o => o.key -> o)
 
     result.result().values.view
-      .filter(isDetachedOrAttachable(_, agentPath))
+      .filter(isNotAttached(_, agentPath))
 
   private def checkedWorkflowAndAgentEntry(order: Order[Order.State])
   : Option[(Signed[Workflow], AgentEntry)] =
@@ -1373,9 +1373,9 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
       case _ => None
 
-  private def isDetachedOrAttachable(item: InventoryItem, agentPath: AgentPath) =
+  private def isNotAttached(item: InventoryItem, agentPath: AgentPath) =
     val attachedState = controllerState().itemToAttachedState(item.key, item.itemRevision, agentPath)
-    attachedState == Detached || attachedState == Attachable
+    attachedState != Attached
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for orderEntry <- orderRegister.get(orderId) do
