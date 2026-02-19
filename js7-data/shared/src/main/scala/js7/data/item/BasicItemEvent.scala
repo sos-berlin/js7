@@ -53,7 +53,7 @@ object BasicItemEvent:
 
   final case class ItemAttached(
     key: InventoryItemKey,
-    itemRevision: Option[ItemRevision],
+    override val itemRevision: Option[ItemRevision],
     delegateId: DelegateId)
   extends ItemAttachedStateEvent:
     def attachedState: ItemAttachedState = Attached(itemRevision)
@@ -70,6 +70,9 @@ object BasicItemEvent:
   /** Agent only. */
   final case class ItemAttachedToMe(item: InventoryItem)
   extends ForDelegate:
+    override final def itemRevision =
+      item.itemRevision
+
     def key: InventoryItemKey = item.key
 
   /** Agent and Subagent only. */

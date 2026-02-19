@@ -457,13 +457,10 @@ extends
     if versionIds.isEmpty && pathToVersionToSignedItems.isEmpty then
       "Repo.empty"
     else
-      s"Repo(versions: ${versionIds.map(_.string).mkString(" ")}" + {
-        val pathLines = pathToVersionToSignedItems
-          .keys.toSeq.sorted
-          .map(path => s"$path " + pathToVersionToSignedItems(path).mkString(" "))
-        if pathLines.sizeIs <= 1 then " · " + pathLines.mkString
-        else pathLines.map("↩︎\n  " + _).mkString
-      } + ")"
+      s"Repo(${versionIdSet.size} versions, ${
+        pathToVersionToSignedItems.size} paths, ${
+        pathToVersionToSignedItems.iterator.map(_.size).sum} items)"
+
 
   private[item] sealed trait EventBlock:
     def events: Seq[VersionedEvent]
