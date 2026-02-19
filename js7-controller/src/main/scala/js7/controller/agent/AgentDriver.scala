@@ -3,7 +3,6 @@ package js7.controller.agent
 import cats.data.NonEmptyList
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO, Resource, ResourceIO}
-import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
@@ -134,22 +133,21 @@ extends Service.StoppableByRequest:
 
   // TODO For v2.6 inserted, but maybe duplicate
   private def attachAttachables: IO[Unit] =
-    journal.aggregate.flatMap(controllerState => controllerState
-      .itemToAgentToAttachedState
-      .view
-      .flatMap: (itemKey, agentPathToAttachedState) =>
-        agentPathToAttachedState
-          .get(agentPath)
-          .view
-          .collect:
-            case ItemAttachedState.Attachable => itemKey
-          .flatMap(controllerState.keyToItem.get)
-          .collect:
-            case item: UnsignedItem => Queueable.AttachUnsignedItem(item)
-            //??? case signedItem: SignableItem => Queueable.AttachSignedItem(signedItem)
-      .toVector
-      .traverse(commandQueue.enqueue)
-      .*>(commandQueue.maybeStartSending))
+    journal.aggregate.map: controllerState =>
+      controllerState
+        .itemToAgentToAttachedState.view
+        .flatMap: (itemKey, agentPathToAttachedState) =>
+          agentPathToAttachedState.get(agentPath)
+            .collect:
+              case ItemAttachedState.Attachable => itemKey
+            .flatMap:
+              controllerState.keyToItem.get
+            .collect:
+              case item: UnsignedItem => Queueable.AttachUnsignedItem(item)
+              //??? case signedItem: SignableItem => Queueable.AttachSignedItem(signedItem)
+    .flatMap: queuables =>
+      commandQueue.enqueue(queuables)
+    .*>(commandQueue.maybeStartSending)
 
   private def onDecoupled =
     IO.defer:
@@ -217,12 +215,15 @@ extends Service.StoppableByRequest:
         .guarantee(directorDriverAllocated.releaseFinally)
         .guarantee(clusterWatchAllocated.releaseFinally)
 
-  def send(input: Queueable): IO[Unit] =
+  def send(queueable: Queueable): IO[Unit] =
+    send(queueable :: Nil)
+
+  def send(queueables: Iterable[Queueable]): IO[Unit] =
     IO.defer:
       if isTerminating then
         IO.raiseError(new IllegalStateException(s"$agentDriver is terminating"))
       else
-        commandQueue.enqueue(input)
+        commandQueue.enqueue(queueables)
           .flatMap: ok =>
             IO.whenA(ok)(IO
               .race(
@@ -232,7 +233,7 @@ extends Service.StoppableByRequest:
                 case Left(()) => IO.unit // stop requested
                 case Right(()) => commandQueue.maybeStartSending
               .handleError(t => logger.error(
-                s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
+                s"send(${queueables.map(_.toShortString)}) => ${t.toStringWithCauses}", t))
               .raceMerge(untilStopRequested)
               .startAndForget)
 
@@ -364,30 +365,25 @@ extends Service.StoppableByRequest:
                 ).rightAs(agentRunId -> agentEventId)
 
   private def reattachSomeItems(): IO[Unit] =
-    journal.aggregate.flatMap(controllerState =>
+    journal.aggregate.map: controllerState =>
       controllerState
         .itemToAgentToAttachedState
         .toVector
-        .flatMap {
+        .flatMap:
           case (itemPath: UnsignedSimpleItemPath, agentToAttachedState)
             if itemPath.isInstanceOf[AgentPath] || itemPath.isInstanceOf[SubagentId] =>
             // After Agent Reset, re-attach AgentRef and SubagentItems
-            controllerState.pathToUnsignedSimpleItem.get(itemPath)
-              .flatMap(item => agentToAttachedState.get(agentPath).map(item -> _))
+            controllerState.pathToUnsignedSimpleItem.get(itemPath).flatMap: item =>
+              agentToAttachedState.get(agentPath).map(item -> _)
           case _ => Nil
-        }
-        .traverse {
+        .collect:
           case (item, Attachable) =>
-            send(Queueable.AttachUnsignedItem(item))
+            Queueable.AttachUnsignedItem(item)
 
-          case (item, Attached(rev)) =>
-            IO.whenA(item.itemRevision == rev) {
-              send(Queueable.AttachUnsignedItem(item))
-            }
-
-          case _ =>
-            IO.unit
-        }.map(_.combineAll))
+          case (item, Attached(rev)) if item.itemRevision == rev =>
+            Queueable.AttachUnsignedItem(item)
+    .flatMap: queueables =>
+      send(queueables)
 
   private def startNewClusterWatch: IO[Unit] =
     logger.debugIO(
