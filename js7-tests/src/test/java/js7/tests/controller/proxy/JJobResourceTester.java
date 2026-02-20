@@ -97,8 +97,8 @@ final class JJobResourceTester
         Flux<?> flux = proxy.flux().doOnNext(eventAndState -> {
             if (eventAndState.stampedEvent().value().key().equals(orderId)) {
                 Event event = eventAndState.stampedEvent().value().event();
-                if (event instanceof OrderEvent.OrderStdWritten) {
-                    output.append(((OrderEvent.OrderStdWritten)event).chunk());
+                if (event instanceof OrderEvent.OrderStdWritten written) {
+                    output.append(written.chunk());
                 } else if (event instanceof OrderEvent.OrderTerminated) {
                     orderTerminated.complete(null);
                 }

@@ -73,8 +73,7 @@ class JControllerProxyTester
     }
 
     static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig,
-        List<
-            String> itemJsons, List<String> manyItemJsons, Runnable startController)
+        List<String> itemJsons, List<String> manyItemJsons, Runnable startController)
         throws Exception
     {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
@@ -86,8 +85,7 @@ class JControllerProxyTester
 
                     // Avoid deadlock while blocking for firstProblem but whenStarted failed
                     Object maybeProblem = CompletableFuture.anyOf(couplingState.firstProblem, whenStarted).get(99, SECONDS);
-                    if (maybeProblem instanceof Problem) {
-                        Problem problem = (Problem)maybeProblem;
+                    if (maybeProblem instanceof Problem problem) {
                         assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
                     }
 

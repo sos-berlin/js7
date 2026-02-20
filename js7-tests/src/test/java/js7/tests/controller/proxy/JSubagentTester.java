@@ -79,8 +79,7 @@ final class JSubagentTester
         Flux<JEventAndControllerState<Event>> flux = proxy.flux()
             .doOnNext(eventAndState -> {
                 KeyedEvent<Event> keyedEvent = eventAndState.stampedEvent().value();
-                if (keyedEvent.event() instanceof InventoryItemEvent) {
-                    InventoryItemEvent event = (InventoryItemEvent)keyedEvent.event();
+                if (keyedEvent.event() instanceof InventoryItemEvent event) {
                     if (keys.contains(event.key())) {
                        keyedEvents.add(keyedEvent);
                     }
@@ -129,8 +128,7 @@ final class JSubagentTester
 
                     // Avoid deadlock while blocking for firstProblem but whenStarted failed
                     Object maybeProblem = CompletableFuture.anyOf(couplingState.firstProblem, whenStarted).get(99, SECONDS);
-                    if (maybeProblem instanceof Problem) {
-                        Problem problem = (Problem)maybeProblem;
+                    if (maybeProblem instanceof Problem problem) {
                         assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
                     }
 
