@@ -1,6 +1,7 @@
 package js7.base.time
 
 import java.lang.System.nanoTime
+import java.math.MathContext
 import java.text.{DecimalFormat, DecimalFormatSymbols}
 import java.util.Locale
 import js7.base.log.AnsiEscapeCodes.bold
@@ -9,6 +10,7 @@ import js7.base.time.Stopwatch.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
+import scala.math.BigDecimal.RoundingMode.HALF_UP
 import scala.util.control.NonFatal
 
 /**
@@ -37,6 +39,9 @@ final class Stopwatch:
 
 
 object Stopwatch:
+  private val Zero = BigDecimal(0)
+  private val One = BigDecimal(1)
+
   def measureTimeOfSingleRun(n: Int, ops: String = "ops")(body: => Unit): Result =
     Result(durationOf(body), n, ops)
 
@@ -73,11 +78,13 @@ object Stopwatch:
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
     if n < 10_000_000 then
-      durationAndPerSecondString(duration, n / 1_000, "kB", gap = false)
+      durationAndPerSecondString(duration, BigDecimal(n) / 1_000, "kB", gap = false)
+    else if n < 10_000_000_000L then
+      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000, "·MB", gap = false)
     else
-      durationAndPerSecondString(duration, n / 1_000_000, "MB")
+      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000_000, "·GB", gap = false)
 
-  def durationAndPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
+  def durationAndPerSecondString(duration: FiniteDuration, n: BigDecimal, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toShortString
 
   def numberAndPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
@@ -92,14 +99,13 @@ object Stopwatch:
     symbols.setGroupingSeparator('\'')
     new DecimalFormat("#,###.##", symbols)
 
-  private def formatNumber(number: Long | Double): String =
-    val n = number match
-      case number: Long => BigDecimal.valueOf(number)
-      case number: Double => BigDecimal.valueOf(number)
+  private def formatNumber(n: BigDecimal): String =
     if n < 0 then
       n.toString
+    else if n < BigDecimal(995, 2) && !n.isWhole then
+      n.setScale(1, HALF_UP).toString
     else if n < 10_000 then
-      n.toString
+      n.setScale(0, HALF_UP).toString
     else if n == 1_000_000 then
       "million"
     else if n % 1_000_000 == 0 then
@@ -111,9 +117,14 @@ object Stopwatch:
 
   final case class Result(
     duration: FiniteDuration,
-    n: Long,
+    n: BigDecimal,
     ops: String = "ops",
     private val gap: Boolean = true):
+
+    private val roundedN: BigDecimal = round(n)
+
+    private def round(n: BigDecimal): BigDecimal =
+      if n.abs < 10 then n.round(MathContext(1)) else n.setScale(0, HALF_UP)
 
     def singleDuration: FiniteDuration =
       duration / n
@@ -125,23 +136,23 @@ object Stopwatch:
       if duration.toNanos == 0 then
         "∞"
       else
-        ((duration < 1.s) ?? "~") + formatNumber(n * 1000L*1000*1000 / duration.toNanos)
+        ((duration < 1.s) ?? "~") + formatNumber(n * 1_000_000_000 / duration.toNanos)
 
     private def gapOps = (gap ?? " ") + ops
 
     override def toString: String =
       n match
-        case 0 => s"0$gapOps"
-        case 1 => s"⏱️  ${duration.pretty}/$n$gapOps"
+        case Zero => s"0$gapOps"
+        case One => s"⏱️  ${duration.pretty}/$n$gapOps"
         case _ =>
           val suffix = showPerSecond ?? s", $perSecondString$gapOps/s"
-          s"⏱️  ${duration.pretty}/${formatNumber(n)}$gapOps (⌀${singleDuration.pretty})$suffix"
+          s"⏱️  ${duration.pretty}/${formatNumber(roundedN)}$gapOps (⌀${singleDuration.pretty})$suffix"
 
     def toShortString: String =
       if n == 0 || !showPerSecond then
-        s"⏱️  ${duration.pretty}/$n$gapOps"
+        s"⏱️  ${duration.pretty}/$roundedN$gapOps"
       else
-        s"⏱️  ${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
+        s"⏱️  ${duration.pretty}/$roundedN$gapOps, $perSecondString$gapOps/s"
 
     def countAndPerSecondString: String =
       if n == 0 then
@@ -154,6 +165,7 @@ object Stopwatch:
         s"0$gapOps"
       else
         s"$perSecondString$gapOps/s"
+
 
   object Result:
     implicit def resultToString(result: Result): String =

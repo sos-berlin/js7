@@ -62,6 +62,8 @@ object ServiceMain:
         case Left(throwable) =>
           // Service has already logged an error (not always)
           logger.error(s"${throwable.toStringWithCauses}")
+          throwable.ifStackTrace.foreach: t =>
+            logger.debug(s"$t", t)
           ExitCode.Error
         case Right(termination) =>
           if !suppressTerminationLogging then
