@@ -50,6 +50,7 @@ standardJavaOptions=()
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
 if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
   standardJavaOptions+=("-XX:+UseCompactObjectHeaders")
+  standardJavaOptions+=("--add-modules" "jdk.incubator.vector")
 fi
 standardJavaOptions+=("-XX:+UseStringDeduplication")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
@@ -60,7 +61,6 @@ fi
 if [[ "$JAVA_VERSION_MAJOR" -lt 18 ]]; then
   standardJavaOptions+=("-Dfile.encoding=UTF-8")
 fi
-
 
 timestamp() {
   local t
