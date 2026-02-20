@@ -36,3 +36,6 @@ object Writable:
       new AllOps[A]:
         val self = target
         val typeClassInstance = tc
+
+  given Writable[Array[Byte]] =
+    (array, out) => out.write(array)

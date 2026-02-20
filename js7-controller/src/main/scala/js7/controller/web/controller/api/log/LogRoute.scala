@@ -7,15 +7,17 @@ import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
-import js7.common.files.ByteSeqFileReader.fileStream
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, passIf}
+import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.common.files.ByteSeqFileReader.{fileStream, growingLogFileStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithStream, passIf}
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute.*
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.pathEnd
+import org.apache.pekko.util.ByteString
 
 trait LogRoute extends ControllerRouteProvider:
 
@@ -37,9 +39,14 @@ trait LogRoute extends ControllerRouteProvider:
 
   private def streamFile(file: Path, endless: Boolean): Route =
     passIf(isRegularFile(file) && isReadable(file)):
-      completeWithByteStream(contentType):
-        fileStream(file, endless ? pollDuration, fromEnd = endless)
-          .interruptWhenF(shutdownSignaled)
+      completeWithStream(contentType):
+        locally:
+          if endless then
+            growingLogFileStream[ByteString](file, byteChunkSize = httpChunkSize, pollDuration, fromEnd = true)
+          else
+            fileStream[ByteString](file, byteChunkSize = httpChunkSize)
+        .interruptWhenF(shutdownSignaled)
+        .unchunks
 
 
 object LogRoute:

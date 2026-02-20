@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import java.util.concurrent.ArrayBlockingQueue
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
@@ -33,6 +34,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
 
   override protected def config = config"js7.web.server.services.log.poll-interval = 1.ms"
     .withFallback(super.config)
+    .withFallback(Js7Config.defaultConfig)
 
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
