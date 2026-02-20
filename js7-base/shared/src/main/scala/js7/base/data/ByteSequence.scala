@@ -182,10 +182,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def contains(byteSeq: ByteSeq, byte: Byte): Boolean =
     indexOf(byteSeq, byte) >= 0
 
-  def indexOf(byteSeq: ByteSeq, byte: Byte): Int =
+  final inline def indexOf(byteSeq: ByteSeq, byte: Byte): Int =
     indexOf(byteSeq, byte, 0)
 
-  def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int): Int =
+  final inline def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int): Int =
     indexOf(byteSeq, byte, from, Int.MaxValue)
 
   def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int, until: Int): Int =

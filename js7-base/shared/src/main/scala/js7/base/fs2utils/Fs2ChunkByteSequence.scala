@@ -5,6 +5,7 @@ import fs2.Chunk
 import java.nio.ByteBuffer
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.annotation.unused
 
 object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
@@ -47,6 +48,26 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
 
   override def isEmpty(chunk: Chunk[Byte])(using @unused Eq: Eq[Chunk[Byte]]): Boolean =
     chunk.isEmpty
+
+  override def indexOf(chunk: Chunk[Byte], byte: Byte, from: Int, until: Int): Int =
+    chunk match
+      case chunk: Chunk.ArraySlice[Byte] =>
+        if from < 0 then
+          throw IndexOutOfBoundsException(s"ByteSeq[fs2.Chunk].indexOf($byte, $from, $until)")
+        val from_ = from min chunk.length
+        val until_ = until min chunk.length
+        val index = chunk.values.vectorIndexOf(byte, chunk.offset + from_, chunk.offset + until_)
+        assert(index == -1 || index >= chunk.offset && index < chunk.offset + chunk.length) // TODO delete this
+        if index < 0 then index else index - chunk.offset
+
+      case chunk: Chunk.Singleton[Byte] =>
+        if from == 0 && until > 0 && chunk.value == byte then
+          from
+        else
+          -1
+
+      case _ =>
+        super.indexOf(chunk, byte, from, until)
 
   def length(chunk: Chunk[Byte]): Int =
     chunk.size

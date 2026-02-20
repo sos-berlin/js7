@@ -10,6 +10,7 @@ import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
+import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -146,6 +147,9 @@ object ByteArray extends ByteSequence[ByteArray]:
           val array = new Array[Byte](builder.length)
           builder.copyToArray(array)
           ByteArray.unsafeWrap(array)
+
+  override def indexOf(byteSeq: ByteArray, byte: Byte, from: Int, until: Int): Int =
+    byteSeq.unsafeArray.vectorIndexOf(byte, from, until)
 
   def length(byteArray: ByteArray): Int =
     byteArray.length

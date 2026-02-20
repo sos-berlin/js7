@@ -6,6 +6,8 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
+import js7.base.utils.JavaVectors.vectorIndexOf
+import org.apache.pekko.util.ByteString.ByteString1C
 import org.apache.pekko.util.{ByteString, CompactByteString}
 import scala.annotation.unused
 
@@ -31,6 +33,13 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
 
   def eqv(a: ByteString, b: ByteString): Boolean =
     a == b
+
+  override def indexOf(byteString: ByteString, byte: Byte, from: Int, until: Int): Int =
+    byteString match
+      case byteString: ByteString1C =>
+        byteString.toArrayUnsafe().vectorIndexOf(byte, from, until)
+      case _ =>
+        byteString.indexOf(byte, from, until)
 
   def length(byteString: ByteString): Int =
     byteString.length
@@ -96,6 +105,6 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
       def clear() =
         builder.clear()
         this
-      
+
       def result() =
         builder.result()
