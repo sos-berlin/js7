@@ -2,10 +2,7 @@ package js7.controller.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import java.nio.file.Path
 import js7.base.auth.SimpleUser
-import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -72,7 +69,6 @@ extends
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
   protected val checkedClusterState = controllerState
     .map(_.map(s => Stamped(s.eventId, s.clusterState)))
-  protected val currentLogFile      = config.as[Path]("js7.log.file")
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
   override protected val routeServiceContext = RouteServiceContext(
     filteredSnapshotRoute, filteredEventRoute, config)

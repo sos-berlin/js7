@@ -2,6 +2,7 @@ package js7.common.pekkohttp
 
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import org.apache.pekko.http.scaladsl.marshalling.{Marshaller, Marshalling, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
@@ -39,8 +40,7 @@ object StandardMarshallers:
       case o => stringToFiniteDuration(o)
 
   private def stringToFiniteDuration(string: String) =
-    (BigDecimal(string) * 1000).toLong.millis
-
+    ScalaTime.parseDuration(string)
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

@@ -10,6 +10,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
@@ -50,9 +51,14 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
     sessionRegisterLazy.value.allocatedThing
 
   override def testConfig: Config =
-    config"pekko.loglevel = warning"
-      .withFallback(AgentConfiguration.DefaultConfig.resolve())
+    config"""
+      pekko.loglevel = warning
+      js7.log.info.file = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
+      js7.log.debug.file = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
+      """
+      .withFallback(AgentConfiguration.DefaultConfig)
       .withFallback(super.testConfig)
+      .resolve()
 
   protected final def actorSystem = system
   protected val config: Config =
@@ -65,7 +71,7 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
     val token = sessionRegister
       .login(
         SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing),
-        "WebServiceTest", 
+        "WebServiceTest",
         Some(Js7Version))
       .await(99.s)
     RawHeader(`x-js7-session`.name, token.secret.string)
