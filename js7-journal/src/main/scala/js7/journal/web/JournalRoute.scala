@@ -6,16 +6,16 @@ import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient
 import js7.common.jsonseq.PositionAnd
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithCheckedStream
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.rechunkToByteStringSporadic
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
-import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
@@ -68,7 +68,7 @@ trait JournalRoute extends RouteProvider:
                       eventWatch.streamFile(journalPosition,
                           timeout = timeout.merge(maximumStreamingTimeout)(_ min _),
                           markEOF = markEOF, onlyAcks = returnAck,
-                          chunkContentSize = httpChunkSize)
+                          byteChunkSize = httpChunkSize)
                         .mapmap:
                           _.interruptWhenF(shutdownSignaled)
                             .map: chunk =>
@@ -76,8 +76,7 @@ trait JournalRoute extends RouteProvider:
                             .pipeIf(heartbeat.isDefined):
                               _.keepAlive(heartbeat.get,
                                 IO.pure(fs2.Chunk.singleton(PekkoHttpClient.HttpHeartbeatByteArray)))
-                            .chunkLimitBytes(httpChunkSize)
-                            .map(_.toByteString)
+                            .rechunkToByteStringSporadic(httpChunkSize)
 
 
 object JournalRoute:

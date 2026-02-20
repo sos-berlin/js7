@@ -156,12 +156,12 @@ extends AutoCloseable:
   /** Observes a journal file lines and length. */
   final def streamFile(position: Long, timeout: Option[FiniteDuration],
     markEOF: Boolean = false, onlyAcks: Boolean,
-    chunkContentSize: Int)
+    byteChunkSize: Int)
   : Stream[IO, Chunk[PositionAnd[ByteArray]]] =
     for
       jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
       until <- Stream.eval(timeout.fold(IO.none)(t => SyncDeadline.usingNow(now ?=> Some(now + t))))
-      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks, chunkContentSize)
+      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks, byteChunkSize)
     yield
       o
 
@@ -172,7 +172,7 @@ extends AutoCloseable:
     until: Option[SyncDeadline],
     markEOF: Boolean,
     onlyAcks: Boolean,
-    chunkContentSize: Int)
+    byteChunkSize: Int)
   : Stream[IO, Chunk[PositionAnd[ByteArray]]] =
     Stream.suspend:
       def streamNext(position: Long): Stream[IO, Chunk[PositionAnd[ByteArray]]] =
@@ -208,7 +208,7 @@ extends AutoCloseable:
               .concat:
                 (eof && markEOF) ? PositionAnd(lastPosition, EndOfJournalFileMarker)
 
-            unfoldEvalWeighted[PositionAnd[ByteArray]](chunkContentSize, _.value.length, Blocking):
+            unfoldEvalWeighted[PositionAnd[ByteArray]](byteChunkSize, _.value.length, Blocking):
               iterator.hasNext ? iterator.next()
             .append:
               // To be sure, .append must be lazy for lastPosition and

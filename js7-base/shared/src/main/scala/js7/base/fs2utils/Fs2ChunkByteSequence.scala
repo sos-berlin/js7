@@ -13,6 +13,9 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
   val clazz: Class[Chunk[Byte]] = classOf[Chunk[Byte]]
   val empty: Chunk[Byte] = Chunk.empty
 
+  override def one(byte: Byte): Chunk[Byte] =
+    Chunk.singleton(byte)
+
   def fromArray(bytes: Array[Byte]): Chunk[Byte] =
     Chunk.array(bytes.clone())
 

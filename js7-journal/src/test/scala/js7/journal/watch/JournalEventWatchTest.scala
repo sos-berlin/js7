@@ -74,7 +74,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             .await(99.s).strict
 
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.streamFile(journalPosition, timeout = 0.s.some, chunkContentSize = 1)
+          eventWatch.streamFile(journalPosition, timeout = 0.s.some, byteChunkSize = 1)
             .await(99.s)
             .orThrow
             .unchunks
@@ -378,14 +378,14 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   "streamFile" in:
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
       assert:
-        eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s.some, chunkContentSize = 1)
+        eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s.some, byteChunkSize = 1)
           .await(99.s)
           == Left(Problem("Unknown journal file=123"))
 
       val jsons = mutable.Buffer[Json]()
       val observing = eventWatch
         .streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s.some,
-          chunkContentSize = 1)
+          byteChunkSize = 1)
         .await(99.s)
         .orThrow
         .handleErrorWith:

@@ -1,5 +1,6 @@
 package js7.base.circeutils
 
+import cats.syntax.semigroup.*
 import cats.syntax.show.*
 import io.circe
 import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, Configuration as CirceConfiguration}
@@ -144,6 +145,9 @@ object CirceUtils:
       PrettyPrinter.print(Json.fromJsonObject(underlying))
 
   implicit final class RichJson(private val underlying: Json) extends AnyVal:
+    def toLineByteSequence[ByteSeq: ByteSequence as ByteSeq]: ByteSeq =
+      toByteSequence[ByteSeq] |+| ByteSeq.one('\n')
+
     def toByteSequence[ByteSeq: ByteSequence as ByteSeq]: ByteSeq =
       ByteSeq.readByteBuffer:
         CompactPrinter.printToByteBuffer(underlying)

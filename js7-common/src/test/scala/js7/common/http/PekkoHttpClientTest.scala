@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
@@ -26,8 +27,9 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyThrowable}
 import js7.common.http.PekkoHttpClientTest.*
 import js7.common.pekkohttp.CirceJsonSupport
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -122,11 +124,11 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
           } ~
             get:
               path("STREAM") {
-                completeWithByteStream(`application/x-ndjson`):
+                completeWithStream(`application/x-ndjson`):
                   Stream("ONE\n", "TWO\n")
                     .map(_.toCharArray.map(_.toByte))
                     .map(Chunk.array)
-                    .unchunks
+                    .map(_.toByteString)
               } ~
               path("IDLE-TIMEOUT"):
                 completeWithStream(`application/x-ndjson`):

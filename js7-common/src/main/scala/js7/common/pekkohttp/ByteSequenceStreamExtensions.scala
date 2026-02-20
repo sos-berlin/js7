@@ -8,12 +8,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 
 object ByteSequenceStreamExtensions:
 
-  extension [O](stream: Stream[IO, O])
+  extension [ByteSeq: ByteSequence, O](stream: Stream[IO, ByteSeq])
 
-    def splitByteSequences[ByteSeq: ByteSequence](maxSize: Int)(using ByteSeq =:= O)
+    def splitByteSequences(maxSize: Int)
     : Stream[IO, ByteSeq] =
-      stream.asInstanceOf[Stream[IO, ByteSeq]]
-        .map: byteSeq =>
+      stream.mapChunks: chunk =>
+        chunk.flatMap: byteSeq =>
           if byteSeq.length <= maxSize then
             Chunk.singleton(byteSeq)
           else
@@ -21,4 +21,3 @@ object ByteSequenceStreamExtensions:
               Vector.unfold(0): i =>
                 val slice = byteSeq.slice(i * maxSize, (i + 1) * maxSize)
                 slice.nonEmpty ? (slice, i + 1)
-        .unchunks

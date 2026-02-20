@@ -12,7 +12,8 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedJsonStream, completeWithIOStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringBuffered
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, completeWithIOStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -39,20 +40,20 @@ trait SnapshotRoute extends ControllerRouteProvider:
 
   final def filteredSnapshotRoute(filter: SnapshotFilter): Route =
     get:
-      authorizedUser(ValidUserPermission) { _ =>
+      authorizedUser(ValidUserPermission): _ =>
         pathEndOrSingleSlash:
           parameter("eventId".as[Long].?):
             case None => currentSnapshot(filter)
             case Some(eventId) => historicSnapshot(eventId)
-      }
 
   private def currentSnapshot(filter: SnapshotFilter)(using IORuntime): Route =
     given Encoder[Any] = ControllerState.snapshotObjectJsonCodec
-    completeWithCheckedJsonStream(chunkSize = httpChunkSize, prefetch = prefetch):
+    completeWithCheckedStream(`application/x-ndjson`):
       controllerState.flatMapT: controllerState =>
         IO.right:
           filter(controllerState.toSnapshotStream)
             .interruptWhenF(shutdownSignaled)
+            .encodeJsonAndRechunkToByteStringBuffered(httpChunkSize)
 
   private def historicSnapshot(eventId: EventId): Route =
     eventWatch.rawSnapshotAfter(after = eventId, chunkContentLimit = httpChunkSize) match

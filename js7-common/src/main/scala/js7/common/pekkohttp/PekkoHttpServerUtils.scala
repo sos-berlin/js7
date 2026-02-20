@@ -2,19 +2,21 @@ package js7.common.pekkohttp
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.{Pipe, Stream}
+import cats.syntax.foldable.*
+import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteSequence
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.rechunkBytes
+import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, rechunkBytes}
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.utils.Assertions.assertThat
-import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
+import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.ByteSequenceStreamExtensions.splitByteSequences
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -26,8 +28,6 @@ import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
-import scala.concurrent.duration.FiniteDuration
-import scala.util.chaining.scalaUtilChainingOps
 
 /**
   * @author Joacim Zschimmer
@@ -35,6 +35,49 @@ import scala.util.chaining.scalaUtilChainingOps
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
+
+  object extensions:
+    extension [I](stream: fs2.Stream[IO, I])
+      /** Unbuffered, each sporadic chunk is processed immediately. */
+      def encodeJsonAndRechunkToByteStringSporadic[A](chunkSize: Int)(using Encoder[I])
+      : fs2.Stream[IO, ByteString] =
+        mapAndRechunkToByteStringSporadic(chunkSize):
+          _.asJson.toLineByteSequence[ByteString]
+
+      /** Unbuffered, each sporadic chunk is processed immediately. */
+      def mapAndRechunkToByteStringSporadic[A](chunkSize: Int)(f: I => ByteString)
+      : fs2.Stream[IO, ByteString] =
+        // TODO Guard against big JSON chunks, using too much memory ?
+        stream.map(f)
+          .chunks
+          .rechunkToByteStringSporadic(chunkSize)
+
+      /** Buffered, for non-sporadic streams. */
+      def encodeJsonAndRechunkToByteStringBuffered(chunkSize: Int)(using Encoder[I])
+      : Stream[IO, ByteString] =
+        mapAndRechunkToByteStringBuffered(chunkSize):
+          _.asJson.toLineByteSequence[ByteString]
+
+      /** Buffered, for non-sporadic streams. */
+      def mapAndRechunkToByteStringBuffered(chunkSize: Int)(f: I => ByteString)
+      : Stream[IO, ByteString] =
+        stream.mapChunkWeighted(f, chunkSize)(_.length)
+          .map(_.combineAll)
+          .splitByteSequences(chunkSize)
+
+
+    extension [ByteSeq: ByteSequence](stream: fs2.Stream[IO, fs2.Chunk[ByteSeq]])
+      /** Unbuffered, each sporadic chunk is processed immediately. */
+      def rechunkToByteStringSporadic(chunkSize: Int): fs2.Stream[IO, ByteString] =
+        stream.chunkLimitBytes(chunkSize)
+          .map(_.toByteString)
+
+      /** Buffered, for non-sporadic streams. */
+      def rechunkToByteStringBuffered(chunkSize: Int): fs2.Stream[IO, ByteString] =
+        stream.unchunks.chunkWeighted(chunkSize)(_.length)
+          .map(_.combineAll.toByteString)
+
+  end extensions
 
   object implicits:
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
@@ -248,14 +291,6 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
-  def completeWithCheckedJsonStream[A: Encoder](chunkSize: Int, prefetch: Int = 0)
-    (stream: IO[Checked[Stream[IO, A]]])
-    (using IORuntime)
-  : Route =
-    completeWithCheckedStream(`application/x-ndjson`):
-      stream.map(_.map:
-        _.through(encodeJson(httpChunkSize = chunkSize, prefetch = prefetch)))
-
   def completeWithCheckedStream(contentType: ContentType)
     (checkedStream: IO[Checked[Stream[IO, ByteString]]])
     (using IORuntime)
@@ -264,12 +299,6 @@ object PekkoHttpServerUtils:
       checkedStream.flatMap:
         case Left(problem) => IO.pure(complete(problem))
         case Right(stream) => completeWithIOStream(contentType)(stream)
-
-  def completeWithByteStream(contentType: ContentType)(stream: Stream[IO, Byte])
-    (using IORuntime)
-  : Route =
-    completeWithStream(contentType):
-      stream.chunks.map(_.toByteString)
 
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
@@ -296,38 +325,15 @@ object PekkoHttpServerUtils:
   val extractJs7RequestId: Directive1[Long] =
     new Directive1[Long]:
       def tapply(inner: Tuple1[Long] => Route) =
-        extractRequest(_
-          .headers
-          .find(_.is(`x-js7-request-id`.lowercaseName))
-          .match {
-            case None => reject(MissingHeaderRejection(`x-js7-request-id`.toString))
-            case Some(h) =>
-              `x-js7-request-id`
-                .parseNumber(h.value())
-                .match {
-                  case Left(problem) =>
-                    reject(MalformedHeaderRejection(`x-js7-request-id`.toString, problem.toString))
-                  case Right(n) =>
-                    inner(Tuple1(n))
-                }
-          })
-
-  // Was observableToResponseMarshallable in v2.6
-  def encodeAndHeartbeat[A: Encoder](
-    httpChunkSize: Int,
-    keepAlive: FiniteDuration,
-    prefetch: Int = 0)
-  : Pipe[IO, A, ByteString] =
-    _.through(encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch))
-      .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
-
-  def encodeJson[A: Encoder](httpChunkSize: Int, prefetch: Int = 0): Pipe[IO, A, ByteString] =
-    _.mapChunks: chunk =>
-      chunk.map: a =>
-        a.asJson.toByteSequence[fs2.Chunk[Byte]] ++ LFChunk
-    .rechunkBytes(httpChunkSize)
-    .map:
-      _.toByteString
-        .tap(byteString => assertThat(byteString.length <= httpChunkSize))
-
-  private val LFChunk: fs2.Chunk[Byte] = fs2.Chunk.singleton('\n')
+        extractRequest:
+          _.headers.find(_.is(`x-js7-request-id`.lowercaseName))
+            .match
+              case None => reject(MissingHeaderRejection(`x-js7-request-id`.toString))
+              case Some(h) =>
+                `x-js7-request-id`
+                  .parseNumber(h.value())
+                  .match
+                    case Left(problem) =>
+                      reject(MalformedHeaderRejection(`x-js7-request-id`.toString, problem.toString))
+                    case Right(n) =>
+                      inner(Tuple1(n))

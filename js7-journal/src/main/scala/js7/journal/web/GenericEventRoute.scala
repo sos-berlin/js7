@@ -22,7 +22,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
 import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeJson}
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringSporadic
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
@@ -43,6 +44,7 @@ import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
+
 /**
   * @author Joacim Zschimmer
   */
@@ -152,8 +154,7 @@ trait GenericEventRoute extends RouteProvider:
           IO:
             eventWatch.checkEventId(request.after, request.tornOlder) >> Right:
               eventStream(request, isRelevantEvent, eventWatch, maybeServerMetering)
-                .through:
-                  encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
                 // Heartbeat only if it's faster then serverMetering
                 .pipeMaybe(maybeHeartbeat.filter(h => maybeServerMetering.forall(h < _))):
                   (stream, h) =>
@@ -188,8 +189,7 @@ trait GenericEventRoute extends RouteProvider:
               Stream.emit(head)
                 .append:
                   eventStream(tailRequest, isRelevantEvent, eventWatch)
-                .through:
-                  encodeJson(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
                 .interruptWhenF(shutdownSignaled)
 
     private def eventStream(

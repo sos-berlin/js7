@@ -10,6 +10,7 @@ import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
@@ -17,11 +18,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupportRouteTest.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithByteStream
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.PekkoWebServer.BoundRoute
 import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.apache.pekko.actor.ActorSystem
@@ -82,9 +84,8 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
             def boundRoute =
               BoundRoute.simple:
                 webLog:
-                  completeWithByteStream(`application/x-ndjson`):
-                    Stream
-                      .iterable(data.toArray)
+                  completeWithStream(`application/x-ndjson`):
+                    Stream.iterable(data.toArray)
                       .append(Stream.never[IO])
                       .through:
                         if heartbeating then
@@ -93,6 +94,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
                             .unchunks
                         else
                           identity
+                      .chunks.map(_.toByteString)
                       .onFinalizeCase: exitCase =>
                         IO(logger.info(s"onFinalizeCase $exitCase")) *>
                           serverStreamCanceled.complete(exitCase).void

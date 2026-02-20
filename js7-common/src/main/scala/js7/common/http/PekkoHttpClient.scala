@@ -3,17 +3,17 @@ package js7.common.http
 import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.applicativeError.*
 import fs2.Stream
-import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
+import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
@@ -37,8 +37,8 @@ import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonH
 import js7.common.http.PekkoHttpClient.*
 import js7.common.http.PekkoHttpUtils.{RichPekkoAsUri, RichPekkoUri, RichResponseEntity, decompressResponse, encodeGzip}
 import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
-import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringBuffered, mapAndRechunkToByteStringBuffered}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko
@@ -221,23 +221,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def postStream[A: Encoder, B: Decoder](
     uri: Uri,
     stream: Stream[IO, A],
-    responsive: Boolean = false,
+    //responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false,
     dontLog: Boolean = false)
     (using IO[Option[SessionToken]])
   : IO[B] =
-    def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
-
-    val chunks: Stream[IO, ByteString] =
-      //if responsive then
-      //  for a <- stream yield toNdJson(a)
-      //else
-        stream
-          .mapParallelBatch(prefetch = jsonPrefetch): a =>
-            toNdJson(a).chunkStream(chunkSize).toVector
-          .map(fs2.Chunk.from)
-          .unchunks
-
     IO.defer:
       val stop = Deferred.unsafe[IO, Unit]
       val stopped = Deferred.unsafe[IO, Unit]
@@ -265,8 +253,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     (using IO[Option[SessionToken]])
   : IO[Json] =
     data
-      .map(o => ByteString(o) ++ LF)
-      .splitByteSequences(chunkSize)
+      .mapAndRechunkToByteStringBuffered(chunkSize): string =>
+        ByteString(string) ++ LF
       .map(Chunk(_))
       .append(Stream.emit(LastChunk))
       .toPekkoSourceResource
@@ -602,7 +590,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 object PekkoHttpClient:
   val HttpHeartbeatByteArray: ByteArray = ByteArray("\n")
-  val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
+  val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence
+  val HttpHeartbeatFs2Chunk: fs2.Chunk[Byte] = HttpHeartbeatByteArray.toByteSequence
   val logHeartbeat = sys.props.asSwitch("js7.log.heartbeat")
 
   def resource(

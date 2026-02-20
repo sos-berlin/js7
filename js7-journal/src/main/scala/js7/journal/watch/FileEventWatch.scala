@@ -11,7 +11,7 @@ trait FileEventWatch extends EventWatch:
 
   def streamFile(journalPosition: JournalPosition,
     timeout: Option[FiniteDuration], markEOF: Boolean = false, onlyAcks: Boolean = false,
-    chunkContentSize: Int)
+    byteChunkSize: Int)
   : IO[Checked[fs2.Stream[IO, fs2.Chunk[PositionAnd[ByteArray]]]]]
 
   def rawSnapshotAfter(after: EventId, chunkContentLimit: Int)

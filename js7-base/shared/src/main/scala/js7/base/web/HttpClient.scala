@@ -27,13 +27,21 @@ trait HttpClient:
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 
-  def getRawLinesStream(
+  def getJsonAsRawLines(
     uri: Uri,
     returnHeartbeatAs: Option[ByteArray] = None,
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]]
+
+  def getTextAsRawLines(
+    uri: Uri,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
+  : IO[Stream[IO, fs2.Chunk[Byte]]]
 
   def get[A: Decoder](uri: Uri, dontLog: Boolean = false)(using IO[Option[SessionToken]])
   : IO[A]
@@ -45,7 +53,6 @@ trait HttpClient:
   def postStream[A: Encoder, B: Decoder](
     uri: Uri,
     data: Stream[IO, A],
-    responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false,
     dontLog: Boolean = false)
     (implicit s: IO[Option[SessionToken]])

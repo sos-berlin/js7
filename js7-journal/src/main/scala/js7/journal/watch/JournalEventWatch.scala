@@ -302,7 +302,7 @@ extends AutoCloseable,
     checkedCurrentEventReader.map(_.journalPosition)
 
   def streamFile(journalPosition: JournalPosition,
-    timeout: Option[FiniteDuration], markEOF: Boolean, onlyAcks: Boolean, chunkContentSize: Int)
+    timeout: Option[FiniteDuration], markEOF: Boolean, onlyAcks: Boolean, byteChunkSize: Int)
   : IO[Checked[Stream[IO, fs2.Chunk[PositionAnd[ByteArray]]]]] =
     IO.defer:
       import journalPosition.{fileEventId, position}
@@ -322,7 +322,7 @@ extends AutoCloseable,
                 Right:
                   currentEventReader.streamFile(position, timeout,
                     markEOF = markEOF, onlyAcks = onlyAcks,
-                    chunkContentSize = chunkContentSize)
+                    byteChunkSize = byteChunkSize)
 
           case _ =>
             val maybeEventReader = maybeCurrentEventReader
@@ -338,7 +338,7 @@ extends AutoCloseable,
               case Some(eventReader) =>
                 IO(Right:
                   eventReader.streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks,
-                      chunkContentSize = chunkContentSize)
+                      byteChunkSize = byteChunkSize)
                     .pipeIf(onlyAcks)(_
                       // Never acknowledge events written by this active cluster node
                       // to other wanna-be active nodes!

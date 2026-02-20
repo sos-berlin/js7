@@ -2,15 +2,18 @@ package js7.base.fs2utils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.testkit.TestControl
-import cats.effect.{IO, Resource, SyncIO}
+import cats.effect.{IO, Resource, SyncIO, *}
 import fs2.{Chunk, Pure, Stream}
 import js7.base.fs2utils.StreamExtensions.*
+import js7.base.fs2utils.StreamExtensionsTest.*
 import js7.base.log.Logger
 import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.base.utils.{Atomic, SetOnce}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 
 final class StreamExtensionsTest extends OurAsyncTestSuite:
 
@@ -95,6 +98,25 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
           Chunk("ffffff", "xxxx"),
           Chunk("yyyyyyyy")))
     }
+
+    "mapChunkWeighted avoids high memory usage – manual test" in :
+      if !isIntelliJIdea then
+        pending
+      else
+        IO.defer:
+          logger.info(s"totalMemory=${toKiBGiB(sys.runtime.totalMemory)}")
+          val elemSize: Int = 250 * 1024
+          val charChunkSize = 1024 * 1024
+          //val n = BigDecimal(sys.runtime.totalMemory / charChunkSize).toIntExact
+          fs2.Stream.iterable(0 to charChunkSize by 1024)
+            .covary[IO]
+            .mapChunkWeighted[String]("+" * _, charChunkSize)(_.length)
+            .map: chunk =>
+              logger.info(s"chunk count=${chunk.size} · ${toKiBGiB(chunk.asSeq.map(_.length).sum)} = ${chunk.asSeq.map(o => toKiBGiB(o.length)).mkString(" + ")}")
+              val size = chunk.iterator.map(_.length).sum
+              assert(size >= elemSize & size <= charChunkSize)
+              chunk
+            .compile.drain.as(succeed)
 
     "combineWeightedInChunk" - {
       "empty stream" in :

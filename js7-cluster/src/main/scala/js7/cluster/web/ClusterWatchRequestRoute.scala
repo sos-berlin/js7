@@ -10,7 +10,9 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, encodeAndHeartbeat}
+import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringSporadic
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.cluster.{ClusterState, ClusterWatchRequest}
@@ -43,11 +45,8 @@ trait ClusterWatchRequestRoute extends RouteProvider:
                 if throwable.getStackTrace.nonEmpty then
                   logger.debug(throwable.toStringWithCauses, throwable)
                 Stream.empty
-              .through:
-                encodeAndHeartbeat(
-                  httpChunkSize = httpChunkSize,
-                  prefetch = prefetch,
-                  keepAlive = keepAlive)
+              .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+              .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
               .interruptWhenF(shutdownSignaled)
 
 

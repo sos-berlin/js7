@@ -125,31 +125,40 @@ object StreamExtensions:
                 .filter(_.nonEmpty)
               case _ => Stream.empty
 
-  /** Like `chunkN` but returns Chunks until a weighted limit is reached.
+    def mapAndRechunkToBytesBuffered[ByteSeq: ByteSequence](chunkSize: Int)(f: O => ByteSeq)
+    : fs2.Stream[F, fs2.Chunk[ByteSeq]] =
+      stream.mapChunkWeighted(f, chunkSize)(_.length)
+
+    /** Like `chunkN` but returns Chunks until a weighted limit is reached.
       * <p>
-      *   Upstream big elements will not be split and are returned as is (bigger then limit)
-      * <p>
-      * See also [[Fs2Utils.unfoldEvalWeighted]]
+      *   The downstream my have elements with a weight > limit, because
+      *   no element is being split (no split function is provided).
+      * @see [[Fs2Utils.unfoldEvalWeighted]]
+      * @see [[combineWeightedInChunk]]
       */
     def chunkWeighted(limit: Int)(weight: O => Int): Stream[F, Chunk[O]] =
+      mapChunkWeighted[O](identity, limit)(weight)
+
+    def mapChunkWeighted[O2](f: O => O2, limit: Int)(weight: O2 => Int): Stream[F, Chunk[O2]] =
       stream.pull.uncons.flatMap:
         case Some((chunk, next)) =>
-          def go(s: Stream[F, O], acc: VectorBuilder[O], accWeight: Int): Pull[F, Chunk[O], Unit] =
+          def go(s: Stream[F, O], acc: VectorBuilder[O2], accWeight: Int): Pull[F, Chunk[O2], Unit] =
             s.pull.uncons1.flatMap:
               case Some((o, next)) =>
-                val w = weight(o)
+                val o2 = f(o)
+                val w = weight(o2)
                 if accWeight + w <= limit || acc.isEmpty then
-                  acc += o
+                  acc += o2
                   go(next, acc, accWeight + w)
                 else
                   val chunk = acc.result()
                   acc.clear()
-                  acc += o
+                  acc += o2
                   Pull.output1(Chunk.from(chunk)) >> go(next, acc, w)
               case None =>
                 Pull.output1(Chunk.from(acc.result()))
 
-          go(Stream.chunk(chunk) ++ next, new VectorBuilder[O], 0)
+          go(Stream.chunk(chunk) ++ next, new VectorBuilder[O2], 0)
         case None =>
           Pull.done
       .stream
@@ -230,6 +239,34 @@ object StreamExtensions:
         if nextO.nonEmpty then
           chunks += nextO.result().combineAll
         Chunk.from(chunks.result())
+
+    ///** Combine elements in each Chunk until a weighted limit is reached.
+    //  *
+    //  * Upstream chunks will not be split.*/
+    //def mapAndCombineWeightedInChunk(limit: Int, weight: O => Int)(f: O => O2)(using O: Monoid[O]): Stream[F, O] =
+    //  stream.mapChunks: chunk =>
+    //    val chunks = new VectorBuilder[O]
+    //    val nextO = new VectorBuilder[O]
+    //    var size = 0L
+    //    val it = chunk.iterator
+    //    @tailrec def loop(): Unit =
+    //      if it.hasNext then
+    //        val o = it.next()
+    //        val w = weight(o)
+    //        require(w >= 0, s"combineWeightedInChunk($limit): weight(o) must be non-negative, but was $w")
+    //        if size + w <= limit || size == 0 then
+    //          size += w
+    //          nextO += o
+    //        else
+    //          chunks += nextO.result().combineAll
+    //          nextO.clear()
+    //          nextO += o
+    //          size = w
+    //        loop()
+    //    loop()
+    //    if nextO.nonEmpty then
+    //      chunks += nextO.result().combineAll
+    //    Chunk.from(chunks.result())
 
     /** Repeat endlessly the last element, or return the empty Stream iff this is empty. */
     def repeatLast: Stream[F, O] =
@@ -382,12 +419,16 @@ object StreamExtensions:
       stream.chunks.map(_.convertToString)
 
 
-  extension[F[_]](stream: Stream[F, Chunk[Byte]])
+  extension[F[_]](stream: Stream[F, Chunk[Chunk[Byte]]])
+    /** Like chunkN but combines only Chunks in each Stream Chunk, without waiting for a next Chunk.
+      *
+      * <p>
+      * Use these for streams with sporadic chunks.  */
     def rechunkBytes(limit: Int): Stream[F, Chunk[Byte]] =
-      stream.combineWeightedInChunk(limit)(_.length)
+      stream.mapChunks(_.combineAll)
+        .combineWeightedInChunk(limit)(_.length)
         .unchunks
         .chunkLimit(limit)
-
 
   extension[F[_], ByteSeq: ByteSequence](stream: Stream[F, Chunk[ByteSeq]])
     def chunkLimitBytes(limit: Int): Stream[F, Chunk[Byte]] =
@@ -424,7 +465,6 @@ object StreamExtensions:
               .map(_.flatten)
               .map(Chunk.from)
         .unchunks
-
 
   //extension [A](underlying: IO[Stream[IO, A]])
   //  def logTiming(
