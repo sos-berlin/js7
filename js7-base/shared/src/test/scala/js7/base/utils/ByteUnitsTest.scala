@@ -13,6 +13,7 @@ final class ByteUnitsTest extends OurTestSuite:
     assert(formatNumber(10, 1, "x") == "10x")
 
     // Base 1000
+    assert(formatNumber(0, 1000, "x") == "0x")
     assert(formatNumber(1000, 1000, "x") == "1x")
     assert(formatNumber(1099, 1000, "x") == "1x")
     assert(formatNumber(1100, 1000, "x") == "1.1x")
@@ -29,6 +30,11 @@ final class ByteUnitsTest extends OurTestSuite:
     assert(formatNumber(11000, 1000, "x") == "11x")
     assert(formatNumber(99999, 1000, "x") == "99x")
 
+    assert(formatNumber(-1, 1000, "x") == "-0x")
+    assert(formatNumber(-99999, 1000, "x") == "-99x")
+    assert(formatNumber(-100000, 1000, "x") == "-100x")
+
+
     // Base 1024
     assert(formatNumber(1023, 1024, "x") == "0.9x")
     assert(formatNumber(1024, 1024, "x") == "1x")
@@ -43,8 +49,11 @@ final class ByteUnitsTest extends OurTestSuite:
     assert(formatNumber(11*1024-1, 1024, "x") == "10x")
     assert(formatNumber(11*1024, 1024, "x") == "11x")
 
+    assert(formatNumber(-1023, 1024, "x") == "-0.9x")
+    assert(formatNumber(-1024, 1024, "x") == "-1x")
+
+
   "toKBGB" in:
-    assert(toKBGB(-1) == "-1bytes")
     assert(toKBGB(0) == "0bytes")
     assert(toKBGB(1) == "1bytes")
     assert(toKBGB(999) == "999bytes")
@@ -62,8 +71,24 @@ final class ByteUnitsTest extends OurTestSuite:
     assert(toKBGB(1199999999) == "1.1GB")
     assert(toKBGB(10000000000L) == "10GB")
 
+    assert(toKBGB(-1) == "-1bytes")
+    assert(toKBGB(-999) == "-999bytes")
+    assert(toKBGB(-1000) == "-1kB")
+    assert(toKBGB(-1100) == "-1.1kB")
+    assert(toKBGB(-1199) == "-1.1kB")
+    assert(toKBGB(-999999) == "-999kB")
+    assert(toKBGB(-1000000) == "-1MB")
+    assert(toKBGB(-1100000) == "-1.1MB")
+    assert(toKBGB(-1199999) == "-1.1MB")
+    assert(toKBGB(-10999999) == "-10MB")
+    assert(toKBGB(-999999999) == "-999MB")
+    assert(toKBGB(-1000000000) == "-1GB")
+    assert(toKBGB(-1100000000) == "-1.1GB")
+    assert(toKBGB(-1199999999) == "-1.1GB")
+    assert(toKBGB(-10000000000L) == "-10GB")
+
   "toMB" in:
-    assert(toMB(-1) == "-1bytes")
+    assert(toMB(-1) == ">-1MB")
     assert(toMB(0) == "0MB")
     assert(toMB(1) == "<1MB")
     assert(toMB(999999) == "<1MB")
@@ -75,7 +100,7 @@ final class ByteUnitsTest extends OurTestSuite:
     val K = 1024L
     val M = 1024*K
     val G = 1024*M
-    assert(toKiBGiB(-1) == "-1bytes")
+
     assert(toKiBGiB(0) == "0bytes")
     assert(toKiBGiB(1) == "1bytes")
     assert(toKiBGiB(K-1) == "1023bytes")
@@ -88,3 +113,15 @@ final class ByteUnitsTest extends OurTestSuite:
     assert(toKiBGiB(G+G/2) == "1.5GiB")
     assert(toKiBGiB(10*G+G/2) == "10GiB")
     assert(toKiBGiB(1024*G) == "1024GiB")
+
+    assert(toKiBGiB(-1) == "-1bytes")
+    assert(toKiBGiB(-(K-1)) == "-1023bytes")
+    assert(toKiBGiB(-K) == "-1KiB")
+    assert(toKiBGiB(-(K+K/2)) == "-1.5KiB")
+    assert(toKiBGiB(-(M-1)) == "-1023KiB")
+    assert(toKiBGiB(-M) == "-1MiB")
+    assert(toKiBGiB(-(M+M/2)) == "-1.5MiB")
+    assert(toKiBGiB(-(M*K-1)) == "-1023MiB")
+    assert(toKiBGiB(-(G+G/2)) == "-1.5GiB")
+    assert(toKiBGiB(-(10*G+G/2)) == "-10GiB")
+    assert(toKiBGiB(-1024*G) == "-1024GiB")
