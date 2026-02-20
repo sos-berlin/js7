@@ -3,12 +3,12 @@ package js7.base.catsutils
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.kernel.Eq
-import fs2.compat.NotGiven
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import scala.concurrent.duration.FiniteDuration
+import scala.util.NotGiven
 
 // TODO Prefer CatsDeadline?
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Cats Effect's Scheduler. */

@@ -2,12 +2,11 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.view
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventCalc
 import js7.data.execution.workflow.OrderEventSource.moveOrder
-import js7.data.execution.workflow.instructions.IfExecutor.*
-import js7.data.order.Order
 import js7.data.order.Order.{Broken, Failed, FailedWhileFresh}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderId}
@@ -27,44 +26,51 @@ private object IfExecutor extends EventInstructionExecutor_[If], PositionInstruc
         coll.nix
       else
         try
-          nextMove(instr, order, coll.aggregate).flatMap:
-            case None =>
-              coll.nix
-            case Some(OrderMoved(to, reason)) =>
+          throwingNextMove(instr, order, coll.aggregate, coll.now).flatMap:
+            case OrderMoved(to, reason) =>
               coll:
                 moveOrder(order, to, reason)
         catch case _: OrderNotStartedException =>
           if !order.isStartable(coll.now) then
             logger.trace(s"🪱 Useless execution of clock-querying if-instruction when ${
-              order.id
-            } has not reached its scheduled time")
+              order.id} has not reached its scheduled time")
             coll.nix
           else
-            coll:
-              orderId <-: OrderStarted
+            coll(orderId <-: OrderStarted)
 
-  def nextMove(instruction: If, order: Order[Order.State], state: EngineState) =
+  def nextMove(
+    instr: If,
+    order: Order[Order.State],
+    state: EngineState,
+    now: Timestamp) =
     // order may be predicted and different from actual idToOrder(order.id)
     try
-      myNextMove(instruction, order, state)
+      throwingNextMove(instr, order, state, now)
+        .map(Some(_))
     catch case _: OrderNotStartedException =>
       Right(None)
 
-  private def myNextMove(instruction: If, order: Order[Order.State], state: EngineState) =
+  /** @throws OrderNotStartedException */
+  private def throwingNextMove(
+    instr: If,
+    order: Order[Order.State],
+    state: EngineState,
+    now: Timestamp)
+  : Checked[OrderMoved] =
     // order may be predicted and different from actual idToOrder(order.id)
     for
       scope <- state.toImpureOrderExecutingScope(
         order,
         if order.isStarted then
-          clock.now()
+          now
         else
-          new OrderNotStartedException/*catched below*/)
+          new OrderNotStartedException)
       branchId <-
-        instruction.ifThens.view
+        instr.ifThens.view
           .scanLeft(Checked(false) -> 0):
             case ((_, i), ifThen) => ifThen.predicate.evalAsBoolean(using scope) -> (i + 1)
           .appended:
-            Right(true) -> instruction.elseBlock.fold(-1)(_ => 0)
+            Right(true) -> instr.elseBlock.fold(-1)(_ => 0)
           .takeThrough: o => // Skip false predicates
             o._1.contains(false)
           .last
@@ -72,7 +78,7 @@ private object IfExecutor extends EventInstructionExecutor_[If], PositionInstruc
             case (checked, -1) => checked.rightAs(None) // No then, no else
             case (checked, 0) => checked.rightAs(Some(BranchId.Else))
             case (checked, i) => checked.rightAs(Some(BranchId.then_(i)))
-    yield Some:
+    yield
       OrderMoved:
         branchId match
           case Some(branchId) => order.position / branchId % 0

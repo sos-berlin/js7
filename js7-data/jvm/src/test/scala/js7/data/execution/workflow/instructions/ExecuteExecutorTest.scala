@@ -6,7 +6,7 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, Timestamp, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
@@ -44,7 +44,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
       for order <- orders.filter(_.position == position) do
         assert(InstructionExecutor.testToEvents(order.id, engineState, now) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(InstructionExecutor.nextMove(order, engineState) ==
+        assert(InstructionExecutor.nextMove(order, engineState, Timestamp.now) ==
           Right(None))
 
   "skipIfNoAdmissionStartForOrderDay" - {
@@ -61,7 +61,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
             Right:
               (orderId <-: OrderAttachable(agentPath)) :: Nil
         assert:
-          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState) ==
+          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState, Timestamp.now) ==
             Right(None)
 
     "OrderId date has no admission time" in:
@@ -79,7 +79,7 @@ final class ExecuteExecutorTest extends OurTestSuite:
               (orderId <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
                 :: Nil
         assert:
-          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState) ==
+          InstructionExecutor.nextMove(myEngineState.idToOrder(orderId), myEngineState, Timestamp.now) ==
             Right(Some:
               OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))
   }

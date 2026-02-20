@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.time.Timestamp
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.IfExecutorTest.*
@@ -33,12 +34,14 @@ final class IfExecutorTest extends OurTestSuite:
   "JSON BranchId" - {
     "then" in:
       testJson(
-        IfExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState).orThrow.get.to,
+        IfExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, engineState, Timestamp.now)
+          .orThrow.get.to,
         json"""[ 1, "then", 0 ]""")
 
     "else" in:
       testJson(
-        IfExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState).orThrow.get.to,
+        IfExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, engineState, Timestamp.now)
+          .orThrow.get.to,
         json"""[ 1, "else", 0 ]""")
   }
 
@@ -79,7 +82,7 @@ final class IfExecutorTest extends OurTestSuite:
         TestWorkflowId,
         EmptyInstruction(),
         instr)))
-    InstructionExecutor.nextMove(order, engineState)
+    InstructionExecutor.nextMove(order, engineState, Timestamp.now)
 
   "JS-2134 else if" in:
     val instr =
@@ -93,7 +96,7 @@ final class IfExecutorTest extends OurTestSuite:
         Workflow.of(ElseJob)
 
     testJson(
-      IfExecutor.nextMove(instr, AOrder, engineState).orThrow.get.to,
+      IfExecutor.nextMove(instr, AOrder, engineState, Timestamp.now).orThrow.get.to,
       json"""[ 1, "then+3", 0 ]""")
 
 

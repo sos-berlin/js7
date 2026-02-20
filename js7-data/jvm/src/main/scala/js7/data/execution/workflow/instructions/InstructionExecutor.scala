@@ -82,11 +82,12 @@ object InstructionExecutor:
   private def byInstr(instr: Instruction): InstructionExecutor =
     classToExecutor.checked(instr.getClass).orThrow
 
-  def nextMove(order: Order[Order.State], engineState: EngineState): Checked[Option[OrderMoved]] =
+  def nextMove(order: Order[Order.State], engineState: EngineState, now: Timestamp)
+  : Checked[Option[OrderMoved]] =
     engineState.instruction(order.workflowPosition).flatMap: instr =>
       byInstr(instr) match
         case executor: PositionInstructionExecutor =>
-          executor.nextMove(instr.asInstanceOf[executor.Instr], order, engineState)
+          executor.nextMove(instr.asInstanceOf[executor.Instr], order, engineState, now)
         case _ => Right(None)
 
   @TestOnly

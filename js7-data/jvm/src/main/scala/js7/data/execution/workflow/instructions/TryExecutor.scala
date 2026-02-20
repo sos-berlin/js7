@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.time.Timestamp
 import js7.data.event.EventCalc
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.moveOrder
@@ -22,7 +23,11 @@ private object TryExecutor extends
         order.ifState[Order.IsFreshOrReady].map: order =>
           moveOrder(order, nextPosition(order))
 
-  override def nextMove(instruction: TryInstruction, order: Order[Order.State], state: EngineState) =
+  override def nextMove(
+    instr: TryInstruction,
+    order: Order[Order.State],
+    state: EngineState,
+    now: Timestamp) =
     Right(Some(nextOrderMoved(order)))
 
   private def nextOrderMoved(order: Order[Order.State]) =

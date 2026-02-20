@@ -655,7 +655,7 @@ object OrderEventSource:
             case Some(orderMoved) =>
               Right(Some(orderMoved))
             case None =>
-              InstructionExecutor.nextMove(order, coll.aggregate)
+              InstructionExecutor.nextMove(order, coll.aggregate, coll.now)
     yield
       maybeMoved
 

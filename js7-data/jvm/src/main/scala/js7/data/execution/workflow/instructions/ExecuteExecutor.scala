@@ -115,7 +115,11 @@ object ExecuteExecutor extends
             engineState.keyToItem(SubagentItem).checked(bundleId.toSubagentId)
     yield ()
 
-  override def nextMove(instruction: Execute, order: Order[Order.State], state: EngineState) =
+  override def nextMove(
+    instr: Execute, 
+    order: Order[Order.State],
+    state: EngineState,
+    now: Timestamp) =
     for
       workflow <- state.idToWorkflow.checked(order.workflowId)
       given ZoneId <- workflow.timeZone.toZoneId

@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.traverse.*
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.data.event.EventCalc
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderFinished, OrderMoved}
 import js7.data.order.{Order, OrderId}
@@ -31,7 +32,11 @@ private object EndExecutor extends EventInstructionExecutor_[End], PositionInstr
               coll:
                 InstructionExecutor.onReturnFromSubworkflow(instr, order)
 
-  def nextMove(instruction: Instr, order: Order[Order.State], engineState: EngineState)
+  def nextMove(
+    instr: Instr,
+    order: Order[Order.State],
+    engineState: EngineState,
+    now: Timestamp)
   : Checked[Option[OrderMoved]] =
     if order.isInOutermostBlock then
       Right(None)

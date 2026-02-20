@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
+import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
@@ -31,7 +32,8 @@ final class TryExecutorTest extends OurTestSuite:
 
   "JSON" - {
     "try" in:
-      testJson(TryExecutor.nextMove(tryInstruction, AOrder, engineState).orThrow.get.to,
+      testJson(TryExecutor.nextMove(tryInstruction, AOrder, engineState, Timestamp.now)
+        .orThrow.get.to,
         json"""[ 1, "try+0", 0 ]""")
 
     "catch" in:
@@ -40,7 +42,7 @@ final class TryExecutorTest extends OurTestSuite:
   }
 
   "nextMove" in:
-    assert(InstructionExecutor.nextMove(AOrder, engineState) ==
+    assert(InstructionExecutor.nextMove(AOrder, engineState, Timestamp.now) ==
       Right(Some(OrderMoved(Position(1) / try_(0) % 0))))
 
   "toEvents" in:
