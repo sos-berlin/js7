@@ -5,7 +5,6 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.flatMap.*
-import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -42,6 +41,7 @@ import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.controller.ControllerOrderKeeper.*
+import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.command.ControllerCommandToEventCalc
 import js7.controller.configuration.ControllerConfiguration
@@ -64,7 +64,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
+import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedItem, UnsignedItemKey}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
@@ -1124,7 +1124,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                   case itemKey: SignableItemKey =>
                     for signedItem <- controllerState().keyToSignedItem.get(itemKey) do
                       agentDriver
-                        .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
+                        .send(Queueable.AttachSignedItem(signedItem))
                         .recoverWith(t => IO(logger.error(
                           s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                         .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
@@ -1134,7 +1134,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                     for item <- controllerState().keyToItem.get(itemKey) do
                       val unsignedItem = item.asInstanceOf[UnsignedItem]
                       agentDriver
-                        .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
+                        .send(Queueable.AttachUnsignedItem(unsignedItem))
                         .recoverWith(t => IO(logger.error(
                           s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                         .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
@@ -1144,7 +1144,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
                 if /*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey) then
                   agentEntry.detachingItems += itemKey
                   agentDriver
-                    .send(AgentDriver.Queueable.DetachItem(itemKey))
+                    .send(Queueable.DetachItem(itemKey))
                     .recoverWith(t => IO(logger.error(
                       s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                     .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
@@ -1160,7 +1160,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             case Some(force) =>
               for agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver) do
                 agentDriver
-                  .send(AgentDriver.Queueable.ResetSubagent(subagentId, force))
+                  .send(Queueable.ResetSubagent(subagentId, force))
                   .recoverWith(t => IO(logger.error(
                     s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"$agentDriver.send(ResetSubagent)")
@@ -1188,7 +1188,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             val orderEventHandler = new OrderEventHandler(controllerState.repo.idTo(Workflow))
             val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
-            for followUps <- checkedFollowUps.onProblem(p => logger.error(p)) do  // TODO OrderBroken on error?
+            for followUps <- checkedFollowUps.problemToNone(p => logger.error(p)) do  // TODO OrderBroken on error?
               followUps foreach:
                 case FollowUp.AddChild(childOrder) =>
                   dependentOrderIds += childOrder.id
@@ -1270,7 +1270,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
             val agentDriver = agentEntry.agentDriver
             agentDriver
-              .send(AgentDriver.Queueable.MarkOrder(order.id, mark))
+              .send(Queueable.MarkOrder(order.id, mark))
               .recoverWith(t => IO(logger.error(
                 s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
               .logWhenItTakesLonger(s"$agentDriver.send(MarkOrder(${order.id}))")
@@ -1294,36 +1294,35 @@ extends Stash, JournalingActor[ControllerState, Event]:
           val workflow = signedWorkflow.value
           import agentEntry.{agentDriver, agentPath}
 
-          // Maybe attach Workflow
-          val attachSignedItems: Seq[IO[Unit]] =
+          // Maybe attach Workflow and JobResourcePath
+          val attachSignedItems: Seq[Queueable.AttachSignedItem] =
             workflow.referencedAttachableToAgentSignablePaths
               .flatMap(controllerState().pathToSignedSimpleItem.get)
               .appended(signedWorkflow)
-              .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
-              .map(signedItem =>
-                agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)))
+              .filter: signedItem =>
+                isNotAttached(signedItem.value, agentPath)
+              .map: signedItem =>
+                Queueable.AttachSignedItem(signedItem)
 
           // Attach more required Items
-          val attachUnsignedItems: Seq[IO[Unit]] =
+          val attachUnsignedItems: Seq[Queueable.AttachUnsignedItem] =
             unsignedItemsToBeAttached(workflow, agentPath)
               .toVector
-              .map(item =>
-                agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(item)))
+              .map: item =>
+                Queueable.AttachUnsignedItem(item)
 
           // TODO AttachOrder mit parent orders!
           // Agent markiert die als bloß gebraucht für Kindaufträge
           // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-          val attachOrder: IO[Unit] =
-            agentDriver.send(AgentDriver.Queueable.AttachOrder(order, agentPath))
+          val attachOrder = Queueable.AttachOrder(order, agentPath)
 
           orderEntry.triedToAttached = true
 
-          // Now, IOs are calculated from mutable state and and be started as a sequence:
-          (attachSignedItems ++ attachUnsignedItems :+ attachOrder)
-            .sequence
-            .map(_.combineAll)
+          // Now, IOs are calculated from mutable state and started as a sequence:
+          agentDriver.send(attachSignedItems ++ attachUnsignedItems :+ attachOrder)
             .recoverWith(t => IO(logger.error(
-              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
+              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}",
+              t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"tryAttachOrderToAgent(${order.id})")
             .awaitInfinite // TODO
 
@@ -1343,7 +1342,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
     // Workflow does not return those SubagentBundles which are referenced via
     // a variable expression.
-    // So we attach all SubagentBundles which contain a SubagentId of the Agent
+    // So we attach all SubagentBundles containing a SubagentId of the Agent
     result ++= controllerState().keyToItem(SubagentBundle)
       .filter(_
         ._2.subagentIds
@@ -1359,7 +1358,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       .map(o => o.key -> o)
 
     result.result().values.view
-      .filter(isDetachedOrAttachable(_, agentPath))
+      .filter(isNotAttached(_, agentPath))
 
   private def checkedWorkflowAndAgentEntry(order: Order[Order.State])
   : Option[(Signed[Workflow], AgentEntry)] =
@@ -1369,27 +1368,27 @@ extends Stash, JournalingActor[ControllerState, Event]:
             signedWorkflow <- controllerState().repo.idToSigned(Workflow)(order.workflowId)
             agentEntry <- agentRegister.checked(agentPath)
           yield (signedWorkflow, agentEntry)
-        ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
+        ).problemToNone(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
 
       case _ => None
 
-  private def isDetachedOrAttachable(item: InventoryItem, agentPath: AgentPath) =
+  private def isNotAttached(item: InventoryItem, agentPath: AgentPath) =
     val attachedState = controllerState().itemToAttachedState(item.key, item.itemRevision, agentPath)
-    attachedState == Detached || attachedState == Attachable
+    attachedState != Attached
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for orderEntry <- orderRegister.get(orderId) do
       if !orderEntry.isDetaching then
         controllerState().idToOrder.checked(orderId)
           .flatMap(_.detaching)
-          .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
+          .problemToNone(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
           .foreach { agentPath =>
             agentRegister.get(agentPath).map(_.agentDriver) match
               case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentPath")
               case Some(agentDriver) =>
                 orderEntry.isDetaching = true
                 agentDriver
-                  .send(AgentDriver.Queueable.DetachOrder(orderId))
+                  .send(Queueable.DetachOrder(orderId))
                   .recoverWith(t => IO(logger.error(
                     s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"detachOrderFromAgent($orderId)")

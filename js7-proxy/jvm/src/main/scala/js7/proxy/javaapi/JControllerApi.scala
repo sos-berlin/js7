@@ -21,8 +21,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
-import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -402,8 +402,10 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     runIO:
       clusterWatchService.value
         .flatMap:
-          case None => IO.left(Problem("No ClusterWatchService"))
-          case Some(allo) => allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
+          case None =>
+            IO.left(Problem("No ClusterWatchService"))
+          case Some(allo) =>
+            allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
         .map(_.toVoidVavr)
 
   private def runIO[A](io: IO[A]): CompletableFuture[A] =

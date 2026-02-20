@@ -14,9 +14,11 @@ object ItemAttachedState:
   extends NotDetached:
     def isAttachableOrAttached = true
 
+
   final case class Attached(itemRevision: Option[ItemRevision])
   extends NotDetached:
     def isAttachableOrAttached = true
+
   object Attached:
     private val none = new Attached(None)
 
@@ -28,18 +30,22 @@ object ItemAttachedState:
       else
         new Attached(itemRevision)
 
+
   case object Detachable
   extends NotDetached:
     def isAttachableOrAttached = false
+
 
   case object Detached
   extends ItemAttachedState:
     def isAttachableOrAttached = false
 
+
   sealed trait NotDetached
   extends ItemAttachedState:
     def toShortString: String =
       getClass.simpleScalaName
+
   object NotDetached:
     implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
       Subtype(Attachable),

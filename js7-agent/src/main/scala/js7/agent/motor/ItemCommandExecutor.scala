@@ -103,6 +103,7 @@ private final class ItemCommandExecutor(
         logger.warn(s"${signed.value.key} could not be verified: $problem")
         IO.left(problem)
       case Right(signerIds) =>
+        // TODO Duplicate with Subagent and Controller
         logger.info(Logger.SignatureVerified,
           s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
         journal.persist: agentState =>

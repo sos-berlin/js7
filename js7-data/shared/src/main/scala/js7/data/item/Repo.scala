@@ -376,7 +376,7 @@ extends
             case Version(id.versionId, o) => o
           .orElse:
             for
-              history <- historyBefore(id.versionId).toOption
+              history <- maybeHistoryBefore(id.versionId)
               fb <- findInHistory(versionToSignedItem, history.contains)
             yield fb
           .flatten
@@ -444,22 +444,23 @@ extends
       .flatten
 
   private[item] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
+    maybeHistoryBefore(versionId)
+      .toChecked(UnknownKeyProblem("VersionId", versionId))
+
+  private[item] def maybeHistoryBefore(versionId: VersionId): Option[List[VersionId]] =
     versionIds.dropWhile(versionId.!=) match
-      case Nil => UnknownKeyProblem("VersionId", versionId)
-      case _ :: tail => Right(tail)
+      case Nil => None
+      case _ :: tail => Some(tail)
 
   // TODO Very big toString ?
   override def toString: String =
     if versionIds.isEmpty && pathToVersionToSignedItems.isEmpty then
       "Repo.empty"
     else
-      s"Repo(versions: ${versionIds.map(_.string).mkString(" ")}" + {
-        val pathLines = pathToVersionToSignedItems
-          .keys.toSeq.sorted
-          .map(path => s"$path " + pathToVersionToSignedItems(path).mkString(" "))
-        if pathLines.sizeIs <= 1 then " · " + pathLines.mkString
-        else pathLines.map("↩︎\n  " + _).mkString
-      } + ")"
+      s"Repo(${versionIdSet.size} versions, ${
+        pathToVersionToSignedItems.size} paths, ${
+        pathToVersionToSignedItems.iterator.map(_.size).sum} items)"
+
 
   private[item] sealed trait EventBlock:
     def events: Seq[VersionedEvent]
@@ -469,14 +470,17 @@ extends
     def isEmpty: Boolean
     final def nonEmpty = !isEmpty
 
-  private[item] val emptyEventBlock: EventBlock = EmptyEventBlock
 
-  private[item] case object EmptyEventBlock extends EventBlock:
-    def isEmpty = true
-    def events = Nil
-    def removedEvents = Nil
-    def ids = Nil
-    def items = Nil
+  private[item] object EventBlock:
+    val empty: EventBlock = EmptyEventBlock
+
+    private case object EmptyEventBlock extends EventBlock:
+      def isEmpty = true
+      def events = Nil
+      def removedEvents = Nil
+      def ids = Nil
+      def items = Nil
+
 
   sealed case class NonEmptyEventBlock(
     versionId: VersionId,

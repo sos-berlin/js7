@@ -1,5 +1,6 @@
 package js7.launcher.forwindows
 
+import cats.effect.IO
 import com.sun.jna.platform.win32.Advapi32Util.getEnvironmentBlock
 import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinBase.*
@@ -46,12 +47,13 @@ extends Js7Process:
   val pid = Pid(processInformation.dwProcessId.intValue)
   private val returnCodeOnce = SetOnce[ReturnCode]
 
-  private val hProcessGuard = ResourceGuard(processInformation.hProcess): hProcess =>
-    closeHandle(hProcess)
-    inRedirection.closePipe()
-    outRedirection.closePipe()
-    errRedirection.closePipe()
-    loggedOn.close()
+  private val hProcessGuard =
+    ResourceGuard(processInformation.hProcess): hProcess =>
+      closeHandle(hProcess)
+      inRedirection.closePipe()
+      outRedirection.closePipe()
+      errRedirection.closePipe()
+      loggedOn.close()
 
   def isAlive =
     returnCodeOnce.isEmpty && !waitForProcess(timeout = 0)
@@ -66,13 +68,18 @@ extends Js7Process:
   lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)
   lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
 
-  def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) =
+  private def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) =
     if redirection.pipeHandle == INVALID_HANDLE_VALUE then
       throw new IllegalStateException(s"WindowsProcess has no handle for $outerr attached")
     new PipeInputStream(redirection.pipeHandle):
       override def close(): Unit = redirection.closePipe()
 
-  def destroy(): Unit = destroyForcibly()
+  def release: IO[Unit] =
+    IO.blocking:
+      hProcessGuard.releaseAfterUse()
+
+  def destroy(): Unit =
+    destroyForcibly()
 
   def destroyForcibly(): Unit =
     hProcessGuard.use:
@@ -82,7 +89,7 @@ extends Js7Process:
           kernel32.TerminateProcess(hProcess, TerminateProcessReturnCode.number) ||
             kernel32.GetLastError == ERROR_ACCESS_DENIED && (
               Try(waitForProcess(timeout = 0)).getOrElse(false) || {
-                kernel32.SetLastError(ERROR_ACCESS_DENIED)
+                kernel32.SetLastError(ERROR_ACCESS_DENIED) // restore error
                 false
               })
 
@@ -114,7 +121,6 @@ extends Js7Process:
         val terminated = waitForSingleObject(hProcess, timeout)
         if terminated then
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
-          hProcessGuard.releaseAfterUse()
         terminated
 
   lazy val maybeHandle =
@@ -228,7 +234,7 @@ private[launcher] object WindowsProcess:
   private def redirectToHandle(stdFile: Int, redirect: Redirect): Redirection =
     redirect.`type` match
       case INHERIT =>
-        new Redirection(kernel32.GetStdHandle(stdFile), false, INVALID_HANDLE_VALUE)
+        new Redirection(kernel32.GetStdHandle(stdFile), false, Handle.invalid)
 
       case PIPE =>
         stdFile match

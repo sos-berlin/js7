@@ -24,8 +24,7 @@ object Problems:
         "key", key.toString)
 
   object UnknownKeyProblem:
-    def apply(typ: => String, key: Any)(using loc: ScalaSourceLocation)
-    : UnknownKeyProblem =
+    def apply(typ: => String, key: Any)(using loc: ScalaSourceLocation): UnknownKeyProblem =
       val problem = new UnknownKeyProblem(typ, key)
       logger.debug(s"❓$loc $problem")
       problem

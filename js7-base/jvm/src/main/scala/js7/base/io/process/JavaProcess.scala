@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.IO
 import java.io.{InputStream, OutputStream}
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -41,6 +42,8 @@ final case class JavaProcess(process: Process) extends Js7Process:
 
   lazy val maybeHandle: Some[ProcessHandle] =
     Some(process.toHandle)
+
+  def release = IO.unit
 
   override def toString: String =
     pid.toString

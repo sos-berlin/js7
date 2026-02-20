@@ -12,13 +12,14 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{PathEnvName, isMac, isWindows}
-import js7.base.test.OurTestSuite
+import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -44,9 +45,8 @@ import js7.tests.jobresource.JobResourceTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertions.*
-import scala.util.boundary
 
-class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
+class JobResourceTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   override protected final val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -314,29 +314,31 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(stdout.contains(resourceContent))
     assert(stdout.contains(executableContent))
 
-  "🔥 Heavy addition and removal of Workflow and JobResource: Order may fail with No such JobResource" in:
+  "JOC-2168 FIX: Order may fail with 'No such JobResource'" in:
+    val testDuration = if isIntelliJIdea then 60.s else 1.s
     val jobResource = JobResource(JobResourcePath("HEAVY"))
     val workflow = Workflow(
       WorkflowPath("HEAVY"),
-      Vector:
+      Seq:
         EmptyJob.execute(agentPath),
       jobResourcePaths = Seq(jobResource.path))
 
-    boundary:
-      (1 to 1000).foreach: _ =>
+    updateItems(workflow, jobResource)
+
+    Stream.awakeEvery[IO](0.ms)
+      .takeWhile(_ < testDuration ).zipWithIndex.evalMap: (_, i) =>
+      IO.blocking:
+        logger.info("—" * 150)
+        val events =
+          controller.runOrder:
+            FreshOrder(OrderId(s"HEAVY-$i"), workflow.path, deleteWhenTerminated = true)
+          .map(_.value)
+        if !events.contains(OrderFinished()) then
+          fail(s"Order didn't finish: ${events.last}")
+        deleteItems(workflow.path, jobResource.path)
         updateItems(workflow, jobResource)
-        val stamped = controller.runOrder:
-          FreshOrder(OrderId("HEAVY"), workflow.path, deleteWhenTerminated = true)
-        if stamped.map(_.value).contains(OrderFinished()) then
-          deleteItems(workflow.path, jobResource.path)
-        else
-          // FIXME Order JobResourcePath should have been attached at Agent and Order must not fail:
-          assert:
-            stamped.map(_.value).contains:
-              OrderProcessed:
-                OrderOutcome.Disrupted:
-                  UnknownKeyProblem("JobResourcePath", jobResource.path)
-          boundary.break()
+    .compile.drain.as(succeed)
+
 
 object JobResourceTest:
 

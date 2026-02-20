@@ -4,7 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessExtensions.onExitIO
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -69,61 +69,70 @@ final class PipedProcess private(
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
-      IO.raceBoth(
-          awaitProcessTermination,
-          IO.raceBoth(
-              sigkilled.get.andWait(killStdoutAndStderrDelay),
-              pumpStdoutAndStderrToSink)
-            .flatMap:
-              case Left((), stdouterrFiber) =>
-                IO.defer:
-                  logger.warn:
-                    s"Ignoring stdout and stderr after SIGKILL (maybe a child process is still running)"
-                  joinStdouterr(stdouterrFiber, orderId, jobKey, stdoutAndStderrAbandonAfter)
-                    .startAndForget
-                .as(false /*stdout ignored*/)
-              case Right((sigkilledFiber, ())) =>
-                sigkilledFiber.cancel
-                  .as(true /*stdout ended*/))
+      awaitProcessTermination.raceBoth:
+        sigkilled.get.andWait(killStdoutAndStderrDelay).raceBoth:
+          pumpStdoutAndStderrToSink
         .flatMap:
-          case Left((returnCode, stdouterrFiber)) => // Process terminated
+          case Left((), stdouterrFiber) =>
             IO.defer:
-              logger.debug(s"terminated with $returnCode")
-              IO:
-                logger.info:
-                  s"terminated with ${returnCode
-                    }, still awaiting stdout or stderr (maybe a child process is still running)"
-              .delayBy(conf.worryAboutStdoutAfterTermination)
-              .background.surround:
-                val what = s"$orderId stdout or stderr"
-                stdouterrFiber.joinStd
-                  .logWhenItTakesLonger(StdouterrWorry):
-                    case (None, elapsed, _, sym) => IO.pure:
-                      s"$sym Still waiting for $what for ${elapsed.pretty}"
-                    case (Some(Outcome.Succeeded(ended)), elapsed, _, _) =>
-                      ended.flatMap(ended => IO:
-                        if ended
-                        then s"🔵 $what ended after ${elapsed.pretty}"
-                        else s"🟣 $what are still ignored after ${elapsed.pretty}")
-                    case (Some(Outcome.Canceled()), elapsed, _, sym) => IO.pure:
-                      s"$sym $what canceled after ${elapsed.pretty}"
-                    case (Some(Outcome.Errored(t)), elapsed, _, sym) => IO.pure:
+              logger.warn:
+                s"Ignoring stdout and stderr after SIGKILL (maybe a child process is still running)"
+              joinStdouterr(stdouterrFiber, orderId, jobKey, stdoutAndStderrAbandonAfter)
+                .startAndForget
+            .as(false /*stdout ignored*/)
+          case Right((sigkilledFiber, ())) =>
+            //TODO Das stimmt wohl nicht mehr, oder?
+            sigkilledFiber.cancel
+              .as(true /*stdout ended*/)
+      .flatMap:
+        case Left((returnCode, stdouterrFiber)) =>
+          // Process terminated before stdout/stderr ended //
+          IO.defer:
+            logger.debug(s"terminated with $returnCode")
+            IO:
+              logger.info(s"terminated with ${returnCode
+                }, still awaiting stdout or stderr (maybe a child process is still running)")
+            .delayBy(conf.worryAboutStdoutAfterTermination)
+            .background.surround:
+              val what = s"$orderId stdout or stderr"
+              stdouterrFiber.joinStd
+                .logWhenItTakesLonger(StdouterrWorry):
+                  case (None, elapsed, _, sym) =>
+                    IO.pure(s"$sym Still waiting for $what for ${elapsed.pretty}")
+                  case (Some(Outcome.Succeeded(ended)), elapsed, _, _) =>
+                    ended.map: ended =>
+                      if ended then
+                        s"🔵 $what ended after ${elapsed.pretty}"
+                      else
+                        s"🟣 $what are still ignored after ${elapsed.pretty}"
+                  case (Some(Outcome.Canceled()), elapsed, _, sym) =>
+                    IO.pure(s"$sym $what canceled after ${elapsed.pretty}")
+                  case (Some(Outcome.Errored(t)), elapsed, _, sym) =>
+                    IO.pure:
                       s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
-            .as(returnCode)
+          .as(returnCode)
 
-          case Right((terminationFiber, _)) =>
-            // Stdout and stderr ended or ignored after SIGKILL
-            terminationFiber.joinStd
+        case Right((terminationFiber, _)) =>
+          // Stdout and stderr ended or ignored after SIGKILL //
+          terminationFiber.joinStd
+      .guarantee:
+        process.release
 
   def release: IO[Unit] =
     processKillerAlloc.release
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
-    logger.traceIO(s"pumpStdoutAndStderrToSink")(IO
-      .both(
-        pumpOutErrToSink(Stdout, process.stdout),
-        pumpOutErrToSink(Stderr, process.stderr))
-      .void)
+    logger.traceIO(s"pumpStdoutAndStderrToSink"):
+      // If one channel fails, continue with the other channel
+      pumpOutErrToSink(Stdout, process.stdout).bothOutcome:
+        pumpOutErrToSink(Stderr, process.stderr)
+      .flatMap:
+        case (Outcome.Succeeded(_), stderrOutcome) =>
+          IO.fromOutcome(stderrOutcome)
+        case (stdoutFailed, stderrOutcome) =>
+          if !stderrOutcome.isSuccess then logger.error(s"While reading stderr: $stderrOutcome")
+          IO.fromOutcome(stdoutFailed)
+      .void
 
   private def pumpOutErrToSink(outErr: StdoutOrStderr, in: InputStream): IO[Unit] =
     stdObservers

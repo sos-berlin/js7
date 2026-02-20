@@ -6,7 +6,7 @@ import js7.base.utils.Atomic
   * Once `releaseAfterUse` has been called and no one uses the resource, `release` ist called.
   * Thread-safe.
   */
-private final class ResourceGuard[A] private(resource: A, release: A => Unit):
+private final class ResourceGuard[A](resource: A)(release: A => Unit):
 
   private var usage = 1
   private val _releaseAfterUse = Atomic(false)
@@ -36,7 +36,3 @@ private final class ResourceGuard[A] private(resource: A, release: A => Unit):
     match
       case 0 => release(resource)
       case _ =>
-
-private object ResourceGuard:
-  def apply[A](resource: A)(release: A => Unit) =
-    new ResourceGuard[A](resource, release)

@@ -10,7 +10,7 @@ import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
-import js7.data.cluster.{ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchId}
+import js7.data.cluster.{ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchId, Confirmer}
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.UntaughtClusterWatchAndPassiveLostControllerClusterTest.*
@@ -66,7 +66,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       primaryController.testEventBus
         .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
           _.request match
-            case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _, _) =>
+            case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
         .await(99.s)
 
       if stopBackup then
@@ -94,18 +94,18 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
         val eventId = primaryController.lastAddedEventId
-        clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER").await(99.s).orThrow
+        clusterWatchService.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER")).await(99.s).orThrow
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
         val ClusterPassiveLost(`backupId`) = primaryController.await[ClusterPassiveLost]()
           .head.value.event: @unchecked
 
-        assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+        assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
           .await(99.s)
           == Left(ClusterNodeIsNotLostProblem(primaryId, "PassiveLost(Node:Primary is active)")))
 
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER"))
           .await(99.s)
           == Left(ClusterNodeIsNotLostProblem(backupId, "PassiveLost(Node:Primary is active)")))
 

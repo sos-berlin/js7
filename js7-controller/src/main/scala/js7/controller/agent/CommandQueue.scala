@@ -140,24 +140,26 @@ private[agent] abstract class CommandQueue(
         isCoupled = false
 
   final def enqueue(queueable: Queueable): IO[Boolean] =
+    enqueue(queueable :: Nil)
+
+  final def enqueue(queueables: Iterable[Queueable]): IO[Boolean] =
     lock.lock:
       IO.defer:
         assertThat(!isTerminating)
-        queueable match
+        var enqueued = false
+        queueables.foreach:
           case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
             logger.debug(s"🪱 AttachOrder(${order.id} ignored because Order is already attached to Agent")
-            IO.pure(false)
-          case _ =>
+          case queueable =>
             if queue.contains(queueable) then
               logger.trace(s"🪱 Ignore duplicate $queueable")
-              IO.pure(false)
             else
               logger.trace(s"enqueue $queueable")
               queue.enqueue(queueable)
-              IO
-                .whenA(queue.size == batchSize || freshlyCoupled)(
-                  maybeStartSendingLocked)
-                .as(true)
+              enqueued = true
+        IO.whenA(enqueued && (queue.size >= batchSize || freshlyCoupled)):
+          maybeStartSendingLocked
+        .as(enqueued)
 
   final def untilTerminated: IO[Unit] =
     terminated.get

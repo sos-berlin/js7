@@ -24,12 +24,13 @@ object WorkflowAndOrderRecovering:
     val added = Map.newBuilder[OrderId, Order[Order.State]]
     val deleted = Set.newBuilder[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow)
-    for (
+    for
       order <- idToOrder.values;
       event <- snapshotToEvent(order);
       followUps <- eventHandler.handleEvent(order, event)
-        .onProblem(p =>
-          logger.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
+        .problemToNone: p => // TODO Really ignore error ?
+          logger.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)
+    do
       followUps foreach:
         case FollowUp.AddChild(childOrder) =>  // OrderForked
           if !idToOrder.contains(childOrder.id) then  // Snapshot of child order is missing? Add the child now!

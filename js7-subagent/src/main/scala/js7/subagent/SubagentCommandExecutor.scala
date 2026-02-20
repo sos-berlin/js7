@@ -48,7 +48,6 @@ private[subagent] final class SubagentCommandExecutor(
           //  }
 
           case AttachSignedItem(signed) =>
-            // Duplicate with Agent
             journal.aggregate.flatMap: state =>
               if state.keyToItem.get(signed.value.key).contains(signed.value) then
                 IO.right(SubagentCommand.Accepted)
@@ -58,6 +57,7 @@ private[subagent] final class SubagentCommandExecutor(
                     logger.warn(s"${signed.value.key} could not be verified: $problem")
                     IO.pure(Left(problem))
                   case Right(signerIds) =>
+                    // TODO Duplicate with Agent and Controller
                     logger.info(Logger.SignatureVerified,
                       s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
                     journal

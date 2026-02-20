@@ -27,3 +27,18 @@ final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
 object NowScope:
   def apply(now: Timestamp = Timestamp.now): Scope =
     new NowScope(now)
+
+
+/** Replacement for the now-function, which must not be called before an Order has been started.
+  * <p>Throws an exception when the now-function is called.
+  *
+  * @param exception Exception to throw when now-function is called.
+  */
+final class NoNowScope(throwException: => Exception) extends Scope:
+  private lazy val timestampScope = TimestampScope("now", None, Some(throwException))
+
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(using scope: Scope) =
+    timestampScope.evalFunctionCall(functionCall) orElse
+      super.evalFunctionCall(functionCall)
+
+  override def toString = "NoNowScope"

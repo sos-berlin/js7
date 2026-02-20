@@ -12,9 +12,13 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ObjectValue, Value}
 import scala.annotation.unused
 
+/**
+  * @param throwException Exception to throw when a JobResource is to be queried.
+  */
 final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
-  useScope: Scope)
+  useScope: Scope,
+  throwException: => Option[Exception] = None)
 extends Scope:
 
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
@@ -70,6 +74,7 @@ extends Scope:
   private def jobResourceVariable(jrPath: JobResourcePath, variableName: Option[String])
     (using Scope)
   : Checked[Value] =
+    throwException.foreach(throw _)
     pathToJobResource
       .rightOr(jrPath, UnknownKeyProblem("JobResource", jrPath.string))
       .flatMap: jobResource =>
@@ -83,9 +88,3 @@ extends Scope:
               case Some(expr) => expr.eval
 
   override def toString = "JobResourceScope"
-
-
-object JobResourceScope:
-  def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope)
-  : Scope =
-    new JobResourceScope(pathToJobResource, useScope)

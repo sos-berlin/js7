@@ -11,13 +11,25 @@ trait SignedItemEvent extends InventoryItemEvent:
 
 object SignedItemEvent:
   sealed trait SignedItemAddedOrChanged extends SignedItemEvent, ItemAddedOrChanged:
-    def signedString: SignedString = signed.signedString
+
+    override final def itemRevision =
+      signed.value.itemRevision
+
     def signed: Signed[SignableItem]
-    def item: SignableItem = signed.value
-    def key: SignableItemKey = signed.value.key
+
+    final def signedString: SignedString =
+      signed.signedString
+
+    final def item: SignableItem =
+      signed.value
+
+    final def key: SignableItemKey =
+      signed.value.key
+
 
   final case class SignedItemAdded(signed: Signed[SignableItem])
   extends SignedItemAddedOrChanged
+
   object SignedItemAdded:
     def jsonCodec[S: ItemContainer.Companion]
     : Codec.AsObject[SignedItemAdded]=
@@ -28,8 +40,10 @@ object SignedItemEvent:
         def apply(c: HCursor) =
          SignableItem.signedJsonDecoder.decodeJson(c.value).map(SignedItemAdded(_))
 
+
   final case class SignedItemChanged(signed: Signed[SignableItem])
   extends SignedItemAddedOrChanged
+
   object SignedItemChanged:
     def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemChanged] =
       new Codec.AsObject[SignedItemChanged]:
@@ -38,6 +52,7 @@ object SignedItemEvent:
 
         def apply(c: HCursor) =
           SignableItem.signedJsonDecoder.decodeJson(c.value).map(SignedItemChanged(_))
+
 
   implicit def jsonCodec[S: ItemContainer.Companion]: TypedJsonCodec[SignedItemEvent] =
     TypedJsonCodec(

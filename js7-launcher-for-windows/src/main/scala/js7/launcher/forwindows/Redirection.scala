@@ -10,11 +10,9 @@ import js7.launcher.forwindows.WindowsApi.{call, kernel32, throwLastError}
 private final class Redirection(
   val startupInfoHandle: HANDLE,
   closeStartupInfoHandle: Boolean,
-  val pipeHandle: HANDLE):
+  val pipeHandle: Handle):
 
   private val released = Atomic(false)
-  //private val finished = Atomic(false)
-  private val pipeClosed = Atomic(false)
 
   def releaseStartupInfoHandle(): Unit =
     if !released.getAndSet(true) then
@@ -30,8 +28,8 @@ private final class Redirection(
   //  }
 
   def closePipe(): Unit =
-    if !pipeClosed.getAndSet(true) && pipeHandle != INVALID_HANDLE_VALUE then
-      closeHandle(pipeHandle)
+    pipeHandle.close()
+
 
 private object Redirection:
   private val BufferSize = 4096
@@ -44,7 +42,7 @@ private object Redirection:
       kernel32.CreatePipe(readRef, writeRef, security, BufferSize)
     call("SetHandleInformation"):
       kernel32.SetHandleInformation(writeRef.getValue, HANDLE_FLAG_INHERIT, 0)
-    new Redirection(readRef.getValue, true, writeRef.getValue)
+    new Redirection(readRef.getValue, true, Handle(writeRef.getValue))
 
   def newStdouterrPipeRedirection(): Redirection =
     val readRef, writeRef = new HANDLEByReference
@@ -54,7 +52,7 @@ private object Redirection:
       kernel32.CreatePipe(readRef, writeRef, security, BufferSize)
     call("SetHandleInformation"):
       kernel32.SetHandleInformation(readRef.getValue, HANDLE_FLAG_INHERIT, 0)
-    new Redirection(writeRef.getValue, true, readRef.getValue)
+    new Redirection(writeRef.getValue, true, Handle(readRef.getValue))
 
   def forDirectFile(file: File): Redirection =
     val security = new SECURITY_ATTRIBUTES
@@ -68,4 +66,4 @@ private object Redirection:
       FILE_ATTRIBUTE_TEMPORARY,
       null)
     if handle == INVALID_HANDLE_VALUE then throwLastError(s"CreateFile '$file'")
-    new Redirection(handle, true, INVALID_HANDLE_VALUE)
+    new Redirection(handle, true, Handle.invalid)

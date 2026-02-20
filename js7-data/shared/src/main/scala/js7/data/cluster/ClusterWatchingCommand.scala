@@ -18,7 +18,7 @@ object ClusterWatchingCommand:
     requestId: ClusterWatchRequest.RequestId,
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId,
-    manualConfirmer: Option[String],
+    manualConfirmer: Option[Confirmer],
     problem: Option[Problem])
   extends ClusterWatchingCommand:
     override def toString =

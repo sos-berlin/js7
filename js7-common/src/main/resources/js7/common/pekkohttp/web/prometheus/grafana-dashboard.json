@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.2.1"
+      "version": "12.3.3"
     },
     {
       "type": "datasource",
@@ -55,7 +55,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -245,7 +244,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -534,7 +533,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -706,7 +705,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -755,7 +754,7 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
+            "insertNulls": 3600000,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -794,85 +793,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Java CPU load"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 50
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "OS CPU load"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#969696",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "OS"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "JVM"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "JS7 Engine (JVM)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Computer"
             },
             "properties": [
@@ -895,66 +815,6 @@
                 "id": "color",
                 "value": {
                   "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Load average"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "System load average"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Java compiler"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Java compiler?"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
                   "mode": "fixed"
                 }
               }
@@ -982,7 +842,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1007,10 +867,11 @@
           "exemplar": false,
           "expr": "java_lang_OperatingSystem_ProcessCpuLoad{host=\"$host\"}",
           "fullMetaSearch": false,
+          "hide": true,
           "includeNullMetadata": true,
-          "legendFormat": "JS7 Engine",
+          "legendFormat": "JS7 Engine load",
           "range": true,
-          "refId": "process",
+          "refId": "process-load",
           "useBackend": false
         },
         {
@@ -1038,6 +899,19 @@
           "legendFormat": "Java compiler?",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(java_lang_OperatingSystem_ProcessCpuTime{host=\"$host\"}[$__rate_interval]) / 1e9 / java_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "JS7 Engine",
+          "range": true,
+          "refId": "process"
         }
       ],
       "title": "CPU usage",
@@ -1142,7 +1016,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1395,7 +1269,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1656,7 +1530,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1770,7 +1644,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "as a fraction of the clock time´",
+      "description": "Not sure what 100% means",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1782,11 +1656,11 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
-            "axisSoftMax": 10,
+            "axisSoftMax": 0.1,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 9,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1805,7 +1679,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -1826,7 +1700,7 @@
               }
             ]
           },
-          "unit": "percent"
+          "unit": "percentunit"
         },
         "overrides": [
           {
@@ -1838,22 +1712,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "semi-dark-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Young generation (pause?)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
+                  "fixedColor": "purple",
                   "mode": "fixed"
                 }
               }
@@ -1868,8 +1727,88 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "yellow",
+                  "fixedColor": "light-orange",
                   "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Young generation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sum"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-orange",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "solid"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 16
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Thread limit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "text",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "group": "A",
+                  "mode": "none"
                 }
               }
             ]
@@ -1896,7 +1835,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1904,10 +1843,12 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(java_lang_G1_Young_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) / on() java_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
-          "legendFormat": "Young generation",
+          "expr": "java_lang_G1_Young_Generation_LastGcInfo_GcThreadCount{type=\"GarbageCollector\", host=\"$host\"} / on() \njava_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "Thread limit",
           "range": true,
-          "refId": "A"
+          "refId": "Maximum"
         },
         {
           "datasource": {
@@ -1915,12 +1856,24 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(java_lang_G1_Concurrent_GC_CollectionTime{host=\"$host\"}[$__rate_interval]) /\non() java_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
+          "expr": "rate(java_lang_G1_Young_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
+          "hide": false,
+          "legendFormat": "Young generation",
+          "range": true,
+          "refId": "young"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(java_lang_G1_Concurrent_GC_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
           "hide": false,
           "instant": false,
           "legendFormat": "Concurrent",
           "range": true,
-          "refId": "B"
+          "refId": "concurrent"
         },
         {
           "datasource": {
@@ -1928,12 +1881,12 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(java_lang_G1_Old_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) /\non() java_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
+          "expr": "rate(java_lang_G1_Old_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
           "hide": false,
           "instant": false,
           "legendFormat": "Old generation",
           "range": true,
-          "refId": "C"
+          "refId": "old"
         }
       ],
       "title": "G1 garbage collection time",
@@ -2065,10 +2018,10 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -2203,7 +2156,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "orange",
+                  "fixedColor": "light-red",
                   "mode": "fixed"
                 }
               }
@@ -2218,7 +2171,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "green",
+                  "fixedColor": "super-light-orange",
                   "mode": "fixed"
                 }
               }
@@ -2231,7 +2184,7 @@
               "options": {
                 "mode": "exclude",
                 "names": [
-                  "Young generation"
+                  "Old generation"
                 ],
                 "prefix": "All except:",
                 "readOnly": true
@@ -2270,7 +2223,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -2366,10 +2319,6 @@
               {
                 "color": "transparent",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 1
               }
             ]
           },
@@ -2440,10 +2389,10 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -2547,7 +2496,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Allocated memory"
+              "options": "Heap allocation rate"
             },
             "properties": [
               {
@@ -2581,7 +2530,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "editorMode": "code",
@@ -2615,7 +2564,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisSoftMax": 0.01,
+            "axisSoftMax": 0.001,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -2771,10 +2720,10 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -3058,21 +3007,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Cats blocking"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "other"
             },
             "properties": [
@@ -3080,36 +3014,6 @@
                 "id": "color",
                 "value": {
                   "fixedColor": "dark-yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Java proc. reaper"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "super-light-orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Cats compute"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -3140,21 +3044,6 @@
                 "id": "color",
                 "value": {
                   "fixedColor": "light-blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Compute"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-red",
                   "mode": "fixed"
                 }
               }
@@ -3208,7 +3097,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Cats"
+              "options": "Cats Effect"
             },
             "properties": [
               {
@@ -3242,7 +3131,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -3356,7 +3245,7 @@
           "expr": "js7_Threads_CatsEffectComputeThreads{host=\"$host\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "Cats",
+          "legendFormat": "Cats Effect",
           "range": true,
           "refId": "CatsEffectComputeThreads"
         },
@@ -3508,7 +3397,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -3516,7 +3405,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -3530,7 +3419,7 @@
           "refId": "persistRunning"
         }
       ],
-      "title": "Journal, current persist operations",
+      "title": "Journal persist operations",
       "type": "timeseries"
     },
     {
@@ -3632,7 +3521,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -3738,7 +3627,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -3852,7 +3741,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4002,7 +3891,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4120,7 +4009,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4252,7 +4141,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4383,7 +4272,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4496,7 +4385,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4585,7 +4474,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "yellow",
+                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -4630,7 +4519,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "orange",
+                  "fixedColor": "green",
                   "mode": "fixed"
                 }
               }
@@ -4658,7 +4547,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -4893,7 +4782,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -5064,7 +4953,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -5237,7 +5126,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -5268,6 +5157,7 @@
       "type": "timeseries"
     }
   ],
+  "preload": false,
   "refresh": "5s",
   "schemaVersion": 42,
   "tags": [],
@@ -5291,13 +5181,14 @@
     ]
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "2026-02-16T21:02:31.058Z",
+    "to": "2026-02-16T21:08:48.678Z"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 33,
-  "weekStart": ""
+  "version": 61,
+  "weekStart": "",
+  "id": null
 }

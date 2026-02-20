@@ -115,8 +115,8 @@ trait BlockingItemUpdater:
     (using controller: TestController, ioRuntime: IORuntime)
   : Option[VersionId] =
     val versionId = Lazy(nextVersionId())
-    val operations: Stream[Pure, AddOrChangeOperation] = Stream
-      .iterable:
+    val operations: Stream[Pure, AddOrChangeOperation] =
+      Stream.iterable:
         // execute this eagerly to trigger versionId
         items.toVector.mapOrKeep:
           case item: VersionedItem if item.id.versionId.isAnonymous =>
@@ -124,28 +124,20 @@ trait BlockingItemUpdater:
       .map:
         case item: SignableItem => AddOrChangeSigned(sign(item).signedString)
         case item: UnsignedSimpleItem => AddOrChangeSimple(item)
-
-    controller.api
-      .updateItems:
-        Stream.fromOption(versionId.toOption.map(AddVersion(_)))
-          ++ operations
-      .await(99.s)
-      .orThrow
-
+    controller.api.updateItems:
+      Stream.fromOption(versionId.toOption.map(AddVersion(_))) ++ operations
+    .await(99.s).orThrow
     versionId.toOption
 
   final def deleteItems(paths: InventoryItemPath*)
     (using controller: TestController, ioRuntime: IORuntime)
   : Unit =
-    controller.api
-      .updateItems:
-        Stream
-          .fromOption:
-            paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())
-          .append:
-            Stream.iterable(paths).map(ItemOperation.Remove(_))
-      .await(99.s)
-      .orThrow
+    controller.api.updateItems:
+      Stream.fromOption:
+        paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())
+      .append:
+        Stream.iterable(paths).map(ItemOperation.Remove(_))
+    .await(99.s).orThrow
 
 
 object BlockingItemUpdater:
