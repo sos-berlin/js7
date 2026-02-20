@@ -5,7 +5,6 @@ import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
-import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Missing
 import org.jetbrains.annotations.TestOnly
@@ -20,7 +19,7 @@ trait HttpClient:
   def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     idleTimeout: Option[FiniteDuration] = None,
     prefetch: Int | Missing =  Missing,
     dontLog: Boolean = false)
@@ -29,11 +28,11 @@ trait HttpClient:
 
   def getJsonAsRawLines(
     uri: Uri,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
     (using s: IO[Option[SessionToken]])
-  : IO[Stream[IO, ByteArray]]
+  : IO[Stream[IO, fs2.Chunk[Byte]]]
 
   def getTextAsRawLines(
     uri: Uri,

@@ -11,7 +11,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, rechunkBytes}
+import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, chunkWeighted, mapChunkWeighted}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`

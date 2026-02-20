@@ -7,6 +7,8 @@ import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{toListL, unsafeToCancelableFuture}
@@ -28,7 +30,7 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
 import js7.data.event.JournalEvent.SnapshotTaken
-import js7.data.event.JournalSeparators.EndOfJournalFileMarker
+import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, EndOfJournalFileMarkerFs2Chunk}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalHeader, JournalId, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
@@ -178,7 +180,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
 
     val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
       .await(99.s).toListL.await(99.s)
-    assert(lines == List(EndOfJournalFileMarker))
+    assert(lines == List(EndOfJournalFileMarkerFs2Chunk))
 
     eventWatch.close()
 

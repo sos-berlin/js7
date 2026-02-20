@@ -8,10 +8,9 @@ import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart, stringAsUtf8}
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
@@ -53,7 +52,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
   "Stop reading a HTTP stream" - {
     val interruptAfter = 500.ms
     val tooLong = 1.s
-    val heartbeatChunk = ByteArray("HEARTBEAT\n")
+    val heartbeatChunk = fs2.Chunk.stringAsUtf8("HEARTBEAT\n")
 
     "Canceling a *quiet* stream with interruptWhen DOES NOT WORK" in:
       testStream().attempt.map:
@@ -68,7 +67,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
 
 
     def testStream(heartbeating: Boolean = false): IO[Assertion] =
-      val data = ByteArray("123\n")
+      val data = fs2.Chunk.stringAsUtf8("123\n")
       val port = findFreeTcpPort()
       val uri = Uri(s"http://localhost:$port")
       val serverStreamCanceled = Deferred.unsafe[IO, ExitCase]

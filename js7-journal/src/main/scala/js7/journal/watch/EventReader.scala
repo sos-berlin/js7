@@ -8,7 +8,6 @@ import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2Utils.unfoldEvalWeighted
 import js7.base.log.Logger
 import js7.base.time.Timestamp
@@ -21,10 +20,10 @@ import js7.base.utils.{Atomic, CloseableIterator}
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.UntilNoneIterator
-import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
+import js7.data.event.JournalSeparators.EndOfJournalFileMarker
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.recover.JournalReader
-import js7.journal.watch.EventReader.*
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -228,5 +227,4 @@ extends AutoCloseable:
 
 
 object EventReader:
-  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
   final class TimeoutException private[EventReader] extends scala.concurrent.TimeoutException

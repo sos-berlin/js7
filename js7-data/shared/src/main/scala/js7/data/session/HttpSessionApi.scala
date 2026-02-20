@@ -5,6 +5,8 @@ import cats.syntax.option.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -114,7 +116,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
         val startedAt = now
         httpClient.getRawLinesStream(uri)
           .map(_
-            .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
+            .logTiming(_.size, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
               logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
             .mapParallelBatch():
               _.parseJsonAs(using S.snapshotObjectJsonCodec).orThrow

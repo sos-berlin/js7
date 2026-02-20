@@ -8,8 +8,7 @@ import izumi.reflect.Tag
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
-import js7.base.data.ByteArray
-import js7.base.fs2utils.StreamExtensions.onStart
+import js7.base.fs2utils.StreamExtensions.{onStart, stringAsUtf8}
 import js7.base.io.https.HttpsConfig
 import js7.base.monixlike.MonixLikeExtensions.{completedL, toListL, unsafeToCancelableFuture}
 import js7.base.test.OurTestSuite
@@ -254,7 +253,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
       val events = Stream
         .eval:
           api.getDecodedLinesStream[EventId](uri,
-            returnHeartbeatAs = Some(ByteArray(heartbeat.toString)))
+            returnHeartbeatAs = Some(fs2.Chunk.stringAsUtf8(heartbeat.toString)))
         .flatten
         .take(3)
         .toListL

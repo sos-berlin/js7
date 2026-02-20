@@ -4,7 +4,6 @@ import cats.data.EitherT
 import cats.effect.{IO, ResourceIO}
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
-import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
@@ -35,7 +34,7 @@ trait ControllerApiWithHttp:
       ).map(_.map(_.compactPrint)))
 
   @TestOnly
-  def httpGetRawLinesStream(uriTail: String): IO[Checked[fs2.Stream[IO, ByteArray]]] =
+  def httpGetRawLinesStream(uriTail: String): IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
     apiResource.use: api =>
       //loginAndRetryIfSessionLost <-- NOT AVAILABLE HERE
         HttpClient.liftProblem:

@@ -10,9 +10,10 @@ import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.RichConfig
-import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops.*
+import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
@@ -31,7 +32,7 @@ import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.Missing.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
-import js7.base.utils.{Atomic, LineSplitterPipe, Missing}
+import js7.base.utils.{Atomic, Missing}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
@@ -123,7 +124,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     idleTimeout: Option[FiniteDuration] = None,
     prefetch: Int | Missing = Missing,
     dontLog: Boolean = false)
@@ -134,18 +135,18 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
       _.mapChunks: chunk =>
         chunk.flatMap:
-          case HttpHeartbeatByteArray => heartbeatAsChunk
+          case HttpHeartbeatFs2Chunk => heartbeatAsChunk
           case o => fs2.Chunk.singleton(o)
       .mapParallelBatch(prefetch = myPrefetch):
         _.parseJsonAs[A].orThrow
 
   final def getRawLinesStream(
     uri: Uri,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
     (using IO[Option[SessionToken]])
-  : IO[Stream[IO, ByteArray]] =
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders, dontLog = dontLog)
       .map(_
@@ -161,16 +162,17 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           _.logTiming(_.size, (d, n, _) => IO:
             if d >= 1.s && n >= 10_000_000 then
               logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))
+        .map:
+          _.toChunk
         .through:
-          LineSplitterPipe()
+          byteChunksToLines
         // See above Pekko's stream.idleTimout
         //.pipeMaybe(idleTimeout): (stream, t) =>
         //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(uri, t)))
-        .mapChunks: chunks =>
-          chunks.flatMap: chunk =>
-            chunk.flatMap:
-              case HttpHeartbeatByteArray => heartbeatAsChunk
-              case o => fs2.Chunk.singleton(o)
+        .mapChunks: chunk =>
+          chunk.flatMap:
+            case HttpHeartbeatFs2Chunk => heartbeatAsChunk
+            case o => fs2.Chunk.singleton(o)
         .recoverWith:
           ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded)
       .recover(ignoreIdleTimeout)

@@ -7,6 +7,7 @@ import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
+import io.circe.Json
 import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -19,8 +20,8 @@ import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
 import js7.base.catsutils.SyncDeadline
 import js7.base.circeutils.CirceUtils.*
-import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, mapParallelBatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -49,9 +50,10 @@ import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled
 import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
-import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatFs2Chunk}
+import js7.data.event.JournalSeparators.EndOfJournalFileMarkerJson
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
@@ -362,21 +364,20 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
         case _ =>
 
       val recouplingStreamReader =
-        new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], ClusterNodeApi](
+        new RecouplingStreamReader[Long/*file position*/, PositionAnd[fs2.Chunk[Byte]], ClusterNodeApi](
           toIndex = _.position.some,
           clusterConf.recouplingStreamReader):
 
           def getStream(api: ClusterNodeApi, position: Long) =
-            api
-              .journalStream(
+            api.journalStream(
                 JournalPosition(continuation.fileEventId, position),
                 heartbeat = Some(setting.timing.heartbeat),
-                returnHeartbeatAs = Some(StampedHeartbeatByteArray),
+                returnHeartbeatAs = Some(StampedHeartbeatFs2Chunk),
                 markEOF = true)
               .mapmap(_
-                .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
+                .scan(PositionAnd(position, fs2.Chunk.empty[Byte]/*unused*/)): (s, line) =>
                   PositionAnd(
-                    s.position + (if line == StampedHeartbeatByteArray then 0 else line.length),
+                    s.position + (if line == StampedHeartbeatFs2Chunk then 0 else line.size),
                     line)
                 .drop(1))
 
@@ -502,12 +503,12 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                   "clusterState=" + clusterState)
                 Stream.empty  // Ignore
 
-          case Right((_, h @ StampedHeartbeatByteArray, _)) =>
+          case Right((_, _, JournalEvent.StampedHeartbeat)) =>
             // Already logged by PekkoHttpClient:
             //logger.trace(h.utf8String.trim)
             Stream.empty
 
-          case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
+          case Right((fileLength, _, EndOfJournalFileMarkerJson)) =>
             // fileLength may be advanced to end of file when file's last record is truncated
             logger.debug("End of replicated journal file reached: " +
               s"${file.getFileName} eventId=${recoverer.eventId} fileLength=$fileLength")
@@ -701,9 +702,9 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
       (event.asJson.compactPrint + '\n').getBytes(UTF_8)))
     //out.force(true)  // sync()
 
-  private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
+  private def testHeartbeatSuppressor(tuple: (Long, fs2.Chunk[Byte], Any)): Boolean =
     tuple match
-      case (_, StampedHeartbeatByteArray, _)
+      case (_, StampedHeartbeatFs2Chunk, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).nn.toBoolean) =>
         logger.warn("TEST: Suppressing the received heartbeat")
         false

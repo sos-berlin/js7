@@ -5,7 +5,8 @@ import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops.*
+import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
@@ -82,7 +83,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     val whenReplicated = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
       .await(99.s)
       .foreach(o => IO:
-        replicated ++= o)
+        replicated ++= o.toByteArray)
       .compile
       .drain
       .unsafeToFuture()
@@ -136,7 +137,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient
-      .getRawLinesStream(u, returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatByteArray))
+      .getRawLinesStream(u, returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatFs2Chunk))
       .await(99.s)
       .foreach(o => IO:
         lines :+= o.utf8String)
@@ -145,7 +146,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     val observeWithHeartbeat = httpClient
       .getRawLinesStream(
         Uri(u.string + "&heartbeat=0.1"),
-        returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatByteArray))
+        returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatFs2Chunk))
       .await(99.s)
       .timeoutOnPull(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .onErrorEvalTap(t => IO(logger.error(t.toString)))

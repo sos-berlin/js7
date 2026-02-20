@@ -77,7 +77,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
                 heartbeat.map("heartbeat" -> _.toDecimalString) ++
                 serverMetering.map("serverMetering" -> _.toDecimalString) ++
                 request.toQueryParameters,
-        returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
+        returnHeartbeatAs = heartbeat.map(_ => JournalEvent.StampedHeartbeatFs2Chunk),
         idleTimeout = idleTimeout,
         responsive = true,
         dontLog = true)

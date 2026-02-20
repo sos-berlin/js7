@@ -2,7 +2,6 @@ package js7.data.cluster
 
 import cats.effect.IO
 import fs2.Stream
-import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -24,11 +23,11 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
   def journalStream(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
-  : IO[Checked[Stream[IO, ByteArray]]]
+  : IO[Checked[Stream[IO, fs2.Chunk[Byte]]]]
 
   //NOT USED
   //def journalLengthStream(

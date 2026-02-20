@@ -4,8 +4,10 @@ import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.Decoder
 import js7.base.auth.Admission
-import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.stringAsUtf8
 import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -66,7 +68,8 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
         .getDecodedLinesStream[Checked[EventId]](
           uris.eventIds(timeout, heartbeat = heartbeat),
           responsive = true,
-          returnHeartbeatAs = for h <- returnHeartbeatAs yield ByteArray(h.toString),
+          returnHeartbeatAs = returnHeartbeatAs.map: h =>
+            fs2.Chunk.stringAsUtf8(h.toString),
           prefetch = 1000,
           dontLog = dontLog)
       .map(_
@@ -80,11 +83,11 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def journalStream(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
-    returnHeartbeatAs: Option[ByteArray] = None,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
-  : IO[Checked[Stream[IO, ByteArray]]] =
+  : IO[Checked[Stream[IO, fs2.Chunk[Byte]]]] =
     loginAndRetryIfSessionLost:
       liftProblem:
         httpClient.getRawLinesStream(
@@ -101,9 +104,9 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     timeout: FiniteDuration,
     markEOF: Boolean = false)
   : IO[Checked[Stream[IO, Long]]] =
-    journalStream(journalPosition,
-      timeout = Some(timeout), markEOF = markEOF, returnAck = true
-    ).map(_.map(_.map(_.utf8String.stripSuffix("\n").toLong)))
+    journalStream(journalPosition, timeout = Some(timeout), markEOF = markEOF, returnAck = true)
+      .map(_.map(_.map:
+        _.utf8String.stripSuffix("\n").toLong))
 
   final def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,

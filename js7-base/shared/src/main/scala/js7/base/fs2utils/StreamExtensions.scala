@@ -11,6 +11,7 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, Monoid, effect}
 import fs2.{Chunk, Pull, RaiseThrowable, Stream}
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -67,6 +68,9 @@ object StreamExtensions:
   extension (x: Chunk.type)
     def fromString(string: String): Chunk[Char] =
       Chunk.array[Char](string.toCharArray)
+
+    def stringAsUtf8(string: String): Chunk[Byte] =
+      Chunk.array[Byte](string.getBytes(UTF_8))
 
 
   extension[F[_], A, B >: A](b: B)
