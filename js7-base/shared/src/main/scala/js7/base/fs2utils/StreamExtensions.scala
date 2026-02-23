@@ -14,7 +14,6 @@ import fs2.{Chunk, Pull, RaiseThrowable, Stream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
@@ -218,7 +217,10 @@ object StreamExtensions:
 
     /** Combine elements in each Chunk until a weighted limit is reached.
       *
-      * Upstream chunks will not be split.*/
+      * Upstream chunks will not be split.
+      *
+      * @see [[chunkWeighted]]
+      */
     def combineWeightedInChunk(limit: Int)(weight: O => Int)(using O: Monoid[O]): Stream[F, O] =
       stream.mapChunks: chunk =>
         val chunks = new VectorBuilder[O]
@@ -431,21 +433,23 @@ object StreamExtensions:
       stream.chunks.map(_.convertToString)
 
 
-  extension[F[_]](stream: Stream[F, Chunk[Chunk[Byte]]])
+  extension[F[_], ByteSeq: ByteSequence as ByteSeq](stream: Stream[F, Chunk[ByteSeq]])
     /** Like chunkN but combines only Chunks in each Stream Chunk, without waiting for a next Chunk.
       *
-      * <p>
       * Use these for streams with sporadic chunks.  */
     def rechunkBytes(limit: Int): Stream[F, Chunk[Byte]] =
-      stream.mapChunks(_.combineAll)
-        .combineWeightedInChunk(limit)(_.length)
-        .unchunks
-        .chunkLimit(limit)
+      val bytes: Stream[F, Byte] =
+        stream.mapChunks(_.combineAll)
+          .combineWeightedInChunk(limit)(_.length)
+          .map(_.toChunk)
+          .unchunks
+      bytes.chunkLimit(limit)
 
   extension[F[_], ByteSeq: ByteSequence](stream: Stream[F, Chunk[ByteSeq]])
     def chunkLimitBytes(limit: Int): Stream[F, Chunk[Byte]] =
-      stream.mapChunks(_.flatMap(_.flatMap(_.toChunk)))
-        .chunkLimit(limit)
+      val bytes: Stream[F, Byte] =
+        stream.mapChunks(_.flatMap(_.flatMap(_.toChunk)))
+      bytes.chunkLimit(limit)
 
 
   extension[A](stream: Stream[IO, A])
