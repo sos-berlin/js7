@@ -1,7 +1,6 @@
 package js7.base.fs2utils
 
 import cats.effect.*
-import cats.effect.kernel.Outcome.Canceled
 import cats.effect.testkit.TestControl
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pipe, Pull, Stream}
@@ -244,7 +243,7 @@ final class Fs2Test extends OurAsyncTestSuite:
   }
 
   if false then // Manual test. Start with -Xmx10m
-    "Recursive streams doesn't eat heap" in:
+    "Recursive streams don't eat heap" in:
       def f(i: Int): Stream[IO, Int] =
         var last = i
         Stream.emit(i)
