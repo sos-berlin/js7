@@ -3,11 +3,14 @@ package js7.controller.client
 import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
+import java.time.Instant
+import java.util.Locale
 import js7.base.auth.Admission
-import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
+import js7.base.log.LogLevel
 import js7.base.session.SessionApi
+import js7.base.web.Uris.encodeQuery
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.controller.client.HttpControllerApi.*
@@ -54,7 +57,26 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     loginAndRetryIfSessionLost:
       httpClient.get[B](baseUri /? uriTail)
 
-  final def getRawLinesStream(uriTail: String): IO[Stream[IO, ByteArray]] =
+  final def getLogLines(logLevel: LogLevel): IO[Stream[IO, String]] =
+    getLogLines_(logLevel)
+
+  final def getLogLines(logLevel: LogLevel, from: Instant, lines: Int): IO[Stream[IO, String]] =
+    getLogLines_(logLevel, "from" -> from.toString, "lines" -> lines.toString)
+
+  private def getLogLines_(logLevel: LogLevel, queries: (String, String)*): IO[Stream[IO, String]] =
+    IO.unlessA(logLevel == LogLevel.Info || logLevel == LogLevel.Debug):
+      IO.raiseError(new IllegalArgumentException(s"Only log levels Info and Debug are possible"))
+    .productR:
+      loginAndRetryIfSessionLost:
+        httpClient.getTextAsRawLines:
+          Uri:
+            (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
+              encodeQuery(queries*)
+        .map:
+          _.through:
+            fs2.text.utf8.decodeC
+
+  final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
       httpClient.getJsonAsRawLines(baseUri /? uriTail)
 

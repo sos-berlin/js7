@@ -1,6 +1,7 @@
 package js7.base.log
 
 import java.util.Locale
+import js7.base.annotation.javaApi
 import js7.base.convert.As
 import js7.base.utils.Ordinal
 
@@ -21,6 +22,9 @@ object LogLevel:
 
   val MinValue = Trace
   val MaxValue = None
+
+  @javaApi def info: LogLevel = Info
+  @javaApi def debug: LogLevel = Debug
 
   /** The usual Ordinal invariants are not valid here:
    * <ul>
