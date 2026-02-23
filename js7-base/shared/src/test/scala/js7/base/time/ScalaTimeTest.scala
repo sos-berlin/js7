@@ -43,9 +43,8 @@ final class ScalaTimeTest extends OurTestSuite:
         assert(bigDecimalToDuration(bigDecimal) == duration)
         assert(duration.toBigDecimalSeconds == bigDecimal)
       }
-      intercept[ArithmeticException]:
-        bigDecimalToDuration(BigDecimal("0.1112223334"))
-      intercept[ArithmeticException]:
+      assert(bigDecimalToDuration(BigDecimal("0.1112223334")) == 111222333.ns)
+      intercept[IllegalArgumentException]:
         bigDecimalToDuration(BigDecimal("9223372036.854775808"))  // Long.MaxValue + 1
 
     "toDoubleSeconds" in:

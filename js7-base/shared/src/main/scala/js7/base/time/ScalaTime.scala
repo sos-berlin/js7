@@ -66,15 +66,16 @@ object ScalaTime:
      */
     def h: FiniteDuration = Duration(delegate, HOURS)
 
+
   implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal:
     /** Duration, counted in seconds. */
     def s: FiniteDuration = bigDecimalToDuration(delegate)
 
+
   private[time] def bigDecimalToDuration(o: BigDecimal): FiniteDuration =
-    try Duration((o * 1000000000).toLongExact, NANOSECONDS)
-    catch { case t: ArithmeticException =>
+    try Duration((o * 1_000_000_000).toLong/*rounds or truncates*/, NANOSECONDS)
+    catch case t: ArithmeticException =>
       throw new ArithmeticException(s"Invalid duration (${t.getMessage}): $o")
-    }
 
   implicit val StringAsDuration: As[String, FiniteDuration] = As(parseDuration)
 
@@ -108,9 +109,11 @@ object ScalaTime:
   private def parse(string: String, factor: Int): FiniteDuration =
     (BigDecimal(string) * factor).toLongExact.nanoseconds.toCoarsest
 
-  def randomDuration(maximum: Duration): Duration = Duration(maximum.toNanos * Random.nextFloat(), NANOSECONDS)
+  def randomDuration(maximum: Duration): Duration =
+    Duration(maximum.toNanos * Random.nextFloat(), NANOSECONDS)
 
-  implicit final class RichDuration(private val duration: Duration) extends AnyVal, Ordered[RichDuration]:
+  implicit final class RichDuration(private val duration: Duration)
+  extends AnyVal, Ordered[RichDuration]:
     def unary_- : Duration =
       ZeroDuration - duration
 
