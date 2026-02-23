@@ -84,15 +84,15 @@ object ByteSeqFileReader:
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
     *
-    * Each log file must start with a timestamp including its timezone, to uniquely identify it.
-    *
+    * The first line of each log file starts with a timestamp including the timezone offset,
+    * to uniquely identify it.
     * <p>
-    *   See log4j2.xml header setting. Something like:
+    *   See log4j2.xml header setting. Recommended format:
     * <pre>
-    *%d{yyyy-MM-dd HH:mm:ss.SSSXX} Begin JS7 %X{js7.serverId} · ...%n
+    *%d{yyyy-MM-dd HH:mm:ss.SSSXX} ...
     * </pre>
     */
-  val UniqueHeaderSize = 50 // First bytes of the log file, see log4j2.xml header setting.
+  val UniqueHeaderSize = 30
 
   def fileStream[ByteSeq: ByteSequence](file: Path, byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
     Stream.resource:

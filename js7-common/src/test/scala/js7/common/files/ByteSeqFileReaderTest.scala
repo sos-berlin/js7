@@ -29,9 +29,6 @@ import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.util.Random
 
-/**
-  * @author Joacim Zschimmer
-  */
 final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
 
   "ByteSeqFileReader[ByteArray]" in:
@@ -84,8 +81,9 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
                   IO.defer:
                     val more = ByteArray:
                       key + " " +
-                        (s"loop=$i index=$j " * (UniqueHeaderSize - 20)).take(UniqueHeaderSize) +
-                        (1 to Random.nextInt(10)).toVector.map(i => Random.nextPrintableChar()).mkString
+                        (s"loop=$i index=$j " + "." * UniqueHeaderSize).take(UniqueHeaderSize) +
+                        (1 to Random.nextInt(10)).toVector.map(i => Random.nextPrintableChar()).mkString +
+                        "\n"
                     assert(more.length >= UniqueHeaderSize)
                     file ++= more
                     queue.take.timeout(9.s).map: chunk =>
@@ -126,6 +124,7 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
       finally
         Files.deleteIfExists(file)
     succeed
+
 
 object ByteSeqFileReaderTest:
   private val logger = Logger[this.type]
