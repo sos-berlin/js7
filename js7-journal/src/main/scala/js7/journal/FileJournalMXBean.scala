@@ -1,11 +1,13 @@
 package js7.journal
 
+import cats.effect.SyncIO
 import java.nio.file.Files
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.files.JournalFiles.streamJournalFiles
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.control.NonFatal
 
@@ -19,10 +21,11 @@ sealed trait FileJournalMXBean:
     // OPTIMISE Ask JournalEventWatch.fileEventIdToHistoric, but this is incomplete, because
     // unused files are evicted (maybe heap consumption doesn't matter?)
     journalLocation.fold(0L): loc =>
-      listJournalFiles(loc.fileBase).view.map: journalFile =>
+      streamJournalFiles[SyncIO](loc.fileBase).map: journalFile =>
         try Files.size(journalFile.file)
         catch case NonFatal(e) => 0L
-      .sum
+      .foldMonoid // sum
+      .compile.last.run().get
 
   def getEventTotal: Long =
     eventTotal.get

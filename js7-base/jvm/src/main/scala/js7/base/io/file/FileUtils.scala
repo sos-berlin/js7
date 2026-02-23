@@ -24,6 +24,7 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.{Closer, Labeled}
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
@@ -151,6 +152,13 @@ object FileUtils:
       def makeExecutable(): Unit =
         if isUnix then
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
+
+      def directoryStream[F[_] : Sync as F]: fs2.Stream[F, Path] =
+        fs2.Stream.fromAutoCloseable:
+          F.delay:
+            Files.list(delegate)
+        .flatMap: javaStream =>
+          fs2.Stream.fromIterator(javaStream.iterator.asScala, chunkSize = 1024)
 
       /**
         * Returns the content of the directory denoted by `this`.

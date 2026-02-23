@@ -1,19 +1,21 @@
 package js7.journal.files
 
+import cats.effect.SyncIO
+import cats.effect.kernel.Sync
 import java.io.IOException
 import java.nio.file.Files.{createSymbolicLink, delete, exists}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Path, Paths}
+import js7.base.catsutils.CatsEffectExtensions.run
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventId
 import js7.journal.data.JournalLocation
-import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 /**
@@ -27,33 +29,28 @@ object JournalFiles:
       .toChecked(Problem(s"No journal under '$journalFileBase'"))
 
   def listJournalFiles(journalFileBase: Path): Vector[JournalFile] =
-    listFiles(journalFileBase): iterator =>
-      val matcher = new JournalFile.Matcher(journalFileBase.getFileName)
-      iterator
-        .flatMap: file =>
-          matcher.checkedJournalFile(file).toOption
-        .toVector
-        .sortBy(_.fileEventId)
+    streamJournalFiles[SyncIO](journalFileBase)
+      .compile.toVector.map:
+        _.sortBy(_.fileEventId)
+      .run()
+
+  def streamJournalFiles[F[_]: Sync](journalFileBase: Path): fs2.Stream[F, JournalFile] =
+    val matcher = new JournalFile.Matcher(journalFileBase.getFileName)
+    streamFiles[F](journalFileBase)
+      .mapChunks: chunk =>
+        fs2.Chunk.from:
+          chunk.asSeq.flatMap: file =>
+            matcher.checkedJournalFile(file).toOption
 
   def listGarbageFiles(journalFileBase: Path, untilFileEventId: EventId): Vector[Path] =
     val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
-    listFiles(journalFileBase):
-      _.filter: file =>
+    streamFiles[SyncIO](journalFileBase)
+      .filter: file =>
         val matcher = pattern.matcher(file.getFileName.toString)
         matcher.matches() &&
           Try(matcher.group(1).toLong < untilFileEventId).getOrElse(false)
-      .toVector
+      .compile.toVector.run()
       .sorted
-
-  private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] =
-    val directory = journalFileBase.getParent
-    if !exists(directory) then
-      Vector.empty
-    else if journalFileBase.getFileName == null then
-      Vector.empty
-    else
-      autoClosing(Files.list(directory)): stream =>
-        body(stream.iterator.asScala)
 
   private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
     try
@@ -72,7 +69,11 @@ object JournalFiles:
     val markerFile = deletionMarkerFile(fileBase)
     if !exists(markerFile)/*required for test*/ then touchFile(markerFile)
     var failed = false
-    for file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector) do
+    streamFiles[SyncIO](fileBase)
+      .filter: file =>
+        matches(file.getFileName.toString)
+      .compile.toVector.run() // Collect, then delete outside of the Stream
+    .foreach: file =>
       try
         logger.info(s"DELETE JOURNAL FILE $file")
         delete(file)
@@ -86,6 +87,14 @@ object JournalFiles:
 
   private[files] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
+
+  private def streamFiles[F[_] : Sync](journalFileBase: Path): fs2.Stream[F, Path] =
+    val directory = journalFileBase.getParent
+    if !exists(directory) || journalFileBase.getFileName == null then
+      fs2.Stream.empty
+    else
+      directory.directoryStream[F]
+
 
   object extensions:
     extension (journalLocation: JournalLocation)

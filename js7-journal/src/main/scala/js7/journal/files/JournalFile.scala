@@ -21,32 +21,31 @@ private[journal] final case class JournalFile private[journal](fileEventId: Even
   @TestOnly // Not used
   private[files] def properLength: Long =
     boundary[Long]:
-      autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
+      autoClosing(new RandomAccessFile(file.toFile, "r")): f =>
         var truncated = f.length
         while truncated > 0 do
           f.seek(truncated - 1)
           if f.read() == '\n' then boundary.break(truncated)
           truncated -= 1
         0
-      }
 
 
 object JournalFile:
+
   def toFile(fileBase: Path, fileEventId: EventId): Path =
     fileBase.resolveSibling(s"${fileBase.getFileName}--$fileEventId.journal")
 
   private[files] def anyJournalFilePattern(fileBase: Path): Pattern =
-    Pattern.compile(
-      Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)""")
+    Pattern.compile:
+      Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)"""
 
   private[files] def garbagePattern(fileBase: Path): Pattern =
-    Pattern.compile(Pattern.quote(fileBase.toString) +
-    """--([0-9]+)\.journal.tmp""")
-    // Keep truncated data: """--([0-9]+)\.journal(?:\.tmp|~.*)""")
+    Pattern.compile:
+      Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal.tmp"""
 
   final class Matcher(fileBase: Path):
-    private val pattern = Pattern.compile(
-      Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal""")
+    private val pattern = Pattern.compile:
+      Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal"""
 
     def checkedJournalFile(file: Path): Checked[JournalFile] =
       checkedFileEventId(file).map(JournalFile(_, file))
