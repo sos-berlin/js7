@@ -393,6 +393,11 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
           .toList
       assert(list == List(1, 2, 3, 4, 5))
 
+    "takeUntil" in:
+      val list: List[Int] =
+        Stream(1, 2, 3, 4, 5).takeUntil(_ == 3).toList
+      assert(list == List(1, 2, 3))
+
     "takeWhileNotNull" in:
       val list: List[Int] =
         Stream[Pure, Int | Null](1, 2, 3, null, 4, 5)

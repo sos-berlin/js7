@@ -312,6 +312,14 @@ object StreamExtensions:
           F.unlessA(used.getAndSet(true)):
             onFirst(o)
 
+    /** Take all first elements until predicate is true, including the element that not matches.
+      *
+      * Then end then Stream.
+      * Like [[takeThrough]], but with a reverse predicated.
+      */
+    def takeUntil(predicate: O => Boolean): Stream[F, O] =
+      stream.takeThrough(o => !predicate(o))
+
     def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
       stream.evalMap(a => F.delay:
         f(a)
