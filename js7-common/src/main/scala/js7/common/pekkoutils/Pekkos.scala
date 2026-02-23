@@ -42,7 +42,8 @@ object Pekkos:
         myConfig.getBoolean("js7.pekko.use-js7-thread-pool") ? executionContext)
 
   def terminateAndWait(actorSystem: ActorSystem): Unit =
-    terminateAndWait(actorSystem,
+    terminateAndWait(
+      actorSystem,
       actorSystem.settings.config.getDuration("js7.pekko.shutdown-timeout").toFiniteDuration)
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
@@ -53,9 +54,10 @@ object Pekkos:
 
   def terminate(actorSystem: ActorSystem): IO[Unit] =
     logger.debugIO(s"ActorSystem:${actorSystem.name} terminate"):
-      IO.fromFutureDummyCancelable(IO:
-        terminateFuture(actorSystem)
-      ).void
+      IO.fromFutureDummyCancelable:
+        IO:
+          terminateFuture(actorSystem)
+      .void
 
   /** Shut down connection pool and terminate ActorSystem.
     * Only once callable.
