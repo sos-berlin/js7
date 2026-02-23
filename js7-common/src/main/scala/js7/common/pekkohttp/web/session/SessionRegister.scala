@@ -152,7 +152,7 @@ extends Service.TrivialReleasable:
 
   def logout(sessionToken: SessionToken): IO[Unit] =
     cell.flatMap(_.evalUpdate:
-      _.delete(sessionToken, "Logout"))
+      _.delete(sessionToken, "logout"))
 
   private[session] def session(
     token: SessionToken,
@@ -231,7 +231,7 @@ extends Service.TrivialReleasable:
     def delete(token: SessionToken, reason: String): IO[State] =
       tokenToSession.get(token).fold(IO.pure(this)): session =>
         session.timeoutFiber.foldMap(_.cancel).as:
-          deleteOnly(token, "expired")
+          deleteOnly(token, reason)
 
     def deleteOnly(token: SessionToken, reason: String): State =
       tokenToSession.get(token).fold(this): entry =>
