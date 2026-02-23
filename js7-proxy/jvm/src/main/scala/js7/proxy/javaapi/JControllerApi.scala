@@ -1,7 +1,8 @@
 package js7.proxy.javaapi
 
-import cats.effect.IO
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import io.vavr.control.Either as VEither
 import java.time.Instant
@@ -11,15 +12,21 @@ import java.util.function.Consumer
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.Environment.environment
+import js7.base.config.Js7Config
+import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterWatchId, Confirmer}
@@ -40,6 +47,7 @@ import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
+import org.apache.pekko.actor.ActorSystem
 import reactor.core.publisher.Flux
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
@@ -97,10 +105,21 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull controllerEventBus: JControllerEventBus)
   : CompletableFuture[JControllerProxy] =
     runIO:
-      asScala.controllerProxy(proxyEventBus.asScala, controllerEventBus.asScala)
-        .toAllocated
-        .map: allocated =>
-          new JControllerProxy(allocated, this, controllerEventBus)
+      proxyResource(proxyEventBus, controllerEventBus)
+        .allocated.map(_._1) // The caller MUST call `stop`
+
+  /** For Scala. */
+  def proxyResource(
+    proxyEventBus: JStandardEventBus[ProxyEvent] = new JStandardEventBus,
+    controllerEventBus: JControllerEventBus = new JControllerEventBus)
+  : ResourceIO[JControllerProxy] =
+    for
+      proxyAllocated <- Resource.eval:
+        asScala.controllerProxy(proxyEventBus.asScala, controllerEventBus.asScala)
+          .toAllocated
+      proxy <- JControllerProxy.resource(proxyAllocated, this, controllerEventBus)
+    yield
+      proxy
 
   @Nonnull
   def clusterAppointNodes(
@@ -410,3 +429,18 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
 
   private def runIO[A](io: IO[A]): CompletableFuture[A] =
     CorrelId.bindNew(io).unsafeToCompletableFuture()
+
+
+object JControllerApi:
+
+  def resource(
+    admissions: Nel[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    config: Config = Js7Config.defaultConfig)
+    (using ActorSystem)
+  : ResourceIO[JControllerApi] =
+    for
+      given IORuntime <- Resource.eval(environment[IORuntime])
+      controllerApi <- ControllerApi.resource(admissionsToApiResource(admissions, httpsConfig))
+    yield
+      JControllerApi(controllerApi, config)

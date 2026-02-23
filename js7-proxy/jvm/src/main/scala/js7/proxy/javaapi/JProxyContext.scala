@@ -6,6 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.Executor
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.OurIORuntime
 import js7.base.log.Logger
@@ -27,6 +28,7 @@ import scala.jdk.CollectionConverters.*
 /** The class to start. */
 final class JProxyContext(config: Config, computeExecutor: Executor | Null)
 extends AutoCloseable:
+
   def this() = this(ConfigFactory.empty, null)
   def this(config: Config) = this(config, null)
 
@@ -66,7 +68,7 @@ extends AutoCloseable:
     @Nonnull httpsConfig: JHttpsConfig)
   : JControllerApi =
     val apiResource = admissionsToApiResource(
-      Nel.unsafe(admissions.asScala.map(_.asScala).toList),
+      admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala
     )(using actorSystem)
     new JControllerApi(

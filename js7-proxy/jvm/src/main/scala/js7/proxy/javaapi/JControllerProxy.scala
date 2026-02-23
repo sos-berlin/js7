@@ -1,19 +1,21 @@
 package js7.proxy.javaapi
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import io.vavr.control.Either as VEither
 import java.util.Objects.requireNonNull
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.catsutils.Environment.environment
 import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
@@ -53,12 +55,23 @@ final class JControllerProxy private[proxy](
 
   @Nonnull
   def stop(): CompletableFuture[Void] =
-    allocatedControllerProxy.release.as(Void)
+    release.as(Void)
       .unsafeToCompletableFuture()
+
+  def release: IO[Unit] =
+    allocatedControllerProxy.release
 
   @Nonnull
   def currentState: JControllerState =
     JControllerState(asScala.currentState)
+
+  @Nonnull
+  def clusterState: ClusterState =
+    asScala.currentState.clusterState
+
+  def engineLog: CompletionStage[JAllocated[JEngineLog]] =
+    JEngineLog.resource(this).toAllocated.map(JAllocated(_))
+      .unsafeToCompletableFuture()
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
@@ -105,3 +118,17 @@ final class JControllerProxy private[proxy](
     if !isAdded then throw new IllegalStateException(s"Order has already been added: ${order.id}")
 
     whenOrderTerminated
+
+
+object JControllerProxy:
+
+  def resource(
+    allocatedControllerProxy: Allocated[IO, ControllerProxy],
+    api: JControllerApi,
+    controllerEventBus: JControllerEventBus = new JControllerEventBus)
+  : ResourceIO[JControllerProxy] =
+    Resource.make(
+      acquire =
+        environment[IORuntime].map: ioRuntime =>
+          new JControllerProxy(allocatedControllerProxy, api, controllerEventBus)(using ioRuntime))(
+      release = _.release)
