@@ -43,7 +43,6 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechun
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko
-import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.marshalling.Marshal
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
@@ -59,6 +58,7 @@ import org.apache.pekko.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, U
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
+import org.apache.pekko.{Done, util}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map2
 import scala.concurrent.TimeoutException
@@ -132,7 +132,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[Stream[IO, A]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
-    getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
+    getJsonAsRawLines(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
       _.mapChunks: chunk =>
         chunk.flatMap:
           case HttpHeartbeatFs2Chunk => heartbeatAsChunk
@@ -140,15 +140,34 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       .mapParallelBatch(prefetch = myPrefetch):
         _.parseJsonAs[A].orThrow
 
-  final def getRawLinesStream(
+  final def getJsonAsRawLines(
     uri: Uri,
     returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
     idleTimeout: Option[FiniteDuration] = None,
     dontLog: Boolean = false)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
+    getRawLines(uri, StreamingJsonHeaders, returnHeartbeatAs, idleTimeout, dontLog)
+
+  final def getTextAsRawLines(
+    uri: Uri,
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
+    getRawLines(uri, AcceptText, returnHeartbeatAs, idleTimeout, dontLog)
+
+  final def getRawLines(
+    uri: Uri,
+    accept: List[Accept],
+    returnHeartbeatAs: Option[fs2.Chunk[Byte]] = None,
+    idleTimeout: Option[FiniteDuration] = None,
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
-    get_[HttpResponse](uri, StreamingJsonHeaders, dontLog = dontLog)
+    get_[HttpResponse](uri, accept, dontLog = dontLog)
       .map(_
         .entity.withoutSizeLimit.dataBytes
         .pipeMaybe(idleTimeout): (stream, timeout) =>
@@ -231,24 +250,27 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     IO.defer:
       val stop = Deferred.unsafe[IO, Unit]
       val stopped = Deferred.unsafe[IO, Unit]
-      chunks
-        .map(Chunk(_))
-        .append[IO, ChunkStreamPart](Stream.emit(LastChunk))
-        .interruptWhenF(stop.get)
-        .onFinalize:
-          stopped.complete(()).void
-        .toPekkoSourceResource
-        .use: pekkoChunks =>
-          sendReceive(
-            HttpRequest(POST, uri.asPekko, AcceptJson,
-              HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-            logData = Some("postStream"),
-            dontLog = dontLog)
-        .flatMap(unmarshal[B](POST, uri))
-        .pipeIf(terminateStreamOnCancel)(_.onCancel:
-          // Terminate stream properly to avoid "TCP Connection reset" error
-          // Maybe a race condition. So good luck!
-          stop.complete(()) *> stopped.get)
+      val expectedOrderSize = 1024
+      stream.through: stream =>
+        // Buffered, not sporadic/responsive
+        stream.encodeJsonAndRechunkToByteStringBuffered(chunkSize)
+      .map(Chunk(_))
+      .append[IO, ChunkStreamPart](Stream.emit(LastChunk))
+      .interruptWhenF(stop.get)
+      .onFinalize:
+        stopped.complete(()).void
+      .toPekkoSourceResource
+      .use: pekkoSource =>
+        sendReceive(
+          HttpRequest(POST, uri.asPekko, AcceptJson,
+            HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoSource)),
+          logData = Some("postStream"),
+          dontLog = dontLog)
+      .flatMap(unmarshal[B](POST, uri))
+      .pipeIf(terminateStreamOnCancel)(_.onCancel:
+        // Terminate stream properly to avoid "TCP Connection reset" error
+        // Maybe a race condition. So good luck!
+        stop.complete(()) *> stopped.get)
 
   @TestOnly
   final def postJsonStringStream(uri: Uri, data: Stream[IO, String])
@@ -298,7 +320,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       .flatMap: httpResponse =>
         IO.defer:
           if !httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue) then
-            failWithResponse(uri, httpResponse)
+            failWithResponse(POST, uri, httpResponse)
           else
             IO.pure(httpResponse.status.intValue)
         .guarantee(IO:
@@ -483,7 +505,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         HttpMXBean.Bean.clientReceivedByteTotal
     message.entity match
       case chunked: Chunked =>
-        lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        lazy val isJson = chunked.contentType.mediaType == `application/x-ndjson`
         lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
         message.withEntity:
           chunked.copy(
@@ -524,7 +546,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
-      failWithResponse(uri, httpResponse)
+      failWithResponse(method, uri, httpResponse)
     else
       IO.fromFuture[A](IO:
           Unmarshal(httpResponse).to[A])
@@ -533,9 +555,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             logger.debug(s"💥 $toString: Error when unmarshalling response of ${
               method.name} $uri: ${t.toStringWithCauses}", t))
 
-  private def failWithResponse(uri: Uri, response: HttpResponse): IO[Nothing] =
+  private def failWithResponse(method: HttpMethod, uri: Uri, response: HttpResponse): IO[Nothing] =
     response.entity.asUtf8String.flatMap: errorMsg =>
-      IO.raiseError(new HttpException(POST, uri, response, errorMsg))
+      IO.raiseError(new HttpException(method, uri, response, errorMsg))
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => IO[A]): IO[A] =
     toCheckedAgentUri(request.uri.asUri) match
@@ -657,6 +679,7 @@ object PekkoHttpClient:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
+  private val AcceptText = Accept(MediaTypes.`text/plain`) :: Nil
   private val requestCounter = Atomic(0L)
 
   final class Standard(

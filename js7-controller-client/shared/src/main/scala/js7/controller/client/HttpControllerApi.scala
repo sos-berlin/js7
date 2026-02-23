@@ -56,7 +56,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, ByteArray]] =
     loginAndRetryIfSessionLost:
-      httpClient.getRawLinesStream(baseUri /? uriTail)
+      httpClient.getJsonAsRawLines(baseUri /? uriTail)
 
   final def executeCommand[C <: ControllerCommand](command: C): IO[command.Response] =
     loginAndRetryIfSessionLost:

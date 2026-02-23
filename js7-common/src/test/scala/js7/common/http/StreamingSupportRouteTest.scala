@@ -111,7 +111,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
         given IO[Option[SessionToken]] = IO.none
         for
           since <- CatsDeadline.now
-          stream <- client.getRawLinesStream(uri)
+          stream <- client.getJsonAsRawLines(uri)
           deferred <- Deferred[IO, Unit]
           list <- stream
             .evalTap(o => IO(logger.info(s"<-<- $o")))

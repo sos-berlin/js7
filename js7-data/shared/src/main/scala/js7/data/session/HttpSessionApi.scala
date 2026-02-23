@@ -114,7 +114,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
     loginAndRetryIfSessionLost:
       IO.defer:
         val startedAt = now
-        httpClient.getRawLinesStream(uri)
+        httpClient.getJsonAsRawLines(uri)
           .map(_
             .logTiming(_.size, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
               logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))

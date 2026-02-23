@@ -90,7 +90,7 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   : IO[Checked[Stream[IO, fs2.Chunk[Byte]]]] =
     loginAndRetryIfSessionLost:
       liftProblem:
-        httpClient.getRawLinesStream(
+        httpClient.getJsonAsRawLines(
           uris.journal(journalPosition, heartbeat = heartbeat,
             timeout = timeout, markEOF = markEOF, returnAck = returnAck),
           returnHeartbeatAs = returnHeartbeatAs)

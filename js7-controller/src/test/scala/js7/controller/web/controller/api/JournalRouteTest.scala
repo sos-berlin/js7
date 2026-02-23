@@ -102,13 +102,13 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
   private lazy val file0 = journalLocation.file(0L)
 
   "/journal from start" in repeatTest(if isIntelliJIdea then 100_000 else 1000): _ =>
-    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
+    val lines = client.getJsonAsRawLines(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
       .flatMap(_.compile.toList).await(99.s)
     assert(lines.map(_.utf8String).mkString == file0.contentString)
 
   "/journal from end of file" in:
     val fileLength = size(file0)
-    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=$fileLength"))
+    val lines = client.getJsonAsRawLines(Uri(s"$uri/journal?timeout=0&file=0&position=$fileLength"))
       .await(99.s).toListL.await(99.s)
     assert(lines.map(_.utf8String).isEmpty)
 
@@ -119,7 +119,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
     "Nothing yet written" in:
       val initialFileLength = size(journalLocation.file(0L))
       observing = client
-        .getRawLinesStream(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
+        .getJsonAsRawLines(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
         .await(99.s)
         .map(_.utf8String)
         .foreach(string => IO:
@@ -178,7 +178,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
     eventWatch.onJournalingStarted(file3, journalId,
       PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
 
-    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
+    val lines = client.getJsonAsRawLines(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
       .await(99.s).toListL.await(99.s)
     assert(lines == List(EndOfJournalFileMarkerFs2Chunk))
 
@@ -192,7 +192,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
-      val bad = HttpClient.liftProblem(client.getRawLinesStream(Uri(
+      val bad = HttpClient.liftProblem(client.getJsonAsRawLines(Uri(
         s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
       assert(bad.await(99.s) == Left(AckFromActiveClusterNodeProblem))
 
@@ -202,7 +202,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = false)
-      val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
+      val lines = client.getJsonAsRawLines(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
         .await(99.s).toListL.await(99.s)
       assert(lines == Nil)
 

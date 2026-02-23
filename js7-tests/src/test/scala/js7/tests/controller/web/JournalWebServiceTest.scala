@@ -80,7 +80,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     var replicated = ByteArray.empty
     controller.eventWatch.await[AgentReady](_ => true)  // Await last event
 
-    val whenReplicated = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
+    val whenReplicated = httpClient.getJsonAsRawLines(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
       .await(99.s)
       .foreach(o => IO:
         replicated ++= o.toByteArray)
@@ -89,7 +89,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
       .unsafeToFuture()
 
     val observedLengths = mutable.Buffer[String]()
-    val whenLengthsObserved = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=ack"))
+    val whenLengthsObserved = httpClient.getJsonAsRawLines(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=ack"))
       .await(99.s)
       .foreach(o => IO:
         observedLengths += o.utf8String)
@@ -124,7 +124,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
   "Timeout" in:
     var eventId = controller.eventWatch.await[AgentDedicated](timeout = 9.s).last.eventId
     eventId = controller.eventWatch.await[AgentEventsObserved](timeout = 9.s, after = eventId).last.eventId
-    val lines = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
+    val lines = httpClient.getJsonAsRawLines(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
       .await(99.s)
       .map(_.utf8String)
       .toListL
@@ -137,14 +137,14 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient
-      .getRawLinesStream(u, returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatFs2Chunk))
+      .getJsonAsRawLines(u, returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatFs2Chunk))
       .await(99.s)
       .foreach(o => IO:
         lines :+= o.utf8String)
       .compile.drain
       .unsafeRunAndForget()
     val observeWithHeartbeat = httpClient
-      .getRawLinesStream(
+      .getJsonAsRawLines(
         Uri(u.string + "&heartbeat=0.1"),
         returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatFs2Chunk))
       .await(99.s)

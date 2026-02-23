@@ -175,19 +175,19 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         httpClient.post(Uri(s"$uri/SERVER-ERROR"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 500 Internal Server Error: POST $uri/SERVER-ERROR => "SERVER ERROR"""")
 
-    "getRawLinesStream" in:
+    "getJsonAsRawLines" in:
       val result = Stream
-        .eval(httpClient.getRawLinesStream(Uri(s"$uri/STREAM")))
+        .eval(httpClient.getJsonAsRawLines(Uri(s"$uri/STREAM")))
         .flatten
         .compile.toList
         .await(99.s)
         .map(_.utf8String)
       assert(result == List("ONE\n", "TWO\n"))
 
-    "getRawLinesStream: idle-timeout yield an empty observable" in:
+    "getJsonAsRawLines: idle-timeout yield an empty observable" in:
       // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Stream
       val result = Stream
-        .eval(httpClient.getRawLinesStream(Uri(s"$uri/IDLE-TIMEOUT")))
+        .eval(httpClient.getJsonAsRawLines(Uri(s"$uri/IDLE-TIMEOUT")))
         .flatten
         .compile.toList
         .await(99.s)
