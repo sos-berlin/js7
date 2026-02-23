@@ -13,13 +13,13 @@ import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.io.file.ByteSeqFileReader.{fileStream, growingLogFileStream}
 import js7.base.log.AnsiEscapeCodes.removeHighlights
 import js7.base.log.{LogFileIndex, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither}
-import js7.common.files.ByteSeqFileReader.{fileStream, growingLogFileStream}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.rechunkToByteStringSporadic
 import js7.common.pekkohttp.StandardMarshallers.*

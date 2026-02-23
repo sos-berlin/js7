@@ -1,4 +1,4 @@
-package js7.common.files
+package js7.base.io.file
 
 import cats.effect.IO
 import cats.effect.std.Queue
@@ -11,6 +11,8 @@ import java.nio.file.StandardOpenOption.READ
 import java.nio.file.{Files, Paths}
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.io.file.ByteSeqFileReader.UniqueHeaderSize
+import js7.base.io.file.ByteSeqFileReaderTest.*
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
@@ -20,10 +22,6 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.common.files.ByteSeqFileReader.UniqueHeaderSize
-import js7.common.files.ByteSeqFileReaderTest.*
-import js7.common.pekkoutils.ByteStringByteSequence.implicitByteSequence
-import org.apache.pekko.util.ByteString
 import org.scalatest.compatible.Assertion
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
@@ -37,9 +35,9 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
   "ByteSeqFileReader[fs2.Chunk[Byte]" in:
     testWith[fs2.Chunk[Byte]]
 
-  "ByteSeqFileReader[ByteString]" in:
-    // Not used. Just for completeness. And test of Pekko's ByteString.
-    testWith[ByteString]
+  //"ByteSeqFileReader[ByteString]" in:
+  //  // Not used. Just for completeness. And test of Pekko's ByteString.
+  //  testWith[ByteString]
 
   private def testWith[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
     val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))

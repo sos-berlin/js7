@@ -1,4 +1,4 @@
-package js7.common.files
+package js7.base.io.file
 
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.{Chunk, Stream}
@@ -10,11 +10,11 @@ import java.nio.file.{Files, NoSuchFileException, Path}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
+import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
-import js7.common.files.ByteSeqFileReader.*
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.FiniteDuration
 
@@ -79,7 +79,7 @@ extends AutoCloseable:
 
 
 object ByteSeqFileReader:
-  private[files] val ChunkSize = 64*1024
+  private[io] val ChunkSize = 64*1024
   private val logger = Logger[this.type]
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
