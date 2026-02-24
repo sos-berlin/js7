@@ -3,30 +3,31 @@ package js7.proxy.javaapi
 import cats.effect.ResourceIO
 import cats.effect.unsafe.IORuntime
 import java.time.Instant
-import java.util.concurrent.CompletableFuture
 import js7.base.log.LogLevel
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import reactor.core.publisher.Flux
+import reactor.core.scheduler.Schedulers as ReactorSchedulers
 
 final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControllerApi])
   (using IORuntime):
 
-  def currentLog(logLevel: LogLevel)
-  : CompletableFuture[Flux[String]] =
-    controllerApis.head // FIXME Aktiver oder Passiver soll auswählbar sein!
-      .getLogLines(logLevel)
-      .map(_.asFlux)
-      .unsafeToCompletableFuture()
+  def currentLog(logLevel: LogLevel): Flux[String] =
+    fs2.Stream.force:
+      controllerApis.head.getLogLines(logLevel)
+    .asFlux
 
-  def logSection(logLevel: LogLevel, start: Instant, lines: Int)
-  : CompletableFuture[Flux[String]] =
-    controllerApis.head // FIXME Aktiver oder Passiver soll auswählbar sein!
-      .getLogLines(logLevel, start = start, lines = lines)
-      //.map(_.tapEach(o => Logger.info(s"### $o")))
-      .map(_.asFlux)
-      .unsafeToCompletableFuture()
+  def logSection(logLevel: LogLevel, start: Instant, lines: Int): Flux[String] =
+    fs2.Stream.force:
+      controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
+    .asFlux
+    .publishOn(ReactorSchedulers.fromExecutor(JResource.ourCommonPool))
+
+
+//private def logSection(logLevel: LogLevel, start: Instant | LogPosition, lines: Int)
+  //: CompletableFuture[Flux[String]] =
+  //  ???
 
   //private def serverIdToApi(serverId: EngineServerId): HttpControllerApi =
   //  serverId match
@@ -50,3 +51,8 @@ object JEngineLog:
   def resource(jProxy: JControllerProxy)(using IORuntime): ResourceIO[JEngineLog] =
     jProxy.api.asScala.apisResource.map: apis =>
       JEngineLog(jProxy, apis)
+
+
+  //private final case class LogPosition(logFileName: String, position: Long)
+  //
+  //private final case class LogLine(position: LogPosition, line: String)

@@ -12,7 +12,6 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
-import js7.proxy.ControllerApi
 import js7.proxy.javaapi.{JControllerApi, JControllerProxy}
 import js7.tests.controller.proxy.JLogFileTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
