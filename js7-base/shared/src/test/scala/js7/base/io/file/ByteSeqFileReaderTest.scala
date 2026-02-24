@@ -2,9 +2,6 @@ package js7.base.io.file
 
 import cats.effect.IO
 import cats.effect.std.Queue
-import cats.syntax.foldable.*
-import cats.syntax.monoid.*
-import fs2.Chunk
 import java.nio.channels.FileChannel
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.StandardOpenOption.READ
@@ -19,49 +16,29 @@ import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.compatible.Assertion
-import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.util.Random
 
 final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
 
-  "ByteSeqFileReader[ByteArray]" in:
-    testWith[ByteArray]
+  "ByteSeqFileReader[ByteArray] stream" in:
+    testStream[ByteArray]
 
-  "ByteSeqFileReader[fs2.Chunk[Byte]" in:
-    testWith[fs2.Chunk[Byte]]
+  "ByteSeqFileReader[fs2.Chunk[Byte] stream" in:
+    testStream[fs2.Chunk[Byte]]
 
   //"ByteSeqFileReader[ByteString]" in:
   //  // Not used. Just for completeness. And test of Pekko's ByteString.
-  //  testWith[ByteString]
+  //  testStream[ByteString]
 
-  private def testWith[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
-    val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))
-    val result = mutable.Buffer.empty[ByteSeq]
-
-    withTemporaryFile("ByteSeqFileReaderTest", ".tmp"): file =>
-      file := content
-      autoClosing(new ByteSeqFileReader[ByteSeq](file)): reader =>
-        var eof = false
-        while !eof do
-          val byteSeq = reader.read()
-          if byteSeq.isEmpty then
-            eof = true
-          else
-            result += byteSeq
-
-    assert(result.toSeq.combineAll == content)
-
-  "stream, not growing" in :
+  private def testStream[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
     temporaryFileResource[IO]("ByteSeqFileReaderTest").use: file =>
-      val content = Chunk.array(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))
+      val content = ByteSeq.fromSeq(Random.nextBytes(3 * ByteSeqFileReader.BufferSize - 7))
       file := content
-      ByteSeqFileReader.fileStream[fs2.Chunk[Byte]](file, byteChunkSize = 1024)
-        .unchunks
+      ByteSeqFileReader.stream[ByteSeq](file, byteChunkSize = ByteSeqFileReader.BufferSize)
         .compile.foldMonoid.map: bigChunk =>
           assert(bigChunk == content)
 

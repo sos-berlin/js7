@@ -1,20 +1,19 @@
 package js7.controller.web.controller.api.log
 
 import cats.effect.unsafe.IORuntime
-import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.{ChronoField, TemporalQuery}
-import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZonedDateTime}
+import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
-import js7.base.io.file.ByteSeqFileReader.{fileStream, growingLogFileStream}
-import js7.base.log.AnsiEscapeCodes.removeHighlights
+import js7.base.io.file.ByteSeqFileReader
+import js7.base.io.file.ByteSeqFileReader.growingLogFileStream
 import js7.base.log.{LogFileIndex, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
@@ -31,6 +30,7 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
+import scala.concurrent.duration.FiniteDuration
 
 trait LogRoute extends ControllerRouteProvider:
 
@@ -63,13 +63,13 @@ trait LogRoute extends ControllerRouteProvider:
         streamFile(logFile)
     ~
       pathEnd:
-        parameter("from".as[String].?):
+        parameter("start".as[String].?):
           case None =>
             streamFile(logFile, growing = true)
 
-          case Some(fromString) =>
-            stringToInstant(fromString).fold(complete(_), from =>
-              directAccessRoute(logFile, from))
+          case Some(startString) =>
+            stringToInstant(startString).fold(complete(_), from =>
+              section(logFile, from))
 
   private def streamFile(file: Path, growing: Boolean = false): Route =
     //Fails if file grows while being read (Content-Length mismatch?): getFromFile(currentInfoLogFile, contentType)
@@ -79,46 +79,36 @@ trait LogRoute extends ControllerRouteProvider:
       complete(NotFound, "Missing log file")
     else if growing then
       parameter("poll" ? pollDuration): pollDuration_ => // TODO TEST Only
-        val pollDuration = pollDuration_ max 10.ms
-        completeWithStream(`text/plain(UTF-8)`):
-          growingLogFileStream[fs2.Chunk[Byte]](
-            file, byteChunkSize = httpChunkSize, pollDuration, fromEnd = true
-          ).rechunkToByteStringSporadic(httpChunkSize)
-            .interruptWhenF(shutdownSignaled)
+        growingLog(file, pollDuration_ max 10.ms)
     else
-      completeWithStream(`text/plain(UTF-8)`):
-        fileStream[fs2.Chunk[Byte]](file, byteChunkSize = httpChunkSize)
-          .map(_.flatten)
-          .unchunks
-          .chunkLimit(httpChunkSize)
-          .map(_.toByteString)
-          .interruptWhenF(shutdownSignaled)
+      snapshot(file)
 
-  private[log] def stringToInstant(string: String): Checked[Instant] =
-    catchNonFatalFlatten:
-      dateTimeFormatter.parseBest(
-        string,
-        ZonedDateTime.from,
-        OffsetDateTime.from,
-        LocalDateTime.from
-      ) match
-        case o: ZonedDateTime => Right(o.toInstant)
-        case o: OffsetDateTime => Right(o.toInstant)
-        case o: LocalDateTime => Right(o.atZone(ZoneId.systemDefault).toInstant)
+  private def growingLog(file: Path, pollDuration: FiniteDuration): Route =
+    completeWithStream(`text/plain(UTF-8)`):
+      growingLogFileStream[fs2.Chunk[Byte]](
+        file, byteChunkSize = httpChunkSize, pollDuration, fromEnd = true
+      ).rechunkToByteStringSporadic(httpChunkSize)
+        .interruptWhenF(shutdownSignaled)
 
-  private def directAccessRoute(logFile: Path, from: Instant): Route =
+  private def snapshot(file: Path): Route =
+    completeWithStream(`text/plain(UTF-8)`):
+      ByteSeqFileReader.stream[fs2.Chunk[Byte]](file, byteChunkSize = httpChunkSize)
+        .map(_.toByteString)
+        .interruptWhenF(shutdownSignaled)
+
+  private def section(logFile: Path, start: Instant): Route =
     parameter("lines".as[Int].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
           LogFileIndex.resource(logFile)
         .flatMap: logFileIndex =>
-          logFileIndex.streamFrom(from)
-            .takeWhile(_.nonEmpty)
-            .map:
-              removeHighlights
+          logFileIndex.streamSection(start)
+            //.map:
+            //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
             .pipeMaybe(lineCount): (stream, n) =>
               stream.take(n)
-            // TODO Chunk better
+            .chunks
+            .rechunkToByteStringSporadic(httpChunkSize)
             .map(_.toByteString)
 
 
@@ -163,3 +153,14 @@ object LogRoute:
       //.appendLiteral(']')
       //.optionalEnd()
       .toFormatter()
+
+  private[log] def stringToInstant(string: String): Checked[Instant] =
+    catchNonFatalFlatten:
+      dateTimeFormatter.parseBest(string,
+        //ZonedDateTime.from,
+        OffsetDateTime.from,
+        LocalDateTime.from)
+      match
+        //case o: ZonedDateTime => Right(o.toInstant)
+        case o: OffsetDateTime => Right(o.toInstant)
+        case o: LocalDateTime => Right(o.atZone(ZoneId.systemDefault).toInstant)

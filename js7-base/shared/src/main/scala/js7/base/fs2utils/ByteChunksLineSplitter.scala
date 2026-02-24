@@ -15,22 +15,25 @@ object ByteChunksLineSplitter:
   private val meterRechunkBytesAtSeparator = CallMeter("ourByteChunksToLines")
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
-    * <p>
+    *
     * A final partial line is emitted too.
-    * <p>
+    *
     * The stream of bytes remains unchanged, only the Chunks are changed.
-    * <p>
+    *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
     */
   def byteChunksToLines[F[_], ByteSeq <: AnyRef: ByteSequence]: Pipe[F, ByteSeq, ByteSeq] =
     byteChunksToLines[F, ByteSeq]()
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
-    * <p>
+    *
     * A final partial line is emitted too.
-    * <p>
+    *
     * The stream of bytes remains unchanged, only the Chunks are changed.
-    * <p>
+    *
+    * For efficiency, upstream `ByteSeq`s should have an efficient `unsafeArray` method
+    * (that means, the ByteSeqs should be `Array`-based).
+    *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
     */
   private[fs2utils] def byteChunksToLines[F[_], ByteSeq <: AnyRef: ByteSequence as ByteSeq](
@@ -45,21 +48,20 @@ object ByteChunksLineSplitter:
       bytes: Array[Byte])
     : Unit =
       var i = 0
-      val byteCount = bytes.length
-      while i < byteCount do
-        val idx = bytes.vectorIndexOf(separator, i, byteCount)
-        if idx < 0 then
-          line.addAll(bytes, i, byteCount)
-          i = byteCount
-        else
-          if line.length == 0 then
-            lines += ByteSeq.unsafeWrap(bytes, i, idx + 1 - i)
-          else
-            line.addAll(bytes, i, idx + 1)
-            lines += ByteSeq.unsafeWrap(line.result())
-            line.clear()
+      val end = bytes.length
+      while i < end do
+        val idx = bytes.vectorIndexOf(separator, i, end)
+        if idx < 0 then // no separator?
+          line.addAll(bytes, i, end)
+          i = end
+        else if line.length == 0 then
+          lines += ByteSeq.unsafeWrap(bytes, i, idx + 1 - i)
           i = idx + 1
-        end if
+        else
+          line.addAll(bytes, i, idx + 1)
+          i = idx + 1
+          lines += ByteSeq.unsafeWrap(line.result())
+          line.clear()
     end fillBuffers
 
     def go(
@@ -68,18 +70,10 @@ object ByteChunksLineSplitter:
       first: Boolean)
     : Pull[F, ByteSeq, Unit] =
       stream.pull.uncons.flatMap:
-        case None =>
-          if first then
-            Pull.done
-          else if line.length == 0 then
-            Pull.done
-          else
-            Pull.output1(ByteSeq.unsafeWrap(line.result()))
-
         case Some((chunk, stream)) =>
           val linesBuffer = ArrayBuilder.ofRef[ByteSeq]
-          chunk.foreach: byteChunk =>
-            fillBuffers(line, linesBuffer, byteChunk.unsafeArray)
+          chunk.foreach: byteSeq =>
+            fillBuffers(line, linesBuffer, byteSeq.unsafeArray)
 
           maxLineLength match
             case Some((max, raiseThrowable)) if line.length > max =>
@@ -90,6 +84,12 @@ object ByteChunksLineSplitter:
             case _ =>
               Pull.output(Chunk.array(linesBuffer.result())) >>
                 go(stream, line, first = false)
+
+        case None =>
+          if first || line.length == 0 then
+            Pull.done
+          else
+            Pull.output1(ByteSeq.unsafeWrap(line.result()))
 
     stream =>
       Stream.suspend:

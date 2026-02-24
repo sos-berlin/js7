@@ -20,10 +20,10 @@ final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControl
       .map(_.asFlux)
       .unsafeToCompletableFuture()
 
-  def logSection(logLevel: LogLevel, from: Instant, lines: Int)
+  def logSection(logLevel: LogLevel, start: Instant, lines: Int)
   : CompletableFuture[Flux[String]] =
     controllerApis.head // FIXME Aktiver oder Passiver soll auswählbar sein!
-      .getLogLines(logLevel, from = from, lines = lines)
+      .getLogLines(logLevel, start = start, lines = lines)
       //.map(_.tapEach(o => Logger.info(s"### $o")))
       .map(_.asFlux)
       .unsafeToCompletableFuture()

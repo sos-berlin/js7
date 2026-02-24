@@ -16,15 +16,15 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
 import scala.collection.immutable.VectorBuilder
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 /** Reads ByteSequences from a file. **/
-final class ByteSeqFileReader[ByteSeq](file: Path)
+final class ByteSeqFileReader[ByteSeq] private(file: Path, bufferSize: Int)
   (using ByteSeq: ByteSequence[ByteSeq])
 extends AutoCloseable:
 
   private val channel = FileChannel.open(file, READ)
-  private val buffer = ByteBuffer.allocate(ChunkSize)
+  private val buffer = ByteBuffer.allocate(bufferSize)
   private var _next: ByteSeq | Null = null
   private var nextPosition: Long = 0
 
@@ -39,14 +39,23 @@ extends AutoCloseable:
   //    case null => channel.position
   //    case byteSeq: ByteSeq @unchecked => channel.position - byteSeq.length
 
-  def seekToEnd(): Unit =
+  def seekToEnd: IO[Unit] =
     setPosition(size())
 
-  def setPosition(position: Long): Unit =
+  def setPosition(position: Long): IO[Unit] =
+    IO.blocking:
+      blockingSetPosition(position)
+
+  private[ByteSeqFileReader] def blockingSetPosition(position: Long): Unit =
+    logger.trace(s"setPosition $position")
     _next = null
     channel.position(position)
 
-  def peek(): ByteSeq =
+  def peek(): IO[ByteSeq] =
+    IO.blocking:
+      blockingPeek()
+
+  private[ByteSeqFileReader] def blockingPeek(): ByteSeq =
     _next match
       case null =>
         val r = readBuffer(buffer)
@@ -56,11 +65,18 @@ extends AutoCloseable:
       case byteSeq: ByteSeq @unchecked =>
         byteSeq
 
-  def read(size: Int): ByteSeq =
-    if _next != null then throw IllegalStateException("read(size) called after peek()")
-    readBuffer(ByteBuffer.allocate(size))
+  def read(size: Int): IO[ByteSeq] =
+    IO.blocking:
+      if _next != null then throw IllegalStateException("read(size) called after peek()")
+      readBuffer(ByteBuffer.allocate(size))
 
-  def read(): ByteSeq =
+  def read(position: Option[Long] = None): IO[ByteSeq] =
+    IO.blocking:
+      position.foreach:
+        blockingSetPosition
+      blockingRead()
+
+  private[ByteSeqFileReader] def blockingRead(): ByteSeq =
     _next match
       case null =>
         readBuffer(buffer)
@@ -79,7 +95,7 @@ extends AutoCloseable:
 
 
 object ByteSeqFileReader:
-  private[io] val ChunkSize = 64*1024
+  private[io] val BufferSize = 64*1024
   private val logger = Logger[this.type]
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
@@ -94,11 +110,35 @@ object ByteSeqFileReader:
     */
   val UniqueHeaderSize = 30
 
-  def fileStream[ByteSeq: ByteSequence](file: Path, byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
+  def resource[ByteSeq: ByteSequence](
+    file: Path,
+    bufferSize: Int = BufferSize,
+    fromEnd: Boolean = false,
+    waitUntilExists: Option[(poll: FiniteDuration, timeout: FiniteDuration)] = None)
+  : ResourceIO[ByteSeqFileReader[ByteSeq]] =
+    Resource.suspend:
+      IO(Deadline.now).map: t =>
+        Resource.fromAutoCloseable:
+          IO:
+            new ByteSeqFileReader[ByteSeq](file, bufferSize = bufferSize)
+          .onErrorRestartLoop(()):
+            case (e: NoSuchFileException, _, retry) if waitUntilExists.isDefined =>
+              val (delay, timeout) = waitUntilExists.get
+              if t.elapsed >= timeout then
+                IO.raiseError(e)
+              else
+                logger.debug(s"$file: $e")
+                retry(()).delayBy(delay)
+            case (t, _, _) => IO.raiseError(t)
+        .evalTap: reader =>
+          IO.whenA(fromEnd):
+            reader.seekToEnd
+
+  def stream[ByteSeq: ByteSequence](file: Path, byteChunkSize: Int): Stream[IO, ByteSeq] =
     Stream.resource:
-      fileReaderResource(file)
+      resource(file, bufferSize = byteChunkSize)
     .flatMap:
-      chunkStream(_, byteChunkSize)
+      _.stream
     .takeWhile(_.nonEmpty)
 
   def growingLogFileStream[ByteSeq: {ByteSequence, Tag}](
@@ -117,21 +157,19 @@ object ByteSeqFileReader:
     fromEnd: Boolean = false)
   : Stream[IO, Chunk[ByteSeq]] =
     Stream.resource:
-      fileReaderResource(file)
+      resource(file, waitUntilExists = Some((poll = pollDuration, timeout = 3.s)))
     .flatMap: reader =>
       Stream.eval:
-        IO.blocking:
-          val header = reader.read(UniqueHeaderSize)
+        reader.read(UniqueHeaderSize).flatTap: _ =>
           if fromEnd then
-            reader.seekToEnd()
+            reader.seekToEnd
           else
             reader.setPosition(0)
-          header
       .flatMap: header =>
         if header.length < UniqueHeaderSize then
           Stream.sleep_[IO](pollDuration) // Delay and end stream. Caller will try again.
         else
-          chunkStream(reader, byteChunkSize).flatMap: byteSeqs =>
+          reader.chunkStreamX(byteChunkSize).flatMap: byteSeqs =>
             if byteSeqs.nonEmpty then
               Stream.emit(byteSeqs)
             else
@@ -148,23 +186,9 @@ object ByteSeqFileReader:
             end if
           .takeWhileNotNull
     .append:
-      waitUntilFileExists(file, pollDuration)
+      waitUntilFileExists(file, pollDuration) // TODO Limit waiting time
     .append:
-      growingLogFileStream(file, byteChunkSize, pollDuration)
-
-  private def fileReaderResource[ByteSeq: ByteSequence](file: Path, fromEnd: Boolean = false)
-  : ResourceIO[ByteSeqFileReader[ByteSeq]] =
-    Resource.fromAutoCloseable:
-      IO.blocking:
-        val reader = ByteSeqFileReader[ByteSeq](file)
-        if fromEnd then
-          reader.seekToEnd()
-        reader
-      .onErrorRestartLoop(()):
-        case (e: NoSuchFileException, _, retry) =>
-          logger.debug(s"$file: $e")
-          retry(()).delayBy(1.s)
-        case (t, _, _) => IO.raiseError(t)
+      growingLogFileStream2(file, byteChunkSize, pollDuration)
 
   private def waitUntilFileExists(file: Path, pollDuration: FiniteDuration): Stream[IO, Nothing] =
     logger.traceCall("waitUntilFileExists", file):
@@ -180,23 +204,43 @@ object ByteSeqFileReader:
 
   private def readHeader[ByteSeq: ByteSequence](file: Path): IO[ByteSeq] =
     logger.traceIO("readHeader"):
-      fileReaderResource[ByteSeq](file).use: reader =>
-        IO.blocking:
-          reader.read(UniqueHeaderSize)
+      resource[ByteSeq](file, waitUntilExists = Some((poll = 100.ms/*TODO*/, timeout = 3.s))).use: reader =>
+        reader.read(UniqueHeaderSize)
 
-  private def chunkStream[ByteSeq: ByteSequence](
-    reader: ByteSeqFileReader[ByteSeq],
-    byteChunkSize: Int)
-  : Stream[IO, Chunk[ByteSeq]] =
-    Stream.repeatEval:
-      IO.interruptible:
+  extension [ByteSeq: ByteSequence](reader: ByteSeqFileReader[ByteSeq])
+    def stream: Stream[IO, ByteSeq] =
+      Stream.repeatEval:
+        reader.read()
+
+    /** Read chunks of ByteSeqs of [[BufferSize]] bytes from the file,
+      * while each chunk's byte count is not greater than max(`byteChunkSize`, [[BufferSize]]).
+      */
+    def chunkStream(byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
+      chunkStreamX(byteChunkSize = byteChunkSize)
+        .takeWhile(_.nonEmpty)
+
+    def chunkStreamX(byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
+      Stream.repeatEval:
+        readChunks(byteChunkSize = byteChunkSize)
+
+    /** Read multiple ByteSeq of [[BufferSize]] bytes from the file until `byteChunkSize` is
+      * reached.
+      *
+      * If [[BufferSize]] is greater than `byteChunkSize`,
+      * then one `ByteSeq` of [[BufferSize]] bytes may be returned.
+      */
+    def readChunks(byteChunkSize: Int, position: Option[Long] = None): IO[Chunk[ByteSeq]] =
+      IO.blocking:
+        position.foreach:
+          reader.blockingSetPosition
+
         val b = new VectorBuilder[ByteSeq]
         var size = 0
         while size < byteChunkSize
-          && (size == 0 || size + reader.peek().length <= byteChunkSize)
-          && reader.peek().nonEmpty
+          && (size == 0 || size + reader.blockingPeek().length <= byteChunkSize)
+          && reader.blockingPeek().nonEmpty
         do
-          val byteSeq = reader.read()
+          val byteSeq = reader.blockingRead()
           b += byteSeq
           size += byteSeq.length
         Chunk.from(b.result())

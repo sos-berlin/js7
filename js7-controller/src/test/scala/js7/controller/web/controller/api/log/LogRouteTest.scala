@@ -16,6 +16,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
+import js7.controller.web.controller.api.log.LogRoute.stringToInstant
 import js7.controller.web.controller.api.test.RouteTester
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK

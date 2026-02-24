@@ -34,8 +34,6 @@ object AnsiEscapeCodes:
     else
       line
 
+  // TODO Make it faster. Copy bytes directly, leave out \u001b...m
   def removeHighlights(line: String): String =
-    if line.contains('\u001b') then
-      line.replaceAll(HighlightRegex.regex, "") // SLOW
-    else
-      line
+    HighlightRegex.replaceAllIn(line, "") // SLOW

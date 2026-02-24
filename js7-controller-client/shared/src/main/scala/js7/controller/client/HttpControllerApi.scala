@@ -60,8 +60,8 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getLogLines(logLevel: LogLevel): IO[Stream[IO, String]] =
     getLogLines_(logLevel)
 
-  final def getLogLines(logLevel: LogLevel, from: Instant, lines: Int): IO[Stream[IO, String]] =
-    getLogLines_(logLevel, "from" -> from.toString, "lines" -> lines.toString)
+  final def getLogLines(logLevel: LogLevel, start: Instant, lines: Int): IO[Stream[IO, String]] =
+    getLogLines_(logLevel, "start" -> start.toString, "lines" -> lines.toString)
 
   private def getLogLines_(logLevel: LogLevel, queries: (String, String)*): IO[Stream[IO, String]] =
     IO.unlessA(logLevel == LogLevel.Info || logLevel == LogLevel.Debug):

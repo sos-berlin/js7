@@ -50,7 +50,10 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
         controllerApi <- PekkoHttpControllerApi.resource(controllerAdmission)
         stream <- Resource.eval:
-          controllerApi.getLogLines(Debug, Instant.now.minusSeconds(3), lines = Int.MaxValue)
+          controllerApi.getLogLines(
+            Debug,
+            start = Instant.now.minusSeconds(3),
+            lines = Int.MaxValue)
       yield
         stream
     .use:

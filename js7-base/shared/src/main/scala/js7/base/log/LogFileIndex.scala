@@ -1,16 +1,14 @@
 package js7.base.log
 
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import fs2.{Chunk, Stream}
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 import java.nio.file.Path
-import java.nio.file.StandardOpenOption.READ
 import java.time.{Instant, ZoneId}
 import java.util.regex.Pattern
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.LogFileIndex.*
 import js7.base.metering.CallMeter
@@ -21,29 +19,32 @@ import scala.concurrent.duration.Deadline
 import scala.util.matching.Regex
 
 final class LogFileIndex private(
-  channel: FileChannel,
+  reader: ByteSeqFileReader[Chunk[Byte]],
   nanoToPos: java.util.NavigableMap[Long, Long],
   zoneId: ZoneId):
 
-  def streamFrom(from: Instant): Stream[IO, Chunk[Byte]] =
+  def streamSection(start: Instant): Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)
-      val fromEpochNano = from.toEpochNanos
-      channelToByteChunkStream(channel, from = findPositionOf(fromEpochNano))
-        .takeWhile(_.nonEmpty)
-        .through:
-          byteChunksToLines
-        .dropWhile: lineBytes =>
-          val line = lineBytes.utf8String
-          matchTimestampInLogLine(line) match
-            case null => true
-            case (start, end) =>
-              val epochNano = toNanos(line, start, end) // Returns -1 on error
-              epochNano < fromEpochNano
+      val startEpochNano = start.toEpochNanos
+      Stream.exec:
+        reader.setPosition(findPositionOf(startEpochNano))
+      .append:
+        reader.stream
+          .takeWhile(_.nonEmpty)
+          .through:
+            byteChunksToLines
+          .dropWhile: lineBytes =>
+            val line = lineBytes.utf8String
+            matchTimestampInLogLine(line) match
+              case null => true
+              case (start, end) =>
+                val epochNano = toNanos(line, start, end) // Returns -1 on error
+                epochNano < startEpochNano
 
-  /** Find the position of the first log line whose timestamp less or equal `fromEpochNano`. */
-  private def findPositionOf(fromEpochNano: Long): Long =
-    nanoToPos.floorEntry(fromEpochNano) match
+  /** Find the position of the first log line whose timestamp less or equal `startEpochNano`. */
+  private def findPositionOf(startEpochNano: Long): Long =
+    nanoToPos.floorEntry(startEpochNano) match
       //Doesn't work: case null => 0 // Start of file
       case null => nanoToPos.firstEntry().getValue
       case o => o.getValue
@@ -71,12 +72,12 @@ object LogFileIndex:
 
   /** Build an index: negative epochNanos -> byte position of the start of the line. */
   def resource(logFile: Path, zoneId: ZoneId = ZoneId.systemDefault): ResourceIO[LogFileIndex] =
-    openFileChannel(logFile).evalMap: channel =>
-      buildIndex(logFile.toString, zoneId):
-        channelToByteChunkStream(channel)
-          .takeWhile(_.nonEmpty)
-      .map: nanoToPos =>
-        new LogFileIndex(channel, nanoToPos, zoneId)
+    ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
+      .evalMap: reader =>
+        buildIndex(logFile.toString, zoneId):
+          reader.stream.takeWhile(_.nonEmpty)
+        .map: nanoToPos =>
+          new LogFileIndex(reader, nanoToPos, zoneId)
 
   private def buildIndex(source: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
   : IO[java.util.NavigableMap[Long, Long]] =
@@ -133,28 +134,3 @@ object LogFileIndex:
           null
       else
         null
-
-  /** Outputs an empty Chunk at end of file. */
-  def channelToByteChunkStream(channel: FileChannel, from: Long = 0): Stream[IO, Chunk[Byte]] =
-    Stream.eval:
-      IO.whenA(from > 0):
-        IO.blocking:
-          channel.position(from)
-    .flatMap: _ =>
-      val buffer = ByteBuffer.allocate(ByteBufferSize)
-      Stream.repeatEval:
-        IO.blocking:
-          meterReadFile:
-            buffer.clear()
-            channel.read(buffer) match
-              case -1 => Chunk.empty // No more data
-              case _ =>
-                buffer.flip()
-                val array = new Array[Byte](buffer.remaining)
-                buffer.get(array)
-                Chunk.array(array)
-
-  private def openFileChannel(file: Path): ResourceIO[FileChannel] =
-    Resource.fromAutoCloseable:
-      IO.blocking:
-        FileChannel.open(file, READ)
