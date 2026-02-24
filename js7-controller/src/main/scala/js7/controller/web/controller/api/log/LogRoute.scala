@@ -13,7 +13,7 @@ import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.io.file.ByteSeqFileReader.growingLogFileStream
+import js7.base.io.file.LogFileReader.growingLogFileStream
 import js7.base.log.{LogFileIndex, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
