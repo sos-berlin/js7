@@ -1,6 +1,6 @@
 package js7.tests.controller.proxy
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import java.time.Instant
 import js7.base.configutils.Configs.*
 import js7.base.fs2utils.StreamExtensions.takeUntil
@@ -11,8 +11,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.Pekkos
-import js7.controller.client.PekkoHttpControllerApi
-import js7.proxy.javaapi.JControllerApi
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
+import js7.proxy.ControllerApi
+import js7.proxy.javaapi.{JControllerApi, JControllerProxy}
 import js7.tests.controller.proxy.JLogFileTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.apache.pekko.actor.ActorSystem
@@ -45,36 +46,21 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     sleep(100.ms)
 
-    locally:
-      for
-        given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
-        controllerApi <- PekkoHttpControllerApi.resource(controllerAdmission)
-        stream <- Resource.eval:
-          controllerApi.getLogLines(
-            Debug,
-            start = Instant.now.minusSeconds(3),
-            lines = Int.MaxValue)
-      yield
-        stream
-    .use:
-      _.takeUntil: line =>
-        line.contains(logText)
-      .compile.toVector.map: lines =>
-        assert(lines.size > 1 & lines.exists(_.contains(logText)))
+    controllerApiResource.use: controllerApi =>
+      controllerApi.getLogLines(Debug, start = Instant.now.minusSeconds(3), lines = Int.MaxValue)
+        .flatMap: stream =>
+          stream.takeUntil: line =>
+            line.contains(logText)
+          .compile
+          .toVector.map: lines =>
+            assert(lines.size > 1 & lines.exists(_.contains(logText)))
 
   "Java" in :
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTest Java! 🍋🍋🍋"
     logger.info(logText)
     sleep(100.ms)
 
-    locally:
-      for
-        given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
-        jControllerApi <- JControllerApi.resource(Nel.one(controllerAdmission))
-        jProxy <- jControllerApi.proxyResource()
-      yield
-        jProxy
-    .use: jProxy =>
+    jProxyResource.use: jProxy =>
       IO.fromCompletionStage:
         IO:
           JLogFileTester.test(jProxy, logText)
@@ -82,6 +68,21 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       .map: lines =>
         assert(lines.size > 1 & lines.exists(_.contains(logText)))
         assert(lines.forall(_.endsWith("\n")))
+
+  private def controllerApiResource: ResourceIO[HttpControllerApi] =
+    for
+      given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
+      controllerApi <- PekkoHttpControllerApi.resource(controllerAdmission)
+    yield
+      controllerApi
+
+  private def jProxyResource: ResourceIO[JControllerProxy] =
+    for
+      given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
+      jControllerApi <- JControllerApi.resource(Nel.one(controllerAdmission))
+      jProxy <- jControllerApi.proxyResource()
+    yield
+      jProxy
 
 
 object JLogFileTest:

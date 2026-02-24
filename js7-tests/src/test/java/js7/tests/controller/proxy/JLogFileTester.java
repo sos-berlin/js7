@@ -21,7 +21,7 @@ public final class JLogFileTester  {
                 allocated -> {
                     JEngineLog engineLog = allocated.allocatedThing();
                     return engineLog
-                        .logSection(LogLevel.debug(), Instant.now().minusSeconds(3), /*lines=*/999999)
+                        .logSection(LogLevel.debug(), Instant.now().minusSeconds(3), /*lines=*/Integer.MAX_VALUE)
                         .thenApply(flux -> {
                             flux
                             .takeUntil(line -> {
