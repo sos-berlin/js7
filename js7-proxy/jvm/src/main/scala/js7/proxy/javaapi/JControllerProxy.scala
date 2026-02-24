@@ -3,11 +3,14 @@ package js7.proxy.javaapi
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import io.vavr.control.Either as VEither
+import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.catsutils.Environment.environment
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
@@ -26,9 +29,11 @@ import js7.data_for_java.reactor.ReactorConverters.*
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.proxy.ControllerProxy
 import js7.proxy.data.event.EventAndState
+import js7.proxy.javaapi.JControllerProxy.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import reactor.core.publisher.Flux
+import reactor.core.scheduler.Schedulers as ReactorSchedulers
 
 /** Observes the Controller's event stream and provides the current JControllerState.
   * After use, stop with `stop()`.
@@ -74,8 +79,20 @@ final class JControllerProxy private[proxy](
   //  engineLog.thenComposeAsync: allocated =>
   //    allocated.use(body)
 
-  def engineLog: JResource[JEngineLog] =
+  @Deprecated @deprecated // Seemingly not practicable
+  private def engineLog: JResource[JEngineLog] =
     JResource(JEngineLog.resource(this))
+
+  def logSection(logLevel: LogLevel, start: Instant, lines: Int): Flux[String] =
+    logger.traceStream(s"logSection Stream"):
+      fs2.Stream.resource:
+        logger.traceResource(s"logSection-apisResource", releaseOnly = true):
+          api.asScala.apisResource
+      .flatMap: controllerApis =>
+        fs2.Stream.force:
+          controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
+    .asFlux
+    .publishOn(ReactorSchedulers.fromExecutor(JResource.ourCommonPool))
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
@@ -125,6 +142,7 @@ final class JControllerProxy private[proxy](
 
 
 object JControllerProxy:
+  private val logger = Logger[this.type]
 
   def resource(
     allocatedControllerProxy: Allocated[IO, ControllerProxy],

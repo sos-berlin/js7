@@ -68,6 +68,14 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         assert(lines.size > 1 & lines.exists(_.contains(logText)))
         assert(lines.forall(_.endsWith("\n")))
 
+  "Java prettyTest" in :
+    jProxyResource.use: jProxy =>
+      IO.fromCompletionStage:
+        IO:
+          JLogFileTester.prettyTest(jProxy)
+      .map: (_: Void) =>
+        succeed
+
   private def controllerApiResource: ResourceIO[HttpControllerApi] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")

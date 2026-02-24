@@ -3,7 +3,8 @@ package js7.proxy.javaapi
 import cats.effect.ResourceIO
 import cats.effect.unsafe.IORuntime
 import java.time.Instant
-import js7.base.log.LogLevel
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
 import js7.data_for_java.reactor.ReactorConverters.asFlux
@@ -47,10 +48,12 @@ final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControl
 
 
 object JEngineLog:
+  private val logger = Logger[this.type]
 
   def resource(jProxy: JControllerProxy)(using IORuntime): ResourceIO[JEngineLog] =
-    jProxy.api.asScala.apisResource.map: apis =>
-      JEngineLog(jProxy, apis)
+    logger.traceResource("JEngineLog.resource"):
+      jProxy.api.asScala.apisResource.map: apis =>
+        JEngineLog(jProxy, apis)
 
 
   //private final case class LogPosition(logFileName: String, position: Long)
