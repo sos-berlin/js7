@@ -35,7 +35,7 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
         == null // because milliseconds are required
       assert:
         matchTimestampInLogLine:
-          bold("2026-02-24T12:34:56,123456789 INFO Logger -")
+          bold("2026-02-24T12:34:56,123456789 ERROR Logger -")
         .nn == "2026-02-24T12:34:56,123456789"
 
     "Speed" in:
