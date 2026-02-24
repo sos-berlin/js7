@@ -4,14 +4,19 @@ import cats.effect.IO
 import fs2.{Chunk, Stream}
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
+import java.util.regex.Pattern
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader.*
+import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
+import scala.util.matching.Regex
 
 object LogFileReader:
   private val logger = Logger[this.type]
@@ -27,6 +32,62 @@ object LogFileReader:
     * </pre>
     */
   val UniqueHeaderSize = 30
+
+  private val HeaderLinePattern =
+    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}(?:Z|[+-]\d\d(:?\d\d)?)?""".r
+    s"""^$HighlightRegex?($datetime) """.r.pattern
+
+  private val LogLinePattern: Pattern =
+    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}""".r
+    val level = """(?:trace|debug|info|warn|error|INFO|WARN|ERROR)""".r
+    val thread = """[\p{Alnum}._$-]+""".r
+    val logger = """[\p{Alnum}._$-]+""".r
+    //val message = """(?:.*)""".r
+    Regex(s"""^$HighlightRegex?($datetime) $level +(?:$thread +)?$logger +-""").pattern
+
+  private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
+
+  def parseTimestampInLogLine[@specialized(Long) A](line: CharSequence, error: A)(parse: CharSequence => A): A =
+    parseTimestamp(LogLinePattern, line, error)(parse)
+
+  /** Returns timestamp section iff `line` contains a valid log line. */
+  @TestOnly
+  private[file] def matchTimestampInLogLine(line: CharSequence): CharSequence | Null =
+    matchTimestamp(LogLinePattern, line)
+
+  def parseTimestampInHeaderLine[A](line: CharSequence, error: A)(parse: CharSequence => A): A =
+    parseTimestamp(HeaderLinePattern, line, error)(parse)
+
+  private def parseTimestamp[@specialized(Long) A](pattern: Pattern, line: CharSequence, error: A)
+    (parse: CharSequence => A)
+  : A =
+    matchTimestamp(pattern, line) match
+      case null => error
+      case ts => parse(ts)
+
+  private def matchTimestamp(pattern: Pattern, line: CharSequence): CharSequence | Null =
+    meterRegex:
+      val matcher = pattern.matcher(line)
+      if matcher.find() then
+        val start = matcher.start(1)
+        if start >= 0 then
+          line.subSequence(start, matcher.end(1))
+        else
+          null
+      else
+        null
+
+  //private inline def matchTimestampRaw(pattern: Pattern, line: CharSequence): (Int, Int) | Null =
+  //  meterRegex:
+  //    val matcher = pattern.matcher(line)
+  //    if matcher.find() then
+  //      val start = matcher.start(1)
+  //      if start >= 0 then
+  //        start -> matcher.end(1)
+  //      else
+  //        null
+  //    else
+  //      null
 
   def growingLogFileStream[ByteSeq: {ByteSequence, Tag}](
     file: Path,

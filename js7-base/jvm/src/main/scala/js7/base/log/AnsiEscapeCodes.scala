@@ -18,7 +18,7 @@ object AnsiEscapeCodes:
   inline val magenta = "\u001B[38;5;13m"
   inline val orange = "\u001B[38;5;9m"
 
-  private[log] val HighlightRegex: Regex =
+  val HighlightRegex: Regex =
     """(?:\u001b\[[0-9;]*m)""".r
 
   def bold(string: String): String =

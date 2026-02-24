@@ -4,19 +4,92 @@ import cats.effect.IO
 import cats.effect.std.Queue
 import java.nio.file.Files
 import java.nio.file.Files.deleteIfExists
+import java.time.{Instant, ZoneId, ZonedDateTime}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.LogFileReader.{UniqueHeaderSize, growingLogFileStream}
+import js7.base.io.file.LogFileReader.{UniqueHeaderSize, growingLogFileStream, matchTimestampInLogLine, parseTimestampInHeaderLine, parseTimestampInLogLine}
 import js7.base.io.file.LogFileReaderTest.*
-import js7.base.log.Logger
+import js7.base.log.AnsiEscapeCodes.bold
+import js7.base.log.{FastTimestampParser, Logger}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch
+import js7.base.utils.JavaExtensions.toEpochNanos
 import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.compatible.Assertion
 import scala.util.Random
 
 final class LogFileReaderTest extends OurAsyncTestSuite:
+
+  "matchTimestampInLogLine" - {
+    "matchTimestampInLogLine" in:
+      assert:
+        matchTimestampInLogLine:
+          "2026-02-24 12:34:56.789 info thread com.example.Example - Hello World!"
+        .nn == "2026-02-24 12:34:56.789"
+      assert:
+        matchTimestampInLogLine:
+          "2026-02-24 12:34:56 INFO com.example.Example - Hello World!"
+        == null // because milliseconds are required
+      assert:
+        matchTimestampInLogLine:
+          bold("2026-02-24T12:34:56,123456789 INFO Logger -")
+        .nn == "2026-02-24T12:34:56,123456789"
+
+    "Speed" in:
+      if !isIntelliJIdea then
+        pending
+      else
+        val line = bold:
+          "2026-02-24 12:34:56.789 info thread com.example.Example - Hello " + "." * 100
+        val n = 1_000_000
+
+        //locally:
+        //  assert(matchTimestampInLogLineRaw(line).nn == (4, 4 + 23))
+        //  val result = Stopwatch.measureTime(n, warmUp = n / 10):
+        //    matchTimestampInLogLineRaw(line)
+        //  logger.info(s"matchTimestampInLogLineRaw $result")
+
+        locally:
+          assert(matchTimestampInLogLine(line).nn == "2026-02-24 12:34:56.789")
+          val result = Stopwatch.measureTime(n, warmUp = n / 10):
+            matchTimestampInLogLine(line)
+          logger.info(s"matchTimestampInLogLine $result")
+        succeed
+  }
+
+  "parseTimestampInLogLine" in:
+    val line = bold:
+      "2026-02-24 12:34:56.789 info thread com.example.Example - Hello " + "." * 100
+    val toEpochNano = FastTimestampParser(ZoneId.of("Europe/Mariehamn"))
+    assert:
+      parseTimestampInLogLine(line, error = -1)(toEpochNano(_)) ==
+        ZonedDateTime.parse("2026-02-24T12:34:56.789+02").toInstant.toEpochNanos
+
+  "parseTimestampInHeaderLine" in:
+    val toEpochNano = FastTimestampParser(ZoneId.of("Europe/Mariehamn"))
+    locally:
+      val line = bold:
+        "2026-02-24 08:05:55.244272 Begin JS7 Test · 2.9.0-SNAPSHOT"
+      assert:
+        parseTimestampInHeaderLine(line, error = -1)(toEpochNano(_)) ==
+          Instant.parse("2026-02-24T06:05:55.244272Z").toEpochNanos
+
+    locally:
+      val line = bold:
+        "2026-02-24 08:05:55.244272+0200 Begin JS7 Test · 2.9.0-SNAPSHOT"
+      assert:
+        parseTimestampInHeaderLine(line, error = -1)(toEpochNano(_)) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNanos
+
+    locally:
+      val line = bold:
+        "2026-02-24 08:05:55.244272+02:00 Begin JS7 Test · 2.9.0-SNAPSHOT"
+      assert:
+        parseTimestampInHeaderLine(line, error = -1)(toEpochNano(_)) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNanos
 
   "growingLogFileStream" in :
     temporaryFileResource[IO]("LogFileReaderTest").use: file =>

@@ -4,19 +4,16 @@ import cats.effect.{IO, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
-import java.util.regex.Pattern
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.log.AnsiEscapeCodes.HighlightRegex
-import js7.base.log.LogFileIndex.*
+import js7.base.io.file.LogFileReader.parseTimestampInLogLine
 import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.JavaExtensions.toEpochNanos
 import scala.concurrent.duration.Deadline
-import scala.util.matching.Regex
 
 final class LogFileIndex private(
   reader: ByteSeqFileReader[Chunk[Byte]],
@@ -36,11 +33,8 @@ final class LogFileIndex private(
             byteChunksToLines
           .dropWhile: lineBytes =>
             val line = lineBytes.utf8String
-            matchTimestampInLogLine(line) match
-              case null => true
-              case (start, end) =>
-                val epochNano = toNanos(line, start, end) // Returns -1 on error
-                epochNano < startEpochNano
+            val epochNano = parseTimestampInLogLine(line, error = -1L)(toNanos.apply)
+            epochNano < startEpochNano
 
   /** Find the position of the first log line whose timestamp less or equal `startEpochNano`. */
   private def findPositionOf(startEpochNano: Long): Long =
@@ -58,16 +52,8 @@ object LogFileIndex:
   private val MinimumLogDuration = 100.ms
   private val logger = Logger[LogFileIndex]
 
-  private val LogLineRegex: Pattern =
-    val datetime = """\d{4}-\d{2}-\d{2}[ Tt]\d{2}:\d{2}:\d{2}[.,]\d{3,6}""".r
-    val level = """(?:trace|debug|info|warn|error|INFO|WARN|ERROR)""".r
-    val thread = """[\p{Alnum}._$-]+""".r
-    val logger = """[\p{Alnum}._$-]+""".r
-    val message = """(?:.*)""".r
-    Regex(s"""^$HighlightRegex?($datetime) $level +(?:$thread +)?$logger +-""").pattern
 
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
-  private val meterRegex = CallMeter("LogFileIndex.buildIndexChunk.regex")
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   /** Build an index: negative epochNanos -> byte position of the start of the line. */
@@ -101,18 +87,14 @@ object LogFileIndex:
                 skip
               else
                 val line = byteLine.utf8String
-                matchTimestampInLogLine(line) match
-                  case null => skip
-                  case (start, end) =>
-                    val epochNano = toNanos(line, start, end)
-                    if epochNano == -1 then
-                      skip
-                    else
-                      // Insert entry //
-                      treeMap.putIfAbsent(epochNano, pos)
-                      val next = (nextBlock + BytesPerEntry max pos + byteLine.size)
-                        / BytesPerEntry * BytesPerEntry
-                      (pos + byteLine.size, next)
+                parseTimestampInLogLine(line, error = -1L)(toNanos.apply) match
+                  case -1 => skip
+                  case epochNano =>
+                    // Insert entry //
+                    treeMap.putIfAbsent(epochNano, pos)
+                    val next = (nextBlock + BytesPerEntry max pos + byteLine.size)
+                      / BytesPerEntry * BytesPerEntry
+                    (pos + byteLine.size, next)
       .map: _ =>
         val elapsed = t.elapsed
         if elapsed >= MinimumLogDuration then
@@ -121,16 +103,3 @@ object LogFileIndex:
         if treeMap.isEmpty then
           logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $source")
         treeMap
-
-  /** Returns timestamp section iff `line` contains a valid log line. */
-  private inline def matchTimestampInLogLine(line: String): (Int, Int) | Null =
-    meterRegex:
-      val matcher = LogLineRegex.matcher(line)
-      if matcher.find() then
-        val start = matcher.start(1)
-        if start >= 0 then
-          start -> matcher.end(1)
-        else
-          null
-      else
-        null
