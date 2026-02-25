@@ -31,15 +31,15 @@ final class Log4jTest extends OurTestSuite:
 
   "Speed" in:
     if !testSpeed then
-      doTestSpeed(3, 3)
+      doTestSpeed(3, 3, "")
     else
-      doTestSpeed(1000, 1000)
-      sleep(500.ms)
-      doTestSpeed(1000, 6000)
+      (1 to 5).foreach: i =>
+        doTestSpeed(1000, 1000, s"$i:")
+        sleep(500.ms)
       logger.info(CorrelId.statistics)
       logger.info(Log4jThreadContextMap.statistics)
 
-  private def doTestSpeed(n: Int, m: Int): Unit =
+  private def doTestSpeed(n: Int, m: Int, label: String): Unit =
     val started = now
     (1 to n)
       .toVector
@@ -57,8 +57,8 @@ final class Log4jTest extends OurTestSuite:
       if testSpeed then info(line)
 
     val elapsed = started.elapsed
-    log(itemsPerSecondString(elapsed, n * m, "lines"))
-    log(bytesPerSecondString(elapsed, n.toLong * m * EstimatedByteCount))
+    log(label + " " + itemsPerSecondString(elapsed, n * m, "lines"))
+    log(label + " " + bytesPerSecondString(elapsed, n.toLong * m * EstimatedByteCount))
 
 
 object Log4jTest:

@@ -40,7 +40,7 @@ object LogFileReader:
   private val LogLinePattern: Pattern =
     val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}""".r
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
-    val thread = """[\p{Alnum}._$-]+""".r
+    val thread = """\[[^]]+]""".r
     val logger = """[\p{Alnum}._$-]+""".r
     //val message = """(?:.*)""".r
     Regex(s"""^$HighlightRegex?($datetime) $level +(?:$thread +)?$logger +-""").pattern
