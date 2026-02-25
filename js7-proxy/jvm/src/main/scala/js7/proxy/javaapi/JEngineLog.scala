@@ -9,7 +9,6 @@ import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import reactor.core.publisher.Flux
-import reactor.core.scheduler.Schedulers as ReactorSchedulers
 
 final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControllerApi])
   (using IORuntime):
@@ -23,7 +22,6 @@ final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControl
     fs2.Stream.force:
       controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
     .asFlux
-    .publishOn(ReactorSchedulers.fromExecutor(JResource.ourCommonPool))
 
 
 //private def logSection(logLevel: LogLevel, start: Instant | LogPosition, lines: Int)

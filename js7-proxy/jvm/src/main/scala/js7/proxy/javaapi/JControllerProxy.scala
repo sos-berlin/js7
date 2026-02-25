@@ -8,32 +8,27 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.auth.Admission
 import js7.base.catsutils.Environment.environment
+import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
-import js7.base.monixlike.MonixLikeExtensions.headL
-import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.Nel
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
-import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.OrderTerminated
+import js7.data.event.{Event, EventId}
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
 import js7.data_for_java.order.JFreshOrder
 import js7.data_for_java.reactor.ReactorConverters.*
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.proxy.ControllerProxy
-import js7.proxy.data.event.EventAndState
 import js7.proxy.javaapi.JControllerProxy.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import reactor.core.publisher.Flux
-import reactor.core.scheduler.Schedulers as ReactorSchedulers
 
 /** Observes the Controller's event stream and provides the current JControllerState.
   * After use, stop with `stop()`.
@@ -60,8 +55,8 @@ final class JControllerProxy private[proxy](
 
   @Nonnull
   def stop(): CompletableFuture[Void] =
-    release.as(Void)
-      .unsafeToCompletableFuture()
+    runIO:
+      release.as(Void)
 
   def release: IO[Unit] =
     allocatedControllerProxy.release
@@ -74,16 +69,14 @@ final class JControllerProxy private[proxy](
   def clusterState: ClusterState =
     asScala.currentState.clusterState
 
-  //def useEngineLog[R](body: java.util.function.Function[JEngineLog, CompletableFuture[R]])
-  //: CompletionStage[R] =
-  //  engineLog.thenComposeAsync: allocated =>
-  //    allocated.use(body)
-
-  @Deprecated @deprecated // Seemingly not practicable
-  private def engineLog: JResource[JEngineLog] =
+  /** @see [[logSection]] for a simplified call. */
+  def engineLog: JResource[JEngineLog] =
     JResource(JEngineLog.resource(this))
 
-  def logSection(logLevel: LogLevel, start: Instant, lines: Int): Flux[String] =
+  /** Simplified call to read a section of the log files.
+    * @see [[engineLog]].
+    */
+  def logSection(logLevel: LogLevel, start: Instant, lines: Int = Int.MaxValue): Flux[String] =
     logger.traceStream(s"logSection Stream"):
       fs2.Stream.resource:
         logger.traceResource(s"logSection-apisResource", releaseOnly = true):
@@ -92,16 +85,15 @@ final class JControllerProxy private[proxy](
         fs2.Stream.force:
           controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
     .asFlux
-    .publishOn(ReactorSchedulers.fromExecutor(JResource.ourCommonPool))
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
-  def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    asScala
-      .addOrders:
+  def addOrders(@Nonnull orders: Flux[JFreshOrder])
+  : CompletableFuture[VEither[Problem, AddOrdersResponse]] =
+    runIO:
+      asScala.addOrders:
         orders.asFs2Stream(bufferSize = prefetch).map(_.asScala)
       .map(_.toVavr)
-      .unsafeToCompletableFuture()
 
   /**
     * Synchronize this mirror with an EventId.
@@ -109,41 +101,26 @@ final class JControllerProxy private[proxy](
     */
   @Nonnull
   def sync(eventId: EventId): CompletableFuture[Void] =
-    asScala.sync(eventId)
-      .map(_ => Void)
-      .unsafeToCompletableFuture()
+    runIO:
+      asScala.sync(eventId)
+        .map(_ => Void)
 
   @Nonnull
-  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
-    requireNonNull(predicate)
-    asScala.when(es => predicate(JEventAndControllerState(es)))
-      .map(JEventAndControllerState.apply)
-      .unsafeToCompletableFuture()
+  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean)
+  : CompletableFuture[JEventAndControllerState[Event]] =
+    runIO:
+      requireNonNull(predicate)
+      asScala.when(es => predicate(JEventAndControllerState(es)))
+        .map(JEventAndControllerState.apply)
 
-  @Nonnull
-  private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] =
-    requireNonNull(order)
-    val whenOrderTerminated = asScala
-      .subscribe().use:
-        _.collect:
-          case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
-            if orderId == order.id =>
-            stamped.asInstanceOf[Stamped[KeyedEvent[OrderTerminated]]]
-        .headL
-      .unsafeToCompletableFuture()
-
-    val isAdded = api.asScala.addOrder(order.asScala)
-      .logWhenItTakesLonger
-      .await(99.s)
-      .orThrow
-    if !isAdded then throw new IllegalStateException(s"Order has already been added: ${order.id}")
-
-    whenOrderTerminated
+  private def runIO[A](io: IO[A]): CompletableFuture[A] =
+    io.unsafeToCompletableFuture()
 
 
 object JControllerProxy:
   private val logger = Logger[this.type]
 
+  /** For Scala usage. */
   def resource(
     allocatedControllerProxy: Allocated[IO, ControllerProxy],
     api: JControllerApi,
@@ -154,3 +131,15 @@ object JControllerProxy:
         environment[IORuntime].map: ioRuntime =>
           new JControllerProxy(allocatedControllerProxy, api, controllerEventBus)(using ioRuntime))(
       release = _.release)
+
+  /** Complete Resource with [[JProxyContext]] and [[JControllerApi]] — for Scala usage. */
+  def completeResource(
+    admissions: Nel[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty)
+  : ResourceIO[JControllerProxy] =
+    for
+      jContext <- JProxyContext.resource()
+      jControllerApi <- jContext.controllerApiResource(admissions, httpsConfig)
+      jProxy <- jControllerApi.proxyResource()
+    yield
+      jProxy

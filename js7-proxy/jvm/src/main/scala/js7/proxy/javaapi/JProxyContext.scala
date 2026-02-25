@@ -1,7 +1,7 @@
 package js7.proxy.javaapi
 
-import cats.effect.SyncIO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.Executor
 import javax.annotation.Nonnull
@@ -9,12 +9,14 @@ import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.OurIORuntime
+import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.Lazy
 import js7.base.utils.Nulls.nullToNone
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
@@ -23,6 +25,7 @@ import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JProxyContext.*
+import scala.annotation.static
 import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
@@ -44,7 +47,7 @@ extends AutoCloseable:
 
   private val (ioRuntime, ioRuntimeShutdown) =
     OurIORuntime
-      .resource[SyncIO]("JS7 Proxy", config_, computeExecutor = nullToNone(computeExecutor))
+      .resource[SyncIO](ThreadPrefix_, config_, computeExecutor = nullToNone(computeExecutor))
       .allocated
       .run()
 
@@ -62,6 +65,14 @@ extends AutoCloseable:
       finally
         ioRuntimeShutdown.run()
 
+  private def release: IO[Unit] =
+    logger.debugIO("release"):
+      actorSystemLazy.toOption.foldMap:
+        Pekkos.terminate
+      .guarantee:
+        IO:
+          ioRuntimeShutdown.run()
+
   @javaApi @Nonnull
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
@@ -75,8 +86,31 @@ extends AutoCloseable:
       new ControllerApi(apiResource, proxyConf),
       config_)
 
+  /** For Scala usage. */
+  def controllerApiResource(
+    admissions: Nel[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty)
+  : ResourceIO[JControllerApi] =
+    Resource.make(
+      acquire = IO(newControllerApi(admissions.toList.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig))))(
+      release = api =>
+        IO.fromCompletableFuture:
+          IO:
+            api.stop()
+        .void)
+
 
 object JProxyContext:
 
   Logger.dontInitialize()
+  @static private val ThreadPrefix_ = "JS7-Proxy"
+  @static val ThreadPrefix: String = s"$ThreadPrefix_-"
   private lazy val logger = Logger[this.type]
+
+  /** For Scala usage. */
+  def resource(
+    config: Config = ConfigFactory.empty,
+    computeExecutor: Executor | Null = null) =
+    Resource.make(
+      acquire = IO(new JProxyContext(config, computeExecutor)))(
+      release = _.release)

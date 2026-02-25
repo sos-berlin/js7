@@ -12,7 +12,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
-import js7.proxy.javaapi.{JControllerApi, JControllerProxy}
+import js7.proxy.javaapi.JControllerProxy
 import js7.tests.controller.proxy.JLogFileTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.apache.pekko.actor.ActorSystem
@@ -59,7 +59,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     sleep(100.ms)
 
-    jProxyResource.use: jProxy =>
+    JControllerProxy.completeResource(Nel.one(controllerAdmission)).use: jProxy =>
       IO.fromCompletionStage:
         IO:
           JLogFileTester.test(jProxy, logText)
@@ -69,7 +69,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         assert(lines.forall(_.endsWith("\n")))
 
   "Java prettyTest" in :
-    jProxyResource.use: jProxy =>
+    JControllerProxy.completeResource(Nel.one(controllerAdmission)).use: jProxy =>
       IO.fromCompletionStage:
         IO:
           JLogFileTester.prettyTest(jProxy)
@@ -82,14 +82,6 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       controllerApi <- PekkoHttpControllerApi.resource(controllerAdmission)
     yield
       controllerApi
-
-  private def jProxyResource: ResourceIO[JControllerProxy] =
-    for
-      given ActorSystem <- Pekkos.actorSystemResource("JLogFileTest")
-      jControllerApi <- JControllerApi.resource(Nel.one(controllerAdmission))
-      jProxy <- jControllerApi.proxyResource()
-    yield
-      jProxy
 
 
 object JLogFileTest:
