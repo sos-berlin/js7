@@ -2,10 +2,9 @@ package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, Sync}
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, Executor}
 import js7.base.log.Logger
-import js7.base.utils.Tests.isStrict
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.util.control.NonFatal
 
 /** Used for Environment and for tests having their own IORuntimes. */
@@ -14,8 +13,8 @@ object OurIORuntimeRegister:
   private lazy val logger = Logger[this.type]
   private val ecToRuntime = new ConcurrentHashMap[ExecutionContext, Entry]
 
-  def toIORuntime(compute: ExecutionContext): IORuntime =
-    toEntry(compute).ioRuntime
+  def toIORuntime(ec: ExecutionContext): IORuntime =
+    toEntry(ec).ioRuntime
 
   def register[F[_]](ioRuntime: IORuntime)(using F: Sync[F]): Resource[F, Unit] =
     Resource(F.delay:
@@ -37,10 +36,11 @@ object OurIORuntimeRegister:
   private def entry: IO[Entry] =
     IO.executionContext.map(toEntry)
 
-  private def toEntry(compute: ExecutionContext): Entry =
-    ecToRuntime.get(compute) match
+  private def toEntry(ec: ExecutionContext): Entry =
+    ecToRuntime.get(ec) match
       case null =>
-        val msg = s"Current IORuntime(${ecToLabel(compute)}) is not registered in OurIORuntimeRegister"
+        val msg = "Current ExecutionContext is not registered in OurIORuntimeRegister: " +
+          ecToLabel(ec)
         logger.error(msg)
         throw new RuntimeException(msg)
       case o => o
@@ -48,14 +48,18 @@ object OurIORuntimeRegister:
   private def ioRuntimeToLabel(ioRuntime: IORuntime): String =
     ecToLabel(ioRuntime.compute)
 
-  private def ecToLabel(executionContext: ExecutionContext): String =
-    var label =
-      try executionContext.getClass.getDeclaredMethod("threadPrefix")
-        .invoke(executionContext).asInstanceOf[String]
-      catch case NonFatal(_) => ""
-    if !isStrict && label == "io-compute"/*Cats Effect default*/ then
-      label = ""
-    label
+  private def ecToLabel(ec: ExecutionContext): String =
+    ec match
+      case ec: ExecutionContextExecutor =>
+        try
+          // cats.effect.unsafe.WorkStealingThreadPool ?
+          ec.getClass.getDeclaredMethod("threadPrefix").invoke(ec).asInstanceOf[String]
+        catch case NonFatal(_) =>
+          try
+            // scala.concurrent.impl.ExecutionContextImpl ?
+            ec.getClass.getDeclaredMethod("executor").invoke(ec).asInstanceOf[Executor].toString
+          catch case NonFatal(_) => ec.toString
+      case _ => ec.toString
 
 
   private final class Entry(val ioRuntime: IORuntime):
