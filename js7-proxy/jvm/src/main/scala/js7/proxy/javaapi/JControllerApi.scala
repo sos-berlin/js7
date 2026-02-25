@@ -60,11 +60,12 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
   protected val prefetch = config.getInt("js7.web.client.prefetch")
 
-  def stop: CompletableFuture[Void] =
-    runIO(
+  def stop(): CompletableFuture[Void] =
+    runIO:
       stopClusterWatch_
-        .*>(asScala.stop)
-        .as(Void))
+        .productR:
+          asScala.stop
+        .as(Void)
 
   /** Fetch event stream from Controller. */
   @Nonnull
@@ -127,9 +128,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull activeId: NodeId)
   : CompletableFuture[VEither[Problem, Void]] =
     requireNonNull(activeId)
-    runIO(asScala
-      .clusterAppointNodes(idToUri.asScala.toMap, activeId)
-      .map(_.toVoidVavr))
+    runIO:
+      asScala.clusterAppointNodes(idToUri.asScala.toMap, activeId)
+        .map(_.toVoidVavr)
 
   /** Update the Items, i.e. add, change or remove/delete simple or versioned items.
     *
@@ -188,16 +189,16 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def updateItems(@Nonnull operations: Flux[JUpdateItemOperation])
   : CompletableFuture[VEither[Problem, Void]] =
-    runIO(asScala
-      .updateItems(operations.asFs2Stream(bufferSize = prefetch).map(_.asScala))
-      .map(_.toVoidVavr))
+    runIO:
+      asScala.updateItems(operations.asFs2Stream(bufferSize = prefetch).map(_.asScala))
+        .map(_.toVoidVavr)
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   @Nonnull
   def addOrder(@Nonnull order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    runIO(asScala
-      .addOrder(order.asScala)
-      .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr))
+    runIO:
+      asScala.addOrder(order.asScala)
+        .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
 
   /** Add `Order`s provided by a Reactor stream.
     *
@@ -212,9 +213,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def addOrders(@Nonnull orders: Flux[JFreshOrder])
   : CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    runIO(asScala
-      .addOrders(orders.asFs2Stream(bufferSize = prefetch).map(_.asScala))
-      .map(_.toVavr))
+    runIO:
+      asScala.addOrders(orders.asFs2Stream(bufferSize = prefetch).map(_.asScala))
+        .map(_.toVavr)
 
   @Nonnull
   def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId])
@@ -271,9 +272,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId])
   : CompletableFuture[VEither[Problem, Void]] =
-    runIO(asScala
-      .deleteOrdersWhenTerminated(orderIds.asFs2Stream(bufferSize = prefetch))
-      .map(_.toVoidVavr))
+    runIO:
+      asScala.deleteOrdersWhenTerminated(orderIds.asFs2Stream(bufferSize = prefetch))
+      .map(_.toVoidVavr)
 
   @Nonnull
   @Deprecated @deprecated("Use postGlobalNotice", "v2.7.4")
@@ -308,22 +309,22 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     execute(ReleaseEvents(until))
 
   private def execute(command: ControllerCommand): CompletableFuture[VEither[Problem, Void]] =
-    runIO(asScala
-      .executeCommand(command)
-      .map(_.toVoidVavr))
+    runIO:
+      asScala.executeCommand(command)
+        .map(_.toVoidVavr)
 
   @Nonnull
   def takeSnapshot(): CompletableFuture[VEither[Problem, Void]] =
-    runIO(asScala
-      .executeCommand(TakeSnapshot)
-      .map(_.toVoidVavr))
+    runIO:
+      asScala.executeCommand(TakeSnapshot)
+        .map(_.toVoidVavr)
 
   @Nonnull
   def executeCommand(@Nonnull command: JControllerCommand)
   : CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    runIO(asScala
-      .executeCommand(command.asScala)
-      .map(_.map(o => (o: ControllerCommand.Response)).toVavr))
+    runIO:
+      asScala.executeCommand(command.asScala)
+        .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
 
   @deprecated("Use executeCommand", "v2.6.1")
   @Deprecated
@@ -336,9 +337,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull uriTail: String,
     @Nonnull jsonString: String)
   : CompletableFuture[VEither[Problem, String]] =
-    runIO(asScala
-      .httpPostJson(requireNonNull(uriTail), requireNonNull(jsonString))
-      .map(_.toVavr))
+    runIO:
+      asScala.httpPostJson(requireNonNull(uriTail), requireNonNull(jsonString))
+        .map(_.toVavr)
 
   /** HTTP GET
     * @param uriTail path and query of the URI
@@ -346,32 +347,32 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     */
   @Nonnull
   def httpGetJson(@Nonnull uriTail: String): CompletableFuture[VEither[Problem, String]] =
-    runIO(asScala
-      .httpGetJson(requireNonNull(uriTail))
-      .map(_.toVavr))
+    runIO:
+      asScala.httpGetJson(requireNonNull(uriTail))
+        .map(_.toVavr)
 
   @Nonnull
   def journalInfo: CompletableFuture[VEither[Problem, JournalInfo]] =
-    runIO(asScala
-      .journalInfo
-      .map(_.toVavr))
+    runIO:
+      asScala.journalInfo
+        .map(_.toVavr)
 
   /** Fetch the maybe very big JournalState. */
   @Nonnull
   def controllerState: CompletableFuture[VEither[Problem, JControllerState]] =
-    runIO(asScala
-      .controllerState
-      .map(_ map JControllerState.apply)
-      .map(_.toVavr))
+    runIO:
+      asScala.controllerState
+        .map(_ map JControllerState.apply)
+        .map(_.toVavr)
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   @Nonnull
   def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean)
   : CompletableFuture[JEventAndControllerState[Event]] =
     requireNonNull(predicate)
-    runIO(asScala
-      .when(es => predicate(JEventAndControllerState(es)))
-      .map(JEventAndControllerState.apply))
+    runIO:
+      asScala.when(es => predicate(JEventAndControllerState(es)))
+        .map(JEventAndControllerState.apply)
 
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
@@ -407,8 +408,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
-    runIO(
-      stopClusterWatch_.as(Void))
+    runIO:
+      stopClusterWatch_.as(Void)
 
   private def stopClusterWatch_ : IO[Unit] =
     clusterWatchService
