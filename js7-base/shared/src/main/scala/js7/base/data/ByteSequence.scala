@@ -27,6 +27,7 @@ import scala.util.Random
 //@typeclass(excludeParents = List("Writable", "Monoid", "Eq", "Show"))
 trait ByteSequence[ByteSeq]
 extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
+  byteSequence =>
 
   implicit def implicitByteSequence: ByteSequence[ByteSeq] = this
 
@@ -266,6 +267,16 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def utf8String(byteSeq: ByteSeq): String =
     new String(unsafeArray(byteSeq), UTF_8)
 
+  def asciiCharSequence(byteSeq: ByteSeq): CharSequence =
+    asciiCharSequence_(byteSeq, 0, length(byteSeq))
+
+  def asciiCharSequence(byteSeq: ByteSeq, begin: Int, end: Int): CharSequence =
+    if begin < 0 || end > length(byteSeq) || begin > end then throw new IndexOutOfBoundsException
+    asciiCharSequence_(byteSeq, begin, end)
+
+  private def asciiCharSequence_(byteSeq: ByteSeq, begin: Int, end: Int): CharSequence =
+    new ByteSeqAsciiCharSequence(byteSeq, begin, end)
+
   def utf8StringTruncateAt(byteSeq: ByteSeq, truncateAt: Int): String =  // TODO Truncate big byte sequence before decoding
     utf8String(byteSeq).truncateWithEllipsis(truncateAt)
 
@@ -427,6 +438,12 @@ object ByteSequence:
 
     def utf8StringTruncateAt(truncateAt: Int): String =
       typeClassInstance.utf8StringTruncateAt(self, truncateAt)
+
+    def asciiCharSequence: CharSequence =
+      typeClassInstance.asciiCharSequence(self)
+
+    def asciiCharSequence(begin: Int, end: Int): CharSequence =
+      typeClassInstance.asciiCharSequence(self, begin, end)
 
     def toArray: Array[Byte] =
       typeClassInstance.toArray(self)

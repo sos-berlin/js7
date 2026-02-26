@@ -1,9 +1,11 @@
 package js7.base.data
 
 import cats.syntax.monoid.*
+import fs2.{Chunk, Stream}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.{ByteBuffer, ReadOnlyBufferException}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester.*
@@ -11,8 +13,6 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
-import fs2.{Chunk, Stream}
-import java.nio.charset.StandardCharsets.UTF_8
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends OurTestSuite:
@@ -322,6 +322,15 @@ extends OurTestSuite:
     assert(ByteSeq("ABCDE").utf8StringTruncateAt(0) == "...")
     assert(ByteSeq("ABCD").utf8StringTruncateAt(4) == "ABCD")
     assert(ByteSeq("ABCDE").utf8StringTruncateAt(4) == "A...")
+
+  "asciiCharSequence" in:
+    val byteSeq = ByteArray.fromString("0123456789åäö")
+    val charSeq = byteSeq.asciiCharSequence(2, 12)
+    assert(charSeq.length == 10)
+    assert(charSeq.charAt(0) == '2')
+    //??? assert(charSeq.charAt(9) == ('ö'.toInt << 24 >> 8 >>> 16))
+    assert(charSeq.subSequence(3, 5) == "56")
+    succeed
 
   "combine" in:
     assert(ByteSeq("ab").combine(ByteSeq("123")) == ByteSeq("ab123"))

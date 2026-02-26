@@ -7,11 +7,14 @@ import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.annotation.unused
+import scala.reflect.ClassTag
 
 object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
 
   val clazz: Class[Chunk[Byte]] = classOf[Chunk[Byte]]
   val empty: Chunk[Byte] = Chunk.empty
+
+  private implicit val byteClassTag: ClassTag[Byte] = ClassTag(classOf[Byte])
 
   override def one(byte: Byte): Chunk[Byte] =
     Chunk.singleton(byte)
@@ -23,10 +26,10 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     Chunk.array(byteArray.unsafeArray)
 
   def unsafeWrap(bytes: Array[Byte]): Chunk[Byte] =
-    Chunk.array(bytes)
+    Chunk.array(bytes)(using byteClassTag)
 
   def unsafeWrap(bytes: Array[Byte], offset: Int, length: Int): Chunk[Byte] =
-    Chunk.array(bytes, offset, length)
+    Chunk.array(bytes, offset, length)(using byteClassTag)
 
   def newBuilder(sizeHint: Int): Builder =
     new Builder:
@@ -76,7 +79,22 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.size
 
   def at(chunk: Chunk[Byte], i: Int): Byte =
-    chunk(i)
+    // Because Chunk is not specialized for Byte, it's faster when we look up ourself.
+    chunk match
+      case Chunk.ArraySlice(array, off, len) =>
+        if i >= 0 && i < len then
+          array(off + i) // Don't boxes Int
+        else
+          chunk(i)
+
+      case Chunk.ByteBuffer(buf, off, len) =>
+        if i >= 0 && i < len then
+          buf.get(off + i) // Don't boxes Int
+        else
+          chunk(i)
+
+      case _ =>
+        chunk(i) // Boxes Int
 
   override def take(chunk: Chunk[Byte], n: Int): Chunk[Byte] =
     chunk.take(n)
