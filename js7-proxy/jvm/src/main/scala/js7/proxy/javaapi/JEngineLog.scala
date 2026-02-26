@@ -18,9 +18,9 @@ final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControl
       controllerApis.head.getLogLines(logLevel)
     .asFlux
 
-  def logSection(logLevel: LogLevel, start: Instant, lines: Int): Flux[String] =
+  def logSection(logLevel: LogLevel, begin: Instant, lines: Int): Flux[String] =
     fs2.Stream.force:
-      controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
+      controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
     .asFlux
 
 

@@ -63,7 +63,7 @@ trait LogRoute extends ControllerRouteProvider:
         streamFile(logFile)
     ~
       pathEnd:
-        parameter("start".as[String].?):
+        parameter("begin".as[String].?):
           case None =>
             streamFile(logFile, growing = true)
 
@@ -96,13 +96,13 @@ trait LogRoute extends ControllerRouteProvider:
         .map(_.toByteString)
         .interruptWhenF(shutdownSignaled)
 
-  private def section(logFile: Path, start: Instant): Route =
+  private def section(logFile: Path, begin: Instant): Route =
     parameter("lines".as[Int].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
           LogFileIndex.resource(logFile)
         .flatMap: logFileIndex =>
-          logFileIndex.streamSection(start)
+          logFileIndex.streamSection(begin)
             //.map:
             //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
             .pipeMaybe(lineCount): (stream, n) =>

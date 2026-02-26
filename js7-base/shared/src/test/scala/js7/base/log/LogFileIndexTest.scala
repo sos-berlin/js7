@@ -70,22 +70,22 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
   "Test with test.log" in :
     sleep(2.ms)
-    val start = Timestamp.now
-    logger.info(s"Started $start")
+    val begin = Timestamp.now
+    logger.info(s"Started $begin")
     sleep(2.ms)
     logger.info("Done")
 
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
     LogFileIndex.resource(logFile).use: logFileIndex =>
       IO.defer:
-        logFileIndex.streamSection(start = start.toInstant)
+        logFileIndex.streamSection(begin = begin.toInstant)
           .takeWhile(_.nonEmpty)
           .through:
             byteChunksToLines
           .filter: byteLine =>
             val line = removeHighlights(byteLine.utf8String)
             line.contains("LogFileIndexTest - Done") && locally:
-              assert(line.startsWith(start.toString.take(5)))
+              assert(line.startsWith(begin.toString.take(5)))
               true
           .compile.last
           .map: last =>

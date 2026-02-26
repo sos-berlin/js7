@@ -23,12 +23,12 @@ final class LogFileIndex private(
   nanoToPos: java.util.NavigableMap[Long, Long],
   zoneId: ZoneId):
 
-  def streamSection(start: Instant): Stream[IO, Chunk[Byte]] =
+  def streamSection(begin: Instant): Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)
-      val startEpochNano = start.toEpochNanos
+      val beginEpochNano = begin.toEpochNanos
       Stream.exec:
-        reader.setPosition(findPositionOf(startEpochNano))
+        reader.setPosition(findPositionOf(beginEpochNano))
       .append:
         reader.stream.takeWhile(_.nonEmpty)
           .through:
@@ -36,11 +36,11 @@ final class LogFileIndex private(
           .dropWhile: lineBytes =>
             val line = lineBytes.utf8String
             val epochNano = parseTimestampInLogLine(line, error = -1L)(toNanos.apply)
-            epochNano < startEpochNano
+            epochNano < beginEpochNano
 
-  /** Find the position of the first log line whose timestamp less or equal `startEpochNano`. */
-  private def findPositionOf(startEpochNano: Long): Long =
-    nanoToPos.floorEntry(startEpochNano) match
+  /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
+  private def findPositionOf(beginEpochNano: Long): Long =
+    nanoToPos.floorEntry(beginEpochNano) match
       case null => 0 // Start of file
       //case null => nanoToPos.firstEntry().getValue
       case o => o.getValue
@@ -64,7 +64,7 @@ object LogFileIndex:
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
-  /** Build an index: negative epochNanos -> byte position of the start of the line. */
+  /** Build an index: negative epochNanos -> byte position of the begin of the line. */
   def resource(logFile: Path, zoneId: ZoneId = ZoneId.systemDefault): ResourceIO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .evalMap: reader =>

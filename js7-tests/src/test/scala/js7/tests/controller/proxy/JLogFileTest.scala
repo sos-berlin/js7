@@ -46,7 +46,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     sleep(100.ms)
 
     controllerApiResource.use: controllerApi =>
-      controllerApi.getLogLines(Debug, start = Instant.now.minusSeconds(3), lines = Int.MaxValue)
+      controllerApi.getLogLines(Debug, begin = Instant.now.minusSeconds(3), lines = Int.MaxValue)
         .flatMap: stream =>
           stream.takeUntil: line =>
             line.contains(logText)

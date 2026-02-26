@@ -76,14 +76,14 @@ final class JControllerProxy private[proxy](
   /** Simplified call to read a section of the log files.
     * @see [[engineLog]].
     */
-  def logSection(logLevel: LogLevel, start: Instant, lines: Int = Int.MaxValue): Flux[String] =
+  def logSection(logLevel: LogLevel, begin: Instant, lines: Int = Int.MaxValue): Flux[String] =
     logger.traceStream(s"logSection Stream"):
       fs2.Stream.resource:
         logger.traceResource(s"logSection-apisResource", releaseOnly = true):
           api.asScala.apisResource
       .flatMap: controllerApis =>
         fs2.Stream.force:
-          controllerApis.head.getLogLines(logLevel, start = start, lines = lines)
+          controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
     .asFlux
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
