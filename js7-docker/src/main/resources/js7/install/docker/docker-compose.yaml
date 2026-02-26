@@ -18,7 +18,7 @@ services:
     command: [
       "js7-controller",
       "--arg0=js7-controller",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=4/20"
     ]
     #networks:
@@ -48,7 +48,7 @@ services:
     command: [
       "js7-controller",
       "--arg0=js7-backup-controller",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=2/20"
     ]
     #networks:
@@ -73,7 +73,7 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1a",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=9/20"
     ]
     working_dir: /home/js7
@@ -95,7 +95,7 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1b",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=2/20"
     ]
     working_dir: /home/js7
@@ -117,7 +117,7 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-1c",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=1/20"
     ]
     working_dir: /home/js7
@@ -139,7 +139,7 @@ services:
     command: [
       "js7-subagent",
       "--arg0=js7-subagent-2a",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=1/20"
     ]
     working_dir: /home/js7
@@ -215,7 +215,7 @@ services:
     command: [
       "js7-provider",
       "--arg0=js7-provider",
-      "-J-Xmx100m",
+      "-J-Xmx512m",
       "--processor-limit=1",
       "--controller-uri=https://js7-controller:4443"
     ]
@@ -237,7 +237,7 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=1",
       #"--cluster-watch-id=PROXY",
       "--cluster-node-uri=https://js7-controller:4443",
@@ -261,7 +261,7 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy-b",
-      "-J-Xmx200m",
+      "-J-Xmx512m",
       "--processor-limit=1",
       #"--cluster-watch-id=PROXY-B",
       "--cluster-node-uri=https://js7-controller:4443",
