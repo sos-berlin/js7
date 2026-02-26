@@ -82,9 +82,9 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
     //  stringToInstant("2026-02-12T22:21:22.123456789[Europe/Mariehamn]") ==
     //    Right(Instant.parse("2026-02-12T20:21:22.123456789Z"))
 
-  "/controller/api/log/info/snapshot" in:
+  "/controller/api/log/info/raw" in:
     logFile := "LOG TEXT"
-    Get("/log/info/snapshot") ~> Accept(`text/plain`) ~> route ~> check:
+    Get("/log/info/raw") ~> Accept(`text/plain`) ~> route ~> check:
       assert(status == OK && entityAs[String] == "LOG TEXT")
 
   "/controller/api/log growing" in:

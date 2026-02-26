@@ -60,7 +60,7 @@ trait LogRoute extends ControllerRouteProvider:
           fileRoute(currentDebugLogFile)
 
   private def fileRoute(logFile: Path): Route =
-    path("snapshot"):
+    path("raw"):
       seal:
         streamFile(logFile)
     ~
@@ -83,7 +83,7 @@ trait LogRoute extends ControllerRouteProvider:
       parameter("poll" ? pollDuration): pollDuration_ => // TODO TEST Only
         growingLog(file, pollDuration_ max 10.ms)
     else
-      snapshot(file)
+      rawFile(file)
 
   private def growingLog(file: Path, pollDuration: FiniteDuration): Route =
     completeWithStream(`text/plain(UTF-8)`):
@@ -92,7 +92,7 @@ trait LogRoute extends ControllerRouteProvider:
       ).rechunkToByteStringSporadic(httpChunkSize)
         .interruptWhenF(shutdownSignaled)
 
-  private def snapshot(file: Path): Route =
+  private def rawFile(file: Path): Route =
     completeWithStream(`text/plain(UTF-8)`):
       ByteSeqFileReader.stream[fs2.Chunk[Byte]](file, byteChunkSize = httpChunkSize)
         .map(_.toByteString)
