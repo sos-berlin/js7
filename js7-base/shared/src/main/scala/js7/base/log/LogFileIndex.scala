@@ -108,6 +108,9 @@ object LogFileIndex:
             i += 1
           end while
           PosAndNext(pos, nextBlock_) -> fs2.Chunk.from(result.result())
+      .chunks.evalTap: _ =>
+        IO.cede
+      .unchunks
       .prefetch
       .compile
       .fold(new java.util.TreeMap[Long, Long]): (treeMap, nanoAndPos) =>
