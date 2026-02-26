@@ -18,7 +18,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.ScalaTime.*
-import js7.base.utils.JavaExtensions.toEpochNanos
+import js7.base.utils.JavaExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -109,7 +109,7 @@ object LogFileReader:
         .match
           case o: OffsetDateTime => o.toInstant
           case o: LocalDateTime => o.atZone(zoneId).toInstant
-        .toEpochNanos
+        .toEpochNano
     catch case e: DateTimeParseException =>
       logger.trace("💥 " + e.toStringWithCauses)
       -1

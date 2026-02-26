@@ -7,7 +7,7 @@ import java.time.{LocalDateTime, ZoneId}
 import js7.base.log.FastTimestampParser.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
-import js7.base.utils.JavaExtensions.toEpochNanos
+import js7.base.utils.JavaExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 
 /** Optimize for reading a logging file's timestamps — no concurrent use!
@@ -69,4 +69,4 @@ object FastTimestampParser:
 
   def parseTimestampAsNanos(string: CharSequence, zoneId: ZoneId) =
     LocalDateTime.parse(string, dateTimeFormatter)
-      .atZone(zoneId).toInstant.toEpochNanos
+      .atZone(zoneId).toInstant.toEpochNano

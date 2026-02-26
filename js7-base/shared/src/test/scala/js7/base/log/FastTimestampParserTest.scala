@@ -7,7 +7,7 @@ import js7.base.log.FastTimestampParserTest.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.JavaExtensions.toEpochNanos
+import js7.base.utils.JavaExtensions.toEpochNano
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.duration.Deadline
 
@@ -16,7 +16,7 @@ final class FastTimestampParserTest extends OurTestSuite:
   private val zoneId = ZoneId.of("Europe/Mariehamn")
 
   private def instant(string: String) =
-    Instant.parse(string).toEpochNanos
+    Instant.parse(string).toEpochNano
 
   "FastTimestampParser" in :
     val toNanos = new FastTimestampParser(zoneId)

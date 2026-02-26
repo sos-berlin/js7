@@ -14,7 +14,7 @@ import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
-import js7.base.utils.JavaExtensions.toEpochNanos
+import js7.base.utils.JavaExtensions.toEpochNano
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline
 
@@ -26,7 +26,7 @@ final class LogFileIndex private(
   def streamSection(begin: Instant): Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)
-      val beginEpochNano = begin.toEpochNanos
+      val beginEpochNano = begin.toEpochNano
       Stream.exec:
         reader.setPosition(findPositionOf(beginEpochNano))
       .append:
