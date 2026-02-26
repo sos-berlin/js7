@@ -30,6 +30,7 @@ import scala.concurrent.duration.*
 final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
+  protected val dataDirectory = logFile.getParent
 
   override protected def config = config"""
     js7.log.info.file = "$logFile"
@@ -38,7 +39,6 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
     js7.web.chunk-size = 16
     """.withFallback(super.config)
 
-  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
   private given IORuntime = ioRuntime
 

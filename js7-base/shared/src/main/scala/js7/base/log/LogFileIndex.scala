@@ -65,15 +65,16 @@ object LogFileIndex:
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
-  def resource(logFile: Path, zoneId: ZoneId = ZoneId.systemDefault): ResourceIO[LogFileIndex] =
+  def resource(logFile: Path, label: String, zoneId: ZoneId = ZoneId.systemDefault)
+  : ResourceIO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .evalMap: reader =>
-        buildIndex(logFile.toString, zoneId):
+        buildIndex(label, zoneId):
           reader.stream.takeWhile(_.nonEmpty)
         .map: nanoToPos =>
           new LogFileIndex(reader, nanoToPos, zoneId)
 
-  private def buildIndex(source: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
+  private def buildIndex(label: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
   : IO[java.util.NavigableMap[Long, Long]] =
     IO.defer:
       val toNanos = FastTimestampParser(zoneId)
@@ -119,9 +120,9 @@ object LogFileIndex:
       .map: treeMap =>
         val elapsed = t.elapsed
         if elapsed >= MinimumLogDuration then
-          logger.debug(s"$source: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
+          logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
         if treeMap.isEmpty then
-          logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $source")
+          logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
         treeMap
 
 

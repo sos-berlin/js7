@@ -62,6 +62,7 @@ extends
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested
   protected val controllerState     = clusterNode.currentState
+  protected val dataDirectory       = controllerConfiguration.dataDirectory
   protected val controllerId        = controllerConfiguration.controllerId
   protected val config              = controllerConfiguration.config
   protected def commonConf          = controllerConfiguration

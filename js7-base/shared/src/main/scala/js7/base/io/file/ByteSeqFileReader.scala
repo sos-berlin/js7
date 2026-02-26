@@ -126,7 +126,7 @@ object ByteSeqFileReader:
       _.stream
     .takeWhile(_.nonEmpty)
 
-  extension [ByteSeq: ByteSequence](reader: ByteSeqFileReader[ByteSeq])
+  extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
     def stream: Stream[IO, ByteSeq] =
       Stream.repeatEval:
         reader.read()
@@ -134,11 +134,11 @@ object ByteSeqFileReader:
     /** Read chunks of ByteSeqs of [[BufferSize]] bytes from the file,
       * while each chunk's byte count is not greater than max(`byteChunkSize`, [[BufferSize]]).
       */
-    def chunkStream(byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
+    def chunkStream(byteChunkSize: Int)(using ByteSequence[ByteSeq]): Stream[IO, Chunk[ByteSeq]] =
       chunkStreamX(byteChunkSize = byteChunkSize)
         .takeWhile(_.nonEmpty)
 
-    def chunkStreamX(byteChunkSize: Int): Stream[IO, Chunk[ByteSeq]] =
+    def chunkStreamX(byteChunkSize: Int)(using ByteSequence[ByteSeq]): Stream[IO, Chunk[ByteSeq]] =
       Stream.repeatEval:
         readChunks(byteChunkSize = byteChunkSize)
 
@@ -148,7 +148,8 @@ object ByteSeqFileReader:
       * If [[BufferSize]] is greater than `byteChunkSize`,
       * then one `ByteSeq` of [[BufferSize]] bytes may be returned.
       */
-    def readChunks(byteChunkSize: Int, position: Option[Long] = None): IO[Chunk[ByteSeq]] =
+    def readChunks(byteChunkSize: Int, position: Option[Long] = None)
+      (using ByteSequence[ByteSeq]): IO[Chunk[ByteSeq]] =
       IO.blocking:
         position.foreach:
           reader.blockingSetPosition

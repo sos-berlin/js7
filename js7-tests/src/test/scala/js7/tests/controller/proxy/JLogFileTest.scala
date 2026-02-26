@@ -29,7 +29,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       }
       TEST-USER = "plain:TEST-PASSWORD"
     }
-    js7.log.info.file = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
+    js7.log.info.file  = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
     js7.log.debug.file = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
     """
 

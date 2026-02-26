@@ -18,7 +18,7 @@ import js7.base.log.{LogFileIndex, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither}
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichThrowable}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.rechunkToByteStringSporadic
 import js7.common.pekkohttp.StandardMarshallers.*
@@ -31,11 +31,13 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
 import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NonFatal
 
 trait LogRoute extends ControllerRouteProvider:
 
   protected def ioRuntime: IORuntime
   protected def config: Config
+  protected def dataDirectory: Path
 
   private given IORuntime = ioRuntime
 
@@ -97,10 +99,11 @@ trait LogRoute extends ControllerRouteProvider:
         .interruptWhenF(shutdownSignaled)
 
   private def section(logFile: Path, begin: Instant): Route =
+    val label = relativise(dataDirectory, logFile).toString
     parameter("lines".as[Int].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
-          LogFileIndex.resource(logFile)
+          LogFileIndex.resource(logFile, label = label)
         .flatMap: logFileIndex =>
           logFileIndex.streamSection(begin)
             //.map:
@@ -148,3 +151,13 @@ object LogRoute:
         //case o: ZonedDateTime => Right(o.toInstant)
         case o: OffsetDateTime => Right(o.toInstant)
         case o: LocalDateTime => Right(o.atZone(ZoneId.systemDefault).toInstant)
+
+  private def relativise(baseDir: Path, targetFile: Path): Path =
+    if !baseDir.isAbsolute || !targetFile.isAbsolute then
+      targetFile
+    else
+      try
+        baseDir.relativize(targetFile)
+      catch case NonFatal(e) =>
+        logger.debug(s"❓ relativise: ${e.toStringWithCauses}")
+        targetFile
