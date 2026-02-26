@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.temporal.{ChronoField, TemporalQuery}
+import java.time.temporal.ChronoField.NANO_OF_SECOND
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
@@ -117,41 +117,25 @@ object LogRoute:
   private val FileChangeWatchPeriod = 5.s
 
   private val dateTimeFormatter: DateTimeFormatter =
-    val base =
-      new DateTimeFormatterBuilder()
-        .parseCaseSensitive()
-        .appendPattern("yyyy-MM-dd")
-
-    def withDateTimeSeparator(sep: Char) =
-      new DateTimeFormatterBuilder()
-        .append(base.toFormatter)
-        .appendLiteral(sep)
-        .appendPattern("HH:mm:ss")
-
-    // Build one formatter that accepts either 'T' or ' ' by using optional sections
     new DateTimeFormatterBuilder()
-      .parseCaseSensitive()
-      .append(withDateTimeSeparator('T').toFormatter)
-      // Optional fraction with '.' (3..6 digits)
+      .appendPattern("yyyy-MM-dd")
+      .appendLiteral('T')
+      .appendPattern("HH:mm:ss")
       .optionalStart()
+      .optionalStart()
+      // Optional fraction with .,' (1..9 digits)
       .appendLiteral('.')
-      .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, false)
+      .appendFraction(NANO_OF_SECOND, 1, 9, false)
       .optionalEnd()
-      // Optional fraction with ',' (3..6 digits)
+      // Optional fraction with ',' (1..9 digits)
       .optionalStart()
       .appendLiteral(',')
-      .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, false)
+      .appendFraction(NANO_OF_SECOND, 1, 9, false)
       .optionalEnd()
       // Optional offset, e.g. Z or +02:00
       .optionalStart()
       .appendOffsetId()
       .optionalEnd()
-      //// Optional region zone in brackets, e.g. [Europe/Mariehamn]
-      //.optionalStart()
-      //.appendLiteral('[')
-      //.appendZoneRegionId()
-      //.appendLiteral(']')
-      //.optionalEnd()
       .toFormatter()
 
   private[log] def stringToInstant(string: String): Checked[Instant] =

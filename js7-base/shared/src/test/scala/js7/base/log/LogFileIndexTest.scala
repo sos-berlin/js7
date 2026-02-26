@@ -18,7 +18,7 @@ import js7.base.metering.CallMeter
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
+import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.foldMap
@@ -37,34 +37,34 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       IO.defer:
         val message = "+" * (LogFileIndex.BytesPerEntry / 2)
         val lines = ArrayBuffer.empty[String]
-        lines += "2026-02-12 14:00:00.000 HEADER ...\n"
-        lines += s"2026-02-12 14:00:01.000 info thread class - $message 1\n"
-        lines += s"2026-02-12 14:00:02.000 info thread class - $message 2\n"
-        lines += s"2026-02-12 14:00:03.000 info thread class - $message 3\n"
-        lines += s"2026-02-12 14:00:04.000 info thread class - $message 4\n"
-        lines += s"2026-02-12 14:00:05.000 info thread class - $message 5\n"
-        lines += s"2026-02-12 14:00:06.000 info thread class - $message 6\n"
+        lines += s"2026-02-12 14:00:00.000+0200 HEADER ...\n"
+        lines += s"2026-02-12 14:00:01.000 info [thread] class - $message 1\n"
+        lines += s"2026-02-12 14:00:02.000 info [thread] class - $message 2\n"
+        lines += s"2026-02-12 14:00:03.000 info [thread] class - $message 3\n"
+        lines += s"2026-02-12 14:00:04.000 info [thread] class - $message 4\n"
+        lines += s"2026-02-12 14:00:05.000 info [thread] class - $message 5\n"
+        lines += s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n"
 
         val content = lines.mkString
         file := content
         LogFileIndex.resource(file, zoneId).use: logFileIndex =>
-          def read(start: Instant): IO[Option[String]] =
+          def readOne(start: Instant): IO[Option[String]] =
             logFileIndex.streamSection(start).map(_.utf8String).head.compile.last
 
           for
-            _ <- read(Instant.parse("2026-02-12T12:00:01Z")).map: line =>
+            _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>
               assert(line contains lines(1))
-            _ <- read(Instant.parse("2026-02-12T12:00:05.000000001Z")).map: line =>
+            _ <- readOne(Instant.parse("2026-02-12T14:00:05.000000001+02:00")).map: line =>
               assert(line contains lines(6))
-            _ <- read(Instant.parse("2026-02-12T12:00:05Z")).map: line =>
+            _ <- readOne(Instant.parse("2026-02-12T14:00:05+02:00")).map: line =>
               assert(line contains lines(5))
-            _ <- read(Instant.parse("2026-02-12T12:00:04.999999999Z")).map: line =>
+            _ <- readOne(Instant.parse("2026-02-12T14:00:04.999999999+02:00")).map: line =>
               assert(line contains lines(5))
-            _ <- read(Instant.parse("2026-02-12T12:00:00Z")).map: line =>
+            _ <- readOne(Instant.parse("2026-02-12T14:00:00+02:00")).map: line =>
               assert(line contains lines(1))
-            _ <- read(Instant.parse("2000-01-01T12:00:00Z")).map: line =>
+            _ <- readOne(Instant.parse("2000-01-01T14:00:00+02:00")).map: line =>
               assert(line contains lines(1))
-            _ <- read(Instant.parse("2222-01-01T12:00:00Z")).map: line =>
+            _ <- readOne(Instant.parse("2222-01-01T14:00:00+02:00")).map: line =>
               assert(line.isEmpty)
           yield succeed
 
@@ -91,7 +91,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           .map: last =>
             assert(last.isDefined)
 
-  "128 MiB debug-log file" - {
+  "1 GiB debug-log file" - {
     "Japanese" in:
       testBigFile("こんにちは") // Code points below U+10000
 
@@ -99,23 +99,28 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       testBigFile("Hallå!") // Code points below U+0100, String converts faster
 
     def testBigFile(extra: String): IO[Assertion] =
-      if !isIntelliJIdea then
+      if !isIntelliJIdea && !sys.props.contains("test.speed") then
         IO.pure(pending)
       else
+        def info_(line: String) =
+          logger.info(line)
+          if !isIntelliJIdea then
+            println(s"➤LogFileIndex: $line")
+
         logger.debugIO:
-          // For 1GB log file, LogFileIndex seems to require 90MB heap !!!
-          val logFileSize = 1024 * 1024 * 128
+          // For 1 GB log file, LogFileIndex seems to require 25 MiB heap !!!
+          val logFileSize = 1024 * 1024 * 1024
           val lineLength = 130
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount, extra) *>
-              (1 to 10).foldMap: _ =>
+              (1 to 5).foldMap: _ =>
                 IO.defer:
                   System.gc()
                   val usedMemory = sys.runtime.totalMemory - sys.runtime.freeMemory
                   def memInfo = s"total=${toKiBGiB(sys.runtime.totalMemory)} free=${
                     toKiBGiB(sys.runtime.freeMemory)}"
-                  logger.info(memInfo)
+                  logger.debug(memInfo)
                   val t = Deadline.now
                   LogFileIndex.resource(file).use: logFileIndex =>
                     IO:
@@ -123,11 +128,10 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                       System.gc()
                       val used = sys.runtime.totalMemory - sys.runtime.freeMemory
                       logger.debug(memInfo)
-                      logger.info(s"Required memory: ${toKiBGiB(used - usedMemory)} (?)")
-                      logger.info(s"$logFileIndex ${
+                      info_(s"$logFileIndex ${toKiBGiB(used - usedMemory)}? ${
                         bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
-                      logger.info(s"$logFileIndex ${
-                        bold(itemsPerSecondString(elapsed, lineCount, "lines"))}")
+                      //logger.info(s"$logFileIndex ${
+                      //  bold(itemsPerSecondString(elapsed, lineCount, "lines"))}")
             .as(succeed)
   }
 
