@@ -6,11 +6,12 @@ import izumi.reflect.Tag
 import java.util.concurrent.CompletableFuture
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.data_for_java.common.JavaUtils.-->
 import js7.proxy.javaapi.JResource.*
 
 final class JResource[A: Tag as aTag](asScala: ResourceIO[A])(using IORuntime):
 
-  def use[R](body: java.util.function.Function[A, CompletableFuture[R]]): CompletableFuture[R] =
+  def use[R](body: A --> CompletableFuture[R]): CompletableFuture[R] =
     logger.traceIO(s"JResource[${aTag.tag}] use"):
       asScala.use: a =>
         IO.fromCompletableFuture:

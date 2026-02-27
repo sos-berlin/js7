@@ -9,6 +9,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.data_for_java.common.JavaUtils.-->
 import js7.proxy.javaapi.JAllocated.*
 
 // NOT USED. See safer JResource!
@@ -29,7 +30,7 @@ private final class JAllocated[A: Tag as aTag] private(asScala: Allocated[IO, A]
         asScala.release.as(null.asInstanceOf[Void])
       .unsafeToCompletableFuture()
 
-  def use[R](body: java.util.function.Function[A, CompletableFuture[R]]): CompletableFuture[R] =
+  def use[R](body: A --> CompletableFuture[R]): CompletableFuture[R] =
     body(allocatedThing)
       .thenCompose: b =>
         release().thenApply((_: Void) => b)

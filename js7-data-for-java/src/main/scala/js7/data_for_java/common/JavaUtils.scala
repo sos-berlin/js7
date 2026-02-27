@@ -9,6 +9,9 @@ import scala.jdk.CollectionConverters.*
 
 object JavaUtils:
 
+  /** Java Function&lt;A, B>. */
+  type -->[A, B] = java.util.function.Function[A, B]
+
   val Void: Void = null.asInstanceOf[Void]
 
   // TEST IS MISSING

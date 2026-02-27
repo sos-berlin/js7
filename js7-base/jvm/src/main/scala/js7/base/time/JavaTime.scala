@@ -8,6 +8,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.DurationConverters.ScalaDurationOps
 import scala.math.Ordered.orderingToOrdered
 import scala.util.matching.Regex
 
@@ -78,7 +79,7 @@ object JavaTime:
         BigDecimal(duration.getSeconds) + BigDecimal(duration.getNano) / (1000*1000*1000)
 
       def pretty: String =
-        if (duration > MaxDuration)  || (duration < MinDuration) then
+        if (duration > MaxDuration) || (duration < MinDuration) then
           duration.toString
         else
           duration.toFiniteDuration.pretty
@@ -88,8 +89,14 @@ object JavaTime:
       def +(o: Duration): Instant =
         instant.plus(o)
 
+      def +(o: FiniteDuration): Instant =
+        instant.plus(o.toJava)
+
       def -(o: Duration): Instant =
         instant.minus(o)
+
+      def -(o: FiniteDuration): Instant =
+        instant.minus(o.toJava)
 
       def -(o: Instant): Duration =
         Duration.between(o, instant)
