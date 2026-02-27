@@ -7,12 +7,13 @@ import js7.base.fs2utils.StreamExtensions.takeUntil
 import js7.base.log.LogLevel.Debug
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
-import js7.proxy.javaapi.JControllerProxy
+import js7.proxy.javaapi.{JControllerApi, JControllerProxy}
 import js7.tests.controller.proxy.JLogFileTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.apache.pekko.actor.ActorSystem
@@ -59,14 +60,13 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     sleep(100.ms)
 
-    JControllerProxy.completeResource(Nel.one(controllerAdmission)).use: jProxy =>
-      IO.fromCompletionStage:
-        IO:
-          JLogFileTester.test(jProxy, logText)
-      .map(_.asScala)
-      .map: lines =>
-        assert(lines.size > 1 & lines.exists(_.contains(logText)))
-        assert(lines.forall(_.endsWith("\n")))
+    JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
+      jControllerApi.runControllerProxy: jControllerProxy =>
+        JLogFileTester.test(jControllerProxy, logText)
+    .map: result =>
+      val lines = result.firstList().asScala
+      assert(lines.size > 1 & lines.exists(_.contains(logText)))
+      assert(lines.forall(_.endsWith("\n")))
 
   "Java prettyTest" in :
     JControllerProxy.completeResource(Nel.one(controllerAdmission)).use: jProxy =>

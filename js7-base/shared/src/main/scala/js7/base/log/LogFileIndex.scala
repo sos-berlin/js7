@@ -9,6 +9,7 @@ import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.LogFileReader.parseTimestampInLogLine
+import js7.base.log.AnsiEscapeCodes.removeHighlights
 import js7.base.log.LogFileIndex.*
 import js7.base.metering.CallMeter
 import js7.base.time.EpochNano
@@ -16,7 +17,6 @@ import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
-import js7.base.utils.JavaExtensions.toEpochNano
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline
 
@@ -25,20 +25,53 @@ final class LogFileIndex private(
   nanoToPos: java.util.NavigableMap[EpochNano, Long],
   zoneId: ZoneId):
 
-  def streamSection(begin: Instant): Stream[IO, Chunk[Byte]] =
+  // TODO LogLineKey braucht den LogFileIndex nicht!
+
+  def streamLines(begin: Instant | LogLineKey): Stream[IO, Chunk[Byte]] =
+    streamPosAndLines(begin)
+      .map(_._2)
+
+  def streamKeyedLines(begin: Instant | LogLineKey): Stream[IO, KeyedLogLine] =
+    streamPosAndLines(begin).map: (pos, byteLine) =>
+      KeyedLogLine(Instant.EPOCH, pos, removeHighlights(byteLine.utf8String))
+
+  def streamPosAndLines(begin: Instant | LogLineKey): Stream[IO, (Long, Chunk[Byte])] =
+    begin match
+      case instant: Instant =>
+        streamPosAndLinesFromInstant(instant)
+      case logLineKey: LogLineKey =>
+        streamPosAndLinesFromPosition(logLineKey.position)
+          .drop(1)
+
+  def streamPosAndLinesFromInstant(begin: Instant): Stream[IO, (Long, Chunk[Byte])] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)
       val beginEpochNano = begin.toEpochNano
+      val position = findPositionOf(beginEpochNano)
       Stream.exec:
-        reader.setPosition(findPositionOf(beginEpochNano))
+        reader.setPosition(position)
       .append:
         reader.stream.takeWhile(_.nonEmpty)
           .through:
             byteChunksToLines
-          .dropWhile: lineBytes =>
-            val line = lineBytes.utf8String
-            val epochNano = parseTimestampInLogLine(line, error = -1L)(toNanos.apply)
+          .scanChunks(position): (pos, lines) =>
+            lines.mapAccumulate(pos): (pos, line) =>
+              (pos + line.size) -> (pos -> line)
+          .dropWhile: (_, byteLine) =>
+            val epochNano = parseTimestampInLogLine(byteLine.asciiCharSequence)(toNanos.apply)
             epochNano < beginEpochNano
+
+  def streamPosAndLinesFromPosition(position: Long): Stream[IO, (Long, Chunk[Byte])] =
+    Stream.suspend:
+      Stream.exec:
+        reader.setPosition(position)
+      .append:
+        reader.stream.takeWhile(_.nonEmpty)
+          .through:
+            byteChunksToLines
+          .scanChunks(position): (pos, lines) =>
+            lines.mapAccumulate(pos): (pos, line) =>
+              (pos + line.size) -> (pos -> line)
 
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
   private def findPositionOf(beginEpochNano: EpochNano): Long =

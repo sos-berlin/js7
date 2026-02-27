@@ -14,13 +14,14 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.LogFileReader.growingLogFileStream
-import js7.base.log.{LogFileIndex, Logger}
+import js7.base.log.{LogFileIndex, LogLineKey, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichThrowable}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
-import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.rechunkToByteStringSporadic
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.common.ControllerRouteProvider
@@ -69,9 +70,14 @@ trait LogRoute extends ControllerRouteProvider:
           case None =>
             streamFile(logFile, growing = true)
 
-          case Some(startString) =>
-            stringToInstant(startString).fold(complete(_), from =>
-              section(logFile, from))
+          case Some(beginString) =>
+            locally:
+              if beginString.contains("/") then
+                LogLineKey.parse(beginString)
+              else
+                stringToInstant(beginString)
+            .fold(complete(_), begin =>
+              section(logFile, begin))
 
   private def streamFile(file: Path, growing: Boolean = false): Route =
     //Fails if file grows while being read (Content-Length mismatch?): getFromFile(currentInfoLogFile, contentType)
@@ -98,14 +104,14 @@ trait LogRoute extends ControllerRouteProvider:
         .map(_.toByteString)
         .interruptWhenF(shutdownSignaled)
 
-  private def section(logFile: Path, begin: Instant): Route =
+  private def section(logFile: Path, begin: Instant | LogLineKey): Route =
     val label = relativise(dataDirectory, logFile).toString
     parameter("lines".as[Int].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
           LogFileIndex.resource(logFile, label = label)
         .flatMap: logFileIndex =>
-          logFileIndex.streamSection(begin)
+          logFileIndex.streamLines(begin)
             //.map:
             //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
             .pipeMaybe(lineCount): (stream, n) =>
@@ -113,6 +119,17 @@ trait LogRoute extends ControllerRouteProvider:
             .chunks
             .rechunkToByteStringSporadic(httpChunkSize)
             .map(_.toByteString)
+      ~
+        completeWithStream(`application/x-ndjson`):
+          fs2.Stream.resource:
+            LogFileIndex.resource(logFile, label = label)
+          .flatMap: logFileIndex =>
+            logFileIndex.streamKeyedLines(begin)
+              //.map:
+              //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
+              .pipeMaybe(lineCount): (stream, n) =>
+                stream.take(n)
+              .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
 
 
 object LogRoute:

@@ -49,7 +49,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
         file := content
         LogFileIndex.resource(file, label = file.getFileName.toString, zoneId).use: logFileIndex =>
           def readOne(start: Instant): IO[Option[String]] =
-            logFileIndex.streamSection(start).map(_.utf8String).head.compile.last
+            logFileIndex.streamLines(start).map(_.utf8String).head.compile.last
 
           for
             _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>
@@ -78,7 +78,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
     LogFileIndex.resource(logFile, label = logFile.getFileName.toString).use: logFileIndex =>
       IO.defer:
-        logFileIndex.streamSection(begin = begin.toInstant)
+        logFileIndex.streamLines(begin = begin.toInstant)
           .takeWhile(_.nonEmpty)
           .through:
             byteChunksToLines

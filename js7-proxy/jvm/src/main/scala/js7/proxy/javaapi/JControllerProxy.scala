@@ -12,7 +12,7 @@ import js7.base.auth.Admission
 import js7.base.catsutils.Environment.environment
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{LogLevel, Logger}
+import js7.base.log.{KeyedLogLine, LogLevel, LogLineKey, Logger}
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.Nel
@@ -73,17 +73,29 @@ final class JControllerProxy private[proxy](
   def engineLog: JResource[JEngineLog] =
     JResource(JEngineLog.resource(this))
 
-  /** Simplified call to read a section of the log files.
-    * @see [[engineLog]].
+  /** Read log lines from `begin`.
     */
-  def logSection(logLevel: LogLevel, begin: Instant, lines: Int = Int.MaxValue): Flux[String] =
+  @Nonnull
+  def logSection(logLevel: LogLevel, begin: Instant, lines: Int)
+  : Flux[KeyedLogLine] =
+    logSection_(logLevel, begin, lines)
+
+  /** Read log lines beginning after the line denoted by `key`.
+    */
+  @Nonnull
+  def logSection(logLevel: LogLevel, key: LogLineKey, lines: Int)
+  : Flux[KeyedLogLine] =
+    logSection_(logLevel, key, lines)
+
+  private def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Int = Int.MaxValue)
+  : Flux[KeyedLogLine] =
     logger.traceStream(s"logSection Stream"):
       fs2.Stream.resource:
         logger.traceResource(s"logSection-apisResource", releaseOnly = true):
           api.asScala.apisResource
       .flatMap: controllerApis =>
         fs2.Stream.force:
-          controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
+          controllerApis.head.getKeyedLogLines(logLevel, begin = begin, lines = lines)
     .asFlux
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
@@ -113,8 +125,10 @@ final class JControllerProxy private[proxy](
       asScala.when(es => predicate(JEventAndControllerState(es)))
         .map(JEventAndControllerState.apply)
 
-  private def runIO[A](io: IO[A]): CompletableFuture[A] =
-    io.unsafeToCompletableFuture()
+  private def runIO[A](io: IO[A])(using name: sourcecode.Name): CompletableFuture[A] =
+    logger.traceIO(name.value):
+      io
+    .unsafeToCompletableFuture()
 
 
 object JControllerProxy:
