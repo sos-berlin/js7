@@ -27,23 +27,30 @@ final class LogFileIndex private(
 
   // TODO LogLineKey braucht den LogFileIndex nicht!
 
-  def streamLines(begin: Instant | LogLineKey): Stream[IO, Chunk[Byte]] =
-    streamPosAndLines(begin)
+  def streamLines(begin: Instant | LogLineKey, end: Option[Instant] = None)
+  : Stream[IO, Chunk[Byte]] =
+    streamPosAndLines(begin, end)
       .map(_._2)
 
-  def streamKeyedLines(begin: Instant | LogLineKey): Stream[IO, KeyedLogLine] =
-    streamPosAndLines(begin).map: (pos, byteLine) =>
+  def streamKeyedLines(begin: Instant | LogLineKey, end: Option[Instant] = None)
+  : Stream[IO, KeyedLogLine] =
+    streamPosAndLines(begin, end).map: (pos, byteLine) =>
       KeyedLogLine(Instant.EPOCH, pos, removeHighlights(byteLine.utf8String))
 
-  def streamPosAndLines(begin: Instant | LogLineKey): Stream[IO, (Long, Chunk[Byte])] =
-    begin match
-      case instant: Instant =>
-        streamPosAndLinesFromInstant(instant)
-      case logLineKey: LogLineKey =>
-        streamPosAndLinesFromPosition(logLineKey.position)
-          .drop(1)
+  def streamPosAndLines(begin: Instant | LogLineKey, end: Option[Instant])
+  : Stream[IO, (Long, Chunk[Byte])] =
+    Stream.suspend:
+      begin match
+        case instant: Instant =>
+          streamPosAndLinesFromInstant(instant, end)
+        case logLineKey: LogLineKey =>
+          streamPosAndLinesFromPosition(logLineKey.position)
+            .drop(1)
+            .through:
+              takeUntilInstant(end)
 
-  def streamPosAndLinesFromInstant(begin: Instant): Stream[IO, (Long, Chunk[Byte])] =
+  def streamPosAndLinesFromInstant(begin: Instant, end: Option[Instant] = None)
+  : Stream[IO, (Long, Chunk[Byte])] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)
       val beginEpochNano = begin.toEpochNano
@@ -58,10 +65,12 @@ final class LogFileIndex private(
             lines.mapAccumulate(pos): (pos, line) =>
               (pos + line.size) -> (pos -> line)
           .dropWhile: (_, byteLine) =>
-            val epochNano = parseTimestampInLogLine(byteLine.asciiCharSequence)(toNanos.apply)
-            epochNano < beginEpochNano
+            parseTimestampInLogLine(byteLine)(toNanos.apply) < beginEpochNano
+          .through:
+            takeUntilInstant(end)
 
-  def streamPosAndLinesFromPosition(position: Long): Stream[IO, (Long, Chunk[Byte])] =
+  def streamPosAndLinesFromPosition(position: Long)
+  : Stream[IO, (Long, Chunk[Byte])] =
     Stream.suspend:
       Stream.exec:
         reader.setPosition(position)
@@ -72,6 +81,24 @@ final class LogFileIndex private(
           .scanChunks(position): (pos, lines) =>
             lines.mapAccumulate(pos): (pos, line) =>
               (pos + line.size) -> (pos -> line)
+
+  private def takeUntilInstant(instant: Option[Instant])
+  : fs2.Pipe[IO, (Long, fs2.Chunk[Byte]), (Long, fs2.Chunk[Byte])] =
+    stream =>
+      instant.fold(stream): instant =>
+        val toNanos = FastTimestampParser(zoneId)
+        val endEpochNano = instant.toEpochNano
+        stream.takeWhile: (_, byteLine) =>
+          val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
+          epochNano < endEpochNano
+
+  def instantToFilePosition(instant: Instant): IO[Option[Long]] =
+    IO.defer:
+      val beginNano = instant.toEpochNano
+      val toNanos = FastTimestampParser(zoneId)
+      streamPosAndLinesFromInstant(instant).head
+        .compile.last
+        .map(_.map(_._1))
 
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
   private def findPositionOf(beginEpochNano: EpochNano): Long =
@@ -133,8 +160,7 @@ object LogFileIndex:
             val lineLen = byteLine.size
             byteTotal += lineLen
             if pos >= nextBlock_ then
-              val line = byteLine.asciiCharSequence // ASCII !!! is faster than .utf8String
-              parseTimestampInLogLine(line)(toNanos.apply) match
+              parseTimestampInLogLine(byteLine)(toNanos.apply) match
                 case EpochNano.Nix =>
                 case epochNano =>
                   // Insert entry //

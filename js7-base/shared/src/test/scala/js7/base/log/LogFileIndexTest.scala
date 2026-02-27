@@ -24,6 +24,7 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import org.scalatest.Assertion
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
@@ -36,20 +37,19 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
         val message = "+" * (LogFileIndex.BytesPerEntry / 2)
-        val lines = ArrayBuffer.empty[String]
-        lines += s"2026-02-12 14:00:00.000+0200 HEADER ...\n"
-        lines += s"2026-02-12 14:00:01.000 info [thread] class - $message 1\n"
-        lines += s"2026-02-12 14:00:02.000 info [thread] class - $message 2\n"
-        lines += s"2026-02-12 14:00:03.000 info [thread] class - $message 3\n"
-        lines += s"2026-02-12 14:00:04.000 info [thread] class - $message 4\n"
-        lines += s"2026-02-12 14:00:05.000 info [thread] class - $message 5\n"
-        lines += s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n"
+        val lines = Vector(
+          s"2026-02-12 14:00:00.000+0200 HEADER ...\n",
+          s"2026-02-12 14:00:01.000 info [thread] class - $message 1\n",
+          s"2026-02-12 14:00:02.000 info [thread] class - $message 2\n",
+          s"2026-02-12 14:00:03.000 info [thread] class - $message 3\n",
+          s"2026-02-12 14:00:04.000 info [thread] class - $message 4\n",
+          s"2026-02-12 14:00:05.000 info [thread] class - $message 5\n",
+          s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n")
+        file := lines.mkString
 
-        val content = lines.mkString
-        file := content
         LogFileIndex.resource(file, label = file.getFileName.toString, zoneId).use: logFileIndex =>
-          def readOne(start: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(start).map(_.utf8String).head.compile.last
+          def readOne(begin: Instant): IO[Option[String]] =
+            logFileIndex.streamLines(begin).map(_.utf8String).head.compile.last
 
           for
             _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>

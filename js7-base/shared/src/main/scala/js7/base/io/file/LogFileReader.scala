@@ -10,6 +10,7 @@ import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
 import java.util.regex.Pattern
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
@@ -114,6 +115,10 @@ object LogFileReader:
     catch case e: DateTimeParseException =>
       logger.trace("💥 " + e.toStringWithCauses)
       EpochNano.Nix
+
+  def parseTimestampInLogLine(byteLine: fs2.Chunk[Byte])(parse: CharSequence => EpochNano): EpochNano =
+    val line = byteLine.asciiCharSequence // ASCII !!! is faster than .utf8String
+    parseTimestampInLogLine(line)(parse)
 
   def parseTimestampInLogLine(line: CharSequence)(parse: CharSequence => EpochNano): EpochNano =
     parseTimestamp(LogLinePattern, line)(parse)
