@@ -11,6 +11,8 @@ import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.LogFileReader.parseTimestampInLogLine
 import js7.base.log.LogFileIndex.*
 import js7.base.metering.CallMeter
+import js7.base.time.EpochNano
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
@@ -20,7 +22,7 @@ import scala.concurrent.duration.Deadline
 
 final class LogFileIndex private(
   reader: ByteSeqFileReader[Chunk[Byte]],
-  nanoToPos: java.util.NavigableMap[Long, Long],
+  nanoToPos: java.util.NavigableMap[EpochNano, Long],
   zoneId: ZoneId):
 
   def streamSection(begin: Instant): Stream[IO, Chunk[Byte]] =
@@ -39,7 +41,7 @@ final class LogFileIndex private(
             epochNano < beginEpochNano
 
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
-  private def findPositionOf(beginEpochNano: Long): Long =
+  private def findPositionOf(beginEpochNano: EpochNano): Long =
     nanoToPos.floorEntry(beginEpochNano) match
       case null => 0 // Start of file
       //case null => nanoToPos.firstEntry().getValue
@@ -75,7 +77,8 @@ object LogFileIndex:
           new LogFileIndex(reader, nanoToPos, zoneId)
 
   private def buildIndex(label: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
-  : IO[java.util.NavigableMap[Long, Long]] =
+  : IO[java.util.NavigableMap[EpochNano, Long]] =
+    // TODO Check that timestamp is monotonically increasing.
     IO.defer:
       val toNanos = FastTimestampParser(zoneId)
       val t = Deadline.now
@@ -98,8 +101,8 @@ object LogFileIndex:
             byteTotal += lineLen
             if pos >= nextBlock_ then
               val line = byteLine.asciiCharSequence // ASCII !!! is faster than .utf8String
-              parseTimestampInLogLine(line, error = -1L)(toNanos.apply) match
-                case -1 =>
+              parseTimestampInLogLine(line)(toNanos.apply) match
+                case EpochNano.Nix =>
                 case epochNano =>
                   // Insert entry //
                   result += NanoAndPos(epochNano, pos)
@@ -114,7 +117,7 @@ object LogFileIndex:
       .unchunks
       .prefetch
       .compile
-      .fold(new java.util.TreeMap[Long, Long]): (treeMap, nanoAndPos) =>
+      .fold(new java.util.TreeMap[EpochNano, Long]): (treeMap, nanoAndPos) =>
         treeMap.put(nanoAndPos.epochNano, nanoAndPos.pos)
         treeMap
       .map: treeMap =>
@@ -129,4 +132,4 @@ object LogFileIndex:
   // Faster than (_, _) because Long is not being boxed.
   private final case class PosAndNext(pos: Long, nextBlock: Long)
 
-  private final case class NanoAndPos(epochNano: Long, pos: Long)
+  private final case class NanoAndPos(epochNano: EpochNano, pos: Long)

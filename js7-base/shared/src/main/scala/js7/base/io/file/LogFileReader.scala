@@ -17,8 +17,9 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
+import js7.base.time.EpochNano
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
-import js7.base.utils.JavaExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -86,11 +87,11 @@ object LogFileReader:
 
   private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
-  def parseTimestampInHeaderLine[A](line: CharSequence, zoneId: ZoneId): Long =
-    parseTimestamp(HeaderLinePattern, line, error = -1L):
+  def parseTimestampInHeaderLine[A](line: CharSequence, zoneId: ZoneId): EpochNano =
+    parseTimestamp(HeaderLinePattern, line):
       headerTimestampToEpochNano(_, zoneId)
 
-  private def headerTimestampToEpochNano(string: CharSequence, zoneId: ZoneId): Long =
+  private def headerTimestampToEpochNano(string: CharSequence, zoneId: ZoneId): EpochNano =
     try
       val array = new Array[Char](string.length)
       string.getChars(0, string.length, array, 0)
@@ -112,18 +113,16 @@ object LogFileReader:
         .toEpochNano
     catch case e: DateTimeParseException =>
       logger.trace("💥 " + e.toStringWithCauses)
-      -1
+      EpochNano.Nix
 
-  def parseTimestampInLogLine[@specialized(Long) A](line: CharSequence, error: A)
-    (parse: CharSequence => A)
-  : A =
-    parseTimestamp(LogLinePattern, line, error)(parse)
+  def parseTimestampInLogLine(line: CharSequence)(parse: CharSequence => EpochNano): EpochNano =
+    parseTimestamp(LogLinePattern, line)(parse)
 
-  private inline def parseTimestamp[A](pattern: Pattern, line: CharSequence, inline error: A)
-    (inline parse: CharSequence => A)
-  : A =
+  private inline def parseTimestamp(pattern: Pattern, line: CharSequence)
+    (inline parse: CharSequence => EpochNano)
+  : EpochNano =
     matchTimestamp(pattern, line) match
-      case null => error
+      case null => EpochNano.Nix
       case ts => parse(ts)
 
   private def matchTimestamp(pattern: Pattern, line: CharSequence): CharSequence | Null =

@@ -13,9 +13,9 @@ import js7.base.io.file.LogFileReaderTest.*
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.{FastTimestampParser, Logger}
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch
-import js7.base.utils.JavaExtensions.toEpochNano
+import js7.base.time.{EpochNano, Stopwatch}
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.compatible.Assertion
@@ -65,7 +65,7 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
       "2026-02-24 12:34:56.789 info [thread] com.example.Example - Hello " + "." * 100
     val toEpochNano = FastTimestampParser(ZoneId.of("Europe/Mariehamn"))
     assert:
-      parseTimestampInLogLine(line, error = -1)(toEpochNano(_)) ==
+      parseTimestampInLogLine(line)(toEpochNano(_)) ==
         ZonedDateTime.parse("2026-02-24T12:34:56.789+02").toInstant.toEpochNano
 
   "parseTimestampInHeaderLine" in:

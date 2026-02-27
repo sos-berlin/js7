@@ -7,7 +7,8 @@ import java.time.{LocalDateTime, ZoneId}
 import js7.base.log.FastTimestampParser.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
-import js7.base.utils.JavaExtensions.toEpochNano
+import js7.base.time.EpochNano
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 
 /** Optimize for reading a logging file's timestamps — no concurrent use!
@@ -23,11 +24,11 @@ final class FastTimestampParser(zoneId: ZoneId):
 
   assert(lastSecond.length == 19)
 
-  def apply(timestampString: CharSequence): Long =
+  def apply(timestampString: CharSequence): EpochNano =
     apply(timestampString, 0, timestampString.length)
 
-  /** @return -1 if timestamp is invalid .*/
-  def apply(timestampString: CharSequence, start: Int, end: Int): Long =
+  /** @return EpochNano.Nix if timestamp is invalid .*/
+  def apply(timestampString: CharSequence, start: Int, end: Int): EpochNano =
     meterTimestampParser:
       // Fill fraction of seconds, to allow timestamps with precision below microseconds
       ts(20) = '0'
@@ -42,27 +43,29 @@ final class FastTimestampParser(zoneId: ZoneId):
 
       if java.util.Arrays.equals(ts, 0, 19, lastSecond, 0, 19) then
         // Same second
-        lastEpochSecond +
-          (ts(20) - '0') * 100000000L +
-          (ts(21) - '0') * 10000000L +
-          (ts(22) - '0') * 1000000L +
-          (ts(23) - '0') * 100000L +
-          (ts(24) - '0') * 10000L +
-          (ts(25) - '0') * 1000L
+        EpochNano:
+          lastEpochSecond +
+            (ts(20) - '0') * 100000000L +
+            (ts(21) - '0') * 10000000L +
+            (ts(22) - '0') * 1000000L +
+            (ts(23) - '0') * 100000L +
+            (ts(24) - '0') * 10000L +
+            (ts(25) - '0') * 1000L
       else
         try
           // Different second
           val epochNano = parseTimestampAsNanos(CharBuffer.wrap(ts), zoneId)
           arraycopy(ts, 0, lastSecond, 0, lastSecond.length)
-          lastEpochSecond = epochNano / 1_000_000_000L * 1_000_000_000L
+          lastEpochSecond = epochNano.second
           epochNano
         catch case e: DateTimeParseException =>
           logger.trace("💥 " + e.toStringWithCauses)
-          -1
+          EpochNano.Nix
+
 
 object FastTimestampParser:
   private val logger = Logger[FastTimestampParser]
-  val dateTimeFormatter: DateTimeFormatter =
+  private val dateTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
 
   private val meterTimestampParser = CallMeter("FastTimestampParser")

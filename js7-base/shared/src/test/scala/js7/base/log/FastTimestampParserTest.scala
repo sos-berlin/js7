@@ -7,7 +7,7 @@ import js7.base.log.FastTimestampParserTest.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.JavaExtensions.toEpochNano
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.duration.Deadline
 
