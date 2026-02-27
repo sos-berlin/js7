@@ -3,7 +3,8 @@ package js7.proxy.javaapi
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
-import java.util.concurrent.Executor
+import java.util.concurrent.{CompletableFuture, Executor}
+import java.util.function.Supplier
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
@@ -22,6 +23,7 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
+import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JProxyContext.*
@@ -58,6 +60,7 @@ extends AutoCloseable:
     executionContext = ioRuntime.compute))
   private lazy val actorSystem = actorSystemLazy()
 
+  /** Blockingly release this `JProxyContext`.*/
   def close(): Unit =
     logger.debugCall("close JS7 JProxyContext"):
       try
@@ -65,13 +68,36 @@ extends AutoCloseable:
       finally
         ioRuntimeShutdown.run()
 
-  private def release: IO[Unit] =
-    logger.debugIO("release"):
+  /** Asynchronously release this `JProxyContext`.*/
+  def release(): CompletableFuture[Void] =
+    releaseIO
+      .as(Void).unsafeToCompletableFuture()
+
+  private def releaseIO: IO[Unit] =
+    logger.debugIO("releaseIO"):
       actorSystemLazy.toOption.foldMap:
         Pekkos.terminate
       .guarantee:
         IO:
           ioRuntimeShutdown.run()
+
+  /** Runs `body` with an own [[JControllerApi]].
+    */
+  def runControllerApi[A](
+    admissions: java.lang.Iterable[JAdmission],
+    httpsConfig: JHttpsConfig,
+    body: JControllerApi --> CompletableFuture[A])
+  : CompletableFuture[A] =
+    CompletableFuture.supplyAsync: () =>
+      newControllerApi(admissions, httpsConfig)
+    .thenCompose: jControllerApi =>
+      body(jControllerApi)
+        .thenCompose: result =>
+          jControllerApi.stop().thenApply(_ => result)
+        .exceptionallyCompose: throwable =>
+          jControllerApi.stop().thenCompose: _ =>
+            CompletableFuture.failedFuture(throwable)
+
 
   @javaApi @Nonnull
   def newControllerApi(
@@ -107,10 +133,21 @@ object JProxyContext:
   @static val ThreadPrefix: String = s"$ThreadPrefix_-"
   private lazy val logger = Logger[this.type]
 
+  /** Runs `body` with an own [[JProxyContext]]. */
+  def run[A](config: Config, body: JProxyContext --> CompletableFuture[A]): CompletableFuture[A] =
+    CompletableFuture.supplyAsync: () =>
+      new JProxyContext()
+    .thenCompose: jProxyContext =>
+      body(jProxyContext)
+        .thenCompose: result =>
+          jProxyContext.release().thenApply(_ => result)
+        .exceptionallyCompose: throwable =>
+          jProxyContext.release().thenCompose: _ =>
+            CompletableFuture.failedFuture(throwable)
   /** For Scala usage. */
   def resource(
     config: Config = ConfigFactory.empty,
     computeExecutor: Executor | Null = null) =
     Resource.make(
       acquire = IO(new JProxyContext(config, computeExecutor)))(
-      release = _.release)
+      release = _.releaseIO)

@@ -3,7 +3,7 @@ package js7.proxy.javaapi
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
@@ -17,7 +17,8 @@ import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Config
 import js7.base.io.https.HttpsConfig
-import js7.base.log.CorrelId
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
@@ -35,8 +36,9 @@ import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, R
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
-import js7.data_for_java.common.JavaUtils.Void
+import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
 import js7.data_for_java.order.{JFreshOrder, JHistoryOperation}
@@ -45,6 +47,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
+import js7.proxy.javaapi.JControllerApi.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import org.apache.pekko.actor.ActorSystem
@@ -88,6 +91,19 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .eventAndStateStream(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
+
+  /** Runs `body` with an own [[JControllerProxy]].
+    */
+  def runControllerProxy[A](
+    body: JControllerProxy --> CompletableFuture[A])
+  : CompletableFuture[A] =
+    startProxy().thenCompose: jProxy =>
+      body(jProxy)
+        .thenCompose: result =>
+          jProxy.stop().thenApply(_ => result)
+        .exceptionallyCompose: throwable =>
+          jProxy.stop().thenCompose: _ =>
+            CompletableFuture.failedFuture(throwable)
 
   @Nonnull
   def startProxy(): CompletableFuture[JControllerProxy] =
@@ -428,11 +444,45 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
             allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
         .map(_.toVoidVavr)
 
-  private def runIO[A](io: IO[A]): CompletableFuture[A] =
-    CorrelId.bindNew(io).unsafeToCompletableFuture()
+  private def runIO[A](io: IO[A])(using name: sourcecode.Name): CompletableFuture[A] =
+    logger.traceIO(name.value):
+      CorrelId.bindNew:
+        io
+    .unsafeToCompletableFuture()
 
 
 object JControllerApi:
+
+  private val logger = Logger[JControllerApi]
+
+
+  /** Runs `body` with an own [[JProxyContext]] and an own [[JControllerApi]].
+    *
+    * This is the variant for Java. There is variant for Scala, too.
+    */
+  def run[A](
+    config: Config,
+    admissions: java.lang.Iterable[JAdmission],
+    httpsConfig: JHttpsConfig,
+    body: JControllerApi --> CompletableFuture[A])
+  : CompletableFuture[A] =
+    JProxyContext.run(
+      config,
+      _.runControllerApi(admissions, httpsConfig, body))
+
+  /** For Scala usage.
+    *
+    * There is a variant for Java, too.
+    */
+  def run[A](
+    config: Config = ConfigFactory.empty,
+    admissions: Iterable[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty)
+    (body: JControllerApi --> CompletableFuture[A])
+  : IO[A] =
+    IO.fromCompletableFuture:
+      IO:
+        run(config, admissions.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig), body)
 
   def resource(
     admissions: Nel[Admission],
