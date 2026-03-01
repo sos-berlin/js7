@@ -18,7 +18,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
-import scala.collection.immutable.VectorBuilder
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 
 /** An index for a log file's timestamps to the position (offset) in the log file.
@@ -134,7 +134,8 @@ object LogFileIndex:
     * Due to a `prefetch` operation, two of these buffers a used.
     */
   private val ByteBufferSize = 1024 * 1024
-  private[log] val BytesPerEntry = 4096 // One index entry per 4KiB-block
+  private[log] inline val BytesPerEntry = 4096 // One index entry per 4KiB-block
+  private val PositionsPerChunk = ByteBufferSize / BytesPerEntry
   private val MinimumLogDuration = 100.ms
   private val logger = Logger[LogFileIndex]
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
@@ -172,37 +173,38 @@ object LogFileIndex:
     case class PosAndNext(pos: Long, nextBlock: Long)
     case class NanoAndPos(epochNano: EpochNano, pos: Long)
     IO.defer:
+      val buffer = mutable.ArrayBuilder.ofRef[NanoAndPos]
       val toNanos = FastTimestampParser(zoneId)
       var byteTotal = 0L
-      stream.through:
-        byteChunksToLines
-      .prefetch
-      .scanChunks(PosAndNext(0, 0)):
-        case (PosAndNext(position, nextBlock), lines) =>
-          val result = new VectorBuilder[NanoAndPos]
-          // Compute one NanoAndPos pair for each first position in a block of BytesPerEntry bytes.
-          // For each computed NanoAndPos, nextBlock is incremented by BytesPerEntry
-          var pos = position
-          var nextBlock_ = nextBlock
-          lines.iterator.foreach: byteLine =>
-            val lineLen = byteLine.size
-            byteTotal += lineLen
-            if pos >= nextBlock_ then
-              parseTimestampInLogLine(byteLine)(toNanos.apply) match
-                case EpochNano.Nix =>
-                case epochNano =>
-                  result += NanoAndPos(epochNano, pos)
+      stream.prefetch
+        .through:
+          byteChunksToLines
+        .prefetch
+        .scanChunks(PosAndNext(0, 0)):
+          case (PosAndNext(position, nextBlock), lines) =>
+            buffer.clear()
+            // Compute one NanoAndPos pair for each first position in a block of BytesPerEntry bytes.
+            // For each computed NanoAndPos, nextBlock is incremented by BytesPerEntry
+            var pos = position
+            var nextBlock_ = nextBlock
+            lines.iterator.foreach: byteLine =>
+              val lineLen = byteLine.size
+              byteTotal += lineLen
+              if pos >= nextBlock_ then
+                val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
+                if !epochNano.isNix then
+                  buffer += NanoAndPos(epochNano, pos)
                   nextBlock_ = (nextBlock_ + BytesPerEntry max pos + lineLen)
                     / BytesPerEntry * BytesPerEntry
-            pos += lineLen
-          PosAndNext(pos, nextBlock_) -> fs2.Chunk.from(result.result())
-      .chunks.evalTap: _ =>
-        IO.cede
-      .unchunks
-      .prefetch
-      .compile
-      .fold(new java.util.TreeMap[EpochNano, Long]): (treeMap, nanoAndPos) =>
-        treeMap.put(nanoAndPos.epochNano, nanoAndPos.pos)
-        treeMap
-      .map:
+              pos += lineLen
+            PosAndNext(pos, nextBlock_) -> Chunk.array(buffer.result())
+        .chunkMin(16 * 1024 / PositionsPerChunk /*24 bytes each*/)
+        //.prefetch
+        .evalTap: _ =>
+          IO.cede
+        .compile.fold(new java.util.TreeMap[EpochNano, Long]): (treeMap, chunk) =>
+          chunk.foreach: nanoAndPos =>
+            treeMap.put(nanoAndPos.epochNano, nanoAndPos.pos)
+          treeMap
+        .map:
           _ -> byteTotal

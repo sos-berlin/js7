@@ -2,13 +2,15 @@ package js7.base.fs2utils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.testkit.TestControl
-import cats.effect.{IO, Resource, SyncIO, *}
+import cats.effect.{IO, Resource, SyncIO}
 import fs2.{Chunk, Pure, Stream}
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.fs2utils.StreamExtensionsTest.*
+import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Logger
 import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Tests.isIntelliJIdea
@@ -435,6 +437,41 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         Chunk('3', '4', '5'),
         Chunk('6', '7', '8'),
         Chunk('9')))
+
+     "byteAt" in:
+        val chunk = Chunk.array(Array[Byte](0, 1 ,2))
+        (1 to 3).foreach: i =>
+          assert(chunk.byteAt(0) == chunk(0))
+        succeed
+  }
+
+
+  "Speed" - {
+    "Chunk[Byte] byteAt" in:
+      if isIntelliJIdea then
+        val n = 1_000_000_000
+        val size = 128
+
+        (1 to 3).foreach: _ =>
+          val chunk: Chunk[Byte] = Chunk.array(Array.fill[Byte](size)(7))
+          val t = Deadline.now
+          var i = 0
+          while i < n do
+            chunk.byteAt(i & 0x7f) // Same speed as boxing apply(i), <= 1ns
+            i += 1
+          val d = t.elapsed
+          logger.info(bold(s"${itemsPerSecondString(d, n, "byteAt(i)")}"))
+
+        (1 to 3).foreach: _ =>
+          val chunk: Chunk[Byte] = Chunk.array(Array.fill[Byte](size)(7))
+          val t = Deadline.now
+          var i = 0
+          while i < n do
+            chunk(i & 0x7f)
+            i += 1
+          val d = t.elapsed
+          logger.info(bold(s"${itemsPerSecondString(d, n, "apply(i)")}"))
+      succeed
   }
 
 object StreamExtensionsTest:

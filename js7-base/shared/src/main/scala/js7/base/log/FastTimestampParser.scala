@@ -56,7 +56,7 @@ final class FastTimestampParser(zoneId: ZoneId):
           // Different second
           val epochNano = parseTimestampAsNanos(CharBuffer.wrap(ts), zoneId)
           arraycopy(ts, 0, lastSecond, 0, lastSecond.length)
-          lastEpochSecond = epochNano.second
+          lastEpochSecond = epochNano.toLong / 1_000_000_000 * 1_000_000_000
           epochNano
         catch case e: DateTimeParseException =>
           logger.trace("💥 " + e.toStringWithCauses)

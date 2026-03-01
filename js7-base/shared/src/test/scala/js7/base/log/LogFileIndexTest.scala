@@ -112,7 +112,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount, extra) *>
-              (1 to 5).foldMap: _ =>
+              (1 to 20).foldMap: _ =>
                 IO.defer:
                   System.gc()
                   val usedMemory = sys.runtime.totalMemory - sys.runtime.freeMemory

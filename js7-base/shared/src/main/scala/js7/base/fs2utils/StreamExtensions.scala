@@ -51,6 +51,26 @@ object StreamExtensions:
           a
 
 
+  extension (chunk: Chunk[Byte])
+    def byteAt(i: Int): Byte =
+      // Because Chunk is not specialized for Byte, it's faster when we look up ourself.
+      // Very tiny optimization appropriate only for big numbers (~1 billion) of accesses.
+      chunk match
+        case Chunk.ArraySlice(array, off, len) =>
+          if i >= 0 && i < len then
+            array(off + i) // Don't boxes Int
+          else
+            chunk(i)
+
+        case Chunk.ByteBuffer(buf, off, len) =>
+          if i >= 0 && i < len then
+            buf.get(off + i) // Don't boxes Int
+          else
+            chunk(i)
+
+        case _ =>
+          chunk(i) // Boxes Int
+
   extension (chunk: Chunk[Char])
     def convertToString: String =
       chunk match

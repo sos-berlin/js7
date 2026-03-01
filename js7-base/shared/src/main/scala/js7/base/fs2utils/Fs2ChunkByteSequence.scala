@@ -5,6 +5,7 @@ import fs2.Chunk
 import java.nio.ByteBuffer
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.fs2utils.StreamExtensions.byteAt
 import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.annotation.unused
 import scala.reflect.ClassTag
@@ -79,22 +80,7 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.size
 
   def at(chunk: Chunk[Byte], i: Int): Byte =
-    // Because Chunk is not specialized for Byte, it's faster when we look up ourself.
-    chunk match
-      case Chunk.ArraySlice(array, off, len) =>
-        if i >= 0 && i < len then
-          array(off + i) // Don't boxes Int
-        else
-          chunk(i)
-
-      case Chunk.ByteBuffer(buf, off, len) =>
-        if i >= 0 && i < len then
-          buf.get(off + i) // Don't boxes Int
-        else
-          chunk(i)
-
-      case _ =>
-        chunk(i) // Boxes Int
+    chunk.byteAt(i)
 
   override def take(chunk: Chunk[Byte], n: Int): Chunk[Byte] =
     chunk.take(n)

@@ -8,20 +8,25 @@ opaque type EpochNano = Long
 
 object EpochNano:
   val Zero: EpochNano = 0L
-  val Nix: EpochNano = Long.MinValue
+  private inline val nix = Long.MinValue
+  val Nix: EpochNano = nix
   private val zeroJson = Json.fromInt(0)
 
-  inline def apply(epochNano: Long): EpochNano = epochNano
+  inline def apply(epochNano: Long): EpochNano =
+    epochNano
 
   def from(instant: Instant) =
     instant.getEpochSecond * 1_000_000_000L + instant.getNano
 
   extension (epochNano: EpochNano)
-    inline def second: Long =
-      epochNano / 1_000_000_000L * 1_000_000_000L
+    inline def toLong: Long =
+      epochNano
 
     inline def nanosecondSinceSecond: Long =
       epochNano % 1_000_000_000L
+
+    inline def isNix: Boolean =
+      epochNano == nix
 
     def toDecimalString: String =
       if epochNano == 0L then
