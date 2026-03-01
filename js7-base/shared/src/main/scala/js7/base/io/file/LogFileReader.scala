@@ -1,7 +1,7 @@
 package js7.base.io.file
 
 import cats.effect.IO
-import fs2.{Chunk, Stream}
+import fs2.Stream
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, DateTimeParseException}
@@ -51,7 +51,7 @@ object LogFileReader:
     val threadInBrackets = """\[[^]]+]""".r  // Very slow!
     val logger = """[\p{Alnum}._$-]+""".r
     //val message = """(?:.*)""".r
-    // threadInBrackets is slow:
+    // threadInBrackets is slow. Also, a thread name may contain a ']'.
     //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
     Regex(s"""^$HighlightRegex?($datetime) $level """).pattern
 
@@ -151,7 +151,7 @@ object LogFileReader:
     byteChunkSize: Int,
     pollDuration: FiniteDuration,
     fromEnd: Boolean = false)
-  : Stream[IO, Chunk[ByteSeq]] =
+  : Stream[IO, ByteSeq] =
     logger.debugStream:
       growingLogFileStream2[ByteSeq](file, byteChunkSize, pollDuration, fromEnd)
 
@@ -160,9 +160,11 @@ object LogFileReader:
     byteChunkSize: Int,
     pollDuration: FiniteDuration,
     fromEnd: Boolean = false)
-  : Stream[IO, Chunk[ByteSeq]] =
+  : Stream[IO, ByteSeq] =
     Stream.resource:
-      resource(file, waitUntilExists = Some((poll = pollDuration, timeout = 3.s)))
+      resource(file,
+        bufferSize = byteChunkSize,
+        waitUntilExists = Some((poll = pollDuration, timeout = 3.s)))
     .flatMap: reader =>
       Stream.eval:
         reader.read(UniqueHeaderSize).flatTap: _ =>
@@ -174,7 +176,9 @@ object LogFileReader:
         if header.length < UniqueHeaderSize then
           Stream.sleep_[IO](pollDuration) // Delay and end stream. Caller will try again.
         else
-          reader.chunkStreamX(byteChunkSize).flatMap: byteSeqs =>
+          fs2.Stream.repeatEval:
+            reader.read
+          .flatMap: byteSeqs =>
             if byteSeqs.nonEmpty then
               Stream.emit(byteSeqs)
             else
@@ -209,5 +213,8 @@ object LogFileReader:
 
   private def readHeader[ByteSeq: ByteSequence](file: Path): IO[ByteSeq] =
     logger.traceIO("readHeader"):
-      resource[ByteSeq](file, waitUntilExists = Some((poll = 100.ms /*TODO*/ , timeout = 3.s))).use: reader =>
+      resource[ByteSeq](
+        file,
+        waitUntilExists = Some((poll = 100.ms /*TODO*/ , timeout = 3.s))
+      ).use: reader =>
         reader.read(UniqueHeaderSize)

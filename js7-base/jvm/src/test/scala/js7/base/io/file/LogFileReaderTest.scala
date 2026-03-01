@@ -118,7 +118,6 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
                       assert(chunk == more)
 
             growingLogFileStream[ByteArray](file, byteChunkSize = 1024, pollDuration = 10.ms)
-              .unchunks
               .takeWhile(_ != Stop)
               .foreach(queue.offer)
               .compile.drain

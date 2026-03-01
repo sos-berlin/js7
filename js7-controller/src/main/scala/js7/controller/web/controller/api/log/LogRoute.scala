@@ -95,7 +95,7 @@ trait LogRoute extends ControllerRouteProvider:
     completeWithStream(`text/plain(UTF-8)`):
       growingLogFileStream[fs2.Chunk[Byte]](
         file, byteChunkSize = httpChunkSize, pollDuration, fromEnd = true
-      ).rechunkToByteStringSporadic(httpChunkSize)
+      ).map(_.toByteString)
         .interruptWhenF(shutdownSignaled)
 
   private def rawFile(file: Path): Route =
