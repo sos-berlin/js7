@@ -105,11 +105,11 @@ trait LogRoute extends ControllerRouteProvider:
         .interruptWhenF(shutdownSignaled)
 
   private def section(logFile: Path, begin: Instant | LogLineKey): Route =
-    val label = relativise(dataDirectory, logFile).toString
+    //val label = relativise(dataDirectory, logFile).toString
     parameter("lines".as[Int].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
-          LogFileIndex.resource(logFile, label = label)
+          LogFileIndex.resource(logFile)
         .flatMap: logFileIndex =>
           logFileIndex.streamLines(begin)
             //.map:
@@ -122,7 +122,7 @@ trait LogRoute extends ControllerRouteProvider:
       ~
         completeWithStream(`application/x-ndjson`):
           fs2.Stream.resource:
-            LogFileIndex.resource(logFile, label = label)
+            LogFileIndex.resource(logFile)
           .flatMap: logFileIndex =>
             logFileIndex.streamKeyedLines(begin)
               //.map:

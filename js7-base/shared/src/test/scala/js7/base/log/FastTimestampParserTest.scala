@@ -15,13 +15,13 @@ final class FastTimestampParserTest extends OurTestSuite:
 
   private val zoneId = ZoneId.of("Europe/Mariehamn")
 
-  private def instant(string: String) =
+  private def toEpochNano(string: String) =
     Instant.parse(string).toEpochNano
 
   "FastTimestampParser" in :
     val toNanos = new FastTimestampParser(zoneId)
-    assert(toNanos("2026-02-25T01:02:03,123") == instant("2026-02-25T01:02:03.123+02:00"))
-    assert(toNanos("2026-02-25 21:22:23.123456") == instant("2026-02-25T21:22:23.123456+02:00"))
+    assert(toNanos("2026-02-25T01:02:03,123") == toEpochNano("2026-02-25T01:02:03.123+02:00"))
+    assert(toNanos("2026-02-25 21:22:23.123456") == toEpochNano("2026-02-25T21:22:23.123456+02:00"))
 
   "FastTimestampParser, different seconds or millisecond" in:
     val toNanos = FastTimestampParser(zoneId)

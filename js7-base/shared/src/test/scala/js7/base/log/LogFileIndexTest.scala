@@ -24,8 +24,6 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import org.scalatest.Assertion
-import scala.collection.immutable.ArraySeq
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class LogFileIndexTest extends OurAsyncTestSuite:
@@ -47,7 +45,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n")
         file := lines.mkString
 
-        LogFileIndex.resource(file, label = file.getFileName.toString, zoneId).use: logFileIndex =>
+        LogFileIndex.resource(file, zoneId).use: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
             logFileIndex.streamLines(begin).map(_.utf8String).head.compile.last
 
@@ -76,7 +74,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     logger.info("Done")
 
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
-    LogFileIndex.resource(logFile, label = logFile.getFileName.toString).use: logFileIndex =>
+    LogFileIndex.resource(logFile).use: logFileIndex =>
       IO.defer:
         logFileIndex.streamLines(begin = begin.toInstant)
           .takeWhile(_.nonEmpty)
@@ -122,7 +120,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                     toKiBGiB(sys.runtime.freeMemory)}"
                   logger.debug(memInfo)
                   val t = Deadline.now
-                  LogFileIndex.resource(file, label = file.getFileName.toString).use: logFileIndex =>
+                  LogFileIndex.resource(file).use: logFileIndex =>
                     IO:
                       val elapsed = t.elapsed
                       System.gc()

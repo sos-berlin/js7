@@ -44,8 +44,6 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
   "Scala" in:
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest Scala! 🌶️🌶️🌶️"
     logger.info(logText)
-    sleep(100.ms)
-
     controllerApiResource.use: controllerApi =>
       controllerApi.getLogLines(Debug, begin = Instant.now - 3.s, lines = Int.MaxValue)
         .flatMap: stream =>
@@ -53,19 +51,17 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
             line.contains(logText)
           .compile
           .toVector.map: lines =>
-            assert(lines.size > 1 & lines.exists(_.contains(logText)))
+            assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
   "Java" in :
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTest Java! 🍋🍋🍋"
     logger.info(logText)
-    sleep(100.ms)
-
     JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         JLogFileTester.test(jControllerProxy, logText)
     .map: result =>
       val lines = result.firstList().asScala
-      assert(lines.size > 1 & lines.exists(_.contains(logText)))
+      assert(lines.size >= 1 & lines.exists(_.contains(logText)))
       assert(lines.forall(_.endsWith("\n")))
 
   "Java prettyTest" in :

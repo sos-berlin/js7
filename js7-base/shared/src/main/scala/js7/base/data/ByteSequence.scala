@@ -275,7 +275,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     asciiCharSequence_(byteSeq, begin, end)
 
   private def asciiCharSequence_(byteSeq: ByteSeq, begin: Int, end: Int): CharSequence =
-    new ByteSeqAsciiCharSequence(byteSeq, begin, end)
+    ByteSeqAsciiCharSequence(byteSeq, begin, end)
 
   def utf8StringTruncateAt(byteSeq: ByteSeq, truncateAt: Int): String =  // TODO Truncate big byte sequence before decoding
     utf8String(byteSeq).truncateWithEllipsis(truncateAt)

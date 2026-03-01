@@ -32,11 +32,11 @@ final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 object JLogFileIndex:
 
   def resource(context: JProxyContext, file: Path, zoneId: ZoneId): JResource[JLogFileIndex] =
-    resource(context, file, file.getFileName.toString, zoneId)
+    resource(context, file, zoneId, file.getFileName.toString)
 
-  def resource(context: JProxyContext, file: Path, label: String, zoneId: ZoneId)
+  def resource(context: JProxyContext, file: Path, zoneId: ZoneId, label: String)
   : JResource[JLogFileIndex] =
     import context.given_IORuntime
     JResource:
-      LogFileIndex.resource(file, label, zoneId)
+      LogFileIndex.resource(file, zoneId, label)
         .map(JLogFileIndex(_))

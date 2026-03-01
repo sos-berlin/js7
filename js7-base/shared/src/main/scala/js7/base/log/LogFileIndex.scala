@@ -17,9 +17,25 @@ import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Missing
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline
 
+/** An index for a log file's timestamps to the position (offset) in the log file.
+  *
+  * Too keep LogFileIndex small, only one (timestamp, position) pair is stored for each
+  * BytesPerEntry data block.
+  *
+  * LogFileIndex provides
+  * <ul>
+  * <li>the position for a given [[Instant]]
+  * <li>stream of lines since an [[Instant]]
+  * <li>stream of (position, line) sind an [[Instant]].
+  * </ul>
+  *
+  * The log file is expected to follow a certain layout, see
+  * [[js7.base.io.file.LogFileReader]].
+  */
 final class LogFileIndex private(
   reader: ByteSeqFileReader[Chunk[Byte]],
   nanoToPos: java.util.NavigableMap[EpochNano, Long],
@@ -83,7 +99,7 @@ final class LogFileIndex private(
               (pos + line.size) -> (pos -> line)
 
   private def takeUntilInstant(instant: Option[Instant])
-  : fs2.Pipe[IO, (Long, fs2.Chunk[Byte]), (Long, fs2.Chunk[Byte])] =
+  : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
     stream =>
       instant.fold(stream): instant =>
         val toNanos = FastTimestampParser(zoneId)
@@ -121,27 +137,42 @@ object LogFileIndex:
   private[log] val BytesPerEntry = 4096 // One index entry per 4KiB-block
   private val MinimumLogDuration = 100.ms
   private val logger = Logger[LogFileIndex]
-
-
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
-  def resource(logFile: Path, label: String, zoneId: ZoneId = ZoneId.systemDefault)
+  def resource(
+    logFile: Path,
+    zoneId: ZoneId = ZoneId.systemDefault,
+    label: String | Missing = Missing)
   : ResourceIO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .evalMap: reader =>
-        buildIndex(label, zoneId):
+        buildIndex(label getOrElse logFile.getFileName.toString, zoneId):
           reader.stream.takeWhile(_.nonEmpty)
         .map: nanoToPos =>
           new LogFileIndex(reader, nanoToPos, zoneId)
 
   private def buildIndex(label: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
   : IO[java.util.NavigableMap[EpochNano, Long]] =
+    IO.defer:
+      val t = Deadline.now
+      buildIndex1(zoneId, stream)
+        .map: (treeMap, byteTotal) =>
+          val elapsed = t.elapsed
+          if elapsed >= MinimumLogDuration then
+            logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
+          if treeMap.isEmpty then
+            logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
+          treeMap
+
+  private def buildIndex1(zoneId: ZoneId, stream: Stream[IO, Chunk[Byte]])
+  : IO[(java.util.NavigableMap[EpochNano, Long], Long)] =
     // TODO Check that timestamp is monotonically increasing.
+    case class PosAndNext(pos: Long, nextBlock: Long)
+    case class NanoAndPos(epochNano: EpochNano, pos: Long)
     IO.defer:
       val toNanos = FastTimestampParser(zoneId)
-      val t = Deadline.now
       var byteTotal = 0L
       stream.through:
         byteChunksToLines
@@ -153,23 +184,17 @@ object LogFileIndex:
           // For each computed NanoAndPos, nextBlock is incremented by BytesPerEntry
           var pos = position
           var nextBlock_ = nextBlock
-          var i = 0
-          val end = lines.size
-          while i < end do // Optimized loop
-            val byteLine = lines(i)
+          lines.iterator.foreach: byteLine =>
             val lineLen = byteLine.size
             byteTotal += lineLen
             if pos >= nextBlock_ then
               parseTimestampInLogLine(byteLine)(toNanos.apply) match
                 case EpochNano.Nix =>
                 case epochNano =>
-                  // Insert entry //
                   result += NanoAndPos(epochNano, pos)
                   nextBlock_ = (nextBlock_ + BytesPerEntry max pos + lineLen)
                     / BytesPerEntry * BytesPerEntry
             pos += lineLen
-            i += 1
-          end while
           PosAndNext(pos, nextBlock_) -> fs2.Chunk.from(result.result())
       .chunks.evalTap: _ =>
         IO.cede
@@ -179,16 +204,5 @@ object LogFileIndex:
       .fold(new java.util.TreeMap[EpochNano, Long]): (treeMap, nanoAndPos) =>
         treeMap.put(nanoAndPos.epochNano, nanoAndPos.pos)
         treeMap
-      .map: treeMap =>
-        val elapsed = t.elapsed
-        if elapsed >= MinimumLogDuration then
-          logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
-        if treeMap.isEmpty then
-          logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
-        treeMap
-
-
-  // Faster than (_, _) because Long is not being boxed.
-  private final case class PosAndNext(pos: Long, nextBlock: Long)
-
-  private final case class NanoAndPos(epochNano: EpochNano, pos: Long)
+      .map:
+          _ -> byteTotal

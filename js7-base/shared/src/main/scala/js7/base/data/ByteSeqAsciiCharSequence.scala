@@ -14,6 +14,9 @@ final class ByteSeqAsciiCharSequence[ByteSeq: ByteSequence](
   private val end: Int)
 extends CharSequence:
 
+  def this(byteSeq: ByteSeq) =
+    this(byteSeq, 0, byteSeq.length)
+
   val length =
     end - begin
 

@@ -3,6 +3,7 @@ package js7.base.log
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json}
 import java.time.Instant
+import js7.base.circeutils.JavaDataJsonCodecs.instant.NumericInstantJsonCodec
 import js7.base.time.JavaTimeExtensions.toEpochNano
 
 final case class KeyedLogLine(key: LogLineKey, line: String):
@@ -13,7 +14,7 @@ object KeyedLogLine:
   def apply(instant: Instant, position: Long, line: String): KeyedLogLine =
     KeyedLogLine(LogLineKey(instant, position), line)
 
-  given Codec[Instant] = js7.base.circeutils.JavaDataJsonCodecs.instant.NumericInstantJsonCodec
+  given Codec[Instant] = NumericInstantJsonCodec
 
   given Encoder[KeyedLogLine] = o =>
     Json.arr(o.instant.toEpochNano.asJson, o.position.asJson, o.line.asJson)

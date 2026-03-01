@@ -37,3 +37,18 @@ object AnsiEscapeCodes:
   // TODO Make it faster. Copy bytes directly, leave out \u001b...m
   def removeHighlights(line: String): String =
     HighlightRegex.replaceAllIn(line, "") // SLOW
+
+  //extension (charSeq: CharSequence)
+  //  def dropHighlightsAtStart: CharSequence =
+  //    val length = charSeq.length
+  //    var i = 0
+  //    while i < length - 1 && charSeq.charAt(i) == '\u001b' && charSeq.charAt(i + 1) == '[' do
+  //      i += 1
+  //      while i < length && charSeq.charAt(i) != 'm' do
+  //        i += 1
+  //      if i == length then return charSeq // 'm' not found
+  //      i += 1
+  //    if i == 0 then
+  //      charSeq
+  //    else
+  //      charSeq.subSequence(i, length)
