@@ -24,6 +24,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDuration}
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic
@@ -152,7 +153,7 @@ extends Service.TrivialReleasable:
 
   def logout(sessionToken: SessionToken): IO[Unit] =
     cell.flatMap(_.evalUpdate:
-      _.delete(sessionToken, "Logout"))
+      _.delete(sessionToken, "logout"))
 
   private[session] def session(
     token: SessionToken,
@@ -231,11 +232,12 @@ extends Service.TrivialReleasable:
     def delete(token: SessionToken, reason: String): IO[State] =
       tokenToSession.get(token).fold(IO.pure(this)): session =>
         session.timeoutFiber.foldMap(_.cancel).as:
-          deleteOnly(token, "expired")
+          deleteOnly(token, reason)
 
     def deleteOnly(token: SessionToken, reason: String): State =
       tokenToSession.get(token).fold(this): entry =>
-        logger.info(s"$token for ${entry.currentUserId} $reason")
+        logger.info:
+          s"$token for ${entry.currentUserId} $reason (${entry.duration().pretty} after login)"
         entry.session.die()
         Bean.sessionCount -= 1
         copy(tokenToSession = tokenToSession.removed(token))
@@ -253,8 +255,14 @@ extends Service.TrivialReleasable:
       tokenToSession.values.view.map(_.session)
 
   private final class Entry(val session: S):
-    def currentUserId = session.currentUser.id
+    private val since: Deadline = Deadline.now
     var timeoutFiber = none[FiberIO[Unit]]
+
+    def currentUserId = session.currentUser.id
+
+    def duration(): FiniteDuration =
+      since.elapsed
+
     override def toString = currentUserId.toString
 
 
