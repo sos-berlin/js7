@@ -57,7 +57,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.5"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.6"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
