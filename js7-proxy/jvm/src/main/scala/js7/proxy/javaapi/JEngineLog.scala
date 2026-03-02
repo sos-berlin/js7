@@ -13,18 +13,21 @@ import reactor.core.publisher.Flux
 final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControllerApi])
   (using IORuntime):
 
-  def currentLog(logLevel: LogLevel): Flux[String] =
+  def currentLog(logLevel: LogLevel): Flux[Array[Byte]] =
     fs2.Stream.force:
       controllerApis.head.getLogLines(logLevel)
+    .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
 
-  def logSection(logLevel: LogLevel, begin: Instant, lines: Int): Flux[String] =
+  def logSection(logLevel: LogLevel, begin: Instant, lines: Long): Flux[java.util.List[Array[Byte]]] =
     fs2.Stream.force:
       controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
+    .map(_.toArray) // Copy, or has Java an immutable array?
+    .chunks
     .asFlux
+    .map(_.asJava)
 
-
-//private def logSection(logLevel: LogLevel, start: Instant | LogPosition, lines: Int)
+  //private def keyedLogLineFlux(logLevel: LogLevel, start: Instant | LogPosition, lines: Long)
   //: CompletableFuture[Flux[String]] =
   //  ???
 

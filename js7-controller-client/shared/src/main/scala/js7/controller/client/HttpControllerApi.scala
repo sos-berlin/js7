@@ -57,10 +57,22 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     loginAndRetryIfSessionLost:
       httpClient.get[B](baseUri /? uriTail)
 
-  final def getLogLines(logLevel: LogLevel): IO[Stream[IO, String]] =
+  final def getLogLines(logLevel: LogLevel): IO[Stream[IO, fs2.Chunk[Byte]]] =
     getLogLines_(logLevel)
 
-  final def getKeyedLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Int)
+  final def getLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
+    getLogLines_(logLevel, "begin" -> begin.toString, "lines" -> lines.toString)
+
+  private def getLogLines_(logLevel: LogLevel, queries: (String, String)*)
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
+    loginAndRetryIfSessionLost:
+      httpClient.getTextAsRawLines:
+        Uri:
+          (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
+            encodeQuery(queries *)
+
+  final def getKeyedLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
   : IO[Stream[IO, KeyedLogLine]] =
     getKeyedLogLines_(logLevel, "begin" -> begin.toString, "lines" -> lines.toString)
 
@@ -72,19 +84,6 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
           (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
             encodeQuery(queries*),
           dontLog = true)
-
-  final def getLogLines(logLevel: LogLevel, begin: Instant, lines: Int): IO[Stream[IO, String]] =
-    getLogLines_(logLevel, "begin" -> begin.toString, "lines" -> lines.toString)
-
-  private def getLogLines_(logLevel: LogLevel, queries: (String, String)*): IO[Stream[IO, String]] =
-    loginAndRetryIfSessionLost:
-      httpClient.getTextAsRawLines:
-        Uri:
-          (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
-            encodeQuery(queries*)
-      .map:
-        _.through:
-          fs2.text.utf8.decodeC
 
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:

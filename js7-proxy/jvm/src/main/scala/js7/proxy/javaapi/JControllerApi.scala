@@ -92,11 +92,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .map(JEventAndControllerState.apply)
       .asFlux
 
-  /** Runs `body` with an own [[JControllerProxy]].
-    */
-  def runControllerProxy[A](
-    body: JControllerProxy --> CompletableFuture[A])
-  : CompletableFuture[A] =
+  /** Runs `body` with an own [[JControllerProxy]]. */
+  def runControllerProxy[A](body: JControllerProxy --> CompletableFuture[A]): CompletableFuture[A] =
     startProxy().thenCompose: jProxy =>
       body(jProxy)
         .thenCompose: result =>
@@ -104,6 +101,11 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
         .exceptionallyCompose: throwable =>
           jProxy.stop().thenCompose: _ =>
             CompletableFuture.failedFuture(throwable)
+
+  /** Runs `body` with an own [[JControllerProxy]]. */
+  def runControllerProxyIO[A](body: JControllerProxy => IO[A]): IO[A] =
+    proxyResource().use: jControllerProxy =>
+      body(jControllerProxy)
 
   @Nonnull
   def startProxy(): CompletableFuture[JControllerProxy] =
@@ -457,6 +459,13 @@ object JControllerApi:
 
 
   /** Runs `body` with an own [[JProxyContext]] and an own [[JControllerApi]].
+    *
+    * Short form of:
+    * <pre>
+    * JProxyContext.run(config, proxyContext ->
+    *   proxyContext.runControllerApi(admissions, httpConfig, controllerApi ->
+    *     body(controllerApi)))
+    * </pre>
     *
     * This is the variant for Java. There is variant for Scala, too.
     */

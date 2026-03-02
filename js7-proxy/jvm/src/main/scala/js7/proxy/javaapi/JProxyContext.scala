@@ -3,6 +3,7 @@ package js7.proxy.javaapi
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
+import java.lang.Thread.currentThread
 import java.util.concurrent.{CompletableFuture, Executor}
 import java.util.function.Supplier
 import javax.annotation.Nonnull
@@ -49,7 +50,7 @@ extends AutoCloseable:
 
   private val (ioRuntime, ioRuntimeShutdown) =
     OurIORuntime
-      .resource[SyncIO](ThreadPrefix_, config_, computeExecutor = nullToNone(computeExecutor))
+      .resource[SyncIO](ThreadPoolName, config_, computeExecutor = nullToNone(computeExecutor))
       .allocated
       .run()
 
@@ -129,8 +130,8 @@ extends AutoCloseable:
 object JProxyContext:
 
   Logger.dontInitialize()
-  @static private val ThreadPrefix_ = "JS7-Proxy"
-  @static val ThreadPrefix: String = s"$ThreadPrefix_-"
+  @static private val ThreadPoolName = "JS7-Proxy"
+  @static val ThreadNamePrefix: String = s"$ThreadPoolName-"
   private lazy val logger = Logger[this.type]
 
   /** Runs `body` with an own [[JProxyContext]]. */
@@ -145,9 +146,24 @@ object JProxyContext:
           jProxyContext.release().thenCompose: _ =>
             CompletableFuture.failedFuture(throwable)
   /** For Scala usage. */
+  //def resourceWithOwnIORuntime(config: Config = ConfigFactory.empty)
+  //: ResourceIO[JProxyContext] =
+  //  for
+  //    jProxyContext <-
+  //  yield jProxyContext
+
+  /** For Scala usage. */
   def resource(
     config: Config = ConfigFactory.empty,
-    computeExecutor: Executor | Null = null) =
+    computeExecutor: Executor | Null = null)
+  : ResourceIO[JProxyContext] =
     Resource.make(
       acquire = IO(new JProxyContext(config, computeExecutor)))(
       release = _.releaseIO)
+
+  def assertIsNotProxyThread(): Unit =
+    assert(!currentThread.getName.startsWith(ThreadNamePrefix), "Running in a Proxy thread")
+
+  def assertIsProxyThread(): Unit =
+    val threadName = currentThread.getName
+    assert(threadName.startsWith(ThreadNamePrefix), s"Not running in a Proxy thread: $threadName")

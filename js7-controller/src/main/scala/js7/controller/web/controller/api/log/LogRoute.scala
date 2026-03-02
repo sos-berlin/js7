@@ -106,7 +106,7 @@ trait LogRoute extends ControllerRouteProvider:
 
   private def section(logFile: Path, begin: Instant | LogLineKey): Route =
     //val label = relativise(dataDirectory, logFile).toString
-    parameter("lines".as[Int].?): lineCount =>
+    parameter("lines".as[Long].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
         fs2.Stream.resource:
           LogFileIndex.resource(logFile)

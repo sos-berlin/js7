@@ -69,34 +69,66 @@ final class JControllerProxy private[proxy](
   def clusterState: ClusterState =
     asScala.currentState.clusterState
 
-  /** @see [[logSection]] for a simplified call. */
+  /** @see [[keyedLogLineFlux]] for a simplified call. */
   def engineLog: JResource[JEngineLog] =
     JResource(JEngineLog.resource(this))
 
-  /** Read log lines from `begin`.
-    */
+  /** Read log lines from `begin`. */
   @Nonnull
-  def logSection(logLevel: LogLevel, begin: Instant, lines: Int)
-  : Flux[KeyedLogLine] =
-    logSection_(logLevel, begin, lines)
+  def keyedLogLineFlux(logLevel: LogLevel, begin: Instant, lines: Long)
+  : Flux[java.util.List[KeyedLogLine]] =
+    keyedLogLineFlux_(logLevel, begin, lines)
 
-  /** Read log lines beginning after the line denoted by `key`.
-    */
+  /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def logSection(logLevel: LogLevel, key: LogLineKey, lines: Int)
-  : Flux[KeyedLogLine] =
-    logSection_(logLevel, key, lines)
+  def keyedLogLineFlux(logLevel: LogLevel, key: LogLineKey, lines: Long)
+  : Flux[java.util.List[KeyedLogLine]] =
+    keyedLogLineFlux_(logLevel, key, lines)
 
-  private def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Int = Int.MaxValue)
-  : Flux[KeyedLogLine] =
-    logger.traceStream(s"logSection Stream"):
+  private def keyedLogLineFlux_(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: Long = Long.MaxValue)
+  : Flux[java.util.List[KeyedLogLine]] =
+    logger.traceStream(s"keyedLogLineFlux Stream"):
       fs2.Stream.resource:
-        logger.traceResource(s"logSection-apisResource", releaseOnly = true):
+        logger.traceResource(s"keyedLogLineFlux-apisResource", releaseOnly = true):
           api.asScala.apisResource
       .flatMap: controllerApis =>
         fs2.Stream.force:
           controllerApis.head.getKeyedLogLines(logLevel, begin = begin, lines = lines)
+    .chunks
     .asFlux
+    .map(_.asJava)
+
+  /** Read log lines from `begin`. */
+  @Nonnull
+  def rawLogLineFlux(logLevel: LogLevel, begin: Instant, lines: Long)
+  : Flux[java.util.List[Array[Byte]]] =
+    rawLogLineFlux_(logLevel, begin, lines)
+
+  /** Read log lines beginning after the line denoted by `key`. */
+  @Nonnull
+  def rawLogLineFlux(logLevel: LogLevel, key: LogLineKey, lines: Long)
+  : Flux[java.util.List[Array[Byte]]] =
+    rawLogLineFlux_(logLevel, key, lines)
+
+  private def rawLogLineFlux_(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: Long = Long.MaxValue)
+  : Flux[java.util.List[Array[Byte]]] =
+    logger.traceStream(s"logSectionRawLines Stream"):
+      fs2.Stream.resource:
+        logger.traceResource(s"rawLogLineFlux-apisResource", releaseOnly = true):
+          api.asScala.apisResource
+      .flatMap: controllerApis =>
+        fs2.Stream.force:
+          controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
+    .map(_.toArray) // Copy, or has Java an immutable array?
+    .chunks
+    .asFlux
+    .map(_.asJava)
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
