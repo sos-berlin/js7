@@ -1,6 +1,6 @@
 package js7.base.log
 
-import cats.effect.{IO, ResourceIO}
+import cats.effect.IO
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
@@ -37,7 +37,7 @@ import scala.concurrent.duration.Deadline
   * [[js7.base.io.file.LogFileReader]].
   */
 final class LogFileIndex private(
-  reader: ByteSeqFileReader[Chunk[Byte]],
+  logFile: Path,
   nanoToPos: java.util.NavigableMap[EpochNano, Long],
   zoneId: ZoneId):
 
@@ -67,7 +67,7 @@ final class LogFileIndex private(
 
   def streamPosAndLinesFromInstant(begin: Instant, end: Option[Instant] = None)
   : Stream[IO, (Long, Chunk[Byte])] =
-    Stream.suspend:
+    readerStream.flatMap: reader =>
       val toNanos = FastTimestampParser(zoneId)
       val beginEpochNano = begin.toEpochNano
       val position = findPositionOf(beginEpochNano)
@@ -87,7 +87,7 @@ final class LogFileIndex private(
 
   def streamPosAndLinesFromPosition(position: Long)
   : Stream[IO, (Long, Chunk[Byte])] =
-    Stream.suspend:
+    readerStream.flatMap: reader =>
       Stream.exec:
         reader.setPosition(position)
       .append:
@@ -97,6 +97,11 @@ final class LogFileIndex private(
           .scanChunks(position): (pos, lines) =>
             lines.mapAccumulate(pos): (pos, line) =>
               (pos + line.size) -> (pos -> line)
+
+  private def readerStream: Stream[IO, ByteSeqFileReader[Chunk[Byte]]] =
+    Stream.resource:
+      ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
+
 
   private def takeUntilInstant(instant: Option[Instant])
   : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
@@ -119,7 +124,7 @@ final class LogFileIndex private(
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
   private def findPositionOf(beginEpochNano: EpochNano): Long =
     nanoToPos.floorEntry(beginEpochNano) match
-      case null => 0 // Start of file
+      case null => 0 // Start of logFile
       //case null => nanoToPos.firstEntry().getValue
       case o => o.getValue
 
@@ -142,17 +147,17 @@ object LogFileIndex:
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
-  def resource(
+  def build(
     logFile: Path,
     zoneId: ZoneId = ZoneId.systemDefault,
     label: String | Missing = Missing)
-  : ResourceIO[LogFileIndex] =
+  : IO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
-      .evalMap: reader =>
+      .use: reader =>
         buildIndex(label getOrElse logFile.getFileName.toString, zoneId):
           reader.stream.takeWhile(_.nonEmpty)
         .map: nanoToPos =>
-          new LogFileIndex(reader, nanoToPos, zoneId)
+          new LogFileIndex(logFile, nanoToPos, zoneId)
 
   private def buildIndex(label: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
   : IO[java.util.NavigableMap[EpochNano, Long]] =

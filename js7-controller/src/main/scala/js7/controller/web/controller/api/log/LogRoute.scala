@@ -108,8 +108,8 @@ trait LogRoute extends ControllerRouteProvider:
     //val label = relativise(dataDirectory, logFile).toString
     parameter("lines".as[Long].?): lineCount =>
       completeWithStream(`text/plain(UTF-8)`):
-        fs2.Stream.resource:
-          LogFileIndex.resource(logFile)
+        fs2.Stream.eval:
+          LogFileIndex.build(logFile)
         .flatMap: logFileIndex =>
           logFileIndex.streamLines(begin)
             //.map:
@@ -121,8 +121,8 @@ trait LogRoute extends ControllerRouteProvider:
             .map(_.toByteString)
       ~
         completeWithStream(`application/x-ndjson`):
-          fs2.Stream.resource:
-            LogFileIndex.resource(logFile)
+          fs2.Stream.eval:
+            LogFileIndex.build(logFile)
           .flatMap: logFileIndex =>
             logFileIndex.streamKeyedLines(begin)
               //.map:

@@ -45,7 +45,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n")
         file := lines.mkString
 
-        LogFileIndex.resource(file, zoneId).use: logFileIndex =>
+        LogFileIndex.build(file, zoneId).flatMap: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
             logFileIndex.streamLines(begin).map(_.utf8String).head.compile.last
 
@@ -74,7 +74,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     logger.info("Done")
 
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
-    LogFileIndex.resource(logFile).use: logFileIndex =>
+    LogFileIndex.build(logFile).flatMap: logFileIndex =>
       IO.defer:
         logFileIndex.streamLines(begin = begin.toInstant)
           .takeWhile(_.nonEmpty)
@@ -120,7 +120,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                     toKiBGiB(sys.runtime.freeMemory)}"
                   logger.debug(memInfo)
                   val t = Deadline.now
-                  LogFileIndex.resource(file).use: logFileIndex =>
+                  LogFileIndex.build(file).flatMap: logFileIndex =>
                     IO:
                       val elapsed = t.elapsed
                       System.gc()

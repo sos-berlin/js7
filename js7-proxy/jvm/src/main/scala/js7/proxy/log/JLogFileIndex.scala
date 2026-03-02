@@ -10,7 +10,7 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.AnsiEscapeCodes.removeHighlights
 import js7.base.log.LogFileIndex
 import js7.data_for_java.reactor.ReactorConverters.asFlux
-import js7.proxy.javaapi.{JProxyContext, JResource}
+import js7.proxy.javaapi.JProxyContext
 import reactor.core.publisher.Flux
 import scala.jdk.OptionConverters.*
 import scala.jdk.OptionShape.*
@@ -31,12 +31,12 @@ final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
 object JLogFileIndex:
 
-  def resource(context: JProxyContext, file: Path, zoneId: ZoneId): JResource[JLogFileIndex] =
-    resource(context, file, zoneId, file.getFileName.toString)
+  def build(context: JProxyContext, file: Path, zoneId: ZoneId): CompletableFuture[JLogFileIndex] =
+    build(context, file, zoneId, file.getFileName.toString)
 
-  def resource(context: JProxyContext, file: Path, zoneId: ZoneId, label: String)
-  : JResource[JLogFileIndex] =
+  def build(context: JProxyContext, file: Path, zoneId: ZoneId, label: String)
+  : CompletableFuture[JLogFileIndex] =
     import context.given_IORuntime
-    JResource:
-      LogFileIndex.resource(file, zoneId, label)
-        .map(JLogFileIndex(_))
+    LogFileIndex.build(file, zoneId, label)
+      .map(JLogFileIndex(_))
+      .unsafeToCompletableFuture()
