@@ -42,11 +42,11 @@ object LogFileReader:
   val UniqueHeaderSize = 30
 
   private val HeaderLinePattern =
-    val datetime = """\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d[.,]\d{3,9}(?:Z|[+-]\d\d(:?\d\d)?)?""".r
+    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
     s"""^$HighlightRegex?($datetime) """.r.pattern
 
   private val LogLinePattern: Pattern =
-    val datetime = """\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d[.,]\d{3,9}""".r
+    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}""".r
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
     val threadInBrackets = """\[[^]]+]""".r  // Very slow!
     val logger = """[\p{Alnum}._$-]+""".r
@@ -55,8 +55,7 @@ object LogFileReader:
     //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
     Regex(s"""^$HighlightRegex?($datetime) $level """).pattern
 
-
-  private val headerDateTimeFormatter: DateTimeFormatter =
+  private val HeaderDateTimeParser: DateTimeFormatter =
     val base =
       new DateTimeFormatterBuilder()
         .appendPattern("yyyy-MM-dd")
@@ -106,7 +105,7 @@ object LogFileReader:
         array(array.length - 2) = array(array.length - 1)
         end -= 1
 
-      headerDateTimeFormatter
+      HeaderDateTimeParser
         .parseBest(scala.runtime.ArrayCharSequence(array, 0, end), OffsetDateTime.from, LocalDateTime.from)
         .match
           case o: OffsetDateTime => o.toInstant

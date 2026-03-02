@@ -40,7 +40,7 @@ extends AutoCloseable:
 
   def setPosition(position: Long): IO[Unit] =
     IO.blocking:
-      logger.trace(s"setPosition $position")
+      //logger.trace(s"setPosition $position")
       _next = null
       channel.position(position)
 
