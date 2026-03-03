@@ -1,16 +1,15 @@
-package js7.base.log
+package js7.base.log.reader
 
-import cats.effect.IO
+import cats.effect.{IO, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.io.file.LogFileReader.parseTimestampInLogLine
-import js7.base.log.AnsiEscapeCodes.removeHighlights
-import js7.base.log.LogFileIndex.*
+import js7.base.log.Logger
+import js7.base.log.reader.LogFileIndex.*
+import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
 import js7.base.metering.CallMeter
 import js7.base.time.EpochNano
 import js7.base.time.JavaTimeExtensions.toEpochNano
@@ -41,94 +40,47 @@ final class LogFileIndex private(
   nanoToPos: java.util.NavigableMap[EpochNano, Long],
   zoneId: ZoneId):
 
-  // TODO LogLineKey braucht den LogFileIndex nicht!
+  import ByteSeqFileReader.BufferSize as DefaultBufferSize
 
-  def streamLines(begin: Instant | LogLineKey, end: Option[Instant] = None)
+  def streamLines(begin: Instant, end: Option[Instant] = None, byteChunkSize: Int = DefaultBufferSize)
   : Stream[IO, Chunk[Byte]] =
-    streamPosAndLines(begin, end)
-      .map(_._2)
-
-  def streamKeyedLines(begin: Instant | LogLineKey, end: Option[Instant] = None)
-  : Stream[IO, KeyedLogLine] =
-    streamPosAndLines(begin, end).map: (pos, byteLine) =>
-      KeyedLogLine(Instant.EPOCH, pos, removeHighlights(byteLine.utf8String))
-
-  def streamPosAndLines(begin: Instant | LogLineKey, end: Option[Instant])
-  : Stream[IO, (Long, Chunk[Byte])] =
-    Stream.suspend:
-      begin match
-        case instant: Instant =>
-          streamPosAndLinesFromInstant(instant, end)
-        case logLineKey: LogLineKey =>
-          streamPosAndLinesFromPosition(logLineKey.position)
-            .drop(1)
-            .through:
-              takeUntilInstant(end)
-
-  def streamPosAndLinesFromInstant(begin: Instant, end: Option[Instant] = None)
-  : Stream[IO, (Long, Chunk[Byte])] =
-    readerStream.flatMap: reader =>
-      val toNanos = FastTimestampParser(zoneId)
-      val beginEpochNano = begin.toEpochNano
-      val position = findPositionOf(beginEpochNano)
-      Stream.exec:
-        reader.setPosition(position)
-      .append:
-        reader.stream.takeWhile(_.nonEmpty)
-          .through:
-            byteChunksToLines
-          .scanChunks(position): (pos, lines) =>
-            lines.mapAccumulate(pos): (pos, line) =>
-              (pos + line.size) -> (pos -> line)
-          .dropWhile: (_, byteLine) =>
-            parseTimestampInLogLine(byteLine)(toNanos.apply) < beginEpochNano
-          .through:
-            takeUntilInstant(end)
-
-  def streamPosAndLinesFromPosition(position: Long)
-  : Stream[IO, (Long, Chunk[Byte])] =
-    readerStream.flatMap: reader =>
-      Stream.exec:
-        reader.setPosition(position)
-      .append:
-        reader.stream.takeWhile(_.nonEmpty)
-          .through:
-            byteChunksToLines
-          .scanChunks(position): (pos, lines) =>
-            lines.mapAccumulate(pos): (pos, line) =>
-              (pos + line.size) -> (pos -> line)
-
-  private def readerStream: Stream[IO, ByteSeqFileReader[Chunk[Byte]]] =
     Stream.resource:
-      ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
+      logFileReader(byteChunkSize = byteChunkSize)
+    .flatMap: logFileReader =>
+      streamPosAndLines(logFileReader, begin, end)
+        .map(_._2)
 
-
-  private def takeUntilInstant(instant: Option[Instant])
-  : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
-    stream =>
-      instant.fold(stream): instant =>
-        val toNanos = FastTimestampParser(zoneId)
-        val endEpochNano = instant.toEpochNano
-        stream.takeWhile: (_, byteLine) =>
-          val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
-          epochNano < endEpochNano
-
-  def instantToFilePosition(instant: Instant): IO[Option[Long]] =
+  def instantToFilePosition(logFileReader: LogFileReader, instant: Instant): IO[Option[Long]] =
     IO.defer:
-      val beginNano = instant.toEpochNano
-      val toNanos = FastTimestampParser(zoneId)
-      streamPosAndLinesFromInstant(instant).head
+      val position = findBlockPositionOf(instant.toEpochNano)
+      streamPosAndLines(logFileReader, instant).head
         .compile.last
         .map(_.map(_._1))
 
+  def streamPosAndLines(logFileReader: LogFileReader, begin: Instant, end: Option[Instant] = None)
+  : Stream[IO, (Long, Chunk[Byte])] =
+    Stream.suspend:
+      val toNanos = FastTimestampParser(zoneId)
+      val beginEpochNano = begin.toEpochNano
+      val position = findBlockPositionOf(begin.toEpochNano)
+      logFileReader.streamPosAndLines(position)
+        .dropWhile: (_, byteLine) =>
+          parseTimestampInLogLine(byteLine)(toNanos.apply) < beginEpochNano
+        .through:
+          logFileReader.takeUntilInstant(end, toNanos)
+
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
-  private def findPositionOf(beginEpochNano: EpochNano): Long =
+  private def findBlockPositionOf(beginEpochNano: EpochNano): Long =
     nanoToPos.floorEntry(beginEpochNano) match
       case null => 0 // Start of logFile
       //case null => nanoToPos.firstEntry().getValue
       case o => o.getValue
 
-  override def toString = s"LogFileIndex(${nanoToPos.size}×${toKiBGiB(BytesPerEntry)})"
+  def logFileReader(byteChunkSize: Int = DefaultBufferSize): ResourceIO[LogFileReader] =
+    LogFileReader.resource(logFile, zoneId, byteChunkSize = byteChunkSize)
+
+  override def toString =
+    s"LogFileIndex(${nanoToPos.size}×${toKiBGiB(BytesPerEntry)})"
 
 
 object LogFileIndex:
@@ -136,7 +88,7 @@ object LogFileIndex:
     *
     * 1 MB gives good performance for index building.
     *
-    * Due to a `prefetch` operation, two of these buffers a used.
+    * Due to two `prefetch` operation, three times as much memory is used.
     */
   private val ByteBufferSize = 1024 * 1024
   private[log] inline val BytesPerEntry = 4096 // One index entry per 4KiB-block

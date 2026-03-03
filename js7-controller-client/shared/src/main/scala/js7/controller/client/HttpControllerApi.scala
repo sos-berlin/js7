@@ -8,7 +8,8 @@ import java.util.Locale
 import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
-import js7.base.log.{KeyedLogLine, LogLevel, LogLineKey}
+import js7.base.log.LogLevel
+import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.session.SessionApi
 import js7.base.web.Uris.encodeQuery
 import js7.base.web.{HttpClient, Uri}

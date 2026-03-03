@@ -9,8 +9,8 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.ByteSeqFileReaderTest.*
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.LogFileReader.UniqueHeaderSize
 import js7.base.log.Logger
+import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -37,6 +37,33 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
       ByteSeqFileReader.stream[ByteSeq](file, byteChunkSize = ByteSeqFileReader.BufferSize)
         .compile.foldMonoid.map: bigChunk =>
           assert(bigChunk == content)
+
+  "position" in:
+    temporaryFileResource[IO]("ByteSeqFileReaderTest").use: file =>
+      file := "0123456789"
+      ByteSeqFileReader.resource[ByteArray](file, bufferSize = 4).use: reader =>
+        assert(reader.position == 0)
+        reader.read.map: byteArray =>
+          assert(byteArray == ByteArray("0123"))
+          assert(reader.position == 4)
+        .productR:
+          reader.setPosition(4).map: _ =>
+            assert(reader.position == 4)
+        .productR:
+          reader.read.map: byteArray =>
+            assert(byteArray == ByteArray("4567"))
+            assert(reader.position == 8)
+        .productR:
+          reader.setPosition(1).map: _ =>
+            assert(reader.position == 1)
+        .productR:
+          reader.peek.map: byteArray =>
+            assert(byteArray == ByteArray("1234"))
+            assert(reader.position == 1)
+        .productR:
+          reader.read.map: byteArray =>
+            assert(byteArray == ByteArray("1234"))
+            assert(reader.position == 5)
 
   "Poll file size speed" in:
     if isIntelliJIdea then

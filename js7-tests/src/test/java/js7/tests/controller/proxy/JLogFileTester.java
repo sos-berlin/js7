@@ -5,8 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import js7.base.log.KeyedLogLine;
 import js7.base.log.LogLevel;
+import js7.base.log.reader.KeyedLogLine;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerProxy;
@@ -41,6 +41,7 @@ public final class JLogFileTester {
                 var lastKey = keyedLogLines.get(keyedLogLines.size() - 1).key();
                 return proxy.keyedLogLineFlux(LogLevel.debug(), lastKey, /*lines=*/2)
                     .flatMapIterable(identity())
+                    .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
                     .toFuture()
                     .thenApply(moreLines ->

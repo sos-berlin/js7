@@ -1,13 +1,14 @@
-package js7.base.log
+package js7.base.log.reader
 
 import java.time.{Instant, ZoneId}
 import js7.base.log.AnsiEscapeCodes.bold
-import js7.base.log.FastTimestampParser.parseTimestampAsNanos
-import js7.base.log.FastTimestampParserTest.*
+import js7.base.log.Logger
+import js7.base.log.reader.FastTimestampParser.parseTimestampAsNanos
+import js7.base.log.reader.FastTimestampParserTest.*
 import js7.base.test.OurTestSuite
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.duration.Deadline
 

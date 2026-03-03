@@ -2,6 +2,7 @@ package js7.base.log
 
 import java.time.ZoneId
 import js7.base.log.AnsiEscapeCodes.{blue, bold, highlight}
+import js7.base.log.reader.FastTimestampParser
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.benchmark.OurBenchmark

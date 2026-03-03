@@ -1,4 +1,4 @@
-package js7.base.log
+package js7.base.log.reader
 
 import java.time.Instant
 import js7.base.problem.{Checked, Problem}

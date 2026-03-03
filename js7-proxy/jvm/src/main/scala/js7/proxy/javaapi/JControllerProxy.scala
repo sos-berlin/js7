@@ -12,7 +12,8 @@ import js7.base.auth.Admission
 import js7.base.catsutils.Environment.environment
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{KeyedLogLine, LogLevel, LogLineKey, Logger}
+import js7.base.log.reader.{KeyedLogLine, LogLineKey}
+import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Problem
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.Nel

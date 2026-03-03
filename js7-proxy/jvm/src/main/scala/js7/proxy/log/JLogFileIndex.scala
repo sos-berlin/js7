@@ -8,7 +8,7 @@ import java.util.{Optional, OptionalLong}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.AnsiEscapeCodes.removeHighlights
-import js7.base.log.LogFileIndex
+import js7.base.log.reader.LogFileIndex
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.JProxyContext
 import reactor.core.publisher.Flux
@@ -18,15 +18,19 @@ import scala.jdk.OptionShape.*
 final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
   def lineFlux(begin: Instant, end: Optional[Instant]): Flux[String] =
-    logFileIndex.streamPosAndLinesFromInstant(begin = begin, end = end.toScala)
-      .map: (_, byteLine) =>
-        removeHighlights(byteLine.utf8String)
-      .asFlux
+    fs2.Stream.resource:
+      logFileIndex.logFileReader()
+    .flatMap:
+      logFileIndex.streamPosAndLines(_, begin = begin, end = end.toScala)
+        .map: (_, byteLine) =>
+          removeHighlights(byteLine.utf8String)
+    .asFlux
 
   def instantToFilePosition(instant: Instant): CompletableFuture[OptionalLong] =
-    logFileIndex.instantToFilePosition(instant)
-      .map(_.toJavaPrimitive)
-      .unsafeToCompletableFuture()
+    logFileIndex.logFileReader().use:
+      logFileIndex.instantToFilePosition(_, instant)
+    .map(_.toJavaPrimitive)
+    .unsafeToCompletableFuture()
 
 
 object JLogFileIndex:

@@ -58,6 +58,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
   private val jAdmissions = asList(JAdmission(controllerAdmission))
 
   "Scala" in:
+    val instant = Instant.now
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest Scala! 🌶️🌶️🌶️"
     logger.info(logText)
     controllerApiResource.use: controllerApi =>

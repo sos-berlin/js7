@@ -1,4 +1,4 @@
-package js7.base.log
+package js7.base.log.reader
 
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
@@ -11,11 +11,13 @@ import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
 import java.util.zip.GZIPInputStream
 import js7.base.data.ByteArray
+import js7.base.io.file.FileDeleter
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.LogFileReader.UniqueHeaderSize
-import js7.base.io.file.{FileDeleter, LogFileReader}
-import js7.base.log.LogDirectoryIndex.*
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.reader.LogDirectoryIndex.*
+import js7.base.log.reader.LogFileIndex
+import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.service.Service
 import js7.base.time.EpochNano
 import js7.base.utils.AutoClosing.autoClosing
@@ -56,7 +58,7 @@ final class LogDirectoryIndex(logDirectory: Path, zoneId: ZoneId)
               .void
             .as(None)
 
-  def streamSection(begin: Instant): Stream[IO, Chunk[Byte]] =
+  def streamSection(begin: Instant, byteChunkSize: Int): Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       if instantToLogEntry.isEmpty then
         Stream.empty
@@ -64,22 +66,22 @@ final class LogDirectoryIndex(logDirectory: Path, zoneId: ZoneId)
         val logFile = instantToLogEntry.floorEntry(begin) match
           case null => instantToLogEntry.firstEntry().getValue
           case o => o.getValue
-        streamAndContinueWithNextFile(begin, logFile)
+        streamAndContinueWithNextFile(begin, logFile, byteChunkSize = byteChunkSize)
 
-  private def streamSectionAfter(instant: Instant): Stream[IO, Chunk[Byte]] =
+  private def streamAndContinueWithNextFile(instant: Instant, logFile: LogFile, byteChunkSize: Int) =
+    Stream.eval:
+      toDeferredIndex(logFile)
+    .flatMap: deferredIndex =>
+      deferredIndex.logFileIndex.streamLines(instant, byteChunkSize = byteChunkSize)
+    .append:
+      streamSectionAfter(logFile.instant, byteChunkSize = byteChunkSize)
+
+  private def streamSectionAfter(instant: Instant, byteChunkSize: Int): Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       Option:
         instantToLogEntry.higherEntry(instant)
       .map(_.getValue).fold(Stream.empty): logFile =>
-        streamAndContinueWithNextFile(instant, logFile)
-
-  private def streamAndContinueWithNextFile(instant: Instant, logFile: LogFile) =
-    Stream.eval:
-      toDeferredIndex(logFile)
-    .flatMap: deferredIndex =>
-      deferredIndex.logFileIndex.streamLines(instant)
-    .append:
-      streamSectionAfter(logFile.instant)
+        streamAndContinueWithNextFile(instant, logFile, byteChunkSize = byteChunkSize)
 
   private def toDeferredIndex(logFile: LogFile): IO[DeferredIndex] =
     logFile.deferredIndex.evalUpdateAndGet:
@@ -107,10 +109,11 @@ final class LogDirectoryIndex(logDirectory: Path, zoneId: ZoneId)
 
   override def toString = s"LogDirectoryIndex($logDirectory, ${instantToLogEntry.size} files)"
 
+
 object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
 
-  def service(logDirectory: Path, zoneId: ZoneId): ResourceIO[LogDirectoryIndex] =
+  def resource(logDirectory: Path, zoneId: ZoneId): ResourceIO[LogDirectoryIndex] =
     Service:
       new LogDirectoryIndex(logDirectory, zoneId)
 

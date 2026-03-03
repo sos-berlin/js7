@@ -1,4 +1,4 @@
-package js7.base.io.file
+package js7.base.log.reader
 
 import cats.effect.IO
 import cats.effect.std.Queue
@@ -8,10 +8,10 @@ import java.time.{Instant, ZoneId, ZonedDateTime}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.LogFileReader.{UniqueHeaderSize, growingLogFileStream, matchTimestampInLogLine, parseTimestampInHeaderLine, parseTimestampInLogLine}
-import js7.base.io.file.LogFileReaderTest.*
 import js7.base.log.AnsiEscapeCodes.bold
-import js7.base.log.{FastTimestampParser, Logger}
+import js7.base.log.Logger
+import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, growingLogFileStream, matchTimestampInLogLine, parseTimestampInHeaderLine, parseTimestampInLogLine}
+import js7.base.log.reader.LogFileReaderTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*

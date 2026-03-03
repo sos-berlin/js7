@@ -23,12 +23,16 @@ public final class JLogFileIndexTester {
                         test2(proxyContext, file, zoneId)));
     }
 
-    static CompletableFuture<Void> test1(JProxyContext proxyContext, Path file, ZoneId zoneId, List<String> lines) {
+    static CompletableFuture<Void> test1(
+        JProxyContext proxyContext,
+        Path file,
+        ZoneId zoneId,
+        List<String> lines) {
         return
             JLogFileIndex.build(proxyContext, file, zoneId).thenCompose(logFileIndex ->
                 logFileIndex.instantToFilePosition(Instant.parse("2026-02-12T14:00:01+02:00"))
                     .thenAccept(position ->
-                        assertThat(position.getAsLong(), equalTo((long)lines.get(0).length()/*pure ASCII*/))));
+                        assertThat(position.getAsLong(), equalTo((long) lines.get(0).length()/*pure ASCII*/))));
     }
 
     static CompletableFuture<Void> test2(JProxyContext proxyContext, Path file, ZoneId zoneId) {

@@ -22,7 +22,7 @@ extends AutoCloseable:
   private val channel = FileChannel.open(file, READ)
   private val buffer = ByteBuffer.allocate(bufferSize)
   private var _next: ByteSeq | Null = null
-  private var nextPosition: Long = 0
+  private var _nextPosition: Long = 0
 
   def close(): Unit =
     channel.close()
@@ -30,19 +30,26 @@ extends AutoCloseable:
   def size(): Long =
     channel.size()
 
-  //def position: Long =
-  //  _next match
-  //    case null => channel.position
-  //    case byteSeq: ByteSeq @unchecked => channel.position - byteSeq.length
+  def position: Long =
+    _nextPosition
 
   def seekToEnd: IO[Unit] =
     setPosition(size())
 
   def setPosition(position: Long): IO[Unit] =
-    IO.blocking:
-      //logger.trace(s"setPosition $position")
-      _next = null
-      channel.position(position)
+    // TODO Probably it's more efficient to clip next buffer size after positing
+    IO.defer:
+      if position == _nextPosition then
+        IO.unit
+      else if position == channel.position then
+        _next = null
+        IO.unit
+      else
+        IO.blocking:
+          logger.trace(s"setPosition from ${channel.position} to $position")
+          _next = null
+          channel.position(position)
+          _nextPosition = position
 
   def peek: IO[ByteSeq] =
     IO.defer:
@@ -59,6 +66,9 @@ extends AutoCloseable:
     IO.defer:
       if _next != null then throw IllegalStateException("read(size) called after peek()")
       readBuffer(ByteBuffer.allocate(size))
+    .map: byteSeq =>
+      _nextPosition = channel.position
+      byteSeq
 
   def read: IO[ByteSeq] =
     IO.defer:
@@ -68,6 +78,9 @@ extends AutoCloseable:
         case byteSeq: ByteSeq @unchecked =>
           _next = null
           IO.pure(byteSeq)
+    .map: byteSeq =>
+      _nextPosition = channel.position
+      byteSeq
 
   private def readBuffer(buffer: ByteBuffer): IO[ByteSeq] =
     IO.blocking:
@@ -82,7 +95,7 @@ extends AutoCloseable:
 
 
 object ByteSeqFileReader:
-  private[io] val BufferSize = 64*1024
+  val BufferSize = 64*1024
   private val logger = Logger[this.type]
   private val EmptyByteBuffer = ByteBuffer.allocate(0)
 

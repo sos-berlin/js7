@@ -1,10 +1,11 @@
-package js7.base.log
+package js7.base.log.reader
 
 import java.lang.System.arraycopy
 import java.nio.CharBuffer
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
 import java.time.{LocalDateTime, ZoneId}
-import js7.base.log.FastTimestampParser.*
+import js7.base.log.Logger
+import js7.base.log.reader.FastTimestampParser.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano

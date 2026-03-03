@@ -1,4 +1,4 @@
-package js7.base.log
+package js7.base.log.reader
 
 import cats.effect.{IO, Resource}
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
@@ -12,8 +12,9 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryFileResource
 import js7.base.log.AnsiEscapeCodes.{bold, removeHighlights}
-import js7.base.log.LogFileIndexTest.*
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.reader.LogFileIndexTest.*
 import js7.base.metering.CallMeter
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
@@ -47,7 +48,9 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
         LogFileIndex.build(file, zoneId).flatMap: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(begin).map(_.utf8String).head.compile.last
+            logFileIndex.streamLines(begin)
+              .map(_.utf8String)
+              .head.compile.last
 
           for
             _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>

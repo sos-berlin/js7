@@ -1,13 +1,17 @@
-package js7.base.log
+package js7.base.log.reader
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json}
 import java.time.Instant
 import js7.base.circeutils.JavaDataJsonCodecs.instant.NumericInstantJsonCodec
+import js7.base.log.AnsiEscapeCodes
 import js7.base.time.JavaTimeExtensions.toEpochNano
 
 final case class KeyedLogLine(key: LogLineKey, line: String):
   export key.{instant, position}
+
+  def removeHighlights: KeyedLogLine =
+    copy(line = AnsiEscapeCodes.removeHighlights(line))
 
 
 object KeyedLogLine:

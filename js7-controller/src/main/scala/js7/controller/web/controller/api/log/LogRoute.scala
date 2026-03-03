@@ -1,7 +1,9 @@
 package js7.controller.web.controller.api.log
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
+import fs2.Stream
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
@@ -13,8 +15,9 @@ import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.io.file.LogFileReader.growingLogFileStream
-import js7.base.log.{LogFileIndex, LogLineKey, Logger}
+import js7.base.log.Logger
+import js7.base.log.reader.LogFileReader.growingLogFileStream
+import js7.base.log.reader.{LogFileIndex, LogFileReader, LogLineKey}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
@@ -105,31 +108,42 @@ trait LogRoute extends ControllerRouteProvider:
         .interruptWhenF(shutdownSignaled)
 
   private def section(logFile: Path, begin: Instant | LogLineKey): Route =
-    //val label = relativise(dataDirectory, logFile).toString
-    parameter("lines".as[Long].?): lineCount =>
+    parameter("lines".as[Long].?): lineLimit =>
       completeWithStream(`text/plain(UTF-8)`):
-        fs2.Stream.eval:
-          LogFileIndex.build(logFile)
-        .flatMap: logFileIndex =>
-          logFileIndex.streamLines(begin)
-            //.map:
-            //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
-            .pipeMaybe(lineCount): (stream, n) =>
-              stream.take(n)
+        toStream(logFile, begin, lineLimit): (logFileReader, position) =>
+          logFileReader.streamLines(position)
             .chunks
             .rechunkToByteStringSporadic(httpChunkSize)
             .map(_.toByteString)
       ~
         completeWithStream(`application/x-ndjson`):
-          fs2.Stream.eval:
+          toStream(logFile, begin, lineLimit): (logFileReader, position) =>
+            logFileReader.streamKeyedLines(position)
+          .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+
+  private def toStream[A](logFile: Path, begin: Instant | LogLineKey, lineLimit: Option[Long])
+   (toStream: (LogFileReader, Long) => Stream[IO, A])
+  : Stream[IO, A] =
+    Stream.resource:
+      LogFileReader.resource(logFile, ZoneId.systemDefault, byteChunkSize = httpChunkSize)
+    .flatMap: logFileReader =>
+      begin.match
+        case instant: Instant =>
+          Stream.eval:
             LogFileIndex.build(logFile)
           .flatMap: logFileIndex =>
-            logFileIndex.streamKeyedLines(begin)
-              //.map:
-              //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
-              .pipeMaybe(lineCount): (stream, n) =>
-                stream.take(n)
-              .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+            Stream.eval:
+              logFileIndex.instantToFilePosition(logFileReader, instant)
+            .flatMap:
+              _.fold(Stream.empty): position =>
+                toStream(logFileReader, position)
+        case logLineKey: LogLineKey =>
+          toStream(logFileReader, logLineKey.position)
+            .drop(1) // Begin with the line after the position
+      //.map:
+      //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
+      .pipeMaybe(lineLimit): (stream, n) =>
+        stream.take(n)
 
 
 object LogRoute:
