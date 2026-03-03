@@ -79,10 +79,10 @@ object Stopwatch:
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
     if n < 10_000_000 then
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000, "kB", gap = false)
-    else if n < 10_000_000_000L then
-      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000, "·MB", gap = false)
+    else if n < 1_000_000_000L then
+      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000, "MB")
     else
-      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000_000, "·GB", gap = false)
+      durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000_000, "GB")
 
   def durationAndPerSecondString(duration: FiniteDuration, n: BigDecimal, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toShortString
@@ -130,7 +130,7 @@ object Stopwatch:
       duration / n
 
     def showPerSecond: Boolean =
-      n >= 10 && duration >= 100.ms && singleDuration <= 1.s || n > 100_00
+      /*n >= 10 && */duration >= 100.ms && singleDuration <= 1.s || n > 100_00
 
     def perSecondString: String =
       if duration.toNanos == 0 then
