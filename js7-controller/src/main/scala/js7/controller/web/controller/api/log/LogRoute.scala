@@ -21,7 +21,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichThrowable}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
@@ -112,6 +112,8 @@ trait LogRoute extends ControllerRouteProvider:
     parameter("lines".as[Long].?): lineLimit =>
       completeWithStream(`text/plain(UTF-8)`):
         toStream(logLevel, begin)
+          .pipeMaybe(lineLimit):
+            _.take(_)
           .map(_.byteLine)
           .chunks
           .rechunkToByteStringSporadic(httpChunkSize)
@@ -119,6 +121,8 @@ trait LogRoute extends ControllerRouteProvider:
       ~
         completeWithStream(`application/x-ndjson`):
           toStream(logLevel, begin)
+            .pipeMaybe(lineLimit):
+              _.take(_)
             .map(_.toKeyedLogLine)
             .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
 
