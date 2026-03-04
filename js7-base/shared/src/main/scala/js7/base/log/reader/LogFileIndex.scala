@@ -47,17 +47,17 @@ final class LogFileIndex private(
     Stream.resource:
       logFileReader(byteChunkSize = byteChunkSize)
     .flatMap: logFileReader =>
-      streamPosAndLines(logFileReader, begin, end)
+      streamPosAndLine(logFileReader, begin, end)
         .map(_._2)
 
   def instantToFilePosition(logFileReader: LogFileReader, instant: Instant): IO[Option[Long]] =
     IO.defer:
       val position = findBlockPositionOf(instant.toEpochNano)
-      streamPosAndLines(logFileReader, instant).head
+      streamPosAndLine(logFileReader, instant).head
         .compile.last
         .map(_.map(_._1))
 
-  def streamPosAndLines(logFileReader: LogFileReader, begin: Instant, end: Option[Instant] = None)
+  def streamPosAndLine(logFileReader: LogFileReader, begin: Instant, end: Option[Instant] = None)
   : Stream[IO, (Long, Chunk[Byte])] =
     Stream.suspend:
       val toNanos = FastTimestampParser(zoneId)

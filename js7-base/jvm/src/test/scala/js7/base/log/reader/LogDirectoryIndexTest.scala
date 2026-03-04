@@ -12,6 +12,7 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.log.LogLevel.Info
 import js7.base.log.Logger
 import js7.base.log.reader.LogDirectoryIndexTest.*
 import js7.base.test.OurAsyncTestSuite
@@ -39,9 +40,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 out.write:
                   s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $s\n".getBytes(UTF_8)
       .productR:
-        LogDirectoryIndex.resource(dir, zoneId).use: logDirectoryIndex =>
-          logDirectoryIndex.streamSection(startInstant, byteChunkSize = 8192)
-            .map(_.utf8String)
+        LogDirectoryIndex.resource(Info, zoneId, dir).use: logDirectoryIndex =>
+          logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
+            .map(_.byteLine.utf8String)
             .compile.toList.map: lines =>
               assert(lines == List(
               //"2026-03-01 00:00:00.000+0200 HEADER\n",

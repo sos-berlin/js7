@@ -8,7 +8,7 @@ opaque type EpochNano = Long
 
 object EpochNano:
   val Zero: EpochNano = 0L
-  private inline val nix = Long.MinValue
+  private inline val nix = -7_777_777_777_777_777_777L // A noticeable number
   val Nix: EpochNano = nix
   private val zeroJson = Json.fromInt(0)
 

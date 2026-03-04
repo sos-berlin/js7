@@ -21,7 +21,7 @@ final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
     fs2.Stream.resource:
       logFileIndex.logFileReader()
     .flatMap:
-      logFileIndex.streamPosAndLines(_, begin = begin, end = end.toScala)
+      logFileIndex.streamPosAndLine(_, begin = begin, end = end.toScala)
         .map: (_, byteLine) =>
           removeHighlights(byteLine.utf8String)
     .asFlux

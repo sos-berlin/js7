@@ -27,7 +27,7 @@ public final class JLogFileTester {
     static CompletableFuture<Result> test(JControllerProxy proxy, String expectedLogText) {
         assertIsProxyThread(); // Due to JLogFileTest
         return proxy
-            .keyedLogLineFlux(LogLevel.debug(), Instant.now().minusSeconds(3), Integer.MAX_VALUE)
+            .keyedLogLineFlux(LogLevel.info(), Instant.now().minusSeconds(3), Integer.MAX_VALUE)
             .flatMapIterable(identity())
             .doOnNext(keyedLogLine -> {
                 logger.info("➤ " + keyedLogLine.line().stripTrailing());
@@ -39,7 +39,7 @@ public final class JLogFileTester {
             .thenCompose(keyedLogLines -> {
                 //Java 21: var lastKey = keyedLogLines.getLast().key();
                 var lastKey = keyedLogLines.get(keyedLogLines.size() - 1).key();
-                return proxy.keyedLogLineFlux(LogLevel.debug(), lastKey, /*lines=*/2)
+                return proxy.keyedLogLineFlux(LogLevel.info(), lastKey, /*lines=*/2)
                     .flatMapIterable(identity())
                     .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
@@ -63,7 +63,7 @@ public final class JLogFileTester {
     // Same as test as above, but without assertions or logging
     static CompletableFuture<Long> prettyTestNonBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
-            .keyedLogLineFlux(LogLevel.debug(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
+            .keyedLogLineFlux(LogLevel.info(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
             .doOnNext(ignore ->
                 assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())
@@ -88,7 +88,7 @@ public final class JLogFileTester {
 
     static CompletableFuture<Long> prettyTestBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
-            .keyedLogLineFlux(LogLevel.debug(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
+            .keyedLogLineFlux(LogLevel.info(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
             // Switch to a blocking thread pool. Apparently not slower.
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
@@ -104,7 +104,7 @@ public final class JLogFileTester {
 
     static CompletableFuture<Long> testRawNonBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
-            .rawLogLineFlux(LogLevel.debug(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
+            .rawLogLineFlux(LogLevel.info(), Instant.now().minusSeconds(3600), /*lines=*/Long.MAX_VALUE)
             .doOnNext(ignore ->
                 assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {

@@ -16,9 +16,9 @@ import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileReader.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
@@ -29,15 +29,11 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
-final class LogFileReader(val/*???*/ reader: ByteSeqFileReader[Chunk[Byte]], zoneId: ZoneId):
+final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]], zoneId: ZoneId):
 
   def streamLines(position: Long): Stream[IO, Chunk[Byte]] =
     streamPosAndLines(position)
       .map(_._2)
-
-  def streamKeyedLines(position: Long): Stream[IO, KeyedLogLine] =
-    streamPosAndLines(position).map: (pos, byteLine) =>
-      KeyedLogLine(Instant.EPOCH, pos, byteLine.utf8String)
 
   def streamPosAndLines(position: Long): Stream[IO, (Long, Chunk[Byte])] =
     Stream.exec:
@@ -66,7 +62,8 @@ final class LogFileReader(val/*???*/ reader: ByteSeqFileReader[Chunk[Byte]], zon
 object LogFileReader:
   private val logger = Logger[this.type]
 
-  def resource(file: Path, zoneId: ZoneId, byteChunkSize: Int): ResourceIO[LogFileReader] =
+  def resource(file: Path, zoneId: ZoneId, byteChunkSize: Int)
+  : ResourceIO[LogFileReader] =
     ByteSeqFileReader.resource(file, bufferSize = byteChunkSize).map: reader =>
       new LogFileReader(reader, zoneId)
 
@@ -83,7 +80,8 @@ object LogFileReader:
   val UniqueHeaderSize = 30
 
   private val HeaderLinePattern =
-    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
+    val datetime =
+      """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
     s"""^$HighlightRegex?($datetime) """.r.pattern
 
   private val LogLinePattern: Pattern =
@@ -122,7 +120,7 @@ object LogFileReader:
       .optionalEnd()
       // Optional offset, e.g. Z or +02:00
       .optionalStart()
-      .appendOffset("+HHMM", "")
+      .appendOffset("+HHMM", "Z")
       .optionalEnd()
       .toFormatter()
 
@@ -146,8 +144,10 @@ object LogFileReader:
         array(array.length - 2) = array(array.length - 1)
         end -= 1
 
-      HeaderDateTimeParser
-        .parseBest(scala.runtime.ArrayCharSequence(array, 0, end), OffsetDateTime.from, LocalDateTime.from)
+      HeaderDateTimeParser.parseBest(
+          scala.runtime.ArrayCharSequence(array, 0, end),
+          OffsetDateTime.from,
+          LocalDateTime.from)
         .match
           case o: OffsetDateTime => o.toInstant
           case o: LocalDateTime => o.atZone(zoneId).toInstant

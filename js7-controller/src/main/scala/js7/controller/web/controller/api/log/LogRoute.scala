@@ -15,13 +15,13 @@ import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.log.Logger
 import js7.base.log.reader.LogFileReader.growingLogFileStream
-import js7.base.log.reader.{LogFileIndex, LogFileReader, LogLineKey}
+import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
+import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
@@ -50,6 +50,7 @@ trait LogRoute extends ControllerRouteProvider:
 
   private lazy val currentInfoLogFile = config.as[Path]("js7.log.info.file")
   private lazy val currentDebugLogFile = config.as[Path]("js7.log.debug.file")
+  private lazy val logDirectory = currentInfoLogFile.getParent
 
   lazy val logRoute: Route =
     authorizedUser(ValidUserPermission): _ =>
@@ -58,20 +59,20 @@ trait LogRoute extends ControllerRouteProvider:
           streamFile(currentInfoLogFile, growing = true)
       ~
         pathPrefix("info"):
-          fileRoute(currentInfoLogFile)
+          fileRoute(LogLevel.Info, currentInfoLogFile)
       ~
         pathPrefix("debug"):
-          fileRoute(currentDebugLogFile)
+          fileRoute(LogLevel.Debug, currentDebugLogFile)
 
-  private def fileRoute(logFile: Path): Route =
+  private def fileRoute(logLevel: LogLevel, currentLogFile: Path): Route =
     path("raw"):
       seal:
-        streamFile(logFile)
+        streamFile(currentLogFile)
     ~
       pathEnd:
         parameter("begin".as[String].?):
           case None =>
-            streamFile(logFile, growing = true)
+            streamFile(currentLogFile, growing = true)
 
           case Some(beginString) =>
             locally:
@@ -80,7 +81,7 @@ trait LogRoute extends ControllerRouteProvider:
               else
                 stringToInstant(beginString)
             .fold(complete(_), begin =>
-              section(logFile, begin))
+              section(logLevel, begin))
 
   private def streamFile(file: Path, growing: Boolean = false): Route =
     //Fails if file grows while being read (Content-Length mismatch?): getFromFile(currentInfoLogFile, contentType)
@@ -107,44 +108,31 @@ trait LogRoute extends ControllerRouteProvider:
         .map(_.toByteString)
         .interruptWhenF(shutdownSignaled)
 
-  private def section(logFile: Path, begin: Instant | LogLineKey): Route =
+  private def section(logLevel: LogLevel, begin: Instant | LogLineKey): Route =
     parameter("lines".as[Long].?): lineLimit =>
       completeWithStream(`text/plain(UTF-8)`):
-        toStream(logFile, begin, lineLimit): (logFileReader, position) =>
-          logFileReader.streamLines(position)
-            .chunks
-            .rechunkToByteStringSporadic(httpChunkSize)
-            .map(_.toByteString)
+        toStream(logLevel, begin)
+          .map(_.byteLine)
+          .chunks
+          .rechunkToByteStringSporadic(httpChunkSize)
+          .map(_.toByteString)
       ~
         completeWithStream(`application/x-ndjson`):
-          toStream(logFile, begin, lineLimit): (logFileReader, position) =>
-            logFileReader.streamKeyedLines(position)
-          .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+          toStream(logLevel, begin)
+            .map(_.toKeyedLogLine)
+            .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
 
-  private def toStream[A](logFile: Path, begin: Instant | LogLineKey, lineLimit: Option[Long])
-   (toStream: (LogFileReader, Long) => Stream[IO, A])
-  : Stream[IO, A] =
+  private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
+  : Stream[IO, KeyedByteLogLine] =
     Stream.resource:
-      LogFileReader.resource(logFile, ZoneId.systemDefault, byteChunkSize = httpChunkSize)
-    .flatMap: logFileReader =>
-      begin.match
+      LogDirectoryIndex.resource(logLevel, ZoneId.systemDefault, logDirectory)
+    .flatMap: logDirectoryIndex =>
+      begin match
         case instant: Instant =>
-          Stream.eval:
-            LogFileIndex.build(logFile)
-          .flatMap: logFileIndex =>
-            Stream.eval:
-              logFileIndex.instantToFilePosition(logFileReader, instant)
-            .flatMap:
-              _.fold(Stream.empty): position =>
-                toStream(logFileReader, position)
+          logDirectoryIndex.instantToKeyedByteLogLineStream(instant, byteChunkSize = httpChunkSize)
         case logLineKey: LogLineKey =>
-          toStream(logFileReader, logLineKey.position)
-            .drop(1) // Begin with the line after the position
-      //.map:
-      //  removeHighlights  –– MAKE A FAST VARIANT, or let the client do this slow operation
-      .pipeMaybe(lineLimit): (stream, n) =>
-        stream.take(n)
-
+          logDirectoryIndex.keyToKeyedByteLogLineStream(logLineKey, byteChunkSize = httpChunkSize)
+            .drop(1)
 
 object LogRoute:
   private val logger = Logger[LogRoute]

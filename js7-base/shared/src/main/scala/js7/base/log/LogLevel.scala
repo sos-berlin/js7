@@ -1,5 +1,6 @@
 package js7.base.log
 
+import io.circe.{Codec, Encoder}
 import java.util.Locale
 import js7.base.annotation.javaApi
 import js7.base.convert.As
@@ -77,3 +78,7 @@ object LogLevel:
 
   implicit val StringAsLogLevel: As[String, LogLevel] =
     As[String, LogLevel](LogLevel.apply)
+
+  given Codec[LogLevel] = Codec.from(
+    decodeA = _.as[String].map(LogLevel.apply),
+    encodeA = Encoder.encodeString.contramap(_.name))

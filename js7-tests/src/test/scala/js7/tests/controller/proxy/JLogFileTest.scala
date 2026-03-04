@@ -11,7 +11,7 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeUntil
 import js7.base.log.AnsiEscapeCodes.bold
-import js7.base.log.LogLevel.Debug
+import js7.base.log.LogLevel.Info
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.*
@@ -62,7 +62,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest Scala! 🌶️🌶️🌶️"
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
-      controllerApi.getLogLines(Debug, begin = Instant.now - 3.s, lines = Int.MaxValue)
+      controllerApi.getLogLines(Info, begin = Instant.now - 3.s, lines = Int.MaxValue)
         .flatMap: stream =>
           stream.map(_.utf8String)
             .takeUntil: line =>

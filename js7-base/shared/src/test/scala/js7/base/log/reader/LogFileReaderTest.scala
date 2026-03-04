@@ -72,6 +72,12 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
     val zoneId = ZoneId.of("Europe/Mariehamn")
     val toEpochNano = FastTimestampParser(zoneId)
     locally:
+      val line = bold("2026-02-24T08:05:55.244Z Begin JS7 Test · 2.9.0-SNAPSHOT")
+      assert:
+        parseTimestampInHeaderLine(line, zoneId) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244Z").toInstant.toEpochNano
+
+    locally:
       val line = bold("2026-02-24T08:05:55.244+02:00 Begin JS7 Test · 2.9.0-SNAPSHOT")
       assert:
         parseTimestampInHeaderLine(line, zoneId) ==
