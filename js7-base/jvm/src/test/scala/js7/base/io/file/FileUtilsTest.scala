@@ -144,8 +144,8 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         temporaryDirectoryResource("FileUtilsTest-").use: dir =>
           touchFile(dir / "1")
           touchFile(dir / "2")
-          dir.directoryStream[IO].compile.toVector.map: files =>
-            assert(files == Vector(dir / "1", dir / "2"))
+          dir.directoryStream[IO].compile.to(Set).map: files =>
+            assert(files == Set(dir / "1", dir / "2"))
   }
 
   "inputStreamResource" in:
