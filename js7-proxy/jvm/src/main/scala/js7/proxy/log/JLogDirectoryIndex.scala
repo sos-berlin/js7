@@ -41,31 +41,31 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
 object JLogDirectoryIndex:
 
-  def resource(ctx: JProxyContext, logLevel: LogLevel, zoneId: ZoneId, directory: Path)
+  def resource(directory: Path, logLevel: LogLevel, zoneId: ZoneId, ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
-    resource(ctx, logLevel, zoneId, directory, LogDirectoryIndex.isValidFile)
+    resource(directory, LogDirectoryIndex.isValidFile, logLevel, zoneId, ctx)
 
   def resource(
-    ctx: JProxyContext,
-    logLevel: LogLevel,
-    zoneId: ZoneId,
     directory: Path,
-    isValidFile: BiPredicate[LogLevel, Path])
-  : JResource[JLogDirectoryIndex] =
-    import ctx.given_IORuntime
-    resource_(logLevel, zoneId):
-      LogDirectoryIndex.resource(logLevel, zoneId, directory,
-        isValidFile = LogDirectoryIndex.isValidFile)
-
-  def resource(
-    ctx: JProxyContext,
+    isValidFile: BiPredicate[Path, LogLevel],
     logLevel: LogLevel,
     zoneId: ZoneId,
-    files: java.lang.Iterable[Path])
+    ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
     import ctx.given_IORuntime
     resource_(logLevel, zoneId):
-      LogDirectoryIndex.resource(logLevel, zoneId, files.asScala)
+      LogDirectoryIndex.
+        resource(directory, logLevel, isValidFile = LogDirectoryIndex.isValidFile)(using zoneId)
+
+  def resource(
+    files: java.lang.Iterable[Path],
+    logLevel: LogLevel,
+    zoneId: ZoneId,
+    ctx: JProxyContext)
+  : JResource[JLogDirectoryIndex] =
+    import ctx.given_IORuntime
+    resource_(logLevel, zoneId):
+      LogDirectoryIndex.resource(files.asScala, logLevel)(using zoneId)
 
   private def resource_(logLevel: LogLevel, zoneId: ZoneId)
     (to: => ResourceIO[LogDirectoryIndex])

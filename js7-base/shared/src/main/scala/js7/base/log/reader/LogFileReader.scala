@@ -16,9 +16,9 @@ import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileReader.*
-import js7.base.log.{LogLevel, Logger}
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
@@ -29,7 +29,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
-final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]], zoneId: ZoneId):
+final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]])(using ZoneId):
 
   def streamLines(position: Long): Stream[IO, Chunk[Byte]] =
     streamPosAndLines(position)
@@ -48,7 +48,7 @@ final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]], zoneId: ZoneId
 
   def takeUntilInstant(
     instant: Option[Instant],
-    fastTimestampParser: => FastTimestampParser = FastTimestampParser(zoneId))
+    fastTimestampParser: => FastTimestampParser = FastTimestampParser())
   : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
     stream =>
       instant.fold(stream): instant =>
@@ -62,10 +62,10 @@ final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]], zoneId: ZoneId
 object LogFileReader:
   private val logger = Logger[this.type]
 
-  def resource(file: Path, zoneId: ZoneId, byteChunkSize: Int)
+  def resource(file: Path, byteChunkSize: Int)(using zoneId: ZoneId)
   : ResourceIO[LogFileReader] =
     ByteSeqFileReader.resource(file, bufferSize = byteChunkSize).map: reader =>
-      new LogFileReader(reader, zoneId)
+      new LogFileReader(reader)
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
     *
@@ -126,11 +126,11 @@ object LogFileReader:
 
   private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
-  def parseTimestampInHeaderLine[A](line: CharSequence, zoneId: ZoneId): EpochNano =
+  def parseTimestampInHeaderLine[A](line: CharSequence)(using ZoneId): EpochNano =
     parseTimestamp(HeaderLinePattern, line):
-      headerTimestampToEpochNano(_, zoneId)
+      headerTimestampToEpochNano
 
-  private def headerTimestampToEpochNano(string: CharSequence, zoneId: ZoneId): EpochNano =
+  private def headerTimestampToEpochNano(string: CharSequence)(using zoneId: ZoneId): EpochNano =
     try
       val array = new Array[Char](string.length)
       string.getChars(0, string.length, array, 0)

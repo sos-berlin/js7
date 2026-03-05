@@ -129,7 +129,7 @@ trait LogRoute extends ControllerRouteProvider:
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
   : Stream[IO, KeyedByteLogLine] =
     Stream.resource:
-      LogDirectoryIndex.resource(logLevel, ZoneId.systemDefault, logDirectory)
+      LogDirectoryIndex.resource(logDirectory, logLevel)(using ZoneId.systemDefault)
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>

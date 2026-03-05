@@ -14,30 +14,31 @@ import static org.hamcrest.Matchers.startsWith;
 
 public final class JLogFileIndexTester {
 
-    static CompletableFuture<Void> test(Path file, ZoneId zoneId, List<String> lines) {
+    static CompletableFuture<Void> test(Path file, ZoneId zoneId, List<String> writtenLines) {
         return
             JProxyContext.run(
                 ConfigFactory.empty(),
                 proxyContext ->
-                    test1(proxyContext, file, zoneId, lines).thenCompose(ignore ->
-                        test2(proxyContext, file, zoneId)));
+                    test1(file, zoneId, proxyContext, writtenLines).thenCompose(ignore ->
+                        test2(file, zoneId, proxyContext)));
     }
 
     static CompletableFuture<Void> test1(
-        JProxyContext proxyContext,
         Path file,
         ZoneId zoneId,
-        List<String> lines) {
+        JProxyContext proxyContext,
+        List<String> writtenLines)
+    {
         return
-            JLogFileIndex.build(proxyContext, file, zoneId).thenCompose(logFileIndex ->
+            JLogFileIndex.build(file, zoneId, proxyContext).thenCompose(logFileIndex ->
                 logFileIndex.instantToFilePosition(Instant.parse("2026-02-12T14:00:01+02:00"))
                     .thenAccept(position ->
-                        assertThat(position.getAsLong(), equalTo((long) lines.get(0).length()/*pure ASCII*/))));
+                        assertThat(position.getAsLong(), equalTo((long) writtenLines.get(0).length()/*pure ASCII*/))));
     }
 
-    static CompletableFuture<Void> test2(JProxyContext proxyContext, Path file, ZoneId zoneId) {
+    static CompletableFuture<Void> test2(Path file, ZoneId zoneId, JProxyContext proxyContext) {
         return
-            JLogFileIndex.build(proxyContext, file, zoneId).thenCompose(logFileIndex ->
+            JLogFileIndex.build(file, zoneId, proxyContext).thenCompose(logFileIndex ->
                 logFileIndex
                     .lineFlux(
                         Instant.parse("2026-02-12T14:00:01+02:00"),

@@ -33,7 +33,7 @@ object FileUtils:
   private val logger = Logger[this.type]
   val EmptyPath: Path = Paths.get("")
   val WorkingDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath
-  val NoFileNames = Set(Paths.get("."), Paths.get(".."))
+  private val isPointFilename: Set[Path] = Set(Paths.get("."), Paths.get(".."))
 
   def temporaryDirectory: Path = Paths.get(sys.props("java.io.tmpdir"))
 
@@ -161,7 +161,7 @@ object FileUtils:
         .flatMap: javaStream =>
           fs2.Stream.fromIterator(javaStream.iterator.asScala, chunkSize = 1024)
             .filterNot: file =>
-              NoFileNames(file.getFileName)
+              isPointFilename(file.getFileName)
 
       /**
         * Returns the content of the directory denoted by `this`.

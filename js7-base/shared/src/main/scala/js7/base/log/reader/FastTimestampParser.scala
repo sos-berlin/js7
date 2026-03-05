@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
   *
   * Only local timestamps are supported.
   */
-final class FastTimestampParser(zoneId: ZoneId):
+final class FastTimestampParser()(using zoneId: ZoneId):
 
   private val lastSecond = "0000-00-00T00:00:00".toCharArray
   private var lastEpochSecond = 0L
@@ -55,7 +55,7 @@ final class FastTimestampParser(zoneId: ZoneId):
       else
         try
           // Different second
-          val epochNano = parseTimestampAsNanos(CharBuffer.wrap(ts), zoneId)
+          val epochNano = parseTimestampAsNanos(CharBuffer.wrap(ts))
           arraycopy(ts, 0, lastSecond, 0, lastSecond.length)
           lastEpochSecond = epochNano.toLong / 1_000_000_000 * 1_000_000_000
           epochNano
@@ -71,6 +71,6 @@ object FastTimestampParser:
 
   private val meterTimestampParser = CallMeter("FastTimestampParser")
 
-  def parseTimestampAsNanos(string: CharSequence, zoneId: ZoneId) =
+  def parseTimestampAsNanos(string: CharSequence)(using zoneId: ZoneId) =
     LocalDateTime.parse(string, dateTimeFormatter)
       .atZone(zoneId).toInstant.toEpochNano

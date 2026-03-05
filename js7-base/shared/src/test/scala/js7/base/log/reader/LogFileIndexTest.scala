@@ -32,7 +32,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
   override protected def testTimeout: FiniteDuration = 1.h
 
   "Test" in:
-    val zoneId = ZoneId.of("Europe/Mariehamn")
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
         val message = "+" * (LogFileIndex.BytesPerEntry / 2)
@@ -46,7 +46,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n")
         file := lines.mkString
 
-        LogFileIndex.build(file, zoneId).flatMap: logFileIndex =>
+        LogFileIndex.build(file).flatMap: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
             logFileIndex.streamLines(begin)
               .map(_.utf8String)
@@ -70,8 +70,8 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           yield succeed
 
   "Test with test.log" in :
-    sleep(2.ms)
-    val begin = Timestamp.now
+    given ZoneId = ZoneId.systemDefault
+    val begin = Timestamp.now - 1.ms
     logger.info(s"Started $begin")
     sleep(2.ms)
     logger.info("Done")
@@ -93,6 +93,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
             assert(last.isDefined)
 
   "1 GiB debug-log file" - {
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
     "Japanese" in:
       testBigFile("こんにちは") // Code points below U+10000
 

@@ -26,7 +26,8 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
-final class LogDirectoryIndex private(logLevel: LogLevel, zoneId: ZoneId, logFiles: Vector[LogFile])
+final class LogDirectoryIndex private(logFiles: Vector[LogFile], logLevel: LogLevel)
+  (using zoneId: ZoneId)
 extends Service.StoppableByRequest:
 
   import ByteSeqFileReader.BufferSize as DefaultBufferSize
@@ -103,7 +104,7 @@ extends Service.StoppableByRequest:
       toDeferredIndex(logFile) // TODO DON'T BUILD logFile.logFileIndex. Only decompressed file is required
     .flatMap: deferredIndex =>
       Stream.resource:
-        LogFileReader.resource(deferredIndex.file, zoneId, byteChunkSize = byteChunkSize)
+        LogFileReader.resource(deferredIndex.file, byteChunkSize = byteChunkSize)
     .flatMap: reader =>
       reader.streamPosAndLines(position).map: (pos, line) =>
         KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
@@ -135,42 +136,43 @@ extends Service.StoppableByRequest:
           ): in =>
             Files.copy(in, decompressedFile, REPLACE_EXISTING)
       .productR:
-        LogFileIndex.build(decompressedFile, zoneId = zoneId)
+        LogFileIndex.build(decompressedFile)
           .map: logFileIndex =>
             DeferredIndex(logFileIndex, decompressedFile, Some(decompressedFile))
     else
-      LogFileIndex.build(file, zoneId = zoneId).map: logFileIndex =>
+      LogFileIndex.build(file).map: logFileIndex =>
         DeferredIndex(logFileIndex, file)
 
-  override def toString = s"LogDirectoryIndex($logLevel, ${instantToLogFile.size} files)"
+  override def toString =
+    s"LogDirectoryIndex($logLevel, ${instantToLogFile.size} files)"
 
 
 object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
 
   def resource(
-    logLevel: LogLevel,
-    zoneId: ZoneId,
     logDirectory: Path,
-    isValidFile: (LogLevel, Path) => Boolean = isValidFile)
+    logLevel: LogLevel,
+    isValidFile: (Path, LogLevel) => Boolean = isValidFile)
+    (using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
       logDirectory.directoryStream[IO]
         .filter: file =>
-          isValidFile(logLevel, file)
+          isValidFile(file, logLevel)
         .compile.toVector.map: files =>
-          resource(logLevel, zoneId, files)
+          resource(files, logLevel)
 
-  def resource(logLevel: LogLevel, zoneId: ZoneId, files: Iterable[Path])
+  def resource(files: Iterable[Path], logLevel: LogLevel)(using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
-      scanFiles(zoneId, files).map: logFiles =>
+      scanFiles(files).map: logFiles =>
         Service:
-          new LogDirectoryIndex(logLevel, zoneId, logFiles)
+          new LogDirectoryIndex(logFiles, logLevel)
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */
-  private def scanFiles(zoneId: ZoneId, files: Iterable[Path]): IO[Vector[LogFile]] =
+  private def scanFiles(files: Iterable[Path])(using zoneId: ZoneId) =
     def readAll: IO[Vector[LogFile]] =
       fs2.Stream.iterable(files)
         .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
@@ -193,8 +195,8 @@ object LogDirectoryIndex:
             new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize)
           ).flatMap:
             _.traverse: instant =>
-              LogFileIndex.build(file, zoneId = zoneId).map: logFileIndex =>
-                LogFile(instant, file, cell, zoneId)
+              LogFileIndex.build(file).map: logFileIndex =>
+                LogFile(instant, file, cell, zoneId = zoneId)
       .handleError: throwable =>
         logger.debug(s"toLogFile ${file.getFileName}: 💥 ${throwable.toStringWithCauses}")
         None
@@ -206,14 +208,14 @@ object LogDirectoryIndex:
           ByteArray.unsafeWrap(in.readNBytes(UniqueHeaderSize))
         .map: byteArray =>
           byteArray.length == LogFileReader.UniqueHeaderSize thenMaybe :
-            LogFileReader.parseTimestampInHeaderLine(byteArray.utf8String, zoneId) match
+            LogFileReader.parseTimestampInHeaderLine(byteArray.utf8String) match
               case EpochNano.Nix => None
               case epochNano => Some(epochNano.toInstant)
 
     readAll
   end scanFiles
 
-  def isValidFile(logLevel: LogLevel, filename: Path): Boolean =
+  def isValidFile(filename: Path, logLevel: LogLevel): Boolean =
     val name = filename.toString
     !name.startsWith(".") &&
       !name.startsWith("~") &&

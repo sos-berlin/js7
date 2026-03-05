@@ -35,12 +35,12 @@ final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
 object JLogFileIndex:
 
-  def build(context: JProxyContext, file: Path, zoneId: ZoneId): CompletableFuture[JLogFileIndex] =
-    build(context, file, zoneId, file.getFileName.toString)
+  def build(file: Path, zoneId: ZoneId, context: JProxyContext): CompletableFuture[JLogFileIndex] =
+    build(file, label = file.getFileName.toString, zoneId, context)
 
-  def build(context: JProxyContext, file: Path, zoneId: ZoneId, label: String)
+  def build(file: Path, label: String, zoneId: ZoneId, context: JProxyContext)
   : CompletableFuture[JLogFileIndex] =
     import context.given_IORuntime
-    LogFileIndex.build(file, zoneId, label)
+    LogFileIndex.build(file, label)(using zoneId)
       .map(JLogFileIndex(_))
       .unsafeToCompletableFuture()

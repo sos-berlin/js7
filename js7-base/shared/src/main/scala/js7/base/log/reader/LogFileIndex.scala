@@ -37,12 +37,15 @@ import scala.concurrent.duration.Deadline
   */
 final class LogFileIndex private(
   logFile: Path,
-  nanoToPos: java.util.NavigableMap[EpochNano, Long],
-  zoneId: ZoneId):
+  nanoToPos: java.util.NavigableMap[EpochNano, Long])
+  (using ZoneId):
 
   import ByteSeqFileReader.BufferSize as DefaultBufferSize
 
-  def streamLines(begin: Instant, end: Option[Instant] = None, byteChunkSize: Int = DefaultBufferSize)
+  def streamLines(
+    begin: Instant,
+    end: Option[Instant] = None,
+    byteChunkSize: Int = DefaultBufferSize)
   : Stream[IO, Chunk[Byte]] =
     Stream.resource:
       logFileReader(byteChunkSize = byteChunkSize)
@@ -60,7 +63,7 @@ final class LogFileIndex private(
   def streamPosAndLine(logFileReader: LogFileReader, begin: Instant, end: Option[Instant] = None)
   : Stream[IO, (Long, Chunk[Byte])] =
     Stream.suspend:
-      val toNanos = FastTimestampParser(zoneId)
+      val toNanos = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
       val position = findBlockPositionOf(begin.toEpochNano)
       logFileReader.streamPosAndLines(position)
@@ -77,7 +80,7 @@ final class LogFileIndex private(
       case o => o.getValue
 
   def logFileReader(byteChunkSize: Int = DefaultBufferSize): ResourceIO[LogFileReader] =
-    LogFileReader.resource(logFile, zoneId, byteChunkSize = byteChunkSize)
+    LogFileReader.resource(logFile, byteChunkSize = byteChunkSize)
 
   override def toString =
     s"LogFileIndex(${nanoToPos.size}×${toKiBGiB(BytesPerEntry)})"
@@ -99,23 +102,20 @@ object LogFileIndex:
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
-  def build(
-    logFile: Path,
-    zoneId: ZoneId = ZoneId.systemDefault,
-    label: String | Missing = Missing)
+  def build(logFile: Path, label: String | Missing = Missing)(using ZoneId)
   : IO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .use: reader =>
-        buildIndex(label getOrElse logFile.getFileName.toString, zoneId):
+        buildIndex(label getOrElse logFile.getFileName.toString):
           reader.stream.takeWhile(_.nonEmpty)
         .map: nanoToPos =>
-          new LogFileIndex(logFile, nanoToPos, zoneId)
+          new LogFileIndex(logFile, nanoToPos)
 
-  private def buildIndex(label: String, zoneId: ZoneId)(stream: Stream[IO, Chunk[Byte]])
+  private def buildIndex(label: String)(stream: Stream[IO, Chunk[Byte]])(using ZoneId)
   : IO[java.util.NavigableMap[EpochNano, Long]] =
     IO.defer:
       val t = Deadline.now
-      buildIndex1(zoneId, stream)
+      buildIndex1(stream)
         .map: (treeMap, byteTotal) =>
           val elapsed = t.elapsed
           if elapsed >= MinimumLogDuration then
@@ -124,14 +124,14 @@ object LogFileIndex:
             logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
           treeMap
 
-  private def buildIndex1(zoneId: ZoneId, stream: Stream[IO, Chunk[Byte]])
+  private def buildIndex1(stream: Stream[IO, Chunk[Byte]])(using ZoneId)
   : IO[(java.util.NavigableMap[EpochNano, Long], Long)] =
     // TODO Check that timestamp is monotonically increasing.
     case class PosAndNext(pos: Long, nextBlock: Long)
     case class NanoAndPos(epochNano: EpochNano, pos: Long)
     IO.defer:
       val buffer = mutable.ArrayBuilder.ofRef[NanoAndPos]
-      val toNanos = FastTimestampParser(zoneId)
+      val toNanos = FastTimestampParser()
       var byteTotal = 0L
       stream.prefetch
         .through:

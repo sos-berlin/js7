@@ -134,6 +134,18 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
       files foreach delete
       delete(dir)
       succeed
+
+    "directoryStream" in:
+      path.directoryStream[IO].handleErrorWith:
+        case _: NotDirectoryException => fs2.Stream.emit("ERROR")
+      .compile.toVector.map: files =>
+        assert(files == Vector("ERROR"))
+      .productR:
+        temporaryDirectoryResource("FileUtilsTest-").use: dir =>
+          touchFile(dir / "1")
+          touchFile(dir / "2")
+          dir.directoryStream[IO].compile.toVector.map: files =>
+            assert(files == Vector(dir / "1", dir / "2"))
   }
 
   "inputStreamResource" in:
