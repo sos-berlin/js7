@@ -1,4 +1,4 @@
-package js7.proxy.log
+package js7.proxy.javaapi.log
 
 import cats.effect.unsafe.IORuntime
 import java.nio.file.Path

@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import js7.base.log.LogLevel;
 import js7.base.log.reader.LogLineKey;
 import js7.proxy.javaapi.JProxyContext;
-import js7.proxy.log.JLogDirectoryIndex;
+import js7.proxy.javaapi.log.JLogDirectoryIndex;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
