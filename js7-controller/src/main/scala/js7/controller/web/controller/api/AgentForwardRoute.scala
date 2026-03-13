@@ -66,28 +66,27 @@ trait AgentForwardRoute extends ControllerRouteProvider:
     def forward1(remainingUrl: String): Route =
       completeIO:
         pathToAgentRefState.map(_.flatMap(_.checked(agentPath)))
-          .flatMapT(agentRefState =>
+          .flatMapT: agentRefState =>
             forward2(agentRefState.agentRef, remainingUrl = remainingUrl)
-              .map(Right.apply))
+              .map(Right.apply)
 
     def forward2(agentRef: AgentRef, remainingUrl: String)
     : IO[HttpResponse] =
-      controllerState
-        .mapmap: s =>
-          val uri = s.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
-          val pekkoUri = uri.asPekko.copy(
-            path = PekkoUri.Path((uri.asPekko.path ?/ "agent" / "api").toString + remainingUrl),
-            rawQueryString = request.uri.rawQueryString)
-          uri -> pekkoUri
-        .flatMap:
-          case Left(problem) =>
-            IO.pure(HttpResponse(
-              problem.httpStatusCode,
-              // Encoding: application/json, or use standard marshaller ???
-              entity = HttpEntity(problem.toString)))
+      controllerState.mapmap: controllerState =>
+        val uri = controllerState.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
+        val pekkoUri = uri.asPekko.copy(
+          path = PekkoUri.Path((uri.asPekko.path ?/ "agent" / "api").toString + remainingUrl),
+          rawQueryString = request.uri.rawQueryString)
+        uri -> pekkoUri
+      .flatMap:
+        case Left(problem) =>
+          IO.pure(HttpResponse(
+            problem.httpStatusCode,
+            // Encoding: application/json, or use standard marshaller ???
+            entity = HttpEntity(problem.toString)))
 
-          case Right((uri, pekkoUri)) =>
-            forwardTo(agentRef, uri, pekkoUri, request.headers)
+        case Right((uri, pekkoUri)) =>
+          forwardTo(agentRef, uri, pekkoUri, request.headers)
 
     def forwardTo(agentRef: AgentRef, uri: Uri, pekkoUri: PekkoUri, headers: Seq[HttpHeader])
     : IO[HttpResponse] =
@@ -111,6 +110,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
                   response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))
 
     route
+  end forward
 
 
 object AgentForwardRoute:
