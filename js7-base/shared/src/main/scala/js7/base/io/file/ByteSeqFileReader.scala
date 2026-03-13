@@ -127,10 +127,16 @@ object ByteSeqFileReader:
     Stream.resource:
       resource(file, bufferSize = byteChunkSize)
     .flatMap:
-      _.stream
-    .takeWhile(_.nonEmpty)
+      _.streamUntilEnd
 
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
+    /** Emit empty ByteSeqs as long as no data is available.
+      *
+      * This Stream never ends.
+      */
     def stream: Stream[IO, ByteSeq] =
       Stream.repeatEval:
         reader.read
+
+    def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
+      stream.takeWhile(_.nonEmpty)

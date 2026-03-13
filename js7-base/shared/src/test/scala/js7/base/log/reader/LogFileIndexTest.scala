@@ -80,7 +80,6 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     LogFileIndex.build(logFile).flatMap: logFileIndex =>
       IO.defer:
         logFileIndex.streamLines(begin = begin.toInstant)
-          .takeWhile(_.nonEmpty)
           .through:
             byteChunksToLines
           .filter: byteLine =>

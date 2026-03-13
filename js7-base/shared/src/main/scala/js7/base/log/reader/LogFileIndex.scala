@@ -107,7 +107,7 @@ object LogFileIndex:
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .use: reader =>
         buildIndex(label getOrElse logFile.getFileName.toString):
-          reader.stream.takeWhile(_.nonEmpty)
+          reader.streamUntilEnd
         .map: nanoToPos =>
           new LogFileIndex(logFile, nanoToPos)
 

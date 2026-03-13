@@ -39,7 +39,7 @@ final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]])(using ZoneId):
     Stream.exec:
       reader.setPosition(position)
     .append:
-      reader.stream.takeWhile(_.nonEmpty)
+      reader.streamUntilEnd
         .through:
           byteChunksToLines
         .scanChunks(position): (pos, lines) =>
