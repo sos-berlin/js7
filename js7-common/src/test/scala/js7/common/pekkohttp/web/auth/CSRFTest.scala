@@ -37,4 +37,4 @@ final class CSRFTest extends OurTestSuite, ScalatestRouteTest:
   "POST text/plain is forbidden" in:
     Post(uri, "STRING") ~> route ~> check:
       assert(status == Forbidden)
-      assert(responseAs[String] == Forbidden.defaultMessage)
+      assert(responseAs[String] == "403 Forbidden\n")

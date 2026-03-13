@@ -21,6 +21,19 @@ object StandardMarshallers:
 
   private val Nl = ByteString("\n")
 
+  /** Different from Pekko's default Marshaller, because it returns the plan reason.
+    *
+    * (Pekko's default Marshaller returns a incomprehensible `defaultMessage` without status code.)
+    */
+  given StatusCodeMarshaller: ToResponseMarshaller[StatusCode] =
+    Marshaller.opaque: statusCode =>
+      HttpResponse(
+        statusCode,
+        entity = if statusCode.allowsEntity then
+          HttpEntity(statusCode.value + "\n")
+        else
+          HttpEntity.Empty)
+
   val StringMarshaller: ToEntityMarshaller[String] =
     Marshaller.withOpenCharset(`text/plain`) { (string, charset) =>
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))

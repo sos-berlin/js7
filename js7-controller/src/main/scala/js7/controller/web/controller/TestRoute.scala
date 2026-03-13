@@ -1,5 +1,6 @@
 package js7.controller.web.controller
 
+import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route

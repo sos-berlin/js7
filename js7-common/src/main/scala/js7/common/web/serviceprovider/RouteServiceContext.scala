@@ -2,6 +2,7 @@ package js7.common.web.serviceprovider
 
 import cats.effect.IO
 import com.typesafe.config.Config
+import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import js7.data.event.{Event, KeyedEvent, Stamped}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.complete

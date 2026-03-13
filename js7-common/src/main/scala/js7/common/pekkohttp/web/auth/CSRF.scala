@@ -1,6 +1,7 @@
 package js7.common.pekkohttp.web.auth
 
 import js7.base.log.Logger
+import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model.HttpRequest
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`}

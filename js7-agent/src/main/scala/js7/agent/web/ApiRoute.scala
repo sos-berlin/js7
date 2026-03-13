@@ -2,6 +2,7 @@ package js7.agent.web
 
 import js7.agent.web.views.RootWebService
 import js7.cluster.web.ClusterRoute
+import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import js7.common.pekkohttp.web.session.SessionRoute
 import js7.journal.web.JournalRoute
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound

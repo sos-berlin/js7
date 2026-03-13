@@ -12,6 +12,7 @@ import js7.base.system.startup.StartUp
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.StandardDirectives.ioRoute
+import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper

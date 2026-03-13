@@ -322,7 +322,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
     "text/plain like HTML form POST is forbidden" in:
       val forbidden = httpClient.postRaw(testUri, Nil, HttpEntity(`text/plain(UTF-8)`, "STRING")).await(99.s)
       assert(forbidden.status == Forbidden)
-      assert(forbidden.utf8String.await(99.s) == Forbidden.defaultMessage)
+      assert(forbidden.utf8String.await(99.s) == "403 Forbidden\n")
   }
 
   "Commands" - {
