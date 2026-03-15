@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import cats.data.NonEmptyList
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import fs2.Stream
@@ -633,6 +634,13 @@ extends
           .flatMap(_.collect:
             case (agentPath, Attachable) => agentPath)
           .toSet
+
+  def agentToDirectorUris(agentPath: AgentPath): Checked[Nel[Uri]] =
+    keyToItem(AgentRef).checked(agentPath).flatMap:
+      _.directors.traverse: subagentId =>
+        keyToItem(SubagentItem).checked(subagentId)
+      .map(_.map(_.uri).toList)
+    .map(NonEmptyList.fromListUnsafe)
 
   /** The Agents for each InventoryItemKey which have not attached the current Item. */
   def itemToIgnorantAgents[I <: InventoryItem](I: InventoryItem.Companion[I])

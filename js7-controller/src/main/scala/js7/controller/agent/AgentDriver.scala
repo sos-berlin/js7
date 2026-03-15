@@ -1,6 +1,5 @@
 package js7.controller.agent
 
-import cats.data.NonEmptyList
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.option.*
@@ -52,7 +51,7 @@ import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, Unsigne
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
-import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.data.subagent.SubagentId
 import js7.journal.Journal
 import org.apache.pekko.actor.ActorSystem
 
@@ -476,17 +475,13 @@ extends Service.StoppableByRequest:
       clusterName = agentPath.toString)
 
   private def clientsResource: ResourceIO[Nel[AgentClient]] =
-    Resource
-      .eval(agentToUris(agentPath).orThrow/*AgentRef and SubagentItems must exist !!!*/)
-      .flatMap(_.traverse(clientResource))
-
-  private def agentToUris(agentPath: AgentPath): IO[Checked[Nel[Uri]]] =
-    for state <- journal.aggregate yield
-      state.keyToItem(AgentRef).checked(agentPath)
-        .flatMap(_.directors
-          .traverse(subagentId => state.keyToItem(SubagentItem).checked(subagentId))
-          .map(_.map(_.uri).toList))
-          .map(NonEmptyList.fromListUnsafe)
+    Resource.eval:
+      journal.aggregate.map:
+        _.agentToDirectorUris(agentPath)
+          .orThrow /*AgentRef and SubagentItems must exist !!!*/
+    .flatMap:
+      _.traverse:
+        clientResource
 
   private def clientResource(uri: Uri): ResourceIO[AgentClient] =
     val agentUserAndPassword = controllerConfiguration.config
