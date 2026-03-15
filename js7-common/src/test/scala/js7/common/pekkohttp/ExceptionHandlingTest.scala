@@ -61,14 +61,17 @@ extends OurTestSuite, ScalatestRouteTest, ExceptionHandling:
     post("/") ~>
       seal {
         complete:
-          throw new HttpStatusCodeException(Forbidden, Problem("PROBLEM"))
+          throw TestForbiddenProblem.throwable
       } ~>
         check:
           assert(status == Forbidden)
-          assert(entityAs[Problem] == Problem("PROBLEM"))
+          assert(entityAs[Problem] == TestForbiddenProblem)
 
   private def post(path: String) = Post("/") ~> Accept(`application/json`)
 
 
 object ExceptionHandlingTest:
   private class TestException(message: String) extends RuntimeException(message), NoStackTrace
+
+  private case object TestForbiddenProblem extends Problem.ArgumentlessCoded:
+    override def httpStatusCode: Int = 403 // Forbidden

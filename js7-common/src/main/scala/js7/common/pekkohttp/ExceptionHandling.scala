@@ -5,13 +5,14 @@ import cats.effect.{Deferred, IO}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Logger
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.ExceptionHandling.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import org.apache.pekko
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
+import org.apache.pekko.http.scaladsl.model.StatusCodes.InternalServerError
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, StatusCode}
 import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractRequest}
 import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, Route}
@@ -38,9 +39,6 @@ trait ExceptionHandling:
 
   implicit protected final lazy val exceptionHandler: ExceptionHandler =
     ExceptionHandler:
-      case e: HttpStatusCodeException =>
-        complete(e.statusCode -> e.problem)
-
       case e: pekko.pattern.AskTimeoutException =>
         ioRoute:
           isShuttingDown.map:
@@ -49,13 +47,13 @@ trait ExceptionHandling:
             case Some(_) =>
               extractRequest: request =>
                 webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
-                complete(ServiceUnavailable -> Problem.pure("Shutting down"))
+                complete(ShuttingDownProblem)
 
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
         extractRequest: request =>
           for t <- e.ifStackTrace do webLogger.debug(toLogMessage(request, e), t)
-          complete(e.problem.httpStatusCode -> e.problem)
+          complete(e.problem)
 
       case e =>
         completeWithError(InternalServerError, e)
