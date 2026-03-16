@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown, AgentStarted}
@@ -19,6 +19,7 @@ import js7.data.event.{EventDriven, EventId, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.node.NodeId
 import js7.data.platform.PlatformInfo
+import js7.data.subagent.SubagentId
 
 final case class AgentRefState(
   agentRef: AgentRef,
@@ -43,6 +44,11 @@ extends
     Right(copy(agentRef = item))
 
   def agentPath: AgentPath = agentRef.path
+
+  def activeDirector: SubagentId =
+    clusterState.isNonEmptyActive(NodeId.backup).thenMaybe:
+      item.directors.get(1)
+    .getOrElse(item.directors.head)
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match

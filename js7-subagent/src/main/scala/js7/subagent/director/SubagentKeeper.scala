@@ -644,8 +644,8 @@ extends Service.StoppableByRequest:
           .map:
             UserAndPassword(localSubagentId.toUserId.orThrow, _)),
       directorConf.httpsConfig,
-      name = subagentItem.id.toString,
-      actorSystem)
+      name = subagentItem.id.toString)
+      (using actorSystem)
 
   def addOrReplaceSubagentBundle(bundle: SubagentBundle): IO[Checked[Unit]] =
     stateVar

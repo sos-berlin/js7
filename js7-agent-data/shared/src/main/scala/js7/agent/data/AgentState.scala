@@ -439,14 +439,16 @@ extends
     def isEmpty: Boolean =
       this == AgentMetaState.empty
 
-    def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
-      if directors.sizeIs < 2 then
-        Left(Problem("Agent has not enough directors to be a cluster"))
-      else
-        nodeId match
-          case NodeId.primary => Right(directors(0))
-          case NodeId.backup => Right(directors(1))
-          case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
+    def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId] =
+      nodeId match
+        case NodeId.primary =>
+          Right(directors(0))
+        case NodeId.backup =>
+          if directors.sizeIs < 2 then
+            Left(Problem("Agent has not enough directors to be a cluster"))
+          else
+            Right(directors(1))
+        case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
 
   object AgentMetaState:
     val empty: AgentMetaState =

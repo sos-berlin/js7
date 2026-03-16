@@ -1,13 +1,15 @@
-package js7.controller.web.controller.api.log
+package js7.core.web.log
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
+import io.circe.Encoder
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete, deleteIfExists}
 import java.nio.file.Path
 import java.time.Instant
 import java.util.concurrent.ArrayBlockingQueue
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
@@ -16,21 +18,29 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
-import js7.controller.web.controller.api.log.LogRoute.stringToInstant
-import js7.controller.web.controller.api.test.RouteTester
+import js7.common.pekkohttp.web.session.SimpleSession
+import js7.core.web.log.LogRoute
+import js7.core.web.log.LogRoute.stringToInstant
+import js7.core.web.test.RouteTester
+import js7.data.node.EngineServerId
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.duration.*
 
+
 /**
   * @author Joacim Zschimmer
   */
 final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
+
+  protected type OurSession = SimpleSession
+  protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
   protected val dataDirectory = logFile.getParent
+  protected val engineServerId = IO.right(EngineServerId.primaryController)
 
   override protected def config = config"""
     js7.log.info.file = "$logFile"

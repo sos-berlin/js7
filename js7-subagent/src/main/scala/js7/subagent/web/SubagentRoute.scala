@@ -3,6 +3,7 @@ package js7.subagent.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
+import java.nio.file.Path
 import js7.base.BuildInfo
 import js7.base.auth.SimpleUser
 import js7.base.log.Logger
@@ -20,6 +21,8 @@ import js7.common.pekkohttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.web.serviceprovider.ServiceProviderRoute
 import js7.core.command.CommandMeta
+import js7.core.web.log.LogRoute
+import js7.data.node.EngineServerId
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
@@ -44,13 +47,17 @@ extends
   WebLogDirectives,
   CommandRoute,
   SessionRoute,
-  EventRoute:
+  EventRoute,
+  LogRoute:
 
   import routeBinding.webServerBinding
 
   protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
+  protected val engineServerId = IO:
+    subagent.checkedDedicatedSubagent.map(o => EngineServerId.Subagent(o.subagentId))
+  protected val dataDirectory: Path = subagent.conf.dataDirectory
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
@@ -68,7 +75,6 @@ extends
         case _ => reject
       ~ serviceProviderRoute
 
-
   private lazy val subagentRoute: Route =
     pathSegment("api"):
       pathEndOrSingleSlash(overviewRoute) ~
@@ -76,6 +82,7 @@ extends
           case "command" => commandRoute
           case "event" => eventRoute
           case "session" => sessionRoute
+          case "log" => logRoute
           case _ => complete(NotFound)
 
   private def overviewRoute: Route =

@@ -1,7 +1,8 @@
-package js7.controller.web.controller.api.test
+package js7.core.web.test
 
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
@@ -10,7 +11,6 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkohttp.{ExceptionHandling, PekkoHttpUtils}
-import js7.controller.configuration.ControllerConfiguration.DefaultConfig
 import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import org.scalatest.Suite
 import scala.concurrent.duration.*
@@ -33,7 +33,7 @@ trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
     WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration.fromConfig(
       config"js7.web.server.auth.loopback-is-public = true"
-        .withFallback(DefaultConfig),
+        .withFallback(Js7Config.defaultConfig),
       SimpleUser.apply),
     isLoopback = true)
 

@@ -3,6 +3,7 @@ package js7.controller.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -22,7 +23,6 @@ import js7.controller.web.ControllerRoute.*
 import js7.controller.web.controller.TestRoute
 import js7.controller.web.controller.api.ApiRoute
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentRefState
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
@@ -62,6 +62,7 @@ extends
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested
   protected val controllerState     = clusterNode.currentState
+  protected val engineServerId      = IO.right(controllerConfiguration.engineServerId)
   protected val dataDirectory       = controllerConfiguration.dataDirectory
   protected val controllerId        = controllerConfiguration.controllerId
   protected val config              = controllerConfiguration.config
@@ -70,7 +71,6 @@ extends
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
   protected val checkedClusterState = controllerState
     .map(_.map(s => Stamped(s.eventId, s.clusterState)))
-  protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
   override protected val routeServiceContext = RouteServiceContext(
     filteredSnapshotRoute, filteredEventRoute, config)
   protected val actorRefFactory     = actorSystem

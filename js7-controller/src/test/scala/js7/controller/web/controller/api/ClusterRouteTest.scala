@@ -8,7 +8,7 @@ import js7.cluster.web.ClusterRoute
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.web.session.SimpleSession
-import js7.controller.web.controller.api.test.RouteTester
+import js7.core.web.test.RouteTester
 import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId

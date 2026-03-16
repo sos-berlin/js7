@@ -87,8 +87,8 @@ object HttpSubagentApi:
   def resource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String,
-    actorSystem: ActorSystem)
+    name: String)
+    (using actorSystem: ActorSystem)
   : ResourceIO[HttpSubagentApi] =
     SessionApi.logoutOnRelease:
       IO:

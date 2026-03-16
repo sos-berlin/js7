@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
+import js7.common.pekkohttp.StandardMarshallers.*
 import js7.data.item.VersionedItemPath
 import org.apache.pekko.http.scaladsl.model.AttributeKeys
 import org.apache.pekko.http.scaladsl.model.Uri.Path
@@ -62,6 +63,12 @@ object StandardDirectives:
   def ioRoute(routeIO: IO[Route])(using ioRuntime: IORuntime): Route =
     given ExecutionContext = ioRuntime.compute
     ctx => routeIO.unsafeToFuture().flatMap(route => route(ctx))
+
+  def checkedIoRoute(routeIO: IO[Checked[Route]])(using ioRuntime: IORuntime): Route =
+    given ExecutionContext = ioRuntime.compute
+    ctx => routeIO.unsafeToFuture().flatMap:
+      case Left(problem) => complete(problem)(ctx)
+      case Right(route) => route(ctx)
 
   private val removeEtag: Directive0 =
     mapResponse: response =>

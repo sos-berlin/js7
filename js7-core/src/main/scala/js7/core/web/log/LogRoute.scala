@@ -1,4 +1,4 @@
-package js7.controller.web.controller.api.log
+package js7.core.web.log
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
@@ -20,15 +20,17 @@ import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichEitherF, RichThrowable}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
 import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.log.LogRoute.*
+import js7.core.web.log.LogRoute.*
+import js7.data.node.EngineServerId
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -37,10 +39,11 @@ import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pa
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
-trait LogRoute extends ControllerRouteProvider:
+trait LogRoute extends RouteProvider:
 
   protected def ioRuntime: IORuntime
   protected def config: Config
+  protected def engineServerId: IO[Checked[EngineServerId]]
   protected def dataDirectory: Path
 
   private given IORuntime = ioRuntime
@@ -63,6 +66,12 @@ trait LogRoute extends ControllerRouteProvider:
       ~
         pathPrefix("debug"):
           fileRoute(LogLevel.Debug, currentDebugLogFile)
+      ~
+        pathPrefix("none"):
+          // LogLevel.None returns a line for  testing
+          completeIO:
+            engineServerId.mapmap: engineServerId =>
+              s"TEST ONLY: $engineServerId, ${operatingSystem.hostname}\n"
 
   private def fileRoute(logLevel: LogLevel, currentLogFile: Path): Route =
     path("raw"):

@@ -68,10 +68,11 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   private def getLogLines_(logLevel: LogLevel, queries: (String, String)*)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
-      httpClient.getTextAsRawLines:
-        Uri:
-          (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
-            encodeQuery(queries *)
+      val path = subagentId match
+        case None => prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
+        case Some(subagentId) =>
+          prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
+      httpClient.getTextAsRawLines(Uri(path.toString + encodeQuery(queries*)))
 
   final def getKeyedLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
   : IO[Stream[IO, KeyedLogLine]] =

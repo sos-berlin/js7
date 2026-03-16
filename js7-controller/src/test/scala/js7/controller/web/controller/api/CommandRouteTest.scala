@@ -6,8 +6,8 @@ import js7.base.test.OurTestSuite
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.JsonString
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
-import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
+import js7.core.web.test.RouteTester
 import js7.data.controller.{ControllerCommand, ControllerId}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.ContentTooLarge

@@ -4,6 +4,7 @@ import js7.agent.web.views.RootWebService
 import js7.cluster.web.ClusterRoute
 import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import js7.common.pekkohttp.web.session.SessionRoute
+import js7.core.web.log.LogRoute
 import js7.journal.web.JournalRoute
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -19,7 +20,9 @@ extends
   EventRoute,
   SessionRoute,
   JournalRoute,
-  ClusterRoute:
+  ClusterRoute,
+  SubagentForwardRoute,
+  LogRoute:
 
   protected final val apiRoute: Route =
     pathPrefix(Segment):
@@ -28,6 +31,8 @@ extends
       case "session" => sessionRoute
       case "journal" => journalRoute
       case "cluster" => clusterRoute
+      case "subagent-forward" => subagentForwardRoute
+      case "log" => logRoute
       case _ => complete(NotFound)
     ~
       pathEndOrSingleSlash:

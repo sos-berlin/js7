@@ -494,7 +494,7 @@ lazy val `js7-common-http` = crossProject(JVMPlatform)
 lazy val `js7-controller` = project
   .dependsOn(
     `js7-controller-client`.jvm,
-    `js7-core`,
+    `js7-core` % "test->test",
     `js7-cluster`,
     `js7-common`,
     `js7-agent-client`,
@@ -710,7 +710,7 @@ lazy val `js7-agent` = project
     `js7-cluster`,
     `js7-agent-data`.jvm,
     `js7-launcher`,
-    `js7-core`,
+    `js7-core` % "test->test",
     `js7-common`,
     `js7-data`.jvm,
     `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test",

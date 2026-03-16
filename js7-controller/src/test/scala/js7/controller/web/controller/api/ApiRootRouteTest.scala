@@ -9,7 +9,7 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
-import js7.controller.web.controller.api.test.RouteTester
+import js7.core.web.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, SnapshotableState}

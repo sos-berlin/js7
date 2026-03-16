@@ -52,7 +52,7 @@ import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, POST}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
-import org.apache.pekko.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
+import org.apache.pekko.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Accept-Charset`, `Accept-Encoding`, `Accept-Ranges`, `Cache-Control`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`, `If-Match`, `If-Modified-Since`, `If-None-Match`, `If-Range`, `Tls-Session-Info`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMessage, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as PekkoUri}
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
@@ -355,6 +355,20 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[HttpResponse] =
     sendReceive(HttpRequest(POST, uri.asPekko, headers, entity), dontLog = dontLog)
 
+  final def forward(request: HttpRequest, uri: PekkoUri, dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
+  : IO[HttpResponse] =
+    sendReceive(
+      HttpRequest(
+        request.method,
+        uri,
+        headers = request.headers.filter(h => isForwardableHeaderClass(h.getClass)),
+        entity = request.entity),
+      dontLog = dontLog
+    ).map: response =>
+      response.withHeaders:
+        response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))
+
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
     (implicit sessionTokenIO: IO[Option[SessionToken]])
   : IO[HttpResponse] =
@@ -617,6 +631,29 @@ object PekkoHttpClient:
   val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence
   val HttpHeartbeatFs2Chunk: fs2.Chunk[Byte] = HttpHeartbeatByteArray.toByteSequence
   val logHeartbeat = sys.props.asSwitch("js7.log.heartbeat")
+
+  private val isForwardableHeaderClass = Set[Class[? <: HttpHeader]](
+    classOf[Accept],
+    classOf[`Accept-Encoding`],
+    classOf[`Accept-Charset`],
+    classOf[`Accept-Ranges`],
+    classOf[`Content-Range`],
+    classOf[`Content-Type`],
+    classOf[`Content-Length`],
+    classOf[`Content-Encoding`],
+    classOf[`If-Range`],
+    classOf[`If-Match`],
+    classOf[`If-None-Match`],
+    classOf[`If-Modified-Since`],
+    classOf[`Cache-Control`])
+
+  private val isIgnoredResponseHeader = Set[Class[? <: HttpHeader]](
+    //classOf[Server],
+    //classOf[Date],
+    classOf[`Cache-Control`],
+    classOf[`Tls-Session-Info`])
+    //classOf[`Content-Type`],
+    //classOf[`Content-Length`])
 
   def resource(
     uri: Uri,

@@ -18,7 +18,7 @@ import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.controller.api.EventRouteTest.*
-import js7.controller.web.controller.api.test.RouteTester
+import js7.core.web.test.RouteTester
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}

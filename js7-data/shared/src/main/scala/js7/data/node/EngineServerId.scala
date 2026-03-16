@@ -8,39 +8,41 @@ sealed trait EngineServerId
 object EngineServerId:
 
   @javaApi
-  val controllerPrimary: EngineServerId =
-    ControllerServerId.ControllerPrimary
+  val primaryController: EngineServerId =
+    Controller.Primary
 
   @javaApi
-  val controllerBackup: EngineServerId =
-    ControllerServerId.ControllerBackup
+  val backupController: EngineServerId =
+    Controller.Backup
 
   @javaApi
   def subagent(subagentId: SubagentId): EngineServerId =
-    SubagentServerId(subagentId)
+    Subagent(subagentId)
 
 
-sealed trait ControllerServerId extends EngineServerId:
-  def nodeId: NodeId
+  sealed trait Controller extends EngineServerId:
+    def nodeId: NodeId
 
-object ControllerServerId:
+  object Controller:
+    case object Primary extends Controller:
+      val nodeId = NodeId.primary
+      override def toString = "PrimaryController"
 
-  case object ControllerPrimary extends ControllerServerId:
-    val nodeId = NodeId.primary
+    case object Backup extends Controller:
+      val nodeId = NodeId.backup
+      override def toString = "BackupController"
 
-  case object ControllerBackup extends ControllerServerId:
-    val nodeId = NodeId.backup
+    @javaApi
+    val controllerPrimary: Controller = Primary
 
-  @javaApi
-  val controllerPrimary: ControllerServerId = ControllerPrimary
-
-  @javaApi
-  val controllerBackup: ControllerServerId = ControllerBackup
+    @javaApi
+    val controllerBackup: Controller = Backup
 
 
-final case class SubagentServerId(subagentId: SubagentId) extends EngineServerId
+  final case class Subagent(subagentId: SubagentId) extends EngineServerId:
+    override def toString = subagentId.toString
 
-object SubagentServerId:
-  @javaApi
-  def of(subagentId: SubagentId): SubagentServerId =
-    SubagentServerId(subagentId)
+  object Subagent:
+    @javaApi
+    def of(subagentId: SubagentId): Subagent =
+      Subagent(subagentId)

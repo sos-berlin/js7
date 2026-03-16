@@ -5,8 +5,8 @@ import js7.common.pekkohttp.StandardMarshallers.StatusCodeMarshaller
 import js7.common.pekkohttp.web.session.SessionRoute
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute.*
-import js7.controller.web.controller.api.log.LogRoute
 import js7.controller.web.controller.api.order.OrderRoute
+import js7.core.web.log.LogRoute
 import js7.journal.web.JournalRoute
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, `no-store`}
@@ -27,30 +27,32 @@ extends ControllerRouteProvider,
   OrderRoute,
   ItemRoute,
   AgentForwardRoute,
+  SubagentForwardRoute,
   SnapshotRoute,
   SessionRoute,
   ClusterRoute,
   LogRoute:
 
   final val apiRoute: Route =
-    respondWithHeaders(StandardResponseHeaders):
-      pathPrefix(Segment) {
-        case "journal"     => journalRoute
-        case "journalInfo" => journalInfoRoute
-        case "event"       => eventRoute
-        case "command"     => commandRoute
-        case "cluster"     => clusterRoute
-        case "order"       => orderRoute
-        case "agent-forward" => agentForwardRoute
-        case "agent-proxy" => agentForwardRoute // COMPATIBLE with <=v2.5
-        case "snapshot"    => snapshotRoute
-        case "session"     => sessionRoute
-        case "item"        => itemRoute
-        case "log"         => logRoute
-        case _ => complete(NotFound)
-      } ~
-      pathEndOrSingleSlash:
-        apiRootRoute
+    seal:
+      respondWithHeaders(StandardResponseHeaders):
+        pathPrefix(Segment):
+          case "journal"          => journalRoute
+          case "journalInfo"      => journalInfoRoute
+          case "event"            => eventRoute
+          case "command"          => commandRoute
+          case "cluster"          => clusterRoute
+          case "order"            => orderRoute
+          case "agent-forward"    => agentForwardRoute
+          case "subagent-forward" => subagentForwardRoute
+          case "snapshot"         => snapshotRoute
+          case "session"          => sessionRoute
+          case "item"             => itemRoute
+          case "log"              => logRoute
+          case _ => complete(NotFound)
+      ~
+        pathEndOrSingleSlash:
+          apiRootRoute
 
 object ApiRoute:
   private val StandardResponseHeaders = Vector(

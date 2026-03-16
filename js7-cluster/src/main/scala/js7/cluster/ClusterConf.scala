@@ -12,7 +12,7 @@ import js7.base.utils.DelayConf
 import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
-import js7.data.node.NodeId
+import js7.data.node.{EngineServerId, NodeId}
 import js7.journal.configuration.JournalConf
 import scala.jdk.CollectionConverters.*
 
@@ -34,6 +34,12 @@ final case class ClusterConf(
 
   def isPrimary: Boolean =
     !isBackup
+
+  def engineServerId: EngineServerId =
+    if isBackup then
+      EngineServerId.Controller.Backup
+    else
+      EngineServerId.Controller.Primary
 
 
 object ClusterConf:

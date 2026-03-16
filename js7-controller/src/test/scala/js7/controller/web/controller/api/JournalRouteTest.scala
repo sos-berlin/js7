@@ -26,7 +26,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.SimpleSession
-import js7.controller.web.controller.api.test.RouteTester
+import js7.core.web.test.RouteTester
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
 import js7.data.event.JournalEvent.SnapshotTaken
