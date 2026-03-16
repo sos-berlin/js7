@@ -1,62 +1,99 @@
 package js7.proxy.javaapi
 
-import cats.effect.ResourceIO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
+import cats.syntax.foldable.*
 import java.time.Instant
 import js7.base.log.Logger.syntax.*
+import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
+import js7.data.node.{EngineServerId, NodeId}
 import js7.data_for_java.reactor.ReactorConverters.asFlux
+import js7.proxy.javaapi.JEngineLog.*
 import reactor.core.publisher.Flux
 
-final class JEngineLog(jProxy: JControllerProxy, controllerApis: Nel[HttpControllerApi])
+final class JEngineLog(
+  jProxy: JControllerProxy,
+  controllerApis: Nel[HttpControllerApi],
+  serverId: EngineServerId)
   (using IORuntime):
 
   def currentLog(logLevel: LogLevel): Flux[Array[Byte]] =
     fs2.Stream.force:
-      controllerApis.head.getLogLines(logLevel)
+      serverId match
+        case EngineServerId.Controller.Primary =>
+          primaryControllerApi.getNewLogLines(logLevel)
+        case EngineServerId.Controller.Backup =>
+          backupControllerApi.getNewLogLines(logLevel)
+        case EngineServerId.Subagent(subagentId) =>
+          activeControllerApi.getNewLogLines(logLevel, subagentId = Some(subagentId))
     .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
 
-  def logSection(logLevel: LogLevel, begin: Instant, lines: Long): Flux[java.util.List[Array[Byte]]] =
+  def logSection(logLevel: LogLevel, begin: Instant, lines: Long)
+  : Flux[java.util.List[Array[Byte]]] =
+    logSection_(logLevel, begin, lines)
+      .map(_.toArray) // Copy, or has Java an immutable array?
+      .chunks
+      .map(_.asJava)
+      .asFlux
+
+  def logSection(logLevel: LogLevel, begin: LogLineKey, lines: Long)
+  : Flux[java.util.List[Array[Byte]]] =
+    logSection_(logLevel, begin, lines)
+      .map(_.toArray) // Copy, or has Java an immutable array?
+      .chunks
+      .map(_.asJava)
+      .asFlux
+
+  private[javaapi] def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
+  : fs2.Stream[IO, fs2.Chunk[Byte]] =
     fs2.Stream.force:
-      controllerApis.head.getLogLines(logLevel, begin = begin, lines = lines)
-    .map(_.toArray) // Copy, or has Java an immutable array?
-    .chunks
-    .asFlux
-    .map(_.asJava)
+      serverId match
+        case EngineServerId.Controller.Primary =>
+          primaryControllerApi.getLogLines(logLevel, begin = begin, lines = lines)
+        case EngineServerId.Controller.Backup =>
+          backupControllerApi.getLogLines(logLevel, begin = begin, lines = lines)
+        case EngineServerId.Subagent(subagentId) =>
+          activeControllerApi.getLogLines(logLevel, begin = begin, lines = lines,
+            subagentId = Some(subagentId))
 
-  //private def keyedLogLineFlux(logLevel: LogLevel, start: Instant | LogPosition, lines: Long)
-  //: CompletableFuture[Flux[String]] =
-  //  ???
+  private[javaapi] def keyedLogLineStream(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: Long = Long.MaxValue)
+  : fs2.Stream[IO, KeyedLogLine] =
+    logger.traceStream(s"keyedLogLineFlux Stream"):
+      fs2.Stream.force:
+        serverId match
+          case EngineServerId.Controller.Primary =>
+            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines)
+          case EngineServerId.Controller.Backup =>
+            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines)
+          case EngineServerId.Subagent(subagentId) =>
+            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines,
+              subagentId = Some(subagentId))
 
-  //private def serverIdToApi(serverId: EngineServerId): HttpControllerApi =
-  //  serverId match
-  //    case serverId: ControllerServerId =>
-  //      jProxy.clusterState match
-  //        case ClusterState.Empty =>
-  //          controllerApis.head
-  //
-  //        case clusterState: ClusterState.HasNodes =>
-  //          controllerApis.toList
-  //            .find(_.baseUri == clusterState.activeUri)
-  //            .getOrElse:
-  //              throw new IllegalStateException(
-  //                s"No admission for $serverId ${clusterState.activeUri} ")
-  //
-  //    case _ => throw new IllegalArgumentException(s"Must be ControllerServerId: $serverId")
+  private def primaryControllerApi: HttpControllerApi =
+    controllerApis.head
+
+  private def backupControllerApi: HttpControllerApi =
+    controllerApis.get(1).getOrElse(primaryControllerApi)
+
+  private def activeControllerApi: HttpControllerApi =
+    if jProxy.clusterState.isEmptyOrActive(NodeId.primary) then
+      primaryControllerApi
+    else
+      backupControllerApi
 
 
 object JEngineLog:
   private val logger = Logger[this.type]
 
-  def resource(jProxy: JControllerProxy)(using IORuntime): ResourceIO[JEngineLog] =
+  def resource(jProxy: JControllerProxy, serverId: EngineServerId)(using IORuntime)
+  : ResourceIO[JEngineLog] =
     logger.traceResource("JEngineLog.resource"):
       jProxy.api.asScala.apisResource.map: apis =>
-        JEngineLog(jProxy, apis)
-
-
-  //private final case class LogPosition(logFileName: String, position: Long)
-  //
-  //private final case class LogLine(position: LogPosition, line: String)
+        JEngineLog(jProxy, apis, serverId)

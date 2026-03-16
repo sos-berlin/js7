@@ -13,7 +13,7 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-class JLogDirectoryIndexTester {
+final class JLogDirectoryIndexTester {
     private JLogDirectoryIndexTester() {}
 
     static CompletableFuture<Void> test(JProxyContext jProxyContext, ZoneId zoneId, Path directory) {

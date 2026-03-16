@@ -72,8 +72,5 @@ object JLogDirectoryIndex:
     (using IORuntime)
   : JResource[JLogDirectoryIndex] =
     JResource:
-      for
-        logDirectoryIndex <- to
-        jLogDirectoryIndex = JLogDirectoryIndex(logDirectoryIndex)
-      yield
-        jLogDirectoryIndex
+      to.map:
+        JLogDirectoryIndex(_)

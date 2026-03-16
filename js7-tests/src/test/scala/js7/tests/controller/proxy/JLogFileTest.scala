@@ -71,7 +71,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
             .toVector.map: lines =>
               assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
-  "Java" in :
+  "Java" in:
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTest Java! 🍋🍋🍋"
     logger.info(logText)
     // Java-like code, but JLogFileTester.test runs in Proxy's thread:
@@ -83,7 +83,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       assert(lines.size >= 1 & lines.exists(_.contains(logText)))
       assert(lines.forall(_.endsWith("\n")))
 
-  "Java prettyTestNonBlocking" in :
+  "Java prettyTestNonBlocking" in:
     IO.fromCompletionStage:
       IO:
         JLogFileTester.prettyTestNonBlocking(jAdmissions)
@@ -91,7 +91,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     .map: n =>
       assert(n >= 1)
 
-  "Java prettyTestBlocking" in :
+  "Java prettyTestBlocking" in:
     IO.fromCompletableFuture:
       IO:
         JLogFileTester.prettyTestBlocking(jAdmissions)

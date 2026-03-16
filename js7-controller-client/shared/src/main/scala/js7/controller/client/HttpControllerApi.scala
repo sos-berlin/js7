@@ -20,6 +20,7 @@ import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerSta
 import js7.data.event.{EventApi, EventId, JournalInfo}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.session.HttpSessionApi
+import js7.data.subagent.SubagentId
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
@@ -58,14 +59,24 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     loginAndRetryIfSessionLost:
       httpClient.get[B](baseUri /? uriTail)
 
-  final def getLogLines(logLevel: LogLevel): IO[Stream[IO, fs2.Chunk[Byte]]] =
-    getLogLines_(logLevel)
-
-  final def getLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
+  final def getNewLogLines(logLevel: LogLevel, subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
-    getLogLines_(logLevel, "begin" -> begin.toString, "lines" -> lines.toString)
+    getLogLines_(subagentId, logLevel)
 
-  private def getLogLines_(logLevel: LogLevel, queries: (String, String)*)
+  final def getLogLines(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: Long,
+    subagentId: Option[SubagentId] = None)
+  : IO[Stream[IO, fs2.Chunk[Byte]]] =
+    getLogLines_(subagentId, logLevel,
+      "begin" -> begin.toString,
+      "lines" -> lines.toString)
+
+  private def getLogLines_(
+    subagentId: Option[SubagentId],
+    logLevel: LogLevel,
+    queries: (String, String)*)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
       val path = subagentId match
@@ -74,17 +85,30 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
           prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
       httpClient.getTextAsRawLines(Uri(path.toString + encodeQuery(queries*)))
 
-  final def getKeyedLogLines(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
+  final def getKeyedLogLines(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: Long,
+    subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedLogLine]] =
-    getKeyedLogLines_(logLevel, "begin" -> begin.toString, "lines" -> lines.toString)
+    getKeyedLogLines_(subagentId, logLevel,
+      "begin" -> begin.toString,
+      "lines" -> lines.toString)
 
-  private def getKeyedLogLines_(logLevel: LogLevel, queries: (String, String)*)
+  private def getKeyedLogLines_(
+    subagentId: Option[SubagentId],
+    logLevel: LogLevel,
+    queries: (String, String)*)
   : IO[Stream[IO, KeyedLogLine]] =
     loginAndRetryIfSessionLost:
       httpClient.getDecodedLinesStream[KeyedLogLine](
         Uri:
-          (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString +
-            encodeQuery(queries*),
+          subagentId.match
+            case None =>
+              (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString
+            case Some(subagentId) =>
+              (prefixedUri / "api" / "subagent-forward" / subagentId.string / logLevel.toString.toLowerCase(Locale.ROOT)).toString
+          + encodeQuery(queries*),
           dontLog = true)
 
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
