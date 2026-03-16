@@ -18,7 +18,7 @@ services:
     command: [
       "js7-controller",
       "--arg0=js7-controller",
-      "-J-Xmx512m",
+      "-J-Xmx256m",
       "--processor-limit=4/20"
     ]
     #networks:
