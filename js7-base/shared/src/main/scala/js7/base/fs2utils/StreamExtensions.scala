@@ -14,7 +14,7 @@ import fs2.{Chunk, Pull, RaiseThrowable, Stream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import scala.annotation.tailrec
@@ -26,6 +26,7 @@ import scala.reflect.ClassTag
 object StreamExtensions:
 
   val DefaultBatchSizeMin = 256
+  private val CedePeriod = 10.ms
   private object Beat
 
   type PureStream[A] = Stream[fs2.Pure, A]
@@ -127,9 +128,9 @@ object StreamExtensions:
           go(timedPull)
         .stream
 
-    def cedePeriodically(period: FiniteDuration)(using F: GenSpawn[F, Throwable]): Stream[F, O] =
+    def cedePeriodically(using F: GenSpawn[F, Throwable]): Stream[F, O] =
       Stream.suspend:
-        val nanos = period.toNanos
+        val nanos = CedePeriod.toNanos
         var nextCede = System.nanoTime () + nanos
         stream.chunks.evalMap: chunk =>
           if nextCede <= System.nanoTime() then

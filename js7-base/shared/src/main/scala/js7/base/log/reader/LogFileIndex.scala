@@ -95,7 +95,6 @@ object LogFileIndex:
   private val logger = Logger[LogFileIndex]
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
-  private val CedePeriod = 10.ms
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
   def build(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
@@ -159,4 +158,4 @@ object LogFileIndex:
                     / BytesPerEntry * BytesPerEntry
               pos += lineLen
             PosAndNext(pos, nextBlock_) -> Chunk.singleton(byteTotal)
-        .cedePeriodically(CedePeriod)
+        .cedePeriodically
