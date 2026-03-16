@@ -120,6 +120,7 @@ object LogFileIndex:
             logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
           if nanoToPos.isEmpty then
             logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
+          nanoToPos.shrink()
           nanoToPos
 
   private def buildIndex1(stream: Stream[IO, Chunk[Byte]], nanoToPos: NanoToPos, label: String)
