@@ -6,6 +6,7 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger
 import js7.base.log.reader.LogFileIndex.*
@@ -17,7 +18,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
-import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.math.Ordered.orderingToOrdered
 
@@ -36,10 +36,7 @@ import scala.math.Ordered.orderingToOrdered
   * The log file is expected to follow a certain layout, see
   * [[js7.base.io.file.LogFileReader]].
   */
-final class LogFileIndex private(
-  logFile: Path,
-  nanoToPos: java.util.NavigableMap[EpochNano, Long])
-  (using ZoneId):
+final class LogFileIndex private(logFile: Path, nanoToPos: NanoToPos)(using ZoneId):
 
   import ByteSeqFileReader.BufferSize as DefaultBufferSize
 
@@ -75,16 +72,13 @@ final class LogFileIndex private(
 
   /** Find the position of the first log line whose timestamp less or equal `beginEpochNano`. */
   private def findBlockPositionOf(beginEpochNano: EpochNano): Long =
-    nanoToPos.floorEntry(beginEpochNano) match
-      case null => 0 // Start of logFile
-      //case null => nanoToPos.firstEntry().getValue
-      case o => o.getValue
+    nanoToPos.toPos(beginEpochNano)
 
   def logFileReader(byteChunkSize: Int = DefaultBufferSize): ResourceIO[LogFileReader] =
     LogFileReader.resource(logFile, byteChunkSize = byteChunkSize)
 
   override def toString =
-    s"LogFileIndex(${nanoToPos.size}×${toKiBGiB(BytesPerEntry)})"
+    s"LogFileIndex(${nanoToPos.length}×${toKiBGiB(BytesPerEntry)})"
 
 
 object LogFileIndex:
@@ -101,10 +95,10 @@ object LogFileIndex:
   private val logger = Logger[LogFileIndex]
   private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
   private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
+  private val CedePeriod = 10.ms
 
   /** Build an index: negative epochNanos -> byte position of the begin of the line. */
-  def build(logFile: Path, label: String | Missing = Missing)(using ZoneId)
-  : IO[LogFileIndex] =
+  def build(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
     ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = ByteBufferSize)
       .use: reader =>
         buildIndex(label getOrElse logFile.getFileName.toString):
@@ -113,34 +107,36 @@ object LogFileIndex:
           new LogFileIndex(logFile, nanoToPos)
 
   private def buildIndex(label: String)(stream: Stream[IO, Chunk[Byte]])(using ZoneId)
-  : IO[java.util.NavigableMap[EpochNano, Long]] =
+  : IO[NanoToPos] =
     IO.defer:
       val t = Deadline.now
-      buildIndex1(stream)
-        .map: (treeMap, byteTotal) =>
+      val nanoToPos = new NanoToPos
+      buildIndex1(stream.takeWhile(_.nonEmpty), nanoToPos, label)
+        .compile.last
+        .map(_.getOrElse(0L))
+        .map: byteTotal =>
           val elapsed = t.elapsed
           if elapsed >= MinimumLogDuration then
             logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
-          if treeMap.isEmpty then
+          if nanoToPos.isEmpty then
             logger.debug(s"❓ buildIndex returns an empty index, no timestamp found in $label")
-          treeMap
+          nanoToPos
 
-  private def buildIndex1(stream: Stream[IO, Chunk[Byte]])(using ZoneId)
-  : IO[(java.util.NavigableMap[EpochNano, Long], Long)] =
-    // TODO Check that timestamp is monotonically increasing.
+  private def buildIndex1(stream: Stream[IO, Chunk[Byte]], nanoToPos: NanoToPos, label: String)
+    (using ZoneId)
+  : Stream[IO, Long] =
     case class PosAndNext(pos: Long, nextBlock: Long)
-    case class NanoAndPos(epochNano: EpochNano, pos: Long)
-    IO.defer:
-      val buffer = mutable.ArrayBuilder.ofRef[NanoAndPos]
+    Stream.suspend:
       val toNanos = FastTimestampParser()
       var byteTotal = 0L
+      var lastEpochNano = EpochNano.Nix
+      var reverseTimeWarned = false
       stream.prefetch
         .through:
           byteChunksToLines
         .prefetch
         .scanChunks(PosAndNext(0, 0)):
           case (PosAndNext(position, nextBlock), lines) =>
-            buffer.clear()
             // Compute one NanoAndPos pair for each first position in a block of BytesPerEntry bytes.
             // For each computed NanoAndPos, nextBlock is incremented by BytesPerEntry
             var pos = position
@@ -151,18 +147,15 @@ object LogFileIndex:
               if pos >= nextBlock_ then
                 val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
                 if !epochNano.isNix then
-                  buffer += NanoAndPos(epochNano, pos)
+                  if epochNano < lastEpochNano && !reverseTimeWarned then
+                    reverseTimeWarned = true
+                    logger.warn(s"$label contains reverse timestamps, ${
+                      lastEpochNano.toInstant} > ${epochNano.toInstant}")
+                  if epochNano > lastEpochNano then
+                    lastEpochNano = epochNano
+                    nanoToPos.add(epochNano, pos)
                   nextBlock_ = (nextBlock_ + BytesPerEntry max pos + lineLen)
                     / BytesPerEntry * BytesPerEntry
               pos += lineLen
-            PosAndNext(pos, nextBlock_) -> Chunk.array(buffer.result())
-        .chunkMin(16 * 1024 / PositionsPerChunk /*24 bytes each*/)
-        //.prefetch
-        .evalTap: _ =>
-          IO.cede
-        .compile.fold(new java.util.TreeMap[EpochNano, Long]): (treeMap, chunk) =>
-          chunk.foreach: nanoAndPos =>
-            treeMap.put(nanoAndPos.epochNano, nanoAndPos.pos)
-          treeMap
-        .map:
-          _ -> byteTotal
+            PosAndNext(pos, nextBlock_) -> Chunk.singleton(byteTotal)
+        .cedePeriodically(CedePeriod)

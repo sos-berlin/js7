@@ -2,7 +2,7 @@ package js7.base.fs2utils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.std.AtomicCell
-import cats.effect.{Concurrent, IO, Ref, Sync, Temporal}
+import cats.effect.{Concurrent, GenSpawn, IO, Ref, Sync, Temporal}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
 import cats.syntax.foldable.*
@@ -126,6 +126,18 @@ object StreamExtensions:
 
           go(timedPull)
         .stream
+
+    def cedePeriodically(period: FiniteDuration)(using F: GenSpawn[F, Throwable]): Stream[F, O] =
+      Stream.suspend:
+        val nanos = period.toNanos
+        var nextCede = System.nanoTime () + nanos
+        stream.chunks.evalMap: chunk =>
+          if nextCede <= System.nanoTime() then
+            nextCede = System.nanoTime () + nanos
+            F.cede.as(chunk)
+          else
+            F.pure(chunk)
+        .unchunks
 
     def collectAndFlushOnSilence(duration: FiniteDuration)(using F: Temporal[F])
     : Stream[F, Chunk[O]] =
