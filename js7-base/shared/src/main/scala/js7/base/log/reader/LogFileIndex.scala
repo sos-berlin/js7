@@ -19,6 +19,7 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
+import scala.math.Ordered.orderingToOrdered
 
 /** An index for a log file's timestamps to the position (offset) in the log file.
   *

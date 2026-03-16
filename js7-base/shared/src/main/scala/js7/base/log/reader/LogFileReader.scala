@@ -27,6 +27,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
+import scala.math.Ordered.orderingToOrdered
 import scala.util.matching.Regex
 
 final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]])(using ZoneId):

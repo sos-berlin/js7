@@ -34,13 +34,12 @@ object EpochNano:
       else
         java.math.BigDecimal.valueOf(epochNano, 9).toString
 
-    inline def <(other: EpochNano): Boolean =
-      epochNano < other
-
     def toInstant: Instant =
       Instant.ofEpochSecond(
         epochNano / 1_000_000_000,
         (epochNano % 1_000_000_000).toInt)
+
+  given Ordering[EpochNano] = Ordering.Long
 
   given Encoder[EpochNano] =
     case EpochNano.Zero => zeroJson
