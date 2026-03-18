@@ -41,8 +41,7 @@ extends
           copy(
             directoryState =
               directoryState.copy(
-                fileToEntry = directoryState.fileToEntry +
-                  (filename -> DirectoryState.Entry(filename))))
+                files = directoryState.files + filename))
 
         case ExternalOrderRejected(externalOrderName, _) =>
           this
@@ -52,23 +51,23 @@ extends
           copy(
             directoryState =
               directoryState.copy(
-                fileToEntry = directoryState.fileToEntry - filename))
+                files = directoryState.files - filename))
 
   def containsPath(path: Path): Boolean =
-    directoryState.fileToEntry.contains(path)
+    directoryState.files.contains(path)
 
   def allFilesVanished: View[KeyedEvent[ExternalOrderVanished]] =
-    directoryState.fileToEntry.keys
+    directoryState.files
       .view.map: file =>
         fileWatch.path <-: ExternalOrderVanished(ExternalOrderName.unchecked(file.toString))
 
   def estimatedExtraSnapshotSize: Int =
-    directoryState.fileToEntry.size
+    directoryState.files.size
 
   override def toSnapshotStream: Stream[fs2.Pure, Snapshot] =
     Stream.emit(HeaderSnapshot(fileWatch)) ++
-      Stream.iterable(directoryState.fileToEntry.values)
-        .map(entry => EntrySnapshot(id, entry.path))
+      Stream.iterable(directoryState.files)
+        .map(file => EntrySnapshot(id, file))
 
 
 object FileWatchState
@@ -99,18 +98,18 @@ with EventDriven.Companion[FileWatchState, OrderWatchEvent]:
 
   final class Recoverer:
     private val header = SetOnce[HeaderSnapshot]
-    private val entries = mutable.Buffer.empty[DirectoryState.Entry]
+    private val files = mutable.Buffer.empty[java.nio.file.Path]
 
     def addSnapshot(snapshot: Snapshot): Unit =
       snapshot match
         case o: HeaderSnapshot =>
           header := o
         case o: EntrySnapshot =>
-          entries += DirectoryState.Entry(o.path)
+          files += o.path
 
     def result(): FileWatchState =
       FileWatchState(
         header.orThrow.fileWatch,
-        DirectoryState.fromIterable(entries))
+        DirectoryState(files))
 
   intelliJuseImport(PathJsonCodec)

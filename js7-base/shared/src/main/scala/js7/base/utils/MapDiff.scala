@@ -45,5 +45,5 @@ object MapDiff:
       updated = to.view.filter { case (k, v) => from.get(k) exists v.!= }.toMap,
       deleted = from.keySet.toSet diff to.keySet)
 
-  implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]
-  implicit val StringDiffJsonDecoder: Decoder[MapDiff[String, String]] = deriveDecoder[MapDiff[String, String]]
+  given Encoder[MapDiff[String, String]] = deriveEncoder
+  given Decoder[MapDiff[String, String]] = deriveDecoder

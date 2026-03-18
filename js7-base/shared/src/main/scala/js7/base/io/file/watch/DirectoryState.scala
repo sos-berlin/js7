@@ -3,20 +3,19 @@ package js7.base.io.file.watch
 import java.nio.file.Path
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryState.*
-import js7.base.utils.Collections.implicits.*
-import js7.base.utils.MapDiff
+import js7.base.utils.SetDiff
 import scala.collection.{View, mutable}
 
-final case class DirectoryState(fileToEntry: Map[Path, Entry]):
+final case class DirectoryState(files: Set[Path]):
 
   def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) =
-    val added = mutable.Map.empty[Path, Entry]
+    val added = mutable.Set.empty[Path]
     val deleted = mutable.Set.empty[Path]
     val modified = mutable.Set.empty[Path]
 
     events foreach:
       case FileAdded(path) =>
-        added.update(path, Entry(path))
+        added += path
         deleted -= path
         modified -= path
 
@@ -28,31 +27,26 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry]):
         deleted += path
         modified -= path
 
-    val updatedState = copy(fileToEntry -- deleted ++ added)
+    val updatedState = copy(files -- deleted ++ added)
     val reducedEvents = diffTo(updatedState) ++
-      modified.filter(updatedState.fileToEntry.keySet).map(FileModified(_))
+      modified.filter(updatedState.files).map(FileModified(_))
     reducedEvents -> updatedState
 
   def diffTo(other: DirectoryState): Seq[DirectoryEvent] =
-    diffToDirectoryEvents(MapDiff.diff(fileToEntry, other.fileToEntry))
+    diffToDirectoryEvents(SetDiff.diff(files, other.files))
       .toVector
 
-  def files: Iterable[Path] =
-    fileToEntry.keys
-
   def isEmpty: Boolean =
-    fileToEntry.isEmpty
+    files.isEmpty
 
 
 object DirectoryState:
-  val empty = new DirectoryState(Map.empty)
+  val empty: DirectoryState =
+    new DirectoryState(Set.empty)
 
-  def fromIterable(entries: Iterable[Entry]): DirectoryState =
-    new DirectoryState(entries.toKeyedMap(_.path))
+  def apply(entries: Iterable[Path]): DirectoryState =
+    new DirectoryState(entries.toSet)
 
-  final case class Entry(path: Path)
-
-  private def diffToDirectoryEvents(diff: MapDiff[Path, Entry]): View[DirectoryEvent] =
+  private def diffToDirectoryEvents(diff: SetDiff[Path]): View[DirectoryEvent] =
     diff.deleted.view.map(FileDeleted(_)) ++
-      diff.updated.keys.view.map(FileModified(_)) ++
-      diff.added.keySet.view.map(FileAdded(_))
+      diff.added.view.map(FileAdded(_))

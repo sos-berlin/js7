@@ -11,7 +11,6 @@ import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
-import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.io.file.watch.DirectoryWatchTest.*
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
@@ -32,9 +31,9 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
       for
         state <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
         _ = assert(state ==
-          DirectoryState(Map(
-            Path.of("TEST-1") -> DirectoryState.Entry(Path.of("TEST-1")),
-            Path.of("TEST-2") -> DirectoryState.Entry(Path.of("TEST-2")))))
+          DirectoryState(Set(
+            Path.of("TEST-1"),
+            Path.of("TEST-2"))))
         _ = touchFile(dir / "TEST-A")
         _ = touchFile(dir / "TEST-1")
         state2 <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
@@ -52,7 +51,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
           publisher.publish(Seq(FileAdded(Path.of(name))))
 
         def toDirectoryState(names: String*) =
-          DirectoryState.fromIterable(names.map(Path.of(_)).map(Entry(_)))
+          DirectoryState(names.map(Path.of(_)))
 
         def readDirectory() =
           toDirectoryState(files*)
