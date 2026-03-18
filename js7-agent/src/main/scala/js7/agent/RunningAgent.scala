@@ -280,7 +280,6 @@ object RunningAgent:
         _ <- Environment.getOrRegister[WallClock](Resource.pure(clock))
         eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
         _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
-        //_ <- Environment.registerPure(testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]])
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
           clusterNodeApi = (admission, label, actorSystem) =>

@@ -11,11 +11,12 @@ object AutoClosing:
 
   private val logger = Logger[this.type]
 
-  def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type => B): B =
-    autoClosing(new Closer) { closer =>
+  def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])
+    (body: resources.type => B)
+  : B =
+    autoClosing(new Closer): closer =>
       for o <- resources do closer.register(o)
       body(resources)
-    }
 
   /** Wie Java 7 try-with-resource */
   def autoClosing[A <: AutoCloseable, B](resource: A)(body: resource.type => B): B =
@@ -47,8 +48,9 @@ object AutoClosing:
               s"While handling an exception, this second exception is ignored: $suppressed\n" +
                 s"Original exception is: $t", suppressed)
 
+
   object syntax:
-    implicit final class RichAutoClosable[A <: AutoCloseable](private val autoCloseable: A)
-    extends AnyVal:
+    extension [A <: AutoCloseable](autoCloseable: A)
+      /** Close `this` after use. */
       def use[B](body: A => B): B =
         autoClosing(autoCloseable)(body)
