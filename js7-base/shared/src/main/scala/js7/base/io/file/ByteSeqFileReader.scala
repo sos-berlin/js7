@@ -134,9 +134,9 @@ object ByteSeqFileReader:
       *
       * This Stream never ends.
       */
-    def stream: Stream[IO, ByteSeq] =
+    def streamEndlessly: Stream[IO, ByteSeq] =
       Stream.repeatEval:
         reader.read
 
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
-      stream.takeWhile(_.nonEmpty)
+      streamEndlessly.takeWhile(_.nonEmpty)

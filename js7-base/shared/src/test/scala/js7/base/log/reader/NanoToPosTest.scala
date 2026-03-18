@@ -5,12 +5,12 @@ import js7.base.time.EpochNano
 
 final class NanoToPosTest extends OurTestSuite:
 
-  "NanoToPos" in:
-    val nanoToPos = new NanoToPos(initialSize = 1)
+  "EpochNanoToPos" in:
+    val nanoToPos = new EpochNanoToPos(initialSize = 1)
     assert(nanoToPos.isEmpty)
     assert(nanoToPos.length == 0)
-    assert(nanoToPos.toPos(EpochNano(1)) == 0)
     assert(nanoToPos.internalSize == 1)
+    assert(nanoToPos.toPos(EpochNano(1)) == 0)
 
     nanoToPos.add(EpochNano(10), 1000)
     nanoToPos.add(EpochNano(20), 2000)
@@ -30,4 +30,4 @@ final class NanoToPosTest extends OurTestSuite:
 
     nanoToPos.shrink()
     assert(nanoToPos.length == 3)
-    assert(nanoToPos.internalSize == 3 + 1)
+    assert(nanoToPos.internalSize == 1 + 3)

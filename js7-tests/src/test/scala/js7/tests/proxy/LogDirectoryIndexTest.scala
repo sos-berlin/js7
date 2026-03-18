@@ -20,7 +20,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.tests.proxy.LogDirectoryIndexTest.*
 
-
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
@@ -46,7 +45,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $i\n"
                     .getBytes(UTF_8)
       .productR:
-        LogDirectoryIndex.resource(dir, Info).use: logDirectoryIndex =>
+        LogDirectoryIndex.directory(dir, Info).use: logDirectoryIndex =>
           logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
             .map(_.byteLine.utf8String)
             .compile.toList.map: lines =>

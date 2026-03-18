@@ -48,6 +48,7 @@ import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.web.ControllerWebServer
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
+import js7.core.web.log.LogRoute
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
@@ -222,6 +223,7 @@ object RunningController:
           testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
           ignoreDuplicate = true)
         _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
+        _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
         r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
       yield r
     .evalOn(ioRuntime.compute)

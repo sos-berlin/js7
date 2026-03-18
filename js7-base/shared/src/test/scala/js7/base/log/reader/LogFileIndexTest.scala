@@ -9,7 +9,7 @@ import java.time.{Instant, ZoneId}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryFileResource
 import js7.base.log.AnsiEscapeCodes.{bold, removeHighlights}
 import js7.base.log.Logger
@@ -17,6 +17,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndexTest.*
 import js7.base.metering.CallMeter
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
@@ -24,6 +25,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
@@ -35,7 +37,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
-        val message = "+" * (LogFileIndex.BytesPerEntry / 2)
+        val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
         val lines = Vector(
           s"2026-02-12 14:00:00.000+0200 HEADER ...\n",
           s"2026-02-12 14:00:01.000 info [thread] class - $message 1\n",
@@ -67,6 +69,32 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
               assert(line contains lines(1))
             _ <- readOne(Instant.parse("2222-01-01T14:00:00+02:00")).map: line =>
               assert(line.isEmpty)
+          yield succeed
+
+  "Growing" in:
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
+    temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
+      IO.defer:
+        val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
+        val firstLine = s"2026-02-12 14:00:01.000 info [thread] class - $message\n"
+        file := "2026-02-12 14:00:00.000+0200 HEADER ...\n" + firstLine
+
+        LogFileIndex.buildGrowing(file, poll = 100.ms).use: logFileIndex =>
+          def readOne(begin: Instant): IO[Option[String]] =
+            logFileIndex.streamLines(begin)
+              .map(_.utf8String)
+              .head.compile.last
+
+          for
+            _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>
+              assert(line contains firstLine)
+            anotherLine = s"2026-02-12 15:00:00.000 info [thread] class - $message\n"
+            _ =
+              file ++= anotherLine
+              awaitAndAssert:
+                logFileIndex.lastEpochNano == Instant.parse("2026-02-12T15:00:00+02:00").toEpochNano
+            _ <- readOne(Instant.parse("2026-02-12T15:00:00+02:00")).map: line =>
+              assert(line contains anotherLine)
           yield succeed
 
   "Test with test.log" in :

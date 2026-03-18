@@ -37,6 +37,7 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools.unlimitedExecutionContextResource
 import js7.core.command.CommandMeta
+import js7.core.web.log.LogRoute
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
@@ -275,6 +276,7 @@ object Subagent:
           size = config.getInt("js7.journal.memory.event-count"),
           waitingFor = "JS7 Agent Director",
           infoLogEvents = JournalConf.infoLogEvents(config))
+        _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
         shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown]).toResource
         supervisor <- Supervisor[IO]
         subagent <- Service.resource:

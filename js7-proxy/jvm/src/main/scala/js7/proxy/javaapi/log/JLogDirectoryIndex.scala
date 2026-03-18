@@ -55,7 +55,7 @@ object JLogDirectoryIndex:
     import ctx.given_IORuntime
     resource_(logLevel, zoneId):
       LogDirectoryIndex.
-        resource(directory, logLevel, isValidFile = LogDirectoryIndex.isValidFile)(using zoneId)
+        directory(directory, logLevel, isValidFile = LogDirectoryIndex.isValidFile)(using zoneId)
 
   def resource(
     files: java.lang.Iterable[Path],
@@ -65,7 +65,7 @@ object JLogDirectoryIndex:
   : JResource[JLogDirectoryIndex] =
     import ctx.given_IORuntime
     resource_(logLevel, zoneId):
-      LogDirectoryIndex.resource(files.asScala, logLevel)(using zoneId)
+      LogDirectoryIndex.files(files.asScala, logLevel)(using zoneId)
 
   private def resource_(logLevel: LogLevel, zoneId: ZoneId)
     (to: => ResourceIO[LogDirectoryIndex])

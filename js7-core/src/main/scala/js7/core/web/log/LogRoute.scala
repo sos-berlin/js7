@@ -1,27 +1,36 @@
 package js7.core.web.log
 
-import cats.effect.IO
+import cats.effect.std.Mutex
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
+import cats.syntax.parallel.*
 import com.typesafe.config.Config
 import fs2.Stream
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
+import java.time
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.ChronoField.NANO_OF_SECOND
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.auth.ValidUserPermission
+import js7.base.catsutils.Environment
+import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
+import js7.base.log.LogLevel.Debug
 import js7.base.log.reader.LogFileReader.growingLogFileStream
 import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
+import js7.base.service.Service
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichEitherF, RichThrowable}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
@@ -36,6 +45,7 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
@@ -65,7 +75,7 @@ trait LogRoute extends RouteProvider:
           fileRoute(LogLevel.Info, currentInfoLogFile)
       ~
         pathPrefix("debug"):
-          fileRoute(LogLevel.Debug, currentDebugLogFile)
+          fileRoute(Debug, currentDebugLogFile)
       ~
         pathPrefix("none"):
           // LogLevel.None returns a line for  testing
@@ -137,8 +147,9 @@ trait LogRoute extends RouteProvider:
 
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
   : Stream[IO, KeyedByteLogLine] =
-    Stream.resource:
-      LogDirectoryIndex.resource(logDirectory, logLevel)(using ZoneId.systemDefault)
+    Stream.eval:
+      environment[LogDirectoryIndexEnv].flatMap:
+        _.forLogLevel(logLevel)
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>
@@ -193,3 +204,43 @@ object LogRoute:
       catch case NonFatal(e) =>
         logger.debug(s"❓ relativise: ${e.toStringWithCauses}")
         targetFile
+
+
+  /** [[LogDirectoryIndex]] placed in the [[Environment]]. */
+  final class LogDirectoryIndexEnv private(
+    logDirectory: Path,
+    poll: FiniteDuration,
+    mutex: Mutex[IO])
+    (using ZoneId)
+  extends Service.TrivialReleasable:
+    private val levelToIndex = mutable.HashMap.empty[LogLevel, Allocated[IO, LogDirectoryIndex]]
+
+    protected def release =
+      mutex.lock.surround:
+        IO.defer:
+          levelToIndex.values.toSeq.parTraverseVoid(_.release)
+
+    def forLogLevel(logLevel: LogLevel): IO[LogDirectoryIndex] =
+      mutex.lock.surround:
+        IO.defer:
+          levelToIndex.get(logLevel) match
+            case None =>
+              LogDirectoryIndex.directory(logDirectory, logLevel, poll = Some(poll))
+                .toAllocated.map: allocated =>
+                  levelToIndex.put(logLevel, allocated)
+                  allocated.allocatedThing
+            case Some(allocated) =>
+              IO.pure(allocated.allocatedThing)
+
+    override def toString = s"LogDirectoryIndexEnv($logDirectory)"
+
+  object LogDirectoryIndexEnv:
+    private given ZoneId = ZoneId.systemDefault
+
+    def register(config: Config): ResourceIO[Unit] =
+      val logDirectory = config.as[Path]("js7.log.info.file").getParent
+      val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
+      Environment.register:
+        Service:
+          Mutex[IO].map: mutex =>
+            new LogDirectoryIndexEnv(logDirectory, poll, mutex)

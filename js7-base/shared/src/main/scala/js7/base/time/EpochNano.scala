@@ -1,5 +1,6 @@
 package js7.base.time
 
+import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import java.time.Instant
 
@@ -39,7 +40,12 @@ object EpochNano:
         epochNano / 1_000_000_000,
         (epochNano % 1_000_000_000).toInt)
 
+    def show: String =
+      epochNano.toInstant.toString
+
   given Ordering[EpochNano] = Ordering.Long
+
+  given Show[EpochNano] = _.show
 
   given Encoder[EpochNano] =
     case EpochNano.Zero => zeroJson

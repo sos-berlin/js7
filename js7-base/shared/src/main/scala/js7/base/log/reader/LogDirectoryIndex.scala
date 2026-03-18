@@ -3,8 +3,9 @@ package js7.base.log.reader
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.option.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
-import fs2.{Chunk, Stream}
+import fs2.Stream
 import java.io.{BufferedInputStream, FileInputStream, InputStream}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Path, Paths}
@@ -13,7 +14,7 @@ import java.util.zip.GZIPInputStream
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
-import js7.base.log.LogLevel.Debug
+import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogFileIndex
@@ -21,14 +22,23 @@ import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
 import js7.base.time.EpochNano
-import js7.base.utils.AutoClosing.autoClosing
+import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.Allocated
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.syntax.use
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
-final class LogDirectoryIndex private(logFiles: Vector[LogFile], logLevel: LogLevel)
+final class LogDirectoryIndex private(
+  logFiles: Vector[LogFile],
+  logLevel: LogLevel,
+  pollDuration: Option[FiniteDuration])
   (using zoneId: ZoneId)
-extends Service.StoppableByRequest:
+extends Service.TrivialReleasable:
 
   import ByteSeqFileReader.BufferSize as DefaultBufferSize
 
@@ -36,24 +46,15 @@ extends Service.StoppableByRequest:
   private val instantToLogFile: java.util.NavigableMap[Instant, LogFile] =
     new java.util.TreeMap(logFiles.toKeyedMap(_.fileInstant).asJava)
 
-  instantToLogFile.values.asScala.foreach: logFile =>
-    logger.debug(s"$logFile")
+  //instantToLogFile.values.asScala.foreach: logFile =>
+  //  logger.debug(s"$logFile")
 
-  def start =
-    startService:
-      untilStopRequested
-        .guarantee:
-          release
-
-  private def release: IO[Unit] =
+  protected def release: IO[Unit] =
     IO.defer:
       instantToLogFile.values.asScala.toVector.traverse: logFile =>
         logFile.deferredIndex.getAndSet(None)
-      .map(_.flatten.flatMap(_.tmpDecompressedFile))
-      .flatMap: tmpFiles =>
-        IO.blocking:
-          tmpFiles.foreach: file =>
-            FileDeleter.tryDeleteFile(file)
+      .flatMap:
+        _.flatten.parFoldMapA(_.release)
 
   def instantToLogLineKey(instant: Instant): IO[Option[LogLineKey]] =
     instantToKeyedByteLogLineStream(instant)
@@ -121,27 +122,39 @@ extends Service.StoppableByRequest:
 
   private def toDeferredIndex(logFile: LogFile): IO[DeferredIndex] =
     logFile.deferredIndex.evalUpdateAndGet:
-      case Some(o) => IO.pure(Some(o))
-      case None => buildIndex(logFile).map(Some(_))
-    .map(_.get)
+      case Some(o) => IO.some(o)
+      case None => buildIndex(logFile).toAllocated.map(Some(_))
+    .map(_.get.allocatedThing)
 
-  private def buildIndex(logFile: LogFile): IO[DeferredIndex] =
+  private def buildIndex(logFile: LogFile): ResourceIO[DeferredIndex] =
     val file = logFile.originalFile
     if logFile.isGzipped then
       val decompressedFile = Paths.get(file.toString + ".tmp")
-      logger.debugIO(s"decompress ${logFile.filename}"):
-        IO.interruptible:
-          autoClosing(
+      Resource.make(
+        acquire =
+          IO.interruptible:
+            val t = Deadline.now
             new GZIPInputStream(new BufferedInputStream(new FileInputStream(file.toFile)))
-          ): in =>
-            Files.copy(in, decompressedFile, REPLACE_EXISTING)
-      .productR:
+              .use: in =>
+                Files.copy(in, decompressedFile, REPLACE_EXISTING)
+            logger.debug(s"Decompressed ${decompressedFile.getFileName}: ${
+              bytesPerSecondString(t.elapsed, Files.size(decompressedFile))}"))(
+        release = _ =>
+          IO.blocking:
+            FileDeleter.tryDeleteFile(decompressedFile))
+      .evalMap: _ =>
         LogFileIndex.build(decompressedFile)
           .map: logFileIndex =>
-            DeferredIndex(logFileIndex, decompressedFile, Some(decompressedFile))
+            DeferredIndex(logFileIndex, decompressedFile)
     else
-      LogFileIndex.build(file).map: logFileIndex =>
-        DeferredIndex(logFileIndex, file)
+      pollDuration match
+        case None =>
+          Resource.eval:
+            LogFileIndex.build(file).map: logFileIndex =>
+              DeferredIndex(logFileIndex, file)
+        case Some(poll) =>
+          LogFileIndex.buildGrowing(file, poll = poll).map: logFileIndex =>
+            DeferredIndex(logFileIndex, file)
 
   override def toString =
     s"LogDirectoryIndex($logLevel, ${instantToLogFile.size} files)"
@@ -150,50 +163,59 @@ extends Service.StoppableByRequest:
 object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
 
-  def resource(
+  def directory(
     logDirectory: Path,
     logLevel: LogLevel,
-    isValidFile: (Path, LogLevel) => Boolean = isValidFile)
+    isValidFile: (Path, LogLevel) => Boolean = isValidFile,
+    poll: Option[FiniteDuration] = None)
     (using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
-    Resource.suspend:
-      logDirectory.directoryStream[IO]
-        .filter: file =>
-          isValidFile(file, logLevel)
-        .compile.toVector.map: files =>
-          resource(files, logLevel)
+    logger.traceResource:
+      Resource.suspend:
+        IO.defer:
+          assertThat(logLevel == Info || logLevel == Debug)
+          logDirectory.directoryStream[IO]
+            .filter: file =>
+              isValidFile(file, logLevel)
+            .compile.toVector.map: files =>
+              this.files(files, logLevel, poll)
 
-  def resource(files: Iterable[Path], logLevel: LogLevel)(using zoneId: ZoneId)
+  def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
+    (using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
       scanFiles(files).map: logFiles =>
         Service:
-          new LogDirectoryIndex(logFiles, logLevel)
+          new LogDirectoryIndex(logFiles, logLevel, poll)
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */
-  private def scanFiles(files: Iterable[Path])(using zoneId: ZoneId) =
+  private def scanFiles(files: Iterable[Path])(using zoneId: ZoneId): IO[Vector[LogFile]] =
     def readAll: IO[Vector[LogFile]] =
       fs2.Stream.iterable(files)
         .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
           toLogFile(file).map: maybe =>
-            Chunk.fromOption(maybe)
-        .unchunks
+            maybe.foreach: logFile =>
+              logger.debug(s"$logFile")
+            maybe
         .compile.toVector
+        .map(_.flatten)
 
     def toLogFile(file: Path): IO[Option[LogFile]] =
-      AtomicCell[IO].of(none[DeferredIndex]).flatMap: cell =>
+      AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).flatMap: cell =>
         if file.getFileName.toString.endsWith(".gz") then
-          readInstant(IO:
-            new GZIPInputStream(
-              new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize))
-          ).map: maybeInstant =>
+          readInstant:
+            IO:
+              new GZIPInputStream(
+                new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize))
+          .map: maybeInstant =>
             maybeInstant.fold(none): instant =>
               Some(LogFile(instant, file, cell, zoneId, isGzipped = true))
         else
-          readInstant(IO:
-            new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize)
-          ).flatMap:
+          readInstant:
+            IO:
+              new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize)
+          .flatMap:
             _.traverse: instant =>
               LogFileIndex.build(file).map: logFileIndex =>
                 LogFile(instant, file, cell, zoneId = zoneId)
@@ -227,7 +249,7 @@ object LogDirectoryIndex:
   private final case class LogFile(
     fileInstant: Instant,
     originalFile: Path,
-    deferredIndex: AtomicCell[IO, Option[DeferredIndex]],
+    deferredIndex: AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]],
     zoneId: ZoneId,
     isGzipped: Boolean = false):
 
@@ -244,5 +266,4 @@ object LogDirectoryIndex:
   /** The deferred LogFileIndex and optionally the temporary decompressed file. */
   private final case class DeferredIndex(
     logFileIndex: LogFileIndex,
-    file: Path,
-    tmpDecompressedFile: Option[Path] = None)
+    file: Path)
