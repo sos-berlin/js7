@@ -2,6 +2,7 @@ package js7.base.io.file
 
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
+import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption.READ
@@ -12,6 +13,7 @@ import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
+import scala.annotation.threadUnsafe
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 /** Reads ByteSequences from a file. **/
@@ -20,7 +22,8 @@ final class ByteSeqFileReader[ByteSeq] private(file: Path, bufferSize: Int)
 extends AutoCloseable:
 
   private val channel = FileChannel.open(file, READ)
-  private val buffer = ByteBuffer.allocate(bufferSize)
+  @threadUnsafe
+  private lazy val buffer = ByteBuffer.allocate(bufferSize)
   private var _next: ByteSeq | Null = null
   private var _nextPosition: Long = 0
 
@@ -140,3 +143,19 @@ object ByteSeqFileReader:
 
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
       streamEndlessly.takeWhile(_.nonEmpty)
+
+    private def inputStream_UNTESTED: InputStream =
+      new InputStream:
+        private val singleArray = new Array[Byte](1)
+          def read() =
+            read(singleArray, 0, 1) match
+              case -1 => -1
+              case 1 => singleArray(0)
+
+        override def read(array: Array[Byte], offset: Int, length: Int) =
+          val buffer = ByteBuffer.wrap(array, offset, length)
+          reader.readBuffer(buffer)
+          if buffer.hasRemaining then
+            buffer.remaining
+          else
+            -1

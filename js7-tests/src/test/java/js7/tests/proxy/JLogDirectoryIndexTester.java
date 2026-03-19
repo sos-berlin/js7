@@ -19,7 +19,9 @@ final class JLogDirectoryIndexTester {
     static CompletableFuture<Void> test(JProxyContext jProxyContext, ZoneId zoneId, Path directory) {
         LogLevel logLevel = LogLevel.info(); // Some LogLevel we think is appropriate
         return
-            JLogDirectoryIndex.resource(directory, logLevel, zoneId, jProxyContext).use(logDirectoryIndex ->
+            JLogDirectoryIndex.directory(
+                directory, path -> true, LogLevel.info(), zoneId, jProxyContext
+            ).use(logDirectoryIndex ->
                 logDirectoryIndex
                     // 🟢 instantToLogLineKey
                     .instantToLogLineKey(ZonedDateTime.parse("2026-03-01T02:00:02+02").toInstant())

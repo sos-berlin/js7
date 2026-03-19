@@ -1,7 +1,7 @@
 package js7.base.io.file.watch
 
 import com.typesafe.config.Config
-import java.nio.file.Path
+import java.nio.file.{Path, WatchEvent}
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -16,9 +16,14 @@ final case class DirectoryWatchSettings(
   directorySilence: FiniteDuration,
   logDelayConf: DelayConf):
 
-  def toWatchOptions(directory: Path, isRelevantFile: Path => Boolean): WatchOptions =
+  def toWatchOptions(
+    directory: Path,
+    isRelevantFile: Path => Boolean,
+    kinds: Set[WatchEvent.Kind[Path]] = WatchOptions.defaultKinds
+  ): WatchOptions =
     WatchOptions(
       directory,
+      kinds = kinds,
       isRelevantFile = isRelevantFile,
       watchDelay = watchDelay,
       pollTimeout = pollTimeout,

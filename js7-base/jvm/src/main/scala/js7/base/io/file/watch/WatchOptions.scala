@@ -17,7 +17,7 @@ final case class WatchOptions(
 
 object WatchOptions:
 
-  private val defaultKinds: Set[WatchEvent.Kind[Path]] =
+  val defaultKinds: Set[WatchEvent.Kind[Path]] =
     Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
 
   val everyFileIsRelevant: Path => Boolean =

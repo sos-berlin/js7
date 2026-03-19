@@ -6,7 +6,7 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
-import java.util.function.BiPredicate
+import java.util.function.Predicate
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.LogLevel
@@ -41,13 +41,9 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
 object JLogDirectoryIndex:
 
-  def resource(directory: Path, logLevel: LogLevel, zoneId: ZoneId, ctx: JProxyContext)
-  : JResource[JLogDirectoryIndex] =
-    resource(directory, LogDirectoryIndex.isValidFile, logLevel, zoneId, ctx)
-
-  def resource(
+  def directory(
     directory: Path,
-    isValidFile: BiPredicate[Path, LogLevel],
+    isValidFile: Predicate[Path],
     logLevel: LogLevel,
     zoneId: ZoneId,
     ctx: JProxyContext)
@@ -55,9 +51,9 @@ object JLogDirectoryIndex:
     import ctx.given_IORuntime
     resource_(logLevel, zoneId):
       LogDirectoryIndex.
-        directory(directory, logLevel, isValidFile = LogDirectoryIndex.isValidFile)(using zoneId)
+        directory(directory, logLevel, isValidFile.test(_), ctx.config)(using zoneId)
 
-  def resource(
+  def files(
     files: java.lang.Iterable[Path],
     logLevel: LogLevel,
     zoneId: ZoneId,

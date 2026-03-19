@@ -32,7 +32,7 @@ import scala.annotation.static
 import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
-final class JProxyContext(config: Config, computeExecutor: Executor | Null)
+final class JProxyContext(config_ : Config, computeExecutor: Executor | Null)
 extends AutoCloseable:
 
   def this() = this(ConfigFactory.empty, null)
@@ -42,15 +42,16 @@ extends AutoCloseable:
   logger.info(StartUp.startUpLine("JS7 Proxy"))
   ProblemCodeMessages.initialize()
 
-  private val config_ = config
-    .withFallback(ConfigFactory.systemProperties)
-    .withFallback(ProxyConfs.defaultConfig)
+  val config: Config =
+    config_
+      .withFallback(ConfigFactory.systemProperties)
+      .withFallback(ProxyConfs.defaultConfig)
 
-  private val proxyConf = ProxyConfs.fromConfig(config_)
+  private val proxyConf = ProxyConfs.fromConfig(config)
 
   private val (ioRuntime, ioRuntimeShutdown) =
     OurIORuntime
-      .resource[SyncIO](ThreadPoolName, config_, computeExecutor = nullToNone(computeExecutor))
+      .resource[SyncIO](ThreadPoolName, config, computeExecutor = nullToNone(computeExecutor))
       .allocated
       .run()
 
@@ -111,7 +112,7 @@ extends AutoCloseable:
     )(using actorSystem)
     new JControllerApi(
       new ControllerApi(apiResource, proxyConf),
-      config_)
+      config)
 
   /** For Scala usage. */
   def controllerApiResource(

@@ -39,8 +39,8 @@ final class FastTimestampParser()(using zoneId: ZoneId):
       ts(24) = '0'
       ts(25) = '0'
       timestampString.getChars(start, end, ts, 0)
-      ts(10) = 'T'
-      ts(19) = '.'
+      ts(10) = 'T' // Replace ' ' with 'T'
+      ts(19) = '.' // Replace ',' with '.'
 
       if java.util.Arrays.equals(ts, 0, 19, lastSecond, 0, 19) then
         // Same second

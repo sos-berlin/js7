@@ -194,6 +194,11 @@ object Logger extends AdHocLogger:
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).run()
 
+      def debugCallWithResult[A](functionName: String, args: => Any = "")(body: => A): A =
+        logF[SyncIO, A](logger, LogLevel.Debug, functionName, args, resultToLoggable = identity):
+          SyncIO(body)
+        .run()
+
       def debugIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         debugF(body)
 

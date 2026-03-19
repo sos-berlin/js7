@@ -18,6 +18,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.math.Ordered.orderingToOrdered
 
@@ -185,6 +186,7 @@ object LogFileIndex:
       stream =>
         val timestampParser = FastTimestampParser()
         var byteTotal = 0L
+        var lineNr = 0L
         var lastEpochNano = EpochNano.Nix
         var reverseTimeWarned = false
         stream.prefetch
@@ -198,6 +200,7 @@ object LogFileIndex:
               var pos = position
               var nextBlock_ = nextBlock
               lines.iterator.foreach: byteLine =>
+                lineNr += 1
                 val lineLen = byteLine.size
                 byteTotal += lineLen
                 if pos >= nextBlock_ then
@@ -205,8 +208,9 @@ object LogFileIndex:
                   if !epochNano.isNix then
                     if epochNano < lastEpochNano && !reverseTimeWarned then
                       reverseTimeWarned = true
-                      logger.warn(s"$label contains reverse timestamps, ${
-                        lastEpochNano.show} > ${epochNano.show}")
+                      logger.warn(s"$label${(startPosition == 0) ?? s":$lineNr"
+                        } contains a timestamp in reverse order: ${
+                        lastEpochNano.show} followed by ${epochNano.show}")
                     if epochNano > lastEpochNano then
                       lastEpochNano = epochNano
                       nanoToPos.add(epochNano, pos)

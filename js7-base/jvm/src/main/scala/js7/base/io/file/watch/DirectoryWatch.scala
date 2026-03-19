@@ -3,7 +3,7 @@ package js7.base.io.file.watch
 import cats.effect.IO
 import cats.syntax.flatMap.*
 import fs2.{Chunk, Stream}
-import java.nio.file.Path
+import java.nio.file.{Path, WatchEvent}
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
@@ -56,11 +56,12 @@ object DirectoryWatch:
     directory: Path,
     directoryState: DirectoryState,
     settings: DirectoryWatchSettings,
-    isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
+    isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant,
+    kinds: Set[WatchEvent.Kind[Path]] = WatchOptions.defaultKinds)
   : Stream[IO, DirectoryEvent] =
     stream2(
       directoryState,
-      settings.toWatchOptions(directory, isRelevantFile))
+      settings.toWatchOptions(directory, isRelevantFile, kinds))
 
   private def stream2(state: DirectoryState, options: WatchOptions): Stream[IO, DirectoryEvent] =
     logger.traceStream:

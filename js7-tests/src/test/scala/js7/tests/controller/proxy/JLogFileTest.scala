@@ -36,6 +36,8 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
   private val debugLogFile = Paths.get:
     if isIntelliJIdea then "logs/test.log" else "logs/build.log"
 
+  assert(Files.exists(debugLogFile))
+
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {
@@ -108,7 +110,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       (1L to (expectedSize - Files.size(logFile)) / (90 + line.length)).foreach: i =>
         logger.debug(line)
 
-    "Non blocking" in:
+    "Non-blocking" in:
       runMyTest("Non blocking: "):
         JLogFileTester.prettyTestNonBlocking
 
@@ -116,7 +118,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       runMyTest("Blocking: "):
         JLogFileTester.prettyTestBlocking
 
-    "Non blocking raw lines" in:
+    "Non-blocking raw lines" in:
       runMyTest("Non blocking raw: "):
         JLogFileTester.testRawNonBlocking
 

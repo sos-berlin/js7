@@ -63,7 +63,6 @@ trait LogRoute extends RouteProvider:
 
   private lazy val currentInfoLogFile = config.as[Path]("js7.log.info.file")
   private lazy val currentDebugLogFile = config.as[Path]("js7.log.debug.file")
-  private lazy val logDirectory = currentInfoLogFile.getParent
 
   lazy val logRoute: Route =
     authorizedUser(ValidUserPermission): _ =>
@@ -149,7 +148,7 @@ trait LogRoute extends RouteProvider:
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
       environment[LogDirectoryIndexEnv].flatMap:
-        _.forLogLevel(logLevel)
+        _.forLogLevel(logLevel, config)
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>
@@ -207,11 +206,7 @@ object LogRoute:
 
 
   /** [[LogDirectoryIndex]] placed in the [[Environment]]. */
-  final class LogDirectoryIndexEnv private(
-    logDirectory: Path,
-    poll: FiniteDuration,
-    mutex: Mutex[IO])
-    (using ZoneId)
+  final class LogDirectoryIndexEnv private(poll: FiniteDuration, mutex: Mutex[IO])(using ZoneId)
   extends Service.TrivialReleasable:
     private val levelToIndex = mutable.HashMap.empty[LogLevel, Allocated[IO, LogDirectoryIndex]]
 
@@ -220,27 +215,27 @@ object LogRoute:
         IO.defer:
           levelToIndex.values.toSeq.parTraverseVoid(_.release)
 
-    def forLogLevel(logLevel: LogLevel): IO[LogDirectoryIndex] =
+    def forLogLevel(logLevel: LogLevel, config: Config): IO[LogDirectoryIndex] =
       mutex.lock.surround:
         IO.defer:
           levelToIndex.get(logLevel) match
             case None =>
-              LogDirectoryIndex.directory(logDirectory, logLevel, poll = Some(poll))
+              LogDirectoryIndex.js7Directory(logLevel, config,
+                  poll = Some(poll))
                 .toAllocated.map: allocated =>
                   levelToIndex.put(logLevel, allocated)
                   allocated.allocatedThing
             case Some(allocated) =>
               IO.pure(allocated.allocatedThing)
 
-    override def toString = s"LogDirectoryIndexEnv($logDirectory)"
+    override def toString = "LogDirectoryIndexEnv"
 
   object LogDirectoryIndexEnv:
     private given ZoneId = ZoneId.systemDefault
 
     def register(config: Config): ResourceIO[Unit] =
-      val logDirectory = config.as[Path]("js7.log.info.file").getParent
       val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
       Environment.register:
         Service:
           Mutex[IO].map: mutex =>
-            new LogDirectoryIndexEnv(logDirectory, poll, mutex)
+            new LogDirectoryIndexEnv(poll, mutex)
