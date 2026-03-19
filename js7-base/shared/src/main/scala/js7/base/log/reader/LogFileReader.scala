@@ -53,10 +53,10 @@ final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]])(using ZoneId):
   : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
     stream =>
       instant.fold(stream): instant =>
-        val toNanos = fastTimestampParser // call-by-name
+        val timestampParser = fastTimestampParser // call-by-name
         val endEpochNano = instant.toEpochNano
         stream.takeWhile: (_, byteLine) =>
-          val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
+          val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
           epochNano < endEpochNano
 
 

@@ -25,11 +25,11 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
   assert(lastSecond.length == 19)
 
-  def apply(timestampString: CharSequence): EpochNano =
-    apply(timestampString, 0, timestampString.length)
+  def parse(timestampString: CharSequence): EpochNano =
+    parse(timestampString, 0, timestampString.length)
 
   /** @return EpochNano.Nix if timestamp is invalid .*/
-  def apply(timestampString: CharSequence, start: Int, end: Int): EpochNano =
+  def parse(timestampString: CharSequence, start: Int, end: Int): EpochNano =
     meterTimestampParser:
       // Fill fraction of seconds, to allow timestamps with precision below microseconds
       ts(20) = '0'

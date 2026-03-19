@@ -68,12 +68,12 @@ final class LogFileIndex private(logFile: Path, nanoToPos: EpochNanoToPos)(using
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
-      val toNanos = FastTimestampParser()
+      val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
       val position = nanoToPos.toPos(begin.toEpochNano)
       logFileReader.streamPosAndLines(position)
         .dropWhile: (pos, byteLine) =>
-          val drop = parseTimestampInLogLine(byteLine)(toNanos.apply) < beginEpochNano
+          val drop = parseTimestampInLogLine(byteLine)(timestampParser.parse) < beginEpochNano
           if drop then
             droppedLines += 1
             droppedBytes += byteLine.size
@@ -86,7 +86,7 @@ final class LogFileIndex private(logFile: Path, nanoToPos: EpochNanoToPos)(using
                 toKiBGiB(pos - position)}, found position=$position")
           drop
         .through:
-          logFileReader.takeUntilInstant(end, toNanos)
+          logFileReader.takeUntilInstant(end, timestampParser)
 
   def logFileReader(byteChunkSize: Int = DefaultBufferSize): ResourceIO[LogFileReader] =
     LogFileReader.resource(logFile, byteChunkSize = byteChunkSize)
@@ -183,7 +183,7 @@ object LogFileIndex:
     private def buildStream(startPosition: Long): fs2.Pipe[IO, Chunk[Byte], Long] =
       case class PosAndNext(pos: Long, nextBlock: Long)
       stream =>
-        val toNanos = FastTimestampParser()
+        val timestampParser = FastTimestampParser()
         var byteTotal = 0L
         var lastEpochNano = EpochNano.Nix
         var reverseTimeWarned = false
@@ -201,7 +201,7 @@ object LogFileIndex:
                 val lineLen = byteLine.size
                 byteTotal += lineLen
                 if pos >= nextBlock_ then
-                  val epochNano = parseTimestampInLogLine(byteLine)(toNanos.apply)
+                  val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
                   if !epochNano.isNix then
                     if epochNano < lastEpochNano && !reverseTimeWarned then
                       reverseTimeWarned = true

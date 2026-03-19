@@ -28,7 +28,7 @@ class AnsiEscapeCodesBenchmark extends OurBenchmark:
   private val line = highlight(blue):
     s"2026-02-12T12:00:00.000000 [info] thread class - ${bold("MESSAGE")}"
 
-  private val toNanos = new FastTimestampParser()(using ZoneId.of("Europe/Mariehamn"))
+  private val timestampParser = new FastTimestampParser()(using ZoneId.of("Europe/Mariehamn"))
   private val timestamp = ts"2026-02-12T12:00:00Z"
   private val timestampLength = timestamp.toString.stripSuffix("Z").length
   private val logLines =
@@ -42,4 +42,4 @@ class AnsiEscapeCodesBenchmark extends OurBenchmark:
   @Benchmark
   def millionTimestampStringsToEpochNano(): Unit =
     logLines.foreach:
-      toNanos(_, 0, timestampLength)
+      timestampParser.parse(_, 0, timestampLength)
