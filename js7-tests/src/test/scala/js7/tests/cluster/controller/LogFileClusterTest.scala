@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
+import java.util.OptionalLong
 import java.util.function.Function.identity
 import js7.base.auth.Admission
 import js7.base.log.LogLevel
@@ -44,7 +45,7 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
-            serverId, LogLevel.None /*test*/ , begin = Instant.now, lines = 1)
+            serverId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

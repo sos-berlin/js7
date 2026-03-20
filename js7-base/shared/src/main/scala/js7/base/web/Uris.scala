@@ -2,6 +2,7 @@ package js7.base.web
 
 import java.lang.Character.isLetter
 import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.utils.Missing
 import scala.collection.immutable.BitSet
 
 /**
@@ -14,16 +15,17 @@ object Uris:
   final def encodeSegment(string: String): String =
     uriSegmentEncoder.encode(string)
 
-  final def encodeQuery(kvs: (String, String)*): String =
+  final def encodeQuery(kvs: (String, String | Missing)*): String =
     encodeQuery(kvs)
 
-  final def encodeQuery(kvs: Iterable[(String, String)]): String =
+  final def encodeQuery(kvs: Iterable[(String, String | Missing)]): String =
     if kvs.isEmpty then
       ""
     else
       "?" + kvs
-        .view
-        .map { case (k, v) => queryKeyEncoder.encode(k) + "=" + queryValueEncoder.encode(v) }
+        .view.flatMap:
+          case (k, Missing) => None
+          case (k, v: String) => Some(queryKeyEncoder.encode(k) + "=" + queryValueEncoder.encode(v))
         .mkString("&")
 
   private val uriSegmentEncoder = new Encoder(reservedChars = ":/?#[]@")

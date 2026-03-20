@@ -62,7 +62,8 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest Scala! 🌶️🌶️🌶️"
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
-      controllerApi.getLogLines(Info, begin = Instant.now - 3.s, lines = Int.MaxValue)
+      // Info because our log filename does not contain "debug-"
+      controllerApi.getLogLines(Info, begin = Instant.now - 3.s)
         .flatMap: stream =>
           stream.map(_.utf8String)
             .takeUntil: line =>

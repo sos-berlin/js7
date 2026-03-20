@@ -53,3 +53,10 @@ object Missing:
       underlying match
         case Missing => throw new NoSuchElementException(s"$name is Missing")
         case a: A @unchecked => a
+
+
+  extension [A](option: Option[A])
+    def toMissing: A | Missing =
+      option match
+        case None => Missing
+        case Some(a) => a

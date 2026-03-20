@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, ResourceIO}
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
+import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -77,13 +78,13 @@ final class JControllerProxy private[proxy](
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: Long)
+  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
   : Flux[java.util.List[KeyedLogLine]] =
     keyedLogLineFlux_(serverId, logLevel, begin, lines)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: Long)
+  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
   : Flux[java.util.List[KeyedLogLine]] =
     keyedLogLineFlux_(serverId, logLevel, key, lines)
 
@@ -91,7 +92,7 @@ final class JControllerProxy private[proxy](
     serverId: EngineServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Long = Long.MaxValue)
+    lines: OptionalLong)
   : Flux[java.util.List[KeyedLogLine]] =
     fs2.Stream.resource:
       JEngineLog.resource(this, serverId)
@@ -103,13 +104,13 @@ final class JControllerProxy private[proxy](
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: Long)
+  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     rawLogLineFlux_(serverId, logLevel, begin, lines)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: Long)
+  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     rawLogLineFlux_(serverId, logLevel, key, lines)
 
@@ -117,7 +118,7 @@ final class JControllerProxy private[proxy](
     serverId: EngineServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Long = Long.MaxValue)
+    lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     fs2.Stream.resource:
       JEngineLog.resource(this, serverId)

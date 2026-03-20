@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import cats.syntax.foldable.*
 import java.time.Instant
+import java.util.OptionalLong
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
@@ -13,6 +14,7 @@ import js7.data.node.{EngineServerId, NodeId}
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.JEngineLog.*
 import reactor.core.publisher.Flux
+import scala.jdk.OptionConverters.*
 
 final class JEngineLog(
   jProxy: JControllerProxy,
@@ -32,7 +34,7 @@ final class JEngineLog(
     .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
 
-  def logSection(logLevel: LogLevel, begin: Instant, lines: Long)
+  def logSection(logLevel: LogLevel, begin: Instant, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     logSection_(logLevel, begin, lines)
       .map(_.toArray) // Copy, or has Java an immutable array?
@@ -40,7 +42,7 @@ final class JEngineLog(
       .map(_.asJava)
       .asFlux
 
-  def logSection(logLevel: LogLevel, begin: LogLineKey, lines: Long)
+  def logSection(logLevel: LogLevel, begin: LogLineKey, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     logSection_(logLevel, begin, lines)
       .map(_.toArray) // Copy, or has Java an immutable array?
@@ -48,32 +50,32 @@ final class JEngineLog(
       .map(_.asJava)
       .asFlux
 
-  private[javaapi] def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: Long)
+  private[javaapi] def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: OptionalLong)
   : fs2.Stream[IO, fs2.Chunk[Byte]] =
     fs2.Stream.force:
       serverId match
         case EngineServerId.Controller.Primary =>
-          primaryControllerApi.getLogLines(logLevel, begin = begin, lines = lines)
+          primaryControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala)
         case EngineServerId.Controller.Backup =>
-          backupControllerApi.getLogLines(logLevel, begin = begin, lines = lines)
+          backupControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala)
         case EngineServerId.Subagent(subagentId) =>
-          activeControllerApi.getLogLines(logLevel, begin = begin, lines = lines,
+          activeControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala,
             subagentId = Some(subagentId))
 
   private[javaapi] def keyedLogLineStream(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Long = Long.MaxValue)
+    lines: OptionalLong)
   : fs2.Stream[IO, KeyedLogLine] =
     logger.traceStream(s"keyedLogLineFlux Stream"):
       fs2.Stream.force:
         serverId match
           case EngineServerId.Controller.Primary =>
-            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines)
+            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala)
           case EngineServerId.Controller.Backup =>
-            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines)
+            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala)
           case EngineServerId.Subagent(subagentId) =>
-            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines,
+            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala,
               subagentId = Some(subagentId))
 
   private def primaryControllerApi: HttpControllerApi =

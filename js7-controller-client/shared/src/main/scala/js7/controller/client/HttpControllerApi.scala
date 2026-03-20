@@ -11,6 +11,8 @@ import js7.base.generic.Completed
 import js7.base.log.LogLevel
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.session.SessionApi
+import js7.base.utils.Missing
+import js7.base.utils.Missing.toMissing
 import js7.base.web.Uris.encodeQuery
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
@@ -66,39 +68,40 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Long,
+    lines: Option[Long] = None,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     getLogLines_(subagentId, logLevel,
       "begin" -> begin.toString,
-      "lines" -> lines.toString)
+      "lines" -> lines.map(_.toString).toMissing)
 
   private def getLogLines_(
     subagentId: Option[SubagentId],
     logLevel: LogLevel,
-    queries: (String, String)*)
+    queries: (String, String | Missing)*)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
       val path = subagentId match
         case None => prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
         case Some(subagentId) =>
-          prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
+          prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" /
+            logLevel.toString.toLowerCase(Locale.ROOT)
       httpClient.getTextAsRawLines(Uri(path.toString + encodeQuery(queries*)))
 
   final def getKeyedLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Long,
+    lines: Option[Long],
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedLogLine]] =
     getKeyedLogLines_(subagentId, logLevel,
       "begin" -> begin.toString,
-      "lines" -> lines.toString)
+      "lines" -> lines.map(_.toString).toMissing)
 
   private def getKeyedLogLines_(
     subagentId: Option[SubagentId],
     logLevel: LogLevel,
-    queries: (String, String)*)
+    queries: (String, String | Missing)*)
   : IO[Stream[IO, KeyedLogLine]] =
     loginAndRetryIfSessionLost:
       httpClient.getDecodedLinesStream[KeyedLogLine](

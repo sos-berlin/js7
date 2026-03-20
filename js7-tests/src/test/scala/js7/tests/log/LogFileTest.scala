@@ -3,6 +3,7 @@ package js7.tests.log
 import cats.effect.IO
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
+import java.util.OptionalLong
 import java.util.function.Function.identity
 import js7.base.configutils.Configs.*
 import js7.base.log.LogLevel
@@ -61,7 +62,7 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
-            engineServerId, LogLevel.None /*test*/ , begin = Instant.now, lines = 1)
+            engineServerId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()
