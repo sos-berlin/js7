@@ -3,6 +3,7 @@ package js7.core.web.log
 import cats.effect.std.Mutex
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
+import cats.syntax.apply.*
 import cats.syntax.parallel.*
 import com.typesafe.config.Config
 import fs2.Stream
@@ -21,12 +22,14 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.LogLevel.Debug
+import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogFileReader.growingLogFileStream
 import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.service.Service
+import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
@@ -239,3 +242,6 @@ object LogRoute:
         Service:
           Mutex[IO].map: mutex =>
             new LogDirectoryIndexEnv(poll, mutex)
+      *>
+        registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
+          .void

@@ -159,7 +159,14 @@ extends Service.StoppableByRequest:
         case None =>
           buildIndex(logFile).toAllocated
         case Some(allo) =>
-          if allo.allocatedThing.compressedSize.exists(_ != Files.size(logFile.originalFile)) then
+          if logFile.isGzipped &&
+            !Files.exists(allo.allocatedThing.file)
+          then
+            logger.debug(s"${allo.allocatedThing.file.getFileName} deleted — rebuilding index")
+            allo.release *> buildIndex(logFile).toAllocated
+          else if logFile.isGzipped &&
+            allo.allocatedThing.fileSize.exists(_.original != Files.size(logFile.originalFile))
+          then
             // Happens when a compressed file has been indexed but decompression hasn't finished
             logger.debug:
               s"${logFile.originalFile.getFileName} changed its size — rebuilding index"
@@ -189,7 +196,9 @@ extends Service.StoppableByRequest:
       .evalMap: _ =>
         LogFileIndex.build(decompressedFile)
           .map: logFileIndex =>
-            DeferredIndex(logFileIndex, decompressedFile, Some(size))
+            val decompressedSize = Files.size(decompressedFile)
+            Bean.decompressedFilesSize += decompressedSize
+            DeferredIndex(logFileIndex, decompressedFile, Some(size -> decompressedSize))
     else
       pollDuration match
         case None =>
@@ -363,7 +372,11 @@ object LogDirectoryIndex:
       originalFile.getFileName
 
     def release: IO[Unit] =
-      deferredIndexCell.getAndSet(None).flatMap(_.foldMap(_.release))
+      deferredIndexCell.getAndSet(None).flatMap:
+        _.foldMap: allo =>
+          allo.allocatedThing.fileSize.foreach: o =>
+            Bean.decompressedFilesSize -= o.decompressed
+          allo.release
 
     def toLogLineKey(logLevel: LogLevel, position: Long): LogLineKey =
       LogLineKey(logLevel, fileInstant, position)
@@ -376,7 +389,7 @@ object LogDirectoryIndex:
   private final case class DeferredIndex(
     logFileIndex: LogFileIndex,
     file: Path,
-    compressedSize: Option[Long] = None)
+    fileSize: Option[(original: Long, decompressed: Long)] = None)
 
 
   private sealed trait OurDirEvent:
@@ -387,3 +400,13 @@ object LogDirectoryIndex:
 
   private final case class FileDeleted(file: Path) extends OurDirEvent:
     override def toString = s"FileDeleted(${file.getFileName})"
+
+
+  sealed trait LogDirectoryIndexMXBean:
+    this: Bean.type =>
+
+    def getDecompressedFilesSize: Long =
+      decompressedFilesSize
+
+  object Bean extends LogDirectoryIndexMXBean:
+    /*private[LogDirectoryIndex] */var decompressedFilesSize: Long = 0
