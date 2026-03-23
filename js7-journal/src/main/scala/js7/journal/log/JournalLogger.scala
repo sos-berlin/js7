@@ -185,6 +185,27 @@ object JournalLogger:
   private val spaceArrow = " " + KeyedEvent.Arrow
   private val spaceArrowSpace = spaceArrow + " "
 
+  private inline val TransactionBeginChar = '⎛' // "left parenthesis upper hook"
+  private inline val TransactionMidChar   = '⎜' // "left parenthesis extension"
+  private inline val TransactionSumChar   = '⎜' // "left parenthesis extension"
+  private inline val TransactionEndChar   = '⎝' // "left parenthesis lower hook"
+
+  //private inline val TransactionBeginChar = '⎧' // "left curly bracket upper hook"
+  //private inline val TransactionMidChar   = '⎪' // "curly bracket extension"
+  //private inline val TransactionSumChar   = '⎨' // "left curly bracket middle piece"
+  //private inline val TransactionEndChar   = '⎩' // "left curly bracket lower hook"
+
+  private inline val GroupBeginChar = '┌'
+  private inline val GroupMidChar   = '┆' // ┊┆╎╵╷
+  private inline val GroupSumChar   = '┤'
+  private inline val GroupEndChar   = '└'
+
+  private inline val ChunkBeginPersistChar = '╒'
+  private inline val ChunkBeginChar        = '┌'
+  private inline val ChunkMidChar          = '│'
+  private inline val ChunkPersistChar      = '├'
+  private inline val PersistEndChar        = '└'
+
   def apply(conf: JournalConf): JournalLogger =
     new JournalLogger(
       syncOrFlushString =
@@ -263,26 +284,27 @@ object JournalLogger:
       if isFirstPersist && isFirstEvent then // First line of chunk
         if isLastEvent then
           if isLastPersist then ' ' // Single event chunk
-          else '╒' // Start of the Chunk and end of the first (single event) LoggablePersist
+          else ChunkBeginPersistChar // Start of the Chunk and end of the first (single event) LoggablePersist
         else
-          '┌' // Start of the Chunk
+          ChunkBeginChar
       else if isLastEvent then
-        if isLastPersist then '└' // chunk ends
-        else '├' // End of LoggablePersist
-      else '│'
+        if isLastPersist then PersistEndChar
+        else ChunkPersistChar // End of LoggablePersist
+      else ChunkMidChar // "box drawings light vertical"
 
     def transactionMarker(forEachEvent: Boolean): Char =
       if isFirstEvent && isLastEvent then ' '
       else if isTransaction then
-        if isFirstEvent then '⎛' // ⎧
-        else if isLastEvent then '⎝' // ⎩
-        else if forEachEvent && nr == beforeLastEventNr then '⎨'
-        else '⎪'
-      else if !forEachEvent then ' '
-      else if isFirstEvent then '┌'
-      else if isLastEvent then '└'
-      else if isLastPersist && nr == beforeLastEventNr then '┤'
-      else '┆' // ╵╷┊┆╎
+        if isFirstEvent then TransactionBeginChar
+        else if isLastEvent then TransactionEndChar
+        else if forEachEvent && nr == beforeLastEventNr then TransactionSumChar
+        else TransactionMidChar
+      else
+        if !forEachEvent then ' '
+        else if isFirstEvent then GroupBeginChar
+        else if isLastEvent then GroupEndChar
+        else if isLastPersist && nr == beforeLastEventNr then GroupSumChar
+        else GroupMidChar
   end PersistFrame
 
 
