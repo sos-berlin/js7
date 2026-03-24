@@ -36,6 +36,7 @@ final class SubagentMoveInClusterTest
     js7.job.execution.signed-script-injection-allowed = true
     js7.journal.cluster.heartbeat = 1s
     js7.journal.cluster.heartbeat-timeout = 3s
+    js7.journal.cluster.consent-timeout = 2s
   """.withFallback(super.agentConfig)
 
   protected val agentPaths = Nil

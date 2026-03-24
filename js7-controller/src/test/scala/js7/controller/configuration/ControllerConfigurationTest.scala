@@ -55,7 +55,7 @@ final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
             keepAlive = 1.s,
             delay = 1.s,
             DelayConf(1.s, 3.s, 6.s, 10.s)),
-          ClusterTiming(3.s, 10.s),
+          ClusterTiming(3.s, 10.s, 6.s),
           clusterWatchUniquenessMemorySize = 1000,
           delayConf = DelayConf(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s),
           config = ConfigFactory.empty),

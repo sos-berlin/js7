@@ -39,7 +39,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
         "BIG" -> StringConstant(bigString)))))
 
   protected val items = Seq(workflow)
-  override protected val clusterTiming = ClusterTiming(1.s, 10.s)
+  override protected val clusterTiming = ClusterTiming(1.s, 10.s, 6.s)
 
   "Cluster replicates big JSON" in:
     runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>

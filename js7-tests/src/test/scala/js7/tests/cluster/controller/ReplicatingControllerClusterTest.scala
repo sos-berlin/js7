@@ -14,7 +14,7 @@ import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 
 final class ReplicatingControllerClusterTest extends ControllerClusterTester:
-  protected override val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 5.s)
+  protected override val clusterTiming = ClusterTiming(1.s, 5.s, 3.s)
 
   "Cluster replicates journal files properly" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>

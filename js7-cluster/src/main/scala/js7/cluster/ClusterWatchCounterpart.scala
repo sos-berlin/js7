@@ -120,7 +120,7 @@ extends Service.Trivial:
             ClusterWatchCommitNodeLoss(_, correlId, ownId, event, clusterState)
           else
             ClusterWatchAskNodeLoss(_, correlId, ownId, event, clusterState,
-              hold = clusterConf.timing.clusterWatchHeartbeat/*too short?*/),
+              hold = clusterConf.timing.consentTimeout),
           clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
         ).map(_.map(Some(_)))
 

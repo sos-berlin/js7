@@ -42,6 +42,7 @@ final class BecomeAgentClusterTest
     js7.job.execution.signed-script-injection-allowed = on
     js7.journal.cluster.heartbeat = 0.5s
     js7.journal.cluster.heartbeat-timeout = 0.5s
+    js7.journal.cluster.consent-timeout = 0.25s
 
     js7.auth.subagents.${backupSubagentItem.id.string} = "ACTIVE DIRECTOR'S PASSWORD"
     js7.auth.users.${backupSubagentItem.id.string} {

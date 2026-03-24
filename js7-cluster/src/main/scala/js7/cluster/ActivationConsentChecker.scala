@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ActivationConsentChecker.*
 import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
 import js7.data.cluster.{ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.{NodeId, NodeNameToPassword}
@@ -88,10 +88,11 @@ private final class ActivationConsentChecker private(
         case (Right(Consent.Given), other) =>
           other.joinStd.flatMap:
             case Right(Consent.Given) =>
-              // We could check for timeout here, but we let the ClusterWatch do it
               // Commit //
               askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer, commit = true)
-              // Now, if succeeded, the caller MUST emit the event //
+              /// Now, if succeeded, the caller MUST emit the event ///
+              // We don't check the timeout here, because the ClusterWatch has done it and
+              // the ClusterWatch has changed it's state already.
 
             case bad @ (Left(_) | Right(Consent.Rejected)) =>
               IO.pure(bad)
@@ -126,6 +127,7 @@ private final class ActivationConsentChecker private(
       case Left(problem) =>
         if problem.is(ClusterNodeLossNotConfirmedProblem)
           || problem.is(ClusterWatchInactiveNodeProblem)
+          || problem.is(ClusterWatchActiveStillAliveProblem)
         then
           logger.warn(s"⛔ ClusterWatch did not agree to ${
             event.getClass.simpleScalaName} event: $problem")

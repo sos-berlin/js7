@@ -42,6 +42,7 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
     js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
+    js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
     js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
     js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
@@ -137,7 +138,8 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 object AgentClusterNodeLossRestartTest:
   private val logger = Logger[this.type]
 
-  private val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
+  private val clusterTiming = ClusterTiming(
+    heartbeat = 500.ms, heartbeatTimeout = 500.ms, consentTimeout = 250.ms)
 
   private val subagentIds = Seq(
     SubagentId("SUBAGENT-0"),

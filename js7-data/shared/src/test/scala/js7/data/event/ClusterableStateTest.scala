@@ -43,7 +43,7 @@ private object ClusterableStateTest:
       primaryNodeId -> Uri("https://PRIMARY"),
       NodeId("BACKUP") -> Uri("https://BACKUP")),
     primaryNodeId,
-    ClusterTiming(10.s, 20.s),
+    ClusterTiming(10.s, 20.s, 11.s),
     Some(ClusterWatchId("CLUSTER-WATCH")))
 
   private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)

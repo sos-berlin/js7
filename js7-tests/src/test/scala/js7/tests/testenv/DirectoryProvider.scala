@@ -184,7 +184,7 @@ extends HasCloser:
               testController.waitUntilReady()
             body(testController)
           catch case NonFatal(t) =>
-            // Pekko may crash before the caller gets the error so we log the error here
+            // Pekko may crash before the caller gets the error, so we log the error here
             logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             try testController.terminate().await(99.s)
             catch case t2: Throwable if t2 ne t =>
@@ -192,7 +192,7 @@ extends HasCloser:
             throw t
         try testController.stop.await(99.s)
         catch case NonFatal(t) =>
-          // Pekko may crash before the caller gets the error so we log the error here
+          // Pekko may crash before the caller gets the error, so we log the error here
           logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
           try testController.stop.await(99.s)
           catch case t2: Throwable if t2 ne t =>
@@ -218,14 +218,10 @@ extends HasCloser:
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
   : ResourceIO[TestController] =
-    Resource.make(
-      runningControllerResource(testWiring, config, httpPort, httpsPort)
-        .toAllocated
-        .map(runningController =>
-          new TestController(
-            runningController,
-            controllerAdmission(runningController.allocatedThing))))(
-      release = _.stop)
+    TestController.resource(
+      runningControllerResource(testWiring, config, httpPort, httpsPort),
+      controllerAdmission(_))
+
 
   private def runningControllerResource(
     testWiring: RunningController.TestWiring = controllerTestWiring,

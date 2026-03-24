@@ -81,7 +81,7 @@ final class AgentRefStateTest extends OurTestSuite:
             NodeId("Primary") -> Uri("https://PRIMARY"),
             NodeId("Backup") -> Uri("https://BACKUP")),
           NodeId("Primary"),
-          ClusterTiming(3.s, 10.s),
+          ClusterTiming(3.s, 10.s, 6.s),
           clusterWatchId = None)),
         Map(
           NodeId("Primary") -> ClusterNodeLossNotConfirmedProblem(
@@ -114,7 +114,8 @@ final class AgentRefStateTest extends OurTestSuite:
             "activeId": "Primary",
             "timing": {
               "heartbeat": 3,
-              "heartbeatTimeout": 10
+              "heartbeatTimeout": 10,
+              "consentTimeout": 6
             }
           }
         },

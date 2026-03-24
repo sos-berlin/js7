@@ -67,11 +67,15 @@ object ClusterWatchProblems:
       TypedJsonCodec[ClusterNodeLossNotConfirmedProblem](
         Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]))
 
+
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId, info: String)
   extends Problem.Coded:
     def arguments: Map[String, String] = Map2(
       "nodeId", nodeId.toString,
       "info", info)
+
+  object ClusterNodeIsNotLostProblem extends Problem.Coded.Companion
+
 
   case object ClusterWatchRequestDoesNotMatchProblem extends Problem.ArgumentlessCoded
 

@@ -15,7 +15,7 @@ import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 
 final class ShutdownFailoverControllerClusterTest extends ControllerClusterTester:
 
-  protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
+  protected override val clusterTiming = ClusterTiming(500.ms, 5.s, 3.s)
 
   override protected def removeObsoleteJournalFiles = false
 

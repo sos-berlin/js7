@@ -7,18 +7,20 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
+import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.SecretStringGenerator
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentMirroredEvent}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterTiming
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
 import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
@@ -28,6 +30,8 @@ import js7.tests.cluster.agent.UntaughtAgentClusterWatchTest.*
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
+import scala.annotation.tailrec
+import scala.concurrent.duration.Deadline
 
 final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProviderForScalaTest:
 
@@ -43,6 +47,8 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
     js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
+    js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
+    js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
     js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
     js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
@@ -80,7 +86,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
         primaryDirector.await[ClusterCoupled]()
         backupDirector.await[ClusterCoupled]()
 
-        // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
+        // Suppress acknowledge heartbeat, simulating a connection loss between the cluster nodes
         logger.info("💥 Break connection between cluster nodes 💥")
         sys.props(testHeartbeatLossPropertyKey) = "true"
         sys.props(testAckLossPropertyKey) = "true"
@@ -111,10 +117,21 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
               clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
             .await(99.s)
 
-          //controller.awaitNext[AgentClusterWatchConfirmationRequired](_.key == agentPath)
-          controller.execCmd:
-            ConfirmClusterNodeLoss(agentPath, lostNodeId = NodeId.primary,
-              confirmer = "UntaughtAgentClusterWatchTest")
+          locally:
+            // Then primary may have emitted a heartbeat via ClusterWatchCheckState.
+            // So we try until the heartbeat is too old and ConfirmClusterNodeLoss is accepted
+            val t = Deadline.now
+            @tailrec def loop(): Unit =
+              controller.api.executeCommand:
+                ConfirmClusterNodeLoss(agentPath, lostNodeId = NodeId.primary,
+                  confirmer = "UntaughtAgentClusterWatchTest")
+              .await(99.s) match
+                case Left(problem) if problem is ClusterNodeIsNotLostProblem  =>
+                  if (t + 15.s).hasElapsed then fail(s"Since 15s: $problem")
+                  sleep(100.ms)
+                  loop()
+                case checked => checked.orThrow
+            loop()
 
           controller.awaitNextKey[AgentClusterWatchManuallyConfirmed](agentPath)
           assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
@@ -126,7 +143,8 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 object UntaughtAgentClusterWatchTest:
   private val logger = Logger[this.type]
 
-  private val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
+  private val clusterTiming = ClusterTiming(
+    heartbeat = 500.ms, heartbeatTimeout = 500.ms, consentTimeout = 250.ms)
 
   private val subagentIds = Seq(
     SubagentId("DIRECTOR-PRIMARY"),

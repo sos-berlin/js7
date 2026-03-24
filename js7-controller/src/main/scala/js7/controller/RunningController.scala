@@ -33,6 +33,7 @@ import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
+import js7.base.utils.Tests.isTest
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
@@ -65,7 +66,7 @@ import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
-import org.apache.pekko.pattern.ask
+import org.apache.pekko.pattern.{AskTimeoutException, ask}
 import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -201,32 +202,33 @@ object RunningController:
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningController] =
-    Resource.defer:
-      Log4j.set("js7.serverId", conf.controllerId.toString)
+    logger.traceResource:
+      Resource.defer:
+        Log4j.set("js7.serverId", conf.controllerId.toString)
 
-      given Scheduler = ioRuntime.scheduler
-      val alarmClock: AlarmClock =
-        testWiring.alarmClock getOrElse
-          AlarmClock(Some(conf.config
-            .getDuration("js7.time.clock-setting-check-interval")
-            .toFiniteDuration))
+        given Scheduler = ioRuntime.scheduler
+        val alarmClock: AlarmClock =
+          testWiring.alarmClock getOrElse
+            AlarmClock(Some(conf.config
+              .getDuration("js7.time.clock-setting-check-interval")
+              .toFiniteDuration))
 
-      val eventIdGenerator: EventIdGenerator =
-        testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
+        val eventIdGenerator: EventIdGenerator =
+          testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
-      val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
-      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
-      for
-        _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
-          testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
-          ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
-        _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
-        r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
-      yield r
-    .evalOn(ioRuntime.compute)
+        val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
+        val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+        for
+          _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
+          _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
+          _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
+            testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
+            ignoreDuplicate = true)
+          _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
+          _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
+          r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
+        yield r
+      .evalOn(ioRuntime.compute)
 
   private def resource2(
     conf: ControllerConfiguration,
@@ -434,9 +436,13 @@ object RunningController:
                   IO.right(ControllerCommand.Response.Accepted)
                 case Left(problem) => IO.pure(Left(problem))
                 case Right(actor) =>
-                  IO.deferFuture(
+                  IO.deferFuture:
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
-                      .mapTo[Checked[ControllerCommand.Response]])
+                      .mapTo[Checked[ControllerCommand.Response]]
+                  .handleError:
+                    case e: AskTimeoutException if isTest =>
+                      logger.error(s"Shutdown: $e")
+                      Right(ControllerCommand.Response.Accepted)
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
           IO(clusterNode.workingClusterNode)

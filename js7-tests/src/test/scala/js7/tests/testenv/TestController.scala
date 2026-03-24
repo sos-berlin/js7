@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
 import izumi.reflect.Tag
@@ -17,7 +17,7 @@ import js7.base.scalasource.ScalaSourceLocation
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, logWhenMethodTakesLonger}
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger, logWhenMethodTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
@@ -110,12 +110,14 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
     clusterAction: Option[ShutDown.ClusterAction] = None,
     dontNotifyActiveNode: Boolean = false)
   : IO[ProgramTermination] =
-    logger.traceIO(
-      shutdown(ShutDown(
-        suppressSnapshot = suppressSnapshot,
-        clusterAction = clusterAction,
-        dontNotifyActiveNode = dontNotifyActiveNode)
-      ).guarantee(stop))
+    logger.traceIO:
+      shutdown:
+        ShutDown(
+          suppressSnapshot = suppressSnapshot,
+          clusterAction = clusterAction,
+          dontNotifyActiveNode = dontNotifyActiveNode)
+      .guarantee:
+        stop
 
   def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response]): command.Response =
     import runningController.ioRuntime
@@ -208,3 +210,13 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
 
 object TestController:
   private val logger = Logger[this.type]
+
+  def resource(
+    controllerResource: ResourceIO[RunningController],
+    toAdmission: RunningController => Admission)
+  : ResourceIO[TestController] =
+    logger.debugResource:
+      Resource.make(
+        acquire = controllerResource.toAllocated.map: allocated =>
+          new TestController(allocated, toAdmission(allocated.allocatedThing)))(
+        release = _.stop)

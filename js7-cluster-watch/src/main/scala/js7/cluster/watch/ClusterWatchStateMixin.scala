@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{HasNodes, PassiveLost}
-import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
 import js7.data.cluster.{ClusterState, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchNonCommitRequest, Confirmer}
 
 /** Provide the State type hierarchy: Untaught, Normal, AskingNodeLoss. */
@@ -69,9 +69,7 @@ private transparent trait ClusterWatchStateMixin:
             s"${request.from}: 🪱 Ignore probably duplicate event for already reached clusterState=$clusterState"
         Right(None)
       else
-        def clusterWatchInactiveNodeProblem =
-          ClusterWatchInactiveNodeProblem(request.from, clusterState, lastHeartbeat.elapsed, opString)
-
+        val age = lastHeartbeat.elapsed
         request.maybeEvent.match
           case Some(_: ClusterSwitchedOver) =>
             // ClusterSwitchedOver is applied by each node and is considered reliable
@@ -83,10 +81,16 @@ private transparent trait ClusterWatchStateMixin:
                 Left(ClusterFailOverWhilePassiveLostProblem)
 
               case clusterState =>
-                (request.from == clusterState.passiveId && !isLastHeartbeatStillValid) !!
-                  clusterWatchInactiveNodeProblem
+                if request.from != clusterState.passiveId then
+                  Left(ClusterWatchInactiveNodeProblem(request.from, clusterState, age, opString))
+                else if age < clusterState.timing.clusterWatchHeartbeatValidDuration then
+                  Left(ClusterWatchActiveStillAliveProblem)
+                else
+                  Checked.unit
+
           case _ =>
-            (request.from == clusterState.activeId) !! clusterWatchInactiveNodeProblem
+            (request.from == clusterState.activeId) !!
+              ClusterWatchInactiveNodeProblem(request.from, clusterState, age, opString)
         .flatMap: _ =>
           clusterState.applyEvents(request.maybeEvent) match
             case Left(problem) =>
@@ -118,9 +122,6 @@ private transparent trait ClusterWatchStateMixin:
         .onProblem: problem =>
           logger.warn(s"${request.from}: $problem")
 
-    private def isLastHeartbeatStillValid(using SyncDeadline.Now) =
-      (lastHeartbeat + clusterState.timing.clusterWatchHeartbeatValidDuration).hasTimeLeft
-
     override def toString =
       functionCallToString("Normal",
         clusterState.toShortString.some,
@@ -146,11 +147,7 @@ private transparent trait ClusterWatchStateMixin:
       commit: ClusterWatchCommitNodeLoss,
       confirmer: Option[Confirmer],
       opString: => String)
-      (using now: SyncDeadline.Now)
     : Checked[Option[Confirmer]] =
-      def clusterWatchInactiveNodeProblem =
-        ClusterWatchInactiveNodeProblem(request.from, clusterState, lastHeartbeat.elapsed, opString)
-
       matches(commit).flatMap: _ =>
         logger.info(s"${commit.from} ${commit.event}")
         if requireManualNodeLossConfirmation && !confirmer.isDefined then

@@ -79,12 +79,8 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
 
           backup.runController(): backupController2 =>
             runOrder(OrderId("ORDER-AT-BACKUP-RESTARTED"))
-            try
-              backupController2.execCmd:
-                ShutDown(clusterAction = Some(ClusterAction.Failover))
-            catch case t: org.apache.pekko.pattern.AskTimeoutException =>
-              // Due to dirty test shutdown behaviour?
-              Logger.warn(s"Shutdown with failover: $t", t)
+            backupController2.execCmd:
+              ShutDown(clusterAction = Some(ClusterAction.Failover))
 
           primaryController.await[ClusterFailedOver](after = lastEventId)
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))

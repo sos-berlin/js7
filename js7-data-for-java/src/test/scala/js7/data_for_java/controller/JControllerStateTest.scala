@@ -83,7 +83,7 @@ private object JControllerStateTest:
             NodeId("A") -> Uri("https://A"),
             NodeId("B") -> Uri("https://B")),
           activeId = NodeId("A"),
-          ClusterTiming(10.s, 20.s),
+          ClusterTiming(10.s, 20.s, 6.s),
           clusterWatchId = None))),
     controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),

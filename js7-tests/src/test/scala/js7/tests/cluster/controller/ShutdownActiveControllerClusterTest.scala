@@ -13,7 +13,7 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 
 final class ShutdownActiveControllerClusterTest extends ControllerClusterTester:
 
-  protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 10.s)
+  protected override val clusterTiming = ClusterTiming(500.ms, 10.s, 6.s)
 
   override protected def removeObsoleteJournalFiles = false
 

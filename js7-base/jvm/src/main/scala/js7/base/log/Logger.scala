@@ -535,11 +535,15 @@ object Logger extends AdHocLogger:
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
     function: String, args: => Any)
   : Unit =
-    lazy val argsString = args match
-      case null => "null"
-      case o =>
-        try o.toString
-        catch case t: Throwable => t.toStringWithCauses
+    lazy val argsString =
+      try
+        args match
+          case null => "null"
+          case o: Tuple =>
+            val s = o.toString
+            if s.startsWith("(") && s.endsWith(")") then s.substring(1, s.length - 1) else s
+          case o => o.toString
+      catch case t: Throwable => t.toStringWithCauses
 
     marker match
       case null =>

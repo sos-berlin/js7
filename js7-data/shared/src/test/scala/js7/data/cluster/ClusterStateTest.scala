@@ -20,7 +20,7 @@ final class ClusterStateTest extends OurTestSuite:
         NodeId("A") -> Uri("https://A"),
         NodeId("B") -> Uri("https://B")),
       NodeId("A"),
-      ClusterTiming(10.s, 20.s),
+      ClusterTiming(10.s, 20.s, 6.s),
       Some(ClusterWatchId("CLUSTER-WATCH")))
 
     "Empty" in:
@@ -43,7 +43,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -62,7 +63,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -81,7 +83,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -100,7 +103,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -119,7 +123,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -138,7 +143,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           }
@@ -157,7 +163,8 @@ final class ClusterStateTest extends OurTestSuite:
             "activeId": "A",
             "timing": {
               "heartbeat": 10,
-              "heartbeatTimeout": 20
+              "heartbeatTimeout": 20,
+              "consentTimeout": 6
             },
             "clusterWatchId": "CLUSTER-WATCH"
           },

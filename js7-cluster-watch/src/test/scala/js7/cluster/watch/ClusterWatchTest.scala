@@ -14,7 +14,7 @@ import js7.cluster.watch.ClusterWatch.Confirmed
 import js7.common.message.ProblemCodeMessages
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
-import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, Confirmer}
 import js7.data.event.{EventId, JournalPosition}
@@ -32,7 +32,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
   private val correlId = CorrelId("TEST")
   private val aId = NodeId("A")
   private val bId = NodeId("B")
-  private val timing = ClusterTiming(3.s, 10.s)
+  private val timing = ClusterTiming(3.s, 10.s, 11.s)
   private val setting = ClusterSetting(
     Map(
       NodeId("A") -> Uri("http://A"),
@@ -172,8 +172,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
             confirmed <- watch.processRequest:
               ClusterWatchCheckEvent(RequestId(123), correlId, bId, event, clusterWatch2)
           yield
-            assert(confirmed == Left(ClusterWatchInactiveNodeProblem(bId, clusterState, duration,
-              "ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(A --> B at JournalPosition(0,0))")))
+            assert(confirmed == Left(ClusterWatchActiveStillAliveProblem))
             assert(watch.isActive(aId).orThrow)
         }
 
