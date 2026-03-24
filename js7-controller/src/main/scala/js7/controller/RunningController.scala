@@ -201,31 +201,32 @@ object RunningController:
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningController] =
-    Resource.defer:
-      Log4j.set("js7.serverId", conf.controllerId.toString)
+    logger.traceResource:
+      Resource.defer:
+        Log4j.set("js7.serverId", conf.controllerId.toString)
 
-      given Scheduler = ioRuntime.scheduler
-      val alarmClock: AlarmClock =
-        testWiring.alarmClock getOrElse
-          AlarmClock(Some(conf.config
-            .getDuration("js7.time.clock-setting-check-interval")
-            .toFiniteDuration))
+        given Scheduler = ioRuntime.scheduler
+        val alarmClock: AlarmClock =
+          testWiring.alarmClock getOrElse
+            AlarmClock(Some(conf.config
+              .getDuration("js7.time.clock-setting-check-interval")
+              .toFiniteDuration))
 
-      val eventIdGenerator: EventIdGenerator =
-        testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
+        val eventIdGenerator: EventIdGenerator =
+          testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
-      val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
-      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
-      for
-        _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
-          testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
-          ignoreDuplicate = true)
-        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
-        r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
-      yield r
-    .evalOn(ioRuntime.compute)
+        val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
+        val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+        for
+          _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
+          _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
+          _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
+            testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
+            ignoreDuplicate = true)
+          _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
+          r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
+        yield r
+      .evalOn(ioRuntime.compute)
 
   private def resource2(
     conf: ControllerConfiguration,

@@ -197,7 +197,7 @@ private object ActivationInhibitor:
           Right(Consent.Given)
 
         case Right(Some(clusterState)) =>
-          logger.info(s"⛔️ Peer $peerId $peerUri is active")
+          logger.info(s"⛔️ Peer $peerId $peerUri is active: $clusterState")
           Right(Consent.Rejected)
 
 
