@@ -194,6 +194,11 @@ object Logger extends AdHocLogger:
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).run()
 
+      def debugCallWithResult[A](functionName: String, args: => Any = "")(body: => A): A =
+        logF[SyncIO, A](logger, LogLevel.Debug, functionName, args, resultToLoggable = identity):
+          SyncIO(body)
+        .run()
+
       def debugIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         debugF(body)
 
@@ -313,10 +318,12 @@ object Logger extends AdHocLogger:
       : Resource[F, A] =
         logResource[F, A](logger, LogLevel.Trace)(resource)
 
-      def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+      def traceResource[F[_], A](function: String, args: => Any = "", releaseOnly: Boolean = false)
+        (resource: Resource[F, A])
         (using F: Sync[F])
       : Resource[F, A] =
-        logResource[F, A](logger, LogLevel.Trace, function, args)(resource)
+        logResource[F, A](logger, LogLevel.Trace, function, args, releaseOnly = releaseOnly):
+          resource
 
       //def loggingResource[F[_], A](logLevel: LogLevel)
       //  (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
@@ -448,19 +455,27 @@ object Logger extends AdHocLogger:
         resource
 
     private def logResource[F[_], A](
-      logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
+      logger: ScalaLogger,
+      logLevel: LogLevel,
+      function: String,
+      args: => Any = "",
+      releaseOnly: Boolean = false)
       (resource: Resource[F, A])
       (using F: Sync[F])
     : Resource[F, A] =
       for
         a <- Resource.applyFull[F, A]: cancelable =>
-          logF(logger, logLevel, function/* + ".acquire"*/, args):
-            cancelable:
-              resource.allocatedCase
+          val alloc = cancelable(resource.allocatedCase)
+          locally:
+            if releaseOnly then
+              alloc
+            else
+              logF(logger, logLevel, function + " acquire", args):
+                alloc
           .map: (a, release) =>
             a ->
               (exitCase =>
-                logF[F, Unit](logger, logLevel, function/* + ".release"*/, args):
+                logF[F, Unit](logger, logLevel, function + " release", args):
                   release(exitCase)
                 .pipeIf(F eq ioSync):
                   _.asInstanceOf[IO[Unit]]
@@ -520,11 +535,15 @@ object Logger extends AdHocLogger:
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
     function: String, args: => Any)
   : Unit =
-    lazy val argsString = args match
-      case null => "null"
-      case o =>
-        try o.toString
-        catch case t: Throwable => t.toStringWithCauses
+    lazy val argsString =
+      try
+        args match
+          case null => "null"
+          case o: Tuple =>
+            val s = o.toString
+            if s.startsWith("(") && s.endsWith(")") then s.substring(1, s.length - 1) else s
+          case o => o.toString
+      catch case t: Throwable => t.toStringWithCauses
 
     marker match
       case null =>
