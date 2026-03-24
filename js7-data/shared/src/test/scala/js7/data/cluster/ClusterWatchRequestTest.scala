@@ -19,7 +19,7 @@ final class ClusterWatchRequestTest extends OurTestSuite:
         NodeId("A") -> Uri("https://A"),
         NodeId("B") -> Uri("https://B")),
       NodeId("A"),
-      ClusterTiming(10.s, 20.s))
+      ClusterTiming(10.s, 20.s, 6.s))
 
     "ClusterWatchCheckEvent" in:
       testJson[ClusterWatchRequest](
@@ -45,7 +45,8 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               "activeId": "A",
               "timing": {
                 "heartbeat": 10,
-                "heartbeatTimeout": 20
+                "heartbeatTimeout": 20,
+                "consentTimeout": 6
               }
             }
           },
@@ -59,7 +60,8 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               "activeId": "A",
               "timing": {
                 "heartbeat": 10,
-                "heartbeatTimeout": 20
+                "heartbeatTimeout": 20,
+                "consentTimeout": 6
               }
             }
           },
@@ -94,7 +96,8 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               "activeId": "A",
               "timing": {
                 "heartbeat": 10,
-                "heartbeatTimeout": 20
+                "heartbeatTimeout": 20,
+                "consentTimeout": 6
               }
             }
           },
@@ -128,7 +131,8 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               "activeId": "A",
               "timing": {
                 "heartbeat": 10,
-                "heartbeatTimeout": 20
+                "heartbeatTimeout": 20,
+                "consentTimeout": 6
               }
             }
           }
@@ -156,7 +160,8 @@ final class ClusterWatchRequestTest extends OurTestSuite:
               "activeId": "A",
               "timing": {
                 "heartbeat": 10,
-                "heartbeatTimeout": 20
+                "heartbeatTimeout": 20,
+                "consentTimeout": 6
               }
             }
           }

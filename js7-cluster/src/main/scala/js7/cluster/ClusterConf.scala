@@ -62,9 +62,7 @@ object ClusterConf:
       nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id") getOrElse
         NodeId(if isBackup then "Backup" else "Primary")
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      heartbeat = config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration
-      heartbeatTimeout = config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration
-      timing <- ClusterTiming(heartbeat, heartbeatTimeout).checked
+      timing <- ClusterTiming.fromConfig(config).checked
       clusterWatchId = config.optionAs[ClusterWatchId]("clusterWatchId")
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
@@ -88,7 +86,7 @@ object ClusterConf:
         isBackup = isBackup,
         setting,
         recouplingStreamReaderConf.copy(
-          timeout = Some(heartbeat + (heartbeatTimeout - heartbeat) / 2)),
+          timeout = Some(timing.heartbeat + (timing.heartbeatTimeout - timing.heartbeat) / 2)),
         timing,
         clusterWatchUniquenessMemorySize,
         testHeartbeatLoss,

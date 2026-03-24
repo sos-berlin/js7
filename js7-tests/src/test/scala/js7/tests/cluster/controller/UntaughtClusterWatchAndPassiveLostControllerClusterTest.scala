@@ -18,7 +18,7 @@ import js7.tests.cluster.controller.UntaughtClusterWatchAndPassiveLostController
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends ControllerClusterTester:
 
-  override protected val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 1.s)
+  override protected val clusterTiming = ClusterTiming(1.s, 1.s, 500.ms)
 
   protected override def agentPaths = Nil // No Agent needed
   protected override def items = Nil // No Workflow needed

@@ -32,7 +32,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
   private val correlId = CorrelId("TEST")
   private val aId = NodeId("A")
   private val bId = NodeId("B")
-  private val timing = ClusterTiming(3.s, 10.s)
+  private val timing = ClusterTiming(3.s, 10.s, 11.s)
   private val setting = ClusterSetting(
     Map(
       NodeId("A") -> Uri("http://A"),

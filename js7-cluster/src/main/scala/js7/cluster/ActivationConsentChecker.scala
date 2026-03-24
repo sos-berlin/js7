@@ -88,10 +88,11 @@ private final class ActivationConsentChecker private(
         case (Right(Consent.Given), other) =>
           other.joinStd.flatMap:
             case Right(Consent.Given) =>
-              // We could check for timeout here, but we let the ClusterWatch do it
               // Commit //
               askClusterWatch(event, nodeLossClusterState, clusterWatchSynchronizer, commit = true)
-              // Now, if succeeded, the caller MUST emit the event //
+              /// Now, if succeeded, the caller MUST emit the event ///
+              // We don't check the timeout here, because the ClusterWatch has done it and
+              // the ClusterWatch has changed it's state already.
 
             case bad @ (Left(_) | Right(Consent.Rejected)) =>
               IO.pure(bad)

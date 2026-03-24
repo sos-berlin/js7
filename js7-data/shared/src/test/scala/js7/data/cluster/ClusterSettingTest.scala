@@ -17,7 +17,7 @@ final class ClusterSettingTest extends OurTestSuite:
   private val idToUri = Map(
     NodeId("A") -> Uri("https://A"),
     NodeId("B") -> Uri("https://B"))
-  private val timing = ClusterTiming(1.s, 2.s)
+  private val timing = ClusterTiming(1.s, 3.s, 2.s)
   private val clusterSetting = ClusterSetting(
     idToUri,
     NodeId("A"),
@@ -34,7 +34,8 @@ final class ClusterSettingTest extends OurTestSuite:
         "activeId": "A",
         "timing": {
           "heartbeat": 1,
-          "heartbeatTimeout": 2
+          "heartbeatTimeout": 3,
+          "consentTimeout": 2
         },
         "clusterWatchId": "CLUSTER-WATCH"
       }""")

@@ -1,24 +1,38 @@
 package js7.data.cluster
 
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils.RichCirceObjectCodec
+import com.typesafe.config.Config
+import io.circe.generic.semiauto.deriveEncoder
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.*
 
-final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration):
+/**
+  * @param heartbeat The heartbeat interval.
+  * @param heartbeatTimeout Maximum delay for a heartbeat.
+  * When a heartbeat is delayed longer than this, the node is considered to be lost.
+  * @param consentTimeout Maximum duration to reach a consent for a `ClusterNodeLostEvent`.
+  * I.e. the maximum duration between [[ClusterWatchAskNodeLoss]] and
+  * [[ClusterWatchCommitNodeLoss]].
+  *
+  * Must be shorter than pekko.http.client.connecting-timeout.
+  */
+final case class ClusterTiming(
+  heartbeat: FiniteDuration,
+  heartbeatTimeout: FiniteDuration,
+  consentTimeout: FiniteDuration):
 
   def checked: Checked[this.type] =
-    if heartbeat.isPositive && heartbeatTimeout.isPositive then
+    if heartbeat.isPositive && heartbeatTimeout.isPositive && consentTimeout < heartbeatTimeout then
       Right(this)
     else
       Left(Problem.pure("Invalid cluster timing values"))
 
-  /** Timeout for `ClusterPassivelost`.
+    /** Timeout for `ClusterPassivelost`.
     *
-    * Duration without heartbeat, after which the active node considers the passive node to be lost.
+    * Duration without heartbeat after which the active node considers the passive node to be lost.
     * Shorter than `activeLostTimeout`.
     */
   def passiveLostTimeout: FiniteDuration =
@@ -62,4 +76,21 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
 
 object ClusterTiming:
 
-  given Codec.AsObject[ClusterTiming] = deriveCodec[ClusterTiming].checked(_.checked)
+  def fromConfig(config: Config): ClusterTiming =
+    ClusterTiming(
+      heartbeat =
+        config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration,
+      heartbeatTimeout =
+        config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration,
+      consentTimeout =
+        config.getDuration("js7.journal.cluster.consent-timeout").toFiniteDuration)
+
+  given Encoder.AsObject[ClusterTiming] = deriveEncoder[ClusterTiming]
+
+  given Decoder[ClusterTiming] = c =>
+    for
+      heartbeat <- c.get[FiniteDuration]("heartbeat")
+      heartbeatTimeout <- c.get[FiniteDuration]("heartbeatTimeout")
+      consentTimeout <- c.getOrElse[FiniteDuration]("consentTimeout")(6.s)
+    yield
+      ClusterTiming(heartbeat, heartbeatTimeout, consentTimeout)

@@ -23,7 +23,7 @@ final class ClusterEventTest extends OurTestSuite:
           NodeId("PRIMARY") -> Uri("https://PRIMARY"),
           NodeId("BACKUP") -> Uri("https://BACKUP")),
         NodeId("PRIMARY"),
-        ClusterTiming(10.s, 20.s),
+        ClusterTiming(10.s, 20.s, 11.s),
         Some(ClusterWatchId("CLUSTER-WATCH")))),
       json"""{
         "TYPE": "ClusterNodesAppointed",
@@ -35,7 +35,8 @@ final class ClusterEventTest extends OurTestSuite:
           "activeId": "PRIMARY",
           "timing": {
             "heartbeat": 10,
-            "heartbeatTimeout": 20
+            "heartbeatTimeout": 20,
+            "consentTimeout": 11
           },
           "clusterWatchId": "CLUSTER-WATCH"
         }
