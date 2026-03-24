@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ActivationConsentChecker.*
 import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverTestingProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
 import js7.data.cluster.{ClusterNodeApi, ClusterState}
 import js7.data.event.ClusterableState
 import js7.data.node.{NodeId, NodeNameToPassword}
@@ -126,6 +126,7 @@ private final class ActivationConsentChecker private(
       case Left(problem) =>
         if problem.is(ClusterNodeLossNotConfirmedProblem)
           || problem.is(ClusterWatchInactiveNodeProblem)
+          || problem.is(ClusterWatchActiveStillAliveProblem)
         then
           logger.warn(s"⛔ ClusterWatch did not agree to ${
             event.getClass.simpleScalaName} event: $problem")
