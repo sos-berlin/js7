@@ -307,7 +307,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       .flatMap: httpResponse =>
         IO.defer:
           if !httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue) then
-            failWithResponse(uri, httpResponse)
+            failWithResponse(POST, uri, httpResponse)
           else
             IO.pure(httpResponse.status.intValue)
         .guarantee(IO:
@@ -492,7 +492,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         HttpMXBean.Bean.clientReceivedByteTotal
     message.entity match
       case chunked: Chunked =>
-        lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        lazy val isJson = chunked.contentType.mediaType == `application/x-ndjson`
         lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
         message.withEntity:
           chunked.copy(
@@ -533,7 +533,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
-      failWithResponse(uri, httpResponse)
+      failWithResponse(method, uri, httpResponse)
     else
       IO.fromFuture[A](IO:
           Unmarshal(httpResponse).to[A])
@@ -542,9 +542,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             logger.debug(s"💥 $toString: Error when unmarshalling response of ${
               method.name} $uri: ${t.toStringWithCauses}", t))
 
-  private def failWithResponse(uri: Uri, response: HttpResponse): IO[Nothing] =
+  private def failWithResponse(method: HttpMethod, uri: Uri, response: HttpResponse): IO[Nothing] =
     response.entity.asUtf8String.flatMap: errorMsg =>
-      IO.raiseError(new HttpException(POST, uri, response, errorMsg))
+      IO.raiseError(new HttpException(method, uri, response, errorMsg))
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => IO[A]): IO[A] =
     toCheckedAgentUri(request.uri.asUri) match
