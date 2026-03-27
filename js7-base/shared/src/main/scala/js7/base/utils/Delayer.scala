@@ -12,6 +12,7 @@ import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.Delayer.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 // Stateful
@@ -108,9 +109,14 @@ object Delayer:
 
   object extensions:
     extension[A](io: IO[A])
+      def onErrorRestartWithDelay(conf: DelayConf, label: => String): IO[A] =
+        onFailureRestartWithDelayer(conf): (delayer, throwable) =>
+          delayer.peekNextDelay.map: delay =>
+            logger.error(s"⟲ $label: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+            logger.info(s"⟲ $label: Delay restart by ${delay.pretty} ...")
+
       def onFailureRestartWithDelayer(conf: DelayConf)
         (onFailure: (Delayer[IO], Throwable) => IO[Unit])
-        (using sourcecode.Enclosing)
       : IO[A] =
         onFailureRestartWithDelayer(conf, onFailure)
 
@@ -118,7 +124,6 @@ object Delayer:
         conf: DelayConf,
         onFailure: (Delayer[IO], Throwable) => IO[Unit] = (_, _) => IO.unit,
         onSleep: FiniteDuration => IO[Unit] = _ => IO.unit)
-        (using sourcecode.Enclosing)
       : IO[A] =
         conf.runIO: delayer =>
           ().tailRecM: _ =>

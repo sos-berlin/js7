@@ -10,6 +10,7 @@ import js7.base.fs2utils.StreamExtensions.PureStream
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.*
+import js7.base.utils.Delayer.extensions.onErrorRestartWithDelay
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, repeatLast}
 import scala.concurrent.duration.*
 
@@ -30,6 +31,9 @@ final case class DelayConf(
     run[F].apply: delayer =>
       ().tailRecM: _ =>
         body(delayer)
+
+  def onErrorLoop[A](label: => String)(body: IO[A]): IO[A] =
+    body.onErrorRestartWithDelay(this, label = label)
 
   /** Like run[IO] — only because Intellij does not detect body's type of run[IO]. */
   def runIO[A](body: Delayer[IO] => IO[A]): IO[A] =
