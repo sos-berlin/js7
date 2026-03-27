@@ -3,6 +3,7 @@ package js7.data.cluster
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.tester.CirceJsonTester.*
 
 final class ClusterTimingTest extends OurTestSuite:
@@ -34,11 +35,11 @@ final class ClusterTimingTest extends OurTestSuite:
     assert(ClusterTiming(3.s, 10.s, 6.s).checked.isRight)
 
   "PassiveLost is detected before FailedOver" in:
-    val t = ClusterTiming(3.s, 10.s, 11.s)
+    val t = ClusterTiming(3.s, 10.s, 6.s).checked.orThrow
     assert(t.passiveLostTimeout + t.heartbeat < t.activeLostTimeout)
 
   "Consistency" in:
-    val t = ClusterTiming(3.s, 10.s, 11.s)
+    val t = ClusterTiming(3.s, 10.s, 6.s).checked.orThrow
     assert(t.heartbeat < t.passiveLostTimeout)
     assert(t.passiveLostTimeout < t.clusterWatchHeartbeatValidDuration)
     assert(t.clusterWatchHeartbeatValidDuration < t.activeLostTimeout)
@@ -46,7 +47,7 @@ final class ClusterTimingTest extends OurTestSuite:
     assert(t.activeLostTimeout < t.inhibitActivationDuration)
 
   "Timings with 3s heartbeat and 10s timeout" in:
-    val t = ClusterTiming(3.s, 10.s, 11.s)
+    val t = ClusterTiming(3.s, 10.s, 6.s).checked.orThrow
 
     assert(t.heartbeat == 3.s)
     assert(t.heartbeatTimeout == 10.s)
