@@ -62,6 +62,7 @@ extends Service.Trivial:
       && !clusterState.isInstanceOf[Coupled]
       && !clusterState.isInstanceOf[PassiveLost]
       && !clusterState.isInstanceOf[FailedOver]
+      && !clusterConf.isTestClusterWatchHeartbeatLoss
     then
       IO.right(None)
     else
