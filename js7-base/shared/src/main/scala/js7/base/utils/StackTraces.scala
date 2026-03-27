@@ -16,6 +16,16 @@ object StackTraces:
     val bar = "________________________________________"
     new StackTraceElement(bar, bar, "appended", -1)
 
+  private val NoStackTraceFor: Set[String] = Set(
+    "org.apache.pekko.http.scaladsl.model.EntityStreamException",
+    "org.apache.pekko.http.scaladsl.model.EntityStreamSizeException",
+    "org.apache.pekko.http.scaladsl.model.IllegalHeaderException",
+    "org.apache.pekko.http.scaladsl.model.IllegalRequestException",
+    "org.apache.pekko.http.scaladsl.model.IllegalResponseException",
+    "org.apache.pekko.http.scaladsl.model.InvalidContentLengthException",
+    "org.apache.pekko.http.scaladsl.model.ParsingException",
+    "org.apache.pekko.stream.StreamIdleTimeoutException")
+
   /**
     * Applicable for `Try`  of another context, like from a `Future`.
     * Modifies the original `Try` if it is a `Failure`.
@@ -58,3 +68,6 @@ object StackTraces:
               st.mkString("\n  ")}"
 
       delegate
+
+  def hasRelevantStackTrace(throwable: Throwable): Boolean =
+    !NoStackTraceFor.contains(throwable.getClass.getName)

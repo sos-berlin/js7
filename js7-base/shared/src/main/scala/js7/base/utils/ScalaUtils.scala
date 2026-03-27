@@ -308,18 +308,21 @@ object ScalaUtils:
         throwable.printStackTrace(new PrintWriter(w))
         w.toString
 
-      /** Useable for logging.
+      /** Usable for logging.
         *
         * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)`
+        *
+        *  Also, an irrelevant stacktrace is suppressed.
         *
         *  Despite null may be returned, the return type omits explicit Null type to be compatible
         *  with Java.
         *  With Null, a method with vararg Object type would match, but not the one with
         *  Throwable type.
         *
-        * @return `null` if the stack trace is empty, despite expli.*/
+        * @return `null` if the stack trace is empty or irrelevant (despite non-Null return type).
+        */
       def nullIfNoStackTrace: Throwable =
-        if throwable.getStackTrace.isEmpty then
+        if throwable.getStackTrace.isEmpty || !StackTraces.hasRelevantStackTrace(throwable) then
           null.asInstanceOf[Throwable]
         else
           throwable

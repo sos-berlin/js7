@@ -596,7 +596,8 @@ object Logger extends AdHocLogger:
     def res = result_.nonEmpty ?? " • " + result_
     outcome match
       case Outcome.Errored(t) =>
-        logReturn(logger, logLevel, marker, function, args, duration, "💥️", t.toStringWithCauses + res, t)
+        logReturn(logger, logLevel, marker, function, args, duration, "💥️",
+          t.toStringWithCauses + res, t.nullIfNoStackTrace)
       case Outcome.Canceled() =>
         logReturn(logger, logLevel, marker, function, args, duration, "◼️ ", "Canceled" + res)
       case Outcome.Succeeded(_) =>
