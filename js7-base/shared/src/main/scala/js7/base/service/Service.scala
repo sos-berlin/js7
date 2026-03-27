@@ -79,7 +79,10 @@ trait Service:
               .as(Failure(t))
 
             case Outcome.Canceled() =>
-              IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
+              if this.isInstanceOf[StoppableByCancel] then
+                IO.pure(Success(()))
+              else
+                IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
 
             case Outcome.Succeeded(_) =>
               IO.pure(Success(()))
