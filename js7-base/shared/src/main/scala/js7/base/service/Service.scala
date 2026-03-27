@@ -72,15 +72,17 @@ trait Service:
           outcome.match
             case Outcome.Errored(t) =>
               since.elapsed.map: elapsed =>
-                IO:
-                  val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
-                  if !t.isInstanceOf[MainServiceTerminationException] then
-                    // A service should not die. The caller should watch untilStopped!
-                    logger.error(msg, t.nullIfNoStackTrace)
+                val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
+                if !t.isInstanceOf[MainServiceTerminationException] then
+                  // A service should not die. The caller should watch untilStopped!
+                  logger.error(msg, t.nullIfNoStackTrace)
               .as(Failure(t))
 
             case Outcome.Canceled() =>
-              IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
+              if this.isInstanceOf[StoppableByCancel] then
+                IO.pure(Success(()))
+              else
+                IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
 
             case Outcome.Succeeded(_) =>
               IO.pure(Success(()))
@@ -167,7 +169,7 @@ object Service:
 
   /** A trivial Service which doesn't start or run, but has a release routine.
     *
-    * It's more like an `AutoCloseable` as a `Service`.
+    * It's more like an `AutoCloseable` than a `Service`.
     */
   trait TrivialReleasable extends Releasable[IO], StoppableByRequest:
     protected def release: IO[Unit]

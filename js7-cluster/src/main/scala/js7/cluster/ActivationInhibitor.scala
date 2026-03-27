@@ -77,12 +77,16 @@ private final class ActivationInhibitor private(
           logger.debug(s"This node is already active, ❗️ THE PEER MUST NOT ACTIVATE ❗️")
           IO.pure(Active -> false)
 
-        case state @ (Initial | Passive | _: Inhibited) =>
+        case state: (Initial | Passive | Inhibited) =>
           setInhibitionTimer(duration).as:
             val depth = state match
-              case Inhibited(n) => n + 1
+              case Inhibited(n, _) => n + 1
               case _ => 1
-            val updated = Inhibited(depth)
+            val updated = Inhibited(
+              depth,
+              state match
+                case Inhibited(_, o) => o
+                case state: (Initial | Passive) => state)
             logger.debug(s"Inhibit activation for ${duration.pretty}: $updated")
             updated -> true
       .timeoutTo(500.ms/*???*/, IO:
@@ -96,13 +100,13 @@ private final class ActivationInhibitor private(
     supervisor.supervise:
       IO.sleep(duration) *>
         _state.update:
-          case Inhibited(1) =>
+          case Inhibited(1, original) =>
             IO:
-              logger.debug(s"Inhibition timer expired, becoming Passive")
-              Passive
-          case Inhibited(n) =>
+              logger.debug(s"Inhibition timer expired, becoming $original")
+              original
+          case inhibited: Inhibited =>
             IO:
-              val updated = Inhibited(n - 1)
+              val updated = inhibited.copy(depth = inhibited.depth - 1)
               logger.debug(s"Inhibition timer expired, becoming $updated")
               updated
           case state =>
@@ -202,10 +206,17 @@ private object ActivationInhibitor:
 
 
   private[cluster] sealed trait State
+
+  private[cluster] type Initial = Initial.type
   private[cluster] case object Initial extends State
+
+  private[cluster] type Active = Active.type
   private[cluster] case object Active extends State
+
+  private[cluster] type Passive = Passive.type
   private[cluster] case object Passive extends State
-  private[cluster] case class Inhibited(depth: Int) extends State:
+
+  private[cluster] case class Inhibited(depth: Int, original: Initial | Passive) extends State:
     assertThat(depth >= 1)
 
 

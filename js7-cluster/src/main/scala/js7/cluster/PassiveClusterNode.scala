@@ -408,7 +408,8 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
             (positionAndLine.position,
               positionAndLine.value,
               positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
-        .filter(testHeartbeatSuppressor) // for testing
+        .pipeIf(clusterConf.testHeartbeatLossPropertyKey.isDefined):
+          _.filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.activeLostTimeout)
         .flatMap[IO, Checked[Unit]]:
           case Left(noHeartbeatSince) =>
@@ -703,12 +704,11 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
     //out.force(true)  // sync()
 
   private def testHeartbeatSuppressor(tuple: (Long, fs2.Chunk[Byte], Any)): Boolean =
-    tuple match
-      case (_, StampedHeartbeatFs2Chunk, _)
-      if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).nn.toBoolean) =>
-        logger.warn("TEST: Suppressing the received heartbeat")
-        false
-      case _ => true
+    if clusterConf.isTestHeartbeatLoss && tuple._2 == StampedHeartbeatFs2Chunk then
+      logger.warn("TEST: Suppressing the received heartbeat")
+      false
+    else
+      true
 
   private def shouldActivate(clusterState: ClusterState) =
     !dontActivateBecauseOtherFailedOver && clusterState.isNonEmptyActive(ownId)

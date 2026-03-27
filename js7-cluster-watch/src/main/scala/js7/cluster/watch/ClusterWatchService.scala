@@ -7,7 +7,6 @@ import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.config.Js7Config.defaultConfig
 import js7.base.configutils.Configs.RichConfig
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
@@ -42,7 +41,7 @@ final class ClusterWatchService private(
   onClusterStateChanged: HasNodes => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends
-  MainService, Service.StoppableByRequest:
+  MainService, Service.StoppableByCancel:
 
   protected type Termination = ProgramTermination
 
@@ -64,16 +63,16 @@ extends
     untilStopped.as(ProgramTermination())
 
   private def run: IO[Unit] =
-    Stream.iterable(nodeApis.toList).map: nodeApi =>
-      val watchedNode = WatchedNode(nodeApi)
-      watchedNode.stream.map(watchedNode -> _)
-    .parJoinUnbounded
-    .evalMap: (watchedNode, request) =>
-      // Synchronize requests from both nodes
-      request.correlId.bind:
-        watchedNode.processRequest(request)
-    .interruptWhenF(untilStopRequested)
-    .compile.drain
+    delayConf.onErrorLoop(toString):
+      Stream.iterable(nodeApis.toList).map: nodeApi =>
+        val watchedNode = WatchedNode(nodeApi)
+        watchedNode.stream.map(watchedNode -> _)
+      .parJoinUnbounded
+      .evalMap: (watchedNode, request) =>
+        // Synchronize requests from both nodes
+        request.correlId.bind:
+          watchedNode.processRequest(request)
+      .compile.drain
 
   override def toString = s"ClusterWatchService($clusterWatchId)"
 
@@ -93,14 +92,14 @@ extends
 
     private def clusterWatchRequestStream: Stream[IO, ClusterWatchRequest] =
       logger.traceStream("clusterWatchRequestStream", nodeApi):
-        Stream.eval:
+        Stream.force:
           nodeApi.retryUntilReachable():
             nodeApi.clusterWatchRequestStream(clusterWatchId,
               keepAlive = Some(keepAlive),
               dontLog = !PekkoHttpClient.logHeartbeat)
         .attempt.evalMap:
           case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
-            IO.left(t) // Trigger onErrorRestartLoop
+            IO.left(t) // Trigger error loop
           case attempted =>
             IO:
               if attempted.isRight && streamFailed.getAndSet(false) then
@@ -108,7 +107,6 @@ extends
               HttpClient.attemptedToChecked(attempted)
         .rethrow
         .map(_.orThrow)
-        .flatten
 
     def processRequest(request: ClusterWatchRequest): IO[Unit] =
       clusterWatch.processRequest(request)

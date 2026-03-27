@@ -24,6 +24,7 @@ final case class ClusterConf(
   recouplingStreamReader: RecouplingStreamReaderConf,
   timing: ClusterTiming,
   clusterWatchUniquenessMemorySize: Int,
+  testClusterWatchHearbeatLoss: Option[String] = None,
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
   testFailInhibitActivationWhileTrying: Option[String] = None,
@@ -40,6 +41,12 @@ final case class ClusterConf(
       EngineServerId.Controller.Backup
     else
       EngineServerId.Controller.Primary
+
+  def isTestClusterWatchHeartbeatLoss: Boolean =
+    testClusterWatchHearbeatLoss.fold(false)(k => sys.props(k).toBoolean)
+
+  def isTestHeartbeatLoss: Boolean =
+    testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean)
 
 
 object ClusterConf:
@@ -71,6 +78,7 @@ object ClusterConf:
       timing <- ClusterTiming.fromConfig(config).checked
       clusterWatchId = config.optionAs[ClusterWatchId]("clusterWatchId")
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
+      testClusterWatchHearbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-CLUSTERWATCH-HEARTBEAT-LOSS")
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
       testAckLoss = config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS")
       testFailInhibitActivationWhileTrying = config.optionAs[String](
@@ -95,6 +103,7 @@ object ClusterConf:
           timeout = Some(timing.heartbeat + (timing.heartbeatTimeout - timing.heartbeat) / 2)),
         timing,
         clusterWatchUniquenessMemorySize,
+        testClusterWatchHearbeatLoss,
         testHeartbeatLoss,
         testAckLoss,
         testFailInhibitActivationWhileTrying,

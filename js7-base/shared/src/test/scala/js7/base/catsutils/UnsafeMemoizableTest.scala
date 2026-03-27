@@ -1,7 +1,8 @@
 package js7.base.catsutils
 
-import cats.effect.{IO, Sync, SyncIO}
+import cats.effect.{Deferred, IO, Sync, SyncIO}
 import cats.syntax.all.*
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.UnsafeMemoizable.{memoize, given}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
@@ -26,10 +27,16 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
     // UnsafeMemoizable is uncancelable.
     // After cancellation the initialization continues in background and
     // can be used for a second call.
-    val m = memoize(IO.sleep(10.ms).as(3))
+    val started = Deferred.unsafe[IO, Unit]
+    val m = memoize:
+      started.complete(()) *>
+        IO.sleep(50.ms).as(3)
     for
       // cancel: the computed result 3 is returned
-      x <- m.timeoutTo(1.ms, IO.pure(1))
+      fiber <- m.start
+      _ <- started.get
+      _ <- fiber.cancel
+      x <- fiber.joinStd
       _ = assert(x == 3)
       // don't cancel
       x <- m

@@ -12,7 +12,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.SecretStringGenerator
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -37,9 +37,11 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
   private given IORuntime = ioRuntime
 
+  private final val testClusterWatchHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testSimulateInhibitActivationPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
+  sys.props(testClusterWatchHeartbeatLossPropertyKey) = "false"
   sys.props(testHeartbeatLossPropertyKey) = "false"
   sys.props(testAckLossPropertyKey) = "false"
   sys.props(testSimulateInhibitActivationPropertyKey) = "false"
@@ -48,7 +50,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
     js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
     js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
-    js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
+    js7.journal.cluster.TEST-CLUSTERWATCH-HEARTBEAT-LOSS = "$testClusterWatchHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
     js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
     js7.journal.cluster.TEST-SIMULATE-INHIBIT-ACTIVATION = "$testSimulateInhibitActivationPropertyKey"
@@ -88,6 +90,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
         // Suppress acknowledge heartbeat, simulating a connection loss between the cluster nodes
         logger.info("💥 Break connection between cluster nodes 💥")
+        sys.props(testClusterWatchHeartbeatLossPropertyKey) = "true" // No heartbeat to ClusterWatch
         sys.props(testHeartbeatLossPropertyKey) = "true"
         sys.props(testAckLossPropertyKey) = "true"
         sys.props(testSimulateInhibitActivationPropertyKey) = "true"
@@ -102,13 +105,15 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
           controller.await[AgentClusterWatchConfirmationRequired]: ke =>
             ke.key == agentPath && ke.event.problem.fromNodeId == NodeId.backup
 
-          val nodeToClusterWatchConfirmationRequired =
-            controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToLossNotConfirmedProblem
-          logger.info(s"nodeToLossNotConfirmedProblem=$nodeToClusterWatchConfirmationRequired")
+          def assertClusterWatchConfirmationRequired() =
+            val nodeToClusterWatchConfirmationRequired =
+              controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToLossNotConfirmedProblem
+            logger.info(s"nodeToLossNotConfirmedProblem=$nodeToClusterWatchConfirmationRequired")
 
-          assert(nodeToClusterWatchConfirmationRequired(NodeId.primary) ==
-            ClusterNodeLossNotConfirmedProblem(NodeId.primary, ClusterPassiveLost(NodeId.backup)))
-          assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
+            assert(nodeToClusterWatchConfirmationRequired(NodeId.primary) ==
+              ClusterNodeLossNotConfirmedProblem(NodeId.primary, ClusterPassiveLost(NodeId.backup)))
+            assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
+          assertClusterWatchConfirmationRequired()
 
           controller.resetLastWatchedEventId()
           // Now, we as the user kill the primary node and confirm this to the ClusterWatch:
@@ -126,7 +131,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
                 ConfirmClusterNodeLoss(agentPath, lostNodeId = NodeId.primary,
                   confirmer = "UntaughtAgentClusterWatchTest")
               .await(99.s) match
-                case Left(problem) if problem is ClusterNodeIsNotLostProblem  =>
+                case Left(problem) if problem is ClusterNodeIsNotLostProblem =>
                   if (t + 15.s).hasElapsed then fail(s"Since 15s: $problem")
                   sleep(100.ms)
                   loop()
@@ -144,7 +149,7 @@ object UntaughtAgentClusterWatchTest:
   private val logger = Logger[this.type]
 
   private val clusterTiming = ClusterTiming(
-    heartbeat = 500.ms, heartbeatTimeout = 500.ms, consentTimeout = 250.ms)
+    heartbeat = 500.ms, heartbeatTimeout = 500.ms, consentTimeout = 400.ms)
 
   private val subagentIds = Seq(
     SubagentId("DIRECTOR-PRIMARY"),
