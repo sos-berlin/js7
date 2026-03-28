@@ -18,19 +18,15 @@ import scala.jdk.OptionShape.*
 final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
   def lineFlux(begin: Instant, end: Optional[Instant]): Flux[String] =
-    fs2.Stream.resource:
-      logFileIndex.logFileReader()
-    .flatMap:
-      logFileIndex.streamPosAndLine(_, begin = begin, end = end.toScala)
-        .map: (_, byteLine) =>
-          removeHighlights(byteLine.utf8String)
+    logFileIndex.streamPosAndLine(begin = begin, end = end.toScala)
+      .map: (_, byteLine) =>
+        removeHighlights(byteLine.utf8String)
     .asFlux
 
   def instantToFilePosition(instant: Instant): CompletableFuture[OptionalLong] =
-    logFileIndex.logFileReader().use:
-      logFileIndex.instantToFilePosition(_, instant)
-    .map(_.toJavaPrimitive)
-    .unsafeToCompletableFuture()
+    logFileIndex.instantToFilePosition(instant)
+      .map(_.toJavaPrimitive)
+      .unsafeToCompletableFuture()
 
 
 object JLogFileIndex:

@@ -1,6 +1,6 @@
 package js7.base.log.reader
 
-import cats.effect.{IO, ResourceIO}
+import cats.effect.IO
 import fs2.{Chunk, Stream}
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
@@ -10,15 +10,12 @@ import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
 import java.util.regex.Pattern
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogFileReader.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
@@ -30,43 +27,8 @@ import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
 import scala.util.matching.Regex
 
-final class LogFileReader(reader: ByteSeqFileReader[Chunk[Byte]])(using ZoneId):
-
-  def streamLines(position: Long): Stream[IO, Chunk[Byte]] =
-    streamPosAndLines(position)
-      .map(_._2)
-
-  def streamPosAndLines(position: Long): Stream[IO, (Long, Chunk[Byte])] =
-    Stream.exec:
-      reader.setPosition(position)
-    .append:
-      reader.streamUntilEnd
-        .through:
-          byteChunksToLines
-        .scanChunks(position): (pos, lines) =>
-          lines.mapAccumulate(pos): (pos, line) =>
-            (pos + line.size) -> (pos -> line)
-
-  def takeUntilInstant(
-    instant: Option[Instant],
-    fastTimestampParser: => FastTimestampParser = FastTimestampParser())
-  : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
-    stream =>
-      instant.fold(stream): instant =>
-        val timestampParser = fastTimestampParser // call-by-name
-        val endEpochNano = instant.toEpochNano
-        stream.takeWhile: (_, byteLine) =>
-          val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
-          epochNano < endEpochNano
-
-
 object LogFileReader:
   private val logger = Logger[this.type]
-
-  def resource(file: Path, byteChunkSize: Int)(using zoneId: ZoneId)
-  : ResourceIO[LogFileReader] =
-    ByteSeqFileReader.resource(file, bufferSize = byteChunkSize).map: reader =>
-      new LogFileReader(reader)
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
     *
@@ -258,3 +220,15 @@ object LogFileReader:
         waitUntilExists = Some((poll = 100.ms /*TODO*/ , timeout = 3.s))
       ).use: reader =>
         reader.read(UniqueHeaderSize)
+
+  def takeUntilInstant(using ZoneId)
+    (instant: Option[Instant],
+    fastTimestampParser: => FastTimestampParser = FastTimestampParser())
+  : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
+    stream =>
+      instant.fold(stream): instant =>
+        val timestampParser = fastTimestampParser // call-by-name
+        val endEpochNano = instant.toEpochNano
+        stream.takeWhile: (_, byteLine) =>
+          val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
+          epochNano < endEpochNano

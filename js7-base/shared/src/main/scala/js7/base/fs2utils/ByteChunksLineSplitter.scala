@@ -6,6 +6,7 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.metering.CallMeter
 import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.collection.mutable.ArrayBuilder
+import scala.reflect.ClassTag
 
 object ByteChunksLineSplitter:
 
@@ -13,6 +14,9 @@ object ByteChunksLineSplitter:
   private val BigBufferThreshold = 1024 * 1024
 
   private val meterRechunkBytesAtSeparator = CallMeter("ourByteChunksToLines")
+
+  def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence]: Pipe[F, ByteSeq, String] =
+    byteChunksToLineStrings[F, ByteSeq]()
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
@@ -22,8 +26,14 @@ object ByteChunksLineSplitter:
     *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
     */
-  def byteChunksToLines[F[_], ByteSeq <: AnyRef: ByteSequence]: Pipe[F, ByteSeq, ByteSeq] =
+  def byteChunksToLines[F[_], ByteSeq: ByteSequence]: Pipe[F, ByteSeq, ByteSeq] =
     byteChunksToLines[F, ByteSeq]()
+
+  private[fs2utils] def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence as ByteSeq](
+    separator: Byte = '\n',
+    maxLineLength: Option[(Int, RaiseThrowable[F])] = None)
+  : Pipe[F, ByteSeq, String] =
+    byteChunksToLines(_).map(_.utf8String)
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
@@ -36,7 +46,7 @@ object ByteChunksLineSplitter:
     *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
     */
-  private[fs2utils] def byteChunksToLines[F[_], ByteSeq <: AnyRef: ByteSequence as ByteSeq](
+  private[fs2utils] def byteChunksToLines[F[_], ByteSeq: ByteSequence as ByteSeq](
     separator: Byte = '\n',
     maxLineLength: Option[(Int, RaiseThrowable[F])] = None)
   : Pipe[F, ByteSeq, ByteSeq] =
@@ -71,7 +81,9 @@ object ByteChunksLineSplitter:
     : Pull[F, ByteSeq, Unit] =
       stream.pull.uncons.flatMap:
         case Some((chunk, stream)) =>
-          val linesBuffer = ArrayBuilder.ofRef[ByteSeq]
+          val linesBuffer: ArrayBuilder[ByteSeq] =
+            ArrayBuilder.ofRef[AnyRef](using ByteSeq.classTag.asInstanceOf[ClassTag[AnyRef]])
+              .asInstanceOf
           chunk.foreach: byteSeq =>
             fillBuffers(line, linesBuffer, byteSeq.unsafeArray)
 

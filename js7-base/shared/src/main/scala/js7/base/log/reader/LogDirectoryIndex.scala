@@ -1,6 +1,5 @@
 package js7.base.log.reader
 
-
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import cats.syntax.option.*
@@ -19,6 +18,7 @@ import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.data.ByteArray
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
@@ -124,11 +124,8 @@ extends Service.StoppableByRequest:
     .map:
       _.logFileIndex
     .flatMap: logFileIndex =>
-      Stream.resource:
-        logFileIndex.logFileReader(byteChunkSize = byteChunkSize)
-      .flatMap: logFileReader =>
-        logFileIndex.streamPosAndLine(logFileReader, instant).map: (pos, line) =>
-          KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
+      logFileIndex.streamPosAndLine(instant, byteChunkSize = byteChunkSize).map: (pos, line) =>
+        KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
     .append:
       streamSectionAfter(logFile.fileInstant, byteChunkSize = byteChunkSize)
 
@@ -138,7 +135,7 @@ extends Service.StoppableByRequest:
       toDeferredIndex(logFile) // TODO DON'T BUILD logFile.logFileIndex. Only decompressed file is required
     .flatMap: deferredIndex =>
       Stream.resource:
-        LogFileReader.resource(deferredIndex.file, byteChunkSize = byteChunkSize)
+        ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file, bufferSize = byteChunkSize)
     .flatMap: reader =>
       reader.streamPosAndLines(position).map: (pos, line) =>
         KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
@@ -177,17 +174,33 @@ extends Service.StoppableByRequest:
     .map(_.get.allocatedThing)
 
   private def buildIndex(logFile: LogFile): ResourceIO[DeferredIndex] =
-    val file = logFile.originalFile
     if logFile.isGzipped then
-      val size = Files.size(file)
-      val decompressedFile = Paths.get(file.toString + TmpSuffix)
-      Resource.make(
+      buildIndexFromCompressedFile(logFile.originalFile)
+    else
+      buildIndexFromUncompressedFile(logFile.originalFile)
+
+  private def buildIndexFromUncompressedFile(file: Path): ResourceIO[DeferredIndex] =
+    pollDuration match
+      case None =>
+        Resource.eval:
+          LogFileIndex.build(file).map: logFileIndex =>
+            DeferredIndex(logFileIndex, file)
+      case Some(poll) =>
+        LogFileIndex.buildGrowing(file, poll = poll).map: logFileIndex =>
+          DeferredIndex(logFileIndex, file)
+
+  private def buildIndexFromCompressedFile(gzFile: Path): ResourceIO[DeferredIndex] =
+    val size = Files.size(gzFile)
+    val decompressedFile = Paths.get(gzFile.toString + TmpSuffix)
+    Resource.make(
         acquire =
           IO.interruptible:
             val t = Deadline.now
-            new GZIPInputStream(new BufferedInputStream(new FileInputStream(file.toFile)))
-              .use: in =>
-                Files.copy(in, decompressedFile, REPLACE_EXISTING)
+            new GZIPInputStream(
+              new BufferedInputStream(
+                new FileInputStream(gzFile.toFile))
+            ).use: in =>
+              Files.copy(in, decompressedFile, REPLACE_EXISTING)
             logger.debug(s"Decompressed ${decompressedFile.getFileName}: ${
               bytesPerSecondString(t.elapsed, Files.size(decompressedFile))}"))(
         release = _ =>
@@ -199,15 +212,6 @@ extends Service.StoppableByRequest:
             val decompressedSize = Files.size(decompressedFile)
             Bean.decompressedFilesSize += decompressedSize
             DeferredIndex(logFileIndex, decompressedFile, Some(size -> decompressedSize))
-    else
-      pollDuration match
-        case None =>
-          Resource.eval:
-            LogFileIndex.build(file).map: logFileIndex =>
-              DeferredIndex(logFileIndex, file)
-        case Some(poll) =>
-          LogFileIndex.buildGrowing(file, poll = poll).map: logFileIndex =>
-            DeferredIndex(logFileIndex, file)
 
   def files: Seq[Path] =
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
@@ -311,7 +315,7 @@ object LogDirectoryIndex:
           readLogFileInstant:
             IO:
               new GZIPInputStream(
-                new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize))
+                new BufferedInputStream(new FileInputStream(file.toFile), 512))
           .map: maybeInstant =>
             maybeInstant.fold(none): instant =>
               Some(LogFile(instant, file, cell, zoneId, isGzipped = true))

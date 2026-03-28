@@ -4,11 +4,12 @@ import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import java.io.InputStream
 import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
+import java.nio.channels.{FileChannel, SeekableByteChannel}
 import java.nio.file.StandardOpenOption.READ
 import java.nio.file.{NoSuchFileException, Path}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2Utils.toPosAndLines
 import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -17,18 +18,13 @@ import scala.annotation.threadUnsafe
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 /** Reads ByteSequences from a file. **/
-final class ByteSeqFileReader[ByteSeq] private(file: Path, bufferSize: Int)
-  (using ByteSeq: ByteSequence[ByteSeq])
-extends AutoCloseable:
+final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
+  channel: SeekableByteChannel, bufferSize: Int):
 
-  private val channel = FileChannel.open(file, READ)
   @threadUnsafe
   private lazy val buffer = ByteBuffer.allocate(bufferSize)
   private var _next: ByteSeq | Null = null
   private var _nextPosition: Long = 0
-
-  def close(): Unit =
-    channel.close()
 
   def size(): Long =
     channel.size()
@@ -112,7 +108,7 @@ object ByteSeqFileReader:
       IO(Deadline.now).map: t =>
         Resource.fromAutoCloseable:
           IO:
-            new ByteSeqFileReader[ByteSeq](file, bufferSize = bufferSize)
+            FileChannel.open(file, READ)
           .onErrorRestartLoop(()):
             case (e: NoSuchFileException, _, retry) if waitUntilExists.isDefined =>
               val (delay, timeout) = waitUntilExists.get
@@ -122,6 +118,8 @@ object ByteSeqFileReader:
                 logger.debug(s"$file: $e")
                 retry(()).delayBy(delay)
             case (t, _, _) => IO.raiseError(t)
+        .map: channel =>
+          new ByteSeqFileReader[ByteSeq](channel, bufferSize = bufferSize)
         .evalTap: reader =>
           IO.whenA(fromEnd):
             reader.seekToEnd
@@ -132,7 +130,21 @@ object ByteSeqFileReader:
     .flatMap:
       _.streamUntilEnd
 
+
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
+
+    def streamPosAndLines(position: Long)(using ByteSeq: ByteSequence[ByteSeq])
+    : Stream[IO, (Long, ByteSeq)] =
+      fs2.Stream.exec:
+        reader.setPosition(position)
+      .append:
+        streamUntilEnd
+      .through:
+        toPosAndLines(position)
+
+    def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
+      streamEndlessly.takeWhile(_.nonEmpty)
+
     /** Emit empty ByteSeqs as long as no data is available.
       *
       * This Stream never ends.
@@ -140,9 +152,6 @@ object ByteSeqFileReader:
     def streamEndlessly: Stream[IO, ByteSeq] =
       Stream.repeatEval:
         reader.read
-
-    def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
-      streamEndlessly.takeWhile(_.nonEmpty)
 
     private def inputStream_UNTESTED: InputStream =
       new InputStream:

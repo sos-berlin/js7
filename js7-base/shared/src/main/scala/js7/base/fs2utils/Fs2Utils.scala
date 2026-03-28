@@ -6,6 +6,7 @@ import cats.syntax.monoid.*
 import fs2.{Chunk, Pipe}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.tailrec
@@ -16,9 +17,14 @@ object Fs2Utils:
   type StreamIO[A] = fs2.Stream[IO, A]
   type StreamPure[A] = fs2.Stream[fs2.Pure, A]
 
-  def bytesToLines: Pipe[IO, Byte, String] =
-    _.through(fs2.text.utf8.decode)
-      .through(fs2.text.lines)
+  /** Convert to pairs of byte position and ByteSeq. */
+  def toPosAndLines[F[_], ByteSeq: ByteSequence](firstPosition: Long)
+  : fs2.Pipe[F, ByteSeq, (Long, ByteSeq)] =
+    _.through:
+      byteChunksToLines
+    .scanChunks(firstPosition): (pos, lines) =>
+      lines.mapAccumulate(pos): (pos, line) =>
+        (pos + line.length) -> (pos -> line)
 
   private object End
   private val EndStream = fs2.Stream.emit(End)

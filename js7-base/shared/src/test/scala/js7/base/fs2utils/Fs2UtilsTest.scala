@@ -2,12 +2,31 @@ package js7.base.fs2utils
 
 import cats.effect.IO
 import fs2.{Chunk, Pure, Stream}
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteArray
-import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, unfoldEvalWeighted}
+import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, toPosAndLines, unfoldEvalWeighted}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
 final class Fs2UtilsTest extends OurAsyncTestSuite:
+
+  "toPosAndLines" in:
+    val result = Stream("ett\ntvå\ntre", "\nfyra\nfem").map: string =>
+      fs2.Chunk.from(string.getBytes(UTF_8))
+    .through:
+      toPosAndLines(firstPosition = 100)
+    .map: (pos, line) =>
+      pos -> line.utf8String
+    .toList
+
+    assert(result == List(
+      100 -> "ett\n",
+      104 -> "två\n",
+      109 -> "tre\n",
+      113 -> "fyra\n",
+      118 -> "fem"))
 
   "combineByteSeqs" - {
     "empty" in:
