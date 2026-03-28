@@ -82,18 +82,17 @@ object LogFileReader:
 
   private val HeaderLinePattern =
     val datetime =
-      """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
+      """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
     s"""^$HighlightRegex?($datetime) """.r.pattern
 
   private val LogLinePattern: Pattern =
-    val datetime = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,9}""".r
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
     val threadInBrackets = """\[[^]]+]""".r  // Very slow!
     val logger = """[\p{Alnum}._$-]+""".r
     //val message = """(?:.*)""".r
     // threadInBrackets is slow. Also, a thread name may contain a ']'.
     //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
-    Regex(s"""^$HighlightRegex?($datetime) $level """).pattern
+    Regex(s"""^$HighlightRegex?(${FastTimestampParser.DateTimeRegex}) $level """).pattern
 
   private val HeaderDateTimeParser: DateTimeFormatter =
     val base =
