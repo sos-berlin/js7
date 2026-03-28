@@ -41,7 +41,7 @@ import scala.math.Ordered.orderingToOrdered
   * @param nanoToPos may grow concurrently
   */
 final class LogFileIndex private(
-  toStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+  toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos)
   (using ZoneId):
 
@@ -78,7 +78,7 @@ final class LogFileIndex private(
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
       val position = nanoToPos.toPos(begin.toEpochNano)
-      toStream(position, byteChunkSize)
+      toPositionedStream(position, byteChunkSize)
         .through:
           toPosAndLines(position)
         .dropWhile: (pos, byteLine) =>
@@ -134,9 +134,19 @@ object LogFileIndex:
       .buildGrowing(logFile, poll)
 
   /** Builds a snapshot [[LogFileIndex]] from a log file. */
-  def build(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
-    Builder(resolveLabel(logFile, label))
-      .build(logFile)
+  def fromFile(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
+    fromStream(
+      resolveLabel(logFile, label),
+      toStream = positionedStream(logFile, 0, _),
+      toPositionedStream = positionedStream(logFile, _, _))
+
+  def fromStream(
+    label: String,
+    toStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
+    toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]])
+    (using ZoneId)
+  : IO[LogFileIndex] =
+    Builder(label).fromStream(toStream, toPositionedStream)
 
   private def resolveLabel(logFile: Path, label: String | Missing): String =
     label getOrElse logFile.getFileName.toString
@@ -165,25 +175,20 @@ object LogFileIndex:
                 fiber -> nanoToPos)(
           release = (fiber, _) => fiber.cancel)
       .map: (_, nanoToPos) =>
-        wrapInLogFileIndex(logFile)
+        new LogFileIndex(positionedStream(logFile, _, _), nanoToPos)
 
-    def build(logFile: Path): IO[LogFileIndex] =
-      build2:
-        (bufferSize: Int) =>
-          Stream.resource:
-            ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = bufferSize)
-          .flatMap:
-            _.streamUntilEnd
-      .map: _ =>
-        wrapInLogFileIndex(logFile)
-
-    private def build2(stream: (bufferSize: Int) => Stream[IO, Chunk[Byte]]): IO[Unit] =
+    def fromStream(
+      toStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
+      toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]])
+    : IO[LogFileIndex] =
       buildIndex(startPosition = 0):
-        stream(ByteBufferSize)
+        toStream(ByteBufferSize)
       .map: _ =>
         if nanoToPos.isEmpty then
           logger.debug(s"❓ No timestamped line in $label")
         nanoToPos.shrink()
+      .map: _ =>
+        new LogFileIndex(toPositionedStream, nanoToPos)
 
     /** Build the index in `nanoToPos`.
       *
@@ -234,16 +239,13 @@ object LogFileIndex:
           val elapsed = t.elapsed
           if elapsed >= MinimumLogDuration then
             logger.debug(s"$label: ${bytesPerSecondString(elapsed, byteTotal)} indexed")
-
-    private def wrapInLogFileIndex(logFile: Path) =
-      new LogFileIndex(
-        toStream = (position: Long, bufferSize: Int) =>
-          Stream.resource:
-            ByteSeqFileReader.resource[Chunk[Byte]](logFile, bufferSize = bufferSize)
-              .evalTap: reader =>
-                reader.setPosition(position)
-          .flatMap:
-            _.streamUntilEnd,
-        nanoToPos)
-
   end Builder
+
+
+  private def positionedStream(file: Path, position: Long, bufferSize: Int): Stream[IO, Chunk[Byte]] =
+    Stream.resource:
+      ByteSeqFileReader.resource[Chunk[Byte]](file, bufferSize = bufferSize)
+        .evalTap: reader =>
+          reader.setPosition(position)
+    .flatMap:
+      _.streamUntilEnd

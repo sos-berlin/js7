@@ -183,7 +183,7 @@ extends Service.StoppableByRequest:
     pollDuration match
       case None =>
         Resource.eval:
-          LogFileIndex.build(file).map: logFileIndex =>
+          LogFileIndex.fromFile(file).map: logFileIndex =>
             DeferredIndex(logFileIndex, file)
       case Some(poll) =>
         LogFileIndex.buildGrowing(file, poll = poll).map: logFileIndex =>
@@ -207,7 +207,7 @@ extends Service.StoppableByRequest:
           IO.blocking:
             FileDeleter.tryDeleteFile(decompressedFile))
       .evalMap: _ =>
-        LogFileIndex.build(decompressedFile)
+        LogFileIndex.fromFile(decompressedFile)
           .map: logFileIndex =>
             val decompressedSize = Files.size(decompressedFile)
             Bean.decompressedFilesSize += decompressedSize
@@ -325,7 +325,7 @@ object LogDirectoryIndex:
               new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize)
           .flatMap:
             _.traverse: instant =>
-              LogFileIndex.build(file).map: logFileIndex =>
+              LogFileIndex.fromFile(file).map: logFileIndex =>
                 LogFile(instant, file, cell, zoneId = zoneId)
       .map: maybe =>
         maybe.foreach: logFile =>
