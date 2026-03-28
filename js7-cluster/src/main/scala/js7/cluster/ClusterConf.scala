@@ -43,10 +43,10 @@ final case class ClusterConf(
       EngineServerId.Controller.Primary
 
   def isTestClusterWatchHeartbeatLoss: Boolean =
-    testClusterWatchHearbeatLoss.fold(false)(k => sys.props(k).toBoolean)
+    testClusterWatchHearbeatLoss.flatMap(sys.props.get).fold(false)(_.toBoolean)
 
   def isTestHeartbeatLoss: Boolean =
-    testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean)
+    testHeartbeatLossPropertyKey.flatMap(sys.props.get).fold(false)(_.toBoolean)
 
 
 object ClusterConf:
