@@ -15,7 +15,6 @@ final class ReaderStreamsTest extends OurAsyncTestSuite:
 
     def program(in: InputStream) =
       inputStreamToByteStream(in)
-        .chunks
         .foreach(chunk => IO:
           buffer += ByteArray.unsafeWrap(chunk.toArray))
         .compile.drain
@@ -45,7 +44,6 @@ final class ReaderStreamsTest extends OurAsyncTestSuite:
 
     def program(reader: Reader) =
       readerToCharStream(reader)
-        .chunks
         .foreach(chunk => IO:
           buffer += String(chunk.toArray))
         .compile.drain

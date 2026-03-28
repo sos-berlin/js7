@@ -46,6 +46,7 @@ object CrashPidFileKiller extends ServiceApp:
 
   def program(conf: Conf, in: InputStream): IO[Unit] =
     inputStreamToByteStream(in)
+      .unchunks
       .through(recordToPid)
       .through(logAndIgnoreProblem)
       .compile

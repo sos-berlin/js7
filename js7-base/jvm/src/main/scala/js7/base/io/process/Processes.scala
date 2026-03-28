@@ -1,12 +1,13 @@
 package js7.base.io.process
 
 import cats.effect.{IO, Outcome, Resource, Sync}
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.OperatingSystemSpecific.OS
@@ -76,8 +77,12 @@ object Processes:
     stdout.toString
 
   def runAndLogProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
-    def logLines(stream: Stream[IO, Byte]): IO[Unit] =
-      stream.chunks.map(_.utf8String).through(fs2.text.lines).evalMap(logLine).compile.drain
+    def logLines(stream: Stream[IO, Chunk[Byte]]): IO[Unit] =
+      stream.through:
+        byteChunksToLines
+      .evalMapChunk: byteLine =>
+        logLine(byteLine.utf8String)
+      .compile.drain
 
     startProcess(args).flatMap: (process, stdout, stderr) =>
       IO.both(
@@ -93,11 +98,13 @@ object Processes:
         right = waitForProcessTermination(process))
     .map(_._2)
 
-  def startProcess(path: Path, args: String*): IO[(Process, Stream[IO, Byte], Stream[IO, Byte])] =
+  def startProcess(path: Path, args: String*)
+  : IO[(Process, Stream[IO, Chunk[Byte]], Stream[IO, Chunk[Byte]])] =
     startProcess(path.toString +: args)
 
   /** @return (Process, stdout as Stream, stderr as Stream) */
-  def startProcess(args: Seq[String]): IO[(Process, Stream[IO, Byte], Stream[IO, Byte])] =
+  def startProcess(args: Seq[String])
+  : IO[(Process, Stream[IO, Chunk[Byte]], Stream[IO, Chunk[Byte]])] =
     IO.defer:
       logger.trace(s"${args.mkString(" ")}")
       ProcessBuilder(args.asJava)

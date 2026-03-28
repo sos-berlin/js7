@@ -99,6 +99,7 @@ final class StdObservers private(
           IO.blocking:
             in.close()
           .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
+      .unchunks     
       .through:
         fs2.text.decodeWithCharset(encoding)
 

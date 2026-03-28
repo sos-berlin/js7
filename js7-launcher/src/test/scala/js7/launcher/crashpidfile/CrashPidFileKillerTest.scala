@@ -8,7 +8,6 @@ import cats.syntax.traverse.*
 import fs2.Stream
 import java.io.FileInputStream
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
-import js7.base.fs2utils.Fs2Utils.bytesToLines
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -53,20 +52,22 @@ final class CrashPidFileKillerTest extends OurAsyncTestSuite:
               startProcess(scriptFile)
                 .flatMap: (process, stdout, stderr) =>
                   val childA, childB = Deferred.unsafe[IO, Unit]
-                  stdout.through(bytesToLines)
-                    .merge:
-                      stderr.through(bytesToLines)
-                    .evalTap: line =>
-                      IO(logger.info(s"${Pid(process.pid)} >> $line"))
-                    .evalTap:
-                      case "SLEEP A" => childA.complete(())
-                      case "SLEEP B" => childB.complete(())
-                      case _ => IO.unit
-                    .compile.drain
-                    .startAndForget
-                    .flatMap: _ =>
-                      IO.both(childA.get, childB.get)
-                    .as(process)
+                  stdout.unchunks.through:
+                    fs2.text.utf8.decode andThen fs2.text.lines
+                  .merge:
+                    stderr.unchunks.through:
+                      fs2.text.utf8.decode andThen fs2.text.lines
+                  .evalTap: line =>
+                    IO(logger.info(s"${Pid(process.pid)} >> $line"))
+                  .evalTap:
+                    case "SLEEP A" => childA.complete(())
+                    case "SLEEP B" => childB.complete(())
+                    case _ => IO.unit
+                  .compile.drain
+                  .startAndForget
+                  .flatMap: _ =>
+                    IO.both(childA.get, childB.get)
+                  .as(process)
             .flatTap: processes =>
               Stream.iterable(processes)
                 .map(p => Pid(p.pid))

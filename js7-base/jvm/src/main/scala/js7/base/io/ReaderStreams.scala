@@ -16,11 +16,11 @@ object ReaderStreams:
 
   /** Returns a Chunk[Byte] immediately after each read operation. */
   def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
-  : Stream[IO, Byte] =
+  : Stream[IO, Chunk[Byte]] =
     channelToByteStream(newChannel(in), bufferSize)
 
   def channelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
-  : Stream[IO, Byte] =
+  : Stream[IO, Chunk[Byte]] =
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
       Stream.repeatEval:
@@ -36,10 +36,9 @@ object ReaderStreams:
             buffer.flip()
             Fs2ChunkByteSequence.readByteBuffer(buffer)
       .takeWhileNotNull
-      .unchunks
 
   def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize)
-  : Stream[IO, Char] =
+  : Stream[IO, Chunk[Char]] =
     Stream.suspend:
       val buffer = new Array[Char](bufferSize)
       Stream.repeatEval:
@@ -53,4 +52,3 @@ object ReaderStreams:
           case n =>
             Chunk.array(java.util.Arrays.copyOfRange(buffer, 0, n))
       .takeWhileNotNull
-      .unchunks
