@@ -12,17 +12,22 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.LogLevel.Info
+import js7.base.log.AnsiEscapeCodes.bold
+import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
-import js7.base.log.reader.LogDirectoryIndex
+import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.AutoClosing.syntax.use
+import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.proxy.LogDirectoryIndexTest.*
+import scala.concurrent.duration.Deadline
 
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
@@ -148,6 +153,43 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-01 00:00:00.000 info LogDirectoryIndexTest - MESSAGE\n",
                   "2026-03-02 00:00:00.000 info LogDirectoryIndexTest - MESSAGE\n",
                   "2026-03-03 00:00:00.000 info LogDirectoryIndexTest - MESSAGE\n"))
+
+  "1 GiB debug-log file" in {
+    if !isIntelliJIdea && !sys.props.contains("test.speed") then
+      IO.pure(pending)
+    else
+      given ZoneId = ZoneId.of("Europe/Mariehamn")
+
+      def info_(line: String) =
+        logger.info(line)
+        if !isIntelliJIdea then
+          println(s"➤LogFileIndex: $line")
+
+      val logFileSize = 1024 * 1024 * 1024
+      val lineLength = 130
+      val lineCount = logFileSize / lineLength
+      temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
+        val gzFile = dir / "js7-debug-2026-03-21-3.log.gz"
+        LogFileIndexTest.writeFile(
+          gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true
+        ) *>
+          (1 to 20).foldMap: _ =>
+            IO.defer:
+              val t = Deadline.now
+              LogDirectoryIndex.directory(
+                dir, Debug, isValidFile = _ => true, config = Js7Config.defaultConfig
+              ).use: logDirectoryIndex =>
+                logDirectoryIndex.instantToKeyedByteLogLineStream(
+                  Instant.parse("2026-02-12T00:01:00Z"),
+                  byteChunkSize = 8192
+                ).take(1).compile.drain *>
+                  IO:
+                    val elapsed = t.elapsed
+                    val used = sys.runtime.totalMemory - sys.runtime.freeMemory
+                    info_(s"$logDirectoryIndex ${
+                      bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+            .as(succeed)
+  }
 
 
 private object LogDirectoryIndexTest:

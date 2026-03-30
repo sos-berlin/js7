@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
+import java.util.zip.GZIPOutputStream
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -137,7 +138,6 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
             println(s"➤LogFileIndex: $line")
 
         logger.debugIO:
-          // For 1 GB log file, LogFileIndex seems to require 25 MiB heap !!!
           val logFileSize = 1024 * 1024 * 1024
           val lineLength = 130
           val lineCount = logFileSize / lineLength
@@ -171,17 +171,24 @@ object LogFileIndexTest:
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
     .withZone(ZoneId.of("Europe/Mariehamn"))
 
-  private def writeFile(file: Path, lineLength: Int, lineCount: Int, extra: String): IO[Unit] =
+  def writeFile(
+    file: Path,
+    lineLength: Int,
+    lineCount: Int,
+    extra: String = "",
+    gzip: Boolean = false)
+  : IO[Unit] =
     val aTimestamp = "2026-02-12T00:00:00.000"
     val lineRemainder =
       val middle = s" info  js7-7  js7.logger - message "
       middle + extra + "." * (lineLength - aTimestamp.length - middle.length - extra.length - 1) + "\n"
     assert(lineRemainder.length == lineLength - aTimestamp.length)
-    val epochMilli = Timestamp("2026-02-12T00:00:00Z").toInstant.toEpochMilli
+    val epochMilli = Instant.parse("2026-02-12T00:00:00Z").toEpochMilli
     Resource.fromAutoCloseable:
       IO.blocking:
+        val out = new BufferedOutputStream(new FileOutputStream(file.toFile), 256 * 1024)
         new OutputStreamWriter(
-          new BufferedOutputStream(new FileOutputStream(file.toFile), 256 * 1024),
+          if gzip then new GZIPOutputStream(out) else out,
           UTF_8)
     .use: writer =>
       writer.write("2026-02-12T00:00:00.000 ... timezone=Europe/Mariehamn ...\n")

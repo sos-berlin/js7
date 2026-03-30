@@ -29,11 +29,13 @@ final class JLogDirectoryIndexTester {
                         assertThat(logLineKey.get(), equalTo(LogLineKey.apply(
                             logLevel,
                             ZonedDateTime.parse("2026-03-01T02:00:00+02").toInstant(),
-                            99L))))
+                            117/*99*/))))
 
                     // 🟢 keyedLogLineFlux
                     .thenCompose(unused ->
-                        logDirectoryIndex.keyedLogLineFlux(ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(), Optional.empty())
+                        logDirectoryIndex.keyedLogLineFlux(
+                                ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(),
+                                Optional.empty())
                             .map(keyedLogLine -> keyedLogLine.line())
                             .collectList().toFuture())
                     .thenAccept(lines ->

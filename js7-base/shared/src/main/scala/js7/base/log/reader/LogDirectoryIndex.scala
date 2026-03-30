@@ -6,34 +6,34 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
-import fs2.Stream
-import java.io.{BufferedInputStream, FileInputStream, InputStream}
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import fs2.{Chunk, Stream}
+import java.io.{BufferedInputStream, BufferedOutputStream, FileInputStream, FileOutputStream, InputStream, OutputStream}
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
-import java.util.zip.GZIPInputStream
+import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.io.CountingOutputStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
+import js7.base.log.reader.LogFileIndex.LogWriter
 import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
 import js7.base.time.EpochNano
-import js7.base.time.ScalaTime.*
+import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AutoClosing.syntax.use
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -49,7 +49,8 @@ final class LogDirectoryIndex private(
   initialLogFiles: Iterable[LogFile],
   directoryEvents: Stream[IO, OurDirEvent],
   logLevel: LogLevel,
-  pollDuration: Option[FiniteDuration])
+  pollDuration: Option[FiniteDuration],
+  recompress: Boolean)
   (using zoneId: ZoneId)
 extends Service.StoppableByRequest:
 
@@ -132,7 +133,7 @@ extends Service.StoppableByRequest:
   private def streamAndContinueWithNextFile(logFile: LogFile, position: Long, byteChunkSize: Int)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
-      toDeferredIndex(logFile) // TODO DON'T BUILD logFile.logFileIndex. Only decompressed file is required
+      toDeferredIndex(logFile) // todo? Don't build logFile.logFileIndex. Only decompressed file is required
     .flatMap: deferredIndex =>
       Stream.resource:
         ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file, bufferSize = byteChunkSize)
@@ -175,7 +176,7 @@ extends Service.StoppableByRequest:
 
   private def buildIndex(logFile: LogFile): ResourceIO[DeferredIndex] =
     if logFile.isGzipped then
-      buildIndexFromCompressedFile(logFile.originalFile)
+      decompressAndBuildIndex(logFile.originalFile)
     else
       buildIndexFromUncompressedFile(logFile.originalFile)
 
@@ -189,29 +190,38 @@ extends Service.StoppableByRequest:
         LogFileIndex.buildGrowing(file, poll = poll).map: logFileIndex =>
           DeferredIndex(logFileIndex, file)
 
-  private def buildIndexFromCompressedFile(gzFile: Path): ResourceIO[DeferredIndex] =
-    val size = Files.size(gzFile)
-    val decompressedFile = Paths.get(gzFile.toString + TmpSuffix)
-    Resource.make(
-        acquire =
-          IO.interruptible:
-            val t = Deadline.now
-            new GZIPInputStream(
-              new BufferedInputStream(
-                new FileInputStream(gzFile.toFile))
-            ).use: in =>
-              Files.copy(in, decompressedFile, REPLACE_EXISTING)
-            logger.debug(s"Decompressed ${decompressedFile.getFileName}: ${
-              bytesPerSecondString(t.elapsed, Files.size(decompressedFile))}"))(
-        release = _ =>
-          IO.blocking:
-            FileDeleter.tryDeleteFile(decompressedFile))
-      .evalMap: _ =>
-        LogFileIndex.fromFile(decompressedFile)
-          .map: logFileIndex =>
-            val decompressedSize = Files.size(decompressedFile)
-            Bean.decompressedFilesSize += decompressedSize
-            DeferredIndex(logFileIndex, decompressedFile, Some(size -> decompressedSize))
+  private def decompressAndBuildIndex(gzFile: Path): ResourceIO[DeferredIndex] =
+    Resource.suspend:
+      IO:
+        val t = Deadline.now
+        val size = Files.size(gzFile)
+        /** tmpFile contains the indexed, decompressed and maybe recompressed log file. */
+        val tmpFile = Paths.get(gzFile.toString + TmpSuffix)
+        Resource
+          .make(
+            acquire =
+              LogFileIndex.fromStream(
+                label = tmpFile.getFileName.toString,
+                toBuilderStream = toDecompressingStream(gzFile, _, recompress = recompress),
+                toPositionedStream =
+                  positionedTmpFileStream(tmpFile, _, _, compressed = recompress),
+                logWriter =
+                  if recompress then
+                    recompressingLogWriterResource(tmpFile)
+                  else
+                    plainLogWriterResource(tmpFile)
+              ).map: logFileIndex =>
+                logger.info(s"${if recompress then "Recompressed" else "Decompressed"
+                  } and indexed ${tmpFile.getFileName}: ${
+                  bytesPerSecondString(t.elapsed, logFileIndex.byteCount)}")
+                logFileIndex)(
+            release = _ =>
+              IO.blocking:
+                FileDeleter.tryDeleteFile(tmpFile))
+        .map: logFileIndex =>
+          val recompressedSize = Files.size(tmpFile)
+          Bean.tmpFilesSize += recompressedSize
+          DeferredIndex(logFileIndex, tmpFile, Some(size -> recompressedSize))
 
   def files: Seq[Path] =
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
@@ -222,7 +232,7 @@ extends Service.StoppableByRequest:
 
 object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
-  private val TmpSuffix = "-decompressed.tmp"
+  private val TmpSuffix = "-indexed.tmp"
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
 
   def js7Directory(
@@ -259,6 +269,7 @@ object LogDirectoryIndex:
     assertThat(logLevel == Info || logLevel == Debug)
     logger.traceResource:
       Resource.suspend:
+        val recompress = config.as[Boolean]("js7.log.index.recompress")
         deleteTmpFiles(directory, logLevel) *>
           directory.directoryStream[IO]
             .filter: file =>
@@ -270,19 +281,20 @@ object LogDirectoryIndex:
                 DirectoryWatchSettings.fromConfig(config).orThrow,
                 isValidFile,
                 Set(ENTRY_CREATE, ENTRY_DELETE))
-              resource(files, directory, directoryEvents, logLevel, poll)
+              resource(files, directory, directoryEvents, logLevel, poll, recompress = recompress)
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
     (using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
-    resource(files, Paths.get(".")/*not used*/, Stream.empty, logLevel, poll)
+    resource(files, Paths.get(".")/*not used*/, Stream.empty, logLevel, poll, recompress = true)
 
   private def resource(
     files: Iterable[Path],
     logDirectory: Path,
     directoryEvents: Stream[IO, DirectoryEvent],
     logLevel: LogLevel,
-    poll: Option[FiniteDuration])
+    poll: Option[FiniteDuration],
+    recompress: Boolean)
     (using zoneId: ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
@@ -294,7 +306,7 @@ object LogDirectoryIndex:
               case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
               case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
               case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
-          new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll)
+          new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompress)
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */
@@ -314,8 +326,7 @@ object LogDirectoryIndex:
         if file.getFileName.toString.endsWith(".gz") then
           readLogFileInstant:
             IO:
-              new GZIPInputStream(
-                new BufferedInputStream(new FileInputStream(file.toFile), 512))
+              new GZIPInputStream(new FileInputStream(file.toFile), 512)
           .map: maybeInstant =>
             maybeInstant.fold(none): instant =>
               Some(LogFile(instant, file, cell, zoneId, isGzipped = true))
@@ -332,7 +343,8 @@ object LogDirectoryIndex:
           logger.debug(s"$logFile size=$size")
         maybe
     .handleError: throwable =>
-      logger.debug(s"toLogFile ${file.getFileName}: 💥 ${throwable.toStringWithCauses}")
+      logger.debug(s"toLogFile ${file.getFileName}: 💥 ${throwable.toStringWithCauses}",
+        throwable.nullIfNoStackTrace)
       None
 
   private def readLogFileInstant(inputStream: IO[InputStream])(using ZoneId): IO[Option[Instant]] =
@@ -364,7 +376,102 @@ object LogDirectoryIndex:
   private def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
-  /** Description a log file and an optional `LogFileIndex`. */
+  private def toDecompressingStream(gzFile: Path, bufferSize: Int, recompress: Boolean)
+  : Stream[IO, Chunk[Byte]] =
+    Stream.resource:
+      Resource.fromAutoCloseable:
+        IO.blocking:
+          new GZIPInputStream(
+            new FileInputStream(gzFile.toFile),
+            bufferSize / 4 /*compression ratio*/)
+    .flatMap: in =>
+      Stream.repeatEval:
+        IO.blocking:
+          val buffer = new Array[Byte](bufferSize)
+          in.read(buffer) match
+            case -1 => fs2.Chunk.empty
+            case n => fs2.Chunk.array(buffer, 0, n)
+      .takeWhile(_.nonEmpty)
+
+  private def recompressingLogWriterResource(recompressedFile: Path): Resource[IO, LogWriter] =
+    Resource.fromAutoCloseable:
+      IO.blocking:
+        new FileOutputStream(recompressedFile.toFile)
+    .flatMap:
+      toGzipLogWriter
+
+  private def toGzipLogWriter(out: OutputStream): Resource[IO, LogWriter] =
+    Resource.fromAutoCloseable:
+      IO:
+        new LogFileIndex.LogWriter with AutoCloseable:
+          private var lastByteCount = 0L
+          private var _gzip = none[MyGzipOutputStream]
+
+          def write(chunk: Chunk[Byte]): Unit =
+            val gzip = _gzip.getOrElse:
+              val gzip = MyGzipOutputStream(out)
+              _gzip = Some(gzip)
+              gzip
+            gzip.write(chunk.toArray)
+
+          def markPosition() =
+            _gzip.foreach: gzip =>
+              _gzip = None
+              gzip.close()
+              lastByteCount += gzip.byteCount
+            lastByteCount
+
+          def close() =
+            markPosition()
+
+
+  private def plainLogWriterResource(decompressedFile: Path): Resource[IO, LogWriter] =
+    Resource.fromAutoCloseable:
+      IO.blocking:
+        new BufferedOutputStream(
+          new FileOutputStream(decompressedFile.toFile))
+    .flatMap: out =>
+      Resource.eval:
+        IO:
+          new LogFileIndex.LogWriter:
+            private var lastByteCount = 0L
+
+            def write(chunk: Chunk[Byte]): Unit =
+              out.write(chunk.toArray)
+              lastByteCount += chunk.size
+
+            def markPosition() =
+              lastByteCount
+
+  private def positionedTmpFileStream(
+    file: Path,
+    position: Long,
+    bufferSize: Int,
+    compressed: Boolean)
+  : Stream[IO, Chunk[Byte]] =
+    Stream.resource:
+      Resource.fromAutoCloseable:
+        IO.blocking:
+          new FileInputStream(file.toFile)
+    .evalMap: (in: FileInputStream) =>
+      IO.blocking:
+        in.skip(position)
+        if compressed then
+          new GZIPInputStream(in, 4096/*guess*/)
+        else
+          new BufferedInputStream(in, 32*1024/*guess*/)
+    .flatMap: in =>
+      Stream.repeatEval:
+        IO.blocking:
+          val buffer = new Array[Byte](bufferSize)
+          val chunk =
+          in.read(buffer) match
+            case -1 => fs2.Chunk.empty
+            case n => fs2.Chunk.array(buffer, 0, n)
+          chunk
+      .takeWhile(_.nonEmpty)
+
+  /** Description of a log file and a deferred `LogFileIndex`. */
   private final case class LogFile(
     fileInstant: Instant,
     originalFile: Path,
@@ -379,7 +486,7 @@ object LogDirectoryIndex:
       deferredIndexCell.getAndSet(None).flatMap:
         _.foldMap: allo =>
           allo.allocatedThing.fileSize.foreach: o =>
-            Bean.decompressedFilesSize -= o.decompressed
+            Bean.tmpFilesSize -= o.decompressed
           allo.release
 
     def toLogLineKey(logLevel: LogLevel, position: Long): LogLineKey =
@@ -406,11 +513,24 @@ object LogDirectoryIndex:
     override def toString = s"FileDeleted(${file.getFileName})"
 
 
+  private final class MyGzipOutputStream private(out: CountingOutputStream)
+  extends GZIPOutputStream(out, 32*1024):
+    `def`.setLevel(Deflater.BEST_SPEED)
+
+    def byteCount = out.byteCount
+
+  private object MyGzipOutputStream:
+    /** Doesn't close underlying OutputStream. */
+    def apply(out: OutputStream): MyGzipOutputStream =
+      new MyGzipOutputStream(
+        CountingOutputStream(out, suppressClose = true))
+
+
   sealed trait LogDirectoryIndexMXBean:
     this: Bean.type =>
 
-    def getDecompressedFilesSize: Long =
-      decompressedFilesSize
+    def getTmpFilesSize: Long =
+      tmpFilesSize
 
   object Bean extends LogDirectoryIndexMXBean:
-    /*private[LogDirectoryIndex] */var decompressedFilesSize: Long = 0
+    /*private[LogDirectoryIndex] */var tmpFilesSize: Long = 0

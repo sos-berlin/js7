@@ -14,6 +14,7 @@ import org.jetbrains.annotations.TestOnly
 private final class EpochNanoToPos(initialSize: Int = 1024):
 
   private var _length = 1
+  private var _byteCount = 0L
   private var epochNanos: Array[Long] = Array.fill(initialSize)(0L)
   private var positions: Array[Long] = Array.fill(initialSize)(0L)
 
@@ -24,6 +25,13 @@ private final class EpochNanoToPos(initialSize: Int = 1024):
 
   inline def length: Int =
     _length - 1
+
+  /** Number of index log file bytes (the size of the log file). */
+  inline def byteCount: Long =
+    _byteCount
+
+  private[reader] inline def byteCount_=(byteCount: Long): Unit =
+    _byteCount = byteCount
 
   @TestOnly
   private[reader] inline def internalSize: Int =
