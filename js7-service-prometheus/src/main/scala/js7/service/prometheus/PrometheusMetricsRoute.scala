@@ -1,10 +1,12 @@
 package js7.service.prometheus
 
 import js7.common.configuration.CommonConfiguration
+import js7.common.pekkoutils.ByteStringByteSequence.implicitByteSequence
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpResponse}
 import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.util.ByteString
 
 trait PrometheusMetricsRoute:
 
@@ -24,4 +26,4 @@ trait PrometheusMetricsRoute:
     (pathEnd & get):
       complete:
         HttpResponse(
-          entity = HttpEntity(`text/plain(UTF-8)`, prometheusAdapter.metricsByteString()))
+          entity = HttpEntity(`text/plain(UTF-8)`, prometheusAdapter.metrics[ByteString]()))

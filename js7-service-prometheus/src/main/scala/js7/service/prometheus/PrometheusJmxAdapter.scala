@@ -3,15 +3,14 @@ package js7.service.prometheus
 import io.prometheus.jmx.JmxCollector
 import io.prometheus.metrics.exporter.common.PrometheusScrapeHandler
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
-import io.prometheus.metrics.model.registry.PrometheusRegistry
+import io.prometheus.metrics.model.registry.{PrometheusRegistry, PrometheusScrapeRequest}
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{NoSuchFileException, Path}
-import js7.base.data.ByteSeqOutputStream
+import js7.base.data.{ByteSeqOutputStream, ByteSequence}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
-import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest}
 import org.apache.pekko.util.ByteString
@@ -37,13 +36,14 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   private val textWriter = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
 
-  def metricsByteString(): ByteString =
+  def metrics[ByteSeq: ByteSequence](scrapeRequest: Option[PrometheusScrapeRequest] = None)
+  : ByteSeq =
     meter:
       val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
       outputStream.writeBytes(HeadlineBytes)
-      textWriter.write(outputStream, registry.scrape())
+      textWriter.write(outputStream, registry.scrape(scrapeRequest.orNull))
       lastSize = outputStream.size()
-      outputStream.byteSeq[ByteString]
+      outputStream.byteSeq[ByteSeq]
 
   // Not used !!!
   private def metricsByteString(request: HttpRequest = HttpRequest(HttpMethods.GET, "/metrics"))
