@@ -17,12 +17,13 @@ final class StopwatchTest extends OurTestSuite:
     assert(itemsPerSecondString(2.s, 3_000_000, "items") == "⏱️  2s/3m items (⌀0.67µs), 1500k items/s")
 
   "bytesPerSecondString" in:
-    assert(bytesPerSecondString(10.s, 1) == "⏱️  10s/0.001kB")
-    assert(bytesPerSecondString(10.s, 1_000) == "⏱️  10s/1kB")
+    assert(bytesPerSecondString(10.s, 1) == "⏱️  10s/0.001kB, 0.0kB/s")
+    assert(bytesPerSecondString(10.s, 1_000) == "⏱️  10s/1kB, 0.1kB/s")
     assert(bytesPerSecondString(10.s, 10_000) == "⏱️  10s/10kB, 1kB/s")
     assert(bytesPerSecondString(10.s, 99_000) == "⏱️  10s/99kB, 9.9kB/s")
     assert(bytesPerSecondString(10.s, 99_900) == "⏱️  10s/100kB, 10kB/s")
     assert(bytesPerSecondString(10.s, 99_000_000) == "⏱️  10s/99 MB, 9.9 MB/s")
+    assert(bytesPerSecondString(1800.ms, 2_000_000_000) == "⏱️  1.8s/2 GB, 1.1 GB/s")
     assert(bytesPerSecondString(10.s, 10_000_000_000L) == "⏱️  10s/10 GB, 1 GB/s")
     assert(bytesPerSecondString(10.s, 19_100_000_000L) == "⏱️  10s/19 GB, 1.9 GB/s")
     assert(bytesPerSecondString(10.s, 99_000_000_000L) == "⏱️  10s/99 GB, 9.9 GB/s")

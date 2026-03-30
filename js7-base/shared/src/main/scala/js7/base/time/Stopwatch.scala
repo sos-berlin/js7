@@ -130,7 +130,7 @@ object Stopwatch:
       duration / n
 
     def showPerSecond: Boolean =
-      /*n >= 10 && */duration >= 100.ms && singleDuration <= 1.s || n > 100_00
+      n > 0 && duration >= 100.ms /*&& singleDuration <= 1.s*/ || n > 100_000
 
     def perSecondString: String =
       if duration.toNanos == 0 then
