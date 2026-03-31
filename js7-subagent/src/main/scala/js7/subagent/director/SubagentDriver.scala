@@ -64,7 +64,7 @@ trait SubagentDriver:
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
   // Live Scope!
-  val subagentProcessCountScope: Scope =
+  final val subagentProcessCountScope: Scope =
     new Scope:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
