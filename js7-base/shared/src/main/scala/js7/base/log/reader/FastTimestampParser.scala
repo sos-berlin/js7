@@ -11,6 +11,7 @@ import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
 import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import scala.util.matching.Regex
 
 /** Optimize for reading a logging file's timestamps — no concurrent use!
   *
@@ -66,7 +67,7 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
 object FastTimestampParser:
   private val logger = Logger[FastTimestampParser]
-  val DateTimeRegex = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}""".r
+  val DateTimeRegex: Regex = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}""".r
   private val dateTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
 
