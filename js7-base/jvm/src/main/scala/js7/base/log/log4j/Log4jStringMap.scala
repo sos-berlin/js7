@@ -35,6 +35,7 @@ extends StringMap:
     key == CorrelIdKey
 
   def getValue[V](key: String): V =
+    _getValueCount += 1
     val string: String | Null =
       if key == CorrelIdKey then
         CorrelId.onCorrelIdLogged()
@@ -71,7 +72,11 @@ extends StringMap:
 
 object Log4jStringMap:
   private val nullString = "❓null❓"
+  private var _getValueCount = 0L
   private var _forEachCount = 0L
+
+  def getValueCount: Long =
+    _getValueCount
 
   def forEachCount: Long =
     _forEachCount
