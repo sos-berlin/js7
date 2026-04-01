@@ -12,7 +12,6 @@ import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger
 import js7.base.log.reader.LogFileIndex.*
 import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
-import js7.base.metering.CallMeter
 import js7.base.time.EpochNano
 import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
@@ -121,8 +120,6 @@ object LogFileIndex:
   private val MinimumLogDuration = 100.ms
   private val PollDuration = 100.ms
   private val logger = Logger[LogFileIndex]
-  private val meterReadFile = CallMeter("LogFileIndex.readChunkFromFile")
-  private val meterIndexBuilder = CallMeter("LogFileIndex.buildIndexChunk")
 
   logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, occupying 1/${
     LogBytesPerEntry / EntrySize} memory of a log file's size")

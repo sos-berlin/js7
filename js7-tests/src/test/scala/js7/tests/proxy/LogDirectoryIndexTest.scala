@@ -12,14 +12,12 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.AutoClosing.syntax.use
 import js7.base.utils.ScalaUtils.syntax.foldMap
@@ -186,8 +184,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   IO:
                     val elapsed = t.elapsed
                     val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                    info_(s"$logDirectoryIndex ${
-                      bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+                    // LogDirectoryIndex logs, too:
+                    //info_(s"$logDirectoryIndex ${
+                    //  bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }
 

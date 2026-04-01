@@ -3,7 +3,6 @@ package js7.base.io
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.zip.{Deflater, Inflater, InflaterInputStream}
 import js7.base.test.OurTestSuite
-import js7.base.utils.Atomic.extensions.+=
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.io.Source

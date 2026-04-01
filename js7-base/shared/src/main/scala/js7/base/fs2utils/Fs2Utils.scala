@@ -3,7 +3,8 @@ package js7.base.fs2utils
 import cats.effect.IO
 import cats.effect.kernel.Sync
 import cats.syntax.monoid.*
-import fs2.{Chunk, Pipe}
+import fs2.{Chunk, Stream}
+import java.io.InputStream
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
@@ -14,8 +15,8 @@ import scala.collection.immutable.VectorBuilder
 
 object Fs2Utils:
 
-  type StreamIO[A] = fs2.Stream[IO, A]
-  type StreamPure[A] = fs2.Stream[fs2.Pure, A]
+  type StreamIO[A] = Stream[IO, A]
+  type StreamPure[A] = Stream[fs2.Pure, A]
 
   /** Convert to pairs of byte position and ByteSeq. */
   def toPosAndLines[F[_], ByteSeq: ByteSequence](firstPosition: Long)
@@ -27,7 +28,7 @@ object Fs2Utils:
         (pos + line.length) -> (pos -> line)
 
   private object End
-  private val EndStream = fs2.Stream.emit(End)
+  private val EndStream = Stream.emit(End)
 
   def combineByteSeqs[F[_], ByteSeq](limit: Int)(using ByteSeq: ByteSequence[ByteSeq])
   : fs2.Pipe[F, ByteSeq, ByteSeq] =
@@ -62,7 +63,7 @@ object Fs2Utils:
         //case x => Chunk.empty
       .unchunks
 
-  /** Like [[fs2.Stream.unfoldChunkEval]] but returns Chunks until a weighted limit is reached.
+  /** Like [[Stream.unfoldChunkEval]] but returns Chunks until a weighted limit is reached.
     * <p>
     * Upstream big elements will not be split and are returned as is (bigger then limit)
     *
@@ -75,12 +76,12 @@ object Fs2Utils:
     hint: Sync.Type = Sync.Type.Delay)
     [F[_]: Sync as F]
     (next: => Option[O])
-  : fs2.Stream[F, Chunk[O]] =
-    fs2.Stream.suspend:
+  : Stream[F, Chunk[O]] =
+    Stream.suspend:
       assertThat(limit > 0)
       val builder = new VectorBuilder[O]
       var accWeight = 0L
-      fs2.Stream.unfoldEval(()): _ =>
+      Stream.unfoldEval(()): _ =>
         F.suspend(hint):
           @tailrec def loop(): Vector[O] =
             next match
@@ -110,5 +111,21 @@ object Fs2Utils:
           result.nonEmpty ? (fs2.Chunk.from(result) -> ())
       .append:
         // lazily add the remaining carry
-        fs2.Stream.iterable:
+        Stream.iterable:
           builder.nonEmpty ? fs2.Chunk.from(builder.result())
+
+  def inputStreamToStream(in: InputStream, bufferSize: Int = 8192): Stream[IO, Chunk[Byte]] =
+    endlessInputStreamToStream(in, bufferSize)
+      .takeWhile(_.nonEmpty)
+
+  /** Don't stop at EOF, but keep reading.
+    *
+    * Must be used with `.takeWhile(_.nonEmpty)` or some polling mechanism.
+    * */
+  def endlessInputStreamToStream(in: InputStream, bufferSize: Int = 8192): Stream[IO, Chunk[Byte]] =
+    Stream.repeatEval:
+      IO.blocking:
+        val buffer = new Array[Byte](bufferSize)
+        in.read(buffer) match
+          case -1 => fs2.Chunk.empty
+          case n => fs2.Chunk.array(buffer, 0, n)

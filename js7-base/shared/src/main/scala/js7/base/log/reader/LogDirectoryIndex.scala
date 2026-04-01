@@ -14,10 +14,11 @@ import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.run
-import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
@@ -51,7 +52,7 @@ final class LogDirectoryIndex private(
   pollDuration: Option[FiniteDuration],
   recompressor: Recompressor)
   (using zoneId: ZoneId)
-extends Service.StoppableByRequest:
+extends Service.StoppableByCancel:
 
   private val instantToLogFile =
     new ConcurrentSkipListMap(initialLogFiles.toKeyedMap(_.fileInstant).asJava)
@@ -63,31 +64,37 @@ extends Service.StoppableByRequest:
 
   protected def start =
     startService:
-      directoryEvents.chunks.map: chunk =>
-        chunk.asSeq.foreachWithBracket()((evt, br) => logger.debug(s"$br$evt"))
-        chunk
-      .unchunks
-      .evalMap:
-        case FileAdded(file) =>
-          IO.uncancelable: _ =>
-            toLogFile(file).map: maybe =>
-              maybe.foreach: logFile =>
-                fileToInstant.put(logFile.filename, logFile.fileInstant)
-                instantToLogFile.put(logFile.fileInstant, logFile)
-
-        case FileDeleted(file) =>
-          IO.uncancelable: _ =>
-            fileToInstant.remove(file).foldMap: instant =>
-              Option(instantToLogFile.remove(instant)).foldMap: logFile =>
-                logger.debug(s"Remove $logFile")
-                logFile.release
-      .compile.drain
-      .race:
-        untilStopRequested
-      .productR:
+      run.productR:
         IO.defer:
           instantToLogFile.values.asScala.toVector.parFoldMapA: logFile =>
             logFile.release
+
+  private def run =
+    // Cancelled when service is stopping
+    directoryEvents.chunks.map: chunk =>
+      chunk.asSeq.foreachWithBracket()((evt, br) => logger.debug(s"$br$evt"))
+      chunk
+    .unchunks
+    .evalMap:
+      case FileAdded(file) =>
+        IO.uncancelable: _ =>
+          toLogFile(file).map: maybe =>
+            maybe.foreach: logFile =>
+              fileToInstant.put(logFile.filename, logFile.fileInstant)
+              instantToLogFile.put(logFile.fileInstant, logFile)
+
+      case FileDeleted(file) =>
+        IO.uncancelable: _ =>
+          fileToInstant.remove(file).foldMap: instant =>
+            Option(instantToLogFile.remove(instant)).foldMap: logFile =>
+              logger.debug(s"Remove $logFile")
+              logFile.release
+    .compile.drain
+
+  private def release =
+    IO.defer:
+      instantToLogFile.values.asScala.toVector.parFoldMapA: logFile =>
+        logFile.release
 
   def instantToLogLineKey(instant: Instant): IO[Option[LogLineKey]] =
     instantToKeyedByteLogLineStream(instant)
@@ -228,13 +235,11 @@ object LogDirectoryIndex:
   private val TmpSuffix = "-indexed.tmp"
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
 
-  def js7Directory(
-    logLevel: LogLevel,
-    config: Config,
-    poll: Option[FiniteDuration] = None)
-    (using zoneId: ZoneId)
+  /** LogDirectoryIndex, watching the standard JS7 Engine log directory. */
+  def js7Directory(logLevel: LogLevel, config: Config)(using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     assertThat(logLevel == Info || logLevel == Debug)
+    val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
     val currentLogFile = config.as[Path]:
       if logLevel == Debug then "js7.log.debug.file" else "js7.log.info.file"
     val currentLogFilename = currentLogFile.getFileName
@@ -248,16 +253,17 @@ object LogDirectoryIndex:
           logLevelMatches(file, logLevel) &&
           isCompressedLogFile(file)
 
-    directory(currentLogFile.getParent, logLevel, isValidFile, config, poll)
+    directory(currentLogFile.getParent, logLevel, isValidFile, config, Some(poll))
   end js7Directory
 
+  /** LogDirectoryIndex, watching a directory. */
   def directory(
     directory: Path,
     logLevel: LogLevel,
     isValidFile: Path => Boolean,
     config: Config,
     poll: Option[FiniteDuration] = None)
-    (using zoneId: ZoneId)
+    (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     assertThat(logLevel == Info || logLevel == Debug)
     logger.traceResource:
@@ -277,7 +283,7 @@ object LogDirectoryIndex:
               resource(files, directory, directoryEvents, logLevel, poll, recompressor)
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
-    (using zoneId: ZoneId)
+    (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     resource(files, Paths.get(".")/*not used*/, Stream.empty, logLevel, poll, DeflaterRecompressor)
 
@@ -288,7 +294,7 @@ object LogDirectoryIndex:
     logLevel: LogLevel,
     poll: Option[FiniteDuration],
     recompressor: Recompressor)
-    (using zoneId: ZoneId)
+    (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
       toLogFiles(files).map: logFiles =>
@@ -303,7 +309,7 @@ object LogDirectoryIndex:
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */
-  private def toLogFiles(files: Iterable[Path])(using zoneId: ZoneId): IO[Vector[LogFile]] =
+  private def toLogFiles(files: Iterable[Path])(using ZoneId): IO[Vector[LogFile]] =
     fs2.Stream.iterable(files)
       .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
         toLogFile(file)
@@ -378,13 +384,7 @@ object LogDirectoryIndex:
             new FileInputStream(gzFile.toFile),
             bufferSize / 4 /*compression ratio*/)
     .flatMap: in =>
-      Stream.repeatEval:
-        IO.blocking:
-          val buffer = new Array[Byte](bufferSize)
-          in.read(buffer) match
-            case -1 => fs2.Chunk.empty
-            case n => fs2.Chunk.array(buffer, 0, n)
-      .takeWhile(_.nonEmpty)
+      inputStreamToStream(in, bufferSize = bufferSize)
 
   private def positionedTmpFileStream(
     file: Path,
@@ -401,15 +401,7 @@ object LogDirectoryIndex:
         in.skip(position)
         recompressor.decompressingInputStream(in)
     .flatMap: in =>
-      Stream.repeatEval:
-        IO.blocking:
-          val buffer = new Array[Byte](bufferSize)
-          val chunk =
-          in.read(buffer) match
-            case -1 => fs2.Chunk.empty
-            case n => fs2.Chunk.array(buffer, 0, n)
-          chunk
-      .takeWhile(_.nonEmpty)
+      inputStreamToStream(in, bufferSize)
 
   /** Description of a log file and a deferred `LogFileIndex`. */
   private final case class LogFile(
@@ -460,4 +452,4 @@ object LogDirectoryIndex:
       tmpFilesSize
 
   object Bean extends LogDirectoryIndexMXBean:
-    /*private[LogDirectoryIndex] */var tmpFilesSize: Long = 0
+    protected[LogDirectoryIndex] var tmpFilesSize: Long = 0

@@ -1,6 +1,5 @@
 package js7.core.web.log
 
-import cats.effect.std.Mutex
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import cats.syntax.apply.*
@@ -32,9 +31,9 @@ import js7.base.service.Service
 import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichEitherF, RichThrowable}
+import js7.base.utils.{Allocated, ConcurrentHashMap, LockKeeper}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
@@ -48,7 +47,6 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
-import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
@@ -63,7 +61,6 @@ trait LogRoute extends RouteProvider:
 
   private lazy val pollDuration =
     config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
-
   private lazy val currentInfoLogFile = config.as[Path]("js7.log.info.file")
   private lazy val currentDebugLogFile = config.as[Path]("js7.log.debug.file")
 
@@ -171,7 +168,7 @@ object LogRoute:
       .appendPattern("HH:mm:ss")
       .optionalStart()
       .optionalStart()
-      // Optional fraction with .,' (1..9 digits)
+      // Optional fraction with .' (1..9 digits)
       .appendLiteral('.')
       .appendFraction(NANO_OF_SECOND, 1, 9, false)
       .optionalEnd()
@@ -209,22 +206,21 @@ object LogRoute:
 
 
   /** [[LogDirectoryIndex]] placed in the [[Environment]]. */
-  final class LogDirectoryIndexEnv private(poll: FiniteDuration, mutex: Mutex[IO])(using ZoneId)
+  final class LogDirectoryIndexEnv private(using ZoneId)
   extends Service.TrivialReleasable:
-    private val levelToIndex = mutable.HashMap.empty[LogLevel, Allocated[IO, LogDirectoryIndex]]
+    private val levelToIndex = ConcurrentHashMap[LogLevel, Allocated[IO, LogDirectoryIndex]]
+    private val lock = LockKeeper[LogLevel]()
 
     protected def release =
-      mutex.lock.surround:
-        IO.defer:
-          levelToIndex.values.toSeq.parTraverseVoid(_.release)
+      IO.defer:
+        levelToIndex.values.toSeq.parTraverseVoid(_.release)
 
     def forLogLevel(logLevel: LogLevel, config: Config): IO[LogDirectoryIndex] =
-      mutex.lock.surround:
+      lock.lock(logLevel):
         IO.defer:
           levelToIndex.get(logLevel) match
             case None =>
-              LogDirectoryIndex.js7Directory(logLevel, config,
-                  poll = Some(poll))
+              LogDirectoryIndex.js7Directory(logLevel, config)
                 .toAllocated.map: allocated =>
                   levelToIndex.put(logLevel, allocated)
                   allocated.allocatedThing
@@ -237,11 +233,9 @@ object LogRoute:
     private given ZoneId = ZoneId.systemDefault
 
     def register(config: Config): ResourceIO[Unit] =
-      val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
       Environment.register:
         Service:
-          Mutex[IO].map: mutex =>
-            new LogDirectoryIndexEnv(poll, mutex)
+          new LogDirectoryIndexEnv
       *>
         registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
           .void
