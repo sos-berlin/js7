@@ -108,6 +108,9 @@ object ConcurrentHashMap extends MapFactory[ConcurrentHashMap]:
 
   private final val DefaultInitialCapacity = 16
 
+  def apply[K, V]: ConcurrentHashMap[K, V] =
+    new ConcurrentHashMap
+
   def empty[K, V]: ConcurrentHashMap[K, V] =
     new ConcurrentHashMap
 

@@ -42,7 +42,7 @@ final class PekkoWebServer private(bindingAndResources: Vector[BindingAndResourc
 extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 
   private val _addrToHttpsFileToTime =
-    ConcurrentHashMap.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
+    ConcurrentHashMap[InetSocketAddress, Map[Path, Try[FileTime]]]
 
   private[web] val webServerBindings =
     bindingAndResources.map(_.webServerBinding)
