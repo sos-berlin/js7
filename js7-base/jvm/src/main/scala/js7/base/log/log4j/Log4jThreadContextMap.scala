@@ -10,21 +10,16 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{Lazy, ScalaUtils}
-import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
-import org.apache.logging.log4j.util.StringMap
+import org.apache.logging.log4j.spi.ThreadContextMap
 
-final class Log4jThreadContextMap
-extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
-  // CopyOnWrite seems to mean that getReadOnlyContextData returns an immutable map.
-  // Otherwise, Log4j makes a copy with Log4jStringMap#forEach.
+final class Log4jThreadContextMap extends ThreadContextMap:
 
-  private var lastLog4jStringMap: Log4jStringMap | Null = null
+  private var lastImmutableMap: Log4jMap | Null = null
   private var lastKeyToValueVersion = keyToValueVersion - 1
 
   def clear(): Unit = ()
 
   def put(key: String, value: String): Unit =
-    assert(!isTest)
     putSuppressedCount += 1
 
   def remove(key: String): Unit =
@@ -46,42 +41,35 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
     assert(!isTest)
     key == CorrelIdKey || keyToValue.contains(key)
 
-  // Not used
   def getImmutableMapOrNull: java.util.Map[String, String] =
-    assert(!isTest)
     getImmutableMapOrNullCount += 1
-    java.util.Collections.singletonMap(CorrelIdKey, CorrelId.local().fixedWidthString)
-
-  // Not used
-  def getCopy: java.util.Map[String, String] =
-    assert(!isTest)
-    getCopyCount += 1
-    java.util.Collections.singletonMap(CorrelIdKey, CorrelId.local().fixedWidthString)
-
-  def getReadOnlyContextData: StringMap =
-    getReadOnlyContextDataCount += 1
-    val last = lastLog4jStringMap
+    val last = lastImmutableMap
     val correlId = CorrelId.local()
     val v = keyToValueVersion
     if last != null && last.correlId.eq(correlId) && v == lastKeyToValueVersion then
       last
     else
       lastKeyToValueVersion = v
-      newLog4jStringMapCount += 1
-      val r = Log4jStringMap(correlId)
-      lastLog4jStringMap = r
+      newLog4jMapCount += 1
+      val r = Log4jMap(correlId)
+      lastImmutableMap = r
       r
+
+  // Not used
+  def getCopy: java.util.Map[String, String] =
+    assert(!isTest)
+    getCopyCount += 1
+    throw new UnsupportedOperationException("getCopy")
 
 
 object Log4jThreadContextMap:
   /** Use this name in Log4j2 pattern as `%notEmpty{%X{js7.correlId} }`.
    * The value is empty iff CorrelId are switched off (-Djs7.log.correlId=false). */
   private[log] val CorrelIdKey = "js7.correlId"
-
   private val myClassName = classOf[Log4jThreadContextMap].getName.stripSuffix("$")
-
   private var keyToValueVersion = 0
-  private val keyToValue = new ConcurrentHashMap[String, String | Lazy[String]]:
+
+  private[log] val keyToValue = new ConcurrentHashMap[String, String | Lazy[String]]:
     put("js7.version", BuildInfo.longVersion)
     put("js7.longVersion", BuildInfo.longVersion)
     put("js7.prettyVersion", BuildInfo.prettyVersion)
@@ -89,13 +77,12 @@ object Log4jThreadContextMap:
 
   //private val dummyNullCorrelId = CorrelId("__NULL__")
 
-  // Counters are not accurate because not synchronized !!!
+  // Counters are not accurate because not synchronized
   private var putSuppressedCount = 0L
   private var getCount = 0L
   private var getImmutableMapOrNullCount = 0L
   private var getCopyCount = 0L
-  private var getReadOnlyContextDataCount = 0L
-  private var newLog4jStringMapCount = 0L
+  private var newLog4jMapCount = 0L
 
   private[log] def getOtherKey(key: String): String | Null =
     keyToValue.get(key) match
@@ -116,20 +103,20 @@ object Log4jThreadContextMap:
 
   def statistics: String =
     val percent =
-      val n = getReadOnlyContextDataCount
+      val n = getImmutableMapOrNullCount
       if n == 0 then
         ""
       else
-        val a = 100 * newLog4jStringMapCount / n
-        s" ($a%)"
-    def num(n: Long, name: String) = (n > 0) ? s"$n× $name"
+        val a = 100 * newLog4jMapCount / n
+        s"($a%)"
+    def num(n: Long, name: String) = (n > 0) ? s"$n×$name"
     flatten(
-      num(newLog4jStringMapCount, "getImmutableMapOrNull"),
-      (newLog4jStringMapCount > 0) ? s"$newLog4jStringMapCount×$percent new Log4jStringMap",
+      num(getImmutableMapOrNullCount, "getImmutableMapOrNull"),
+      (newLog4jMapCount > 0) ? s"$newLog4jMapCount×$percent new Log4jMap",
+      num(Log4jMap.getCount, "Map.get"),
       num(getCopyCount, "getCopy"),
       num(getCount, "get"),
-      num(putSuppressedCount, "suppressed"),
-      num(Log4jStringMap.getValueCount, "getValue")
+      num(putSuppressedCount, "suppressed")
     ).mkString(", ")
 
   def logStatistics(): Unit =
