@@ -115,10 +115,9 @@ private final case class DirectorState private(
                   entry.cachedStaticPrioritized(scope)
                 else
                   entry.cachedDynamicPrioritized: subagentId =>
-                    idToDriver.get(subagentId)
-                      .flatMap: driver =>
-                        driver.serverMeteringScope()
-                          .map(combine(_, driver.subagentProcessCountScope, scope))
+                    idToDriver.get(subagentId).flatMap: driver =>
+                      driver.serverMeteringScope().map:
+                        combine(_, driver.subagentProcessCountScope, scope)
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
@@ -153,7 +152,7 @@ private object DirectorState:
 
   private final case class BundleEntry(
     subagentBundle: SubagentBundle,
-    subagentToExpr: Map[SubagentId, Expression]):
+    subagentToPriority: Map[SubagentId, Expression]):
     entry =>
 
     private val _cachedPrioritized = Atomic[Prioritized[SubagentId] | Null](null)
@@ -195,7 +194,7 @@ private object DirectorState:
 
     private def mkPrioritized(toScope: SubagentId => Option[Scope]): Prioritized[SubagentId] =
       Prioritized:
-        subagentToExpr.toVector.flatMap: (subagentId, expr) =>
+        subagentToPriority.toVector.flatMap: (subagentId, expr) =>
           toScope(subagentId).flatMap: scope =>
             expr.eval(using scope).flatMap(_.asMissingOr[NumberValue]) match
               case Left(problem) =>
