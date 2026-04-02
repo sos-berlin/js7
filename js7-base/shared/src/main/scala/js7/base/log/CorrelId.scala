@@ -86,7 +86,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   private val isEnabled0 = couldBeEnabled //maybeEnabled0 getOrElse false
 
   // Maybe some percent performance gain when not being called?
-  @inline private[log] def onCorrelIdLogged(): Unit =
+  inline private[log] def onCorrelIdLogged(): Unit =
     {} //  isEnabled0 = true
 
   @inline def isEnabled: Boolean = isEnabled0
