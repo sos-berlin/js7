@@ -48,5 +48,5 @@ object StreamPauseDetector:
   sealed trait Expirable[A] extends Element
 
   private case class Tick(since: SyncDeadline) extends Ticking
-  final case class Expired(since: SyncDeadline) extends Expirable[Nothing]
+  final case class Expired[A](since: SyncDeadline) extends Expirable[A]
   final case class Value[A](value: A) extends Ticking, Expirable[A], Element

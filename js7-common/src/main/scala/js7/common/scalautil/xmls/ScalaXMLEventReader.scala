@@ -1,6 +1,5 @@
 package js7.common.scalautil.xmls
 
-import js7.base.utils.Nulls.notNullOr
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
@@ -8,6 +7,7 @@ import javax.xml.transform.Source
 import js7.base.convert.ConvertiblePartialFunction
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.NonNull
+import js7.base.utils.Nulls.notNullOr
 import js7.base.utils.ScalaUtils.{cast, implicitClass}
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import js7.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
@@ -213,23 +213,35 @@ object ScalaXMLEventReader:
       case _: Comment => true
       case _ => false
 
+
   final class SimpleAttributeMap private[ScalaXMLEventReader](pairs: Iterator[(String, String)])
-  extends mutable.HashMap[String, String], ConvertiblePartialFunction[String, String]:
-    this ++= pairs
+  extends mutable.Map[String, String], ConvertiblePartialFunction[String, String]:
+
+    private val hashMap = mutable.HashMap[String, String]()
+    hashMap ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)
 
-    override def apply(o: String): String =
-      readAttributes += o
-      super.apply(o)
+    def addOne(elem: (String, String)): SimpleAttributeMap.this.type =
+      hashMap.addOne(elem)
+      this
 
-    override def get(name: String): Option[String] =
+    def get(key: String): Option[String] =
+      readAttributes += key
+      hashMap.get(key)
+
+    def iterator: Iterator[(String, String)] =
+      hashMap.iterator
+
+    def subtractOne(elem: String): SimpleAttributeMap.this.type =
+      hashMap.subtractOne(elem)
+      this
+
+    override def default(name: String): String =
+      throw new NoSuchElementException(s"XML attribute '$name' is required")
+
+    def ignore(name: String): Unit =
       readAttributes += name
-      super.get(name)
-
-    override def default(name: String): String = throw new NoSuchElementException(s"XML attribute '$name' is required")
-
-    def ignore(name: String): Unit = readAttributes += name
 
     /** Marks all attributes as read, so that requireAllAttributesRead does not fail. */
     def ignoreUnread(): Unit = readAttributes ++= keys
@@ -238,6 +250,8 @@ object ScalaXMLEventReader:
       if keySet != readAttributes then
         val names = keySet.toSet -- readAttributes
         if names.nonEmpty then throw new UnparsedAttributesException(names.toSeq)
+  end SimpleAttributeMap
+
 
   final class ConvertedElementMap[A] private[xmls](pairs: IndexedSeq[(String, A)]):
 
@@ -269,8 +283,10 @@ object ScalaXMLEventReader:
     def apply(elementName: String): Seq[A] =
       pairs collect { case (k, v) if k == elementName => v }
 
+
   final class UnparsedAttributesException private[xmls](val names: Seq[String]) extends RuntimeException:
     override def getMessage = "Unknown XML attributes " + names.map("'" + _ + "'").mkString(", ")
+
 
   final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException:
 
@@ -296,6 +312,7 @@ object ScalaXMLEventReader:
       o.getCause match
         case cause: XmlException => Some(cause.nonWrappedCause)
         case cause => Some(cause)
+
 
   private def locationToString(o: Location) =
     (Option(o.getSystemId) ++ Option(o.getPublicId)).flatten.mkString(":") + ":" + o.getLineNumber + ":" + o.getColumnNumber

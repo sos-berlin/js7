@@ -22,14 +22,14 @@ object UnsafeMemoizable:
 
 
   // Only to allow IntelliJ to get the proper result type:
-  extension [F[_], A](underlying: F[A])(using F: Async[F])
+  extension [F[_]: Async as F, A](underlying: F[A])
     def unsafeMemoize: F[A] =
       memoize[F, A](underlying)
 
 
   // Scala requires a name different from unsafeMemoize.
   /** Same as body·unsafeMemoize, but as a prefix operator. */
-  def memoize[F[_], A](body: F[A])(using F: Async[F]): F[A] =
+  def memoize[F[_]: Async as F, A](body: F[A]): F[A] =
     val triggered = Atomic(false)
     val deferred = Deferred.unsafe[F, Either[Throwable, A]]
     F.defer:
@@ -51,8 +51,8 @@ object UnsafeMemoizable:
         val lzy = Lazy(syncIO.run())
         SyncIO.delay(lzy.value)
 
-  extension [A](syncIO: SyncIO[A])
-    def unsafeMemoize: SyncIO[A] =
-      // `Lazy` blocks the thread when used concurrently !!!
-      val lzy = Lazy(syncIO.run())
-      SyncIO.delay(lzy.value)
+  //extension [A](syncIO: SyncIO[A])
+  //  def unsafeMemoize: SyncIO[A] =
+  //    val lzy = Lazy.blocking:
+  //      syncIO.run()
+  //    SyncIO.delay(lzy.value)

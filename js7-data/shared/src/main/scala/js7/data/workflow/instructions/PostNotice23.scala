@@ -7,14 +7,13 @@ import js7.data.source.SourcePos
 import scala.annotation.nowarn
 
 // COMPATIBLE with v2.3
-@deprecated("Use PostNotices", "2.4")
-final case class PostNotice(
+private final case class PostNotice23(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
 
 
-object PostNotice:
+object PostNotice23:
   @nowarn("msg=PostNotice in package js7.data.workflow.instructions is deprecated")
   val compatibleSubtype: Subtype[PostNotices] =
-    Subtype.decodeCompatible(deriveDecoder[PostNotice])(postNotice =>
+    Subtype.decodeCompatible(deriveDecoder[PostNotice23], "PostNotice")(postNotice =>
       Right(PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos)))
