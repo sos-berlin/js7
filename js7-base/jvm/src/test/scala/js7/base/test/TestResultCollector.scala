@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path
 import js7.base.log.Logger
-import js7.base.log.log4j.Log4j
+import js7.base.log.log4j.{Log4j, Log4jThreadContextMap}
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.*
 import js7.base.system.JavaHeapDump.dumpHeapTo
@@ -38,7 +38,10 @@ private object TestResultCollector:
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
       if sys.props.asSwitch("js7.dumpHeap") then dumpJavaHeap()
-      if false then Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
+      if false then
+        Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
+      else
+        Log4jThreadContextMap.logStatistics()
 
   private def logThreads(): Unit =
     if logger.underlying.isDebugEnabled then
