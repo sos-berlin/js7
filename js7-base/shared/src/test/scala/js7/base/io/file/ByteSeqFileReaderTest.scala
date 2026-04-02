@@ -31,7 +31,7 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
   //  testStream[ByteString]
 
   private def testStream[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
-    temporaryFileResource[IO]("ByteSeqFileReaderTest").use: file =>
+    temporaryFileResource[IO]("ByteSeqFileReaderTest-").use: file =>
       val content = ByteSeq.fromSeq(Random.nextBytes(3 * ByteSeqFileReader.BufferSize - 7))
       file := content
       ByteSeqFileReader.stream[ByteSeq](file, byteChunkSize = ByteSeqFileReader.BufferSize)
@@ -39,7 +39,7 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
           assert(bigChunk == content)
 
   "position" in:
-    temporaryFileResource[IO]("ByteSeqFileReaderTest").use: file =>
+    temporaryFileResource[IO]("ByteSeqFileReaderTest-").use: file =>
       file := "0123456789"
       ByteSeqFileReader.resource[ByteArray](file, bufferSize = 4).use: reader =>
         assert(reader.position == 0)

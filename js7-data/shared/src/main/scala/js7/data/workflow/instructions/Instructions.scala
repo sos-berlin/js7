@@ -18,7 +18,7 @@ object Instructions:
     Subtype[ForkList],
     Subtype[If],
     Subtype[Prompt],
-    PostNotice.compatibleSubtype,
+    PostNotice23.compatibleSubtype,
     Subtype[PostNotices],
     ExpectNotice.compatibleSubtype,
     Subtype[ExpectNotices],

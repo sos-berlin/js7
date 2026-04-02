@@ -114,7 +114,12 @@ object Subtype:
 
   def decodeCompatible[Old: ClassTag, New: ClassTag](decoder: Decoder[Old])(toNew: Old => Checked[New])
   : Subtype[New] =
-    make(Nil, Some(implicitClass[New]), typeName[Old],
+    decodeCompatible(decoder, typeName[Old])(toNew)
+
+  def decodeCompatible[Old, New: ClassTag](decoder: Decoder[Old], typeName: String)
+    (toNew: Old => Checked[New])
+  : Subtype[New] =
+    make(Nil, Some(implicitClass[New]), typeName,
       noEncoder,
       c => decoder(c)
         .flatMap(old => toNew(old).toDecoderResult(c.history)))
