@@ -25,7 +25,7 @@ object Numbered:
 
   given jsonDecoder[A: {Decoder, Tag as A}]: Decoder[Numbered[A]] =
     c => c.values match
-      case Some(fields: IndexedSeq[Json]) =>
+      case Some(fields: IndexedSeq[Json @unchecked]) =>
         for
           _ <- requireJson(fields.sizeIs == 2, DecodingFailure(
             s"For Numbered[${A.tag}], a JSON array with exactly two elements is expected",

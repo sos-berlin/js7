@@ -69,7 +69,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def fromSeq(bytes: collection.Seq[Byte]): ByteSeq =
     bytes match
       case arraySeq: immutable.ArraySeq.ofByte => unsafeWrap(arraySeq.unsafeArray)
-      case _: Seq[Byte] => unsafeWrap(bytes.toArray)
+      case _: Seq[Byte @unchecked] => unsafeWrap(bytes.toArray)
       case _ => fromArray(bytes.toArray)  // This probably copies the array twice
 
   def fromString(string: String): ByteSeq =

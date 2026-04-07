@@ -50,7 +50,7 @@ final class EventSeqTest extends OurTestSuite:
   =
     testJson(eventSeq, json)
     eventSeq match
-      case eventSeq: EventSeq[Seq, E] => testJson(eventSeq, json)
+      case eventSeq: EventSeq[Seq @unchecked, E @unchecked] => testJson(eventSeq, json)
       case _ =>
 
 

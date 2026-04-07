@@ -464,7 +464,7 @@ object ScalaUtils:
        * <p>Use this method only once! */
       def asSeqOrToVector: Seq[A] =
         iterableOnce match
-          case o: Seq[A] => o
+          case o: Seq[A @unchecked] => o
           case _ => Vector.from(iterableOnce)
 
       /** Make an eagerly computed Seq.
@@ -485,8 +485,8 @@ object ScalaUtils:
 
       def foldMap[B: Monoid as B](f: A => B): B =
         iterableOnce match
-          case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
-          case iterable: Iterable[A] => B.combineAll(iterable.map(f))
+          case seq: Seq[A @unchecked] => Foldable[Seq].foldMap(seq)(f)
+          case iterable: Iterable[A @unchecked] => B.combineAll(iterable.map(f))
           case _ => iterableOnce.iterator.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
         //iterableOnce match
         //  case iterable: Iterable[A] => B.combineAll(iterable.map(f))
@@ -494,7 +494,7 @@ object ScalaUtils:
 
       def repeatLast: LazyList[A] =
         iterableOnce match
-          case seq: IndexedSeq[A] => seq ++: LazyList.continually(seq.last)
+          case seq: IndexedSeq[A @unchecked] => seq ++: LazyList.continually(seq.last)
           case _ => LazyList.from(iterableOnce.iterator.continueWithLast)
 
       //inline def foldChecked[S](init: S)(f: (S, A) => Checked[S]): Checked[S] =
