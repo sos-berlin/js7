@@ -44,8 +44,7 @@ trait ServiceApp extends OurApp:
       use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
     ServiceMain.runAsMain(
-        args, productName,
-        argsToConf,
+        args, productName, argsToConf,
         useLockFile = useLockFile,
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
@@ -75,12 +74,12 @@ trait ServiceApp extends OurApp:
       suppressTerminationLogging = suppressTerminationLogging,
       suppressLogShutdown = suppressLogShutdown
     ): conf =>
-      Service.resource:
+      Service:
         Service.simple(program(conf))
 
   protected final def programAsService(program: IO[ExitCode | Unit])
   : ResourceIO[SimpleMainService] =
-    SimpleMainService.resource(program, label = self.toString)
+    SimpleMainService.service(program, label = self.toString)
 
   override def toString = getClass.shortClassName
 
