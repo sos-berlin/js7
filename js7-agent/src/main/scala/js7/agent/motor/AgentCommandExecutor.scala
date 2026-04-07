@@ -68,7 +68,7 @@ extends
           stopAgentMotor()
 
   def untilTerminated: IO[DirectorTermination] =
-    logger.debugIO:
+    logger.debugIOWithResult:
       terminated.get
 
   def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
@@ -148,7 +148,8 @@ extends
         IO.right(Accepted)
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW", restart = restart)
+        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW",
+          restart = restart)
 
   private def dedicate(
     agentPath: AgentPath,
@@ -237,7 +238,7 @@ extends
       .flatMapT: _ =>
         shuttingDown.getAndSet(Some(cmd)).flatMap:
           case None =>
-            logger.info(s"❗ Shutdown  due to $originalCmd • $meta")
+            logger.info(s"❗ Shutdown due to $originalCmd · $meta")
             shutdown(cmd)
               .pipeIf(!cmd.restartDirector/*not switchover?*/):
                 _.startAndForget // Shutdown in background and respond the command early

@@ -61,7 +61,7 @@ private[prometheus] object PrometheusJmxAdapter:
    |""".stripMargin
 
   private val HeadlineBytes =
-    s"""### Experimental metrics for Prometheus ###
+    s"""# Experimental metrics for Prometheus
        |
        |""".stripMargin.getBytes(UTF_8)
 

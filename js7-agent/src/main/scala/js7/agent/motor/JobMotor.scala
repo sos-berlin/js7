@@ -151,7 +151,7 @@ extends Service.StoppableByRequest:
               } status is not Processing, decrementing processCount")
             decrementProcessCount(order.id,
               s"Order's status is not Processing but ${order.workflowPosition} ${order.state}",
-              unnecessary = "🪱")
+              unnecessary = "🪱 ")
         case Left(problem) =>
           handleFailedProcessStart(order, problem)
 
@@ -181,7 +181,7 @@ extends Service.StoppableByRequest:
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
-      remove(orderId, unnecessary = "🪱") /*Remove a maybe duplicate inserted order???*/
+      remove(orderId, unnecessary = "🪱 ") /*Remove a maybe duplicate inserted order???*/
         *> decrementProcessCount(orderId, "OrderProcessed")
 
   private def tryIncrementProcessCount: IO[Boolean] =
