@@ -378,11 +378,14 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    val scope = maybeBundleId.foldMap(bundleSubagentProcessCountScope)
+    val scope = maybeBundleId.foldMap(bundleProcessCountScope)
     Stream.repeatEval:
       stateVar.value.flatMap: directorState =>
         IO:
-          directorState.selectNext(maybeBundleId, scope)
+          def subagentIdToScope(subagentId: SubagentId) =
+            maybeBundleId.fold(Scope.empty): bundleId =>
+              bundleSubagentProcessCountScope(bundleId, subagentId)
+          directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
             //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
     .evalTap:
       // TODO Do not poll (for each Order)
@@ -393,24 +396,40 @@ extends Service.StoppableByRequest:
     .unchunks
     .headL
 
-  private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId) =
+  private def bundleProcessCountScope(bundleId: SubagentBundleId): Scope =
+    new Scope:
+      override def namedValue(name: String): Option[Checked[Value]] =
+        name match
+          case "js7ClusterProcessCount" =>
+            Logger.info(s"### js7ClusterProcessCount($bundleId) => ${bundleProcessCount(bundleId)}")
+            Some(Right(NumberValue(bundleProcessCount(bundleId))))
+          case _ => None
+
+  private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId, subagentId: SubagentId)
+  : Scope =
     new Scope:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterSubagentProcessCount" =>
-            Some(Right(NumberValue(bundleSubagentProcessCount(bundleId))))
+            Logger.info(s"### js7ClusterSubagentProcessCount($bundleId, $subagentId) => ${bundleProcessCount(bundleId, Some(subagentId))}")
+            Some(Right(NumberValue(bundleProcessCount(bundleId, Some(subagentId)))))
           case _ => None
 
-
-  private def bundleSubagentProcessCount(bundleId: SubagentBundleId): Int =
+  /** Number of processes at Subagents started via the specified SubagentBundleId.
+    *
+    * @param subagentId only processes at this SubagentId are counted
+    */
+  private def bundleProcessCount(bundleId: SubagentBundleId, subagentId: Option[SubagentId] = None)
+  : Int =
     val state = journal.unsafeAggregate()
     orderToSubagent.unsafeToMap.keys.view
       .flatMap:
         state.idToOrder.get
       .flatMap:
         _.ifState[Order.Processing]
-      .count:
-        _.state.subagentBundleId contains bundleId
+      .count: order =>
+        order.state.subagentBundleId.contains(bundleId) &&
+          subagentId.forall(order.state.subagentId.contains)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:

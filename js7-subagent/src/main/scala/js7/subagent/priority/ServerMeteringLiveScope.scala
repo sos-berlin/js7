@@ -28,4 +28,4 @@ private[subagent] object ServerMeteringLiveScope extends Scope:
     .map(Value.ofAny)
 
   override def toString =
-    s"ServerMeteringLiveScope.Scope"
+    "ServerMeteringLiveScope"
