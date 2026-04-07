@@ -272,7 +272,7 @@ object WebLogDirectives:
     """
 
   // Prometheus name: http_request_duration_seconds
-  private val requestCallMeter = CallMeter("web server request")
+  private val requestCallMeter = CallMeter("Web service request")
 
   private def appendQuotedString(sb: StringBuilder, string: String) =
     sb.ensureCapacity(3 + string.length)

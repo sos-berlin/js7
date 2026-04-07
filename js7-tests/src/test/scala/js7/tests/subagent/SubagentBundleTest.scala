@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import cats.effect.IO
 import cats.syntax.traverse.*
 import fs2.Stream
 import js7.agent.TestAgent
@@ -49,11 +50,11 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester:
   private val nextOrderId: () => OrderId =
     Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next
 
-  private lazy val idToRelease = subagentItems
-    .traverse(subagentItem =>
+  private lazy val idToRelease: Map[SubagentId, IO[Unit]] =
+    subagentItems.traverse: subagentItem =>
       directoryProvider.bareSubagentResource(subagentItem)
         .allocated
-        .map(subagentItem.id -> _._2.unsafeMemoize))
+        .map(subagentItem.id -> _._2.unsafeMemoize)
     .await(99.s)
     .toMap
 
@@ -72,19 +73,17 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester:
     // Start Subagents
     idToRelease
 
-    controller.api
-      .updateItems(
+    controller.api.updateItems:
+      Stream(
         Stream(
-          Stream(
-            AddOrChangeSimple(subagentBundle),
-            AddVersion(versionId),
-            AddOrChangeSigned(toSignedString(workflow))),
-          Stream
-            .iterable(subagentItems)
-            .map(AddOrChangeSimple(_))
-        ).flatten)
-      .await(99.s)
-      .orThrow
+          AddOrChangeSimple(subagentBundle),
+          AddVersion(versionId),
+          AddOrChangeSigned(toSignedString(workflow))),
+        Stream
+          .iterable(subagentItems)
+          .map(AddOrChangeSimple(_))
+      ).flatten
+    .await(99.s).orThrow
 
     for id <- subagentItems.map(_.id) do
       eventWatch.await[ItemAttached](_.event.key == id)

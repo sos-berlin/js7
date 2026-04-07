@@ -95,7 +95,10 @@ private final case class DirectorState private(
       subagentToEntry = Map.empty,
       bundleToEntry = Map.empty)
 
-  def selectNext(maybeBundleId: Option[SubagentBundleId], scope: Scope)
+  def selectNext(
+    maybeBundleId: Option[SubagentBundleId],
+    scope: Scope,
+    subagentToScope: SubagentId => Scope)
   : Checked[Option[SubagentDriver]] =
     maybeBundleId match
       case Some(bundleId) if !bundleToEntry.contains(bundleId) =>
@@ -116,8 +119,12 @@ private final case class DirectorState private(
                 else
                   entry.cachedDynamicPrioritized: subagentId =>
                     idToDriver.get(subagentId).flatMap: driver =>
-                      driver.serverMeteringScope().map:
-                        combine(_, driver.subagentProcessCountScope, scope)
+                      driver.serverMeteringScope().map: meteringScope =>
+                        combine(
+                          meteringScope,
+                          driver.subagentProcessCountScope,
+                          scope,
+                          subagentToScope(subagentId))
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)

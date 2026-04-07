@@ -131,8 +131,7 @@ object Problems:
   extends Problem.Coded:
     override def arguments: Map[String, String] = Map(
       "passiveId" -> passiveId.toString,
-      "duration" -> duration.pretty,
-    )
+      "duration" -> duration.pretty)
 
   final case class ClusterCommandInapplicableProblem(command: ClusterCommand, clusterState: ClusterState)
   extends Problem.Coded:

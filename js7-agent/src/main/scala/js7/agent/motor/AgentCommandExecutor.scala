@@ -19,7 +19,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
-import js7.base.service.{MainService, Service}
+import js7.base.service.Service
 import js7.base.system.startup.Halt
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -47,7 +47,7 @@ final class AgentCommandExecutor private(
   actorSystem: ActorSystem,
   shuttingDown: AtomicCell[IO, Option[ShutDown]])
 extends
-  MainService, Service.StoppableByRequest, CommandHandler:
+  Service.StoppableByRequest, CommandHandler:
 
   protected type Termination = DirectorTermination
 
@@ -68,7 +68,7 @@ extends
           stopAgentMotor()
 
   def untilTerminated: IO[DirectorTermination] =
-    logger.debugIO:
+    logger.debugIOWithResult:
       terminated.get
 
   def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
@@ -175,7 +175,8 @@ extends
         IO.right(Accepted)
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW", restart = restart)
+        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT DIRECTOR STOPS NOW",
+          restart = restart)
 
   private def dedicate(
     agentPath: AgentPath,
@@ -231,13 +232,14 @@ extends
             .catchIntoChecked
             .flatMapT: _ =>
               initiateShutdown(
-                cmd,
+                originalCmd = cmd,
                 ShutDown(processSignal = Some(SIGKILL), suppressSnapshot = true, restart = true),
                 meta)
             .flatTapT: _ =>
               journal.deleteJournalWhenStopping.as(Checked.unit)
 
-  private def switchOver(cmd: ClusterSwitchOver, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
+  private def switchOver(cmd: ClusterSwitchOver, meta: CommandMeta)
+  : IO[Checked[AgentCommand.Response]] =
     // SubagentKeeper stops the local (surrounding) Subagent,
     // which lets the Director (RunningAgent) stop
     initiateShutdown(
@@ -247,7 +249,10 @@ extends
         restartDirector = true),
       meta)
 
-  private def initiateShutdown(originalCmd: ShutDown | ClusterSwitchOver | Reset, cmd: ShutDown, meta: CommandMeta)
+  private def initiateShutdown(
+    originalCmd: ShutDown | Reset | ClusterSwitchOver,
+    cmd: ShutDown,
+    meta: CommandMeta)
   : IO[Checked[Accepted]] =
     logger.traceIO("initiateShutdown", cmd):
       locally:
@@ -260,7 +265,7 @@ extends
       .flatMapT: _ =>
         shuttingDown.getAndSet(Some(cmd)).flatMap:
           case None =>
-            logger.info(s"❗ Shutdown  due to $originalCmd • $meta")
+            logger.info(s"❗ Shutdown due to $originalCmd · $meta")
             shutdown(cmd)
               .pipeIf(!cmd.restartDirector/*not switchover?*/):
                 _.startAndForget // Shutdown in background and respond the command early
@@ -363,8 +368,9 @@ extends
       Left(AgentNotDedicatedProblem)
     else if requestedAgentRunId != agentState.meta.agentRunId then
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
-      logger.warn(
-        s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${agentState.meta.agentRunId}")
+      logger.warn:
+        s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${
+          agentState.meta.agentRunId}"
       Left(problem)
     else
       Checked.unit
@@ -375,8 +381,9 @@ extends
       Left(AgentNotDedicatedProblem)
     else if agentState.meta.controllerRunId.exists(_ != requestedControllerRunId) then
       val problem = Problem("ControllerRunId does not match")
-      logger.warn(
-        s"$problem, requestedControllerRunId=$requestedControllerRunId, controllerRunId=${agentState.meta.controllerRunId}")
+      logger.warn:
+        s"$problem, requestedControllerRunId=$requestedControllerRunId, controllerRunId=${
+          agentState.meta.controllerRunId}"
       Left(problem)
     else
       Checked.unit

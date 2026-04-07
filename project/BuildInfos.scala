@@ -40,7 +40,9 @@ object BuildInfos
   /** Git commit date as Instant". */
   lazy val committedAt: Def.Initialize[Option[Instant]] =
     Def.setting(
-      git.gitHeadCommitDate.value.map(parseInstant))
+      git.gitHeadCommitDate.value
+        .map(_.replaceAll("\"", "")) // useReadableConsoleGit returns date in quotes
+        .map(parseInstant))
 
   lazy val info: Def.Initialize[Info] = Def.setting {
     val versionIsTagged = git.gitCurrentTags.value.contains("v" + version.value)
@@ -175,7 +177,7 @@ object BuildInfos
 
   private val instantFormatter = new DateTimeFormatterBuilder()
     .append(ISO_LOCAL_DATE_TIME)
-    .appendPattern("XX")
+    .appendZoneOrOffsetId
     .toFormatter
 
   /** Parses 2019-01-14T12:00:00Z and 2019-01-14T13:00:00+01:00. */

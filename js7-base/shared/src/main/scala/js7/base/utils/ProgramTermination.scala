@@ -52,10 +52,10 @@ object ProgramTermination:
 
 
   trait Restart extends ProgramTermination:
-    val toExitCode: ExitCode =
+    final val toExitCode: ExitCode =
       ExitCode(Js7ReturnCodes.Restart)
 
-    override def restart = true
+    override final def restart = true
 
     override def toString = "ProgramTermination.Restart"
 

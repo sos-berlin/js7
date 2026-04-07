@@ -50,7 +50,7 @@ final class PrioritizedTest extends OurTestSuite:
     assert(prioritized.selectNext(a => Set(31, 12)(a.int)) == Some(A(31)))
     assert(prioritized.selectNext(a => Set(31, 12)(a.int)) == Some(A(31)))
 
-  "isEquvivalent" in :
+  "isEquivalentTo" in :
     assert(Prioritized.empty.isEquivalentTo(Prioritized.empty))
 
     val prioritized = Prioritized(Vector(

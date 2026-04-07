@@ -26,8 +26,8 @@ trait SimpleMainService extends MainService:
 
 object SimpleMainService:
 
-  def resource(program: IO[ExitCode | Unit], label: String): ResourceIO[SimpleMainService] =
-    Service.resource:
+  def service(program: IO[ExitCode | Unit], label: String): ResourceIO[SimpleMainService] =
+    Service:
       new SimpleMainService with Service.StoppableByCancel:
         protected def run = program.map:
           case () => ProgramTermination.Success
