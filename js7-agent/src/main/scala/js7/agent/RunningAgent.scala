@@ -12,8 +12,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.motor.AgentCommandExecutor
 import js7.agent.web.AgentRoute
 import js7.base.auth.{AgentDirectorPermission, SessionToken, SimpleUser}
-import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
-import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
@@ -27,10 +26,10 @@ import js7.base.service.{MainService, Service}
 import js7.base.system.startup.StartUp
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.{AlarmClock, WallClock}
-import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.:=
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Atomic, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -64,92 +63,79 @@ extends MainService, Service.StoppableByRequest:
 
   val localSubagent: Subagent = forDirector.subagent
   val localUri: Uri = localSubagent.localUri
+  @TestOnly
   val eventWatch: StrictEventWatch = clusterNode.recoveredExtract.eventWatch.strict
 
   private val shutdownBeforeClusterNodeActivated = Deferred.unsafe[IO, (ShutDown, CommandMeta)]
   private val agentCommandExecutorDeferred =
-    Deferred.unsafe[IO, Checked[Allocated[IO, AgentCommandExecutor]]]
+    Deferred.unsafe[IO, Either[DirectorTerminatedProblem, AgentCommandExecutor]]
+  private val whenTerminated = Deferred.unsafe[IO, DirectorTermination]
   private val isTerminating = Atomic(false)
 
-  // SubagentCommand.ShutDown command shuts down the director, too.
-  // Then the restart flag of the command should be respected
-  @volatile private var subagentTermination = ProgramTermination()
-
-  @TestOnly
-  val untilReady: IO[Checked[AgentCommandExecutor]] =
-    agentCommandExecutorDeferred.get.map(_.map(_.allocatedThing))
-
-  val untilTerminated: IO[Termination] =
-    memoize:
-      agentCommandExecutorDeferred.get.flatMap:
-        case Left(DirectorTerminatedProblem(termination)) =>
-          IO.pure(termination)
-
-        case Left(problem) =>
-          logger.debug(s"❓ untilTerminated: $problem")
-          IO.pure(DirectorTermination(/*???*/))
-
-        case Right(Allocated(agentCommandExecutor, _)) =>
-          agentCommandExecutor.untilTerminated.map: termination =>
-            termination.copy(
-              restartJvm = termination.restartJvm | subagentTermination.restart)
-      .guarantee(IO:
-        isTerminating := true)
-
-  def agentState: IO[Checked[AgentState]] =
-    clusterNode.currentState
-
   protected def start =
-    logger.debugIO("untilActivated handling"):
+    startService:
       clusterNode.untilActivated.flatMap:
         case Left(termination) =>
+          val directorTermination = DirectorTermination.fromProgramTermination(termination)
           agentCommandExecutorDeferred.complete:
-            Left(DirectorTerminatedProblem(DirectorTermination.fromProgramTermination(termination)))
-        case Right(workingClusterNode) =>
-          AgentCommandExecutor.service(forDirector, workingClusterNode, conf, actorSystem)
-            .toAllocated
-            .flatTap: allocated =>
-              agentCommandExecutorDeferred.complete(Right(allocated)).flatMap:
-                IO.unlessA(_):
-                  allocated.release
-              .productR:
-                shutdownBeforeClusterNodeActivated.get.flatMap: (cmd, meta) =>
-                  allocated.allocatedThing.execute(cmd, meta)
-                    .handleProblem: prblm =>
-                      logger.error(s"$cmd: $prblm")
-    .start.flatMap: directorFiber =>
-      startService:
-        localSubagent.untilTerminated
-          .flatTap(termination => IO:
-            subagentTermination = termination)
+            Left(DirectorTerminatedProblem(directorTermination))
           .productR:
-            stop/*TODO Subagent should terminate this Director ?*/
-          .startAndForget
-          .productR:
-            IO.race(
-              untilStopRequested *> stopMe,
-              untilTerminated)
-          .productR:
-            directorFiber.cancel
+            whenTerminated.complete(directorTermination)
           .void
 
-  private def stopMe: IO[Unit] =
+        case Right(workingClusterNode) =>
+          AgentCommandExecutor.service(forDirector, workingClusterNode, conf, actorSystem)
+            .use: agentCommandExecutor =>
+              agentCommandExecutorDeferred.complete(Right(agentCommandExecutor))
+                .productR:
+                  shutdownBeforeClusterNodeActivated.get.flatMap: (cmd, meta) =>
+                    agentCommandExecutor.execute(cmd, meta)
+                      .handleProblem: problem =>
+                        logger.error(s"shutdownBeforeClusterNodeActivated $cmd: $problem")
+                  .background.surround:
+                    agentCommandExecutor.untilTerminated
+                .flatTap: termination =>
+                  isTerminating := true
+                  whenTerminated.complete(termination)
+                .productR:
+                  localSubagent.untilTerminated
+                    .flatMap: termination =>
+                      logger.debug("Subagent has terminated")
+                      terminate(restart = termination.restart)
+                .background.surround:
+                  (untilStopRequested *> shutdownDueToStop)
+                    .background.surround:
+                      untilTerminated.void
+      .onError: t =>
+        agentCommandExecutorDeferred.complete:
+          Left(DirectorTerminatedProblem(DirectorTermination()))
+        .void
+
+  @TestOnly
+  private[agent] def untilReady: IO[Checked[AgentCommandExecutor]] =
+    agentCommandExecutorDeferred.get
+
+  private def shutdownDueToStop: IO[Unit] =
     logger.debugIO:
       terminating:
-        executeCommand(ShutDown(), CommandMeta.system("RunningAgent stopMe"))
-          .attempt
-          .map:
-            case Left(t) => logger.warn(s"Shutdown: ${t.toStringWithCauses}", t)
-            case Right(Left(problem @ AgentIsShuttingDown)) => logger.debug(s"Shutdown: $problem}")
-            case Right(Left(problem)) => logger.warn(s"Shutdown: $problem}")
+        executeCommand(ShutDown(), CommandMeta.system("RunningAgent shutdownDueToStop"))
+          .attempt.map:
+            case Left(t) =>
+              isTerminating := false
+              logger.warn(s"Shutdown: ${t.toStringWithCauses}", t)
+            case Right(Left(problem @ AgentIsShuttingDown)) =>
+              logger.debug(s"Shutdown: $problem}")
+            case Right(Left(problem)) =>
+              isTerminating := false
+              logger.warn(s"Shutdown: $problem}")
             case Right(Right(_)) =>
-          .startAndForget
       .void
 
   private[agent] def terminate(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false,
+    restart: Boolean = false,
     restartDirector: Boolean = false)
   : IO[DirectorTermination] =
     logger.debugIO:
@@ -158,6 +144,7 @@ extends MainService, Service.StoppableByRequest:
           ShutDown(
             processSignal, clusterAction,
             suppressSnapshot = suppressSnapshot,
+            restart = restart,
             restartDirector = restartDirector),
           CommandMeta.system("RunningAgent.terminate")
         ).map(_.orThrow)
@@ -169,43 +156,54 @@ extends MainService, Service.StoppableByRequest:
       *> untilTerminated
     .logWhenMethodTakesLonger
 
+  def untilTerminated: IO[Termination] =
+    logger.traceIOWithResult:
+      whenTerminated.get
+
   // May be called before RunningAgent service has been started
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     logger.debugIO(s"executeCommand ${cmd.getClass.shortClassName}"):
       cmd.match
         case cmd: AgentCommand.ShutDown => // TODO ShutDown must not be in a Batch command
-          if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
-            IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
-          else
-            IO.defer:
-              logger.info(s"❗️ $cmd • $meta")
-              val termination = DirectorTermination(
-                restartJvm = cmd.restart,
-                restartDirector = cmd.restartDirector)
-              // Notify ClusterNode in case it sticks in ClusterWatchCounterPart
-              clusterNode.announceShutdown(termination) *>
-                agentCommandExecutorDeferred.tryGet.flatMap:
-                  case None =>
-                    shutdownBeforeClusterNodeActivated.complete(cmd -> meta).map: offered =>
-                      if offered then
-                        Right(AgentCommand.Response.Accepted)
-                      else
-                        Left(Problem("Starting Director is already shutting down"))
+          executeShutdown(cmd, meta)
 
-                  case Some(Left(problem)) =>
-                    logger.debug(s"⚠️  $cmd, but agentCommandExecutorDeferred = $problem")
-                    IO.right(AgentCommand.Response.Accepted)
-                    //IO.left(problem)
-
-                  case Some(Right(Allocated(o, _))) =>
-                    o.execute(cmd, meta)
-            .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
         case _ =>
           agentCommandExecutorDeferred.tryGet.flatMap:
             case None => IO.left(NoDirectorProblem)
-            case Some(checked) =>
-              IO.pure(checked).flatMapT:
-                _.allocatedThing.execute(cmd, meta)
+            case Some(Left(problem)) => IO.left(problem)
+            case Some(Right(agentCommandExecutor)) =>
+              agentCommandExecutor.execute(cmd, meta)
+
+  private def executeShutdown(cmd: ShutDown, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
+    if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
+      IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
+    else
+      IO.defer:
+        logger.info(s"❗️ $cmd • $meta")
+        val termination = DirectorTermination(
+          restartJvm = cmd.restart,
+          restartDirector = cmd.restartDirector)
+        // Notify ClusterNode in case it sticks in ClusterWatchCounterPart
+        clusterNode.announceShutdown(termination) *>
+          agentCommandExecutorDeferred.tryGet.flatMap:
+            case None =>
+              shutdownBeforeClusterNodeActivated.complete(cmd -> meta).map: ok =>
+                if ok then
+                  Right(AgentCommand.Response.Accepted)
+                else
+                  Left(Problem("Starting Director is already shutting down"))
+
+            case Some(Left(problem)) =>
+              logger.debug(s"⚠️  $cmd, but agentCommandExecutorDeferred = $problem")
+              IO.right(AgentCommand.Response.Accepted)
+              //IO.left(problem)
+
+            case Some(Right(o)) =>
+              o.execute(cmd, meta)
+      .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
+
+  def agentState: IO[Checked[AgentState]] =
+    clusterNode.currentState
 
   def systemSessionToken: SessionToken =
     forDirector.systemSessionToken
@@ -245,14 +243,10 @@ object RunningAgent:
   : ResourceIO[Subagent] =
     Resource.suspend:
       IO:
-        for
-          _ <- Resource.eval(IO:
-            if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
-            conf.createDirectories()
-            conf.journalLocation.deleteJournalIfMarked().orThrow)
-          subagent <- Subagent.service(conf.subagentConf, testWiring)
-        yield
-          subagent
+        if !StartUp.isMain then logger.debug("JS7 Agent Director is starting ...\n" + "┈" * 80)
+        conf.createDirectories()
+        conf.journalLocation.deleteJournalIfMarked().orThrow
+        Subagent.service(conf.subagentConf, testWiring)
     .evalOn(ioRuntime.compute)
 
   def service(
@@ -280,7 +274,6 @@ object RunningAgent:
         _ <- Environment.getOrRegister[WallClock](Resource.pure(clock))
         eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
         _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
-        //_ <- Environment.registerPure(testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]])
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
           clusterNodeApi = (admission, label, actorSystem) =>
@@ -303,7 +296,6 @@ object RunningAgent:
 
     // ClusterNode is running, maybe awaiting activation
     // Return RunningAgent, even if cluster node has not yet activated
-
     for
       _ <- EngineStateMXBean.register
       runningAgent <- Resource.eval(IO:

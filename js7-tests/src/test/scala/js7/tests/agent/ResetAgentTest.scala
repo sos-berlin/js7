@@ -97,7 +97,8 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     // After restart of Director, the Agent is being reset
     controller.awaitNextKey[AgentReset](agentPath)
-    myAgent.untilTerminated.await(99.s)
+    val termination = myAgent.untilTerminated.await(99.s)
+    assert(termination.restart)
 
     assert(!exists(agent.conf.stateDirectory / "agent-journal"))
     myAgent = directoryProvider.startAgent(agentPath).await(99.s)
