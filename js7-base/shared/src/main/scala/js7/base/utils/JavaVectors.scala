@@ -64,7 +64,7 @@ object JavaVectors:
       -1
 
   lazy val hasJavaIncubatorVectors: Boolean =
-    val isSupportedJavaVersion = Set(25)
+    val isSupportedJavaVersion = Set(25, 26)
     try
       isSupportedJavaVersion(Runtime.version.feature) &&
         ModuleLayer.boot.findModule("jdk.incubator.vector").isPresent &&
