@@ -4,9 +4,9 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import cats.syntax.apply.*
 import izumi.reflect.Tag
-import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
+import js7.base.scalasource.ScalaSourceLocation
 import js7.base.service.{MainService, MainServiceTerminationException}
 import js7.base.system.startup.StartUp.{logJavaSettings, printlnWithClock}
 import js7.base.thread.CatsBlocking.syntax.await
@@ -15,7 +15,6 @@ import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import scala.concurrent.duration.{Deadline, Duration}
@@ -71,12 +70,6 @@ object ServiceMain:
         IO:
           if !suppressLogShutdown then
             Logger.shutdown(suppressLogging = suppressTerminationLogging)
-      .flatTap: exitCode =>
-        if exitCode.code != 0 && catsEffectIgnoresExitCode && !isTest/*dont exit tests!*/ then
-          //blocks? IO(System.exit(exitCode.code))
-          IO(sys.runtime.halt(exitCode.code))
-        else
-          IO.unit
 
   private def logCancellationOrFailure(productName: String): ResourceIO[Unit] =
     Resource.onFinalizeCase:
@@ -87,12 +80,9 @@ object ServiceMain:
       case Resource.ExitCase.Errored(t) =>
         IO(logger.warn(s"Stop $productName due $t"))
 
-  private def catsEffectIgnoresExitCode: Boolean =
-    BuildInfo.catsEffectVersion.startsWith("3.5.") && Runtime.version.feature > 17
-
   def blockingRun[Svc <: MainService](
     timeout: Duration = Duration.Inf)
-    (using rt: IORuntime, S: Tag[Svc])
+    (using rt: IORuntime, S: Tag[Svc], loc: ScalaSourceLocation)
     (resource: ResourceIO[Svc],
     use: Svc => ProgramTermination = (_: Svc)
       .untilTerminated
