@@ -168,8 +168,8 @@ val commonSettings = Seq(
   credentials += publishRepositoryCredentialsFile.map(o => Credentials(o)),
   publishTo := publishRepositoryUri.map(uri => publishRepositoryName getOrElse uri at uri))
 
-useJGit
-//git.uncommittedSignifier := Some("UNCOMMITTED")
+//useJGit
+useReadableConsoleGit // JGit doesn't like git worktree
 
 lazy val tarOptions: List[String] = try
   if (runProcess("tar", "--help").exists(_.contains("--sort=")))
