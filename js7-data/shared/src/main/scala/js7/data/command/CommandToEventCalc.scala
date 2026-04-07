@@ -9,7 +9,7 @@ import js7.data.event.{Event, EventCalc, EventColl, EventDrivenState_, KeyedEven
 import scala.reflect.ClassTag
 
 trait CommandToEventCalc[S <: EventDrivenState_[S, E], E <: Event](
-  using src: ScalaSourceLocation):
+  using loc: ScalaSourceLocation):
 
   private type CommandEventConverter[Cmd <: IsEventEmittingCommand] =
     CommandToEventCalc.Companion[S, E]#CommandEventConverter[Cmd]
@@ -23,7 +23,7 @@ trait CommandToEventCalc[S <: EventDrivenState_[S, E], E <: Event](
     cmdClassToExecutor.get(cmd.getClass) match
       case None =>
         EventCalc.problem:
-          Problem(s"${cmd.getClass.shortClassName} is not a registered command ($src)")
+          Problem(s"${cmd.getClass.shortClassName} is not a registered command · $loc")
       case Some(cmdToEventCalc) =>
         cmdToEventCalc.toEventCalc(cmd.asInstanceOf[cmdToEventCalc.Command])
 

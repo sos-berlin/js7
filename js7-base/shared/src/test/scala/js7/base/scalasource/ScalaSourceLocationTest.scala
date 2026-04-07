@@ -1,13 +1,20 @@
 package js7.base.scalasource
 
 import js7.base.scalasource.ScalaSourceLocation.sourceCodeToString
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.OurTestSuite
+import js7.base.utils.Tests.isIntelliJIdea
 
-final class ScalaSourceLocationTest extends AnyFreeSpec:
+final class ScalaSourceLocationTest extends OurTestSuite:
+
+  private val logger = Logger[this.type]
 
   "ScalaSourceLocation" in:
     def f()(using loc: ScalaSourceLocation) = loc.toString
-    assert(f() == "ScalaSourceLocationTest.scala:10")
+    logger.info(f())
+    if isIntelliJIdea then
+      assert(f() == ".(ScalaSourceLocationTest.scala:15)")
+    else
+      assert(f() == "ScalaSourceLocationTest.scala:17")
 
   "sourceCodeToString" in :
     val string = sourceCodeToString:
