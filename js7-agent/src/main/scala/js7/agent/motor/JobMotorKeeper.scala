@@ -234,8 +234,12 @@ private final class JobMotorKeeper(
       // May decrement happen before increment due to concurrency ???
       IO:
         processLimit.synchronized:
-          val n = _processCount.decrementAndGet()
+          var n = _processCount.decrementAndGet()
           assertIfStrict(n >= 0, s"JobMotorKeeper.processCount=$n is below zero")
+          if n < 0 then
+            logger.warn(s"processCount=$n is below zero, setting to zero")
+            n = _processCount.updateAndGet(_ max 0)
+
           processLimit.fold(None): limit =>
             (n + 1 == limit) ? (n, limit)
       .flatMap:

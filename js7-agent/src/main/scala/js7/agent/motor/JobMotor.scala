@@ -166,7 +166,7 @@ extends Service.StoppableByRequest:
           problem match
             case UnknownKeyProblem("OrderId", order.id) =>
             case _ => logger.warn(msg)
-          IO.unit //??? decrementProcessCount(order.id)
+          decrementProcessCount(order.id, "Order has been removed concurrently")
 
         case Some(current) =>
           if order == current then
@@ -200,8 +200,13 @@ extends Service.StoppableByRequest:
         if reason != "OrderProcessed" then
           logger.trace:
             s"${unnecessary}decrementProcessCount: processCount=$processCount $orderId ($reason)"
-        val n = processCount.decrementAndGet()
-        assertIfStrict(n >= 0, s"processCount=$n is below zero")
+
+        var n = processCount.decrementAndGet()
+        assertIfStrict(n >= 0, s"$toString processCount=$n is below zero")
+        if n < 0 then
+          logger.warn(s"processCount=$n is below zero, setting to zero")
+          n = processCount.updateAndGet(_ max 0)
+
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
           IO.whenA(!triggered && n == workflowJob.processLimit - 1):
             trigger(s"processCount=$n is below Job's processLimit=${workflowJob.processLimit}")
