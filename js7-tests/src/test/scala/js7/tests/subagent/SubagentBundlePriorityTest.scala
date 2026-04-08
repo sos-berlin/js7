@@ -12,16 +12,15 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
-import js7.data.item.VersionId
-import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
+import js7.data.item.ItemOperation.AddOrChangeSimple
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.convenience.given
-import js7.data.value.expression.Expression.{NumericConstant, StringConstant, expr}
+import js7.data.value.expression.Expression.{MissingConstant, NumericConstant, StringConstant, expr}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.jobs.SemaphoreJob
+import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.subagent.SubagentBundlePriorityTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -71,17 +70,9 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
     idToRelease
 
     controller.api.updateItems:
-      Stream(
-        Stream(
-          AddOrChangeSimple(subagentBundle),
-          AddOrChangeSimple(otherSubagentBundle),
-          AddVersion(versionId),
-          AddOrChangeSigned(toSignedString(workflow)),
-          AddOrChangeSigned(toSignedString(otherWorkflow))),
-        Stream
-          .iterable(subagentItems)
-          .map(AddOrChangeSimple(_))
-      ).flatten
+      Stream.iterable:
+        subagentItems
+      .map(AddOrChangeSimple(_))
     .await(99.s).orThrow
 
     for id <- subagentItems.map(_.id) do
@@ -89,29 +80,84 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       eventWatch.await[SubagentCoupled](_.key == id)
 
   "$js7ClusterProcessCount and $js7ClusterProcessCountOrders" in:
-    val otherOrderId = OrderId("OTHER")
-    addOrder(FreshOrder(otherOrderId, otherWorkflow.path))
-    controller.awaitNextKey[OrderProcessingStarted](otherOrderId)
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("BUNDLE"),
+      subagentToPriority = Map(
+        aSubagentId ->
+          // Number of processes started via our subagent bundle, allow 1
+          expr"if $$js7ClusterSubagentProcessCount < 1 then 1 else missing",
+        bSubagentId ->
+          // Number of processes in the subagent started via our subagent bundle, allow 2
+          expr"if $$js7ClusterProcessCount < 2 then 2 else missing",
+        cSubagentId -> NumericConstant(0)))
 
-    val n = 6
-    val orderIds = Vector.fill(n)(nextOrderId())
-    val startedEvents = orderIds.map: orderId =>
+    val otherSubagentBundle = SubagentBundle(
+      SubagentBundleId("OTHER"),
+      subagentToPriority = Map(aSubagentId -> 1))
+
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW"),
+      Seq:
+        ASemaphoreJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
+          processLimit = 100))
+
+    val otherWorkflow = Workflow(
+      WorkflowPath("OTHER"),
+      Seq:
+        BSemaphoreJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(otherSubagentBundle.id.string)),
+          processLimit = 100))
+
+    withItems((subagentBundle, otherSubagentBundle, workflow, otherWorkflow)): _ =>
+      val otherOrderId = OrderId("OTHER")
+      addOrder(FreshOrder(otherOrderId, otherWorkflow.path))
+      controller.awaitNextKey[OrderProcessingStarted](otherOrderId)
+
+      val n = 6
+      val orderIds = Vector.fill(n)(nextOrderId())
+      val startedEvents = orderIds.map: orderId =>
+        addOrder(orderId, workflow.path)
+        controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
+
+      val result = startedEvents.flatMap(_.subagentId).groupMapReduce(identity)(_ => 1)(_ + _)
+      assert(result == Map(
+        aSubagentId -> 1,
+        bSubagentId -> 2,
+        cSubagentId -> 3))
+
+      val eventId = controller.lastAddedEventId
+      ASemaphoreJob.continue(n)
+      orderIds.foreach: orderId =>
+        eventWatch.awaitNextKey[OrderDeleted](orderId, after = eventId)
+
+      BSemaphoreJob.continue()
+      eventWatch.awaitNextKey[OrderDeleted](otherOrderId)
+
+  "Subagents whose priority is 'missing' are not selected" in:
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("BUNDLE-MISSING"),
+      subagentToPriority = Map(
+        aSubagentId -> MissingConstant,
+        bSubagentId -> 1,
+        cSubagentId -> MissingConstant))
+
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW-MISSING"),
+      Seq:
+        EmptyJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
+          processLimit = 100))
+
+    withItems((subagentBundle, workflow)): _ =>
+      val orderId = OrderId("MISSING-PRIORITY")
       addOrder(orderId, workflow.path)
-      controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
-
-    val result = startedEvents.flatMap(_.subagentId).groupMapReduce(identity)(_ => 1)(_ + _)
-    assert(result == Map(
-      aSubagentId -> 1,
-      bSubagentId -> 2,
-      cSubagentId -> 3))
-
-    val eventId = controller.lastAddedEventId
-    ASemaphoreJob.continue(n)
-    orderIds.foreach: orderId =>
-      eventWatch.awaitNextKey[OrderDeleted](orderId, after = eventId)
-
-    BSemaphoreJob.continue()
-    eventWatch.awaitNextKey[OrderDeleted](otherOrderId)
+      val started = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
+      assert(started == OrderProcessingStarted(Some(bSubagentId), Some(subagentBundle.id)))
+      controller.awaitNextKey[OrderFinished](orderId)
 
 
 object SubagentBundlePriorityTest:
@@ -122,38 +168,6 @@ object SubagentBundlePriorityTest:
 
   private def newSubagentItem(id: SubagentId) =
     SubagentItem(id, agentPath, findFreeLocalUri())
-
-  private val subagentBundle = SubagentBundle(
-    SubagentBundleId("BUNDLE"),
-    Map(
-      aSubagentId ->
-        // Number of processes started via our subagent bundle, allow 1
-        expr"if $$js7ClusterSubagentProcessCount < 1 then 1 else missing",
-      bSubagentId ->
-        // Number of processes in the subagent started via our subagent bundle, allow 2
-        expr"if $$js7ClusterProcessCount < 2 then 2 else missing",
-      cSubagentId -> NumericConstant(0)))
-
-  private val otherSubagentBundle = SubagentBundle(
-    SubagentBundleId("OTHER"),
-    Map(aSubagentId -> 1))
-
-  private val versionId = VersionId("VERSION")
-  private val workflow = Workflow(
-    WorkflowPath("WORKFLOW") ~ versionId,
-    Seq:
-      ASemaphoreJob.execute(
-        agentPath,
-        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
-        processLimit = 100))
-
-  private val otherWorkflow = Workflow(
-    WorkflowPath("OTHER") ~ versionId,
-    Seq:
-      BSemaphoreJob.execute(
-        agentPath,
-        subagentBundleId = Some(StringConstant(otherSubagentBundle.id.string)),
-        processLimit = 100))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
