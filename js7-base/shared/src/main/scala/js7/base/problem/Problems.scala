@@ -1,6 +1,7 @@
 package js7.base.problem
 
 import js7.base.log.Logger
+import js7.base.problem
 import js7.base.scalasource.ScalaSourceLocation
 import scala.collection.immutable.Map.Map2
 
@@ -28,6 +29,9 @@ object Problems:
       val problem = new UnknownKeyProblem(typ, key)
       logger.debug(s"❓$loc $problem")
       problem
+
+    def unapply(problem: UnknownKeyProblem): (String, Any) =
+      problem.typ -> problem.key
 
 
   final case class DuplicateKey(typ: String, key: Any) extends Problem.Coded:

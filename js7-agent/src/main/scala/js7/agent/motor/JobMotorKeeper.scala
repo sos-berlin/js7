@@ -253,6 +253,9 @@ private final class JobMotorKeeper(
           Some(0)
         case Some(agentRef) =>
           agentRef.processLimit
+
+    override def toString =
+      s"JobMotorKeeper.processLimits(processCount=$_processCount, processLimit=$_processLimit)"
   end processLimits
 
 

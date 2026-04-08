@@ -163,8 +163,9 @@ extends Service.StoppableByRequest:
         case None =>
           logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
             problem.throwableIfStackTrace)
-          if problem != UnknownKeyProblem("OrderId", order.id) then
-            logger.warn(msg)
+          problem match
+            case UnknownKeyProblem("OrderId", order.id) =>
+            case _ => logger.warn(msg)
           IO.unit //??? decrementProcessCount(order.id)
 
         case Some(current) =>

@@ -401,7 +401,6 @@ extends Service.StoppableByRequest:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterProcessCount" =>
-            Logger.info(s"### js7ClusterProcessCount($bundleId) => ${bundleProcessCount(bundleId)}")
             Some(Right(NumberValue(bundleProcessCount(bundleId))))
           case _ => None
 
