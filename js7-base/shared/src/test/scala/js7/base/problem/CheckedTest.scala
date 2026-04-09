@@ -164,6 +164,27 @@ final class CheckedTest extends OurAsyncTestSuite:
       .run() == Left(TestCodeProblem)
     assert(flag)
 
+  "onErrorOrProblem" in:
+    assert:
+      SyncIO(Right(1): Checked[Int]).onErrorOrProblem:
+        case _: TestCodeProblem => throw new NotImplementedError
+      .run() == Right(1)
+
+    var flag = false
+    assert:
+      SyncIO(Left(TestCodeProblem()): Checked[String]).onErrorOrProblem:
+        case _: TestCodeProblem => SyncIO { flag = true }
+      .run() == Left(TestCodeProblem)
+    assert(flag)
+
+    flag = false
+    assert:
+      val exception = new IllegalArgumentException
+      SyncIO.raiseError[Checked[Int]](exception).onErrorOrProblem:
+        case _: IllegalArgumentException => SyncIO { flag = true }
+      .attempt.run() == Left(exception)
+    assert(flag)
+
   "handleProblem" in:
     assert(Right(1).handleProblem(_ => throw new NotImplementedError) == 1)
     assert(Left[Problem, Int](Problem("X")).handleProblem(_ => 7) == 7)
