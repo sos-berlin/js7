@@ -113,12 +113,6 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
     else
       Checked.unit
 
-  def isOrderProcessable(orderId: OrderId): Boolean =
-    idToOrder.get(orderId).exists(isOrderProcessable)
-
-  def isOrderProcessable(order: Order[Order.State]): Boolean =
-    order.isProcessable && isOrderProcessable2(order)
-
   def ifOrderProcessable(order: Order[Order.State]): Option[Order[IsFreshOrReady]] =
     order.ifProcessable.flatMap: order =>
       isOrderProcessable2(order) ? order

@@ -1,9 +1,10 @@
 package js7.base.problem
 
+import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monoid.*
-import cats.{Functor, Monad, Monoid}
+import cats.{Functor, Monad, MonadError, Monoid}
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -20,6 +21,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Left, NotGiven, Success, Try}
+
 /**
   * @author Joacim Zschimmer
   */
@@ -227,6 +229,13 @@ object Checked:
     def onProblem(f: Problem =>? F[Unit])(using F: Monad[F]): F[Checked[A]] =
       recoverFromProblemWith: problem =>
         f.applyOrElse(problem, _ => F.pure(())).as(Left(problem))
+
+    def onErrorOrProblem(f: (Throwable | Problem) =>? F[Unit])(using F: MonadError[F, Throwable])
+    : F[Checked[A]] =
+      underlying.onError: throwable =>
+        f.applyOrElse(throwable, _ => F.pure(()))
+      .onProblem: problem =>
+        f.applyOrElse(problem, _ => F.pure(()))
 
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal:

@@ -57,6 +57,7 @@ extends
 
   private val _dedicated = Deferred.unsafe[IO, Dedicated]
   private val terminated = Deferred.unsafe[IO, DirectorTermination]
+  private var _isShuttingDown = false
 
   protected def start =
     journal.aggregate.flatMap: agentState =>
@@ -266,6 +267,7 @@ extends
         shuttingDown.getAndSet(Some(cmd)).flatMap:
           case None =>
             logger.info(s"❗ Shutdown due to $originalCmd · $meta")
+            _isShuttingDown = true
             shutdown(cmd)
               .pipeIf(!cmd.restartDirector/*not switchover?*/):
                 _.startAndForget // Shutdown in background and respond the command early
@@ -387,6 +389,10 @@ extends
       Left(problem)
     else
       Checked.unit
+
+  /** True, when Shutdown, Reset or ClusterSwitchOver is in progress. */
+  def isShuttingDown: Boolean =
+    _isShuttingDown
 
   override def toString = "AgentCommandExecutor"
 

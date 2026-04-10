@@ -341,4 +341,4 @@ transparent trait AdHocLogger:
     withLoc(name.value)
 
   private def withLoc(msg: String)(using loc: ScalaSourceLocation): String =
-    s"🟪 $loc ➤ $msg"
+    s"$loc 🟪 $msg"

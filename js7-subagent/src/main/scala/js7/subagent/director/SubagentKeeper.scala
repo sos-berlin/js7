@@ -249,7 +249,7 @@ extends Service.StoppableByRequest:
           persisted.aggregate.idToOrder.checked(orderId)
             .flatMap(_.checkedState[Order.Processing])
         .flatMapT: order =>
-          forProcessingOrder(orderId, subagentDriver):
+          forProcessingOrder(order, subagentDriver):
             subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
         .handleErrorWith(t => IO:
           logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
@@ -286,7 +286,7 @@ extends Service.StoppableByRequest:
                   .map(Right(_))
 
           case Some(subagentDriver) =>
-            forProcessingOrder(order.id, subagentDriver):
+            forProcessingOrder(order, subagentDriver):
               if failedOverSubagentId contains subagentDriver.subagentId then
                 subagentDriver.emitOrderProcessLostAfterRestart(order)
                   .flatMapT: orderProcessed =>
@@ -312,7 +312,7 @@ extends Service.StoppableByRequest:
   : IO[Checked[Unit]] =
       persisted.aggregate.idToOrder.get(orderId) match
         case None =>
-          logger.debug(s"❌ onPersisted ignored because $orderId has been deleleted: ${
+          logger.debug(s"❌ onPersisted ignored because $orderId has been deleted: ${
             persisted.keyedEvents.map(_.event.toShortString)}")
           IO.pure(Checked.unit)
         case Some(order) =>
@@ -320,9 +320,10 @@ extends Service.StoppableByRequest:
           callEventCallback(persisted)
             .map(Right(_))
 
-  private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver)
+  private def forProcessingOrder(order: Order[Order.Processing], subagentDriver: SubagentDriver)
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
+    val orderId = order.id
     orderToSubagent.put(orderId, subagentDriver) *>
       body.flatMapT: fiber =>
         // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
@@ -411,7 +412,6 @@ extends Service.StoppableByRequest:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterProcessCount" =>
-            Logger.info(s"### js7ClusterProcessCount($bundleId) => ${bundleProcessCount(bundleId)}")
             Some(Right(NumberValue(bundleProcessCount(bundleId))))
           case _ => None
 
@@ -421,25 +421,34 @@ extends Service.StoppableByRequest:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterSubagentProcessCount" =>
-            Logger.info(s"### js7ClusterSubagentProcessCount($bundleId, $subagentId) => ${bundleProcessCount(bundleId, Some(subagentId))}")
-            Some(Right(NumberValue(bundleProcessCount(bundleId, Some(subagentId)))))
+            Some(Right(NumberValue(bundleSubagentProcessCount(bundleId, subagentId))))
           case _ => None
 
-  /** Number of processes at Subagents started via the specified SubagentBundleId.
-    *
-    * @param subagentId only processes at this SubagentId are counted
+  /** Number of processes started via the specified SubagentBundleId.
     */
-  private def bundleProcessCount(bundleId: SubagentBundleId, subagentId: Option[SubagentId] = None)
-  : Int =
+  private def bundleProcessCount(bundleId: SubagentBundleId): Int =
     val state = journal.unsafeAggregate()
-    orderToSubagent.unsafeToMap.keys.view
-      .flatMap:
-        state.idToOrder.get
-      .flatMap:
-        _.ifState[Order.Processing]
+    orderToSubagent.unsafeToMap.keysIterator
+      .flatMap: orderId =>
+        state.idToOrder.get(orderId)
       .count: order =>
-        order.state.subagentBundleId.contains(bundleId) &&
-          subagentId.forall(order.state.subagentId.contains)
+        order.state match
+          case state: Order.Processing => state.subagentBundleId.contains(bundleId)
+          case _ => false
+
+  /** Number of processes started via the specified SubagentBundleId and
+    * running at the specified Subagent.
+    */
+  private def bundleSubagentProcessCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
+    val state = journal.unsafeAggregate()
+    orderToSubagent.unsafeToMap.iterator
+      .flatMap: (orderId, driver) =>
+        (subagentId == driver.subagentId).thenMaybe:
+          state.idToOrder.get(orderId)
+      .count: order =>
+        order.state match
+          case state: Order.Processing => state.subagentBundleId.contains(bundleId)
+          case _ => false
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     // TODO Race condition?

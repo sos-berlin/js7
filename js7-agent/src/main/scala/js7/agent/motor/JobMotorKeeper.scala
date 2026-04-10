@@ -84,7 +84,7 @@ private final class JobMotorKeeper(
         .map(_.flatten)
 
   def onOrdersMayBeProcessable(orders: View[Order[Order.State]], agentState: AgentState): IO[Unit] =
-    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### onOrdersMayBeProcessable $br$orderId"))
+    //orders.foreachWithBracket()((order, br) => Logger.trace(s"### onOrdersMayBeProcessable $br${order.id}"))
     orders.flatMap:
       agentState.ifOrderProcessable
     .flatMap: order =>
@@ -234,8 +234,12 @@ private final class JobMotorKeeper(
       // May decrement happen before increment due to concurrency ???
       IO:
         processLimit.synchronized:
-          val n = _processCount.decrementAndGet()
+          var n = _processCount.decrementAndGet()
           assertIfStrict(n >= 0, s"JobMotorKeeper.processCount=$n is below zero")
+          if n < 0 then
+            logger.warn(s"processCount=$n is below zero, setting to zero")
+            n = _processCount.updateAndGet(_ max 0)
+
           processLimit.fold(None): limit =>
             (n + 1 == limit) ? (n, limit)
       .flatMap:
@@ -253,6 +257,9 @@ private final class JobMotorKeeper(
           Some(0)
         case Some(agentRef) =>
           agentRef.processLimit
+
+    override def toString =
+      s"JobMotorKeeper.processLimits(processCount=$_processCount, processLimit=$_processLimit)"
   end processLimits
 
 

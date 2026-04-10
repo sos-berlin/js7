@@ -11,8 +11,12 @@ import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, right, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.unlessDeferred
+import js7.base.catsutils.Environment
+import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.log.LogLevel.{Debug, Warn}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.monixutils.SimpleLock
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -24,6 +28,7 @@ import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.data.execution.workflow.instructions.AdmissionTimeSwitcher
 import js7.data.job.JobKey
 import js7.data.order.Order.IsFreshOrReady
@@ -64,7 +69,7 @@ extends Service.StoppableByRequest:
 
   def enqueue(orders: Seq[Order[IsFreshOrReady]]): IO[Unit] =
     IO.whenA(orders.nonEmpty):
-      //IO(orders.foreachWithBracket()((o, br) => logger.trace(s"### enqueue $br$o"))) *>
+      //IO(orders.foreachWithBracket()((o, br) => Logger.trace(s"### enqueue $br$o"))) *>
       queue.enqueue(orders) *>
         queueSignal.set(() => orders.map(_.id).mkString(" "))
 
@@ -156,28 +161,38 @@ extends Service.StoppableByRequest:
           handleFailedProcessStart(order, problem)
 
   private def handleFailedProcessStart(order: Order[IsFreshOrReady], problem: Problem): IO[Unit] =
-    getAgentState.flatMap: agentState =>
-      // This is an unexpected situation
-      def msg = s"subagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
-      agentState.idToOrder.get(order.id) match
-        case None =>
-          logger.warn(s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
-            problem.throwableIfStackTrace)
-          if problem != UnknownKeyProblem("OrderId", order.id) then
-            logger.warn(msg)
-          IO.unit //??? decrementProcessCount(order.id)
+    Environment.maybe[EventPublisher[TestOrderConcurrentlyChanged]].flatMap: testEventPublisher =>
+      getAgentState.flatMap: agentState =>
+        // This is an unexpected situation
+        def msg = s"SubagentKeeper.processOrder(${order.id}) $jobKey: $problem • $order"
+        agentState.idToOrder.get(order.id) match
+          case None =>
+            // This may happen when the OrderId is enqueued for each consecutive event.
+            // When delayed, both enqueued OrderIds have the same Order state, each a candidate for
+            // further processing. But only one wins.
+            // The processing may be a job start or OrderDetached (or whatever?).
+            // TODO enqueue exactly once! (not easy)
+            val level = if isTest then Warn else Debug
+            logger.log(level, s"subagentKeeper.processOrder: ${order.id} has been removed concurrently",
+              problem.throwableIfStackTrace)
+            problem match
+              case UnknownKeyProblem("OrderId", order.id) =>
+              case _ => logger.warn(msg)
+            testEventPublisher.foreach(_.publish(TestOrderConcurrentlyChanged(order)))
+            decrementProcessCount(order.id, "Order has been removed concurrently")
 
-        case Some(current) =>
-          if order == current then
-            logger.warn(msg, problem.throwableIfStackTrace)
-            decrementProcessCount(order.id, "⚠️  processOrder failed")
-          else
-            IO:
-              if !(problem is ServiceStoppedProblem) then
-                // Maybe not a warning worth?
-                logger.warn(msg, problem.throwableIfStackTrace)
-                logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
-                logger.warn(s"${order.id} has been changed concurrently, existing: $current")
+          case Some(current) =>
+            if order == current then
+              logger.warn(msg, problem.throwableIfStackTrace)
+              decrementProcessCount(order.id, "⚠️  processOrder failed")
+            else
+              // decrementProcessCount ???
+              IO:
+                if !(problem is ServiceStoppedProblem) then
+                  // Maybe not worth this warning?
+                  logger.warn(msg, problem.throwableIfStackTrace)
+                  logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
+                  logger.warn(s"${order.id} has been changed concurrently, existing: $current")
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
@@ -199,8 +214,13 @@ extends Service.StoppableByRequest:
         if reason != "OrderProcessed" then
           logger.trace:
             s"${unnecessary}decrementProcessCount: processCount=$processCount $orderId ($reason)"
-        val n = processCount.decrementAndGet()
-        assertIfStrict(n >= 0, s"processCount=$n is below zero")
+
+        var n = processCount.decrementAndGet()
+        assertIfStrict(n >= 0, s"$toString processCount=$n is below zero")
+        if n < 0 then
+          logger.warn(s"processCount=$n is below zero, setting to zero")
+          n = processCount.updateAndGet(_ max 0)
+
         orderMotor.jobMotorKeeper.processLimits.decrementProcessCount.flatMap: triggered =>
           IO.whenA(!triggered && n == workflowJob.processLimit - 1):
             trigger(s"processCount=$n is below Job's processLimit=${workflowJob.processLimit}")
@@ -211,11 +231,11 @@ extends Service.StoppableByRequest:
   override def toString = s"JobMotor($jobKey)"
 
 
-private object JobMotor:
+object JobMotor:
   private val meterDequeue = CallMeter("JobMotor.dequeue")
   private val emptyChunk = IO.pure(Chunk.empty)
 
-  def service(
+  private[motor] def service(
     jobKey: JobKey,
     workflowJob: WorkflowJob,
     getAgentState: IO[AgentState],
@@ -247,3 +267,5 @@ private object JobMotor:
     endOfAdmission: Option[Timestamp]):
 
     override def toString = s"OrderWithEndOfAdmission(${order.id}, $endOfAdmission)"
+
+  final case class TestOrderConcurrentlyChanged private[JobMotor](order: Order[Order.State])

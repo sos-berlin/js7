@@ -994,6 +994,7 @@ object Expression:
     given Conversion[Int, NumericConstant] = NumericConstant(_)
     given Conversion[Long, NumericConstant] = NumericConstant(_)
     given Conversion[BigDecimal, NumericConstant] = NumericConstant(_)
+    given Conversion[Double, NumericConstant] = a => NumericConstant(BigDecimal(a))
     given Conversion[String, StringConstant] = StringConstant(_)
     given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr.fromIterable(iterable)
 

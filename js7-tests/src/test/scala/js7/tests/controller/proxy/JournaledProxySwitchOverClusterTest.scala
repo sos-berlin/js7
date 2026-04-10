@@ -42,7 +42,8 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
             case _ => false
           .timeoutOnPull(99.s)
           .headL.unsafeToFuture()
-        controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
         whenFinished.await(99.s)
 
       try
@@ -81,6 +82,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
             runOrder(OrderId("ORDER-AT-BACKUP-RESTARTED"))
             backupController2.execCmd:
               ShutDown(clusterAction = Some(ClusterAction.Failover))
+            sleep(1.s) // Due to time-critical ClusterAction.Failover handling?
 
           primaryController.await[ClusterFailedOver](after = lastEventId)
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))

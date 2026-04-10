@@ -12,7 +12,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.motor.AgentCommandExecutor
 import js7.agent.web.AgentRoute
 import js7.base.auth.{AgentDirectorPermission, SessionToken, SimpleUser}
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
+import js7.base.catsutils.CatsEffectExtensions.{True, left, right}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
@@ -27,7 +27,7 @@ import js7.base.system.startup.StartUp
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.:=
+import js7.base.utils.Atomic.extensions.{+=, -=, :=}
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -72,40 +72,46 @@ extends MainService, Service.StoppableByRequest:
   private val whenTerminated = Deferred.unsafe[IO, DirectorTermination]
   private val isTerminating = Atomic(false)
 
+  private val shutdownCommanded = Atomic(0)
+
+  def untilTerminated: IO[Termination] =
+    logger.traceIOWithResult:
+      whenTerminated.get
+
   protected def start =
     startService:
-      clusterNode.untilActivated.flatMap:
-        case Left(termination) =>
-          val directorTermination = DirectorTermination.fromProgramTermination(termination)
-          agentCommandExecutorDeferred.complete:
-            Left(DirectorTerminatedProblem(directorTermination))
-          .productR:
-            whenTerminated.complete(directorTermination)
-          .void
+      localSubagent.untilTerminated.flatMap: termination =>
+        val m = s"Subagent has terminated with $termination"
+        isShuttingDown.flatMap:
+          if _ then
+            IO(logger.debug(s"$m, Director seems already shutting down"))
+          else
+            logger.debug(s"$m, now shutting down Director")
+            terminate(restart = termination.restart).void
+      .background.surround:
+        clusterNode.untilActivated.flatMap:
+          case Left(termination) =>
+            val directorTermination = DirectorTermination.fromProgramTermination(termination)
+            agentCommandExecutorDeferred.complete:
+              Left(DirectorTerminatedProblem(directorTermination))
+            *>
+              whenTerminated.complete(directorTermination).void
 
-        case Right(workingClusterNode) =>
-          AgentCommandExecutor.service(forDirector, workingClusterNode, conf, actorSystem)
-            .use: agentCommandExecutor =>
-              agentCommandExecutorDeferred.complete(Right(agentCommandExecutor))
-                .productR:
+          case Right(workingClusterNode) =>
+            /// Run AgentCommandExecutor service ///
+            AgentCommandExecutor.service(forDirector, workingClusterNode, conf, actorSystem)
+              .use: agentCommandExecutor =>
+                agentCommandExecutorDeferred.complete(Right(agentCommandExecutor)) *>
                   shutdownBeforeClusterNodeActivated.get.flatMap: (cmd, meta) =>
                     agentCommandExecutor.execute(cmd, meta)
                       .handleProblem: problem =>
                         logger.error(s"shutdownBeforeClusterNodeActivated $cmd: $problem")
                   .background.surround:
-                    agentCommandExecutor.untilTerminated
-                .flatTap: termination =>
-                  isTerminating := true
-                  whenTerminated.complete(termination)
-                .productR:
-                  localSubagent.untilTerminated
-                    .flatMap: termination =>
-                      logger.debug("Subagent has terminated")
-                      terminate(restart = termination.restart)
-                .background.surround:
-                  (untilStopRequested *> shutdownDueToStop)
-                    .background.surround:
-                      untilTerminated.void
+                    agentCommandExecutor.untilTerminated.flatTap: termination =>
+                      isTerminating := true
+                      whenTerminated.complete(termination).void
+      .background.surround:
+        untilStopRequested *> shutdownDueToStop
       .onError: t =>
         agentCommandExecutorDeferred.complete:
           Left(DirectorTerminatedProblem(DirectorTermination()))
@@ -118,7 +124,7 @@ extends MainService, Service.StoppableByRequest:
   private def shutdownDueToStop: IO[Unit] =
     logger.debugIO:
       terminating:
-        executeCommand(ShutDown(), CommandMeta.system("RunningAgent shutdownDueToStop"))
+        executeShutdown(ShutDown(), CommandMeta.system("RunningAgent shutdownDueToStop"))
           .attempt.map:
             case Left(t) =>
               isTerminating := false
@@ -140,7 +146,7 @@ extends MainService, Service.StoppableByRequest:
   : IO[DirectorTermination] =
     logger.debugIO:
       terminating:
-        executeCommand(
+        executeShutdown(
           ShutDown(
             processSignal, clusterAction,
             suppressSnapshot = suppressSnapshot,
@@ -151,14 +157,23 @@ extends MainService, Service.StoppableByRequest:
 
   private def terminating(body: IO[Unit]): IO[DirectorTermination] =
     IO.defer:
-      IO.unlessA(isTerminating.getAndSet(true)):
-        body
+      locally:
+        if isTerminating.getAndSet(true) then
+          IO(logger.debug("Already terminating"))
+        else
+          body
       *> untilTerminated
     .logWhenMethodTakesLonger
 
-  def untilTerminated: IO[Termination] =
-    logger.traceIOWithResult:
-      whenTerminated.get
+  private def isShuttingDown: IO[Boolean] =
+    IO(isTerminating.get ||  shutdownCommanded.get > 0).flatMap: isShutdownCommanded =>
+      if isShutdownCommanded then
+        IO.True
+      else
+        agentCommandExecutorDeferred.tryGet.map:
+          case None => false
+          case Some(Left(termination)) => true
+          case Some(Right(agentCommandExecutor)) => agentCommandExecutor.isShuttingDown
 
   // May be called before RunningAgent service has been started
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
@@ -180,6 +195,7 @@ extends MainService, Service.StoppableByRequest:
     else
       IO.defer:
         logger.info(s"❗️ $cmd • $meta")
+        shutdownCommanded += 1
         val termination = DirectorTermination(
           restartJvm = cmd.restart,
           restartDirector = cmd.restartDirector)
@@ -200,6 +216,8 @@ extends MainService, Service.StoppableByRequest:
 
             case Some(Right(o)) =>
               o.execute(cmd, meta)
+      .onErrorOrProblem(_ => IO:
+        shutdownCommanded -= 1)
       .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command")
 
   def agentState: IO[Checked[AgentState]] =
