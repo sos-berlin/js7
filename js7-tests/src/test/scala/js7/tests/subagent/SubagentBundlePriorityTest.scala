@@ -32,7 +32,6 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.C-SUBAGENT = "$localSubagentId's PASSWORD"
-    js7.auth.subagents.D-SUBAGENT = "$localSubagentId's PASSWORD"
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)

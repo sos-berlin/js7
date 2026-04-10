@@ -207,6 +207,7 @@ extends Service.StoppableByRequest:
 
   private def enqueue(orderIds: Seq[OrderId]): IO[Unit] =
     IO.whenA(orderIds.nonEmpty):
+      //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### enqueue $br$orderId"))
       bean.orderQueueLength += orderIds.size
       orderQueue.offer(Some(orderIds))
 
@@ -221,7 +222,7 @@ extends Service.StoppableByRequest:
       .compile.drain
 
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
-    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### continueOrders $br$orderId"))
+    //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
     IO.whenA(orderIds.nonEmpty):
       clock.lockIO: delayNow =>
         // persist may be delayed a little by the journal, so `delayNow` may be in the past.
@@ -247,7 +248,7 @@ extends Service.StoppableByRequest:
             orders.flatMap: order =>
               order.ifDelayed(delayNow).map(order.id -> _)
           .productR:
-            // Maybe start jobs //
+            // THIRD, maybe start jobs //
             val nonDelayedOrders = orders.view.filterNot(_.isDelayed(delayNow))
             jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, persisted.aggregate)
 

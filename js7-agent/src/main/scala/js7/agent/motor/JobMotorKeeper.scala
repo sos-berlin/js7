@@ -84,7 +84,7 @@ private final class JobMotorKeeper(
         .map(_.flatten)
 
   def onOrdersMayBeProcessable(orders: View[Order[Order.State]], agentState: AgentState): IO[Unit] =
-    //orderIds.foreachWithBracket()((orderId, br) => logger.trace(s"### onOrdersMayBeProcessable $br$orderId"))
+    //orders.foreachWithBracket()((order, br) => Logger.trace(s"### onOrdersMayBeProcessable $br${order.id}"))
     orders.flatMap:
       agentState.ifOrderProcessable
     .flatMap: order =>
