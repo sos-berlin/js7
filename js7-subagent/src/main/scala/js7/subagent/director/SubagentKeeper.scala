@@ -308,7 +308,7 @@ extends Service.StoppableByRequest:
   : IO[Checked[Unit]] =
       persisted.aggregate.idToOrder.get(orderId) match
         case None =>
-          logger.debug(s"❌ onPersisted ignored because $orderId has been deleleted: ${
+          logger.debug(s"❌ onPersisted ignored because $orderId has been deleted: ${
             persisted.keyedEvents.map(_.event.toShortString)}")
           IO.pure(Checked.unit)
         case Some(order) =>
