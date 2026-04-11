@@ -16,7 +16,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 
 final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
 
-  protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
+  protected val agentPaths = Seq(AgentPath("agent-1"))
   protected val items = Seq(workflow)
   private val testSpeed = sys.props.get("test.speed").map(_.toInt)
 
