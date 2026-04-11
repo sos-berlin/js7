@@ -222,6 +222,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   final def addOrder(order: FreshOrder): Unit =
     controller.addOrderBlocking(order.copy(deleteWhenTerminated = true))
 
+  final def runOrder(orderId: OrderId, workflowPath: WorkflowPath): Unit =
+    runOrder:
+      FreshOrder(orderId, workflowPath, deleteWhenTerminated = true)
+
+  final def runOrder(order: FreshOrder): Unit =
+    controller.runOrder(order.copy(deleteWhenTerminated = true))
+
 
 object ControllerAgentForScalaTest:
   private val logger = Logger[this.type]

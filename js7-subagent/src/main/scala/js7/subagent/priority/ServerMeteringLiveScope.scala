@@ -25,6 +25,7 @@ private[subagent] object ServerMeteringLiveScope extends Scope:
       case "js7CommittedVirtualMemorySize" => bean.get("committedVirtualMemorySize")
       case "js7FreeMemorySize" => bean.get("freeMemorySize")
       case "js7TotalMemorySize" => bean.get("totalMemorySize")
+      case _ => None
     .map(Value.ofAny)
 
   override def toString =

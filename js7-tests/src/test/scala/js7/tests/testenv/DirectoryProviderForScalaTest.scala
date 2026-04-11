@@ -29,9 +29,6 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, H
 
   ProblemCodeMessages.initialize()
 
-  // UNUSED
-  protected final def commonScheduler: Nothing = sys.error("commonScheduler?")
-
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Seq[Int] = Nil
