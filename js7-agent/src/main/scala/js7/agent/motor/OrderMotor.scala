@@ -215,8 +215,7 @@ extends Service.StoppableByRequest:
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .chunks.map: chunk =>
         bean.orderQueueLength := 0 // Queue seems to ignore added duplicates ???
-        val orderIds = chunk.toVector.flatten: Vector[OrderId]
-        orderIds
+        chunk.toVector.flatten
       .evalMap: orderIds =>
         continueOrders(orderIds.distinct)
       .compile.drain

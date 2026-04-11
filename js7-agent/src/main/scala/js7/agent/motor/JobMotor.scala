@@ -10,7 +10,7 @@ import java.time.ZoneId
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotor.*
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, right, startAndForget}
-import js7.base.catsutils.CatsEffectUtils.unlessDeferred
+import js7.base.catsutils.CatsExtensions.ifFalse
 import js7.base.catsutils.Environment
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
@@ -74,7 +74,7 @@ extends Service.StoppableByRequest:
         queueSignal.set(() => orders.map(_.id).mkString(" "))
 
   def trigger(reason: => Any): IO[Unit] =
-    unlessDeferred(queue.isEmptyUnsafe):
+    IO(queue.isEmptyUnsafe).ifFalse:
       lazy val reason_ = reason.toString
       logger.trace(s"trigger($reason_)")
       queueSignal.set(() => reason_)
@@ -90,13 +90,12 @@ extends Service.StoppableByRequest:
     queueSignal.discrete.merge:
       admissionSignal.discrete.map(o => () => s"Admission $o")
     .evalMap: signalReason =>
-      dequeueChunk.map(signalReason -> _)
-    .filter: (signalReason, chunk) =>
-      chunk.nonEmpty || locally:
-        logger.trace:
+      dequeueChunk.map: chunk =>
+        if chunk.isEmpty then logger.trace:
           s"""🪱 pipeline: No Order is processable despite signal "${signalReason()}""""
-        false
-    .map(_._2)
+        chunk
+    .filter:
+      _.nonEmpty
     .unchunks
     .evalMap: o =>
       startOrderProcess(o).startAndForget // TODO How to cancel this?
@@ -249,15 +248,9 @@ object JobMotor:
       queueSignal <- Resource.eval(SignallingRef[IO].of[() => String](() => "initial signal"))
       admissionSignal <- AdmissionTimeSwitcher.signalService(
         workflowJob.admissionTimeScheme, zoneId, findTimeIntervalLimit, jobKey)
-      service <- Service.resource:
-        new JobMotor(
-          jobKey,
-          workflowJob,
-          getAgentState,
-          orderMotor,
-          subagentKeeper,
-          queueSignal,
-          admissionSignal)
+      service <- Service:
+        new JobMotor(jobKey, workflowJob, getAgentState, orderMotor, subagentKeeper,
+          queueSignal, admissionSignal)
     yield
       service
 
