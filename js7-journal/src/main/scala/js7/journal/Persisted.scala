@@ -3,9 +3,11 @@ package js7.journal
 import cats.effect.IO
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.event.{Event, EventDrivenState_, KeyedEvent, Stamped}
 import scala.collection.SeqView
+import scala.reflect.ClassTag
 
 /** Persisted events.
   * @param originalAggregate The aggregate before the events have been applied.
@@ -37,6 +39,12 @@ final case class Persisted[S <: EventDrivenState_[S, E], +E <: Event](
       IO.right(this)
     else
       body.as(Right(this))
+
+  def keySet[K: ClassTag]: Set[K] =
+    val cls = implicitClass[K]
+    stampedKeyedEvents.iterator.map(_.value.key).collect:
+      case key if cls.isAssignableFrom(key.getClass) => key.asInstanceOf[K]
+    .toSet
 
   override def toString =
     s"Persisted(${stampedKeyedEvents.mkString("[", ", ", "]")})"

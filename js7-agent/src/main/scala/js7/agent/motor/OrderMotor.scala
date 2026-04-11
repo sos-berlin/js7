@@ -69,7 +69,7 @@ extends Service.StoppableByRequest:
   private def run: IO[Unit] =
     (untilStopRequested *> orderQueue.offer(None))
       .background.surround:
-        runOrderPipeline
+        pipeline.compile.drain
       .guarantee:
         IO:
           val n = jobMotorKeeper.processLimits.processCount
@@ -114,7 +114,7 @@ extends Service.StoppableByRequest:
               enqueue(orderId)
             .handleErrorWith: t =>
               IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
-            .startAndForget
+            .startAndForget // TODO
           .handleProblemWith: problem =>
             IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
 
@@ -122,7 +122,7 @@ extends Service.StoppableByRequest:
     journal.persist:
       agentCommandToEventCalc.commandToEventCalc(cmd)
     .ifPersisted:
-      onPersisted
+      onPersisted(_).void
     .rightAs(AgentCommand.Response.Accepted)
 
   def proceedWithItem(item: InventoryItem): IO[Checked[Unit]] =
@@ -174,8 +174,9 @@ extends Service.StoppableByRequest:
       jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
+  /** @return Enqueued OrderIds. */
   private def onPersisted(persisted: Persisted[AgentState, Event])(using enc: sourcecode.Enclosing)
-  : IO[Unit] =
+  : IO[Vector[OrderId]] =
     persisted.keyedEvents.toVector.flatTraverse:
       case KeyedEvent(orderId: OrderId, event) =>
         event.match
@@ -199,8 +200,9 @@ extends Service.StoppableByRequest:
           touchedOrderIds :+ orderId
       case _ =>
         IO.pure(Vector.empty)
-    .flatMap: (touchedOrderIds: Seq[OrderId]/*IntelliJ*/) =>
-      enqueue(touchedOrderIds.distinct)
+    .map(_.distinct)
+    .flatTap:
+      enqueue
 
   private def enqueue(orderId: OrderId): IO[Unit] =
     enqueue(orderId :: Nil)
@@ -211,14 +213,13 @@ extends Service.StoppableByRequest:
       bean.orderQueueLength += orderIds.size
       orderQueue.offer(Some(orderIds))
 
-  private def runOrderPipeline: IO[Unit] =
+  private def pipeline: fs2.Stream[IO, Unit] =
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .chunks.map: chunk =>
         bean.orderQueueLength := 0 // Queue seems to ignore added duplicates ???
         chunk.toVector.flatten
       .evalMap: orderIds =>
-        continueOrders(orderIds.distinct)
-      .compile.drain
+        continueOrders(orderIds.distinct /*avoid duplicates in this chunk only*/)
 
   private def continueOrders(orderIds: Vector[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
@@ -237,11 +238,15 @@ extends Service.StoppableByRequest:
                   OrderEventSource.nextEvents(orderId, agentState)
                 else
                   Nil
-        .ifPersisted:
-          onPersisted
-        .map(_.orThrow) // TODO throws
+        .map(_.orThrow) // Persist operation must not fail
         .flatMap: persisted =>
-          val orders = orderIds.flatMap(persisted.aggregate.idToOrder.get)
+          onPersisted(persisted).map:
+            persisted -> _
+        .flatMap: (persisted, enqueuedOrderIds) =>
+          val orders =// Consider only orders which onPersisted hasn't re-enqueued into the pipeline
+            val set = enqueuedOrderIds.toSet
+            orderIds.filterNot(set).flatMap:
+              persisted.aggregate.idToOrder.get
           // SECOND, schedule delayed Orders //
           scheduleDelayedOrders:
             orders.flatMap: order =>
