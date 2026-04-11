@@ -3,8 +3,8 @@ package js7.agent.motor
 import cats.effect.kernel.Resource
 import cats.effect.std.{Dispatcher, Queue}
 import cats.effect.{IO, Ref, ResourceIO}
-import cats.syntax.traverse.*
 import cats.syntax.parallel.*
+import cats.syntax.traverse.*
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -69,7 +69,7 @@ extends Service.StoppableByRequest:
   private def run: IO[Unit] =
     (untilStopRequested *> orderQueue.offer(None))
       .background.surround:
-        runOrderPipeline
+        pipeline.compile.drain
       .guarantee:
         IO:
           val n = jobMotorKeeper.processLimits.processCount
@@ -114,7 +114,7 @@ extends Service.StoppableByRequest:
               enqueue(orderId)
             .handleErrorWith: t =>
               IO(logger.error(s"recoverOrderProcessing($orderId): ${t.toStringWithCauses}", t))
-            .startAndForget
+            .startAndForget // TODO
           .handleProblemWith: problem =>
             IO(logger.error(s"recoverOrderProcessing($orderId): $problem"))
 
@@ -202,20 +202,23 @@ extends Service.StoppableByRequest:
       bean.orderQueueLength += orderIds.size
       orderQueue.offer(Some(orderIds))
 
-  private def runOrderPipeline: IO[Unit] =
+  private def pipeline: fs2.Stream[IO, Unit] =
     fs2.Stream.fromQueueNoneTerminated(orderQueue)
       .chunks.evalMap: chunk =>
         bean.orderQueueLength := 0 // Queue seems to ignore added duplicates ???
         continueOrders(chunk.asSeq.flatten.distinct)
-      .compile.drain
 
   private def continueOrders(orderIds: Seq[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
     persistNextEvents(orderIds).orThrow
-      .flatTap: persisted =>
-        scheduleDelayedOrders(orderIds, persisted.aggregate)
       .flatMap: persisted =>
-        tryStartJobs(orderIds, persisted.aggregate)
+        // Consider only orders which onPersisted hasn't re-enqueued into the pipeline
+        val set = persisted.keySet[OrderId]
+        val otherOrderIds = orderIds.filterNot(set)
+        scheduleDelayedOrders(otherOrderIds, persisted.aggregate)
+          .as(persisted -> otherOrderIds)
+      .flatMap: (persisted, otherOrderIds) =>
+        tryStartJobs(otherOrderIds, persisted.aggregate)
 
   private def persistNextEvents(orderIds: Seq[OrderId]): IO[Checked[Persisted[AgentState, Event]]] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### persistNextEvents $br$orderId"))
