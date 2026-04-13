@@ -19,6 +19,7 @@ import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
+import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.matchers.should.Matchers.*
 import scala.annotation.nowarn
 import scala.collection.{MapView, View, mutable}
@@ -535,20 +536,28 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     "checked for LazyList (unknown size, maybe infinite)" in:
       val seq = LazyList(1, 2, 3)
       given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
-      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in TEST.scala:999")))
+      if isIntelliJIdea then
+        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in .(TEST.scala:999)")))
+        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in .(TEST.scala:999)")))
+      else
+        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in TEST.scala:999")))
+        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
-      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in TEST.scala:999")))
 
     "checked for Vector (known size)" in:
       val seq = Vector(1, 2, 3)
       given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
-      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in TEST.scala:999")))
+      if isIntelliJIdea then
+        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in .(TEST.scala:999)")))
+        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in .(TEST.scala:999)")))
+      else
+        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in TEST.scala:999")))
+        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
-      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in TEST.scala:999")))
   }
 
   "Iterator" - {
@@ -1163,8 +1172,10 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
 
   "parameterListToString" in:
     assert(parameterListToString() == "")
-    assert(parameterListToString(Nil, None) == "")
-    assert(parameterListToString(Some("A"), None, Nil, List("B", "C")) == "(A, B, C)")
+    assert(parameterListToString(Nil, None, Missing) == "")
+    assert:
+      parameterListToString(Some("A"), None, Nil, List("B", "C"), Set("D", "E"), Missing, "FF") ==
+        "(A, [B, C], {D, E}, FF)"
 
   "compilable" in:
     compilable(1 / 0)
