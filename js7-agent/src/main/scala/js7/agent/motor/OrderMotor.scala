@@ -232,11 +232,7 @@ extends Service.StoppableByRequest:
         EventCalc[AgentState, Event]: coll =>
           val idToOrder = coll.aggregate.idToOrder
           coll:
-            OrderEventSource.nextEvents:
-              orderIds/*.view.filter: orderId =>
-                idToOrder.get(orderId).exists: order =>
-                  // Filter early, because no Events will be emitted, anyway:
-                  !order.isDelayed(coll.now)*/
+            OrderEventSource.nextEvents(orderIds)
     .ifPersisted: persisted =>
       onPersisted(persisted)
 

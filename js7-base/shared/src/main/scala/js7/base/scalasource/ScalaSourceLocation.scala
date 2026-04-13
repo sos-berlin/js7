@@ -5,7 +5,8 @@ import js7.base.utils.Tests.isIntelliJIdea
 import scala.quoted.{Expr, Quotes, quotes}
 import sourcecode.{SourceCompanion, SourceValue}
 
-final class ScalaSourceLocation(val value: (String, Int)) extends SourceValue[(String, Int)]:
+final class ScalaSourceLocation private(val value: (String, Int))
+  extends SourceValue[(String, Int)]:
 
   def filename: String =
     value._1
@@ -34,7 +35,6 @@ object ScalaSourceLocation
   inline implicit def generate: ScalaSourceLocation =
     ${ ScalaSourceLocationMacros.fileLocationMacro }
 
-
   /** Strip source code lines and combine them to a single, shorted line. */
   def sourceCodeToString(text: sourcecode.Text[?]): String =
     text.source.split('\n').map(_.trim).mkString("⏎").truncateWithEllipsis(80, quote = true)
@@ -45,4 +45,4 @@ private object ScalaSourceLocationMacros:
     val position = quotes.reflect.Position.ofMacroExpansion
     val filename = position.sourceFile.name
     val line = position.startLine + 1
-    '{ ScalaSourceLocation(${ Expr(filename) }, ${ Expr(line) }) }
+    '{ ScalaSourceLocation(${Expr(filename)}, ${Expr(line)}) }

@@ -111,4 +111,5 @@ extends
 object ControllerRoute:
   private val logger = Logger[this.type]
 
-  private val GrafanaDashbboardJson = JavaResource("js7/common/pekkohttp/web/prometheus/grafana-dashboard.json")
+  private val GrafanaDashbboardJson =
+    JavaResource("js7/common/pekkohttp/web/prometheus/grafana-dashboard.json")

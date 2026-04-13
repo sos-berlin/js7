@@ -116,7 +116,7 @@ object ExecuteExecutor extends
     yield ()
 
   override def nextMove(
-    instr: Execute, 
+    instr: Execute,
     order: Order[Order.State],
     state: EngineState,
     now: Timestamp) =

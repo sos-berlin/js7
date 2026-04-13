@@ -36,8 +36,8 @@ final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
               (1 to 3).foreach: s =>
                 i += 1
                 out.write:
-                  s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $i\n"
-                    .getBytes(UTF_8)
+                  s"${timestampFormatter.format((hour + s.s).atZone(zoneId))
+                  } info LogDirectoryIndexTest - MESSAGE $i\n".getBytes(UTF_8)
       .productR:
         JProxyContext.resource().use: jProxy =>
           IO.fromCompletableFuture:
