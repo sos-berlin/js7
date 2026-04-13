@@ -94,8 +94,6 @@ extends Service.StoppableByRequest:
         if chunk.isEmpty then logger.trace:
           s"""🪱 pipeline: No Order is processable despite signal "${signalReason()}""""
         chunk
-    .filter:
-      _.nonEmpty
     .unchunks
     .evalMap: o =>
       startOrderProcess(o).startAndForget // TODO How to cancel this?
@@ -186,12 +184,16 @@ extends Service.StoppableByRequest:
               decrementProcessCount(order.id, "⚠️  processOrder failed")
             else
               // decrementProcessCount ???
-              IO:
+              IO.defer:
                 if !(problem is ServiceStoppedProblem) then
                   // Maybe not worth this warning?
                   logger.warn(msg, problem.throwableIfStackTrace)
                   logger.warn(s"${order.id} has been changed concurrently, failed  : $order")
                   logger.warn(s"${order.id} has been changed concurrently, existing: $current")
+                end if
+                decrementProcessCount(order.id, s"${order.id} has been changed concurrently",
+                  unnecessary = "🪱 ")
+
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
     orderIds.foldMap: orderId =>
