@@ -1,9 +1,7 @@
 package js7.core.web.log
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, ResourceIO}
-import cats.syntax.apply.*
-import cats.syntax.parallel.*
 import com.typesafe.config.Config
 import fs2.Stream
 import java.nio.file.Files.{isReadable, isRegularFile}
@@ -13,27 +11,21 @@ import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.ChronoField.NANO_OF_SECOND
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.auth.ValidUserPermission
-import js7.base.catsutils.Environment
-import js7.base.catsutils.Environment.environment
-import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
-import js7.base.convert.AsJava.StringAsPath
+import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.LogLevel.Debug
-import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
+import js7.base.log.reader.LogDirectoryIndex.Register
 import js7.base.log.reader.LogFileReader.growingLogFileStream
 import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
-import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEither, RichEitherF, RichThrowable}
-import js7.base.utils.{Allocated, ConcurrentHashMap, LockKeeper}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
@@ -55,26 +47,27 @@ trait LogRoute extends RouteProvider:
   protected def ioRuntime: IORuntime
   protected def config: Config
   protected def engineServerId: IO[Checked[EngineServerId]]
-  protected def dataDirectory: Path
+  protected def logDirectory: Path
+  protected def logDirectoryIndexRegister: LogDirectoryIndex.Register
 
   private given IORuntime = ioRuntime
 
   private lazy val pollDuration =
     config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
-  private lazy val currentInfoLogFile = config.as[Path]("js7.log.info.file")
-  private lazy val currentDebugLogFile = config.as[Path]("js7.log.debug.file")
+  private lazy val currentInfoLogFilename = config.getString("js7.log.info.file")
+  private lazy val currentDebugLogFilename = config.getString("js7.log.debug.file")
 
   lazy val logRoute: Route =
     authorizedUser(ValidUserPermission): _ =>
       pathEnd:
         seal:
-          streamFile(currentInfoLogFile, growing = true)
+          streamFile(logDirectory / currentInfoLogFilename, growing = true)
       ~
         pathPrefix("info"):
-          fileRoute(LogLevel.Info, currentInfoLogFile)
+          fileRoute(LogLevel.Info, logDirectory / currentInfoLogFilename)
       ~
         pathPrefix("debug"):
-          fileRoute(Debug, currentDebugLogFile)
+          fileRoute(Debug, logDirectory / currentDebugLogFilename)
       ~
         pathPrefix("none"):
           // LogLevel.None returns a line for  testing
@@ -102,7 +95,7 @@ trait LogRoute extends RouteProvider:
               section(logLevel, begin))
 
   private def streamFile(file: Path, growing: Boolean = false): Route =
-    //Fails if file grows while being read (Content-Length mismatch?): getFromFile(currentInfoLogFile, contentType)
+    //Fails if file grows while being read (Content-Length mismatch?): getFromFile(currentInfoLogFilename, contentType)
     if !isRegularFile(file) || !isReadable(file) then
       // TODO Wait for file ???
       // TODO Simply catch FileNotFoundException
@@ -147,8 +140,7 @@ trait LogRoute extends RouteProvider:
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
-      environment[LogDirectoryIndexEnv].flatMap:
-        _.forLogLevel(logLevel, config)
+      logDirectoryIndexRegister.forLogLevel(logLevel, config)
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>
@@ -205,37 +197,3 @@ object LogRoute:
         targetFile
 
 
-  /** [[LogDirectoryIndex]] placed in the [[Environment]]. */
-  final class LogDirectoryIndexEnv private(using ZoneId)
-  extends Service.TrivialReleasable:
-    private val levelToIndex = ConcurrentHashMap[LogLevel, Allocated[IO, LogDirectoryIndex]]
-    private val lock = LockKeeper[LogLevel]()
-
-    protected def release =
-      IO.defer:
-        levelToIndex.values.toSeq.parTraverseVoid(_.release)
-
-    def forLogLevel(logLevel: LogLevel, config: Config): IO[LogDirectoryIndex] =
-      lock.lock(logLevel):
-        IO.defer:
-          levelToIndex.get(logLevel) match
-            case None =>
-              LogDirectoryIndex.js7Directory(logLevel, config)
-                .toAllocated.map: allocated =>
-                  levelToIndex.put(logLevel, allocated)
-                  allocated.allocatedThing
-            case Some(allocated) =>
-              IO.pure(allocated.allocatedThing)
-
-    override def toString = "LogDirectoryIndexEnv"
-
-  object LogDirectoryIndexEnv:
-    private given ZoneId = ZoneId.systemDefault
-
-    def register(config: Config): ResourceIO[Unit] =
-      Environment.register:
-        Service:
-          new LogDirectoryIndexEnv
-      *>
-        registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
-          .void

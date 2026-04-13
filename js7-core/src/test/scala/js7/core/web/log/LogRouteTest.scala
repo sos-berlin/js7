@@ -39,12 +39,13 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
-  protected val dataDirectory = logFile.getParent
+  protected val logDirectory = logFile.getParent
   protected val engineServerId = IO.right(EngineServerId.primaryController)
+  protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
 
   override protected def config = config"""
-    js7.log.info.file = "$logFile"
-    js7.log.debug.file = "$logFile"
+    js7.log.info.file = "${logFile.getFileName}"
+    js7.log.debug.file = "${logFile.getFileName}"
     js7.web.server.services.log.poll-interval = 1.ms
     js7.web.chunk-size = 16
     """.withFallback(super.config)
@@ -58,10 +59,10 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
     finally
       super.afterAll()
 
-  private lazy val route = seal(
-    pathSegment("log") {
-      logRoute
-    })
+  private lazy val route =
+    seal:
+      pathSegment("log"):
+        logRoute
 
   "stringToInstant" in:
     assert:

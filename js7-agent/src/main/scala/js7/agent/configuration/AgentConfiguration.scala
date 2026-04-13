@@ -38,6 +38,9 @@ extends CommonConfiguration:
   def dataDirectory: Path =
     subagentConf.dataDirectory
 
+  def logDirectory: Path =
+    subagentConf.logDirectory
+
   lazy val stateDirectory: Path =
     dataDirectory / "state"
 

@@ -6,6 +6,7 @@ import js7.base.auth.SimpleUser
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.io.JavaResource
 import js7.base.log.Logger
+import js7.base.log.reader.LogDirectoryIndex
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
@@ -47,8 +48,9 @@ final class ControllerRoute(
   protected val totalRunningSince: Deadline,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val eventWatch: FileEventWatch,
-  gateKeeperConf: GateKeeper.Configuration[SimpleUser])(
-  implicit
+  gateKeeperConf: GateKeeper.Configuration[SimpleUser],
+  protected val logDirectoryIndexRegister: LogDirectoryIndex.Register)
+  (using
     protected val actorSystem: ActorSystem,
     protected val ioRuntime: IORuntime)
 extends
@@ -63,7 +65,7 @@ extends
   protected def whenShuttingDown    = routeBinding.whenStopRequested
   protected val controllerState     = clusterNode.currentState
   protected val engineServerId      = IO.right(controllerConfiguration.engineServerId)
-  protected val dataDirectory       = controllerConfiguration.dataDirectory
+  protected val logDirectory        = controllerConfiguration.logDirectory
   protected val controllerId        = controllerConfiguration.controllerId
   protected val config              = controllerConfiguration.config
   protected def commonConf          = controllerConfiguration

@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.3.3"
+      "version": "12.4.2"
     },
     {
       "type": "datasource",
@@ -244,7 +244,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -254,7 +254,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "sum(js7_EngineState_OrderCount{host=\"$host\"})",
-          "hide": false,
           "instant": true,
           "legendFormat": "Orders",
           "range": false,
@@ -268,7 +267,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_EngineState_OrderStatusToCount{key=\"Failed\", host=\"$host\"}",
-          "hide": false,
           "instant": true,
           "legendFormat": "Failed Orders",
           "range": false,
@@ -310,7 +308,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_Process_Running{host=\"$host\"}",
-          "hide": false,
           "instant": true,
           "legendFormat": "Processes",
           "range": false,
@@ -324,7 +321,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "java_lang_Memory_HeapMemoryUsage_committed{host=\"$host\"} ",
-          "hide": false,
           "instant": true,
           "legendFormat": "Heap",
           "range": false,
@@ -338,7 +334,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "java_lang_Runtime_Uptime{host=\"$host\"}",
-          "hide": false,
           "instant": true,
           "legendFormat": "Up",
           "range": false,
@@ -366,7 +361,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "0",
-          "hide": false,
           "instant": true,
           "legendFormat": " ",
           "range": false,
@@ -533,7 +527,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -542,7 +536,6 @@
           },
           "editorMode": "code",
           "expr": "js7_InternalResponsiveness_DelaySeconds{host=\"$host\"}",
-          "hide": false,
           "legendFormat": "Internal response time",
           "range": true,
           "refId": "A"
@@ -567,7 +560,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Journal_ActiveHeartbeatDelay{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Active's cluster node heartbeat delay",
           "range": true,
@@ -705,7 +697,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -842,7 +834,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -851,7 +843,6 @@
           },
           "editorMode": "code",
           "expr": "java_lang_OperatingSystem_CpuLoad{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Computer",
           "range": true,
@@ -907,7 +898,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_OperatingSystem_ProcessCpuTime{host=\"$host\"}[$__rate_interval]) / 1e9 / java_lang_OperatingSystem_AvailableProcessors{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "JS7 Engine",
           "range": true,
@@ -1016,7 +1006,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1269,7 +1259,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1281,7 +1271,6 @@
           "exemplar": false,
           "expr": "java_lang_Memory_HeapMemoryUsage_max{host=\"$host\"}",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": true,
           "legendFormat": "Max",
           "range": true,
@@ -1297,7 +1286,6 @@
           "editorMode": "code",
           "expr": "java_lang_Memory_HeapMemoryUsage_committed{host=\"$host\"}",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "Committed",
@@ -1315,7 +1303,6 @@
           "exemplar": false,
           "expr": "java_lang_Memory_HeapMemoryUsage_used{host=\"$host\"}",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": true,
           "legendFormat": "Used",
           "range": true,
@@ -1346,7 +1333,6 @@
           },
           "editorMode": "code",
           "expr": "java_lang_G1_Old_Gen_Usage_used{type=\"MemoryPool\",host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Old used",
           "range": true,
@@ -1530,7 +1516,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1540,7 +1526,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", host=\"$host\"}[$__rate_interval]) + rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderStdWritten",
           "range": true,
@@ -1553,7 +1538,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessingStarted\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderProcessingStarted",
           "range": true,
@@ -1566,7 +1550,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessed\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderProcessed",
           "range": true,
@@ -1590,7 +1573,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderAdded\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderAdded",
           "range": true,
@@ -1603,7 +1585,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFailed\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderFailed",
           "range": true,
@@ -1616,7 +1597,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFinished\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderFinished",
           "range": true,
@@ -1629,7 +1609,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderCancelled\", host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "OrderCancelled",
           "range": true,
@@ -1835,7 +1814,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -1857,7 +1836,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_G1_Old_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
-          "hide": false,
           "instant": false,
           "legendFormat": "Old generation",
           "range": true,
@@ -1870,7 +1848,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_G1_Concurrent_GC_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
-          "hide": false,
           "instant": false,
           "legendFormat": "Concurrent",
           "range": true,
@@ -1883,7 +1860,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_G1_Young_Generation_CollectionTime{host=\"$host\"}[$__rate_interval]) / 1000",
-          "hide": false,
           "legendFormat": "Young generation",
           "range": true,
           "refId": "young"
@@ -2021,7 +1997,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -2031,7 +2007,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "rate(js7_Journal_EventTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "events",
           "range": true,
@@ -2046,7 +2021,6 @@
           "editorMode": "code",
           "expr": "rate(js7_Journal_CommitTotal{host=\"$host\"}[$__rate_interval])",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": false,
           "legendFormat": "commits (persists)",
           "range": true,
@@ -2077,7 +2051,6 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2176,30 +2149,6 @@
                 }
               }
             ]
-          },
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Old generation"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": true,
-                  "viz": true
-                }
-              }
-            ]
           }
         ]
       },
@@ -2223,7 +2172,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -2243,7 +2192,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_G1_Concurrent_GC_CollectionCount{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "Concurrent",
           "range": true,
@@ -2256,7 +2204,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_G1_Old_Generation_CollectionCount{host=\"$host\"}[$__rate_interval]) ",
-          "hide": false,
           "instant": false,
           "legendFormat": "Old generation",
           "range": true,
@@ -2392,7 +2339,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -2401,7 +2348,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_Journal_EventCalcSecondsTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "EventCalc",
           "range": true,
@@ -2414,7 +2360,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_Journal_JsonWriteSecondsTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "write as JSON",
           "range": true,
@@ -2530,7 +2475,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -2539,7 +2484,6 @@
           },
           "editorMode": "code",
           "expr": "rate(java_lang_Threading_TotalThreadAllocatedBytes{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "legendFormat": "Heap allocation rate",
           "range": true,
           "refId": "A"
@@ -2723,7 +2667,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -2732,7 +2676,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_Journal_EventCalcSecondsTotal{host=\"$host\"}[$__rate_interval]) / \nrate(js7_Journal_PersistTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "EventCalc",
           "range": true,
@@ -2745,7 +2688,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_CallMeter_FileJournal_jsonWrite_Seconds{host=\"$host\"}[$__rate_interval]) / \nrate(js7_CallMeter_FileJournal_jsonWrite_Total{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "write as JSON",
           "range": true,
@@ -2770,7 +2712,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_Journal_PersistSecondsTotal{host=\"$host\"}[$__rate_interval]) / rate(js7_Journal_PersistTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "persist",
           "range": true,
@@ -2783,7 +2724,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Journal_ActiveHeartbeatDelay{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Active's heartbeat delay",
           "range": true,
@@ -3131,7 +3071,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -3191,7 +3131,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_FileSystemWatchThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "FileWatch",
           "range": true,
@@ -3217,7 +3156,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_CommonPoolThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Common",
           "range": true,
@@ -3230,7 +3168,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_OtherThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "other",
           "range": true,
@@ -3243,7 +3180,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_CatsEffectComputeThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Cats Effect",
           "range": true,
@@ -3257,7 +3193,6 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "js7_Threads_PekkoThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Pekko",
           "range": true,
@@ -3270,7 +3205,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_CatsEffectBlockingThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Blocking",
           "range": true,
@@ -3283,7 +3217,6 @@
           },
           "editorMode": "code",
           "expr": "js7_Threads_ProcessReaperThreads{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Process reaper",
           "range": true,
@@ -3405,7 +3338,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -3427,7 +3360,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Processes with a PID",
+      "description": "Job processes with a PID",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3439,7 +3372,6 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
-            "axisSoftMax": 20,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -3469,6 +3401,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3496,6 +3429,41 @@
                   "fixedColor": "green",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "max",
+                "value": 20
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Starts/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "/s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
               }
             ]
           }
@@ -3513,7 +3481,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -3521,7 +3489,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -3537,6 +3505,18 @@
           "range": true,
           "refId": "Processes",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(js7_Process_Starts{host=\"$host\"}[$__rate_interval])",
+          "instant": false,
+          "legendFormat": "Starts/s",
+          "range": true,
+          "refId": "starts"
         }
       ],
       "title": "System processes",
@@ -3627,7 +3607,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -3642,315 +3622,6 @@
         }
       ],
       "title": "Journal event bytes written",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Processes with a PID",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "left",
-            "axisSoftMax": 10,
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "/s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Process starts"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 49
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "rate(js7_Process_Starts{host=\"$host\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "Process starts",
-          "range": true,
-          "refId": "Processes",
-          "useBackend": false
-        }
-      ],
-      "title": "System process starts",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "left",
-            "axisSoftMax": 100000000,
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "decbytes"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Current journal file size"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Size of all journal files"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Size of current journal file"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Temporary indexed log files"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 55
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "js7_Journal_AllFileSize{host=\"$host\"}",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Size of all journal files",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "js7_Journal_FileSize{host=\"$host\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "Size of current journal file",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "js7_LogDirectoryIndex_TmpFilesSize{host=\"$host\"}",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Temporary indexed log files",
-          "range": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Disk usage",
       "type": "timeseries"
     },
     {
@@ -4021,7 +3692,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 55
+        "y": 49
       },
       "id": 14,
       "options": {
@@ -4037,7 +3708,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -4052,6 +3723,326 @@
         }
       ],
       "title": "Process stdout and stderr, 1000 characters/s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "axisSoftMax": 100000000,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current journal file"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Journal files"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temporary indexed log files"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Log directory"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 55
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_LogDirectory_Size{host=\"$host\"}",
+          "instant": false,
+          "legendFormat": "Log directory",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_LogDirectoryIndex_TmpFilesSize{host=\"$host\"}",
+          "instant": false,
+          "legendFormat": "Temporary indexed log files",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_Journal_AllFileSize{host=\"$host\"}",
+          "instant": false,
+          "legendFormat": "Journal files",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "js7_Journal_FileSize{host=\"$host\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "Current journal file",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Disk usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Average time of Orders queuing in a JobMotor's queue",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 0.01,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average time an Order queues for job execution"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 55
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(js7_CallMeter_JobOrderQueue_Entry_Seconds{host=\"$host\"}[$__rate_interval]) / rate(js7_CallMeter_JobOrderQueue_Entry_Total{host=\"$host\"}[$__rate_interval])",
+          "legendFormat": "Average time an Order queues for job execution",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "JobMotors Order queuing time",
       "type": "timeseries"
     },
     {
@@ -4169,7 +4160,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -4189,7 +4180,6 @@
           },
           "editorMode": "code",
           "expr": "js7_AsyncLock_LockedCount{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "locked",
           "range": true,
@@ -4197,237 +4187,6 @@
         }
       ],
       "title": "AsyncLock",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Average time of Orders queuing in a JobMotor's queue",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMax": 0.01,
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average time an Order queues for job execution"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 61
-      },
-      "id": 18,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(js7_CallMeter_JobOrderQueue_Entry_Seconds{host=\"$host\"}[$__rate_interval]) / rate(js7_CallMeter_JobOrderQueue_Entry_Total{host=\"$host\"}[$__rate_interval])",
-          "legendFormat": "Average time an Order queues for job execution",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "JobMotors Order queuing time",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMax": 10,
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Sessions"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 67
-      },
-      "id": 28,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "js7_Sessions_SessionCount{host=\"$host\"}",
-          "legendFormat": "Sessions",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Login sessions",
       "type": "timeseries"
     },
     {
@@ -4559,7 +4318,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 67
+        "y": 61
       },
       "id": 17,
       "options": {
@@ -4575,7 +4334,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -4611,9 +4370,8 @@
           },
           "editorMode": "code",
           "expr": "js7_JobMotorKeeper_OrderQueueLength{host=\"$host\"}",
-          "hide": false,
           "instant": false,
-          "legendFormat": "JobMotors order queue length",
+          "legendFormat": "∑ Job order queue lengths",
           "range": true,
           "refId": "orderQueueLength"
         },
@@ -4624,7 +4382,6 @@
           },
           "editorMode": "code",
           "expr": "js7_JobMotorKeeper_ProcessCount{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Active execute instructions",
           "range": true,
@@ -4632,6 +4389,119 @@
         }
       ],
       "title": "Order queue lengths",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 10,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sessions"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 67
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "js7_Sessions_SessionCount{host=\"$host\"}",
+          "legendFormat": "Sessions",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Login sessions",
       "type": "timeseries"
     },
     {
@@ -4794,7 +4664,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 73
+        "y": 67
       },
       "id": 24,
       "options": {
@@ -4810,7 +4680,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -4819,7 +4689,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_HttpMXBean_ServerReceivedByteTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "Server received",
           "range": true,
@@ -4832,7 +4701,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_HttpMXBean_ServerSentByteTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "Server sent",
           "range": true,
@@ -4845,7 +4713,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_HttpMXBean_ClientReceivedByteTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "Client received",
           "range": true,
@@ -4965,7 +4832,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 79
+        "y": 73
       },
       "id": 26,
       "options": {
@@ -4981,7 +4848,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -4990,7 +4857,6 @@
           },
           "editorMode": "code",
           "expr": "rate(js7_HttpMXBean_ServerRequestTotal{host=\"$host\"}[$__rate_interval])",
-          "hide": false,
           "instant": false,
           "legendFormat": "Server: incoming requests",
           "range": true,
@@ -5138,7 +5004,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 85
+        "y": 79
       },
       "id": 25,
       "options": {
@@ -5154,7 +5020,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.3",
+      "pluginVersion": "12.4.2",
       "targets": [
         {
           "datasource": {
@@ -5163,7 +5029,6 @@
           },
           "editorMode": "code",
           "expr": "js7_HttpMXBean_ServerRequestActiveCount{host=\"$host\"}",
-          "hide": false,
           "instant": false,
           "legendFormat": "Server: incoming requests",
           "range": true,
@@ -5204,6 +5069,7 @@
         },
         "refresh": 1,
         "regex": "",
+        "regexApplyTo": "value",
         "type": "query"
       }
     ]
@@ -5216,7 +5082,6 @@
   "timezone": "browser",
   "title": "JS7 Engine",
   "uid": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-  "version": 13,
-  "weekStart": "",
-  "id": null
+  "version": 23,
+  "weekStart": ""
 }

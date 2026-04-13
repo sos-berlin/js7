@@ -4,9 +4,8 @@ import java.net.InetSocketAddress
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.createTempDirectory
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import js7.base.configutils.Configs.*
-import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
@@ -26,12 +25,13 @@ final class SubagentConfTest extends OurTestSuite:
     provideConfigAndData { (configDir, dataDir) =>
       val subagentConf = SubagentConf.fromCommandLine(CommandLineArguments(Seq(
         s"--config-directory=$configDir",
-        s"--data-directory=$dataDir")))
+        s"--data-directory=$dataDir",
+        s"--log-directory=logs")))
       subagentConf.finishAndProvideFiles()
       assert(subagentConf == SubagentConf.of(
         configDirectory = configDir,
         dataDirectory = dataDir,
-        logDirectory = dataDir / "logs",
+        logDirectory = Paths.get("logs").toAbsolutePath,
         jobWorkingDirectory = WorkingDirectory,
         webServerPorts = Nil,
         name = "JS7"))
@@ -141,8 +141,8 @@ object SubagentConfTest:
   private val shellExt = if isWindows then "cmd" else "sh"
 
   private def provideConfigAndData(body: (Path, Path) => Unit): Unit =
-    val config = createTempDirectory("SubagentConfTest-config")
-    val data = createTempDirectory("SubagentConfTest-data")
+    val config = createTempDirectory("SubagentConfTest-config-")
+    val data = createTempDirectory("SubagentConfTest-data-")
     try body(config, data)
     finally
       deleteDirectoryRecursively(config)

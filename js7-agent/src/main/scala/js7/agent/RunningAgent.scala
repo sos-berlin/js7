@@ -329,7 +329,8 @@ object RunningAgent:
               // will become remote after a switchover or failover.
               // See SubagentWebServer.
               Set(AgentDirectorPermission)),
-            forDirector.sessionRegister
+            forDirector.sessionRegister,
+            forDirector.subagent.logDirectoryIndexRegister
           ).agentRoute
       agent <- Service.resource(runningAgent)
     yield

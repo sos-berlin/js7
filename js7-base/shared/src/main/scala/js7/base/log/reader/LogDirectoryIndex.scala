@@ -2,6 +2,7 @@ package js7.base.log.reader
 
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
+import cats.syntax.apply.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -14,8 +15,7 @@ import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.run
-import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
-import js7.base.convert.AsJava.StringAsPath
+import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.inputStreamToStream
@@ -30,6 +30,7 @@ import js7.base.log.reader.recompressors.{DeflaterRecompressor, Recompressor}
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
+import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.bytesPerSecondString
@@ -37,7 +38,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ConcurrentHashMap}
+import js7.base.utils.{Allocated, ConcurrentHashMap, LockKeeper}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
@@ -236,11 +237,11 @@ object LogDirectoryIndex:
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
 
   /** LogDirectoryIndex, watching the standard JS7 Engine log directory. */
-  def js7Directory(logLevel: LogLevel, config: Config)(using ZoneId)
+  private def js7Directory(logDirectory: Path, logLevel: LogLevel, config: Config)(using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     assertThat(logLevel == Info || logLevel == Debug)
     val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
-    val currentLogFile = config.as[Path]:
+    val currentLogFile = logDirectory / config.getString:
       if logLevel == Debug then "js7.log.debug.file" else "js7.log.info.file"
     val currentLogFilename = currentLogFile.getFileName
 
@@ -253,7 +254,7 @@ object LogDirectoryIndex:
           logLevelMatches(file, logLevel) &&
           isCompressedLogFile(file)
 
-    directory(currentLogFile.getParent, logLevel, isValidFile, config, Some(poll))
+    directory(logDirectory, logLevel, isValidFile, config, Some(poll))
   end js7Directory
 
   /** LogDirectoryIndex, watching a directory. */
@@ -328,7 +329,7 @@ object LogDirectoryIndex:
               new GZIPInputStream(new FileInputStream(file.toFile), 512)
           .map: maybeInstant =>
             maybeInstant.fold(none): instant =>
-              Some(LogFile(instant, file, cell, zoneId, isGzipped = true))
+              Some(LogFile(instant, file, cell, isGzipped = true))
         else
           readLogFileInstant:
             IO:
@@ -336,7 +337,7 @@ object LogDirectoryIndex:
           .flatMap:
             _.traverse: instant =>
               LogFileIndex.fromFile(file).map: logFileIndex =>
-                LogFile(instant, file, cell, zoneId = zoneId)
+                LogFile(instant, file, cell)
       .map: maybe =>
         maybe.foreach: logFile =>
           logger.debug(s"$logFile size=$size")
@@ -408,8 +409,8 @@ object LogDirectoryIndex:
     fileInstant: Instant,
     originalFile: Path,
     deferredIndexCell: AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]],
-    zoneId: ZoneId,
-    isGzipped: Boolean = false):
+    isGzipped: Boolean = false)
+    (using zoneId: ZoneId):
 
     val filename: Path =
       originalFile.getFileName
@@ -443,6 +444,38 @@ object LogDirectoryIndex:
 
   private final case class FileDeleted(file: Path) extends OurDirEvent:
     override def toString = s"FileDeleted(${file.getFileName})"
+
+
+  final class Register private(logDirectory: Path)(using ZoneId) extends Service.TrivialReleasable:
+    private val levelToIndex = ConcurrentHashMap[LogLevel, Allocated[IO, LogDirectoryIndex]]
+    private val lock = LockKeeper[LogLevel]()
+
+    protected def release =
+      IO.defer:
+        levelToIndex.values.toSeq.parTraverseVoid(_.release)
+
+    def forLogLevel(logLevel: LogLevel, config: Config): IO[LogDirectoryIndex] =
+      lock.lock(logLevel):
+        IO.defer:
+          levelToIndex.get(logLevel) match
+            case None =>
+              js7Directory(logDirectory, logLevel, config)
+                .toAllocated.map: allocated =>
+                  levelToIndex.put(logLevel, allocated)
+                  allocated.allocatedThing
+            case Some(allocated) =>
+              IO.pure(allocated.allocatedThing)
+
+    override def toString = "Register"
+
+  object Register:
+    private given ZoneId = ZoneId.systemDefault
+
+    def resource(logDirectory: Path): ResourceIO[Register] =
+      registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", Bean)
+        .void
+      *>
+        Service(new Register(logDirectory))
 
 
   sealed trait LogDirectoryIndexMXBean:

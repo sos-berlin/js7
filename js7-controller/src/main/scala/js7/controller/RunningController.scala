@@ -16,6 +16,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
+import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.problem.Checked.*
@@ -49,7 +50,6 @@ import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.web.ControllerWebServer
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
-import js7.core.web.log.LogRoute
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
@@ -224,8 +224,8 @@ object RunningController:
           _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
             testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
             ignoreDuplicate = true)
+          _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
           _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
-          _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
           r <- resource2(conf, eventIdGenerator, alarmClock, testEventBus)
         yield r
       .evalOn(ioRuntime.compute)
@@ -331,11 +331,12 @@ object RunningController:
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
       : ResourceIO[ControllerWebServer] =
         for
+          logDirectoryIndexRegister <- LogDirectoryIndex.Register.resource(conf.logDirectory)
           webServer <- ControllerWebServer.resource(
             commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
             recoveredExtract.eventWatch,
-            conf, sessionRegister)
+            conf, sessionRegister, logDirectoryIndexRegister)
           _ <- webServer.restartWhenHttpsChanges
           _ <- Resource.eval(IO(
             conf.workDirectory / "http-uri" :=

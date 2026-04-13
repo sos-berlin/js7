@@ -3,7 +3,7 @@ package js7.controller.configuration
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import js7.base.config.Js7Config
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.*
@@ -30,6 +30,7 @@ import scala.jdk.CollectionConverters.*
 final case class ControllerConfiguration(
   controllerId: ControllerId,
   dataDirectory: Path,
+  logDirectory: Path,
   configDirectory: Path,
   webServerPorts: Seq[WebServerPort],
   pekkoAskTimeout: Timeout,
@@ -62,8 +63,8 @@ extends BasicConfiguration, CommonConfiguration:
 
   // Suppresses Config (which may contain secrets)
   override def toString: String =
-    s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
-      s"$journalConf,$clusterConf,$name,Config)"
+    s"ControllerConfiguration($controllerId,$configDirectory,$dataDirectory,$logDirectory," +
+      s"$webServerPorts,$journalConf,$clusterConf,$name,Config)"
 
 
 object ControllerConfiguration:
@@ -84,6 +85,7 @@ object ControllerConfiguration:
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = data,
+      logDirectory = Paths.get("logs"), // The projects "logs" directory used for testing
       config,
       name = name)
     .copy(
@@ -104,6 +106,7 @@ object ControllerConfiguration:
     val conf = fromDirectories(
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,
+      logDirectory = common.logDirectory,
       config,
       commandLineArguments.optionAs[ControllerId]("--id="),
       name = ControllerConfiguration.DefaultName)
@@ -112,6 +115,7 @@ object ControllerConfiguration:
   private def fromDirectories(
     configDirectory: Path,
     dataDirectory: Path,
+    logDirectory: Path,
     extraDefaultConfig: Config,
     maybeControllerId: Option[ControllerId] = None,
     name: String)
@@ -124,8 +128,9 @@ object ControllerConfiguration:
 
     new ControllerConfiguration(
       controllerId = controllerId,
-      dataDirectory = dataDir,
       configDirectory = configDir,
+      dataDirectory = dataDir,
+      logDirectory = logDirectory,
       webServerPorts = Nil,
       pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       clusterConf = ClusterConf.fromConfig(config).orThrow,

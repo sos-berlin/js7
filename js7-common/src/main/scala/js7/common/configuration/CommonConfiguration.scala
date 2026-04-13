@@ -78,15 +78,18 @@ object CommonConfiguration:
   final case class CommonWithData(
     configDirectory: Path,
     dataDirectory: Path,
+    logDirectory: Path,
     webServerPorts: Seq[WebServerPort]):
+
     val workDirectory: Path = dataDirectory / "work"
-    val logDirectory: Path = dataDirectory / "logs"
 
   object CommonWithData:
     def fromCommandLineArguments(a: CommandLineArguments): CommonWithData =
       val common = Common.fromCommandLineArguments(a)
+      val data = a.as[Path]("--data-directory=").toAbsolutePath
       CommonWithData(
         configDirectory = common.configDirectory,
         // Startup code parses --data-directory= too, to allow placing a lock file !!!
-        dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
+        dataDirectory = data,
+        logDirectory = a.optionAs[Path]("--logs-directory=").fold(data / "logs")(_.toAbsolutePath),
         webServerPorts = common.webServerPorts)

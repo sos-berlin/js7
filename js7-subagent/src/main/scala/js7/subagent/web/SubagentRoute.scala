@@ -57,7 +57,8 @@ extends
   protected def whenShuttingDown = routeBinding.whenStopRequested
   protected val engineServerId = IO:
     subagent.checkedDedicatedSubagent.map(o => EngineServerId.Subagent(o.subagentId))
-  protected val dataDirectory: Path = subagent.conf.dataDirectory
+  protected val logDirectory: Path = subagent.conf.logDirectory
+  protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)

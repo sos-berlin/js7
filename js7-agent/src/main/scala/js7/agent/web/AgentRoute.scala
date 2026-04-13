@@ -6,6 +6,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.SimpleUser
+import js7.base.log.reader.LogDirectoryIndex
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
@@ -30,8 +31,9 @@ final class AgentRoute(
   protected val clusterNode: ClusterNode[AgentState],
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
-  protected val sessionRegister: SessionRegister[SubagentSession])
-  (implicit
+  protected val sessionRegister: SessionRegister[SubagentSession],
+  protected val logDirectoryIndexRegister: LogDirectoryIndex.Register)
+  (using
     protected val actorSystem: ActorSystem,
     protected val ioRuntime: IORuntime)
 extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
@@ -39,7 +41,7 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
-  protected val dataDirectory = agentConfiguration.dataDirectory
+  protected val logDirectory = agentConfiguration.logDirectory
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected val agentState = clusterNode.currentState

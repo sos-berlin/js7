@@ -21,6 +21,7 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
+import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -37,7 +38,6 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools.unlimitedExecutionContextResource
 import js7.core.command.CommandMeta
-import js7.core.web.log.LogRoute
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
@@ -62,6 +62,7 @@ final class Subagent private(
   toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],
   signatureVerifier: DirectoryWatchingSignatureVerifier,
+  val logDirectoryIndexRegister: LogDirectoryIndex.Register,
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any],
@@ -271,12 +272,13 @@ object Subagent:
         signatureVerifier <- DirectoryWatchingSignatureVerifier.Provider(clock, config)
           .prepare.orThrow
           .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
+        _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
+        logDirectoryIndexRegister <- LogDirectoryIndex.Register.resource(conf.logDirectory)
         journal <- MemoryJournal.service(
           SubagentState.empty,
           size = config.getInt("js7.journal.memory.event-count"),
           waitingFor = "JS7 Agent Director",
           infoLogEvents = JournalConf.infoLogEvents(config))
-        _ <- LogRoute.LogDirectoryIndexEnv.register(conf.config)
         shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown]).toResource
         supervisor <- Supervisor[IO]
         subagent <- Service.resource:
@@ -284,7 +286,7 @@ object Subagent:
             webServer, directorRouteVariable,
             ForDirector(
               _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
-            journal, signatureVerifier,
+            journal, signatureVerifier, logDirectoryIndexRegister,
             conf, jobLauncherConf, testEventBus,
             shuttingDownAtomic, supervisor)
         _ <- subagentDeferred.complete(subagent).toResource

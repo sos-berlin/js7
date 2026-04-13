@@ -74,8 +74,8 @@ final class AgentConfigurationTest extends OurTestSuite:
 
 object AgentConfigurationTest:
   private def provideConfigAndData(body: (Path, Path) => Unit): Unit =
-    val config = createTempDirectory("AgentConfigurationTest-config")
-    val data = createTempDirectory("AgentConfigurationTest-data")
+    val config = createTempDirectory("AgentConfigurationTest-config-")
+    val data = createTempDirectory("AgentConfigurationTest-data-")
     try body(config, data)
     finally
       deleteDirectoryRecursively(config)

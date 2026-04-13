@@ -1,8 +1,9 @@
 package js7.controller.web
 
-import cats.effect.{IO, ResourceIO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
 import js7.base.auth.{AgentDirectorForwardPermission, SimpleUser, UpdateItemPermission}
+import js7.base.log.reader.LogDirectoryIndex
 import js7.cluster.ClusterNode
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -25,7 +26,8 @@ object ControllerWebServer:
     totalRunningSince: Deadline,
     eventWatch: FileEventWatch,
     conf: ControllerConfiguration,
-    sessionRegister: SessionRegister[SimpleSession])(
+    sessionRegister: SessionRegister[SimpleSession],
+    logDirectoryIndexRegister: LogDirectoryIndex.Register)(
     implicit actorSystem_ : ActorSystem, ioRuntime: IORuntime)
   : ResourceIO[ControllerWebServer] =
     PekkoWebServer.service(conf.webServerBindings, conf.config): routeBinding =>
@@ -52,7 +54,8 @@ object ControllerWebServer:
               totalRunningSince,
               sessionRegister,
               eventWatch,
-              gateKeeperConf
+              gateKeeperConf,
+              logDirectoryIndexRegister,
             ).webServerRoute)
 
         override def toString = "Controller web services"

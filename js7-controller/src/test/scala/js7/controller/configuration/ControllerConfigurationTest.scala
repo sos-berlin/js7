@@ -42,8 +42,9 @@ final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
         config = ConfigFactory.empty)) ==
       ControllerConfiguration(
         controllerId = ControllerId("Controller"),
-        dataDirectory = (directory / "DATA").toAbsolutePath,
         configDirectory = (directory / "CONFIG").toAbsolutePath,
+        dataDirectory = (directory / "DATA").toAbsolutePath,
+        logDirectory = (directory / "DATA" / "logs").toAbsolutePath,
         webServerPorts = Nil,
         pekkoAskTimeout = 1.h,
         clusterConf = ClusterConf(

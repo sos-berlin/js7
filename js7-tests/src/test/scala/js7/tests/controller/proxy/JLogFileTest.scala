@@ -10,6 +10,7 @@ import js7.base.configutils.Configs.*
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeUntil
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.Info
 import js7.base.log.Logger
@@ -33,10 +34,10 @@ import scala.language.implicitConversions
 
 final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
-  private val debugLogFile = Paths.get:
-    if isIntelliJIdea then "logs/test.log" else "logs/build.log"
+  private val logDirectory = Paths.get("logs")
+  private val logFile = logDirectory / (if isIntelliJIdea then "test.log" else "build.log")
 
-  assert(Files.exists(debugLogFile))
+  assert(Files.exists(logFile))
 
   override protected def controllerConfig = config"""
     js7.auth.users {
@@ -46,8 +47,8 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       }
       TEST-USER = "plain:TEST-PASSWORD"
     }
-    js7.log.info.file  = "${if isIntelliJIdea then "logs/test.log" else "logs/build.log"}"
-    js7.log.debug.file = "$debugLogFile"
+    js7.log.info.file  = "${logFile.getFileName}"
+    js7.log.debug.file = "${logFile.getFileName}"
     """
 
   override protected def agentConfig = config"""
@@ -61,7 +62,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   "Scala" in:
     val instant = Instant.now
-    val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest Scala! 🌶️🌶️🌶️"
+    val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest.scala! 🌶️🌶️🌶️"
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
       // Info because our log filename does not contain "debug-"
@@ -75,7 +76,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
               assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
   "Java" in:
-    val logText = "🍋🍋🍋 HELLO FROM JLogFileTest Java! 🍋🍋🍋"
+    val logText = "🍋🍋🍋 HELLO FROM JLogFileTester.java! 🍋🍋🍋"
     logger.info(logText)
     // Java-like code, but JLogFileTester.test runs in Proxy's thread:
     JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
@@ -103,7 +104,6 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       assert(n >= 1)
 
   "Speed tests" - {
-    val logFile = debugLogFile
     lazy val fillLog =
       val expectedSize = 200_000_000L
       val line = "FILLER " + "+" * 200
