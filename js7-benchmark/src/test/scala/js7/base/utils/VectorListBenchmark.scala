@@ -127,7 +127,7 @@ class VectorListBenchmark extends OurBenchmark:
 
   @Setup
   def setup(): Unit =
-    array = IArray.fill(size)(X(Random.nextInt))
+    array = IArray.fill(size)(X(Random.nextInt()))
     list = array.toList
     vector = array.toVector
 
