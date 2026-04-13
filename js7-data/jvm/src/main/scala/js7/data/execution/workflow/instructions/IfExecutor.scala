@@ -49,7 +49,7 @@ private[instructions] final class IfExecutor(protected val service: InstructionE
         if order.isStarted then
           clock.now()
         else
-          new OrderNotStartedException/*catched below*/)
+          new OrderNotStartedException/*caught below*/)
       branchId <-
         instruction.ifThens.view
           .scanLeft(Checked(false) -> 0):
