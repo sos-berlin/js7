@@ -1290,15 +1290,39 @@ object ScalaUtils:
     else if c <= 0xffff then 3
     else 4
 
-  def functionCallToString(name: String, args: IterableOnce[Any]*): String =
-    name + parameterListToString(args*)
+  def functionCallToString(name: String, args: Any*): String =
+    val sb = new StringBuilder
+    sb.append(name)
+    parameterListToString(sb, args*)
+    sb.toString
 
-  def parameterListToString(args: IterableOnce[Any]*): String =
-    val iterator = args.iterator.flatten
-    if iterator.isEmpty then
-      ""
+  def parameterListToString(args: Any*): String =
+    val sb = new StringBuilder
+    parameterListToString(sb, args*)
+    sb.toString
+
+  private def parameterListToString(sb: StringBuilder, args: Any*): Unit =
+    sb.append('(')
+    val start = sb.length
+    args.iterator.foreach:
+      case Missing | None =>
+      case Some(a) =>
+        sb.append(a)
+        sb.append(", ")
+      case o: Iterable[?] if o.isEmpty =>
+      case o: scala.collection.Set[?] =>
+        sb.append(o.mkString("{", ", ", "}"))
+        sb.append(", ")
+      case o: IterableOnce[?] =>
+        sb.append(o.iterator.mkString("[", ", ", "]"))
+        sb.append(", ")
+      case o =>
+        sb.append(o)
+        sb.append(", ")
+    if sb.length == start then
+      sb.setLength(start - 1)
     else
-      iterator.mkString("(", ", ", ")")
+      sb.replace(sb.length - 2, sb.length, ")")
 
   /** @param pattern a `java.util.Formatter` pattern
     */

@@ -997,10 +997,10 @@ extends
       prepare :+ OrderTransferred(to.id /: position)
 
   override def toString =
-    Vector(
-      Some(id),
-      Some(state),
-      Some(workflowPosition),
+    functionCallToString("Order",
+      id,
+      state,
+      workflowPosition,
       attachedState,
       !planId.isGlobal ? planId,
       parent.map(o => s"parent=$o"),
@@ -1016,8 +1016,7 @@ extends
       innerBlock.nonEmpty ? innerBlock,
       forceAdmission ? "forceAdmission",
       deleteWhenTerminated ? "delete",
-      arguments.nonEmpty ? s"${arguments.size} arguments"
-    ).flatten.mkString("Order(", ", ", ")")
+      arguments.nonEmpty ? s"${arguments.size} arguments")
 
 
 object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
