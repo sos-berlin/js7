@@ -376,17 +376,17 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
 
     "onErrorEvalTap" in:
       val throwable = new Exception("TEST")
-      var catched: Throwable = null.asInstanceOf[Throwable]
+      var caught: Throwable = null.asInstanceOf[Throwable]
       for
         _ <- Stream.eval(IO(1)).onErrorEvalTap(t => IO.unit).compile.drain
         result <- Stream
           .raiseError[IO](throwable)
-          .onErrorEvalTap(t => IO { catched = t })
+          .onErrorEvalTap(t => IO { caught = t })
           .compile.drain
           .attempt
       yield
         val Left(t) = result: @unchecked
-        assert((t eq throwable) && (catched eq throwable))
+        assert((t eq throwable) && (caught eq throwable))
 
     "collectNonNull" in:
       val list: List[Int] =

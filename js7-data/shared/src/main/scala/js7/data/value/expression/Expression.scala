@@ -404,7 +404,7 @@ object Expression:
   : Checked[Value] =
     expr.eval match
       case Left(problem) =>
-        logger.trace(s"?-operator catched $problem")
+        logger.trace(s"?-operator caught $problem")
         default.eval
       case Right(MissingValue) => default.eval
       case Right(o: GoodValue) => Right(o)
