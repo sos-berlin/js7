@@ -52,6 +52,14 @@ final class PositionOrLabelTest extends OurTestSuite:
       assert((Position(1) / "A" % 2).parent == Some(Position(1)))
       assert((Position(1) / "A" % 2 / "B" % 3).parent == Some(Position(1) / "A" % 2))
 
+    "isParentOf" in:
+      assert(!Position(1).isParentOf(Position(1)))
+      assert(!(Position(1) / "A" % 2).isParentOf(Position(0)))
+      assert(!Position(1).isParentOf(Position(0) / "A" % 2))
+      assert(Position(1).isParentOf(Position(1) / "A" % 2))
+      assert(!Position(1).isParentOf(Position(1) / "A" % 2 / "B" % 3))
+      assert((Position(1) / "A" % 2).isParentOf(Position(1) / "A" % 2 / "B" % 3))
+
     "splitBranchAndNr" in:
       assert(Position(1).splitBranchAndNr == None)
       assert((Position(1) / "A" % 2).splitBranchAndNr == Some((Position(1), BranchId("A"), InstructionNr(2))))

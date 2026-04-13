@@ -1,6 +1,7 @@
 package js7.data.state
 
 import cats.syntax.traverse.*
+import js7.base.metering.CallMeter
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.combine
@@ -16,7 +17,7 @@ import js7.data.event.{Event, EventDrivenState, EventDrivenState_, KeyedEvent, S
 import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
-import js7.data.order.Order.{Cancelled, ExpectingNotices, FailedInFork, IsFreshOrReady, Processing, WaitingForLock}
+import js7.data.order.Order.{ExpectingNotices, IsFreshOrReady, Processing, WaitingForLock}
 import js7.data.order.OrderEvent.{LockDemand, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.PlanSchemaState
@@ -166,14 +167,18 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
       labeled.maybeLabel
 
   def childOrderIsJoinable(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
-    !order.isSuspendedOrStopped &&
-    order.isDetachedOrAttached &&
+    // This is called very often!
+    meterChildOrderIsJoinable:
       order.attachedState == parent.attachedState &&
-      (order.state.eq(FailedInFork) ||
-        order.state.eq(Cancelled) ||
-        order.isState[Order.Ready] &&
-          order.position.parent.contains(parent.position) &&
-          instructionIs[End](order.workflowPosition))
+        order.isDetachedOrAttached &&
+        !order.isSuspendedOrStopped &&
+        order.state.match
+          case _: Order.Ready =>
+            parent.position.isParentOf(order.position)
+              && instructionIs[End](order.workflowPosition)
+          case Order.FailedInFork => true
+          case Order.Cancelled => true
+          case _ => false
 
   final def isSuspendedOrStopped(order: Order[Order.State]): Boolean =
     order.isSuspendedOrStopped || isWorkflowSuspended(order.workflowPath)
@@ -296,6 +301,7 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
 object EngineState:
 
   val empty: EngineState = NoEngineState()
+  private val meterChildOrderIsJoinable = CallMeter("EngineState.childOrderIsJoinable")
 
   trait Companion[T <: EngineState_[T]]
     extends EventDrivenState.Companion[T]:

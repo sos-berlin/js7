@@ -43,6 +43,18 @@ extends PositionOrLabel:
     for last <- branchPath.lastOption yield
       Position(branchPath.init, last.nr)
 
+  /** Is direct parent of this position.
+    *
+    * Equivalent to `position.parent.contains(this)`
+    */
+  def isParentOf(position: Position): Boolean =
+    var p = branchPath
+    var ch = position.branchPath
+    while p.nonEmpty && ch.nonEmpty && p.head == ch.head do
+      p = p.tail
+      ch = ch.tail
+    p.isEmpty && ch.lengthIs == 1 && ch.head.nr == nr
+
   def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
     for last <- branchPath.lastOption yield
       (Position(branchPath.init, last.nr), branchPath.last.branchId, nr)

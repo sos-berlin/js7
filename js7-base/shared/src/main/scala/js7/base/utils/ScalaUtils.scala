@@ -717,8 +717,11 @@ object ScalaUtils:
     implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
     extends AnyVal:
       def get(key: A): Option[B] =
-        val b = underlying.applyOrElse(key, checkFallback[B])
-        if fallbackOccurred(b) then None else Some(b)
+        underlying match
+          case map: scala.collection.Map[A @unchecked, B @unchecked] => map.get(key)
+          case _ =>
+            val b = underlying.applyOrElse(key, checkFallback[B])
+            if fallbackOccurred(b) then None else Some(b)
 
       def checked(key: A)(using A: Tag[A]): Checked[B] =
         val b = underlying.applyOrElse(key, checkFallback[B])

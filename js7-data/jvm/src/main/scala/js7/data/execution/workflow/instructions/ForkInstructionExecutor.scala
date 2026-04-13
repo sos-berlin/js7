@@ -5,6 +5,7 @@ import cats.instances.vector.*
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -155,23 +156,29 @@ extends EventInstructionExecutor_[Instr]:
     state: EngineState,
     now: Timestamp)
   : Option[KeyedEvent[OrderCoreEvent]] =
-    if order.isAttached then
-      Some(order.id <-: OrderDetachable)
-    else
-      order.state.children.forall(o => childOrderIsJoinable(state, order, o.orderId)) thenSome:
-        val failedChildren = order.state.children.view
-          .map(child => state.idToOrder(child.orderId))
-          .filter(order => !order.lastOutcome.isSucceeded || order.isState[Cancelled])
-          .toVector
-        order.id <-: OrderJoined(
-          if failedChildren.nonEmpty then
-            OrderOutcome.Failed(Some(toJoinFailedMessage(failedChildren)))
-          else
-            forkResult(fork, order, state, now))
+    meterToJoinable:
+      if order.isAttached then
+        Some(order.id <-: OrderDetachable)
+      else
+        // TODO Add terminated children to Order.Forked state!
+        order.state.children.forall(o => childOrderIsJoinable(state, order, o.orderId)) thenSome:
+          val failedChildren = order.state.children.view
+            .map(child => state.idToOrder(child.orderId))
+            .filter(order => !order.lastOutcome.isSucceeded || order.isState[Cancelled])
+            .toVector
+          order.id <-: OrderJoined(
+            if failedChildren.nonEmpty then
+              OrderOutcome.Failed(Some(toJoinFailedMessage(failedChildren)))
+            else
+              forkResult(fork, order, state, now))
 
-  private def childOrderIsJoinable(state: EngineState, parentOrder: Order[Order.Forked], childOrderId: OrderId): Boolean =
+  private def childOrderIsJoinable(
+    state: EngineState,
+    parentOrder: Order[Order.Forked],
+    childOrderId: OrderId)
+  : Boolean =
     state.idToOrder.get(childOrderId).exists: childOrder =>
-     state.childOrderIsJoinable(childOrder, parentOrder)
+      state.childOrderIsJoinable(childOrder, parentOrder)
 
   protected def calcResult(
     resultExpr: Map[String, Expression],
@@ -246,6 +253,7 @@ extends EventInstructionExecutor_[Instr]:
 object ForkInstructionExecutor:
   val MinimumChildCountForParentAttachment = 3
   private val logger = Logger[this.type]
+  private val meterToJoinable = CallMeter("ForkInstructionExecutor.toJoinable")
 
   // Paranoid check. Will not work properly on Agent because Agent does not know all orders.
   // The Order child syntax is based on the reserved character '|'.
