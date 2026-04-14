@@ -1,4 +1,4 @@
-package js7.tests.proxy;
+package js7.tests.controller.proxy.log;
 
 import java.nio.file.Path;
 import java.time.ZoneId;

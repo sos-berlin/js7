@@ -1,4 +1,4 @@
-package js7.tests.proxy
+package js7.tests.controller.proxy.log
 
 import cats.effect.IO
 import java.io.{BufferedOutputStream, FileOutputStream}
@@ -24,7 +24,7 @@ import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.proxy.LogDirectoryIndexTest.*
+import js7.tests.controller.proxy.log.LogDirectoryIndexTest.*
 import scala.concurrent.duration.Deadline
 
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:

@@ -1,4 +1,4 @@
-package js7.tests.proxy
+package js7.tests.controller.proxy
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, ExitCode, IO}
@@ -12,7 +12,7 @@ import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.Proxy
-import js7.tests.proxy.ProxyTest.*
+import js7.tests.controller.proxy.ProxyTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 
 final class ProxyTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:

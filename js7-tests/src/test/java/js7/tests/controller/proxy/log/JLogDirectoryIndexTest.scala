@@ -1,4 +1,4 @@
-package js7.tests.proxy
+package js7.tests.controller.proxy.log
 
 import cats.effect.IO
 import java.io.{BufferedOutputStream, FileOutputStream}
@@ -14,7 +14,7 @@ import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.proxy.javaapi.JProxyContext
-import js7.tests.proxy.JLogDirectoryIndexTest.*
+import js7.tests.controller.proxy.log.JLogDirectoryIndexTest.*
 
 final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
 
