@@ -34,9 +34,9 @@ final class JLogFileTester {
                 LogLevel.info(),
                 Instant.now().minusSeconds(3),
                 OptionalLong.empty()/*special case for test*/)
-            .flatMapIterable(identity())
-            .doOnNext(keyedLogLine ->
+            .doOnNext(chunk ->
                 assertIsProxyThread())
+            .flatMapIterable(identity())
             .takeUntil(keyedLogLine -> keyedLogLine.line().contains(expectedLogText))
             .collectList() // 💥 May blow up the heap
             .toFuture()
