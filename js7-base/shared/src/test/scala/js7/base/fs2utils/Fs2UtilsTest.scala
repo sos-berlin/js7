@@ -16,7 +16,7 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
     val result = Stream("ett\ntvå\ntre", "\nfyra\nfem").map: string =>
       fs2.Chunk.from(string.getBytes(UTF_8))
     .through:
-      toPosAndLines(firstPosition = 100)
+      toPosAndLines(firstPosition = 100, breakLinesLongerThan = None)
     .map: (pos, line) =>
       pos -> line.utf8String
     .toList

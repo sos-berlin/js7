@@ -19,10 +19,12 @@ object Fs2Utils:
   type StreamPure[A] = Stream[fs2.Pure, A]
 
   /** Convert to pairs of byte position and ByteSeq. */
-  def toPosAndLines[F[_], ByteSeq: ByteSequence](firstPosition: Long)
+  def toPosAndLines[F[_], ByteSeq: ByteSequence](
+    firstPosition: Long,
+    breakLinesLongerThan: Option[Int])
   : fs2.Pipe[F, ByteSeq, (Long, ByteSeq)] =
     _.through:
-      byteChunksToLines
+      byteChunksToLines(breakLinesLongerThan = breakLinesLongerThan)
     .scanChunks(firstPosition): (pos, lines) =>
       lines.mapAccumulate(pos): (pos, line) =>
         (pos + line.length) -> (pos -> line)

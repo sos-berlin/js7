@@ -4,7 +4,7 @@ import cats.effect.{IO, Resource, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
-import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
+import js7.base.fs2utils.ByteChunksLineSplitter.{BreakLinesLongerThan, byteChunksToLines}
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.toPosAndLines
 import js7.base.fs2utils.StreamExtensions.cedePeriodically
@@ -42,7 +42,8 @@ import scala.math.Ordered.orderingToOrdered
   */
 final class LogFileIndex private(
   toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
-  nanoToPos: EpochNanoToPos)
+  nanoToPos: EpochNanoToPos,
+  breakLinesLongerThan: Option[Int])
   (using ZoneId):
 
   import ByteSeqFileReader.BufferSize as DefaultBufferSize
@@ -83,7 +84,7 @@ final class LogFileIndex private(
       val position = nanoToPos.toPos(begin.toEpochNano)
       toPositionedStream(position, byteChunkSize)
         .through:
-          toPosAndLines(position)
+          toPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = parseTimestampInLogLine(byteLine)(timestampParser.parse) < beginEpochNano
           if drop then
@@ -156,6 +157,7 @@ object LogFileIndex:
 
   private final class Builder(label: String)(using ZoneId):
     private val nanoToPos = new EpochNanoToPos
+    val breakLinesLongerThan = BreakLinesLongerThan
 
     def buildGrowing(logFile: Path, poll: FiniteDuration): ResourceIO[LogFileIndex] =
       ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
@@ -177,7 +179,10 @@ object LogFileIndex:
                 fiber -> nanoToPos)(
           release = (fiber, _) => fiber.cancel)
       .map: (_, nanoToPos) =>
-        new LogFileIndex(positionedStream(logFile, _, _), nanoToPos)
+        new LogFileIndex(
+          positionedStream(logFile, _, _),
+          nanoToPos,
+          breakLinesLongerThan = Some(breakLinesLongerThan))
 
     def fromStream(
       toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
@@ -189,7 +194,7 @@ object LogFileIndex:
           if nanoToPos.isEmpty then
             logger.debug(s"❓ No timestamped line in $label")
           nanoToPos.shrink()
-          new LogFileIndex(toPositionedStream, nanoToPos)
+          new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan))
 
     /** Build the index in `nanoToPos`.
       *
@@ -214,7 +219,7 @@ object LogFileIndex:
         var reverseTimeWarned = false
         stream.prefetch
           .through:
-            byteChunksToLines
+            byteChunksToLines(breakLinesLongerThan = Some(BreakLinesLongerThan))
           .prefetch
           .scanChunks(PosAndNext(startPosition, startPosition)): (posAndNext, lines) =>
             // Compute one NanoAndPos pair for each first position in a block of LogBytesPerEntry

@@ -184,7 +184,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         .map:
           _.toChunk
         .through:
-          byteChunksToLines
+          byteChunksToLines(breakLinesLongerThan = None)
         // See above Pekko's stream.idleTimout
         //.pipeMaybe(idleTimeout): (stream, t) =>
         //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(uri, t)))

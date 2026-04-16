@@ -7,7 +7,7 @@ import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
+import js7.base.fs2utils.ByteChunksLineSplitter.{BreakLinesLongerThan, byteChunksToLines}
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.OperatingSystemSpecific.OS
@@ -79,7 +79,7 @@ object Processes:
   def runAndLogProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
     def logLines(stream: Stream[IO, Chunk[Byte]]): IO[Unit] =
       stream.through:
-        byteChunksToLines
+        byteChunksToLines(breakLinesLongerThan = Some(BreakLinesLongerThan))
       .evalMapChunk: byteLine =>
         logLine(byteLine.utf8String)
       .compile.drain

@@ -133,14 +133,14 @@ object ByteSeqFileReader:
 
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
 
-    def streamPosAndLines(position: Long)(using ByteSeq: ByteSequence[ByteSeq])
+    def streamPosAndLines(position: Long, breakLinesLongerThan: Option[Int])(using ByteSeq: ByteSequence[ByteSeq])
     : Stream[IO, (Long, ByteSeq)] =
       fs2.Stream.exec:
         reader.setPosition(position)
       .append:
         streamUntilEnd
       .through:
-        toPosAndLines(position)
+        toPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
 
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
       streamEndlessly.takeWhile(_.nonEmpty)

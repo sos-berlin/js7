@@ -17,6 +17,7 @@ import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
+import js7.base.fs2utils.ByteChunksLineSplitter.BreakLinesLongerThan
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -51,7 +52,8 @@ final class LogDirectoryIndex private(
   directoryEvents: Stream[IO, OurDirEvent],
   logLevel: LogLevel,
   pollDuration: Option[FiniteDuration],
-  recompressor: Recompressor)
+  recompressor: Recompressor,
+  breakLinesLongerThan: Option[Int])
   (using zoneId: ZoneId)
 extends Service.StoppableByCancel:
 
@@ -145,7 +147,10 @@ extends Service.StoppableByCancel:
       Stream.resource:
         ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file, bufferSize = byteChunkSize)
     .flatMap: reader =>
-      reader.streamPosAndLines(position).map: (pos, line) =>
+      reader.streamPosAndLines(
+        position = position,
+        breakLinesLongerThan = breakLinesLongerThan
+      ).map: (pos, line) =>
         KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
     .append:
       streamSectionAfter(logFile.fileInstant, byteChunkSize = byteChunkSize)
@@ -306,7 +311,8 @@ object LogDirectoryIndex:
               case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
               case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
               case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
-          new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor)
+          new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor,
+            breakLinesLongerThan = Some(BreakLinesLongerThan))
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */

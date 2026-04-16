@@ -110,7 +110,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       IO.defer:
         logFileIndex.streamLines(begin = begin.toInstant)
           .through:
-            byteChunksToLines
+            byteChunksToLines(breakLinesLongerThan = None)
           .filter: byteLine =>
             val line = removeHighlights(byteLine.utf8String)
             line.contains("LogFileIndexTest - Done") && locally:

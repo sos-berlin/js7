@@ -1,6 +1,7 @@
 package js7.base.fs2utils
 
-import fs2.{Chunk, Pipe, Pull, RaiseThrowable, Stream}
+import fs2.{Chunk, Pipe, Pull, Stream}
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.metering.CallMeter
@@ -10,13 +11,20 @@ import scala.reflect.ClassTag
 
 object ByteChunksLineSplitter:
 
+  val BreakLinesLongerThan = 32 * 1024
   private val LineSizeHint = 1024
   private val BigBufferThreshold = 1024 * 1024
-
+  private val TruncationMarker = "↲".getBytes(UTF_8)
+  inline private val TruncationMarkerLength = 3
+  inline private val ElipsisLength = 3
+  private val MinimumLength = 16 // Must be >= 9 or more (small 16 is for testing)
   private val meterRechunkBytesAtSeparator = CallMeter("ourByteChunksToLines")
 
-  def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence]: Pipe[F, ByteSeq, String] =
-    byteChunksToLineStrings[F, ByteSeq]()
+  assert(TruncationMarkerLength == TruncationMarker.length)
+
+  def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
+  : Pipe[F, ByteSeq, String] =
+    byteChunksToLineStrings[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan: Option[Int])
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
@@ -26,14 +34,21 @@ object ByteChunksLineSplitter:
     *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
     */
-  def byteChunksToLines[F[_], ByteSeq: ByteSequence]: Pipe[F, ByteSeq, ByteSeq] =
-    byteChunksToLines[F, ByteSeq]()
+  def byteChunksToLines[F[_], ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
+  : Pipe[F, ByteSeq, ByteSeq] =
+    byteChunksToLines_[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan)
+
+  //def byteChunksToLines[F[_]: RaiseThrowable as F, ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
+  //: Pipe[F, ByteSeq, ByteSeq] =
+  //  byteChunksToLines_[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan)
 
   private[fs2utils] def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence as ByteSeq](
     separator: Byte = '\n',
-    maxLineLength: Option[(Int, RaiseThrowable[F])] = None)
+    breakLinesLongerThan: Option[Int])
   : Pipe[F, ByteSeq, String] =
-    byteChunksToLines(_).map(_.utf8String)
+    stream =>
+      byteChunksToLines_(separator, breakLinesLongerThan)(stream)
+        .map(_.utf8String)
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
@@ -45,33 +60,70 @@ object ByteChunksLineSplitter:
     * (that means, the ByteSeqs should be `Array`-based).
     *
     * <i>Original code was FS2 3.12.2: [[fs2.text.lines]], adapted to Byte.</i>
+    *
+    * @param breakLinesLongerThan Limit number of bytes per line.
+    *                             Longer lines will be broken such that the byte count is not affected.
     */
-  private[fs2utils] def byteChunksToLines[F[_], ByteSeq: ByteSequence as ByteSeq](
+  private def byteChunksToLines_[F[_], ByteSeq: ByteSequence as ByteSeq](
     separator: Byte = '\n',
-    maxLineLength: Option[(Int, RaiseThrowable[F])] = None)
+    breakLinesLongerThan: Option[Int] = None)
   : Pipe[F, ByteSeq, ByteSeq] =
     import ByteSeq.classTag
+    val truncateAt = ((breakLinesLongerThan getOrElse Int.MaxValue max MinimumLength).toLong min Int.MaxValue).toInt
 
-    def fillBuffers(
-      line: ArrayBuilder[Byte],
-      lines: ArrayBuilder[ByteSeq],
-      bytes: Array[Byte])
+    def fillBuffers(input: Array[Byte], line: ArrayBuilder[Byte], lines: ArrayBuilder[ByteSeq])
     : Unit =
+      var lineTruncated = false
       var i = 0
-      val end = bytes.length
+      val end = input.length
+
+      def replaceTruncatedUtf(until: Int) =
+        if lineTruncated then
+          val u = i + ElipsisLength min until
+          while i < u do
+            line += '.' // Continue truncated line with dots
+            i += 1
+          while i < until && (input(i) & 0xc0) == 0x80 do
+            line += '~' // Replace truncated multibyte UTF-8
+            i += 1
+          lineTruncated = false
+
       while i < end do
-        val idx = bytes.vectorIndexOf(separator, i, end)
-        if idx < 0 then // no separator?
-          line.addAll(bytes, i, end)
-          i = end
-        else if line.length == 0 then
-          lines += ByteSeq.unsafeWrap(bytes, i, idx + 1 - i)
-          i = idx + 1
-        else
-          line.addAll(bytes, i, idx + 1)
-          i = idx + 1
-          lines += ByteSeq.unsafeWrap(line.result())
-          line.clear()
+        val remaining = end - i min truncateAt - line.length
+        input.vectorIndexOf(separator, i, end min i + remaining) match
+          case idx if idx >= 0 =>
+            replaceTruncatedUtf(idx)
+            if line.length == 0 then
+              lines += ByteSeq.unsafeWrap(input, i, idx + 1 - i)
+              i = idx + 1
+            else
+              line.addAll(input, i, idx + 1 - i)
+              i = idx + 1
+              lines += ByteSeq.unsafeWrap(line.result())
+            line.clear()
+
+          case _ => // No separator within line length limit
+            replaceTruncatedUtf(end)
+            lineTruncated = true
+            if line.length + end - i <= truncateAt then
+              line.addAll(input, i, end)
+              i = end
+            else
+              val remaining = end - i min truncateAt - line.length
+              val until = i + remaining - 1
+              var j = until - TruncationMarkerLength
+              if j > i then
+                if (input(j) & 0xc0) == 0x80 then j -= 1
+                while j > i && (input(j - 1) & 0xc0) == 0xc0 do j -= 1 // Multibyte UTF-8
+              line.addAll(input, i, j - i)
+              while j < until - TruncationMarkerLength do
+                line += '?'
+                j += 1
+              line.addAll(TruncationMarker)
+              line += separator
+              lines += ByteSeq.unsafeWrap(line.result())
+              line.clear()
+              i += remaining
     end fillBuffers
 
     def go(
@@ -85,17 +137,9 @@ object ByteChunksLineSplitter:
             ArrayBuilder.ofRef[AnyRef](using ByteSeq.classTag.asInstanceOf[ClassTag[AnyRef]])
               .asInstanceOf
           chunk.foreach: byteSeq =>
-            fillBuffers(line, linesBuffer, byteSeq.unsafeArray)
-
-          maxLineLength match
-            case Some((max, raiseThrowable)) if line.length > max =>
-              Pull.raiseError[F](
-                new LineTooLongException(line.length, max)
-              )(using raiseThrowable)
-
-            case _ =>
-              Pull.output(Chunk.array(linesBuffer.result())) >>
-                go(stream, line, first = false)
+            fillBuffers(byteSeq.unsafeArray, line, linesBuffer)
+          Pull.output(Chunk.array(linesBuffer.result())) >>
+            go(stream, line, first = false)
 
         case None =>
           if first || line.length == 0 then
@@ -107,7 +151,8 @@ object ByteChunksLineSplitter:
       Stream.suspend:
         go(stream, ArrayBuilder.ofByte(), first = true)
           .stream
-  end byteChunksToLines
+  end byteChunksToLines_
 
-  private[fs2utils] final class LineTooLongException(val length: Int, val max: Int)
-    extends RuntimeException(s"Max line size is $max but $length chars have been accumulated")
+
+  private[fs2utils] final class LineTooLongException(val max: Int)
+    extends RuntimeException(s"A line has more than $max bytes")
