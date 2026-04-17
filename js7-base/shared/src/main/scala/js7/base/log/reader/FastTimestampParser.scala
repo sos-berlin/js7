@@ -8,13 +8,14 @@ import js7.base.log.Logger
 import js7.base.log.reader.FastTimestampParser.*
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
-import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.util.matching.Regex
 
-/** Optimize for reading a logging file's timestamps — no concurrent use!
+/** Fast parser for reading a logging file's timestamps — no concurrent use!
   *
-  * Only local timestamps are supported.
+  * Optimized for consecutive calls with timestamps in the same second.
+  *
+  * Only local timestamps are parsed.
   */
 final class FastTimestampParser()(using zoneId: ZoneId):
 
@@ -66,9 +67,12 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 object FastTimestampParser:
   private val logger = Logger[FastTimestampParser]
   val DateTimeRegex: Regex = """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}""".r
+
+  // Faster than ISO_LOCAL_DATE_TIME
   private val dateTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+      //Fails: .withResolverStyle(ResolverStyle.STRICT)
 
-  def parseTimestampAsNanos(string: CharSequence)(using zoneId: ZoneId) =
-    LocalDateTime.parse(string, dateTimeFormatter)
-      .atZone(zoneId).toInstant.toEpochNano
+  def parseTimestampAsNanos(string: CharSequence)(using zoneId: ZoneId): EpochNano =
+    val localDateTime = dateTimeFormatter.parse(string, LocalDateTime.from).atZone(zoneId)
+    EpochNano.from(localDateTime.toInstant)

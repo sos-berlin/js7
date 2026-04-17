@@ -11,9 +11,9 @@ object JavaTimeExtensions:
     def toEpochNano: EpochNano =
       if instant.isBefore(MinNanoInstant) || instant.isAfter(MaxNanoInstant) then
         throw new IllegalArgumentException(s"Instant $instant is out of range")
-      EpochNano.from(instant).asInstanceOf[EpochNano]
+      EpochNano.from(instant)
 
 
-  extension (zoneDateTime: ZonedDateTime)
-    def toEpochNano: EpochNano =
-      zoneDateTime.toInstant.toEpochNano
+  extension (zonedDateTime: ZonedDateTime)
+    inline def toEpochNano: EpochNano =
+      zonedDateTime.toInstant.toEpochNano

@@ -7,9 +7,8 @@ import fs2.Stream
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import java.time
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.temporal.ChronoField.NANO_OF_SECOND
-import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
+import java.time.Instant
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -22,7 +21,7 @@ import js7.base.log.reader.LogFileReader.growingLogFileStream
 import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
-import js7.base.problem.Checked.catchNonFatalFlatten
+import js7.base.problem.Checked.catchNonFatal
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -40,7 +39,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
 import scala.concurrent.duration.FiniteDuration
-import scala.util.control.NonFatal
 
 trait LogRoute extends RouteProvider:
 
@@ -151,40 +149,10 @@ trait LogRoute extends RouteProvider:
 
 object LogRoute:
   private val logger = Logger[LogRoute]
-  private val FileChangeWatchPeriod = 5.s
-
-  private val dateTimeFormatter: DateTimeFormatter =
-    new DateTimeFormatterBuilder()
-      .appendPattern("yyyy-MM-dd")
-      .appendLiteral('T')
-      .appendPattern("HH:mm:ss")
-      .optionalStart()
-      .optionalStart()
-      // Optional fraction with .' (1..9 digits)
-      .appendLiteral('.')
-      .appendFraction(NANO_OF_SECOND, 1, 9, false)
-      .optionalEnd()
-      // Optional fraction with ',' (1..9 digits)
-      .optionalStart()
-      .appendLiteral(',')
-      .appendFraction(NANO_OF_SECOND, 1, 9, false)
-      .optionalEnd()
-      // Optional offset, e.g. Z or +02:00
-      .optionalStart()
-      .appendOffsetId()
-      .optionalEnd()
-      .toFormatter()
 
   private[log] def stringToInstant(string: String): Checked[Instant] =
-    catchNonFatalFlatten:
-      dateTimeFormatter.parseBest(string,
-        //ZonedDateTime.from,
-        OffsetDateTime.from,
-        LocalDateTime.from)
-      match
-        //case o: ZonedDateTime => Right(o.toInstant)
-        case o: OffsetDateTime => Right(o.toInstant)
-        case o: LocalDateTime => Right(o.atZone(ZoneId.systemDefault).toInstant)
+    catchNonFatal:
+      ISO_INSTANT.parse(string, Instant.from)
 
   private def relativise(baseDir: Path, targetFile: Path): Path =
     if !baseDir.isAbsolute || !targetFile.isAbsolute then
@@ -192,8 +160,6 @@ object LogRoute:
     else
       try
         baseDir.relativize(targetFile)
-      catch case NonFatal(e) =>
+      catch case e: IllegalArgumentException =>
         logger.debug(s"❓ relativise: ${e.toStringWithCauses}")
         targetFile
-
-

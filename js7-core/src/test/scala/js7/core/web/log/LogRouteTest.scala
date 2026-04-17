@@ -81,17 +81,11 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
       stringToInstant("2026-02-12T20:21:22Z") ==
         Right(Instant.parse("2026-02-12T20:21:22Z"))
     assert:
-      stringToInstant("2026-02-12T20:21:22,123Z") ==
-        Right(Instant.parse("2026-02-12T20:21:22.123Z"))
-    assert:
       stringToInstant("2026-02-12T22:21:22.123456789+02:00") ==
         Right(Instant.parse("2026-02-12T20:21:22.123456789Z"))
     assert:
       stringToInstant("2026-02-12T22:21:22+02:00") ==
         Right(Instant.parse("2026-02-12T20:21:22Z"))
-    //assert:
-    //  stringToInstant("2026-02-12T22:21:22.123456789[Europe/Mariehamn]") ==
-    //    Right(Instant.parse("2026-02-12T20:21:22.123456789Z"))
 
   "/controller/api/log/info/raw" in:
     logFile := "LOG TEXT"

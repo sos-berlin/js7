@@ -4,6 +4,7 @@ import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import java.time.Instant
 
+/** A Long denoting the number of nanoseconds since the Unix epoch. */
 opaque type EpochNano = Long
 
 
@@ -16,7 +17,7 @@ object EpochNano:
   inline def apply(epochNano: Long): EpochNano =
     epochNano
 
-  def from(instant: Instant) =
+  def from(instant: Instant): EpochNano =
     instant.getEpochSecond * 1_000_000_000L + instant.getNano
 
   extension (epochNano: EpochNano)

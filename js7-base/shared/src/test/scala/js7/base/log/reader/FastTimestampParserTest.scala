@@ -44,14 +44,14 @@ final class FastTimestampParserTest extends OurTestSuite:
 
   "Speed" in :
     if isIntelliJIdea then
-      locally:
+      (1 to 3).foreach: _ =>
         val timestampParser = FastTimestampParser()
         val t = Deadline.now
         (0 until 10_000_000).foreach: _ =>
           timestampParser.parse("2026-02-12T12:00:00.000000")
         logger.info(bold(s"Optimized    : ${itemsPerSecondString(t.elapsed, 1000000, "calls")}"))
 
-      locally:
+      (1 to 3).foreach: _ =>
         val t = Deadline.now
         (0 until 10_000_000).foreach: _ =>
           parseTimestampAsNanos("2026-02-12T12:00:00.000000")
