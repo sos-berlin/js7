@@ -9,6 +9,7 @@ import js7.base.auth.SimpleUser
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
+import js7.base.config.Js7Conf
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -219,6 +220,7 @@ object RunningController:
         val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
         val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
         for
+          _ <- Js7Conf.registerInEnvironment[IO](env, conf.config)
           _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
           _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
           _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](

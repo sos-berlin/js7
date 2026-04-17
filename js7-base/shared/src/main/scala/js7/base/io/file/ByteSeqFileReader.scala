@@ -133,7 +133,8 @@ object ByteSeqFileReader:
 
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
 
-    def streamPosAndLines(position: Long, breakLinesLongerThan: Option[Int])(using ByteSeq: ByteSequence[ByteSeq])
+    def streamPosAndLines(position: Long, breakLinesLongerThan: Option[Int])
+      (using ByteSeq: ByteSequence[ByteSeq])
     : Stream[IO, (Long, ByteSeq)] =
       fs2.Stream.exec:
         reader.setPosition(position)

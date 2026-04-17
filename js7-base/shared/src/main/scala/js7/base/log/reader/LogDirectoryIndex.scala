@@ -15,9 +15,10 @@ import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.run
+import js7.base.catsutils.Environment.environment
+import js7.base.config.Js7Conf
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
-import js7.base.fs2utils.ByteChunksLineSplitter.BreakLinesLongerThan
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -303,16 +304,17 @@ object LogDirectoryIndex:
     (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     Resource.suspend:
-      toLogFiles(files).map: logFiles =>
-        Service:
-          val ourDirEvents = directoryEvents
-            .filterNot(o => isOurTmpFile(o.relativePath)) // to be sure
-            .map:
-              case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
-              case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
-              case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
-          new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor,
-            breakLinesLongerThan = Some(BreakLinesLongerThan))
+      environment[Js7Conf].flatMap: js7Conf =>
+        toLogFiles(files).map: logFiles =>
+          Service:
+            val ourDirEvents = directoryEvents
+              .filterNot(o => isOurTmpFile(o.relativePath)) // to be sure
+              .map:
+                case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
+                case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
+                case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
+            new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor,
+              breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength))
 
   /** Extract the timestamp of the first line of each file and return a sequence of [[LogFile]].
     */

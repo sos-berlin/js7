@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
-import js7.base.config.Js7Config
+import js7.base.config.{Js7Conf, Js7Config}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
@@ -28,6 +28,10 @@ import js7.tests.controller.proxy.log.LogDirectoryIndexTest.*
 import scala.concurrent.duration.Deadline
 
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
+
+  override def resourceForIORuntime =
+    super.resourceForIORuntime.flatMap: _ =>
+      Js7Conf.registerInEnvironment(Js7Config.defaultConfig)
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 

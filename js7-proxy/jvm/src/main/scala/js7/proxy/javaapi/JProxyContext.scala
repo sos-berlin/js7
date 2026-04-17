@@ -2,6 +2,7 @@ package js7.proxy.javaapi
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
+import cats.syntax.flatMap.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
 import java.util.concurrent.{CompletableFuture, Executor}
@@ -10,7 +11,8 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.run
-import js7.base.catsutils.OurIORuntime
+import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
+import js7.base.config.Js7Conf
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -50,8 +52,10 @@ extends AutoCloseable:
   private val proxyConf = ProxyConfs.fromConfig(config)
 
   private val (ioRuntime, ioRuntimeShutdown) =
-    OurIORuntime
-      .resource[SyncIO](ThreadPoolName, config, computeExecutor = nullToNone(computeExecutor))
+    OurIORuntime.resource[SyncIO](ThreadPoolName, config, computeExecutor = nullToNone(computeExecutor))
+      .flatTap: ioRuntime =>
+        val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+        Js7Conf.registerInEnvironment[SyncIO](env, config)
       .allocated
       .run()
 

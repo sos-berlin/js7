@@ -14,6 +14,7 @@ import js7.agent.web.AgentRoute
 import js7.base.auth.{AgentDirectorPermission, SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.{True, left, right}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
+import js7.base.config.Js7Conf
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -285,6 +286,7 @@ object RunningAgent:
 
       val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       for
+        _ <- Js7Conf.registerInEnvironment[IO](env, conf.config)
         clock <- Environment.getOrRegister[AlarmClock]:
           given Scheduler = ioRuntime.scheduler
           AlarmClock.resource(

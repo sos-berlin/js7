@@ -12,12 +12,12 @@ import scala.reflect.ClassTag
 object ByteChunksLineSplitter:
 
   val BreakLinesLongerThan = 32 * 1024
+  val MinimumLength = 16 // Must be >= 9 or more (small 16 is for testing)
   private val LineSizeHint = 1024
   private val BigBufferThreshold = 1024 * 1024
   private val TruncationMarker = "↲".getBytes(UTF_8)
   inline private val TruncationMarkerLength = 3
   inline private val ElipsisLength = 3
-  private val MinimumLength = 16 // Must be >= 9 or more (small 16 is for testing)
   private val meterRechunkBytesAtSeparator = CallMeter("ourByteChunksToLines")
 
   assert(TruncationMarkerLength == TruncationMarker.length)
@@ -66,7 +66,7 @@ object ByteChunksLineSplitter:
     */
   private def byteChunksToLines_[F[_], ByteSeq: ByteSequence as ByteSeq](
     separator: Byte = '\n',
-    breakLinesLongerThan: Option[Int] = None)
+    breakLinesLongerThan: Option[Int])
   : Pipe[F, ByteSeq, ByteSeq] =
     import ByteSeq.classTag
     val truncateAt = ((breakLinesLongerThan getOrElse Int.MaxValue max MinimumLength).toLong min Int.MaxValue).toInt

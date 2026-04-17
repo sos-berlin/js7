@@ -7,6 +7,7 @@ import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import java.util.zip.GZIPOutputStream
+import js7.base.config.{Js7Conf, Js7Config}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -33,6 +34,10 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 final class LogFileIndexTest extends OurAsyncTestSuite:
 
   override protected def testTimeout: FiniteDuration = 1.h
+
+  override def resourceForIORuntime =
+    super.resourceForIORuntime.flatMap: _ =>
+      Js7Conf.registerInEnvironment(Js7Config.defaultConfig)
 
   "Test" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
