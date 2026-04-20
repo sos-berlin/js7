@@ -8,11 +8,9 @@ import java.util.function.Function.identity
 import js7.base.configutils.Configs.*
 import js7.base.log.LogLevel
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.node.Js7ServerId
-import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.javaapi.JControllerApi
 import js7.tests.log.LogFileTest.*
@@ -41,19 +39,17 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   "Primary Controller log" in:
     getLog(Js7ServerId.primaryController).map: line =>
-      assert(line.contains("TEST ONLY: PrimaryController, "))
+      assert(line.contains("TEST ONLY: Controller/primary, "))
 
   "Backup Controller log" in:
     getLog(Js7ServerId.backupController).map: line =>
-      assert(line.contains("TEST ONLY: PrimaryController, "))  // Because there is no backup
+      assert(line.contains("TEST ONLY: Controller/primary, "))  // Because there is no backup
 
   "Director log" in:
     getLog(Js7ServerId.Subagent(subagentId)).map: line =>
       assert(line.contains(s"TEST ONLY: $subagentId, "))
 
   "Bare Subagent log" in:
-    controller.awaitNextKey[SubagentDedicated](bareSubagentId)
-    sleep(1.s)
     getLog(Js7ServerId.Subagent(bareSubagentId)).map: line =>
       assert(line.contains(s"TEST ONLY: $bareSubagentId, "))
 

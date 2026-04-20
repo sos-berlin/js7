@@ -64,7 +64,7 @@ extends
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested
   protected val controllerState     = clusterNode.currentState
-  protected val js7ServerId         = IO.right(controllerConfiguration.js7ServerId)
+  protected val js7ServerId         = Some(controllerConfiguration.js7ServerId)
   protected val logDirectory        = controllerConfiguration.logDirectory
   protected val controllerId        = controllerConfiguration.controllerId
   protected val config              = controllerConfiguration.config

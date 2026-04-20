@@ -26,8 +26,8 @@ import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -44,7 +44,7 @@ trait LogRoute extends RouteProvider:
 
   protected def ioRuntime: IORuntime
   protected def config: Config
-  protected def js7ServerId: IO[Checked[Js7ServerId]]
+  protected def js7ServerId: Option[Js7ServerId]
   protected def logDirectory: Path
   protected def logDirectoryIndexRegister: LogDirectoryIndex.Register
 
@@ -70,8 +70,8 @@ trait LogRoute extends RouteProvider:
         pathPrefix("none"):
           // LogLevel.None returns a line for  testing
           completeIO:
-            js7ServerId.mapmap: js7ServerId =>
-              s"TEST ONLY: $js7ServerId, ${operatingSystem.hostname}\n"
+            IO:
+              s"TEST ONLY: ${js7ServerId.getOrElse("No Js7ServerId")}, ${operatingSystem.hostname}\n"
 
   private def fileRoute(logLevel: LogLevel, currentLogFile: Path): Route =
     path("raw"):

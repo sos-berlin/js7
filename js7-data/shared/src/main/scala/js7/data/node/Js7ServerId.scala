@@ -27,11 +27,11 @@ object Js7ServerId:
   object Controller:
     case object Primary extends Controller:
       val nodeId = NodeId.primary
-      override def toString = "PrimaryController"
+      override def toString = "Controller/primary"
 
     case object Backup extends Controller:
       val nodeId = NodeId.backup
-      override def toString = "BackupController"
+      override def toString = "Controller/backup"
 
 
   final case class Subagent(subagentId: SubagentId) extends Js7ServerId:

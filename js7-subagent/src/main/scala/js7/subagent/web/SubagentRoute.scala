@@ -55,8 +55,8 @@ extends
   protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
-  protected val js7ServerId = IO:
-    subagent.checkedDedicatedSubagent.map(o => Js7ServerId.Subagent(o.subagentId))
+  protected def js7ServerId =
+    subagent.checkedDedicatedSubagent.toOption.map(o => Js7ServerId.Subagent(o.subagentId))
   protected val logDirectory: Path = subagent.conf.logDirectory
   protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
   protected val eventWatch = subagent.journal.eventWatch

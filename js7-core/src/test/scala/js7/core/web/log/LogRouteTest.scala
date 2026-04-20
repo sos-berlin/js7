@@ -40,7 +40,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
   protected val logDirectory = logFile.getParent
-  protected val js7ServerId = IO.right(Js7ServerId.primaryController)
+  protected val js7ServerId = Some(Js7ServerId.primaryController)
   protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
 
   override protected def config = config"""

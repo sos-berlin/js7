@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.delegate.DelegateId
 import js7.data.item.InventoryItemPath.AttachableToAgent
 import js7.data.item.UnsignedSimpleItemPath
-import js7.data.node.NodeName
+import js7.data.node.{Js7ServerId, NodeName}
 
 final case class SubagentId(string: String)
 extends UnsignedSimpleItemPath, DelegateId, AttachableToAgent:
@@ -20,6 +20,9 @@ extends UnsignedSimpleItemPath, DelegateId, AttachableToAgent:
 
   def toNodeName: Checked[NodeName] =
     NodeName.checked(string)
+
+  def toJs7ServerId: Js7ServerId =
+    Js7ServerId.Subagent(this)
 
 
 object SubagentId
