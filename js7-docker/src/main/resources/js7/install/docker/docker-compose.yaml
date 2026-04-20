@@ -237,7 +237,7 @@ services:
       - "--arg0=js7-proxy"
       - "-J-Xmx256m"
      #- "--processor-limit=1"
-     #- "--cluster-watch-id=PROXY"
+      - "--cluster-watch-id=PROXY"
       - --cluster-node-uri=https://js7-controller:4443"
       - --cluster-node-uri=https://js7-backup-controller:4443
     working_dir: /home/js7
@@ -261,7 +261,7 @@ services:
       - "--arg0=js7-proxy-b"
       - "-J-Xmx256m"
      #- "--processor-limit=1"
-     #- "--cluster-watch-id=PROXY-B"
+      - "--cluster-watch-id=PROXY-B"
       - "--cluster-node-uri=https://js7-controller:4443"
       - "--cluster-node-uri=https://js7-backup-controller:4443"
     working_dir: /home/js7
