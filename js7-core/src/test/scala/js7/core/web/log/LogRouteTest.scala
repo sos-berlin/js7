@@ -9,7 +9,6 @@ import java.nio.file.Files.{createTempFile, delete, deleteIfExists}
 import java.nio.file.Path
 import java.time.Instant
 import java.util.concurrent.ArrayBlockingQueue
-import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
@@ -28,7 +27,6 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.duration.*
-
 
 /**
   * @author Joacim Zschimmer
@@ -49,7 +47,6 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
     js7.web.server.services.log.poll-interval = 1.ms
     js7.web.chunk-size = 16
     """.withFallback(super.config)
-
 
   private given IORuntime = ioRuntime
 
