@@ -12,6 +12,7 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.IdToUser
+import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.*
@@ -234,6 +235,17 @@ object GateKeeper:
       binding,
       conf,
       isLoopback = binding.address.getAddress.isLoopbackAddress)
+
+  def apply[U <: User : User.Companion as U](
+    binding: WebServerBinding,
+    conf: CommonConfiguration,
+    toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U =
+      SimpleUser.apply)
+    (using IORuntime, ExceptionHandler)
+  : GateKeeper[U] =
+    apply(
+      binding,
+      GateKeeper.Configuration.fromConfig(conf.config, toUser))
 
   private def isGet(method: HttpMethod) =
     method == GET || method == HEAD

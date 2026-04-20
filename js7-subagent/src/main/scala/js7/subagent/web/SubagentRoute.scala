@@ -2,7 +2,6 @@ package js7.subagent.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.BuildInfo
 import js7.base.auth.SimpleUser
@@ -10,6 +9,7 @@ import js7.base.log.Logger
 import js7.base.stream.Numbered
 import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
+import js7.common.metrics.MetricsRoute
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.StandardDirectives.ioRoute
@@ -22,8 +22,8 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.web.serviceprovider.ServiceProviderRoute
 import js7.core.command.CommandMeta
 import js7.core.web.log.LogRoute
-import js7.data.node.Js7ServerId
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
+import js7.subagent.DirectorRouteVariable.DirectorRoutes
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
 import org.apache.pekko.actor.ActorSystem
@@ -36,10 +36,9 @@ private final class SubagentRoute(
   routeBinding: RouteBinding,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[SubagentSession],
-  directorRoute: IO[Route],
-  protected val subagent: Subagent,
-  protected val config: Config)
-  (implicit
+  directorRoute: IO[DirectorRoutes],
+  protected val subagent: Subagent)
+  (using
     protected val ioRuntime: IORuntime,
     protected val actorSystem: ActorSystem)
 extends
@@ -48,15 +47,15 @@ extends
   CommandRoute,
   SessionRoute,
   EventRoute,
-  LogRoute:
+  LogRoute,
+  MetricsRoute:
 
   import routeBinding.webServerBinding
 
   protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
-  protected def js7ServerId =
-    subagent.checkedDedicatedSubagent.toOption.map(o => Js7ServerId.Subagent(o.subagentId))
+  protected def js7ServerId = subagent.subagentId.map(_.toJs7ServerId)
   protected val logDirectory: Path = subagent.conf.logDirectory
   protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
   protected val eventWatch = subagent.journal.eventWatch
@@ -72,7 +71,9 @@ extends
     mainRoute:
       pathPrefix(Segment):
         case "subagent" => subagentRoute
-        case "agent" => ioRoute(directorRoute)
+        case "agent" => ioRoute(directorRoute.map(_.route))
+        case "metrics" => ioRoute:
+          directorRoute.map(_.directorMetricsRoute getOrElse metricsRoute)
         case _ => reject
       ~ serviceProviderRoute
 

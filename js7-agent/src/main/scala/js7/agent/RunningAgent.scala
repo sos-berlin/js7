@@ -323,7 +323,8 @@ object RunningAgent:
       _ <- forDirector.subagent.registerDirectorRoute:
         routeBinding => IO:
           AgentRoute(
-            routeBinding, runningAgent.executeCommand, clusterNode,
+            routeBinding,
+            runningAgent.executeCommand, clusterNode,
             () => forDirector.subagent.subagentId,
             conf,
             GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
@@ -334,7 +335,7 @@ object RunningAgent:
               Set(AgentDirectorPermission)),
             forDirector.sessionRegister,
             forDirector.subagent.logDirectoryIndexRegister
-          ).agentRoute
+          ).directorRoutes
       agent <- Service.resource(runningAgent)
     yield
       agent

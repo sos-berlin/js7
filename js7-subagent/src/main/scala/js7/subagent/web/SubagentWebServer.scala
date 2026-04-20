@@ -39,7 +39,7 @@ object SubagentWebServer:
               new SubagentRoute(
                 routeBinding, gateKeeperConf, sessionRegister,
                 toDirectorRoute(routeBinding),
-                subagent, conf.config
+                subagent
               ).webServerRoute
 
         override def toString = "Subagent web services"

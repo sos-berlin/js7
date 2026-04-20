@@ -78,6 +78,7 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
      |      "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
      |    ]
      |    password = ${quoteString("plain:" + controllerPassword.string)}
+     |    permissions = [ ReadMetrics ]
      |  }
      |}
      |js7.web.server.auth.https-client-authentication = $mutualHttps
@@ -91,8 +92,8 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
       privateConf ++= s"""
        |js7.auth.subagents.${otherSubagentId.string} = "${subagentItem.id.string}'s PASSWORD"
        |js7.auth.users.${otherSubagentId.string} {
-       |  permissions = [ AgentDirector ]
        |  password = "plain:${otherSubagentId.string}'s PASSWORD"
+       |  permissions = [ AgentDirector ]
        |}
        |""".stripMargin
 

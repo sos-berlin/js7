@@ -43,10 +43,7 @@ trait SubagentForwardRoute extends AgentRouteProvider:
               subagentItem <- agentState.keyToItem(SubagentItem).checked(subagentId)
             yield
               val ownSubagentId =
-                if agentConfiguration.clusterConf.isBackup then
-                  agentState.meta.directors(1)
-                else
-                  agentState.meta.directors.head
+                agentState.meta.directors(agentConfiguration.clusterConf.isBackup.toInt)
               val subagentId = subagentItem.id
               val admission = Admission(
                 subagentItem.uri,

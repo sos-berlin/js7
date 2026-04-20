@@ -12,6 +12,7 @@ import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.web.data.WebServerPort
+import js7.data.node.Js7ServerId
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -25,6 +26,8 @@ final case class ProviderConfiguration(
   config: Config = ConfigFactory.empty)
 extends CommonConfiguration:
   val name = "Provider"
+  val maybeJs7ServerId: Some[Js7ServerId.Provider.type] =
+    Some(Js7ServerId.Provider)
 
   val liveDirectory: Path = configDirectory / "live"
   val orderGeneratorsDirectory: Path = configDirectory / "order-generators"

@@ -136,7 +136,10 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
-            js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
+            js7.auth.users.Controller {
+              password = "plain:BACKUP-CONTROLLER-PASSWORD"
+              permissions = [ ReadMetrics ]
+            }
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ UpdateItem, AgentDirectorForward ]"""),
         agentPorts = agentPorts,
@@ -166,7 +169,10 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
-            js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+            js7.auth.users.Controller {
+              password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+              permissions = [ ReadMetrics ]
+            }
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = backupAgentPorts,
@@ -178,7 +184,11 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
           js7.journal.cluster.node.is-backup = yes
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          js7.auth.users.Controller.password = "plain:AGENT-PASSWORD" """
+          js7.auth.users.Controller {
+            password = "plain:AGENT-PASSWORD" 
+            permissions = [ ReadMetrics ]
+          }
+          """
       ).closeWithCloser
 
       // Replicate credentials required for agents

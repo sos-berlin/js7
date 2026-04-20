@@ -21,6 +21,14 @@ object Js7ServerId:
     Subagent(subagentId)
 
 
+  final case class Proxy(name: String) extends Js7ServerId:
+    override def toString = s"Proxy:$name"
+
+
+  type Provider = Provider.type
+  case object Provider extends Js7ServerId
+
+
   sealed trait Controller extends Js7ServerId:
     def nodeId: NodeId
 

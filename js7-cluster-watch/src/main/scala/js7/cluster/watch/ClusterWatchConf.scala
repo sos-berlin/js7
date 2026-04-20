@@ -25,6 +25,10 @@ final case class ClusterWatchConf(
   webServerPorts: Seq[WebServerPort],
   config: Config)
 extends CommonConfiguration:
+
+  override def maybeJs7ServerId: None.type =
+    None
+
   val name = "ClusterWatch"
 
 

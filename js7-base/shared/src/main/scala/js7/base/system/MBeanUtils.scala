@@ -12,7 +12,6 @@ import scala.util.control.NonFatal
 
 object MBeanUtils:
   private val logger = Logger[this.type]
-  private val DomainName = "js7"
   private val beanServer = ManagementFactory.getPlatformMBeanServer
 
   /** Bean is considered static and will not be deregistered under testing.
@@ -73,4 +72,4 @@ object MBeanUtils:
       .map(_._1)
 
   def toMBeanName(name: String): ObjectName =
-    new ObjectName(s"$DomainName:name=$name")
+    new ObjectName(s"js7:name=$name")

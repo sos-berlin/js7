@@ -18,9 +18,9 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
 import js7.data.subagent.SubagentId
+import js7.subagent.DirectorRouteVariable.DirectorRoutes
 import js7.subagent.SubagentSession
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.server.Route
 
 /**
  * @author Joacim Zschimmer
@@ -37,7 +37,7 @@ final class AgentRoute(
   (using
     protected val actorSystem: ActorSystem,
     protected val ioRuntime: IORuntime)
-extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
+extends WebLogDirectives, ApiRoute, DirectorMetricsRoute, ClusterNodeRouteBindings[AgentState]:
 
   import routeBinding.webServerBinding
 
@@ -48,7 +48,7 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
   protected val agentState = clusterNode.currentState
   protected def js7ServerId = subagentId().map(_.toJs7ServerId)
   protected def eventWatch = clusterNode.recoveredExtract.eventWatch
-  protected def config = agentConfiguration.config
+  protected def commonConf = agentConfiguration
   protected def actorRefFactory = actorSystem
 
   protected def checkedClusterState =
@@ -61,6 +61,8 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
   protected def nodeId =
     clusterNode.clusterConf.ownId
 
-  lazy val agentRoute: Route =
-    pathSegments("api"):
-      apiRoute
+  lazy val directorRoutes: DirectorRoutes =
+    DirectorRoutes(
+      pathSegments("api"):
+        apiRoute,
+      Some(directorMetricsRoute))

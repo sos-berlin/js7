@@ -34,7 +34,7 @@ extends SubagentEnv:
 
     privateConf ++= s"""
      |js7.auth.users.${directorSubagentId.string} {
-     |  permissions: [ AgentDirector ]
+     |  permissions: [ AgentDirector, ReadMetrics ]
      |  password: "plain:${directorSubagentId.string}'s PASSWORD"
      |}
      |""".stripMargin

@@ -13,18 +13,6 @@ scrape_configs:
     static_configs:
       - targets:
         - js7-controller:4443
-        - js7-backup-controller:4443
-        - js7-subagent-1a:4443
-        - js7-subagent-1b:4443
-        - js7-subagent-1c:4443
-        - js7-subagent-2a:4443
-        - js7-cluster-watch:4443
-        - js7-cluster-watch-b:4443
         - js7-provider:4443
         - js7-proxy:4443
-    relabel_configs:
-      - source_labels: [__address__]
-        # Provide $host with the hostname only (strip "js7-" and port number)
-        regex: '(js7-)?(.*):.*'
-        target_label: host
-        replacement: '$2'
+        - js7-proxy-b:4443

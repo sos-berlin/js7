@@ -11,8 +11,10 @@ import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{RouteProvider, SessionRegister, SimpleSession}
+import js7.common.web.metrics.MetricsRoute
 import js7.common.web.serviceprovider.ServiceProviderRoute
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Directives.{pathPrefix, *}
 import org.apache.pekko.http.scaladsl.server.Route
 
 object MinimumWebServer:
@@ -31,28 +33,31 @@ object MinimumWebServer:
   private class MinimumRoute(
     protected val sessionRegister: SessionRegister[SimpleSession],
     routeBinding: RouteBinding,
-    conf: CommonConfiguration)
+    protected val commonConf: CommonConfiguration)
     (using
       protected val ioRuntime: IORuntime,
       protected val actorSystem: ActorSystem)
   extends
     ServiceProviderRoute,
     RouteProvider,
-    WebLogDirectives:
+    WebLogDirectives,
+    MetricsRoute:
 
     protected type OurSession = SimpleSession
     protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
+    protected def js7ServerId = commonConf.maybeJs7ServerId
     protected val gateKeeper = GateKeeper(
       routeBinding.webServerBinding,
       GateKeeper.Configuration.fromConfig(config))
-    protected def config = conf.config
-    protected val commonConf = conf
 
     protected def whenShuttingDown = routeBinding.whenStopRequested
 
     val webServerRoute: Route =
       mainRoute:
-        serviceProviderRoute
+        pathPrefix(Segment):
+          case "metrics" => metricsRoute
+          case _ => reject
+        ~ serviceProviderRoute
 
-    override def toString = s"${conf.name} web services"
+    override def toString = s"${commonConf.name} web services"

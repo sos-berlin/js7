@@ -49,6 +49,8 @@ final case class SubagentConf(
 extends CommonConfiguration:
   require(jobWorkingDirectory.isAbsolute)
 
+  def maybeJs7ServerId = None
+
   lazy val scriptInjectionAllowed: Boolean =
     config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 

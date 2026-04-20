@@ -2,10 +2,15 @@ package js7.base.metering
 
 import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.metering.CallMeterTest.{meterConstant, meterDecrement, meterIO, meterNanoTime}
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
+import js7.base.log.Logger
+import js7.base.metering.CallMeterTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
+import scala.jdk.CollectionConverters.*
 
 final class CallMeterTest extends OurAsyncTestSuite:
 
@@ -61,9 +66,25 @@ final class CallMeterTest extends OurAsyncTestSuite:
     Logger.trace(itemsPerSecondString((System.nanoTime() - t).ns, n, "nanoTimes"))
     succeed
 
+  "MXBeans" in:
+    val objectName = new ObjectName("js7:name=*")
+    val beanServer = ManagementFactory.getPlatformMBeanServer
+    beanServer.queryNames(new ObjectName("js7:name=*"), null).asScala
+      .foreachWithBracket(): (o, br) =>
+        logger.info(s"$br$o")
+    assert(beanServer.getDomains contains "js7")
+    assert:
+      beanServer.queryNames(new ObjectName("js7:name=*"), null).asScala.exists:
+        _.getCanonicalName == "js7:name=CallMeter_CallMeterTest.nanoTime"
+    assert:
+      beanServer.queryNames(new ObjectName("js7:name=CallMeter_CallMeterTest.nanoTime"), null)
+        .asScala.exists:
+          _.getCanonicalName == "js7:name=CallMeter_CallMeterTest.nanoTime"
+
 
 object CallMeterTest:
+  private val logger = Logger[this.type]
   private val meterConstant = CallMeter()
   private val meterDecrement = CallMeter()
   private val meterIO = CallMeter()
-  private val meterNanoTime = CallMeter()
+  private val meterNanoTime = CallMeter("CallMeterTest.nanoTime")

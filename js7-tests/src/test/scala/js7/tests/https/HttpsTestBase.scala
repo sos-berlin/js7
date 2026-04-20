@@ -80,6 +80,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
             Controller {
               distinguished-names = [ "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh" ]
               password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+              permissions = [ ReadMetrics ]
             }
             TEST {
               distinguished-names = [ "$dn" ]
@@ -114,6 +115,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
         Controller {
           distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
           password = "plain:${backupUserAndPassword.password.string}"
+          permissions = [ ReadMetrics ]
         }
       }
     """.withFallback(

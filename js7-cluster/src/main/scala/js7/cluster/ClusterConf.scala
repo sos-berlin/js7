@@ -42,6 +42,12 @@ final case class ClusterConf(
     else
       Js7ServerId.Controller.Primary
 
+  def peerServerId: Js7ServerId =
+    if isBackup then
+      Js7ServerId.Controller.Primary
+    else
+      Js7ServerId.Controller.Backup
+
   def isTestClusterWatchHeartbeatLoss: Boolean =
     testClusterWatchHearbeatLoss.flatMap(sys.props.get).fold(false)(_.toBoolean)
 

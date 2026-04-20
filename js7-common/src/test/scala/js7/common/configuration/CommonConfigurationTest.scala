@@ -67,6 +67,7 @@ private object CommonConfigurationTest:
   private case class TestConf(configDirectory: Path, dataDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
   extends CommonConfiguration:
     val name = "CommonConfigurationTest"
+    def maybeJs7ServerId = None
 
   private def conf(args: String*): TestConf =
     val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(CommandLineArguments(

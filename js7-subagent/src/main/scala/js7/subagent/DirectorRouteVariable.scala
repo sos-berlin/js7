@@ -15,7 +15,7 @@ import scala.collection.mutable
 private final class DirectorRouteVariable:
   private val lock = AsyncLock()
   private var _toRoute: ToRoute = NoDirector
-  private val cache = mutable.Map.empty[WebServerBinding, (Route, Int)]
+  private val cache = mutable.Map.empty[WebServerBinding, (DirectorRoutes, Int)]
 
   def registeringRouteResource(toRoute: ToRoute): ResourceIO[Unit] =
     Resource.make(
@@ -32,7 +32,7 @@ private final class DirectorRouteVariable:
             _toRoute = NoDirector
             cache.clear())
 
-  def route(routeBinding: RouteBinding): IO[Route] =
+  def directorRoutes(routeBinding: RouteBinding): IO[DirectorRoutes] =
     lock.lock: /*readlock!*/
       IO.defer:
         cache.get(routeBinding.webServerBinding) match
@@ -46,7 +46,10 @@ private final class DirectorRouteVariable:
 
 
 object DirectorRouteVariable:
-  type ToRoute = RouteBinding => IO[Route]
+  type ToRoute = RouteBinding => IO[DirectorRoutes]
 
   private val NoDirector: ToRoute =
-    _ => IO.pure(complete(NoDirectorProblem))
+    _ => IO.pure:
+      DirectorRoutes(complete(NoDirectorProblem), None)
+
+  final case class DirectorRoutes(route: Route, directorMetricsRoute: Option[Route])

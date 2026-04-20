@@ -57,6 +57,7 @@ extends
   WebLogDirectives,
   ClusterNodeRouteBindings[ControllerState],
   ApiRoute,
+  ControllerMetricsRoute,
   TestRoute:
 
   import routeBinding.webServerBinding
@@ -66,7 +67,6 @@ extends
   protected val js7ServerId         = Some(controllerConfiguration.js7ServerId)
   protected val logDirectory        = controllerConfiguration.logDirectory
   protected val controllerId        = controllerConfiguration.controllerId
-  protected val config              = controllerConfiguration.config
   protected def commonConf          = controllerConfiguration
   protected val nodeId              = controllerConfiguration.clusterConf.ownId
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
@@ -87,6 +87,7 @@ extends
     mainRoute:
       pathPrefix(Segment):
         case "controller" => controllerRoute
+        case "metrics" => controllerMetricsRoute
         case "grafana" =>
           (path("dashboard") & get):
             // A service for the developer

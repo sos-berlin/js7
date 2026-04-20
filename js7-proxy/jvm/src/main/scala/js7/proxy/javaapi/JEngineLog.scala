@@ -31,6 +31,7 @@ final class JEngineLog(
           backupControllerApi.getNewLogLines(logLevel)
         case Js7ServerId.Subagent(subagentId) =>
           activeControllerApi.getNewLogLines(logLevel, subagentId = Some(subagentId))
+        case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
     .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
 
@@ -64,6 +65,7 @@ final class JEngineLog(
         case Js7ServerId.Subagent(subagentId) =>
           activeControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala,
             subagentId = Some(subagentId))
+        case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
 
   private[javaapi] def keyedLogLineStream(
     logLevel: LogLevel,
@@ -80,6 +82,7 @@ final class JEngineLog(
           case Js7ServerId.Subagent(subagentId) =>
             activeControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala,
               subagentId = Some(subagentId))
+          case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
 
   private def primaryControllerApi: HttpControllerApi =
     controllerApis.head

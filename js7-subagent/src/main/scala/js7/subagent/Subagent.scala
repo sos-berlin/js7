@@ -211,13 +211,16 @@ extends MainService, Service.StoppableByRequest:
       _.releaseEvents(eventId)
 
   def subagentId: Option[SubagentId] =
-    checkedDedicatedSubagent.toOption.map(_.subagentId)
+    maybeDedicatedSubagent.map(_.subagentId)
 
   def isDedicated: Boolean =
     dedicatedAllocated.isDefined
 
   private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
     dedicatedAllocated.checked.map(_.allocatedThing)
+
+  private[subagent] def maybeDedicatedSubagent: Option[DedicatedSubagent] =
+    dedicatedAllocated.toOption.map(_.allocatedThing)
 
   def suppressJournalLogging(suppressed: Boolean): Unit =
     journal.suppressLogging(suppressed)
@@ -259,7 +262,7 @@ object Subagent:
         subagentDeferred <- Deferred[IO, Subagent].toResource
         directorRouteVariable = new DirectorRouteVariable
         webServer <- SubagentWebServer.service(
-          subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)
+          subagentDeferred.get, directorRouteVariable.directorRoutes, sessionRegister, conf)
           (using actorSystem, ioRuntime)
         _ <- provideUriFile(conf, webServer.localHttpUri)
         // For BlockingInternalJob (thread-blocking Java jobs)

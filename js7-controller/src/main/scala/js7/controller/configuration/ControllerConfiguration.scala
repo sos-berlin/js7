@@ -41,6 +41,9 @@ extends BasicConfiguration, CommonConfiguration:
 
   export clusterConf.js7ServerId
 
+  override def maybeJs7ServerId: Some[Js7ServerId] =
+    Some(js7ServerId)
+
   override def maybeConfigDirectory: Some[Path] =
     Some(configDirectory)
 

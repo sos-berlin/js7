@@ -26,6 +26,9 @@ extends UnsignedSimpleItem:
 
   def path: SubagentId = id
 
+  inline def subagentId: SubagentId =
+    id
+
   def toInitialItemState: SubagentItemState =
     SubagentItemState.initial(this)
 

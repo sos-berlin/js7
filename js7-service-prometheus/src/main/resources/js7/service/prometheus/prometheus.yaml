@@ -1,0 +1,9 @@
+includeObjectNames:
+  #- "java.lang:type=Compilation"
+  - "java.lang:name=G1 *,type=GarbageCollector"
+  # There seems to be no MXBean for Serial Garbage Collector used for single-thread JVMs
+  - "java.lang:type=Memory"
+  - "java.lang:type=OperatingSystem"
+  - "java.lang:type=Runtime"
+  - "java.lang:type=Threading"
+  - "js7:name=*"

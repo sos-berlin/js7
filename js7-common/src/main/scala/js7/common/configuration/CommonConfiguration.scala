@@ -13,11 +13,14 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration.*
 import js7.common.internet.IP.StringToServerInetSocketAddress
 import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
+import js7.data.node.Js7ServerId
 
 /**
   * @author Joacim Zschimmer
   */
 trait CommonConfiguration extends WebServerBinding.HasLocalUris, BasicConfiguration:
+
+  def maybeJs7ServerId: Option[Js7ServerId]
 
   def config: Config
 

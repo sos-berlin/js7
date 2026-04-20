@@ -4,20 +4,25 @@ import cats.effect.IO
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import js7.base.catsutils.CatsEffectExtensions.orThrow
-import js7.base.configutils.Configs.*
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderPrompted
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Prompt
+import js7.tests.PrometheusMetricsTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -28,11 +33,18 @@ final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaT
     """
 
   override protected def agentConfig = config"""
-    js7.job.execution.signed-script-injection-allowed = on
-    """
+    js7.job.execution.signed-script-injection-allowed = true
+    js7.auth.subagents.BARE-SUBAGENT = "${toLocalSubagentId(agentPath)}'s PASSWORD"
+    """.withFallback(super.agentConfig)
 
-  protected val agentPaths = Seq(AgentPath("AGENT"))
-  protected val items = Nil
+  protected val bareSubagentId = SubagentId("BARE-SUBAGENT")
+  protected lazy val bareSubagentItem = SubagentItem(
+    bareSubagentId,
+    agentPath,
+    findFreeLocalUri())
+
+  protected val agentPaths = Seq(agentPath)
+  protected val items = Seq(bareSubagentItem)
 
   "Via PlatformMBeanServer" in:
     val workflow = Workflow.of:
@@ -52,14 +64,27 @@ final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaT
       //assert:
       //  beanServer.getAttribute(new ObjectName("js7:name=EngineState,*"), "EventTotal").asInstanceOf[Long] > 2
 
-  "Via /metrics web service" in :
-    val lines = controller.api.httpGetRawLinesStream("/metrics")
-      .orThrow
-      .flatMap:
-        _.map(_.utf8String)
-          .compile.toVector
-      .await(99.s)
-      assert(lines.exists(_.startsWith("js7_EngineState_OrderCount")))
+  "Via /metrics web service" in:
+    runSubagent(bareSubagentItem, suppressSignatureKeys = true): _ =>
+      val lines: Seq[String] =
+        fs2.Stream.force:
+          controller.api.httpGetRawLinesStream("/metrics").orThrow
+        .map(_.utf8String).compile.toVector.await(99.s)
+
+      lines.foreachWithBracket()((line, br) => logger.info(s"$br${line.trim}"))
+
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Controller/primary"}"""))
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Subagent:AGENT-0"}"""))
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Subagent:BARE-SUBAGENT"}"""))
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Controller/primary"}"""))
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Subagent:AGENT-0"}"""))
+      assert(lines.exists(_.startsWith:
+        """js7_EngineState_OrderCount{js7Server="Subagent:BARE-SUBAGENT"}"""))
 
   "/grafana/dashboard" in:
     val json = controller.api.httpGetJson("/grafana/dashboard")
@@ -70,3 +95,4 @@ final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaT
 
 object PrometheusMetricsTest:
   private val logger = Logger[this.type]
+  private val agentPath = AgentPath("AGENT")
