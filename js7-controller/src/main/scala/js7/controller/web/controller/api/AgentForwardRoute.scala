@@ -37,9 +37,9 @@ trait AgentForwardRoute extends ControllerRouteProvider:
               complete(Forbidden)
             else
               checkedIoRoute:
-                controllerState.map: checkedSubagentState =>
+                controllerState.map: checkedControllerState =>
                   for
-                    controllerState <- checkedSubagentState
+                    controllerState <- checkedControllerState
                     agentPath <- AgentPath.checked(agentPath)
                     agentRefState <- controllerState.keyTo(AgentRefState).checked(agentPath)
                     activeSubagentItem <-
@@ -48,11 +48,10 @@ trait AgentForwardRoute extends ControllerRouteProvider:
                     forwardToDirector(
                       Admission(
                         activeSubagentItem.uri,
-                        controllerConfiguration.config
-                          .optionAs[SecretString]:
-                            "js7.auth.agents." + ConfigUtil.joinPath(agentPath.string)
-                          .map:
-                            UserAndPassword(controllerConfiguration.controllerId.unsafeUserId, _)),
+                        controllerConfiguration.config.optionAs[SecretString]:
+                          "js7.auth.agents." + ConfigUtil.joinPath(agentPath.string)
+                        .map:
+                          UserAndPassword(controllerConfiguration.controllerId.unsafeUserId, _)),
                       controllerConfiguration.httpsConfig,
                       forwardUri = remainingUri,
-                      label = agentRefState.item.path.toString)
+                      label = agentPath.toString)

@@ -50,7 +50,10 @@ final class JEngineLog(
       .map(_.asJava)
       .asFlux
 
-  private[javaapi] def logSection_(logLevel: LogLevel, begin: Instant | LogLineKey, lines: OptionalLong)
+  private[javaapi] def logSection_(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    lines: OptionalLong)
   : fs2.Stream[IO, fs2.Chunk[Byte]] =
     fs2.Stream.force:
       serverId match

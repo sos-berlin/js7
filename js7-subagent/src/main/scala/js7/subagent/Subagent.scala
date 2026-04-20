@@ -5,6 +5,7 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.option.*
 import cats.syntax.traverse.*
+import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
@@ -234,7 +235,7 @@ object Subagent:
   def service(conf: SubagentConf, testWiring: TestWiring)
     (using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
-    import conf.config
+    given config: Config = conf.config
 
     given Scheduler = ioRuntime.scheduler
 
