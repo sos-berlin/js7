@@ -21,7 +21,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId}
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
 import js7.data_for_java.order.JFreshOrder
@@ -73,23 +73,23 @@ final class JControllerProxy private[proxy](
     asScala.currentState.clusterState
 
   /** @see [[keyedLogLineFlux]] for a simplified call. */
-  def engineLog(serverId: EngineServerId): JResource[JEngineLog] =
+  def engineLog(serverId: Js7ServerId): JResource[JEngineLog] =
     JResource(JEngineLog.resource(this, serverId))
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
+  def keyedLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
   : Flux[java.util.List[KeyedLogLine]] =
     keyedLogLineFlux_(serverId, logLevel, begin, lines)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
+  def keyedLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
   : Flux[java.util.List[KeyedLogLine]] =
     keyedLogLineFlux_(serverId, logLevel, key, lines)
 
   private def keyedLogLineFlux_(
-    serverId: EngineServerId,
+    serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
     lines: OptionalLong)
@@ -104,18 +104,18 @@ final class JControllerProxy private[proxy](
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
+  def rawLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     rawLogLineFlux_(serverId, logLevel, begin, lines)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def rawLogLineFlux(serverId: EngineServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
+  def rawLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
   : Flux[java.util.List[Array[Byte]]] =
     rawLogLineFlux_(serverId, logLevel, key, lines)
 
   private def rawLogLineFlux_(
-    serverId: EngineServerId,
+    serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
     lines: OptionalLong)

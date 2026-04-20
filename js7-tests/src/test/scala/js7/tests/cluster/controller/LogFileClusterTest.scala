@@ -12,7 +12,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.data.subagent.SubagentId
 import js7.proxy.javaapi.JControllerApi
 import js7.tests.testenv.ControllerClusterForScalaTest
@@ -29,18 +29,18 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
     withControllerAndBackup(): (primary, _, backup, _, _) =>
       primary.runController(): controller =>
         val admission = primary.controllerAdmission(controller.runningController)
-        getLog(admission, EngineServerId.primaryController).map: line =>
+        getLog(admission, Js7ServerId.primaryController).map: line =>
           assert(line.contains("TEST ONLY: PrimaryController, "))
         .await(99.s)
 
   "Backup Controller log" in :
     runControllerAndBackup(): (primary, primaryController, _, backup, backupController, _, _) =>
       val admission = backup.controllerAdmission(backupController.runningController)
-      getLog(admission, EngineServerId.primaryController).map: line =>
+      getLog(admission, Js7ServerId.primaryController).map: line =>
         assert(line.contains("TEST ONLY: BackupController, "))
       .await(99.s)
 
-  private def getLog(admission: Admission, serverId: EngineServerId): IO[String] =
+  private def getLog(admission: Admission, serverId: Js7ServerId): IO[String] =
     JControllerApi.run(admissions = admission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy

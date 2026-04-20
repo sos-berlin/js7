@@ -22,7 +22,7 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.web.serviceprovider.ServiceProviderRoute
 import js7.core.command.CommandMeta
 import js7.core.web.log.LogRoute
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
@@ -55,8 +55,8 @@ extends
   protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
-  protected val engineServerId = IO:
-    subagent.checkedDedicatedSubagent.map(o => EngineServerId.Subagent(o.subagentId))
+  protected val js7ServerId = IO:
+    subagent.checkedDedicatedSubagent.map(o => Js7ServerId.Subagent(o.subagentId))
   protected val logDirectory: Path = subagent.conf.logDirectory
   protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
   protected val eventWatch = subagent.journal.eventWatch

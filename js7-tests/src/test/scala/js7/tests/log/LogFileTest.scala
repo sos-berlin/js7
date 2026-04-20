@@ -11,7 +11,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.javaapi.JControllerApi
@@ -40,29 +40,29 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
   protected def items = Nil
 
   "Primary Controller log" in:
-    getLog(EngineServerId.primaryController).map: line =>
+    getLog(Js7ServerId.primaryController).map: line =>
       assert(line.contains("TEST ONLY: PrimaryController, "))
 
   "Backup Controller log" in:
-    getLog(EngineServerId.backupController).map: line =>
+    getLog(Js7ServerId.backupController).map: line =>
       assert(line.contains("TEST ONLY: PrimaryController, "))  // Because there is no backup
 
   "Director log" in:
-    getLog(EngineServerId.Subagent(subagentId)).map: line =>
+    getLog(Js7ServerId.Subagent(subagentId)).map: line =>
       assert(line.contains(s"TEST ONLY: $subagentId, "))
 
   "Bare Subagent log" in:
     controller.awaitNextKey[SubagentDedicated](bareSubagentId)
     sleep(1.s)
-    getLog(EngineServerId.Subagent(bareSubagentId)).map: line =>
+    getLog(Js7ServerId.Subagent(bareSubagentId)).map: line =>
       assert(line.contains(s"TEST ONLY: $bareSubagentId, "))
 
-  private def getLog(engineServerId: EngineServerId): IO[String] =
+  private def getLog(js7ServerId: Js7ServerId): IO[String] =
     JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
-            engineServerId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
+            js7ServerId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

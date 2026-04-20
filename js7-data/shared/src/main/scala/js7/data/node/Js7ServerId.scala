@@ -4,24 +4,24 @@ import js7.base.annotation.javaApi
 import js7.data.subagent.SubagentId
 import scala.annotation.static
 
-sealed trait EngineServerId
+sealed trait Js7ServerId
 
-object EngineServerId:
+object Js7ServerId:
 
   @javaApi @static
-  val primaryController: EngineServerId =
+  val primaryController: Js7ServerId =
     Controller.Primary
 
   @javaApi @static
-  val backupController: EngineServerId =
+  val backupController: Js7ServerId =
     Controller.Backup
 
   @javaApi
-  def subagent(subagentId: SubagentId): EngineServerId =
+  def subagent(subagentId: SubagentId): Js7ServerId =
     Subagent(subagentId)
 
 
-  sealed trait Controller extends EngineServerId:
+  sealed trait Controller extends Js7ServerId:
     def nodeId: NodeId
 
   object Controller:
@@ -34,7 +34,7 @@ object EngineServerId:
       override def toString = "BackupController"
 
 
-  final case class Subagent(subagentId: SubagentId) extends EngineServerId:
+  final case class Subagent(subagentId: SubagentId) extends Js7ServerId:
     override def toString = subagentId.toString
 
   object Subagent:

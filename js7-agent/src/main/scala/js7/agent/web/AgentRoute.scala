@@ -17,7 +17,7 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.subagent.SubagentSession
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Route
@@ -45,9 +45,9 @@ extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected val agentState = clusterNode.currentState
-  protected val engineServerId = agentState.map(_.flatMap:
+  protected val js7ServerId = agentState.map(_.flatMap:
     _.meta.clusterNodeIdToSubagentId(agentConfiguration.clusterConf.ownId)
-      .map(EngineServerId.Subagent(_)))
+      .map(Js7ServerId.Subagent(_)))
   protected def eventWatch = clusterNode.recoveredExtract.eventWatch
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem

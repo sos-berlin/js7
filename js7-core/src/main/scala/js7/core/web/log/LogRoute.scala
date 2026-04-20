@@ -32,7 +32,7 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.core.web.log.LogRoute.*
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -44,7 +44,7 @@ trait LogRoute extends RouteProvider:
 
   protected def ioRuntime: IORuntime
   protected def config: Config
-  protected def engineServerId: IO[Checked[EngineServerId]]
+  protected def js7ServerId: IO[Checked[Js7ServerId]]
   protected def logDirectory: Path
   protected def logDirectoryIndexRegister: LogDirectoryIndex.Register
 
@@ -70,8 +70,8 @@ trait LogRoute extends RouteProvider:
         pathPrefix("none"):
           // LogLevel.None returns a line for  testing
           completeIO:
-            engineServerId.mapmap: engineServerId =>
-              s"TEST ONLY: $engineServerId, ${operatingSystem.hostname}\n"
+            js7ServerId.mapmap: js7ServerId =>
+              s"TEST ONLY: $js7ServerId, ${operatingSystem.hostname}\n"
 
   private def fileRoute(logLevel: LogLevel, currentLogFile: Path): Route =
     path("raw"):

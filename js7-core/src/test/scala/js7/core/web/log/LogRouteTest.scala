@@ -22,7 +22,7 @@ import js7.common.pekkohttp.web.session.SimpleSession
 import js7.core.web.log.LogRoute
 import js7.core.web.log.LogRoute.stringToInstant
 import js7.core.web.test.RouteTester
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
@@ -40,7 +40,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
   protected val logDirectory = logFile.getParent
-  protected val engineServerId = IO.right(EngineServerId.primaryController)
+  protected val js7ServerId = IO.right(Js7ServerId.primaryController)
   protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
 
   override protected def config = config"""

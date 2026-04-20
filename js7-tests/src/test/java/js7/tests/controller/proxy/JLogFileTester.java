@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import js7.base.log.LogLevel;
 import js7.base.log.reader.KeyedLogLine;
-import js7.data.node.EngineServerId;
+import js7.data.node.Js7ServerId;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerProxy;
@@ -30,7 +30,7 @@ final class JLogFileTester {
         assertIsProxyThread(); // Due to JLogFileTest
         return proxy
             .keyedLogLineFlux(
-                EngineServerId.primaryController,
+                Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3),
                 OptionalLong.empty()/*special case for test*/)
@@ -44,7 +44,7 @@ final class JLogFileTester {
                 //Java 21: var lastKey = keyedLogLines.getLast().key();
                 var lastKey = keyedLogLines.get(keyedLogLines.size() - 1).key();
                 return proxy.keyedLogLineFlux(
-                        EngineServerId.primaryController,
+                        Js7ServerId.primaryController,
                         LogLevel.info(),
                         lastKey,
                         /*lines=*/OptionalLong.of(2))
@@ -72,7 +72,7 @@ final class JLogFileTester {
     static CompletableFuture<Long> prettyTestNonBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
             .keyedLogLineFlux(
-                EngineServerId.primaryController,
+                Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
                 /*lines=*/OptionalLong.empty()/*special case for test*/)
@@ -101,7 +101,7 @@ final class JLogFileTester {
     static CompletableFuture<Long> prettyTestBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
             .keyedLogLineFlux(
-                EngineServerId.primaryController,
+                Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
                 /*lines=*/OptionalLong.empty()/*special case for test*/)
@@ -121,7 +121,7 @@ final class JLogFileTester {
     static CompletableFuture<Long> testRawNonBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
             .rawLogLineFlux(
-                EngineServerId.primaryController,
+                Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
                 /*lines=*/OptionalLong.empty()/*special case for test*/)

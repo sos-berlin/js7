@@ -18,7 +18,7 @@ import js7.common.configuration.{BasicConfiguration, CommonConfiguration}
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
-import js7.data.node.EngineServerId
+import js7.data.node.Js7ServerId
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import org.apache.pekko.util.Timeout
@@ -39,7 +39,7 @@ final case class ControllerConfiguration(
   config: Config)
 extends BasicConfiguration, CommonConfiguration:
 
-  export clusterConf.engineServerId
+  export clusterConf.js7ServerId
 
   override def maybeConfigDirectory: Some[Path] =
     Some(configDirectory)
