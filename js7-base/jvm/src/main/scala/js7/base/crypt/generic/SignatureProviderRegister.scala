@@ -6,7 +6,7 @@ import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
 import js7.base.crypt.x509.{X509SignatureVerifier, X509Signer}
 import js7.base.crypt.{DocumentSigner, SignatureService, SignatureVerifier}
 import js7.base.log.Logger
-import js7.base.system.ServiceProviders.findServices
+import js7.base.system.JavaServiceProviders.findJavaServices
 import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.RichIterable
 
@@ -23,7 +23,7 @@ final class SignatureProviderRegister(clock: WallClock, config: Config):
       SillySigner)
 
   private lazy val providers: Seq[SignatureService] =
-    findServices[SignatureService]: (logLine, _) =>
+    findJavaServices[SignatureService]: (logLine, _) =>
       logger.debug(logLine)
 
   lazy val nameToSignatureVerifierProvider: Map[String, SignatureVerifier.Provider] =

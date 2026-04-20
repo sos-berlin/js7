@@ -3,7 +3,7 @@ package js7.common.web.serviceprovider
 import com.typesafe.config.Config
 import js7.base.auth.Permission
 import js7.base.log.Logger
-import js7.base.system.ServiceProviders.findServices
+import js7.base.system.JavaServiceProviders.findJavaServices
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
@@ -27,7 +27,7 @@ trait ServiceProviderRoute:
   protected def commonConf: CommonConfiguration
 
   private lazy val services: Seq[RouteService] =
-    findServices[RouteService]()
+    findJavaServices[RouteService]
 
   private val lazyServiceProviderRoute = Lazy.blocking[Route]:
     val servicePathRoutes: Seq[(RouteService, String, Route, Set[Permission])] =

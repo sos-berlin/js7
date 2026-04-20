@@ -6,11 +6,20 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
-object ServiceProviders:
+object JavaServiceProviders:
 
   private val logger = Logger[this.type]
 
-  def findServices[A](callback: (=> String, Option[A]) => Unit = defaultCallback[A])
+  def findJavaService[A](using A: ClassTag[A]): Option[A] =
+    val services = findJavaServices[A]
+    if services.sizeIs > 1 then logger.error:
+      s"Found multiple service providers for ${A.runtimeClass.simpleScalaName}: $services"
+    services.headOption
+
+  inline def findJavaServices[A](using A: ClassTag[A]): Seq[A] =
+    findJavaServices[A]()
+
+  def findJavaServices[A](callback: (=> String, Option[A]) => Unit = defaultCallback[A])
     (using A: ClassTag[A])
   : Seq[A] =
     val interface = A.runtimeClass.asInstanceOf[Class[A]]
