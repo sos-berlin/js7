@@ -390,6 +390,15 @@ object ByteSequence:
     def contains(byte: Byte): Boolean =
       typeClassInstance.contains(self, byte)
 
+    inline def vectorIndexOf(byte: Byte): Int =
+      indexOf(byte)
+
+    inline def vectorIndexOf(byte: Byte, from: Int): Int =
+      indexOf(byte, from)
+
+    inline def vectorIndexOf(byte: Byte, from: Int, until: Int): Int =
+      indexOf(byte, from, until)
+
     def indexOf(byte: Byte): Int =
       typeClassInstance.indexOf(self, byte)
 
