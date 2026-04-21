@@ -238,8 +238,8 @@ services:
       - "-J-Xmx256m"
      #- "--processor-limit=1"
       - "--cluster-watch-id=PROXY"
-      - --cluster-node-uri=https://js7-controller:4443"
-      - --cluster-node-uri=https://js7-backup-controller:4443
+      - "--cluster-node-uri=https://js7-controller:4443"
+      - "--cluster-node-uri=https://js7-backup-controller:4443"
     working_dir: /home/js7
     environment:
       - TZ=${TZ-}
