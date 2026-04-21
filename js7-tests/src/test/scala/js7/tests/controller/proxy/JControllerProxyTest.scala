@@ -89,7 +89,7 @@ final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScala
     val admissions = List(JAdmission.of("http://127.0.0.1:0", JCredentials.noCredentials)).asJava
     autoClosing(new JProxyContext) { context =>
       val api = context.newControllerApi(admissions, JHttpsConfig.empty)
-      val future = api.startProxy()
+      val future = api.startProxyAwaitCoupling()
       Try(future.get(2, SECONDS)) match
         case Failure(_: TimeoutException) =>
         case o => fail(s"startProxy must not complete: $o")

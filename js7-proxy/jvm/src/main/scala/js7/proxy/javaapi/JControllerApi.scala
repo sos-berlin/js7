@@ -100,6 +100,17 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       body(jControllerProxy)
 
   @Nonnull
+  def startProxyAwaitCoupling(): CompletableFuture[JControllerProxy] =
+    startProxyAwaitCoupling(new JStandardEventBus[ProxyEvent])
+
+  @Nonnull
+  def startProxyAwaitCoupling(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent])
+  : CompletableFuture[JControllerProxy] =
+    startProxy(proxyEventBus, new JControllerEventBus)
+      .thenCompose: jControllerProxy =>
+        jControllerProxy.untilCoupled.thenApply(_ => jControllerProxy)
+
+  @Nonnull
   def startProxy(): CompletableFuture[JControllerProxy] =
     startProxy(new JStandardEventBus[ProxyEvent])
 
@@ -107,6 +118,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   def startProxy(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent])
   : CompletableFuture[JControllerProxy] =
     startProxy(proxyEventBus, new JControllerEventBus)
+      .thenCompose: jControllerProxy =>
+        jControllerProxy.untilCoupled.thenApply(_ => jControllerProxy)
 
   /** Starts a `JControllerProxy`.
     * After use, stop it with `JControllerProxy.stop()`. */

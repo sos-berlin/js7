@@ -24,24 +24,21 @@ private final class JournaledProxyService[S <: SnapshotableState[S]] private[Jou
   (using S: SnapshotableState.Companion[S])
 extends Service.StoppableByRequest, JournaledProxy[S]:
 
+  private val whenStateFetched = Deferred.unsafe[IO, Unit]
   @volatile private var _currentState: S | Null = null
 
   protected def start =
-    Deferred[IO, Unit].flatMap: whenStateFetched =>
-      supervisor
-        .supervise:
+    startService:
+      untilStopRequested.race:
+        supervisor.supervise:
           readAndPublishUnderlyingStream(whenStateFetched)
-        .flatMap: fiber =>
-          logger
-            .debugIO("whenStateFetched"):
-              // A started JournalProxy immediately provides `currentState: S`.
-              // Wait until initial S has been read. This may take a long time !!!
-              whenStateFetched.get
-            .productR:
-              startService:
-                untilStopRequested
-                  .guarantee:
-                    fiber.cancel
+            .background.surround:
+              logger.debugIO("whenStateFetched"):
+                // A started JournalProxy immediately provides `currentState: S`.
+                // Wait until initial S has been read. This may take a long time !!!
+                whenStateFetched.get *>
+                  untilStopRequested
+      .void
 
   private def readAndPublishUnderlyingStream(whenStateFetched: Deferred[IO, Unit]): IO[Unit] =
     logger.traceIO:
@@ -87,6 +84,9 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
       _.filter(predicate)
         .head.compile.last
         .map(_.getOrElse(throw new EndOfEventStreamException))
+
+  def untilCoupled: IO[Unit] =
+    whenStateFetched.get
 
   def currentState: S =
     _currentState.notNullOr:

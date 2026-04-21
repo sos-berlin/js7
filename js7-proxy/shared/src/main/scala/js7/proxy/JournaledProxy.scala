@@ -32,6 +32,8 @@ import scala.util.chaining.scalaUtilChainingOps
 
 trait JournaledProxy[S <: SnapshotableState[S]]:
 
+  def untilCoupled: IO[Unit]
+
   def currentState: S
 
   def name: String

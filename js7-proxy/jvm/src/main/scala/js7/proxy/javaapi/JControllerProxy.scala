@@ -49,6 +49,11 @@ final class JControllerProxy private[proxy](
 
   private val prefetch = api.config.getInt("js7.web.server.prefetch")
 
+  @Nonnull
+  def untilCoupled: CompletableFuture[Void] =
+    runIO:
+      asScala.untilCoupled.as(Void)
+
   /** Listen to the already running event stream. */
   @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =

@@ -38,7 +38,7 @@ implements AutoCloseable
         JHttpsConfig httpsConfig)
         throws InterruptedException, ExecutionException, TimeoutException {
         api = context.newControllerApi(admissions, httpsConfig);
-        proxy = api.startProxy().get(99, SECONDS);
+        proxy = api.startProxyAwaitCoupling().get(99, SECONDS);
     }
 
     public void close() {

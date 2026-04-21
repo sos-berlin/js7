@@ -85,8 +85,9 @@ final class JFileWatchTester
     }
 
     static void testFileWatchApi(JControllerApi api) throws Exception {
-        JControllerProxy proxy = api.startProxy().get(99, SECONDS);
+        JControllerProxy proxy = api.startProxyAwaitCoupling().get(99, SECONDS);
         try {
+            proxy.untilCoupled().get();
             List<JFileWatch> fileWatches = workflowToOrderWatchPaths(proxy.currentState(), workflowPath);
             JFileWatch expected = proxy.currentState().pathToFileWatch().get(fileWatchPath);
             assertThat(fileWatches, equalTo(asList(expected)));

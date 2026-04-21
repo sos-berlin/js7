@@ -121,6 +121,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         logger.info(logLine.toString)
         // TODO Await Event
         api.controllerProxy().blockingUse(99.s): proxy =>
+          proxy.untilCoupled.await(99.s)
           awaitAndAssert(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
           assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
             workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
@@ -155,6 +156,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
           .await(199.s).orThrow
         logger.info(logLine.toString)
         api.controllerProxy().blockingUse(99.s): proxy =>
+          proxy.untilCoupled.await(99.s)
           waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
           assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
 
