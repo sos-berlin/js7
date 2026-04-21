@@ -13,24 +13,20 @@ import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
-import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Config
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
-import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
+import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
-import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -60,15 +56,11 @@ import scala.jdk.OptionConverters.*
 final class JControllerApi(val asScala: ControllerApi, val config: Config)
   (using ioRuntime: IORuntime):
 
-  private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
   protected val prefetch = config.getInt("js7.web.client.prefetch")
 
   def stop(): CompletableFuture[Void] =
     runIO:
-      stopClusterWatch_
-        .productR:
-          asScala.stop
-        .as(Void)
+      asScala.stop.as(Void)
 
   /** Fetch event stream from Controller. */
   @Nonnull
@@ -395,7 +387,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
     runIO:
-      startClusterWatch_(clusterWatchId, _ => ())
+      asScala.startClusterWatch(clusterWatchId, _ => (), config)
         .flatTap(_.untilStopped)
         .as(Void)
 
@@ -405,45 +397,18 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     runIO:
-      startClusterWatch_(clusterWatchId, onUndecidableClusterNodeLoss)
-
-  private def startClusterWatch_(
-    clusterWatchId: ClusterWatchId,
-    onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
-  : IO[ClusterWatchService] =
-    clusterWatchService
-      .update:
-        case Some(service) => IO.some(service)
-        case None =>
-          ClusterWatchService
-            .service(clusterWatchId, asScala.apisResource, config,
-              onUndecidableClusterNodeLoss =
-                _.foldMap: problem =>
-                  IO(onUndecidableClusterNodeLoss.accept(problem)))
-            .toAllocated
-            .map(Some(_))
-      .map(_.get.allocatedThing)
+      asScala.startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss.accept, config)
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
     runIO:
-      stopClusterWatch_.as(Void)
-
-  private def stopClusterWatch_ : IO[Unit] =
-    clusterWatchService
-      .update(_.fold(IO.none)(_.release.as(None)))
-      .void
+      asScala.stopClusterWatch.as(Void)
 
   @javaApi
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
   : CompletableFuture[VEither[Problem, Void]] =
     runIO:
-      clusterWatchService.value
-        .flatMap:
-          case None =>
-            IO.left(Problem("No ClusterWatchService"))
-          case Some(allo) =>
-            allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
+      asScala.manuallyConfirmNodeLoss(lostNodeId, confirmer)
         .map(_.toVoidVavr)
 
   private def runIO[A](io: IO[A])(using name: sourcecode.Name): CompletableFuture[A] =

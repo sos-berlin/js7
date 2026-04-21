@@ -1,8 +1,12 @@
 package js7.proxy
 
-import cats.effect.{IO, Resource, ResourceIO}
+
+import cats.effect.kernel.Resource
+import cats.effect.{IO, ResourceIO}
+import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Json, JsonObject}
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -12,17 +16,21 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.monixutils.RefCountedResource
-import js7.base.problem.Checked
+import js7.base.monixutils.{AsyncVariable, RefCountedResource}
+import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
+import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.controller.client.HttpControllerApi
-import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ClusterAppointNodes, ReleaseEvents}
 import js7.data.controller.ControllerState.*
@@ -52,11 +60,14 @@ extends ControllerApiWithHttp:
       apisResource,
       proxyConf.recouplingStreamReaderConf.delayConf))
 
+  private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
+
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
 
   def stop: IO[Unit] =
-    stop()
+    stopClusterWatch.guarantee:
+      stop()
 
   def stop(dontLogout: Boolean = true): IO[Unit] =
     logger.debugIO:
@@ -158,6 +169,37 @@ extends ControllerApiWithHttp:
     logger.debugIO(s"executeCommand ${command.toShortString}"):
       untilReachable(_.executeCommand(command))
 
+  def startClusterWatch(
+    clusterWatchId: ClusterWatchId,
+    onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
+    config: Config)
+  : IO[ClusterWatchService] =
+    clusterWatchService
+      .update:
+        case Some(service) => IO.some(service)
+        case None =>
+          ClusterWatchService
+            .service(clusterWatchId, apisResource, config,
+              onUndecidableClusterNodeLoss =
+                _.foldMap: problem =>
+                  IO(onUndecidableClusterNodeLoss(problem)))
+            .toAllocated
+            .map(Some(_))
+      .map(_.get.allocatedThing)
+
+  def stopClusterWatch: IO[Unit] =
+    clusterWatchService
+      .update(_.fold(IO.none)(_.release.as(None)))
+      .void
+
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
+    clusterWatchService.value
+      .flatMap:
+        case None =>
+          IO.left(Problem("No ClusterWatchService"))
+        case Some(allo) =>
+          allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
+
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
   //  logger.debugIO("executeAgentCommand", command.toShortString)(
@@ -181,10 +223,13 @@ extends ControllerApiWithHttp:
       if !failWhenUnreachable then
         untilReachable1(body)
       else
-        liftProblem:
-          apiResource.use: api =>
-            api.loginAndRetryIfSessionLost:
-              body(api)
+        useApi(body)
+
+  private def useApi[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
+    liftProblem:
+      apiResource.use: api =>
+        api.loginAndRetryIfSessionLost:
+          body(api)
 
   private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
     IO.defer:
