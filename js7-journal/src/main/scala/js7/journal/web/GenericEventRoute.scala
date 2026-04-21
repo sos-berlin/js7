@@ -23,7 +23,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
 import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringSporadic
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{acceptOne, completeWithCheckedStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
@@ -91,7 +91,7 @@ trait GenericEventRoute extends RouteProvider:
     final lazy val route: Route =
       get:
         pathEnd:
-          accept(`application/x-ndjson`):
+          acceptOne(`application/x-ndjson`):
             Route.seal:
               authorizedUser(ValidUserPermission): user =>
                 val waitingSince = !eventWatch.whenStarted.isCompleted ? now

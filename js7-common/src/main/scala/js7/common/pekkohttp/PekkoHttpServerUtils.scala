@@ -22,7 +22,7 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaRange, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
@@ -112,21 +112,27 @@ object PekkoHttpServerUtils:
   //  }
   //}
 
-  def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive0 =
+  def acceptOne(mediaType: MediaType): Directive0 =
+    mapInnerRoute: inner =>
+      accept(mediaType): _ =>
+        inner
+
+  def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive1[Seq[MediaRange]] =
     accept(mediaTypes.toSet + mediaType)
 
-  def accept(mediaTypes: Set[MediaType]): Directive0 =
-    mapInnerRoute { inner =>
-      headerValueByType(Accept):
-        case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
-          inner
-        case _ =>
-          reject(UnacceptedResponseContentTypeRejection(
-            mediaTypes.collect[ContentNegotiator.Alternative] {
-              case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
-              case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
-            }))
-    }
+  def accept(mediaTypes: Set[MediaType]): Directive1[Seq[MediaRange]] =
+    new Directive1[Seq[MediaRange]]:
+      def tapply(inner: Tuple1[Seq[MediaRange]] => Route) =
+        headerValueByType(Accept):
+          case Accept(mediaRanges)
+            if mediaRanges.exists(o => mediaTypes exists o.matches) =>
+            inner(Tuple1(mediaRanges))
+          case _ =>
+            reject:
+              UnacceptedResponseContentTypeRejection:
+                mediaTypes.collect[ContentNegotiator.Alternative]:
+                  case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
+                  case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
 
   /** Defer Route's execution until the request comes in.
     *
@@ -311,7 +317,7 @@ object PekkoHttpServerUtils:
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : Route =
-    accept(contentType.mediaType):
+    accept(contentType.mediaType): _ =>
       ioRoute:
         completeWithIOStream(contentType)(stream)
 

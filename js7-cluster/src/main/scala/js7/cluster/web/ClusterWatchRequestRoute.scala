@@ -12,7 +12,7 @@ import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringSporadic
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{acceptOne, completeWithStream}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.cluster.{ClusterState, ClusterWatchRequest}
@@ -34,7 +34,7 @@ trait ClusterWatchRequestRoute extends RouteProvider:
 
   protected final def clusterWatchMessageRoute(userId: UserId): Route =
     Route.seal:
-      accept(`application/x-ndjson`):
+      acceptOne(`application/x-ndjson`):
         parameter("keepAlive".as[FiniteDuration]): keepAlive =>
           completeWithStream(`application/x-ndjson`):
             clusterWatchRequestStream

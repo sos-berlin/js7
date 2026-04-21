@@ -93,7 +93,7 @@ extends
             // A service for the developer
             seal:
               if GrafanaDashbboardJson.exists then
-                accept(`application/json`, `text/plain`):
+                accept(`application/json`, `text/plain`): _ =>
                   complete:
                     HttpEntity.Strict(`application/json`, GrafanaDashbboardJson.readAs[ByteString])
               else
