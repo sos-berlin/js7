@@ -52,23 +52,20 @@ final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaT
       //assert:
       //  beanServer.getAttribute(new ObjectName("js7:name=EngineState,*"), "EventTotal").asInstanceOf[Long] > 2
 
-  "Via /metrics web service" in:
-      val lines = controller.api.httpGetRawLinesStream("/metrics")
-        .orThrow
-        .flatMap:
-          _.map(_.utf8String)
-          .compile.toVector
-        .await(99.s)
-      assert(lines.exists(_.startsWith("js7_EngineState_OrderCount")))
-
-  "/grafana/dashboard" in:
-    val lines = controller.api.httpGetRawLinesStream("/grafana/dashboard")
+  "Via /metrics web service" in :
+    val lines = controller.api.httpGetRawLinesStream("/metrics")
       .orThrow
       .flatMap:
         _.map(_.utf8String)
           .compile.toVector
       .await(99.s)
-    assert(lines.head.startsWith("{"))
+      assert(lines.exists(_.startsWith("js7_EngineState_OrderCount")))
+
+  "/grafana/dashboard" in:
+    val json = controller.api.httpGetJson("/grafana/dashboard")
+      .orThrow
+      .await(99.s)
+    assert(json.startsWith("{"))
 
 
 object PrometheusMetricsTest:

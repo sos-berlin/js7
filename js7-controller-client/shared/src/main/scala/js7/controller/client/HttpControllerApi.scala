@@ -114,6 +114,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
           + encodeQuery(queries*),
           dontLog = true)
 
+  @TestOnly
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
       httpClient.getTextAsRawLines(baseUri /? uriTail)

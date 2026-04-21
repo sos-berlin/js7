@@ -3,14 +3,13 @@ package js7.controller.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
-import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.log.reader.LogDirectoryIndex
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
-import js7.common.pekkohttp.PekkoHttpServerUtils.{passIf, pathSegment}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, passIf, pathSegment}
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -29,7 +28,7 @@ import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpEntity
-import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
@@ -93,8 +92,9 @@ extends
             // A service for the developer
             seal:
               if GrafanaDashbboardJson.exists then
-                complete:
-                  HttpEntity.Strict(`application/json`, GrafanaDashbboardJson.readAs[ByteString])
+                accept(`application/json`, `text/plain`):
+                  complete:
+                    HttpEntity.Strict(`application/json`, GrafanaDashbboardJson.readAs[ByteString])
               else
                 complete(NotFound, "No Grafana dashboard here")
         case _ => reject
