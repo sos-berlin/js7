@@ -112,15 +112,32 @@ object PekkoHttpServerUtils:
   //  }
   //}
 
-  def acceptOne(mediaType: MediaType): Directive0 =
+  type ContentOrMediaType = ContentType | MediaType.WithOpenCharset
+
+  def respondWithContentType(offer: ContentOrMediaType, more: (ContentOrMediaType)*)
+  : Directive1[ContentType] =
+    respondWithContentType(offer :: more.toList)
+
+  def respondWithContentType(offer: List[ContentOrMediaType]): Directive1[ContentType] =
+    val alternatives = offer.map:
+      case o: ContentType => ContentNegotiator.Alternative.ContentType(o)
+      case o: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(o)
+    new Directive1[ContentType]:
+      def tapply(inner: Tuple1[ContentType] => Route) =
+        extractRequest: request =>
+          ContentNegotiator(request.headers).pickContentType(alternatives) match
+            case None => reject(UnacceptedResponseContentTypeRejection(alternatives.toSet))
+            case Some(contentType) => inner(Tuple1(contentType))
+
+  def respondWithMediaType(mediaType: MediaType): Directive0 =
     mapInnerRoute: inner =>
-      accept(mediaType): _ =>
+      respondWithMediaTypes(mediaType): _ =>
         inner
 
-  def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive1[Seq[MediaRange]] =
-    accept(mediaTypes.toSet + mediaType)
+  private def respondWithMediaTypes(mediaType: MediaType, mediaTypes: MediaType*): Directive1[Seq[MediaRange]] =
+    respondWithMediaTypes(mediaTypes.toSet + mediaType)
 
-  def accept(mediaTypes: Set[MediaType]): Directive1[Seq[MediaRange]] =
+  private def respondWithMediaTypes(mediaTypes: Set[MediaType]): Directive1[Seq[MediaRange]] =
     new Directive1[Seq[MediaRange]]:
       def tapply(inner: Tuple1[Seq[MediaRange]] => Route) =
         headerValueByType(Accept):
@@ -317,7 +334,7 @@ object PekkoHttpServerUtils:
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : Route =
-    accept(contentType.mediaType): _ =>
+    respondWithMediaType(contentType.mediaType):
       ioRoute:
         completeWithIOStream(contentType)(stream)
 

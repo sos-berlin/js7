@@ -13,7 +13,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.encodeJsonAndRechunkToByteStringBuffered
-import js7.common.pekkohttp.PekkoHttpServerUtils.{acceptOne, completeWithCheckedStream, completeWithIOStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithCheckedStream, completeWithIOStream, respondWithMediaType}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -59,7 +59,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
         complete(SnapshotForUnknownEventIdProblem(eventId))
 
       case Some(stream) =>
-        acceptOne(`application/x-ndjson`):
+        respondWithMediaType(`application/x-ndjson`):
           ioRoute:
             completeWithIOStream(`application/x-ndjson`):
               stream
