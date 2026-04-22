@@ -1,6 +1,5 @@
 package js7.agent.web.views
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentRouteProvider
@@ -8,7 +7,6 @@ import js7.base.BuildInfo
 import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
 import js7.common.pekkohttp.CirceJsonSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.system.JavaInformations.javaInformation
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import org.apache.pekko.http.scaladsl.model.headers.`Cache-Control`
@@ -35,5 +33,5 @@ trait RootWebService extends AgentRouteProvider:
     pathEnd:
       get:
         respondWithHeader(`Cache-Control`(`max-age`(0))):
-          completeIO:
-            IO(agentOverview())
+          complete:
+            agentOverview()

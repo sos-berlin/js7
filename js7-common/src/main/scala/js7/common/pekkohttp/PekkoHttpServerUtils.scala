@@ -128,6 +128,14 @@ object PekkoHttpServerUtils:
             }))
     }
 
+  /** Defer Route's execution until the request comes in.
+    *
+    * `route` is not precomputed
+    */
+  // NOT TESTED
+  private def deferRoute(route: => Route): Route =
+    requestContext => route(requestContext)
+
   /**
     * Passes x iff argument is Some(x).
     */
