@@ -56,7 +56,7 @@ trait LogRoute extends RouteProvider:
   private lazy val currentDebugLogFilename = config.getString("js7.log.debug.file")
 
   lazy val logRoute: Route =
-    authorizedUser(ValidUserPermission): _ =>
+    authorized(ValidUserPermission):
       pathEnd:
         seal:
           streamFile(logDirectory / currentInfoLogFilename, growing = true)

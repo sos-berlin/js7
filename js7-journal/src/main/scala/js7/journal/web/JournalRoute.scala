@@ -45,7 +45,7 @@ trait JournalRoute extends RouteProvider:
     get:
       pathEnd:
         handleExceptions(exceptionHandler):
-          authorizedUser(ValidUserPermission): _ =>
+          authorized(ValidUserPermission):
             parameter(
               "file".as[EventId].?,
               "position".as[Long].?,

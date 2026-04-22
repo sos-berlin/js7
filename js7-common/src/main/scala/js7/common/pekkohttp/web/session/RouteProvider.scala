@@ -19,8 +19,8 @@ import js7.common.pekkohttp.web.session.RouteProvider.*
 import js7.data.problems.InvalidLoginProblem
 import org.apache.pekko.http.scaladsl.model.StatusCode
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractUri, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
-import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route}
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractUri, mapInnerRoute, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
+import org.apache.pekko.http.scaladsl.server.{Directive, Directive0, Directive1, Route}
 
 /**
   * @author Joacim Zschimmer
@@ -41,10 +41,19 @@ trait RouteProvider extends ExceptionHandling:
 
   private implicit def implicitIORuntime: IORuntime = ioRuntime
 
+  protected final def authorized(requiredPermission: Permission): Directive0 =
+    authorized(Set(requiredPermission))
+
+  protected final def authorized(requiredPermissions: Set[Permission]): Directive0 =
+    mapInnerRoute: inner =>
+      authorizedUser(requiredPermissions): _ =>
+        inner
+
   protected final def authorizedUser(requiredPermission: Permission): Directive1[SimpleUser] =
     authorizedUser(Set(requiredPermission))
 
-  protected final def authorizedUser(requiredPermissions: Set[Permission] = Set.empty): Directive1[SimpleUser] =
+  protected final def authorizedUser(requiredPermissions: Set[Permission])
+  : Directive1[SimpleUser] =
     new Directive[Tuple1[SimpleUser]]:
       def tapply(inner: Tuple1[SimpleUser] => Route) =
         maybeSession(requiredPermissions):

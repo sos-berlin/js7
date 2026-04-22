@@ -41,7 +41,7 @@ trait ServiceProviderRoute:
     combineRoutes:
       servicePathRoutes.map: (_, path, route, permissions) =>
         pathSegments(path):
-          authorizedUser(permissions): _ =>
+          authorized(permissions):
             route
 
   /** Routes provided by a Java service. */

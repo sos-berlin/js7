@@ -29,7 +29,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
   private given IORuntime = ioRuntime
 
   protected final lazy val agentForwardRoute: Route =
-    authorizedUser(ValidUserPermission): _ =>
+    authorized(ValidUserPermission):
       get:
         pathPrefix(Segment): agentPath =>
           rawPathPrefix(PathMatchers.Remaining): remainingUri =>

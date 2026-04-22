@@ -39,12 +39,10 @@ trait SnapshotRoute extends ControllerRouteProvider:
   final lazy val snapshotRoute = filteredSnapshotRoute(identity)
 
   final def filteredSnapshotRoute(filter: SnapshotFilter): Route =
-    get:
-      authorizedUser(ValidUserPermission): _ =>
-        pathEndOrSingleSlash:
-          parameter("eventId".as[Long].?):
-            case None => currentSnapshot(filter)
-            case Some(eventId) => historicSnapshot(eventId)
+    (authorized(ValidUserPermission) & get & pathEndOrSingleSlash):
+      parameter("eventId".as[Long].?):
+        case None => currentSnapshot(filter)
+        case Some(eventId) => historicSnapshot(eventId)
 
   private def currentSnapshot(filter: SnapshotFilter)(using IORuntime): Route =
     given Encoder[Any] = ControllerState.snapshotObjectJsonCodec

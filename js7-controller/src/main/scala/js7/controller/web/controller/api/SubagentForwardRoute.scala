@@ -31,7 +31,7 @@ trait SubagentForwardRoute extends ControllerRouteProvider:
   private given ActorSystem = actorSystem
 
   protected final lazy val subagentForwardRoute: Route =
-    authorizedUser(ValidUserPermission): _ =>
+    authorized(ValidUserPermission):
       (get & pathPrefix(Segment)): subagentId =>
         checkedIoRoute:
           controllerState.map: checkedControllerState =>

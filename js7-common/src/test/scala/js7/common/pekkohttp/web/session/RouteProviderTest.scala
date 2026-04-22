@@ -69,7 +69,7 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
 
   private val route = Route.seal(
     path("authorizedUser") {
-      authorizedUser() { user =>
+      authorizedUser(requiredPermissions = Set.empty) { user =>
         complete("authorizedUser=" + user.id.string)
       }
     } ~

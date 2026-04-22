@@ -43,7 +43,7 @@ trait SessionRoute extends RouteProvider:
                   case checked =>
                     complete(checked)
       ~ get:
-        authorizedUser(ReadInternalsPermission): _ =>
+        authorized(ReadInternalsPermission):
           completeIO:
             sessionRegister.sessions.map(_.sortBy(_.sessionNumber))
 
