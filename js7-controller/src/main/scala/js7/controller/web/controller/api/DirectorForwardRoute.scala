@@ -3,7 +3,7 @@ package js7.controller.web.controller.api
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.agent.client.AgentClient
-import js7.base.auth.{Admission, SessionToken}
+import js7.base.auth.Admission
 import js7.base.io.https.HttpsConfig
 import js7.common.http.PekkoHttpUtils.RichPekkoUri
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
@@ -30,7 +30,7 @@ object DirectorForwardRoute:
           var path = pekkoUri.path ?/ "agent" / "api"
           subagentId.foreach: subagentId =>
             path = path / "subagent-forward" / subagentId.string
-          given IO[Option[SessionToken]] = IO(agentClient.sessionToken)
+          import agentClient.implicitSessionToken
           agentClient.login() *>
             agentClient.forward(
               request,

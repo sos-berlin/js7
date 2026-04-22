@@ -6,7 +6,7 @@ import com.typesafe.config.ConfigUtil
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.web.common.AgentRouteProvider
-import js7.base.auth.{Admission, SessionToken, UserAndPassword, ValidUserPermission}
+import js7.base.auth.{Admission, UserAndPassword, ValidUserPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
@@ -62,7 +62,7 @@ trait SubagentForwardRoute extends AgentRouteProvider:
         HttpSubagentApi.resource(
           admission, agentConfiguration.httpsConfig, name = subagentId.string
         ).use: subagentApi =>
-          given IO[Option[SessionToken]] = IO(subagentApi.sessionToken)
+          import subagentApi.implicitSessionToken
           val pekkoUri = admission.uri.asPekko
           subagentApi.login() *>
             subagentApi.forward(
