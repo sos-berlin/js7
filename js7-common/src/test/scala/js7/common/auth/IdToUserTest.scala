@@ -49,8 +49,8 @@ final class IdToUserTest extends OurTestSuite:
             password = "plain:PLAIN-PASSWORD"
           }
           D {
-            password = "plain:PLAIN-PASSWORD"
             distinguished-names = [ "CN=IdToUserTest", "CN=D" ]
+            password = "plain:PLAIN-PASSWORD"
           }
           E1 {
             distinguished-names = [ "CN=E" ]

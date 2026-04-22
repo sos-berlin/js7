@@ -78,12 +78,12 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
           js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
           js7.auth.users {
             Controller {
-              password = "plain:PRIMARY-CONTROLLER-PASSWORD"
               distinguished-names = [ "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh" ]
+              password = "plain:PRIMARY-CONTROLLER-PASSWORD"
             }
             TEST {
-              password = "plain:TEST-PASSWORD"
               distinguished-names = [ "$dn" ]
+              password = "plain:TEST-PASSWORD"
             }
             "${otherUserAndPassword.userId.string}" {
               password = "plain:${otherUserAndPassword.password.string}"
@@ -93,8 +93,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
         extraDistringuishedNameUserAndPassword.map(uw => config"""
           js7.auth.users {
             "${uw.userId.string}" {
-              password = "plain:${uw.password.string}"
               distinguished-names = [ "$dn" ]
+              password = "plain:${uw.password.string}"
             }
           }""") ++
         (!controllerHttpsMutual ? config"""
@@ -112,8 +112,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
       js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
       js7.auth.users {
         Controller {
-          password = "plain:${backupUserAndPassword.password.string}"
           distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
+          password = "plain:${backupUserAndPassword.password.string}"
         }
       }
     """.withFallback(

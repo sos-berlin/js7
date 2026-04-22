@@ -73,11 +73,11 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
     privateConf ++= s"""
      |js7.auth.users {
      |  Controller {
-     |    password = ${quoteString("plain:" + controllerPassword.string)}
      |    distinguished-names = [
      |      "CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh",
      |      "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
      |    ]
+     |    password = ${quoteString("plain:" + controllerPassword.string)}
      |  }
      |}
      |js7.web.server.auth.https-client-authentication = $mutualHttps
