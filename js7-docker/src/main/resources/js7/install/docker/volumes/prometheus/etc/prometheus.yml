@@ -12,7 +12,7 @@ scrape_configs:
       key_file: "/var/opt/prometheus/private/prometheus.key"
     static_configs:
       - targets:
-        - js7-controller:4443
+        #- js7-controller:4443
         - js7-provider:4443
         - js7-proxy:4443
         - js7-proxy-b:4443

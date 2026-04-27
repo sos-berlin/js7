@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.controller
 
 import cats.effect.IO
 import java.lang.management.ManagementFactory
@@ -20,11 +20,11 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Prompt
-import js7.tests.PrometheusMetricsTest.*
+import js7.tests.controller.ControllerPrometheusMetricsTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaTest:
+final class ControllerPrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem, ReadMetrics ]
@@ -88,11 +88,10 @@ final class PrometheusMetricsTest extends OurTestSuite, ControllerAgentForScalaT
 
   "/grafana/dashboard" in:
     val json = controller.api.httpGetJson("/grafana/dashboard")
-      .orThrow
-      .await(99.s)
+      .orThrow.await(99.s)
     assert(json.startsWith("{"))
 
 
-object PrometheusMetricsTest:
+object ControllerPrometheusMetricsTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

@@ -55,7 +55,7 @@ import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`no-cache`,
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Accept-Charset`, `Accept-Encoding`, `Accept-Ranges`, `Cache-Control`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`, `If-Match`, `If-Modified-Since`, `If-None-Match`, `If-Range`, `Tls-Session-Info`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMessage, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as PekkoUri}
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
-import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
+import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, model}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.apache.pekko.{Done, util}
@@ -230,7 +230,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     (using IO[Option[SessionToken]])
   : IO[A] =
     sendReceive(
-      HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers),
+      HttpRequest(GET, uri.asPekko, `Cache-Control`(`no-cache`, `no-store`) :: headers),
       dontLog = dontLog
     ).flatMap(unmarshal[A](GET, uri))
 
@@ -369,7 +369,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       response.withHeaders:
         response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))
 
-  final def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
+  private def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
     (implicit sessionTokenIO: IO[Option[SessionToken]])
   : IO[HttpResponse] =
    HttpMXBeanUtils.clientRequestResource.surround:
@@ -716,7 +716,10 @@ object PekkoHttpClient:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
-  private val AcceptText = Accept(MediaTypes.`text/plain`) :: Nil
+  private val AcceptText = List(
+    // JSON must have higher priority than text/plain, otherwise a Problem is not encoded in JSON
+    Accept(MediaTypes.`text/plain`.withQValue(0.9)),
+    Accept(MediaTypes.`application/json`/*Problem is encoded in JSON*/.withQValue(1.0)))
   private val requestCounter = Atomic(0L)
 
   final class Standard(

@@ -1,30 +1,33 @@
 package js7.proxy
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, Resource, ResourceIO}
+import js7.base.catsutils.CatsEffectExtensions.unsafeRuntime
 import js7.base.service.{MainService, Service}
 import js7.base.utils.ProgramTermination
-import js7.cluster.watch.ClusterWatchService
-import js7.common.pekkohttp.web.MinimumWebServer
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.startup.ServiceApp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.state.EngineStateMXBean
 import js7.proxy.Proxy.*
+import js7.proxy.web.ProxyWebServer
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 
-final class Proxy private(controllerApi: ControllerApi)
+final class Proxy private(val controllerProxy: ControllerProxy)
 extends MainService, Service.StoppableByCancel:
 
   protected type Termination = ProgramTermination
+
+  export controllerProxy.metrics
 
   val untilTerminated: IO[ProgramTermination] =
     untilStopped.as(ProgramTermination())
 
   protected def start =
     startService:
-      controllerApi.controllerProxy().surround:
-        untilStopRequested
+      untilStopRequested
 
 
 object Proxy extends ServiceApp:
@@ -42,13 +45,16 @@ object Proxy extends ServiceApp:
 
   private def completeResource(conf: ProxyMainConf): ResourceIO[Proxy] =
     for
+      given IORuntime <- Resource.eval(IO.unsafeRuntime)
       given ActorSystem <- Pekkos.actorSystemResource("Proxy")
-      _ <- MinimumWebServer.service(conf)
+      sessionRegister <- SessionRegister.service(SimpleSession(_), conf.config)
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
       controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
-        ClusterWatchService.service(clusterWatchId, apisResource, conf.config)
+        controllerApi.clusterWatchResource(clusterWatchId, config = conf.config)
       _ <- EngineStateMXBean.register
-      service <- Service(Proxy(controllerApi))
+      controllerProxy <- controllerApi.controllerProxy()
+      _ <- ProxyWebServer.service(controllerApi, sessionRegister, conf)
+      service <- Service(Proxy(controllerProxy))
     yield
       service

@@ -6,15 +6,15 @@ import io.circe.Encoder
 import js7.base.auth.SimpleUser
 import js7.base.catsutils.Environment.environment
 import js7.common.configuration.CommonConfiguration
+import js7.common.metrics.MetricsRoute
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{RouteProvider, SessionRegister, SimpleSession}
-import js7.common.web.metrics.MetricsRoute
 import js7.common.web.serviceprovider.ServiceProviderRoute
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.server.Directives.{pathPrefix, *}
+import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 
 object MinimumWebServer:

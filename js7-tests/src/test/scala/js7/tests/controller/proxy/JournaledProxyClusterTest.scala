@@ -166,7 +166,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
           assert(state.idToOrder.size == n)
 
   "addOrder, long stream containing an invalid item returns proper error message" in:
-    // The server must be able to respond with an error even if the posted stream has not completedly processed.
+    // The server must be able to respond with an error even if the posted stream has not completely processed.
     val order = FreshOrder(OrderId("ORDER"), workflow.path).asJson.compactPrint
     val bigOrder = order + " "*(990_000 - order.length)
     val n = 100_000_000/*bytes*/ / bigOrder.length

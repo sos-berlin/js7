@@ -129,6 +129,10 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   //  httpClient.post[AgentCommand, AgentCommand.Response](uris.agentCommand(agentPath), command)
   //    .map(_.asInstanceOf[command.Response])
 
+  def metrics: IO[fs2.Stream[IO, fs2.Chunk[Byte]]] =
+    loginAndRetryIfSessionLost:
+      httpClient.getTextAsRawLines(baseUri / "metrics")
+
   final def overview: IO[ControllerOverview] =
     loginAndRetryIfSessionLost:
       httpClient.get[ControllerOverview](uris.overview)

@@ -18,11 +18,12 @@ import js7.proxy.data.event.ProxyEvent
 final class ControllerProxy private[ControllerProxy](
   journaledProxy: JournaledProxy[ControllerState],
   val eventBus: JournaledStateEventBus[ControllerState],
-  api: ControllerApi)
+  val api: ControllerApi)
 extends
   Service.Trivial, JournaledProxy[ControllerState]:
 
   export journaledProxy.*
+  export api.metrics
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     api.addOrders(orders)
@@ -41,7 +42,7 @@ object ControllerProxy:
     apisResource: ResourceIO[Nel[HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
-    proxyConf: ProxyConf = ProxyConf.default)
+    proxyConf: ProxyConf)
   : ResourceIO[ControllerProxy] =
     for
       journaledProxy <- JournaledProxyService.service(

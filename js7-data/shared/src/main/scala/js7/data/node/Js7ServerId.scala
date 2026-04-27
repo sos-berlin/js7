@@ -1,6 +1,7 @@
 package js7.data.node
 
 import js7.base.annotation.javaApi
+import js7.data.cluster.ClusterWatchId
 import js7.data.subagent.SubagentId
 import scala.annotation.static
 
@@ -20,10 +21,16 @@ object Js7ServerId:
   def subagent(subagentId: SubagentId): Js7ServerId =
     Subagent(subagentId)
 
+  @javaApi
+  def proxy(name: String): Js7ServerId =
+    Proxy(name)
 
   final case class Proxy(name: String) extends Js7ServerId:
     override def toString = s"Proxy:$name"
 
+  object Proxy:
+    def apply(clusterWatchId: ClusterWatchId): Js7ServerId =
+      Proxy(clusterWatchId.string)
 
   type Provider = Provider.type
   case object Provider extends Js7ServerId

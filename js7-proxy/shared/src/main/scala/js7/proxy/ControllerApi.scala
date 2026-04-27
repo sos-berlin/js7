@@ -28,6 +28,8 @@ import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProbl
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
+import js7.common.metrics.MetricsProvider
+import js7.common.metrics.MetricsProvider.ToMetricsStream
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -38,7 +40,7 @@ import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
-import js7.data.node.NodeId
+import js7.data.node.{Js7ServerId, NodeId}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -61,6 +63,9 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
+
+  private var toMetricsStream: ToMetricsStream =
+    () => fs2.Stream.empty
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
@@ -169,11 +174,21 @@ extends ControllerApiWithHttp:
     logger.debugIO(s"executeCommand ${command.toShortString}"):
       untilReachable(_.executeCommand(command))
 
+  def clusterWatchResource(
+    clusterWatchId: ClusterWatchId,
+    onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
+    config: Config)
+  : ResourceIO[ClusterWatchService] =
+    Resource.make(
+      acquire = startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss, config))(
+      release = _ => stopClusterWatch)
+
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
     onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
     config: Config)
   : IO[ClusterWatchService] =
+    toMetricsStream = MetricsProvider.toMetricsProvider(Js7ServerId.Proxy(clusterWatchId))
     clusterWatchService
       .update:
         case Some(service) => IO.some(service)
@@ -199,6 +214,13 @@ extends ControllerApiWithHttp:
           IO.left(Problem("No ClusterWatchService"))
         case Some(allo) =>
           allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
+
+  def metrics: IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
+    useApi: api =>
+      IO:
+        toMetricsStream().foldMonoid.merge:
+          Stream.force:
+            api.metrics
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
