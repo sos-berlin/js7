@@ -81,11 +81,6 @@ object FileJournalMXBean:
     def addEventCount(n: Int): Unit =
       eventTotal += n
 
-    private inline def ifPersisted[A <: AnyRef](inline a: A): A =
-      if isUsed then a else null.asInstanceOf[A]
-
-    private def isUsed = persistTotal.get > 0
-
 
   object Bean:
     /** Use this when you don't need a FileJournalMXBean. */

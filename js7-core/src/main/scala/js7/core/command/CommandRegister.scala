@@ -11,7 +11,6 @@ import scala.concurrent.duration.Deadline.now
   */
 final class CommandRegister[C <: CommonCommand]:
 
-  private var totalCounter = 0L
   private val idToCommand = mutable.Map.empty[CorrelId, CommandRun[C]]
 
   def resource[F[_]: Sync as F](
@@ -24,7 +23,6 @@ final class CommandRegister[C <: CommonCommand]:
   def add(command: C, meta: CommandMeta, correlId: CorrelId, batchId: Option[CorrelId])
   : CommandRun[C] =
     synchronized:
-      totalCounter += 1
       val run = CommandRun[C](correlId, meta.user.id, command, now, batchId)
       idToCommand.update(correlId, run)
       run
