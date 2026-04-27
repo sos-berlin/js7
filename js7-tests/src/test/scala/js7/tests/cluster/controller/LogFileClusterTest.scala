@@ -13,7 +13,6 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.node.Js7ServerId
-import js7.data.subagent.SubagentId
 import js7.proxy.javaapi.JControllerApi
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -59,4 +58,3 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
 object LogFileClusterTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private val bareSubagentId = SubagentId("BARE-SUBAGENT")
