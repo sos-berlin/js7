@@ -23,6 +23,6 @@ final class JControllerApiLogMXBeanTest extends OurAsyncTestSuite:
             withTemporaryDirectory("JControllerApiLogMXBeanTest-"): logDirectory =>
               jControllerApi.registerLogDirectoryMxBean(logDirectory = logDirectory)
               logDirectory / "test.log" := "+" * 999
-              val beanName = new ObjectName("js7:name=LogDirectory")
+              val beanName = new ObjectName("js7:type=LogDirectory")
               assert:
                 ManagementFactory.getPlatformMBeanServer.getAttribute(beanName, "Size") == 999.0

@@ -17,20 +17,20 @@ object MBeanUtils:
 
   /** Bean is considered static and will not be deregistered under testing.
     * <p>This is to allow concurrently running tests. */
-  def registerStaticMBean[B](name: String, newBean: B)(using NotGiven[B <:< IO[?]]): ResourceIO[B] =
-    registerMBean[IO, B](toMBeanName(name), isStatic = true)(IO.pure(newBean))
+  def registerStaticMBean[B](typ: String, newBean: B)(using NotGiven[B <:< IO[?]]): ResourceIO[B] =
+    registerMBean[IO, B](toMBeanName(typ), isStatic = true)(IO.pure(newBean))
 
   def registerMBean[F[_]: Sync as F]: RegisterMBean[F] =
     new RegisterMBean[F]
 
   final class RegisterMBean[F[_]: Sync as F]:
-    def apply[B](name: String, newBean: => B)
+    def apply[B](typ: String, newBean: => B)
       (using NotGiven[B <:< IO[?]], NotGiven[B <:< SyncIO[?]])
     : Resource[F, B] =
-      registerMBean[F, B](name)(F.delay(newBean))
+      registerMBean[F, B](typ)(F.delay(newBean))
 
-  def registerMBean[F[_]: Sync, B](name: String)(newBean: F[B]): Resource[F, B] =
-    registerMBean[F, B](toMBeanName(name))(newBean)
+  def registerMBean[F[_]: Sync, B](typ: String)(newBean: F[B]): Resource[F, B] =
+    registerMBean[F, B](toMBeanName(typ))(newBean)
 
   def registerMBean[F[_] : Sync as F, B](objectName: ObjectName, isStatic: Boolean = false)
     (newBean: F[B])
@@ -76,5 +76,5 @@ object MBeanUtils:
                 logger.warn(s"unregisterMBean($objectName): ${t.toStringWithCauses}"))
       .map(_._1)
 
-  def toMBeanName(name: String): ObjectName =
-    new ObjectName(s"js7:name=$name")
+  def toMBeanName(typ: String): ObjectName =
+    new ObjectName(s"js7:type=$typ")

@@ -67,19 +67,19 @@ final class CallMeterTest extends OurAsyncTestSuite:
     succeed
 
   "MXBeans" in:
-    val objectName = new ObjectName("js7:name=*")
+    val objectName = new ObjectName("js7:type=*")
     val beanServer = ManagementFactory.getPlatformMBeanServer
-    beanServer.queryNames(new ObjectName("js7:name=*"), null).asScala
+    beanServer.queryNames(new ObjectName("js7:type=*"), null).asScala
       .foreachWithBracket(): (o, br) =>
         logger.info(s"$br$o")
     assert(beanServer.getDomains contains "js7")
     assert:
-      beanServer.queryNames(new ObjectName("js7:name=*"), null).asScala.exists:
-        _.getCanonicalName == "js7:name=CallMeter_CallMeterTest.nanoTime"
+      beanServer.queryNames(new ObjectName("js7:type=*"), null).asScala.exists:
+        _.getCanonicalName == "js7:type=CallMeter_CallMeterTest.nanoTime"
     assert:
-      beanServer.queryNames(new ObjectName("js7:name=CallMeter_CallMeterTest.nanoTime"), null)
+      beanServer.queryNames(new ObjectName("js7:type=CallMeter_CallMeterTest.nanoTime"), null)
         .asScala.exists:
-          _.getCanonicalName == "js7:name=CallMeter_CallMeterTest.nanoTime"
+          _.getCanonicalName == "js7:type=CallMeter_CallMeterTest.nanoTime"
 
 
 object CallMeterTest:

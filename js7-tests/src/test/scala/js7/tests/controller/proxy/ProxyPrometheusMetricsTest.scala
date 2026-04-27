@@ -71,10 +71,10 @@ final class ProxyPrometheusMetricsTest extends OurAsyncTestSuite, ControllerClus
 
                 // Because tests run in parallel, more than one of EngineState MXBean may be registered.
                 // We don't know which is ours. But there must be at least one.
-                val objectNames = beanServer.queryNames(new ObjectName("js7:name=EngineState,*"), null)
+                val objectNames = beanServer.queryNames(new ObjectName("js7:type=EngineState,*"), null)
                 assert(!objectNames.isEmpty)
                 //assert:
-                //  beanServer.getAttribute(new ObjectName("js7:name=EngineState,*"), "EventTotal").asInstanceOf[Long] > 2
+                //  beanServer.getAttribute(new ObjectName("js7:type=EngineState,*"), "EventTotal").asInstanceOf[Long] > 2
 
                 val string = proxy.metrics.orThrow.flatMap(_.compile.foldMonoid).map(_.utf8String)
                   .await(99.s)
