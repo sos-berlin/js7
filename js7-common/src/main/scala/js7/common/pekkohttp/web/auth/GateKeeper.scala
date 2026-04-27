@@ -269,10 +269,11 @@ object GateKeeper:
     def secureStateString(binding: WebServerBinding): String =
       if isPublic then
         " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
-      else if loopbackIsPublic && binding.isLoopback && getIsPublic then
-        " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
-      else if loopbackIsPublic && binding.isLoopback then
-        " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
+      else if binding.isLoopback && loopbackIsPublic then
+        if getIsPublic then
+          s" - ACCESS VIA THIS LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
+        else
+          s" - ACCESS VIA THIS LOOPBACK INTERFACE IS PUBLIC (loopback-is-public = true)"
       else if getIsPublic then
         " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
       else if scheme == WebServerBinding.Https && httpsClientAuthRequired then
