@@ -60,15 +60,15 @@ trait TestCatsEffect extends BeforeAndAfterAll:
           config"""js7.thread-pools.compute.threads = 1/1"""
         ).toAllocated.run()
       _ioRuntime := allocated.some
+      given ioRuntime: IORuntime = allocated.allocatedThing
 
       if isIntelliJIdea then
         stopCallMeterService =
-          CallMeterLoggingService.service(logEvery = 1.minute).void
+          CallMeterLoggingService.service(logEvery = 1.minute)
             .allocated.map(_._2)
-            .unsafeRunSyncX()(using allocated.allocatedThing)
+            .unsafeRunSyncX()
 
       locally:
-        given IORuntime = allocated.allocatedThing
         allocatedForIORuntime =
           locally:
             for
@@ -78,7 +78,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
           .toAllocated
           .await(99.s)
 
-      allocated.allocatedThing
+      ioRuntime
 
   override protected def beforeAll(): Unit =
     afterAllMayBeCalled = true

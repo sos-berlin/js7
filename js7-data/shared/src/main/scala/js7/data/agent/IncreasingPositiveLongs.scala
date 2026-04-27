@@ -17,10 +17,6 @@ extends AbstractIterator[Long]:
   def hasNext = true
 
   def next(): Long =
-    counter.getAndUpdate(new LongUnaryOperator {
-      def applyAsLong(n: Long) =
-        n match {
-          case `maximum` => 1
-          case _ => n + 1
-        }
-    })
+    counter.getAndUpdate:
+      case `maximum` => 1
+      case n => n + 1
