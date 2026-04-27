@@ -6,6 +6,7 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import js7.base.log.Logger
 import js7.base.utils.Base64UUID
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isScalaTest, isTest}
 import scala.util.NotGiven
 import scala.util.control.NonFatal
@@ -68,7 +69,11 @@ object MBeanUtils:
           case (_, None) => F.unit
           case (_, Some(objectName)) =>
             F.delay:
-              beanServer.unregisterMBean(objectName))
+              try
+                beanServer.unregisterMBean(objectName)
+                logger.trace(s"unregisterMBean($objectName) ✔︎")
+              catch case NonFatal(t) =>
+                logger.warn(s"unregisterMBean($objectName): ${t.toStringWithCauses}"))
       .map(_._1)
 
   def toMBeanName(name: String): ObjectName =
