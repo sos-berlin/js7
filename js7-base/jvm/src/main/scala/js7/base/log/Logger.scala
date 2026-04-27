@@ -377,6 +377,37 @@ object Logger extends AdHocLogger:
       inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
+      def logCall[A](level: LogLevel)(body: => A)
+        (using src: sourcecode.Name)
+      : A =
+        logCall(level, src.value)(body)
+
+      def logCall[A](
+        level: LogLevel,
+        function: String,
+        args: => Any = "",
+        marker: Marker | Null = null)
+        (body: => A)
+      : A =
+        if logger.isEnabled(level) then
+          logF[SyncIO, A](logger, level, function, args, marker = marker):
+            SyncIO(body)
+          .run()
+        else
+          body
+
+      def logIO[A](
+        level: LogLevel,
+        function: String,
+        args: => Any = "",
+        marker: Marker | Null = null,
+        body: IO[A])
+      : IO[A] =
+        if logger.isEnabled(level) then
+          logF[IO, A](logger, level, function, args, marker = marker)(body)
+        else
+          body
+
       def logIOWithResult[A](
         level: LogLevel,
         function: String,
