@@ -224,6 +224,18 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[A] =
     get_[A](uri, AcceptJson ::: headers, dontLog = dontLog)
 
+  final def getByteStream[ByteSeq: ByteSequence](
+    uri: Uri,
+    headers: List[HttpHeader] = Nil,
+    dontLog: Boolean = false)
+    (using IO[Option[SessionToken]])
+  : IO[fs2.Stream[IO, ByteSeq]] =
+    sendReceive(
+      HttpRequest(GET, uri.asPekko, `Cache-Control`(`no-cache`, `no-store`) :: headers),
+      dontLog = dontLog
+    ).flatMap(unmarshal[HttpResponse](GET, uri))
+      .map(_.entity.dataBytes.asFs2Stream().map(_.toByteSequence[ByteSeq]))
+
   final def get_[A: FromResponseUnmarshaller](
     uri: Uri,
     headers: List[HttpHeader] = Nil,

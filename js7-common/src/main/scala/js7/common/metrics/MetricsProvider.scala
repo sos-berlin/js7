@@ -3,6 +3,7 @@ package js7.common.metrics
 import fs2.{Chunk, Pure}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.system.JavaServiceProviders.findJavaService
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
@@ -13,6 +14,7 @@ import org.apache.pekko.http.scaladsl.model.{ContentType, HttpHeader, MediaType}
 object MetricsProvider:
 
   type ToMetricsStream = () => fs2.Stream[Pure, Chunk[Byte]]
+  type ToMetricsByteChunk = () => fs2.Chunk[Byte]
 
   /** The 'accept' header of Prometheus 1_4_3. */
   val PrometheusAcceptHeaderValue: String =
@@ -69,7 +71,13 @@ object MetricsProvider:
       `Accept-Charset`(`UTF-8`),
       PrometheusAcceptHeader)
 
-  def toMetricsProvider(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
+  def toMetricsByteChunkProvider(
+    ownJs7ServerId: Js7ServerId,
+    configDirectory: Option[Path] = None)
+  : ToMetricsByteChunk =
+    () => toMetricsStreamProvider(ownJs7ServerId, configDirectory)().compile.foldMonoid
+
+  def toMetricsStreamProvider(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
   : ToMetricsStream =
     findJavaService[MetricsJavaService] match
       case None =>

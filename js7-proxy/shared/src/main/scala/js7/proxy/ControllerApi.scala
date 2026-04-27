@@ -30,8 +30,7 @@ import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProbl
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.metrics.MetricsProvider
-import js7.common.metrics.MetricsProvider.ToMetricsStream
+import js7.common.metrics.MetricsProvider.{ToMetricsByteChunk, toMetricsByteChunkProvider}
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -67,7 +66,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var toMetricsStream: ToMetricsStream = () => fs2.Stream.empty
+  private var toLocalMetrics: ToMetricsByteChunk = () => fs2.Chunk.empty
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
@@ -204,9 +203,9 @@ extends ControllerApiWithHttp:
     if isActive then
       for case singleton <- _singleton if singleton.controllerApi eq this do
         // Only a one instance should query the Engine metrics, to avoid duplicates.
-        toMetricsStream = MetricsProvider.toMetricsProvider(singleton.proxyId.toSubagentId)
+        toLocalMetrics = toMetricsByteChunkProvider(singleton.proxyId.toSubagentId)
     else
-      toMetricsStream = () => fs2.Stream.empty
+      toLocalMetrics = () => fs2.Chunk.empty
 
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
@@ -241,10 +240,9 @@ extends ControllerApiWithHttp:
 
   def metrics: IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
     useApi: api =>
-      IO:
-        toMetricsStream().foldMonoid.merge:
-          Stream.force:
-            api.metrics
+      api.metrics.map:
+        _.merge:
+          fs2.Stream.emit(toLocalMetrics())
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =

@@ -7,15 +7,18 @@ import java.time.Instant
 import java.util.Locale
 import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
 import js7.base.utils.Missing.toMissing
+import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
-import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
+import js7.common.http.PekkoHttpClient
+import js7.common.metrics.MetricsProvider
 import js7.controller.client.HttpControllerApi.*
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
@@ -31,7 +34,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   type State = ControllerState
 
-  def httpClient: HttpClient
+  def httpClient: PekkoHttpClient
   /** Host URI or empty for addressing base on "controller/" */
   def baseUri: Uri
 
@@ -131,7 +134,10 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   def metrics: IO[fs2.Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
-      httpClient.getTextAsRawLines(baseUri / "metrics")
+      httpClient.getByteStream(
+        baseUri / "metrics",
+        MetricsProvider.PrometheusRequestHeaders,
+        dontLog = true)
 
   final def overview: IO[ControllerOverview] =
     loginAndRetryIfSessionLost:
@@ -168,7 +174,7 @@ object HttpControllerApi:
   /** Logs out when the resource is being released. */
   def resource(
     admission: Admission,
-    httpClient: HttpClient,
+    httpClient: PekkoHttpClient,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   : ResourceIO[HttpControllerApi] =
     SessionApi.logoutOnRelease:
@@ -177,7 +183,7 @@ object HttpControllerApi:
 
   final class Standard(
     admission: Admission,
-    val httpClient: HttpClient,
+    val httpClient: PekkoHttpClient,
     override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   extends HttpControllerApi:
     val baseUri: Uri = admission.uri

@@ -3,8 +3,6 @@ package js7.common.metrics
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
-import fs2.{Chunk, Pure}
-import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.ReadMetricsPermission
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.utils.Atomic
@@ -31,12 +29,14 @@ trait MetricsRoute extends RouteProvider:
   protected final def config: Config =
     commonConf.config
 
-  private lazy val metricsProvider: () => fs2.Stream[Pure, Chunk[Byte]] =
+  private lazy val toMetricsByteString: () => ByteString =
     js7ServerId match
       case None =>
-        () => fs2.Stream.emit(fs2.Chunk.array("# Unknown Js7ServerId\n".getBytes(UTF_8)))
+        () => ByteString("# Unknown Js7ServerId\n")
       case Some(serverId) =>
-        MetricsProvider.toMetricsProvider(serverId, Some(commonConf.configDirectory))
+        () => MetricsProvider
+          .toMetricsByteChunkProvider(serverId, Some(commonConf.configDirectory))()
+          .toByteString
 
   protected final def metricsRawRoute(contentType: ContentType): Route =
     given IORuntime = ioRuntime
@@ -84,7 +84,7 @@ trait MetricsRoute extends RouteProvider:
         ByteString("# Js7ServerId is still unknown\n")
       case Some(serverId) =>
         val qServerId = serverId.toString.replace("\"", "\\\"").replace("\n", "\\n").replace("\\", "\\\\")
-        metricsProvider().compile.foldMonoid.toByteString // Complete response is kept in memory !!!
+        toMetricsByteString()
 
   private def quoteMetricString(string: String): String =
     string.replace("\"", "\\\"").replace("\n", "\\n").replace("\\", "\\\\")
