@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 9,
+    "generation": 14,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -30,7 +30,7 @@
         }
       }
     ],
-    "cursorSync": "Off",
+    "cursorSync": "Tooltip",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -5209,7 +5209,7 @@
                         "editorMode": "code",
                         "expr": "js7_LogDirectory_Size{js7Server=\"$js7Server\"}",
                         "instant": false,
-                        "legendFormat": "Log directory",
+                        "legendFormat": "Logs directory",
                         "range": true
                       },
                       "labels": {
@@ -6155,8 +6155,6 @@
             "spec": {
               "title": "$js7Server",
               "collapse": false,
-              "hideHeader": false,
-              "fillScreen": false,
               "repeat": {
                 "mode": "variable",
                 "value": "js7Server"
@@ -6187,7 +6185,7 @@
                         "height": 6,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-27"
+                          "name": "panel-3"
                         }
                       }
                     },
@@ -6213,7 +6211,7 @@
                         "height": 6,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-3"
+                          "name": "panel-27"
                         }
                       }
                     },

@@ -67,9 +67,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-
-  private var toMetricsStream: ToMetricsStream =
-    () => fs2.Stream.empty
+  private var toMetricsStream: ToMetricsStream = () => fs2.Stream.empty
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
