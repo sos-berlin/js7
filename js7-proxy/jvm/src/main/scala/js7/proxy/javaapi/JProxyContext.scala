@@ -144,9 +144,9 @@ extends AutoCloseable:
       admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala
     )(using actorSystem)
-    val api = new ControllerApi(apiResource, proxyId.toScala, proxyConf)
-    if proxyId.isPresent then
-      api.makeSingleton(ioRuntime)
+    val api = new ControllerApi(apiResource, proxyConf)
+    proxyId.toScala.foreach: proxyId =>
+      api.makeSingleton(proxyId, ioRuntime)
     new JControllerApi(api, config)
 
 

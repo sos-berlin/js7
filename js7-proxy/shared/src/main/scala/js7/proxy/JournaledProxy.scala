@@ -61,7 +61,7 @@ object JournaledProxy:
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf,
-    bean: JournaledProxy.Bean = JournaledProxy.Bean.Dummy)
+    bean: JournaledProxy.Bean = new JournaledProxy.Bean/*dummy*/)
     (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
@@ -231,6 +231,3 @@ object JournaledProxy:
   final class Bean extends JournaledProxyMXBean:
     private[JournaledProxy] var eventDelayMillis: Long = Long.MinValue
     private[JournaledProxy] var eventCount: Long = 0L
-
-  object Bean:
-    val Dummy: Bean = new Bean

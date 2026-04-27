@@ -1,6 +1,5 @@
 package js7.proxy
 
-
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
@@ -55,7 +54,6 @@ import scala.util.Failure
 
 final class ControllerApi(
   val apisResource: ResourceIO[Nel[HttpControllerApi]],
-  proxyId: Option[ProxyId] = None,
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
@@ -72,9 +70,8 @@ extends ControllerApiWithHttp:
     apiCache.resource
 
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
-  private[proxy] def makeSingleton(ioRuntime: IORuntime): Unit =
-    proxyId.foreach: proxyId =>
-      _singleton = Some((proxyId, this, ioRuntime))
+  private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
+    _singleton = Some((proxyId, this, ioRuntime))
 
   def stop: IO[Unit] =
     IO.defer:
@@ -329,8 +326,8 @@ object ControllerApi:
       environment[IORuntime].map: ioRuntime =>
         Resource.make(
           acquire = IO:
-            val api = ControllerApi(apisResource, proxyId, proxyConf)
-            if proxyId.isDefined then
-              api.makeSingleton(ioRuntime)
+            val api = ControllerApi(apisResource, proxyConf)
+            proxyId.foreach: proxyId =>
+              api.makeSingleton(proxyId, ioRuntime)
             api)(
           release = _.stop)

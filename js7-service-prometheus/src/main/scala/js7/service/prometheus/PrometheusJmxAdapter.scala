@@ -29,14 +29,17 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   private val registry = new PrometheusRegistry
   private val jmxCollector =
     new JmxCollector(
-      configDir.fold(DefaultYamlConfig): configDir =>
-        val file = configDir / "prometheus.yaml"
-        try file.contentString
+      configDir.flatMap: configDir =>
+        val file = configDir / "prometheus-jmx.yaml"
+        try
+          Some(file.contentString)
         catch
-          case _: NoSuchFileException => DefaultYamlConfig
+          case _: NoSuchFileException => None
           case e: IOException =>
             logger.warn(s"$file: $e • Using default configuration")
-            DefaultYamlConfig)
+            None
+      .getOrElse:
+        DefaultYamlResource.asUTF8String)
 
   jmxCollector.register(registry)
 
@@ -94,8 +97,7 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
 private[prometheus] object PrometheusJmxAdapter:
   private val logger = Logger[this.type]
   private val meter = CallMeter("PrometheusJmxAdapter")
-  private val DefaultYamlResource = JavaResource("js7/service/prometheus/prometheus.yaml")
-  private val DefaultYamlConfig = DefaultYamlResource.asUTF8String
+  private val DefaultYamlResource = JavaResource("js7/service/prometheus/prometheus-jmx.yaml")
 
   private val HeadlineBytes =
     s"""# Experimental metrics for Prometheus
