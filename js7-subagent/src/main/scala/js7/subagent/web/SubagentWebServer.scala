@@ -30,7 +30,7 @@ object SubagentWebServer:
 
         def serviceName = "Subagent"
 
-        def startupSecurityHint(scheme: WebServerBinding.Scheme) =
+        def startupSecurityHint(scheme: WebServerBinding) =
           gateKeeperConf.secureStateString(scheme)
 
         val webServerRoute =

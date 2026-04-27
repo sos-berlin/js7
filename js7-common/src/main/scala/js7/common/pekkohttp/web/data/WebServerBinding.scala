@@ -26,6 +26,9 @@ sealed trait WebServerBinding:
 
   def toWebServerPort: WebServerPort
 
+  def isLoopback: Boolean =
+    address.getAddress.isLoopbackAddress
+
   override def toString = s"$scheme://${address.show}"
 
 

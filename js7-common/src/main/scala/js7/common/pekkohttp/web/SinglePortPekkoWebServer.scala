@@ -124,7 +124,7 @@ private object SinglePortPekkoWebServer:
                     .startAndForget
             yield
               // An info line will be logged by DelayedRouteDelegator
-              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              val securityHint = boundRoute.startupSecurityHint(binding)
               logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
               Binding(binding, pekkoBinding, shutdownTimeout, shutdownDelay, terminatingPromise)
 
@@ -145,7 +145,7 @@ private object SinglePortPekkoWebServer:
           IO:
             if _realRoute.compareAndSet(None, Some(Success(realRoute))) then
               val serviceName = boundRoute.serviceName.ifNonEmpty.fold("")(_ + " ")
-              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              val securityHint = boundRoute.startupSecurityHint(binding)
               logger.info(s"$name ${serviceName}web services are available$securityHint")
         .startAndForget
 

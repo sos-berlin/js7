@@ -250,7 +250,7 @@ object PekkoWebServer:
 
     def webServerRoute: IO[Route]
 
-    def startupSecurityHint(scheme: WebServerBinding.Scheme): String
+    def startupSecurityHint(binding: WebServerBinding): String
 
   object BoundRoute:
     def simple(conf: BasicConfiguration)(route: Route): BoundRoute =
@@ -262,8 +262,8 @@ object PekkoWebServer:
 
       private val gateKeeperConf = GateKeeper.Configuration.fromConfig(conf.config)
 
-      def startupSecurityHint(scheme: WebServerBinding.Scheme) =
-        gateKeeperConf.secureStateString(scheme)
+      def startupSecurityHint(binding: WebServerBinding) =
+        gateKeeperConf.secureStateString(binding)
 
 
     def simple(route: Route): BoundRoute =
@@ -272,7 +272,7 @@ object PekkoWebServer:
     private final class Simple(route: Route, val serviceName: String) extends BoundRoute:
       val webServerRoute: IO[Route] = IO.pure(route)
 
-      def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
+      def startupSecurityHint(binding: WebServerBinding) = ""
 
 
   /** Event only for testing with EventBus. */

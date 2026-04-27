@@ -223,7 +223,7 @@ final class GateKeeper[U <: User](
     configuration.invalidAuthenticationDelay
 
   def secureStateString: String =
-    configuration.secureStateString(binding.scheme)
+    configuration.secureStateString(binding)
 
 
 object GateKeeper:
@@ -231,10 +231,7 @@ object GateKeeper:
   def apply[U <: User: User.Companion](binding: WebServerBinding, conf: Configuration[U])
     (using IORuntime, ExceptionHandler)
   : GateKeeper[U] =
-    new GateKeeper(
-      binding,
-      conf,
-      isLoopback = binding.address.getAddress.isLoopbackAddress)
+    new GateKeeper(binding, conf, isLoopback = binding.isLoopback)
 
   def apply[U <: User : User.Companion as U](
     binding: WebServerBinding,
@@ -269,12 +266,12 @@ object GateKeeper:
     val anonymous: U = idToUser(UserId.Anonymous)
       .getOrElse(sys.error("Anonymous user has not been defined"))  // Should not happen
 
-    def secureStateString(scheme: WebServerBinding.Scheme): String =
+    def secureStateString(binding: WebServerBinding): String =
       if isPublic then
         " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
-      else if loopbackIsPublic && getIsPublic then
+      else if loopbackIsPublic && binding.isLoopback && getIsPublic then
         " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
-      else if loopbackIsPublic then
+      else if loopbackIsPublic && binding.isLoopback then
         " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
       else if getIsPublic then
         " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"

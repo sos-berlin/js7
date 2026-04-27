@@ -40,8 +40,8 @@ object ControllerWebServer:
 
         def serviceName = "Controller"
 
-        def startupSecurityHint(scheme: WebServerBinding.Scheme) =
-          gateKeeperConf.secureStateString(scheme)
+        def startupSecurityHint(binding: WebServerBinding) =
+          gateKeeperConf.secureStateString(binding)
 
         def webServerRoute =
           IO.pure(
