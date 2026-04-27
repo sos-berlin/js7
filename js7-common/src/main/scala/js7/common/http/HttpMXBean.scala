@@ -12,11 +12,15 @@ sealed trait HttpMXBean:
   def getClientRequestActiveCount: Int = clientRequestActiveCount.intValue
   def getClientSentByteTotal: Long = clientSentByteTotal.longValue
   def getClientReceivedByteTotal: Long = clientReceivedByteTotal.longValue
+  def getClientSentChunksTotal: Long = clientSentChunksTotal.longValue
+  def getClientReceivedChunksTotal: Long = clientReceivedChunksTotal.longValue
 
   def getServerRequestTotal: Long = serverRequestTotal.longValue
   def getServerRequestActiveCount: Int = serverRequestActiveCount.intValue
   def getServerSentByteTotal: Long = serverSentByteTotal.longValue
   def getServerReceivedByteTotal: Long = serverReceivedByteTotal.longValue
+  def getServerSentChunksTotal: Long = serverSentChunksTotal.longValue
+  def getServerReceivedChunksTotal: Long = serverReceivedChunksTotal.longValue
 
 
 object HttpMXBean:
@@ -25,11 +29,15 @@ object HttpMXBean:
     val clientRequestActiveCount: LongAdder = new LongAdder
     val clientSentByteTotal: LongAdder = new LongAdder
     val clientReceivedByteTotal: LongAdder = new LongAdder
+    val clientSentChunksTotal: LongAdder = new LongAdder
+    val clientReceivedChunksTotal: LongAdder = new LongAdder
 
     val serverRequestTotal: LongAdder = new LongAdder
     val serverRequestActiveCount: LongAdder = new LongAdder
     val serverSentByteTotal: LongAdder = new LongAdder
     val serverReceivedByteTotal: LongAdder = new LongAdder
+    val serverSentChunksTotal: LongAdder = new LongAdder
+    val serverReceivedChunksTotal: LongAdder = new LongAdder
 
 
 object HttpMXBeanUtils:

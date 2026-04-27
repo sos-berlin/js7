@@ -65,6 +65,7 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
 import scala.util.{Success, Try}
@@ -434,10 +435,16 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             case t: pekko.stream.StreamTcpException => IO.raiseError(simplifyPekkoException(t))
             case t: Throwable => IO.raiseError(toPrettyThrowable(t))
           .map(decompressResponse)
-          .pipeIf(logger.isDebugEnabled):
-            logResponding(request, _, responseLogPrefix)
-              .map: response =>
-                logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = dontLog):
+          .pipe: responseIO =>
+            if logger.isDebugEnabled then
+              logResponding(request, responseIO, responseLogPrefix)
+                .map: response =>
+                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = dontLog):
+                    response
+            else
+              // Statistics only, no logging:
+              responseIO.map: response =>
+                logStream("#", "<-<-  ", "<--|  ", "<~~ 💥", dontLog = true):
                   response
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
@@ -517,6 +524,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         HttpMXBean.Bean.clientSentByteTotal
       else
         HttpMXBean.Bean.clientReceivedByteTotal
+    val chunksTotal =
+      if message.isRequest then
+        HttpMXBean.Bean.clientSentChunksTotal
+      else
+        HttpMXBean.Bean.clientReceivedChunksTotal
+
     message.entity match
       case chunked: Chunked =>
         lazy val isJson = chunked.contentType.mediaType == `application/x-ndjson`
@@ -526,6 +539,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             chunks =
               chunked.chunks.map: chunk =>
                 byteTotal += chunk.data.size
+                chunksTotal += 1
                 if !dontLog && logger.isTraceEnabled then
                   def arrow = if chunk.isLastChunk then lastArrow else msgArrow
                   def string =
@@ -548,14 +562,17 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
       case entity: HttpEntity.Strict =>
         byteTotal += entity.data.size
+        chunksTotal += 1
         message
 
       case entity: HttpEntity.Default =>
         byteTotal += entity.contentLength
+        chunksTotal += 1
         message
 
       case entity: HttpEntity.CloseDelimited =>
         //byteTotal += ?? —— CloseDelimited is not used
+        chunksTotal += 1
         message
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =

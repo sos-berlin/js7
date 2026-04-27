@@ -93,23 +93,24 @@ trait WebLogDirectives extends ExceptionHandling:
         route
 
   private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
-    if !logRequest && !logResponse then
-      pass
-    else
-      if logResponse then
-        mapRequest(meterRequestTime(_, correlId, nanoTime)).tflatMap: _ =>
+    //if !logRequest && !logResponse then
+    //  pass
+    //else
+    //  if logResponse then
+        mapRequest(meterRequestTimeAndStatistics(_, correlId, nanoTime)).tflatMap: _ =>
           val start = nanoTime
           mapResponse: response =>
             log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
             meterResponseTime(request, response, correlId, start)
-      else
-        pass
-    end if
+    //  else
+    //    pass
+    //end if
 
-  private def meterRequestTime(request: HttpRequest, correlId: CorrelId, start: Long): HttpRequest =
+  private def meterRequestTimeAndStatistics(request: HttpRequest, correlId: CorrelId, start: Long): HttpRequest =
     request.entity match
       case entity: HttpEntity.Strict =>
         HttpMXBean.Bean.serverReceivedByteTotal += entity.data.size
+        HttpMXBean.Bean.serverReceivedChunksTotal += 1
         if logRequest || webLogger.underlying.isTraceEnabled then
           log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
         request
@@ -127,6 +128,7 @@ trait WebLogDirectives extends ExceptionHandling:
     response.entity match
       case entity: HttpEntity.Strict =>
         HttpMXBean.Bean.serverSentByteTotal += entity.data.size
+        HttpMXBean.Bean.serverSentChunksTotal += 1
         response
 
       case entity: HttpEntity.Chunked =>
@@ -144,24 +146,28 @@ trait WebLogDirectives extends ExceptionHandling:
     message.withEntity:
       entity.copy(
         chunks =
-          entity.chunks.wireTap: part =>
+          entity.chunks.wireTap: chunk =>
             chunkCount += 1
-            byteCount += part.data.size
-            message match
-              case _: HttpRequest => HttpMXBean.Bean.serverReceivedByteTotal += part.data.size
-              case _: HttpResponse => HttpMXBean.Bean.serverSentByteTotal += part.data.size
-          .watchTermination(): (mat, future) =>
-            future.onComplete { tried =>
-              // Runs asynchronous in background
-              log(request,
-                (message: HttpMessage).ifSubtype[HttpResponse],
-                correlId, logLevel, nanoTime - start,
-                streamSuffix = // Timing of the stream, after response header has been sent
-                  chunkCount.toString + " chunks, " +
-                    bytesPerSecondString(since.elapsed, byteCount) +
-                    tried.fold(t => " " + t.toStringWithCauses, _ => ""))
-            }(using ioRuntime.compute)
-            mat)
+            byteCount += chunk.data.size
+            if message.isRequest then
+              HttpMXBean.Bean.serverReceivedByteTotal += chunk.data.size
+              HttpMXBean.Bean.serverReceivedChunksTotal += 1
+            else
+              HttpMXBean.Bean.serverSentByteTotal += chunk.data.size
+              HttpMXBean.Bean.serverSentChunksTotal += 1
+          .pipeIf(message.isRequest && logRequest || message.isResponse && logResponse):
+            _.watchTermination(): (mat, future) =>
+              future.onComplete { tried =>
+                // Runs asynchronous in background
+                log(request,
+                  (message: HttpMessage).ifSubtype[HttpResponse],
+                  correlId, logLevel, nanoTime - start,
+                  streamSuffix = // Timing of the stream, after response header has been sent
+                    chunkCount.toString + " chunks, " +
+                      bytesPerSecondString(since.elapsed, byteCount) +
+                      tried.fold(t => " " + t.toStringWithCauses, _ => ""))
+              }(using ioRuntime.compute)
+              mat)
 
   private def log(request: HttpRequest, response: Option[HttpResponse],
     correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = "")
