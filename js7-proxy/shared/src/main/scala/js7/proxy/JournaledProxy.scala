@@ -6,12 +6,14 @@ import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
+import java.lang.System.currentTimeMillis
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
+import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
@@ -58,7 +60,8 @@ object JournaledProxy:
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
-    proxyConf: ProxyConf)
+    proxyConf: ProxyConf,
+    bean: JournaledProxy.Bean = JournaledProxy.Bean.Dummy)
     (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
@@ -122,6 +125,9 @@ object JournaledProxy:
         .onFinalize:
           recouplingStreamReader.decouple.void
         .scan(seed): (s, stampedEvent) =>
+          bean.eventCount += 1
+          bean.eventDelayMillis = bean.eventDelayMillis max
+            currentTimeMillis() - EventId.toEpochMilli(stampedEvent.eventId)
           EventAndState(stampedEvent,
             s.state,
             s.state.applyKeyedEvent(stampedEvent.value)
@@ -203,3 +209,28 @@ object JournaledProxy:
 
 
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
+
+
+  def registerMXBean: ResourceIO[Bean] =
+    registerMBean("JournaledProxy"):
+      IO(new Bean)
+
+  trait JournaledProxyMXBean:
+    this: Bean =>
+
+    def getEventCount: Long =
+      eventCount
+
+    def getEventDelay: Double =
+      eventDelayMillis match
+        case Long.MinValue => Double.NaN
+        case o =>
+          eventDelayMillis = Long.MinValue
+          o / 1000.0
+
+  final class Bean extends JournaledProxyMXBean:
+    private[JournaledProxy] var eventDelayMillis: Long = Long.MinValue
+    private[JournaledProxy] var eventCount: Long = 0L
+
+  object Bean:
+    val Dummy: Bean = new Bean

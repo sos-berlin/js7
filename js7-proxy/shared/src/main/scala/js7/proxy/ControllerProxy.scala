@@ -45,8 +45,10 @@ object ControllerProxy:
     proxyConf: ProxyConf)
   : ResourceIO[ControllerProxy] =
     for
+      bean <- JournaledProxy.registerMXBean
       journaledProxy <- JournaledProxyService.service(
-        JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
+        JournaledProxy.stream(
+          apisResource, fromEventId = None, proxyEventBus.publish, proxyConf, bean),
         proxyConf,
         eventBus.publish)
       controllerProxy <- Service:

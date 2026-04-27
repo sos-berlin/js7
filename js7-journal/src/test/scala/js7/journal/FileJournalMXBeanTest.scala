@@ -12,6 +12,5 @@ final class FileJournalMXBeanTest extends OurAsyncTestSuite:
     registerMBean(beanName)(IO(FileJournalMXBean.Bean(None))).use: bean =>
       IO:
         bean.fileSize = 123
-        val beanServer = ManagementFactory.getPlatformMBeanServer
         assert:
           ManagementFactory.getPlatformMBeanServer.getAttribute(beanName, "FileSize") == 123.0
