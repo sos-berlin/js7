@@ -9,7 +9,6 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.metering.CallMeter
-import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toMB
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader

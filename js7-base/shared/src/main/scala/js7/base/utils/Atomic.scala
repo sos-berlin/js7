@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.effect.{Resource, Sync}
 import cats.kernel.Monoid
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference, LongAdder}
 import js7.base.Problems.ConcurrentAccessProblem
 import js7.base.problem.Checked
 import scala.annotation.targetName
@@ -122,10 +122,41 @@ object Atomic:
         atomic.getAndAdd(-n)
 
       /** Count current Resource usage. */
-      def gauge[F[_]: Sync as F]: Resource[F, Unit] =
+      def countConcurrency[F[_]: Sync as F]: Resource[F, Unit] =
         Resource.make(
           acquire = F.delay(atomic += 1))(
           release = _ => F.delay(atomic -= 1))
+
+
+    extension (longAdder: LongAdder)
+      inline def :=(zero: 0): Unit =
+        longAdder.reset()
+
+      inline def +=(n: Long): Unit =
+        longAdder.add(n)
+
+      inline def +=(n: 1): Unit =
+        longAdder.increment()
+
+      @targetName("incrementLong")
+      inline def +=(n: 1L): Unit =
+        longAdder.increment()
+
+      inline def -=(n: Long): Unit =
+        longAdder.add(-n)
+
+      inline def -=(n: 1): Unit =
+        longAdder.decrement()
+
+      @targetName("decrementLong")
+      inline def -=(n: 1L): Unit =
+        longAdder.decrement()
+
+      /** Count current Resource usage. */
+      def countConcurrency[F[_]: Sync as F]: Resource[F, Unit] =
+        Resource.make(
+          acquire = F.delay(longAdder.increment()))(
+          release = _ => F.delay(longAdder.decrement()))
 
 
     extension[A](atomic: AtomicReference[A])

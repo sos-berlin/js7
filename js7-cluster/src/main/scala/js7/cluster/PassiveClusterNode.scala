@@ -33,7 +33,6 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Atomic.extensions.+=
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -578,7 +577,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                     Stream.empty
 
                   case Stamped(_, _, KeyedEvent(_, event)) =>
-                    bean.addEventCount(1)
+                    bean.eventTotal += 1
                     event match
                       case _: JournalEventsReleased =>
                         Stream.exec:

@@ -2,10 +2,10 @@ package js7.journal
 
 import cats.effect.SyncIO
 import java.nio.file.Files
+import java.util.concurrent.atomic.LongAdder
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.streamJournalFiles
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -28,28 +28,28 @@ sealed trait FileJournalMXBean:
       .compile.last.run().get
 
   def getEventTotal: Long =
-    eventTotal.get
+    eventTotal
 
   def getPersistTotal: Long =
-    persistTotal.get
+    persistTotal.longValue
 
   def getPersistSecondsTotal: Double =
-    persistNanos.get / 1_000_000_000.0
+    persistNanos.longValue / 1_000_000_000.0
 
   def getCommitTotal: Long =
-    commitTotal.get
+    commitTotal
 
   def getFlushTotal: Long =
-    flushTotal.get
+    flushTotal
 
   def getEventCalcSecondsTotal: Double =
-    eventCalcNanos.get / 1_000_000_000.0
+    eventCalcNanos / 1_000_000_000.0
 
   def getJsonWriteSecondsTotal: Double =
-    jsonWriteNanos.get / 1_000_000_000.0
+    jsonWriteNanos / 1_000_000_000.0
 
   def getAckSecondsTotal: Double =
-    ackNanos.get / 1_000_000_000.0
+    ackNanos/ 1_000_000_000.0
 
   def getOperatingSeconds: Double =
     (totalOperatingTimeUntilStart.get + sinceStart.elapsed).toDoubleSeconds
@@ -68,18 +68,16 @@ object FileJournalMXBean:
     private[journal] val totalOperatingTimeUntilStart = Atomic(ZeroDuration)
 
     var fileSize = 0L
-    protected val eventTotal = Atomic(0L)
-    private[journal] val persistTotal = Atomic(0L)
-    private[journal] val persistNanos = Atomic(0L)
-    private[journal] val commitTotal = Atomic(0L)
-    private[journal] val flushTotal = Atomic(0L)
-    private[journal] val eventCalcNanos = Atomic(0L)
-    private[js7] val jsonWriteNanos = Atomic(0L)
-    private[journal] val ackNanos = Atomic(0L)
+    var eventTotal = 0L
+    private[journal] val persistTotal = new LongAdder
+    private[journal] val persistNanos = new LongAdder
+    private[journal] var commitTotal = 0L
+    private[journal] var flushTotal = 0L
+    private[journal] var eventCalcNanos = 0L
+    private[js7] var jsonWriteNanos = 0L
+    private[journal] var ackNanos = 0L
     private[js7] var activeHeartbeatDelay: FiniteDuration | Null = null
 
-    def addEventCount(n: Int): Unit =
-      eventTotal += n
 
 
   object Bean:

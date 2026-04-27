@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.IO
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference, LongAdder}
 import js7.base.Problems.ConcurrentAccessProblem
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.problem.Problem
@@ -87,3 +87,25 @@ final class AtomicTest extends OurAsyncTestSuite:
     assert(a.get() == "3")
     a := "4"
     assert(a.get() == "4")
+
+  "LongAdder" in :
+    val a = new LongAdder
+    a += 1
+    assert(a.longValue == 1L)
+    a += 2
+    assert(a.longValue == 3L)
+    a -= 2
+    assert(a.longValue == 1L)
+    a -= 1
+    assert(a.longValue == 0L)
+    a += 1L
+    assert(a.longValue == 1L)
+    a += 2L
+    assert(a.longValue == 3L)
+    a -= 2L
+    assert(a.longValue == 1L)
+    a -= 1L
+    assert(a.longValue == 0L)
+    a += 7L
+    a := 0
+    assert(a.longValue == 0L)

@@ -8,7 +8,7 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.{False, True, addElapsedToAtomicNanos, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{False, True, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger.syntax.*
@@ -157,7 +157,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         .flatMap: chunk =>
           meterEventCalc:
             applyEventCalcs(chunk)
-              .addElapsedToAtomicNanos(bean.eventCalcNanos)
+              .timed.map: (duration, o) =>
+                bean.eventCalcNanos += duration.toNanos
+                o
       .filter(_.nonEmpty)
       .prefetch // Process upstream concurrently //
       // Jsonize and write to file //
@@ -173,7 +175,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
         //.productR:
         //</editor-fold>
           writeToFile(chunk)
-            .addElapsedToAtomicNanos(bean.jsonWriteNanos)
+            .timed.map: (duration, o) =>
+              bean.jsonWriteNanos += duration.toNanos
+              o
         // maybe optimize: flush/commit concurrently, but only whole lines must be flushed
       // OrderStdoutEvents are removed from Written
       .unchunks
@@ -299,7 +303,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     : Unit =
       journalLogger.logCommitted(writtenView)
 
-      bean.addEventCount(eventCount)
+      bean.eventTotal += eventCount
       val writtenPersistCount = writtenView.size
       val now = System.nanoTime
       bean.persistTotal += writtenPersistCount
@@ -471,7 +475,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           waitForAck(snapshotTaken.eventId, Some(snapshotTaken), n = 1)
       .flatMap: isAcknowledged =>
         IO:
-          bean.addEventCount(1)
+          bean.eventTotal += 1
           statistics.onPersisted(persistCount = 1, eventCount = 1, since)
           journalLogger.logCommitted(snapshotTaken :: Nil,
             eventNumber = eventNumber,
@@ -501,7 +505,9 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               logWaitingForAck(eventId, lastStamped, n):
                 meterAck:
                   ackSignal.waitUntil(eventId <= _).as(true)
-                    .addElapsedToAtomicNanos(bean.ackNanos)
+                    .timed.map: (duration, o) =>
+                      bean.ackNanos += duration.toNanos
+                      o
                   .race:
                     // Cancel waiting on ClusterPassiveLost
                     requireClusterAck.waitUntil(!_) *> IO:

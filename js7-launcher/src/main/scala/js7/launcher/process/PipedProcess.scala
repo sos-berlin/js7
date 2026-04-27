@@ -4,6 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
+import java.util.concurrent.atomic.LongAdder
 import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessExtensions.onExitIO
@@ -64,7 +65,7 @@ final class PipedProcess private(
                 logger.traceCallWithResult(s"waitFor $process"):
                   process.waitFor()
       .flatTap: rc =>
-        ProcessMXBean.running -= 1
+        ProcessMXBean_.running -= 1
         IO(logger.trace(s"Process $pid terminated with $rc after ${duration.pretty}"))
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
@@ -194,8 +195,8 @@ object PipedProcess:
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
       startProcess(commandArgs, conf, orderId)
         .flatMapT: process =>
-          ProcessMXBean.starts += 1
-          ProcessMXBean.running += 1
+          ProcessMXBean_.starts += 1
+          ProcessMXBean_.running += 1
           val since = Deadline.now
           process.stdin.close() // Process gets an empty stdin
           val label = s"$orderId $process"
@@ -274,10 +275,10 @@ object PipedProcess:
 
 
   sealed trait ProcessMXBean:
-    this: ProcessMXBean.type =>
-    def getRunning: Int = running.get
-    def getStarts: Long = starts.get
+    this: ProcessMXBean_.type =>
+    def getRunning: Int = running.intValue
+    def getStarts: Long = starts.longValue
 
-  object ProcessMXBean extends ProcessMXBean:
-    private[PipedProcess] val running = Atomic(0)
-    private[PipedProcess] val starts = Atomic(0L)
+  object ProcessMXBean_ extends ProcessMXBean:
+    private[PipedProcess] val running = new LongAdder
+    private[PipedProcess] val starts = new LongAdder

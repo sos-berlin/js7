@@ -252,7 +252,7 @@ object Subagent:
       for
         _ <- OurIORuntimeRegister.toEnvironment(ioRuntime).registerMultiple(testWiring.envResources)
         _ <- Environment.getOrRegister[WallClock](Resource.pure(WallClock))
-        _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean)
+        _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean_)
         pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
         actorSystem <- Pekkos.actorSystemResource(conf.name, config)
         sessionRegister <- SessionRegister.service(SubagentSession(_), config)

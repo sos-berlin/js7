@@ -2,34 +2,34 @@ package js7.common.http
 
 import cats.effect.Resource
 import cats.effect.kernel.Sync
-import js7.base.utils.Atomic
+import java.util.concurrent.atomic.LongAdder
 import js7.base.utils.Atomic.extensions.*
 
 sealed trait HttpMXBean:
   this: HttpMXBean.Bean.type =>
 
-  def getClientRequestTotal: Long = clientRequestTotal.get
-  def getClientRequestActiveCount: Int = clientRequestActiveCount.get
-  def getClientSentByteTotal: Long = clientSentByteTotal.get
-  def getClientReceivedByteTotal: Long = clientReceivedByteTotal.get
+  def getClientRequestTotal: Long = clientRequestTotal.longValue
+  def getClientRequestActiveCount: Int = clientRequestActiveCount.intValue
+  def getClientSentByteTotal: Long = clientSentByteTotal.longValue
+  def getClientReceivedByteTotal: Long = clientReceivedByteTotal.longValue
 
-  def getServerRequestTotal: Long = serverRequestTotal.get
-  def getServerRequestActiveCount: Int = serverRequestActiveCount.get
-  def getServerSentByteTotal: Long = serverSentByteTotal.get
-  def getServerReceivedByteTotal: Long = serverReceivedByteTotal.get
+  def getServerRequestTotal: Long = serverRequestTotal.longValue
+  def getServerRequestActiveCount: Int = serverRequestActiveCount.intValue
+  def getServerSentByteTotal: Long = serverSentByteTotal.longValue
+  def getServerReceivedByteTotal: Long = serverReceivedByteTotal.longValue
 
 
 object HttpMXBean:
   object Bean extends HttpMXBean:
-    val clientRequestTotal: Atomic[Long] = Atomic(0L)
-    val clientRequestActiveCount: Atomic[Int] = Atomic(0)
-    val clientSentByteTotal: Atomic[Long] = Atomic(0)
-    val clientReceivedByteTotal: Atomic[Long] = Atomic(0)
+    val clientRequestTotal: LongAdder = new LongAdder
+    val clientRequestActiveCount: LongAdder = new LongAdder
+    val clientSentByteTotal: LongAdder = new LongAdder
+    val clientReceivedByteTotal: LongAdder = new LongAdder
 
-    val serverRequestTotal: Atomic[Long] = Atomic(0L)
-    val serverRequestActiveCount: Atomic[Int] = Atomic(0)
-    val serverSentByteTotal: Atomic[Long] = Atomic(0)
-    val serverReceivedByteTotal: Atomic[Long] = Atomic(0)
+    val serverRequestTotal: LongAdder = new LongAdder
+    val serverRequestActiveCount: LongAdder = new LongAdder
+    val serverSentByteTotal: LongAdder = new LongAdder
+    val serverReceivedByteTotal: LongAdder = new LongAdder
 
 
 object HttpMXBeanUtils:

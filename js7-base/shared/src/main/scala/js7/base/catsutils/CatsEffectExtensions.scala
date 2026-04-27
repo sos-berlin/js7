@@ -6,7 +6,7 @@ import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, 
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor}
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.{AtomicLong, LongAdder}
 import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -121,9 +121,14 @@ object CatsEffectExtensions:
         case Right((aFiber, b)) => resolve(b).map(b => Right(aFiber -> b))
 
 
-    def addElapsedToAtomicNanos(atomic: AtomicLong): IO[A] =
+    def addElapsedTo(atomic: AtomicLong): IO[A] =
       io.timed.map: (duration, result) =>
         atomic += duration.toNanos
+        result
+
+    def addElapsedTo(longAdder: LongAdder): IO[A] =
+      io.timed.map: (duration, result) =>
+        longAdder += duration.toNanos
         result
 
 

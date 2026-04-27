@@ -3,6 +3,7 @@ package js7.base.utils
 import cats.effect.Resource.ExitCase
 import cats.effect.std.Mutex
 import cats.effect.{FiberIO, IO, Resource, ResourceIO}
+import java.util.concurrent.atomic.LongAdder
 import js7.base.catsutils.CatsEffectExtensions.{defer, startAndCatchError}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger.syntax.*
@@ -298,9 +299,9 @@ object AsyncLock:
 
   object Bean extends AsyncLockMXBean:
     // locked and queued may be inconsistent while updated
-    private[AsyncLock] val locked = Atomic(0)
-    private[AsyncLock] val queued = Atomic(0)
-    private[AsyncLock] val usedTotal = Atomic(0L)
-    def getLockedCount: Int = locked.get
-    def getQueuedCount: Int = queued.get // (queued.get - locked.get) max 0 // Not synchronized !!!
-    def getUsedTotal: Long = usedTotal.get
+    private[AsyncLock] val locked = new LongAdder
+    private[AsyncLock] val queued = new LongAdder
+    private[AsyncLock] val usedTotal = new LongAdder
+    def getLockedCount: Int = locked.intValue
+    def getQueuedCount: Int = queued.intValue // (queued.longValue - locked.longValue) max 0 // Not synchronized !!!
+    def getUsedTotal: Long = usedTotal.longValue

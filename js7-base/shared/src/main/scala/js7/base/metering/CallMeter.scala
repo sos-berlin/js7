@@ -1,7 +1,7 @@
 package js7.base.metering
 
 import cats.effect.{IO, SyncIO}
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, LongAdder}
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
@@ -25,9 +25,9 @@ extends CallMeter.CallMeterMXBean:
   // We don't synchronize _total and _nanos, to be a little faster.
   // With big numbers, the error gets small.
   // With small numbers, concurrent access should occur seldom.
-  private val _running = Atomic(0)
-  private val _total = Atomic(0L)
-  private val _nanos = Atomic(0L)
+  private val _running = new LongAdder
+  private val _total = new LongAdder
+  private val _nanos = new LongAdder
 
   register(this) // Never unregister
   registerAsMBean(this) // Never unregister
@@ -96,16 +96,16 @@ extends CallMeter.CallMeterMXBean:
   def measurement(): Measurement =
     Measurement(this,
       total = total,
-      running = _running.get(),
-      meteredNanos = _nanos.get(),
+      running = _running.intValue,
+      meteredNanos = _nanos.longValue,
       elapsedNanos = System.nanoTime() - _sinceNano)
 
   def total: Long =
-    _total.get()
+    _total.longValue
 
-  override def getRunning = _running.get()
-  override def getTotal = _total.get()
-  override def getSeconds = _nanos.get() / 1_000_000_000.0
+  override def getRunning: Int = _running.intValue
+  override def getTotal: Long = _total.longValue
+  override def getSeconds: Double = _nanos.longValue / 1_000_000_000.0
 
   override def toString = s"CallMeter(${measurement().asString})"
 

@@ -512,7 +512,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     msgArrow: String, lastArrow: String, errArrow: String, dontLog: Boolean)
     (message: M)
   : M =
-    val byteTotal: AtomicLong =
+    val byteTotal =
       if message.isRequest then
         HttpMXBean.Bean.clientSentByteTotal
       else
