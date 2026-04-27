@@ -9,7 +9,7 @@ declare -a standardJavaOptions
 
 config=/var/opt/js7/agent/config
 data=/var/opt/js7/agent/data
-httpPort=127.0.0.1:4444
+httpPort=localhost:4444
 httpsPort=4443
 agentOptions=()
 javaOptions=()

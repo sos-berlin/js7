@@ -154,7 +154,7 @@ services:
     stop_grace_period: 15s
     restart: unless-stopped
 
-  cluster-watch:
+  cluster-watch: # Use Proxy instead!
     image: js7
     container_name: js7-cluster-watch
     hostname: js7-cluster-watch
@@ -177,8 +177,10 @@ services:
       - ./volumes/cluster-watch/data/state:/var/opt/js7/cluster-watch/data/state:delegated
     stop_grace_period: 15s
     restart: unless-stopped
+    profiles:
+      - DONT-START # Non-existent profile
 
-  cluster-watch-b:
+  cluster-watch-b: # Use Proxy instead!
     image: js7
     container_name: js7-cluster-watch-b
     hostname: js7-cluster-watch-b
@@ -204,7 +206,7 @@ services:
     depends_on:
       - cluster-watch # Delay start of this cluster-watch-b and give way to the other cluster-watch
     profiles:
-      - dontStart # Non-existent profile
+      - DONT-START # Non-existent profile
 
   provider:
     image: js7
@@ -277,7 +279,7 @@ services:
     depends_on:
       - proxy # Delay start of this proxy-b and give way to the other proxy
     profiles:
-      - dontStart # Non-existent profile
+      - DONT-START # Non-existent profile
 
 networks:
   default:

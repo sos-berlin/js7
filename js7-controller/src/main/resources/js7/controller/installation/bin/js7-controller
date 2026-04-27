@@ -11,7 +11,7 @@ declare -a standardJavaOptions
 
 config=/var/opt/js7/controller/config
 data=/var/opt/js7/controller/data
-httpPort=4444
+httpPort=localhost:4444
 httpsPort=4443
 controllerOptions=()
 javaOptions=()
