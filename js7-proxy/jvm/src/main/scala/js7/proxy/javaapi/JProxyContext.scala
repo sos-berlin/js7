@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
+import java.util.Optional
 import java.util.concurrent.{CompletableFuture, Executor}
 import java.util.function.Supplier
 import javax.annotation.Nonnull
@@ -25,6 +26,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
+import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.proxy.ControllerApi
@@ -32,6 +34,7 @@ import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JProxyContext.*
 import scala.annotation.static
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 /** The class to start. */
 final class JProxyContext(config_ : Config, computeExecutor: Executor | Null)
@@ -88,14 +91,19 @@ extends AutoCloseable:
           ioRuntimeShutdown.run()
 
   /** Runs `body` with an own [[JControllerApi]].
+    *
+    * @param proxyId Set only if this is the only JControllerApi in the JVM.
+    *                Don't use in tests (except one)!
     */
+  @javaApi
   def runControllerApi[A](
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
+    proxyId: Optional[ProxyId],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     CompletableFuture.supplyAsync: () =>
-      newControllerApi(admissions, httpsConfig)
+      newControllerApi(admissions, httpsConfig, proxyId)
     .thenCompose: jControllerApi =>
       body(jControllerApi)
         .thenCompose: result =>
@@ -104,32 +112,42 @@ extends AutoCloseable:
           jControllerApi.stop().thenCompose: _ =>
             CompletableFuture.failedFuture(throwable)
 
-
-  @javaApi @Nonnull
-  def newControllerApi(
-    @Nonnull admissions: java.lang.Iterable[JAdmission],
-    @Nonnull httpsConfig: JHttpsConfig)
-  : JControllerApi =
-    val apiResource = admissionsToApiResource(
-      admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
-      httpsConfig.asScala
-    )(using actorSystem)
-    new JControllerApi(
-      new ControllerApi(apiResource, proxyConf),
-      config)
-
   /** For Scala usage. */
   def controllerApiResource(
     admissions: Nel[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty)
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    proxyId: Option[ProxyId] = None)
   : ResourceIO[JControllerApi] =
     Resource.make(
-      acquire = IO(newControllerApi(admissions.toList.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig))))(
+      acquire = IO:
+        newControllerApi(
+          admissions.toList.map(JAdmission(_)).asJava,
+          JHttpsConfig(httpsConfig),
+          proxyId.toJava))(
       release = api =>
         IO.fromCompletableFuture:
           IO:
             api.stop()
         .void)
+
+  /**
+    * @param proxyId Set only if this is the only JControllerApi in the JVM.
+    *                Don't use in tests (except one)!
+    */
+  @javaApi @Nonnull
+  def newControllerApi(
+    @Nonnull admissions: java.lang.Iterable[JAdmission],
+    @Nonnull httpsConfig: JHttpsConfig,
+    @Nonnull proxyId: Optional[ProxyId] = Optional.empty)
+  : JControllerApi =
+    val apiResource = admissionsToApiResource(
+      admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
+      httpsConfig.asScala
+    )(using actorSystem)
+    val api = new ControllerApi(apiResource, proxyId.toScala, proxyConf)
+    if proxyId.isPresent then
+      api.makeSingleton(ioRuntime)
+    new JControllerApi(api, config)
 
 
 object JProxyContext:

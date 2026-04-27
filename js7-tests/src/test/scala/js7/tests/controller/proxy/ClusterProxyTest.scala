@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy
 
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
@@ -15,7 +16,6 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.tests.controller.proxy.ClusterProxyTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import cats.effect.unsafe.IORuntime
 import org.scalatest.{BeforeAndAfterAll, TestSuite}
 
 trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest, ProvideActorSystem:
@@ -40,7 +40,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest,
           name = s"${getClass.simpleScalaName}-Controller-$i")(
           using actorSystem)
       },
-    ProxyConfs.fromConfig(config))
+    proxyConf = ProxyConfs.fromConfig(config))
 
   override def afterAll() =
     close()

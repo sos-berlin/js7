@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -80,7 +81,7 @@ class JControllerProxyTester
             try (CouplingState couplingState = new CouplingState(proxyEventBus)) {
                 try (JProxyContext context = new JProxyContext()) {
                     CompletableFuture<JControllerProxy> whenStarted = context
-                        .newControllerApi(admissions, httpsConfig)
+                        .newControllerApi(admissions, httpsConfig, Optional.empty())
                         .startProxy(proxyEventBus);
 
                     // Avoid deadlock while blocking for firstProblem but whenStarted failed

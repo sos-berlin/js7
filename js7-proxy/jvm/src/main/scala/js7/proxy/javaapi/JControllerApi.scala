@@ -32,6 +32,7 @@ import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, R
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
 import js7.data_for_java.common.JavaUtils.{-->, Void}
@@ -397,6 +398,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       asScala.when(es => predicate(JEventAndControllerState(es)))
         .map(JEventAndControllerState.apply)
 
+  def setActive(isActive: Boolean): Unit =
+    asScala.setActive(isActive)
+
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
     runIO:
@@ -434,8 +438,6 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
 object JControllerApi:
 
   private val logger = Logger[JControllerApi]
-
-
   /** Runs `body` with an own [[JProxyContext]] and an own [[JControllerApi]].
     *
     * Short form of:
@@ -447,38 +449,45 @@ object JControllerApi:
     *
     * This is the variant for Java. There is variant for Scala, too.
     */
+  @javaApi
   def run[A](
     config: Config,
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
+    proxyId: Optional[ProxyId],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     JProxyContext.run(
       config,
-      _.runControllerApi(admissions, httpsConfig, body))
+      _.runControllerApi(admissions, httpsConfig, proxyId, body))
 
   /** For Scala usage.
     *
     * There is a variant for Java, too.
     */
+  @javaApi
   def run[A](
     config: Config = ConfigFactory.empty,
     admissions: Iterable[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty)
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    proxyId: Optional[ProxyId] = Optional.empty)
     (body: JControllerApi --> CompletableFuture[A])
   : IO[A] =
     IO.fromCompletableFuture:
       IO:
-        run(config, admissions.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig), body)
+        run(config, admissions.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig), proxyId, body)
 
   def resource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
+    proxyId: Option[ProxyId] = None,
     config: Config = Js7Config.defaultConfig)
     (using ActorSystem)
   : ResourceIO[JControllerApi] =
     for
       given IORuntime <- Resource.eval(environment[IORuntime])
-      controllerApi <- ControllerApi.resource(admissionsToApiResource(admissions, httpsConfig))
+      controllerApi <- ControllerApi.resource(
+        admissionsToApiResource(admissions, httpsConfig),
+        proxyId)
     yield
       JControllerApi(controllerApi, config)

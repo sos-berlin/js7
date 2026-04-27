@@ -49,7 +49,7 @@ object Proxy extends ServiceApp:
       given ActorSystem <- Pekkos.actorSystemResource("Proxy")
       sessionRegister <- SessionRegister.service(SimpleSession(_), conf.config)
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
-      controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
+      controllerApi <- ControllerApi.resource(apisResource, conf.proxyId, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
         controllerApi.clusterWatchResource(clusterWatchId, config = conf.config)
       _ <- EngineStateMXBean.register
@@ -57,4 +57,5 @@ object Proxy extends ServiceApp:
       _ <- ProxyWebServer.service(controllerApi, sessionRegister, conf)
       service <- Service(Proxy(controllerProxy))
     yield
+      controllerApi.setActive(true)
       service

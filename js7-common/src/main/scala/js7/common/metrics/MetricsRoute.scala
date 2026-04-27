@@ -10,16 +10,13 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.common.configuration.CommonConfiguration
+import js7.common.metrics.MetricsProvider.PrometheusContentType
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.Js7ServerId
-import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
-import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
-import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.TooManyRequests
-import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`}
-import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, HttpResponse, MediaType}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.ByteString
@@ -63,7 +60,7 @@ trait MetricsRoute extends RouteProvider:
       // Prometheus accepts text/plain
       (pathEnd & get /*& respondWithContentType(acceptedContentTypes)*/): /*contentType =>*/
         onlyOneRequest:
-          route(`text/plain(UTF-8)`)
+          route(PrometheusContentType)
 
   private final def onlyOneRequest(route: Route): Route =
     if isLocked.getAndSet(true) then
@@ -91,44 +88,3 @@ trait MetricsRoute extends RouteProvider:
 
   private def quoteMetricString(string: String): String =
     string.replace("\"", "\\\"").replace("\n", "\\n").replace("\\", "\\\\")
-
-
-object MetricsRoute:
-
-  /** This seems to be what the /metrics web service is returning. */
-  private val `application/openmetrics-text 0.0.4`: ContentType =
-    MediaType.customWithFixedCharset(
-        "application", "openmetrics-text", `UTF-8`, params = Map(
-          "version" -> "0.0.4",
-          "escaping" -> "allow-utf-8" /*Use \ as escape character for \, " and \n*/))
-      .toContentType
-
-  // Prometheus request example:
-  // GET /metrics HTTP/1.1
-  // User-Agent: Prometheus/3.11.2
-  // Accept:
-  //   application/openmetrics-text; escaping=allow-utf-8; version=1.0.0;q=0.6,
-  //   application/openmetrics-text; version=0.0.1;q=0.5,
-  //   text/plain; escaping=allow-utf-8; version=1.0.0;q=0.4,
-  //   text/plain; version=0.0.4;q=0.3, */*;q=0.2
-  // Accept-Encoding: gzip
-  // X-Prometheus-Scrape-Timeout-Seconds: 5
-
-  private val mediaTypes: Set[MediaType] =
-    Set(
-      `application/openmetrics-text 0.0.4`.mediaType,
-      `text/plain`)
-
-  private val acceptedContentTypes: List[ContentType] =
-    List(
-      `application/openmetrics-text 0.0.4`,
-      `application/json`.toContentType/*Problem is JSON-encoded*/,
-      `text/plain(UTF-8)`)
-
-  val requestHeaders: List[HttpHeader] =
-    List(
-      `Accept-Charset`(`UTF-8`),
-      Accept(
-        `application/openmetrics-text 0.0.4`.mediaType.withQValue(1.0),
-        `application/json`/*Problem is JSON-encoded*/.withQValue(0.9),
-        `text/plain`.withQValue(0.1)))

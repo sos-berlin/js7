@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy;
 
 import com.typesafe.config.ConfigFactory;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -37,7 +38,7 @@ implements AutoCloseable
         Iterable<JAdmission> admissions,
         JHttpsConfig httpsConfig)
         throws InterruptedException, ExecutionException, TimeoutException {
-        api = context.newControllerApi(admissions, httpsConfig);
+        api = context.newControllerApi(admissions, httpsConfig, Optional.empty());
         proxy = api.startProxyAwaitCoupling().get(99, SECONDS);
     }
 

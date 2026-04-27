@@ -552,7 +552,8 @@ lazy val `js7-proxy` = crossProject(JVMPlatform)
       pekkoHttp ++
       hamcrest % "test" ++
       log4j % "test" ++
-      lmaxDisruptor % "test"
+      lmaxDisruptor % "test" ++
+      "jakarta.servlet" % "jakarta.servlet-api" % "6.1.0" % "provided"
     })
 
 lazy val `js7-controller-client` = crossProject(JVMPlatform)
@@ -836,12 +837,15 @@ lazy val `js7-tests` = project
     description := "JS7 Tests")
   .settings {
     import Dependencies.*
+    val jettyVersion  = "12.1.8"
     libraryDependencies ++=
       pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
       hamcrest % "test" ++
       log4j % "test" ++
-      lmaxDisruptor % "test"
+      lmaxDisruptor % "test" ++
+      "org.eclipse.jetty" % "jetty-server" % jettyVersion % "test" ++
+      "org.eclipse.jetty.ee10" % "jetty-ee10-servlet" % jettyVersion % "test"
   }
 
 lazy val `js7-benchmark` = project

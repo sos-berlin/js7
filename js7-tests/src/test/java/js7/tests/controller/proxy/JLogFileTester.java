@@ -3,6 +3,7 @@ package js7.tests.controller.proxy;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -147,8 +148,12 @@ final class JLogFileTester {
         Function<JControllerProxy, CompletableFuture<A>> body) {
         return
             JProxyContext.run(ConfigFactory.empty(), jProxyContext ->
-                jProxyContext.runControllerApi(admissions, JHttpsConfig.empty(), jControllerApi ->
-                    jControllerApi.runControllerProxy(body)));
+                jProxyContext.runControllerApi(
+                    admissions,
+                    JHttpsConfig.empty(),
+                    Optional.empty(),
+                    jControllerApi ->
+                        jControllerApi.runControllerProxy(body)));
     }
 
 

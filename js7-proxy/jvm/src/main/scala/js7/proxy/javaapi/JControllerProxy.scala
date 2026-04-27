@@ -22,6 +22,7 @@ import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId}
 import js7.data.node.Js7ServerId
+import js7.data.proxy.ProxyId
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
 import js7.data_for_java.order.JFreshOrder
@@ -185,11 +186,12 @@ object JControllerProxy:
   /** Complete Resource with [[JProxyContext]] and [[JControllerApi]] — for Scala usage. */
   def completeResource(
     admissions: Nel[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty)
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    proxyId: Option[ProxyId] = None)
   : ResourceIO[JControllerProxy] =
     for
       jContext <- JProxyContext.resource()
-      jControllerApi <- jContext.controllerApiResource(admissions, httpsConfig)
+      jControllerApi <- jContext.controllerApiResource(admissions, httpsConfig, proxyId)
       jProxy <- jControllerApi.proxyResource()
     yield
       jProxy

@@ -62,7 +62,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
                   import httpClient.implicitSessionToken
                   httpClient.get_[HttpEntity](
                     admission.uri / s"metrics${onlyThisServer ?? "?onlyThisServer=true"}",
-                    MetricsRoute.requestHeaders,
+                    MetricsProvider.PrometheusRequestHeaders,
                     dontLog = true)
           .map:
             case Left(problem) =>

@@ -1,5 +1,6 @@
 package js7.base.system
 
+import java.net.http.HttpClient
 import java.util.Objects
 import scala.annotation.nowarn
 
@@ -36,7 +37,14 @@ object Java17Polyfill:
       //  case m: Method =>
       //    m.invoke(charSequence, srcBegin, srcEnd, dst, dstBegin)
 
+
   extension (thread: Thread)
     /** Since Java 19. */
     def threadId: Long =
       thread.getId: @nowarn("msg=deprecated")
+
+
+  extension (httpClient: HttpClient)
+    /** Since Java 21. */
+    def shutdownNow(): Unit =
+      () // Java before 21 depends on the garbage collector to release resources (bad)

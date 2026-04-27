@@ -2,12 +2,14 @@ package js7.proxy
 
 
 import cats.effect.kernel.Resource
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Json, JsonObject}
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
+import js7.base.catsutils.Environment.environment
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
@@ -40,8 +42,9 @@ import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
-import js7.data.node.{Js7ServerId, NodeId}
+import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
@@ -53,6 +56,7 @@ import scala.util.Failure
 
 final class ControllerApi(
   val apisResource: ResourceIO[Nel[HttpControllerApi]],
+  proxyId: Option[ProxyId] = None,
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
@@ -70,18 +74,28 @@ extends ControllerApiWithHttp:
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
 
+  /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
+  private[proxy] def makeSingleton(ioRuntime: IORuntime): Unit =
+    proxyId.foreach: proxyId =>
+      _singleton = Some((proxyId, this, ioRuntime))
+
   def stop: IO[Unit] =
-    stopClusterWatch.guarantee:
-      stop()
+    IO.defer:
+      stopClusterWatch.guarantee:
+        stop()
 
   def stop(dontLogout: Boolean = true): IO[Unit] =
     logger.debugIO:
-      IO.whenA(dontLogout):
-        apiCache.cachedValue
-          .fold(IO.unit): api =>
-            IO(api.clearSession())
-      .productR:
-        apiCache.release
+      IO.defer:
+        setActive(false)
+        if _singleton.exists(_.controllerApi == this) then
+          _singleton = None
+        IO.whenA(dontLogout):
+          apiCache.cachedValue
+            .fold(IO.unit): api =>
+              IO(api.clearSession())
+        .productR:
+          apiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
@@ -183,12 +197,24 @@ extends ControllerApiWithHttp:
       acquire = startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss, config))(
       release = _ => stopClusterWatch)
 
+  /** When active, the Engine's Prometheus metrics will be queried.
+    *
+    * Don't set a second instance of ControllerApi (Proxy) as active,
+    * otherwise Prometheus would collect Engine metrics twice, doubling CPU and Disk usage.
+    */
+  def setActive(isActive: Boolean): Unit =
+    if isActive then
+      for case singleton <- _singleton if singleton.controllerApi eq this do
+        // Only a one instance should query the Engine metrics, to avoid duplicates.
+        toMetricsStream = MetricsProvider.toMetricsProvider(singleton.proxyId.toSubagentId)
+    else
+      toMetricsStream = () => fs2.Stream.empty
+
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
     onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
     config: Config)
   : IO[ClusterWatchService] =
-    toMetricsStream = MetricsProvider.toMetricsProvider(Js7ServerId.Proxy(clusterWatchId))
     clusterWatchService
       .update:
         case Some(service) => IO.some(service)
@@ -283,12 +309,32 @@ extends ControllerApiWithHttp:
 object ControllerApi:
   private val logger = Logger[this.type]
 
+  private var _singleton: Option[(
+    proxyId: ProxyId,
+    controllerApi: ControllerApi,
+    ioRuntime: IORuntime
+  )] = None
+
+  def singleton: Option[(
+    proxyId: ProxyId,
+    controllerApi: ControllerApi,
+    ioRuntime: IORuntime
+  )] =
+    _singleton
+
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
+    proxyId: Option[ProxyId] = None,
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerApi] =
     // Don't use any other Resource here, because public ControllerApi#stop is called directly,
     // which can't release outer Resources.
-    Resource.make(
-      acquire = IO(ControllerApi(apisResource, proxyConf)))(
-      release = _.stop)
+    Resource.suspend:
+      environment[IORuntime].map: ioRuntime =>
+        Resource.make(
+          acquire = IO:
+            val api = ControllerApi(apisResource, proxyId, proxyConf)
+            if proxyId.isDefined then
+              api.makeSingleton(ioRuntime)
+            api)(
+          release = _.stop)

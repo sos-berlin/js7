@@ -125,22 +125,22 @@ object TestAddOrders:
             statistics.logLines.map(line => s"$line$ClearLine\n").mkString)
 
   private def run2(
-      settings: Settings,
-      onOrdersAdded: FiniteDuration => IO[Unit],
-      onStatisticsUpdate: Statistics => IO[Unit])
-    : IO[Checked[Statistics]] =
-      val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
-      Pekkos.actorSystemResource("TestAddOrders", config)
-        .flatMap: actorSystem =>
-          ControllerApi.resource(
-            admissionsToApiResource(settings.admissions)(using actorSystem),
-            ProxyConfs.fromConfig(config))
-        .use: controllerApi =>
-          val testAddOrders = new TestAddOrders(controllerApi, settings)
-          testAddOrders.run()
-            .flatMap: (whenAllOrdersAdded, statisticsQueue, running) =>
-              whenAllOrdersAdded.flatMap(onOrdersAdded)
-                .*>(statisticsQueue.foreach(onStatisticsUpdate).compile.drain)
-                .*>(running.joinStd)
+    settings: Settings,
+    onOrdersAdded: FiniteDuration => IO[Unit],
+    onStatisticsUpdate: Statistics => IO[Unit])
+  : IO[Checked[Statistics]] =
+    val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
+    Pekkos.actorSystemResource("TestAddOrders", config)
+      .flatMap: actorSystem =>
+        ControllerApi.resource(
+          admissionsToApiResource(settings.admissions)(using actorSystem),
+          proxyConf = ProxyConfs.fromConfig(config))
+      .use: controllerApi =>
+        val testAddOrders = new TestAddOrders(controllerApi, settings)
+        testAddOrders.run()
+          .flatMap: (whenAllOrdersAdded, statisticsQueue, running) =>
+            whenAllOrdersAdded.flatMap(onOrdersAdded)
+              .*>(statisticsQueue.foreach(onStatisticsUpdate).compile.drain)
+              .*>(running.joinStd)
 
   private def toOrderId(i: Int) = OrderId(s"TestAddOrders-$i")

@@ -2,6 +2,7 @@ package js7.tests.controller.proxy;
 
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ public final class TestJControllerProxy
                 out::println);
 
             JControllerProxy proxy = context
-                .newControllerApi(admissions, JHttpsConfig.empty())
+                .newControllerApi(admissions, JHttpsConfig.empty(), Optional.empty())
                 .startProxy(proxyEventBus)
                 .get(99, SECONDS);
             try {
