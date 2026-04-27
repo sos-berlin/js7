@@ -4,7 +4,7 @@ import cats.data.{NonEmptyList, NonEmptySeq, NonEmptyVector, Validated}
 import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import cats.{Applicative, FlatMap, Traverse}
+import cats.{Applicative, FlatMap, Show, Traverse}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -17,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import scala.collection.View
 import scala.concurrent.duration.*
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -65,6 +66,13 @@ object CatsUtils:
     whenM(!condition)(body)
 
   object syntax:
+
+    given unitTryShow: Show[Try[Unit]] =
+      Show.show:
+        case Success(()) => "✔︎"
+        case Failure(t) => s"💥 ${t.toStringWithCauses}"
+
+
     implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal:
       /** Compiles iff A == B or A extends B. */
       inline def requireElementType[B >: A]: F[A] =
