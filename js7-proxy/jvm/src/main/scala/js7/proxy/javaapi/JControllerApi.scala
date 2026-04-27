@@ -465,12 +465,11 @@ object JControllerApi:
     *
     * There is a variant for Java, too.
     */
-  @javaApi
   def run[A](
-    config: Config = ConfigFactory.empty,
     admissions: Iterable[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Optional[ProxyId] = Optional.empty)
+    proxyId: Optional[ProxyId] = Optional.empty,
+    config: Config = ConfigFactory.empty)
     (body: JControllerApi --> CompletableFuture[A])
   : IO[A] =
     IO.fromCompletableFuture:

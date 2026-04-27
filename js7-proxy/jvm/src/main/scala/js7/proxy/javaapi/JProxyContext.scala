@@ -137,7 +137,7 @@ extends AutoCloseable:
   @javaApi @Nonnull
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
-    @Nonnull httpsConfig: JHttpsConfig,
+    @Nonnull httpsConfig: JHttpsConfig = JHttpsConfig.empty,
     @Nonnull proxyId: Optional[ProxyId] = Optional.empty)
   : JControllerApi =
     val apiResource = admissionsToApiResource(
@@ -158,6 +158,7 @@ object JProxyContext:
   private lazy val logger = Logger[this.type]
 
   /** Runs `body` with an own [[JProxyContext]]. */
+  @javaApi
   def run[A](config: Config, body: JProxyContext --> CompletableFuture[A]): CompletableFuture[A] =
     CompletableFuture.supplyAsync: () =>
       new JProxyContext()
@@ -168,6 +169,7 @@ object JProxyContext:
         .exceptionallyCompose: throwable =>
           jProxyContext.release().thenCompose: _ =>
             CompletableFuture.failedFuture(throwable)
+
   /** For Scala usage. */
   //def resourceWithOwnIORuntime(config: Config = ConfigFactory.empty)
   //: ResourceIO[JProxyContext] =

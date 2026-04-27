@@ -54,7 +54,7 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       assert(line.contains(s"TEST ONLY: $bareSubagentId, "))
 
   private def getLog(js7ServerId: Js7ServerId): IO[String] =
-    JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
+    JControllerApi.run(controllerAdmission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(

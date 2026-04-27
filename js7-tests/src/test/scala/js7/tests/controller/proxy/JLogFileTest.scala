@@ -79,7 +79,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTester.java! 🍋🍋🍋"
     logger.info(logText)
     // Java-like code, but JLogFileTester.test runs in Proxy's thread:
-    JControllerApi.run(admissions = controllerAdmission :: Nil): jControllerApi =>
+    JControllerApi.run(controllerAdmission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         JLogFileTester.test(jControllerProxy, logText)
     .map: result =>

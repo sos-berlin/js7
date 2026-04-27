@@ -40,7 +40,7 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
       .await(99.s)
 
   private def getLog(admission: Admission, serverId: Js7ServerId): IO[String] =
-    JControllerApi.run(admissions = admission :: Nil): jControllerApi =>
+    JControllerApi.run(admission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
