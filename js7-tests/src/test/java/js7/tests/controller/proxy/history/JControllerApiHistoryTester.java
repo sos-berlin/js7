@@ -56,7 +56,7 @@ final class JControllerApiHistoryTester
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             InMemoryHistory history = new InMemoryHistory();
             CompletableFuture<Optional<JControllerState>> whenFirstFluxTerminated = api
-                .eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
+                .eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()), "History")
                 .doOnNext(eventAndState -> {
                     logger.debug("doOnNext: " + eventAndState.stampedEvent());
                     history.update(eventAndState);
@@ -95,7 +95,7 @@ final class JControllerApiHistoryTester
 
             // A second call with same EventId returns equal JEventAndControllerState
             JControllerState second = api
-                .eventFlux(proxyEventBus, OptionalLong.of(state.eventId()))
+                .eventFlux(proxyEventBus, OptionalLong.of(state.eventId()), "History")
                 .map(JEventAndControllerState::state)
                 .take(1)
                 .collectList()
@@ -114,7 +114,7 @@ final class JControllerApiHistoryTester
 
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             try {
-                api.eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
+                api.eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()), "History")
                     .then(Mono.<JProblem>error(new RuntimeException("Unexpected end of event steam")))
                     .toFuture()
                     .get(99, SECONDS);
@@ -126,7 +126,7 @@ final class JControllerApiHistoryTester
             long tornEventId = await(api.journalInfo()).tornEventId();
 
             CompletableFuture<JEventAndControllerState<Event>> whenFirstFluxTerminated =
-                api.eventFlux(proxyEventBus, OptionalLong.of(tornEventId))
+                api.eventFlux(proxyEventBus, OptionalLong.of(tornEventId), "History")
                     .doOnNext(eventAndState -> logger.debug("doOnNext: " + eventAndState.stampedEvent()))
                     .takeUntil(es ->
                         es.stampedEvent().value().key().equals(orderId) &&

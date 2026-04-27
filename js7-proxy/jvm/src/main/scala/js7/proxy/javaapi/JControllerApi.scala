@@ -92,8 +92,16 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
     @Nonnull after: OptionalLong/*EventId*/)
   : Flux[JEventAndControllerState[Event]] =
+    eventFlux(proxyEventBus, after = after, beanName = "")
+
+  @Nonnull
+  def eventFlux(
+    @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
+    @Nonnull after: OptionalLong/*EventId*/,
+    @Nonnull beanName: String)
+  : Flux[JEventAndControllerState[Event]] =
     asScala
-      .eventAndStateStream(proxyEventBus.asScala, after.toScala)
+      .eventAndStateStream(proxyEventBus.asScala, after.toScala, beanName = beanName)
       .map(JEventAndControllerState.apply)
       .asFlux
 

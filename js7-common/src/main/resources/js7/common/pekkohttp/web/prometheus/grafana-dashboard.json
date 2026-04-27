@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 17,
+    "generation": 22,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -1533,14 +1533,14 @@
                         "editorMode": "code",
                         "expr": "js7_JournaledProxy_EventDelay{js7Server=\"$js7Server\"}",
                         "instant": false,
-                        "legendFormat": "Proxy event delay",
+                        "legendFormat": "Event delay ({{name}})",
                         "range": true
                       },
                       "labels": {
                         "grafana.app/export-label": "prometheus-1"
                       }
                     },
-                    "refId": "A",
+                    "refId": "eventDelay",
                     "hidden": false
                   }
                 },
@@ -1683,21 +1683,6 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Cluster acknowledgement"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
                       "options": "persist"
                     },
                     "properties": [
@@ -1728,22 +1713,8 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Active's heartbeat delay"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Proxy event delay"
+                      "scope": "series",
+                      "options": "Event delay (Proxy)"
                     },
                     "properties": [
                       {
@@ -5891,7 +5862,7 @@
                         "editorMode": "code",
                         "expr": "rate(js7_JournaledProxy_EventCount{js7Server=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "Proxy received events",
+                        "legendFormat": "{{name}}: received events",
                         "range": true
                       },
                       "labels": {
@@ -5918,9 +5889,7 @@
                   "multiLane": false
                 },
                 "legend": {
-                  "calcs": [
-                    "max"
-                  ],
+                  "calcs": [],
                   "displayMode": "list",
                   "placement": "bottom",
                   "showLegend": true
@@ -6033,7 +6002,8 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Proxy received events"
+                      "scope": "series",
+                      "options": "Proxy: received events"
                     },
                     "properties": [
                       {

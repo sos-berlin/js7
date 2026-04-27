@@ -103,11 +103,13 @@ extends ControllerApiWithHttp:
   /** Read events and state from Controller. */
   def eventAndStateStream(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
-    fromEventId: Option[EventId] = None)
+    fromEventId: Option[EventId] = None,
+    beanName: String = "")
   : Stream[IO, EventAndState[Event, ControllerState]] =
     // CorrelId.bind ???
     logger.debugStream:
-      JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf)
+      JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf,
+        beanName = beanName)
 
   def controllerProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,

@@ -6,4 +6,4 @@ includeObjectNames:
   - "java.lang:type=OperatingSystem"
   - "java.lang:type=Runtime"
   - "java.lang:type=Threading"
-  - "js7:type=*"
+  - "js7:*"

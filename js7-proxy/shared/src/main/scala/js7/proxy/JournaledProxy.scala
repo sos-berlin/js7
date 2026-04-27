@@ -17,7 +17,7 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{DelayConf, Delayer}
+import js7.base.utils.{Atomic, DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -55,13 +55,28 @@ object JournaledProxy:
     EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
   private val logger = Logger[this.type]
+  private val nameCounter = Atomic(1)
 
   def stream[S <: JournaledState[S]](
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf,
-    bean: JournaledProxy.Bean = new JournaledProxy.Bean/*dummy*/)
+    beanName: String = "")
+    (using S: JournaledState.Companion[S], sTag: Tag[S])
+  : Stream[IO, EventAndState[Event, S]] =
+    Stream.resource:
+      JournaledProxy.registerMXBean(
+        name = if beanName.isEmpty then s"$S-${nameCounter.incrementAndGet()}" else beanName)
+    .flatMap: bean =>
+      stream2(apisResource, fromEventId, onProxyEvent, bean, proxyConf)
+
+  private def stream2[S <: JournaledState[S]](
+    apisResource: ResourceIO[Nel[RequiredApi_[S]]],
+    fromEventId: Option[EventId],
+    onProxyEvent: ProxyEvent => Unit,
+    bean: JournaledProxy.Bean,
+    proxyConf: ProxyConf)
     (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
@@ -138,7 +153,7 @@ object JournaledProxy:
       DelayConf(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s).start[IO]
     .flatMap:
       stream2
-  end stream
+  end stream2
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.
@@ -198,7 +213,7 @@ object JournaledProxy:
       super.onCouplingFailed(api, problem) >>
         IO:
           onProxyEvent(ProxyCouplingError(problem))
-          false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via Api[S[S)
+          false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via Api[S])
 
     override protected val onDecoupled =
       IO:
@@ -211,8 +226,8 @@ object JournaledProxy:
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
 
 
-  def registerMXBean: ResourceIO[Bean] =
-    registerMBean("JournaledProxy"):
+  private def registerMXBean(name: String): ResourceIO[Bean] =
+    registerMBean(typ = "JournaledProxy", name = name):
       IO(new Bean)
 
   trait JournaledProxyMXBean:
@@ -228,6 +243,6 @@ object JournaledProxy:
           eventDelayMillis = Long.MinValue
           o / 1000.0
 
-  final class Bean extends JournaledProxyMXBean:
+  private final class Bean extends JournaledProxyMXBean:
     private[JournaledProxy] var eventDelayMillis: Long = Long.MinValue
     private[JournaledProxy] var eventCount: Long = 0L
