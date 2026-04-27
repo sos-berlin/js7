@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.unsafeRuntime
+import js7.base.log.reader.LogDirectoryMXBean
 import js7.base.service.{MainService, Service}
 import js7.base.utils.ProgramTermination
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
@@ -55,6 +56,7 @@ object Proxy extends ServiceApp:
       _ <- EngineStateMXBean.register
       controllerProxy <- controllerApi.controllerProxy()
       _ <- ProxyWebServer.service(controllerApi, sessionRegister, conf)
+      _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
       service <- Service(Proxy(controllerProxy))
     yield
       controllerApi.setActive(true)

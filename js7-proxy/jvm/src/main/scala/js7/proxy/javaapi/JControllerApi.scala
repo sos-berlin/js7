@@ -2,9 +2,10 @@ package js7.proxy.javaapi
 
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{IO, ResourceIO, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import io.vavr.control.Either as VEither
+import java.nio.file.Path
 import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
@@ -13,12 +14,15 @@ import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Config
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
+import js7.base.log.reader.LogDirectoryMXBean
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
+import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.web.Uri
@@ -58,10 +62,18 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   (using ioRuntime: IORuntime):
 
   protected val prefetch = config.getInt("js7.web.client.prefetch")
+  private val releaseLogDirectoryMXBean = Atomic(SyncIO.unit)
 
   def stop(): CompletableFuture[Void] =
     runIO:
       asScala.stop.as(Void)
+        .guarantee:
+          releaseLogDirectoryMXBean.getAndSet(SyncIO.unit).to[IO]
+
+  def registerLogDirectoryMxBean(logDirectory: Path): Unit =
+    val release = LogDirectoryMXBean.register[SyncIO](logDirectory).allocated.run()._2
+    val former = releaseLogDirectoryMXBean.getAndSet(release)
+    former.run()
 
   /** Fetch event stream from Controller. */
   @Nonnull

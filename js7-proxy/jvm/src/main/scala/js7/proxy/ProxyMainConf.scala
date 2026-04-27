@@ -20,6 +20,7 @@ import scala.jdk.CollectionConverters.*
 private final case class ProxyMainConf(
   proxyId: Option[ProxyId] = None,
   configDirectory: Path,
+  dataDir: Path,
   admissions: Nel[Admission],
   webServerPorts: Seq[WebServerPort],
   proxyConf: ProxyConf,
@@ -28,6 +29,7 @@ private final case class ProxyMainConf(
 extends CommonConfiguration:
 
   val maybeJs7ServerId = proxyId.map(_.toSubagentId)
+  val logDirectory = dataDir / "logs"
 
   val name = "Proxy"
 
@@ -37,7 +39,7 @@ private object ProxyMainConf:
   def fromCommandLine(args: CommandLineArguments): ProxyMainConf =
     val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(args)
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
-    val unusedDataDir = args.as[Path]("--data-directory=").toAbsolutePath
+    val dataDir = args.as[Path]("--data-directory=").toAbsolutePath
     val clusterWatchId = args.optionAs[ClusterWatchId]("--cluster-watch-id=")
 
     val config = ConfigFactory.parseMap(Map(
@@ -73,6 +75,7 @@ private object ProxyMainConf:
     ProxyMainConf(
       clusterWatchId.map(ProxyId.fromClusterWatchId),
       configDirectory = configDir,
+      dataDir = dataDir,
       admissions,
       common.webServerPorts,
       ProxyConfs.default,
