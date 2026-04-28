@@ -243,6 +243,7 @@ object RunningController:
 
     given ExecutionContext = ioRuntime.compute
     given StandardEventBus[Any] = testEventBus
+    given Config = conf.config
 
     // Recover and initialize other stuff in parallel
     val clusterNodeResource =

@@ -7,7 +7,12 @@ import js7.base.log.Logger
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.util.control.NonFatal
 
-/** Used for Environment and for tests having their own IORuntimes. */
+/** Used for Environment and for tests having their own IORuntimes.
+  *
+  * In production, only one IORuntime is used and `ecToRuntime` has only one entry.
+  *
+  * In tests, each test may have its own IORuntimes.
+  * */
 object OurIORuntimeRegister:
 
   private lazy val logger = Logger[this.type]
@@ -63,4 +68,6 @@ object OurIORuntimeRegister:
 
 
   private final class Entry(val ioRuntime: IORuntime):
-    val enviromment = new Environment(label = ioRuntimeToLabel(ioRuntime))
+    var label = ioRuntimeToLabel(ioRuntime)
+    if label == OurIORuntime.commonThreadPrefix then label = ""
+    val enviromment = new Environment(label = label)

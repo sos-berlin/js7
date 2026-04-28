@@ -2,7 +2,6 @@ package js7.base.log.reader
 
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
-import cats.syntax.apply.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -276,21 +275,13 @@ object LogDirectoryIndex:
     (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
     assertThat(logLevel == Error || logLevel == Info || logLevel == Debug)
+    given Config = config
     logger.traceResource:
       Resource.suspend:
-        val recompressor = Recompressor.fromConfig(config)
         deleteTmpFiles(directory, logLevel) *>
-          directory.directoryStream[IO]
-            .filter: file =>
-              !isOurTmpFile(file) && isValidFile(file)
-            .compile.toVector.map: files =>
-              val directoryEvents = DirectoryWatch.stream(
-                directory,
-                DirectoryState(files.map(_.getFileName)),
-                DirectoryWatchSettings.fromConfig(config).orThrow,
-                isValidFile,
-                Set(ENTRY_CREATE, ENTRY_DELETE))
-              resource(files, directory, directoryEvents, logLevel, poll, recompressor)
+          watchDirectory(directory, isValidFile).map: (files, directoryEvents) =>
+            val recompressor = Recompressor.fromConfig(config)
+            resource(files, directory, directoryEvents, logLevel, poll, recompressor)
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
     (using ZoneId)
@@ -311,11 +302,10 @@ object LogDirectoryIndex:
         toLogFiles(files).map: logFiles =>
           Service:
             val ourDirEvents = directoryEvents
-              .filterNot(o => isOurTmpFile(o.relativePath)) // to be sure
+              .filterNot: o =>
+                isOurTmpFile(o.relativePath) // to be sure
               .map:
-                case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
-                case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
-                case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
+                OurDirEvent(logDirectory, _)
             new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor,
               breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength))
 
@@ -377,6 +367,20 @@ object LogDirectoryIndex:
             isOurTmpFile(file) && logLevelMatches(file, logLevel)
           .compile.toVector
           .run()
+
+  private def watchDirectory(directory: Path, isValidFile: Path => Boolean)(using config: Config)
+  : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
+    directory.directoryStream[IO]
+      .filter: file =>
+        !isOurTmpFile(file) && isValidFile(file)
+      .compile.toVector.map: files =>
+        files ->
+          DirectoryWatch.stream(
+            directory,
+            DirectoryState(files.map(_.getFileName)),
+            DirectoryWatchSettings.fromConfig(config).orThrow,
+            isValidFile,
+            Set(ENTRY_CREATE, ENTRY_DELETE))
 
   private def logLevelMatches(file: Path, logLevel: LogLevel): Boolean =
     logLevel match
@@ -453,6 +457,14 @@ object LogDirectoryIndex:
   private sealed trait OurDirEvent:
     def file: Path
 
+  private object OurDirEvent:
+    def apply(logDirectory: Path, event: DirectoryEvent): OurDirEvent =
+      event match
+        case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
+        case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
+        case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
+
+
   private final case class FileAdded(file: Path) extends OurDirEvent:
     override def toString = s"FileAdded(${file.getFileName})"
 
@@ -460,6 +472,7 @@ object LogDirectoryIndex:
     override def toString = s"FileDeleted(${file.getFileName})"
 
 
+  /** Contains LogDirectoryIndexes for Error, Info and Debug. */
   final class Register private(logDirectory: Path)(using ZoneId) extends Service.TrivialReleasable:
     private val levelToIndex = ConcurrentHashMap[LogLevel, Allocated[IO, LogDirectoryIndex]]
     private val lock = LockKeeper[LogLevel]()
@@ -485,11 +498,12 @@ object LogDirectoryIndex:
   object Register:
     private given ZoneId = ZoneId.systemDefault
 
-    def resource(logDirectory: Path): ResourceIO[Register] =
-      registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", Bean)
-        .void
-      *>
-        Service(new Register(logDirectory))
+    def resource(logDirectory: Path)(using config: Config): ResourceIO[Register] =
+      for
+        _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", Bean).void
+        service <- Service(new Register(logDirectory))
+      yield
+        service
 
 
   sealed trait LogDirectoryIndexMXBean:
