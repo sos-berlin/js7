@@ -11,7 +11,7 @@ declare -a standardJavaOptions
 
 config=/var/opt/js7/controller/config
 data=/var/opt/js7/controller/data
-httpPort=localhost:4444
+httpPort=4444 # HTTP is open for all interfaces, allowing testAddOrder etc to access the Controller
 httpsPort=4443
 controllerOptions=()
 javaOptions=()

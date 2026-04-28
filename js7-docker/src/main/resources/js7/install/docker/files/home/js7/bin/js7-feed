@@ -33,7 +33,7 @@ for arg in "$@"; do :
 done
 
 if [ $explicitController == 0 ]; then
-  args+=("--controller=http://controller:4444" "--controller=http://backup-controller:4444")
+  args+=("--controller=https://controller:4443" "--controller=https://backup-controller:4443")
 fi
 
 logs="$data/logs"
