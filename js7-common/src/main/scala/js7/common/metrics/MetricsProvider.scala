@@ -4,17 +4,22 @@ import fs2.{Chunk, Pure}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpHeader, MediaType}
+import scala.util.control.NonFatal
 
 object MetricsProvider:
 
   type ToMetricsStream = () => fs2.Stream[Pure, Chunk[Byte]]
   type ToMetricsByteChunk = () => fs2.Chunk[Byte]
+
+  private val logger = Logger[this.type]
 
   /** The 'accept' header of Prometheus 1_4_3. */
   val PrometheusAcceptHeaderValue: String =
@@ -71,26 +76,45 @@ object MetricsProvider:
       `Accept-Charset`(`UTF-8`),
       PrometheusAcceptHeader)
 
-  def toMetricsByteChunkProvider(
+  private lazy val javaService: Option[MetricsJavaService] =
+    findJavaService[MetricsJavaService]
+
+
+  def toMetricsByteChunk(
     ownJs7ServerId: Js7ServerId,
     configDirectory: Option[Path] = None)
   : ToMetricsByteChunk =
-    () => toMetricsStreamProvider(ownJs7ServerId, configDirectory)().compile.foldMonoid
+    val toStream = toMetricsStream(ownJs7ServerId, configDirectory)
+    () => toStream().compile.foldMonoid
 
-  def toMetricsStreamProvider(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
+  def toMetricsStream(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
   : ToMetricsStream =
-    findJavaService[MetricsJavaService] match
-      case None =>
-        () =>
+    val stream =
+      javaService match
+        case None =>
           fs2.Stream.emit:
             fs2.Chunk.array:
               s"# $ownJs7ServerId: No MetricsJavaService installed \n"
                 .getBytes(UTF_8)
 
-      case Some(svc) =>
-        val qServerId = ownJs7ServerId.toString
-          .replace("\"", "\\\"")
-          .replace("\n", "\\n")
-          .replace("\\", "\\\\")
-        val addAttribute = s"js7Server=\"$qServerId\""
-        () => svc.metricsStreamProvider(configDirectory)(addAttribute = addAttribute)
+        case Some(svc) =>
+          val qServerId = ownJs7ServerId.toString
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\\", "\\\\")
+          val addAttribute = s"js7Server=\"$qServerId\""
+          try
+            svc.metricsStreamProvider(configDirectory)(addAttribute = addAttribute)
+          catch case NonFatal(t) =>
+            logger.error(s"toMetricsStream: ${t.toStringWithCauses}", t)
+            fs2.Stream.emit:
+              fs2.Chunk.array:
+                s"# $ownJs7ServerId: ${toPrometheusString(t.toString)}\n"
+                  .getBytes(UTF_8)
+    () => stream
+
+  private def toPrometheusString(string: String): String =
+    string
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\\", "\\\\")

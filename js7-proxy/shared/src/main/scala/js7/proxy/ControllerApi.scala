@@ -29,7 +29,7 @@ import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProbl
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.metrics.MetricsProvider.{ToMetricsByteChunk, toMetricsByteChunkProvider}
+import js7.common.metrics.MetricsProvider.{ToMetricsByteChunk, toMetricsByteChunk}
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -65,13 +65,10 @@ extends ControllerApiWithHttp:
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
   private var toLocalMetrics: ToMetricsByteChunk = () => fs2.Chunk.empty
+  private var _isActive = false
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
-
-  /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
-  private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
-    _singleton = Some((proxyId, this, ioRuntime))
 
   def stop: IO[Unit] =
     IO.defer:
@@ -193,19 +190,6 @@ extends ControllerApiWithHttp:
       acquire = startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss, config))(
       release = _ => stopClusterWatch)
 
-  /** When active, the Engine's Prometheus metrics will be queried.
-    *
-    * Don't set a second instance of ControllerApi (Proxy) as active,
-    * otherwise Prometheus would collect Engine metrics twice, doubling CPU and Disk usage.
-    */
-  def setActive(isActive: Boolean): Unit =
-    if isActive then
-      for case singleton <- _singleton if singleton.controllerApi eq this do
-        // Only a one instance should query the Engine metrics, to avoid duplicates.
-        toLocalMetrics = toMetricsByteChunkProvider(singleton.proxyId.toSubagentId)
-    else
-      toLocalMetrics = () => fs2.Chunk.empty
-
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
     onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
@@ -237,9 +221,28 @@ extends ControllerApiWithHttp:
         case Some(allo) =>
           allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
 
+  /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
+  private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
+    _singleton = Some((proxyId, this, ioRuntime))
+    toLocalMetrics = toMetricsByteChunk(proxyId.toSubagentId)
+
+  /** When active, the Engine's Prometheus metrics will be queried.
+    *
+    * Don't set a second instance of ControllerApi (Proxy) as active,
+    * otherwise Prometheus would collect Engine metrics twice,
+    * doubling measurements, CPU and Disk usage.
+    */
+  def setActive(isActive: Boolean): Unit =
+    _isActive = isActive
+
   def metrics: IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
     useApi: api =>
-      api.metrics.map:
+      locally:
+        if _isActive then
+          api.metrics
+        else
+          IO.pure(fs2.Stream.empty)
+      .map:
         _.merge:
           fs2.Stream.emit(toLocalMetrics())
 

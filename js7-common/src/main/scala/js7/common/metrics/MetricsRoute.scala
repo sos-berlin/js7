@@ -35,7 +35,7 @@ trait MetricsRoute extends RouteProvider:
         () => ByteString("# Unknown Js7ServerId\n")
       case Some(serverId) =>
         () => MetricsProvider
-          .toMetricsByteChunkProvider(serverId, Some(commonConf.configDirectory))()
+          .toMetricsByteChunk(serverId, Some(commonConf.configDirectory))()
           .toByteString
 
   protected final def metricsRawRoute(contentType: ContentType): Route =
