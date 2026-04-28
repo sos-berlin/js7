@@ -23,6 +23,16 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
   <!-- User may want to set the 'productKebab' property (defaults to "js7"). -->
   <properties>
     <property name="logDirectory" value="${sys:js7.log4j.directory:-logs}"/>
+    <property name="errorPattern">
+      %highlight{${infoLine}}{ERROR=red bold,WARN=red,INFO=default}%n
+    </property>
+    <property name="errorLine">
+      <!-- .SSSXX shows timezone -->
+      %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
+    </property>
+    <property name="errorPattern">
+      %highlight{${errorLine}}{ERROR=red bold,WARN=red,INFO=default}%n
+    </property>
     <property name="infoLine">
       <!-- .SSSXX shows timezone -->
       %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
@@ -50,6 +60,31 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="${infoPattern}"/>
     </console>
+
+    <rollingRandomAccessFile
+      name="errorLog"
+      fileName="${logDirectory}/${productKebab:-js7}-error.log"
+      filePattern="${logDirectory}/${productKebab:-js7}-error-%d{yyyy-MM-dd}-%i.log.gz"
+      immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout
+        pattern="${errorPattern}"
+        header="${fileHeader}"
+        footer="${fileFooter}"
+        charset="UTF-8"/>
+      <policies>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="100MB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="${productKebab:-js7}-error-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
 
     <rollingRandomAccessFile
       name="infoLog"
@@ -129,6 +164,7 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
     <root level="info">
       <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="warn"  ref="stderr"/>
+      <appenderRef level="warn"  ref="errorLog"/>
       <appenderRef level="info"  ref="infoLog"/>
       <appenderRef level="trace" ref="debugLog"/>
     </root>

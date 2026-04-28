@@ -24,7 +24,7 @@ import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
-import js7.base.log.LogLevel.{Debug, Info}
+import js7.base.log.LogLevel.{Debug, Info, Error}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogFileReader.UniqueHeaderSize
@@ -245,10 +245,13 @@ object LogDirectoryIndex:
   /** LogDirectoryIndex, watching the standard JS7 Engine log directory. */
   private def js7Directory(logDirectory: Path, logLevel: LogLevel, config: Config)(using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
-    assertThat(logLevel == Info || logLevel == Debug)
     val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
     val currentLogFile = logDirectory / config.getString:
-      if logLevel == Debug then "js7.log.debug.file" else "js7.log.info.file"
+      logLevel match
+        case Error => "js7.log.error.file"
+        case Info => "js7.log.info.file"
+        case Debug => "js7.log.debug.file"
+        case _ => throw new IllegalArgumentException(s"Unsupported log level: $logLevel")
     val currentLogFilename = currentLogFile.getFileName
 
     def isValidFile(file: Path) =
@@ -272,7 +275,7 @@ object LogDirectoryIndex:
     poll: Option[FiniteDuration] = None)
     (using ZoneId)
   : ResourceIO[LogDirectoryIndex] =
-    assertThat(logLevel == Info || logLevel == Debug)
+    assertThat(logLevel == Error || logLevel == Info || logLevel == Debug)
     logger.traceResource:
       Resource.suspend:
         val recompressor = Recompressor.fromConfig(config)
@@ -376,7 +379,10 @@ object LogDirectoryIndex:
           .run()
 
   private def logLevelMatches(file: Path, logLevel: LogLevel): Boolean =
-    (logLevel == Debug) == file.getFileName.toString.contains("-debug")
+    logLevel match
+      case Error => file.getFileName.toString.contains("-error")
+      case Debug => file.getFileName.toString.contains("-debug")
+      case _ => true
 
   private def isCompressedLogFile(file: Path): Boolean =
     file.toString.endsWith(".log.gz")

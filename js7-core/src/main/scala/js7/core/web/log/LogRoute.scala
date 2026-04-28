@@ -15,7 +15,6 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.LogLevel.Debug
 import js7.base.log.reader.LogDirectoryIndex.Register
 import js7.base.log.reader.LogFileReader.growingLogFileStream
 import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
@@ -26,8 +25,8 @@ import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -61,11 +60,14 @@ trait LogRoute extends RouteProvider:
         seal:
           streamFile(logDirectory / currentInfoLogFilename, growing = true)
       ~
+        pathPrefix("error"):
+          fileRoute(LogLevel.Error, logDirectory / currentInfoLogFilename)
+      ~
         pathPrefix("info"):
           fileRoute(LogLevel.Info, logDirectory / currentInfoLogFilename)
       ~
         pathPrefix("debug"):
-          fileRoute(Debug, logDirectory / currentDebugLogFilename)
+          fileRoute(LogLevel.Debug, logDirectory / currentDebugLogFilename)
       ~
         pathPrefix("none"):
           // LogLevel.None returns a line for  testing
