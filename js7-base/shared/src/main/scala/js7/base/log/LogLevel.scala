@@ -24,8 +24,9 @@ object LogLevel:
   val MinValue = Trace
   val MaxValue = None
 
-  @javaApi def info: LogLevel = Info
   @javaApi def debug: LogLevel = Debug
+  @javaApi def info: LogLevel = Info
+  @javaApi def error: LogLevel = Error
 
   /** The usual Ordinal invariants are not valid here:
    * <ul>
