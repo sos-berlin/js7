@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 27,
+    "generation": 29,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -781,7 +781,7 @@
         "spec": {
           "id": 13,
           "title": "G1 garbage collection time",
-          "description": "Not sure what 100% means",
+          "description": "Not sure what 100% means, but 100% means complete CPU",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -871,6 +871,28 @@
                       }
                     },
                     "refId": "young",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "rate(java_lang_Memory_TotalGcCpuTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000000000 / java_lang_OperatingSystem_AvailableProcessors{js7Server=\"$js7Server\"}",
+                        "instant": false,
+                        "legendFormat": "CPU",
+                        "range": true
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "prometheus-1"
+                      }
+                    },
+                    "refId": "cpu",
                     "hidden": false
                   }
                 }
@@ -1000,6 +1022,33 @@
                           "fixedColor": "light-orange",
                           "mode": "fixed"
                         }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "CPU"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "text",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": "A",
+                          "mode": "none"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       }
                     ]
                   }
