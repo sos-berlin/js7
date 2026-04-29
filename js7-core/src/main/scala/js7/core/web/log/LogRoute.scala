@@ -15,9 +15,8 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.reader.LogDirectoryIndex.Register
 import js7.base.log.reader.LogFileReader.growingLogFileStream
-import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey}
+import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
@@ -45,7 +44,7 @@ trait LogRoute extends RouteProvider:
   protected def config: Config
   protected def js7ServerId: Option[Js7ServerId]
   protected def logDirectory: Path
-  protected def logDirectoryIndexRegister: LogDirectoryIndex.Register
+  protected def logDirectoryIndexRegister: LogDirectoryIndexRegister
 
   private given IORuntime = ioRuntime
 
@@ -140,7 +139,8 @@ trait LogRoute extends RouteProvider:
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
-      logDirectoryIndexRegister.forLogLevel(logLevel, config)
+      given Config = config
+      logDirectoryIndexRegister.forLogLevel(logLevel)
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>

@@ -17,7 +17,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
-import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
+import js7.base.log.reader.{LogDirectoryIndexRegister, LogDirectoryMXBean}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.problem.Checked.*
@@ -334,7 +334,7 @@ object RunningController:
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
       : ResourceIO[ControllerWebServer] =
         for
-          logDirectoryIndexRegister <- LogDirectoryIndex.Register.resource(conf.logDirectory)
+          logDirectoryIndexRegister <- LogDirectoryIndexRegister.resource(conf.logDirectory)
           webServer <- ControllerWebServer.resource(
             commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader

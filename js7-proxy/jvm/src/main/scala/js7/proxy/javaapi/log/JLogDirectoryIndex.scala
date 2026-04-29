@@ -1,7 +1,9 @@
 package js7.proxy.javaapi.log
 
 import cats.effect.ResourceIO
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
+import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.Optional
@@ -16,6 +18,7 @@ import js7.proxy.javaapi.{JProxyContext, JResource}
 import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
+import scala.jdk.FunctionConverters.*
 
 final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(using IORuntime):
 
@@ -50,8 +53,8 @@ object JLogDirectoryIndex:
   : JResource[JLogDirectoryIndex] =
     import ctx.given_IORuntime
     resource_(logLevel, zoneId):
-      LogDirectoryIndex.
-        directory(directory, logLevel, isValidFile.test(_), ctx.config)(using zoneId)
+      given Config = ctx.config
+      LogDirectoryIndex.directory(directory, logLevel, isValidFile.asScala)(using zoneId)
 
   def files(
     files: java.lang.Iterable[Path],

@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy.log
 
 import cats.effect.IO
+import com.typesafe.config.Config
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
@@ -56,7 +57,8 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $i\n"
                     .getBytes(UTF_8)
       .productR:
-        LogDirectoryIndex.directory(dir, Info, _ => true, Js7Config.defaultConfig)
+        given Config = Js7Config.defaultConfig
+        LogDirectoryIndex.directory(dir, Info, _ => true)
           .use: logDirectoryIndex =>
             logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
               .map(_.byteLine.utf8String)
@@ -128,7 +130,8 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       val bFile = instantToFile(startInstant + 24.h)
       writeFile(startInstant)
       writeFile(startInstant + 24.h)
-      LogDirectoryIndex.directory(dir, Info, _ => true, Js7Config.defaultConfig)
+      given Config = Js7Config.defaultConfig
+      LogDirectoryIndex.directory(dir, Info, _ => true)
         .use: logDirectoryIndex =>
           IO:
             assert:
@@ -178,19 +181,20 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           (1 to 20).foldMap: _ =>
             IO.defer:
               val t = Deadline.now
-              LogDirectoryIndex.directory(
-                dir, Debug, isValidFile = _ => true, config = Js7Config.defaultConfig
-              ).use: logDirectoryIndex =>
-                logDirectoryIndex.instantToKeyedByteLogLineStream(
-                  Instant.parse("2026-02-12T00:01:00Z"),
-                  byteChunkSize = 8192
-                ).take(1).compile.drain *>
-                  IO:
-                    val elapsed = t.elapsed
-                    val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                    // LogDirectoryIndex logs, too:
-                    //info_(s"$logDirectoryIndex ${
-                    //  bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+                given Config = Js7Config.defaultConfig
+                LogDirectoryIndex.directory(
+                  dir, Debug, isValidFile = _ => true
+                ).use: logDirectoryIndex =>
+                  logDirectoryIndex.instantToKeyedByteLogLineStream(
+                    Instant.parse("2026-02-12T00:01:00Z"),
+                    byteChunkSize = 8192
+                  ).take(1).compile.drain *>
+                    IO:
+                      val elapsed = t.elapsed
+                      val used = sys.runtime.totalMemory - sys.runtime.freeMemory
+                      // LogDirectoryIndex logs, too:
+                      //info_(s"$logDirectoryIndex ${
+                      //  bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }
 

@@ -12,6 +12,7 @@ import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.Environment.{TaggedResource, environment}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
+import js7.base.config.Js7Conf
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -22,7 +23,7 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
-import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
+import js7.base.log.reader.{LogDirectoryIndexRegister, LogDirectoryMXBean}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -63,7 +64,7 @@ final class Subagent private(
   toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],
   signatureVerifier: DirectoryWatchingSignatureVerifier,
-  val logDirectoryIndexRegister: LogDirectoryIndex.Register,
+  val logDirectoryIndexRegister: LogDirectoryIndexRegister,
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any],
@@ -246,11 +247,13 @@ object Subagent:
       .orThrow
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
     val journalConf = JournalConf.fromConfig(config)
+    val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
 
     logger.debugResource:
       import testWiring.testEventBus
       for
         _ <- OurIORuntimeRegister.toEnvironment(ioRuntime).registerMultiple(testWiring.envResources)
+        _ <- Js7Conf.registerInEnvironment[IO](env, conf.config)
         _ <- Environment.getOrRegister[WallClock](Resource.pure(WallClock))
         _ <- registerStaticMBean("Process", PipedProcess.ProcessMXBean_)
         pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
@@ -277,7 +280,7 @@ object Subagent:
           .prepare.orThrow
           .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
         _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
-        logDirectoryIndexRegister <- LogDirectoryIndex.Register.resource(conf.logDirectory)
+        logDirectoryIndexRegister <- LogDirectoryIndexRegister.resource(conf.logDirectory)
         journal <- MemoryJournal.service(
           SubagentState.empty,
           size = config.getInt("js7.journal.memory.event-count"),

@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
 import js7.base.io.JavaResource
 import js7.base.log.Logger
-import js7.base.log.reader.LogDirectoryIndex
+import js7.base.log.reader.LogDirectoryIndexRegister
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
@@ -48,7 +48,7 @@ final class ControllerRoute(
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val eventWatch: FileEventWatch,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
-  protected val logDirectoryIndexRegister: LogDirectoryIndex.Register)
+  protected val logDirectoryIndexRegister: LogDirectoryIndexRegister)
   (using
     protected val actorSystem: ActorSystem,
     protected val ioRuntime: IORuntime)

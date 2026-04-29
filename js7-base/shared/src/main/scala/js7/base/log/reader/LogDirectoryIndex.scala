@@ -16,14 +16,12 @@ import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
-import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
-import js7.base.log.LogLevel.{Debug, Info, Error}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogFileReader.UniqueHeaderSize
@@ -31,24 +29,24 @@ import js7.base.log.reader.recompressors.{DeflaterRecompressor, Recompressor}
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ConcurrentHashMap, LockKeeper}
+import js7.base.utils.{Allocated, ConcurrentHashMap}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
 /** Provides a continuous stream of log lines over all log files in the directory.
-  * @param directoryEvents updates the file list, must emit events only from `logDirectory`
+  * @param directoryEvents updates the file list, must emit events only from `directory`
   * @param pollDuration when growing log files should be respected (uncompressed only)
   */
 final class LogDirectoryIndex private(
-  initialLogFiles: Iterable[LogFile],
+  initialFiles: Iterable[LogFile],
   directoryEvents: Stream[IO, OurDirEvent],
   logLevel: LogLevel,
   pollDuration: Option[FiniteDuration],
@@ -58,7 +56,7 @@ final class LogDirectoryIndex private(
 extends Service.StoppableByCancel:
 
   private val instantToLogFile =
-    new ConcurrentSkipListMap(initialLogFiles.toKeyedMap(_.fileInstant).asJava)
+    new ConcurrentSkipListMap(initialFiles.toKeyedMap(_.fileInstant).asJava)
   private val fileToInstant: ConcurrentHashMap[Path, Instant] =
     ConcurrentHashMap.from:
       instantToLogFile.asScala.toMap.map((instant, logFile) => logFile.filename -> instant)
@@ -67,10 +65,8 @@ extends Service.StoppableByCancel:
 
   protected def start =
     startService:
-      run.productR:
-        IO.defer:
-          instantToLogFile.values.asScala.toVector.parFoldMapA: logFile =>
-            logFile.release
+      run.guarantee:
+        release
 
   private def run =
     // Cancelled when service is stopping
@@ -240,48 +236,48 @@ object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
   private val TmpSuffix = "-indexed.tmp"
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
-
-  /** LogDirectoryIndex, watching the standard JS7 Engine log directory. */
-  private def js7Directory(logDirectory: Path, logLevel: LogLevel, config: Config)(using ZoneId)
-  : ResourceIO[LogDirectoryIndex] =
-    val poll = config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
-    val currentLogFile = logDirectory / config.getString:
-      logLevel match
-        case Error => "js7.log.error.file"
-        case Info => "js7.log.info.file"
-        case Debug => "js7.log.debug.file"
-        case _ => throw new IllegalArgumentException(s"Unsupported log level: $logLevel")
-    val currentLogFilename = currentLogFile.getFileName
-
-    def isValidFile(file: Path) =
-      val filename = file.getFileName
-      val name = filename.toString
-      filename == currentLogFilename ||
-        !name.startsWith("~") &&
-          !name.endsWith("~") &&
-          logLevelMatches(file, logLevel) &&
-          isCompressedLogFile(file)
-
-    directory(logDirectory, logLevel, isValidFile, config, Some(poll))
-  end js7Directory
+  val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
 
   /** LogDirectoryIndex, watching a directory. */
-  def directory(
+  def directory(directory: Path, logLevel: LogLevel, isValidFile: Path => Boolean)
+    (using ZoneId, Config)
+  : ResourceIO[LogDirectoryIndex] =
+    assertThat(LogLevels(logLevel))
+    Resource.suspend:
+      watchDirectory(directory, isValidFile).map: (files, directoryEvents) =>
+       this.directory(directory, logLevel, files, directoryEvents)
+
+  /** LogDirectoryIndex, watching a directory. */
+  private[reader] def directory(
     directory: Path,
     logLevel: LogLevel,
-    isValidFile: Path => Boolean,
-    config: Config,
+    files: Seq[Path],
+    directoryEvents: Stream[IO, DirectoryEvent],
     poll: Option[FiniteDuration] = None)
-    (using ZoneId)
+    (using zoneId: ZoneId, config: Config)
   : ResourceIO[LogDirectoryIndex] =
-    assertThat(logLevel == Error || logLevel == Info || logLevel == Debug)
-    given Config = config
+    assertThat(LogLevels(logLevel))
     logger.traceResource:
       Resource.suspend:
-        deleteTmpFiles(directory, logLevel) *>
-          watchDirectory(directory, isValidFile).map: (files, directoryEvents) =>
-            val recompressor = Recompressor.fromConfig(config)
-            resource(files, directory, directoryEvents, logLevel, poll, recompressor)
+        deleteTmpFiles(directory, logLevel).map: _ =>
+          val recompressor = Recompressor.fromConfig(config)
+          resource(files, directory, directoryEvents, logLevel, poll, recompressor)
+
+  private[reader] def watchDirectory(directory: Path, isValidFile: Path => Boolean)
+    (using config: Config)
+  : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
+    directory.directoryStream[IO]
+      .filter: file =>
+        !isOurTmpFile(file) && isValidFile(file)
+      .compile.toVector.map: files =>
+        files ->
+          DirectoryWatch.stream(
+            directory,
+            DirectoryState(files.map(_.getFileName)),
+            DirectoryWatchSettings.fromConfig(config).orThrow,
+            isValidFile,
+            Set(ENTRY_CREATE, ENTRY_DELETE))
+
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
     (using ZoneId)
@@ -290,7 +286,7 @@ object LogDirectoryIndex:
 
   private def resource(
     files: Iterable[Path],
-    logDirectory: Path,
+    directory: Path,
     directoryEvents: Stream[IO, DirectoryEvent],
     logLevel: LogLevel,
     poll: Option[FiniteDuration],
@@ -301,11 +297,7 @@ object LogDirectoryIndex:
       environment[Js7Conf].flatMap: js7Conf =>
         toLogFiles(files).map: logFiles =>
           Service:
-            val ourDirEvents = directoryEvents
-              .filterNot: o =>
-                isOurTmpFile(o.relativePath) // to be sure
-              .map:
-                OurDirEvent(logDirectory, _)
+            val ourDirEvents = directoryEvents.map(OurDirEvent(directory, _))
             new LogDirectoryIndex(logFiles, ourDirEvents, logLevel, poll, recompressor,
               breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength))
 
@@ -341,7 +333,7 @@ object LogDirectoryIndex:
                 LogFile(instant, file, cell)
       .map: maybe =>
         maybe.foreach: logFile =>
-          logger.debug(s"$logFile size=$size")
+          logger.debug(s"$logFile size=${toKBGB(size)}")
         maybe
     .handleError: throwable =>
       logger.debug(s"toLogFile ${file.getFileName}: 💥 ${throwable.toStringWithCauses}",
@@ -360,38 +352,23 @@ object LogDirectoryIndex:
             case epochNano => Some(epochNano.toInstant)
 
   private def deleteTmpFiles(directory: Path, logLevel: LogLevel): IO[Unit] =
-    IO.interruptible:
+    IO.blocking:
       FileDeleter.tryDeleteFiles:
         directory.directoryStream[SyncIO]
           .filter: file =>
-            isOurTmpFile(file) && logLevelMatches(file, logLevel)
+            isOurTmpFile(file) && fileToLogLevel(file) == logLevel
           .compile.toVector
           .run()
 
-  private def watchDirectory(directory: Path, isValidFile: Path => Boolean)(using config: Config)
-  : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
-    directory.directoryStream[IO]
-      .filter: file =>
-        !isOurTmpFile(file) && isValidFile(file)
-      .compile.toVector.map: files =>
-        files ->
-          DirectoryWatch.stream(
-            directory,
-            DirectoryState(files.map(_.getFileName)),
-            DirectoryWatchSettings.fromConfig(config).orThrow,
-            isValidFile,
-            Set(ENTRY_CREATE, ENTRY_DELETE))
+  private[reader] def fileToLogLevel(file: Path): LogLevel =
+    if file.getFileName.toString.contains("-error") then
+      LogLevel.Error
+    else if file.getFileName.toString.contains("-debug") then
+      LogLevel.Debug
+    else
+      LogLevel.Info
 
-  private def logLevelMatches(file: Path, logLevel: LogLevel): Boolean =
-    logLevel match
-      case Error => file.getFileName.toString.contains("-error")
-      case Debug => file.getFileName.toString.contains("-debug")
-      case _ => true
-
-  private def isCompressedLogFile(file: Path): Boolean =
-    file.toString.endsWith(".log.gz")
-
-  private def isOurTmpFile(file: Path): Boolean =
+  private[reader] def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
   private def toDecompressingStream(gzFile: Path, bufferSize: Int, recompressor: Recompressor)
@@ -458,10 +435,10 @@ object LogDirectoryIndex:
     def file: Path
 
   private object OurDirEvent:
-    def apply(logDirectory: Path, event: DirectoryEvent): OurDirEvent =
+    def apply(directory: Path, event: DirectoryEvent): OurDirEvent =
       event match
-        case DirectoryEvent.FileAdded(file) => FileAdded(logDirectory.resolve(file))
-        case DirectoryEvent.FileDeleted(file) => FileDeleted(logDirectory.resolve(file))
+        case DirectoryEvent.FileAdded(file) => FileAdded(directory.resolve(file))
+        case DirectoryEvent.FileDeleted(file) => FileDeleted(directory.resolve(file))
         case o: DirectoryEvent.FileModified => sys.error(s"LogDirectoryIndex: unexpected $o")
 
 
@@ -472,45 +449,12 @@ object LogDirectoryIndex:
     override def toString = s"FileDeleted(${file.getFileName})"
 
 
-  /** Contains LogDirectoryIndexes for Error, Info and Debug. */
-  final class Register private(logDirectory: Path)(using ZoneId) extends Service.TrivialReleasable:
-    private val levelToIndex = ConcurrentHashMap[LogLevel, Allocated[IO, LogDirectoryIndex]]
-    private val lock = LockKeeper[LogLevel]()
-
-    protected def release =
-      IO.defer:
-        levelToIndex.values.toSeq.parTraverseVoid(_.release)
-
-    def forLogLevel(logLevel: LogLevel, config: Config): IO[LogDirectoryIndex] =
-      lock.lock(logLevel):
-        IO.defer:
-          levelToIndex.get(logLevel) match
-            case None =>
-              js7Directory(logDirectory, logLevel, config)
-                .toAllocated.map: allocated =>
-                  levelToIndex.put(logLevel, allocated)
-                  allocated.allocatedThing
-            case Some(allocated) =>
-              IO.pure(allocated.allocatedThing)
-
-    override def toString = "Register"
-
-  object Register:
-    private given ZoneId = ZoneId.systemDefault
-
-    def resource(logDirectory: Path)(using config: Config): ResourceIO[Register] =
-      for
-        _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", Bean).void
-        service <- Service(new Register(logDirectory))
-      yield
-        service
-
-
   sealed trait LogDirectoryIndexMXBean:
     this: Bean.type =>
 
     def getTmpFilesSize: Long =
       tmpFilesSize
+
 
   object Bean extends LogDirectoryIndexMXBean:
     protected[LogDirectoryIndex] var tmpFilesSize: Long = 0
