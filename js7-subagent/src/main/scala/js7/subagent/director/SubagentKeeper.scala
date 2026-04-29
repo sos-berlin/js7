@@ -3,7 +3,6 @@ package js7.subagent.director
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.instances.option.*
-import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
