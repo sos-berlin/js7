@@ -1,6 +1,7 @@
 package js7.journal
 
 import cats.effect.IO
+import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.True
 import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
@@ -13,7 +14,7 @@ import js7.base.utils.CatsUtils.syntax.logWhenMethodTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.FileJournal.*
 import js7.journal.Snapshotter.*
 import js7.journal.files.JournalFiles.extensions.*
@@ -78,10 +79,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
         totalEventCount = state.totalEventCount,
         totalRunningTime = totalRunningTime.roundUpToNext(1.ms),
         timestamp = clock.now())
-      logger.info(s"STARTING NEW EMPTY JOURNAL file #${journalHeader.generation} ${file.getFileName
-        } with a snapshot ${if conf.syncOnCommit then "(using sync)" else "(no sync)"}")
-      logger.debug(journalHeader.toString)
-
+      logSnapshotFile(file, journalHeader)
       val checkingRecoverer = conf.slowCheckState ? S.newRecoverer()
       for
         (fileSize, fileLengthBeforeEventsAndEventId) <-
@@ -106,6 +104,16 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
           fileLengthBeforeEventsAndEventId.position,
           snapshotTaken,
           aggregate)
+
+  private def logSnapshotFile(file: Path, journalHeader: JournalHeader): Unit =
+    val msg =
+      if lastJournalHeader.eventId == EventId.BeforeFirst then
+        "STARTING NEW EMPTY JOURNAL"
+      else
+        "Starting new journal"
+    logger.info(s"$msg file #${journalHeader.generation} ${file.getFileName
+      } with a snapshot ${if conf.syncOnCommit then "(using sync)" else "(no sync)"}")
+    logger.debug(journalHeader.toString)
 
 
 object Snapshotter:
