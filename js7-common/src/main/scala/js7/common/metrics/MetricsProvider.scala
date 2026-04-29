@@ -89,7 +89,13 @@ object MetricsProvider:
 
   def toMetricsStream(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
   : ToMetricsStream =
-    val stream =
+    val addAttribute =
+      val a = ownJs7ServerId.toString
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\\", "\\\\")
+      s"js7Server=\"$a\""
+    () =>
       javaService match
         case None =>
           fs2.Stream.emit:
@@ -98,11 +104,6 @@ object MetricsProvider:
                 .getBytes(UTF_8)
 
         case Some(svc) =>
-          val qServerId = ownJs7ServerId.toString
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\\", "\\\\")
-          val addAttribute = s"js7Server=\"$qServerId\""
           try
             svc.metricsStreamProvider(configDirectory)(addAttribute = addAttribute)
           catch case NonFatal(t) =>
@@ -111,7 +112,6 @@ object MetricsProvider:
               fs2.Chunk.array:
                 s"# $ownJs7ServerId: ${toPrometheusString(t.toString)}\n"
                   .getBytes(UTF_8)
-    () => stream
 
   private def toPrometheusString(string: String): String =
     string

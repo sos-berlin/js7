@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
+import cats.syntax.option.*
 import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Json, JsonObject}
@@ -21,10 +22,11 @@ import js7.base.monixutils.{AsyncVariable, RefCountedResource}
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Allocated
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Allocated, Atomic}
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
@@ -79,8 +81,8 @@ extends ControllerApiWithHttp:
     logger.debugIO:
       IO.defer:
         setActive(false)
-        if _singleton.exists(_.controllerApi == this) then
-          _singleton = None
+        if singleton.exists(_.controllerApi == this) then
+          _singleton := None
         IO.whenA(dontLogout):
           apiCache.cachedValue
             .fold(IO.unit): api =>
@@ -223,7 +225,11 @@ extends ControllerApiWithHttp:
 
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
   private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
-    _singleton = Some((proxyId, this, ioRuntime))
+    logger.debug(s"makeSingleton $proxyId")
+    _singleton.getAndSet(Some((proxyId, this, ioRuntime))).foreach: existing =>
+      _singleton := Some(existing)
+      throw new IllegalStateException(
+        s"ControllerApi#makeSingleton($proxyId) called twice (the other is ${existing.proxyId})")
     toLocalMetrics = toMetricsByteChunk(proxyId.toSubagentId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
@@ -233,6 +239,7 @@ extends ControllerApiWithHttp:
     * doubling measurements, CPU and Disk usage.
     */
   def setActive(isActive: Boolean): Unit =
+    logger.debug(s"setActive $isActive")
     _isActive = isActive
 
   def metrics: IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
@@ -244,7 +251,8 @@ extends ControllerApiWithHttp:
           IO.pure(fs2.Stream.empty)
       .map:
         _.merge:
-          fs2.Stream.emit(toLocalMetrics())
+          fs2.Stream.eval(IO:
+            toLocalMetrics())
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
@@ -307,18 +315,18 @@ extends ControllerApiWithHttp:
 object ControllerApi:
   private val logger = Logger[this.type]
 
-  private var _singleton: Option[(
+  private val _singleton = Atomic(none[(
     proxyId: ProxyId,
     controllerApi: ControllerApi,
     ioRuntime: IORuntime
-  )] = None
+  )])
 
   def singleton: Option[(
     proxyId: ProxyId,
     controllerApi: ControllerApi,
     ioRuntime: IORuntime
   )] =
-    _singleton
+    _singleton.get()
 
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
