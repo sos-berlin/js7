@@ -1,10 +1,9 @@
 package js7.proxy.web
 
 import cats.effect.unsafe.IORuntime
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.metrics.RemoteMetricsRoute
-import js7.common.pekkohttp.PekkoHttpServerUtils
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.proxy.ControllerApi
 import org.apache.pekko.http.scaladsl.server.Directives.parameter
@@ -23,7 +22,7 @@ trait ProxyMetricsRoute extends RemoteMetricsRoute:
         case true =>
           metricsRawRoute(contentType)
         case false =>
-          PekkoHttpServerUtils.completeWithStream(contentType):
+          completeWithStream(contentType):
             fs2.Stream.force:
               controllerApi.metrics.map:
                 case Left(problem) =>

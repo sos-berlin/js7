@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.auth.ReadMetricsPermission
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.common.configuration.CommonConfiguration
@@ -29,20 +28,14 @@ trait MetricsRoute extends RouteProvider:
   protected final def config: Config =
     commonConf.config
 
-  private lazy val toMetricsByteString: () => ByteString =
+  lazy val toMetricsByteString: () => ByteString =
     js7ServerId match
       case None =>
-        () => ByteString("# Unknown Js7ServerId\n")
+        () => ByteString("# Js7ServerId of this server is (still) unknown\n")
       case Some(serverId) =>
         () => MetricsProvider
-          .toMetricsByteChunk(serverId, Some(commonConf.configDirectory))()
+          .toMetricsByteString(serverId, Some(commonConf.configDirectory))()
           .toByteString
-
-  protected final def metricsRawRoute(contentType: ContentType): Route =
-    given IORuntime = ioRuntime
-    completeIO:
-      IO: // Execute each time again
-        HttpResponse(entity = metricsHttpEntity(contentType))
 
   /** /metrics web service according to Prometheus.
     * <p>
@@ -75,16 +68,12 @@ trait MetricsRoute extends RouteProvider:
         finally
           isLocked := false)
 
+  protected final def metricsRawRoute(contentType: ContentType): Route =
+    given IORuntime = ioRuntime
+    completeIO:
+      IO: // Execute each time again
+        HttpResponse(entity = metricsHttpEntity(contentType))
+
   def metricsHttpEntity(contentType: ContentType): HttpEntity.Strict =
-    HttpEntity(contentType, metricsByteString())
+    HttpEntity(contentType, toMetricsByteString())
 
-  final def metricsByteString(): ByteString =
-    js7ServerId match
-      case None =>
-        ByteString("# Js7ServerId is still unknown\n")
-      case Some(serverId) =>
-        val qServerId = serverId.toString.replace("\"", "\\\"").replace("\n", "\\n").replace("\\", "\\\\")
-        toMetricsByteString()
-
-  private def quoteMetricString(string: String): String =
-    string.replace("\"", "\\\"").replace("\n", "\\n").replace("\\", "\\\\")

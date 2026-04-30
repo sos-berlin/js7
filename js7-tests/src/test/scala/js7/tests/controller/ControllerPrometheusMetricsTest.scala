@@ -4,6 +4,7 @@ import cats.effect.IO
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import js7.base.catsutils.CatsEffectExtensions.orThrow
+import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -11,7 +12,7 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderPrompted
@@ -57,7 +58,7 @@ final class ControllerPrometheusMetricsTest extends OurTestSuite, ControllerAgen
       val beanServer = ManagementFactory.getPlatformMBeanServer
 
       // Because tests run in parallel, more than one of EngineState MXBean may be registered.
-      // We don't know, which is ours. But there must be at least one.
+      // We don't know which is ours. But there must be at least one.
       val objectNames = beanServer.queryNames(new ObjectName("js7:type=EngineState,*"), null)
       assert(!objectNames.isEmpty)
 
@@ -88,8 +89,8 @@ final class ControllerPrometheusMetricsTest extends OurTestSuite, ControllerAgen
 
   "/grafana/dashboard" in:
     val json = controller.api.httpGetJson("/grafana/dashboard")
-      .orThrow.await(99.s)
-    assert(json.startsWith("{"))
+      .orThrow.await(99.s).parseJson.orThrow
+    assert(json.isObject)
 
 
 object ControllerPrometheusMetricsTest:

@@ -1,6 +1,7 @@
 package js7.common.metrics
 
 import cats.effect.IO
+import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import js7.base.auth.Admission
 import js7.base.log.Logger
@@ -13,8 +14,7 @@ import js7.common.configuration.CommonConfiguration
 import js7.common.http.StandardHttpClient
 import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.metrics.RemoteMetricsRoute.*
-import js7.common.pekkohttp.PekkoHttpServerUtils
-import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
 import js7.data.node.Js7ServerId
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity}
@@ -43,10 +43,9 @@ trait RemoteMetricsRoute extends MetricsRoute:
     onlyThisServer: Boolean,
     label: String)
   : MetricFetcher =
-    val io =
-      fs2.Stream.emit:
-        Separator ++ ByteString(s"# $serverId\n")
-      .append:
+    MetricFetcher(
+      serverId,
+      stream =
         fs2.Stream.force:
           uriToHttp
             .getOrElseUpdate(
@@ -63,46 +62,36 @@ trait RemoteMetricsRoute extends MetricsRoute:
                   httpClient.get_[HttpEntity](
                     admission.uri / s"metrics${onlyThisServer ?? "?onlyThisServer=true"}",
                     MetricsProvider.PrometheusRequestHeaders,
-                    dontLog = true)
-          .map:
-            case Left(problem) =>
-              logger.debug(s"💥 Error when accessing $serverId: $problem")
-              val problemString = problem.toString.truncateWithEllipsis(1000, firstLineOnly = true)
-              fs2.Stream.emit(ByteString(s"# ERROR $serverId: $problemString\n"))
-            case Right(entity) =>
-              entity.dataBytes.asFs2Stream()
-      .compile.foldMonoid // Complete response is kept in memory !!!
-      .map(ensureLF)
-
-    MetricFetcher(serverId, io)
+                    /*FIXME TEST dontLog = true*/)
+            .map:
+              case Left(problem) =>
+                logger.debug(s"💥 Error when accessing $serverId: $problem")
+                val problemString = problem.toString.truncateWithEllipsis(1000, firstLineOnly = true)
+                fs2.Stream.emit(ByteString(s"# ERROR $serverId: $problemString\n"))
+              case Right(entity) =>
+                entity.dataBytes.asFs2Stream())
   end remoteMetricFetcher
 
-  private final def ensureLF(byteString: ByteString): ByteString =
-    if byteString.isEmpty || byteString.last == '\n' then
-      byteString
-    else
-      byteString ++ LF
-
+  /** Complete the request through concurrent execution of MetricFetchers. */
   protected final def completeMetricFetchers(
     contentType: ContentType,
     metricFetchers: Seq[MetricFetcher])
   : IO[Route] =
-    val (serverIds, ios) = metricFetchers.map(_.toPair).unzip
+    val (serverIds, streams) = metricFetchers.map(_.toPair).unzip
     releaseUnknownHttpClients(isKnown = serverIds.toSet).productR:
-      if ios.isEmpty then
-        // If it's only the local metrics, we return the ByteString direct,
+      if streams.isEmpty then
+        // If it's only the local metrics, we return the ByteString as a simple HttpEntity,
         // avoiding the streaming debug logging.
         IO:
           complete:
             metricsHttpEntity(contentType)
       else
-        PekkoHttpServerUtils.completeWithIOStream(contentType):
-          fs2.Stream.emit:
-            IO:
-              metricsByteString()
-          .append:
-            fs2.Stream.iterable(ios)
-          .parEvalMapUnorderedUnbounded(identity) // All responses are kept in memory!
+        completeWithIOStream(contentType):
+          // We return the Chunks as they come.
+          // No measurement must span two HTTP chunks (beware a HTTP proxy) !!!
+          val local = fs2.Stream.eval(IO:
+            toMetricsByteString())
+          (local :: streams.toList).combineAll //.parJoinUnbounded
 
   private def releaseUnknownHttpClients(isKnown: Js7ServerId => Boolean): IO[Unit] =
     uriToHttp.toMap.map:
@@ -111,6 +100,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
           uriToHttp.remove(serverId) *>
             allocated.release
 
+
 object RemoteMetricsRoute:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
@@ -118,5 +108,5 @@ object RemoteMetricsRoute:
 
   /** Wrapped IO that fetches Prometheus metrics for a Js7ServerId.
     */
-  final case class MetricFetcher(js7ServerId: Js7ServerId, metrics: IO[ByteString]):
-    def toPair = (js7ServerId, metrics)
+  final case class MetricFetcher(js7ServerId: Js7ServerId, stream: fs2.Stream[IO, ByteString]):
+    def toPair = (js7ServerId, stream)

@@ -9,14 +9,15 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
 import js7.common.metrics.MetricsProvider.PrometheusContentType
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.proxy.ControllerApi
 import js7.proxy.servlets.ProxyMetricsServlet.*
+import org.apache.pekko.util.ByteString
 import scala.util.control.NonFatal
 
 //??? @WebServlet(urlPatterns = Array("/metrics"))
@@ -71,9 +72,7 @@ final class ProxyMetricsServlet extends HttpServlet:
       IO:
         isInUse := false
 
-  private def writeMetricsStream(
-    response: HttpServletResponse,
-    stream: fs2.Stream[IO, fs2.Chunk[Byte]])
+  private def writeMetricsStream(response: HttpServletResponse, stream: fs2.Stream[IO, ByteString])
   : IO[Unit] =
     IO.defer:
       response.setStatus(SC_OK)

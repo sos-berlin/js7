@@ -7,7 +7,6 @@ import java.time.Instant
 import java.util.Locale
 import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
@@ -26,6 +25,7 @@ import js7.data.event.{EventApi, EventId, JournalInfo}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.SubagentId
+import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
@@ -132,7 +132,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   //  httpClient.post[AgentCommand, AgentCommand.Response](uris.agentCommand(agentPath), command)
   //    .map(_.asInstanceOf[command.Response])
 
-  def metrics: IO[fs2.Stream[IO, fs2.Chunk[Byte]]] =
+  def metrics: IO[fs2.Stream[IO, ByteString]] =
     loginAndRetryIfSessionLost:
       httpClient.getByteStream(
         baseUri / "metrics",

@@ -12,14 +12,13 @@ import javax.management.ObjectName
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteSeqOutputStream, ByteSequence}
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
-import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest}
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
@@ -47,17 +46,17 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   private val textWriter = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
 
-  def metricsStream(
+  def metricsLines(
     addAttribute: String,
     scrapeRequest: Option[PrometheusScrapeRequest] = None)
-  : fs2.Stream[fs2.Pure, fs2.Chunk[Byte]] =
+  : fs2.Stream[fs2.Pure, ByteString] =
     meter:
-      val attributeInBraces = fs2.Chunk.array(s"{$addAttribute}".getBytes(UTF_8))
-      val attributeWithComma = fs2.Chunk.array(s"$addAttribute,".getBytes(UTF_8))
+      val attributeInBraces = ByteString(s"{$addAttribute}")
+      val attributeWithComma = ByteString(s"$addAttribute,")
       fs2.Stream.emit:
-        metrics_[fs2.Chunk[Byte]](scrapeRequest)
+        metrics_[ByteString](scrapeRequest)
       .through:
-        byteChunksToLines[fs2.Pure, fs2.Chunk[Byte]](breakLinesLongerThan = Some(1024))
+        byteChunksToLines[fs2.Pure, ByteString](breakLinesLongerThan = Some(1024))
       .map: line =>
         if line.isEmpty || !Character.isLetter(line(0).toChar) then
           line
@@ -86,23 +85,13 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
     lastSize = outputStream.size()
     outputStream.byteSeq[ByteSeq]
 
-  // Not used !!!
-  private def metricsByteString(request: HttpRequest = HttpRequest(HttpMethods.GET, "/metrics"))
-  : ByteString =
-    val exchange = new PrometheusJmxAdapterForHttp.PekkoPromtheusExchange(request)
-    scrapeHandler.handleRequest(exchange)
-    exchange.metricsByteString
-
 
 private[prometheus] object PrometheusJmxAdapter:
   private val logger = Logger[this.type]
   private val meter = CallMeter("PrometheusJmxAdapter")
   private val DefaultYamlResource = JavaResource("js7/service/prometheus/prometheus-jmx.yaml")
 
-  private val HeadlineBytes =
-    s"""# Experimental metrics for Prometheus
-       |
-       |""".stripMargin.getBytes(UTF_8)
+  private val HeadlineBytes = s"# Experimental metrics for Prometheus\n".getBytes(UTF_8)
 
   @TestOnly
   val Headline = new String(HeadlineBytes, UTF_8)

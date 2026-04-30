@@ -31,7 +31,7 @@ import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProbl
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.metrics.MetricsProvider.{ToMetricsByteChunk, toMetricsByteChunk}
+import js7.common.metrics.MetricsProvider.{ToMetricsStream, toMetricsStream}
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -49,6 +49,7 @@ import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
+import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable
 import scala.concurrent.duration.Deadline.now
@@ -66,7 +67,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var toLocalMetrics: ToMetricsByteChunk = () => fs2.Chunk.empty
+  private var toLocalMetrics: ToMetricsStream = () => fs2.Stream.empty
   private var _isActive = false
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
@@ -230,7 +231,7 @@ extends ControllerApiWithHttp:
       _singleton := Some(existing)
       throw new IllegalStateException(
         s"ControllerApi#makeSingleton($proxyId) called twice (the other is ${existing.proxyId})")
-    toLocalMetrics = toMetricsByteChunk(proxyId.toSubagentId)
+    toLocalMetrics = toMetricsStream(proxyId.toSubagentId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *
@@ -242,7 +243,7 @@ extends ControllerApiWithHttp:
     logger.debug(s"setActive $isActive")
     _isActive = isActive
 
-  def metrics: IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
+  def metrics: IO[Checked[fs2.Stream[IO, ByteString]]] =
     useApi: api =>
       locally:
         if _isActive then
@@ -250,9 +251,8 @@ extends ControllerApiWithHttp:
         else
           IO.pure(fs2.Stream.empty)
       .map:
-        _.merge:
-          fs2.Stream.eval(IO:
-            toLocalMetrics())
+        _.append:
+          toLocalMetrics()
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =

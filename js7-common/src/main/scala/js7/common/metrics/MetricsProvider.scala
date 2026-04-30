@@ -1,23 +1,22 @@
 package js7.common.metrics
 
-import fs2.{Chunk, Pure}
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpHeader, MediaType}
+import org.apache.pekko.util.ByteString
 import scala.util.control.NonFatal
 
 object MetricsProvider:
 
-  type ToMetricsStream = () => fs2.Stream[Pure, Chunk[Byte]]
-  type ToMetricsByteChunk = () => fs2.Chunk[Byte]
+  type ToMetricsStream = () => fs2.Stream[fs2.Pure, ByteString]
+  type ToMetricsByteString = () => ByteString
 
   private val logger = Logger[this.type]
 
@@ -79,41 +78,31 @@ object MetricsProvider:
   private lazy val javaService: Option[MetricsJavaService] =
     findJavaService[MetricsJavaService]
 
-
-  def toMetricsByteChunk(
+  def toMetricsByteString(
     ownJs7ServerId: Js7ServerId,
     configDirectory: Option[Path] = None)
-  : ToMetricsByteChunk =
+  : ToMetricsByteString =
     val toStream = toMetricsStream(ownJs7ServerId, configDirectory)
     () => toStream().compile.foldMonoid
 
   def toMetricsStream(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
   : ToMetricsStream =
-    val addAttribute =
-      val a = ownJs7ServerId.toString
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-        .replace("\\", "\\\\")
-      s"js7Server=\"$a\""
+    val addAttribute = s"js7Server=\"${toPrometheusString(ownJs7ServerId.toString)}\""
     () =>
       javaService match
         case None =>
           fs2.Stream.emit:
-            fs2.Chunk.array:
-              s"# $ownJs7ServerId: No MetricsJavaService installed \n"
-                .getBytes(UTF_8)
+            ByteString(s"# $ownJs7ServerId: No MetricsJavaService installed \n")
 
         case Some(svc) =>
           try
-            svc.metricsStreamProvider(configDirectory)(addAttribute = addAttribute)
+            svc.metricsLines(configDirectory)(addAttribute = addAttribute)
           catch case NonFatal(t) =>
             logger.error(s"toMetricsStream: ${t.toStringWithCauses}", t)
             fs2.Stream.emit:
-              fs2.Chunk.array:
-                s"# $ownJs7ServerId: ${toPrometheusString(t.toString)}\n"
-                  .getBytes(UTF_8)
+              ByteString(s"# $ownJs7ServerId: ${toPrometheusString(t.toString)}\n")
 
-  private def toPrometheusString(string: String): String =
+  def toPrometheusString(string: String): String =
     string
       .replace("\"", "\\\"")
       .replace("\n", "\\n")
