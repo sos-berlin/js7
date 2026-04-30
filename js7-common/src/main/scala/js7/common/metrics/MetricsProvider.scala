@@ -3,8 +3,7 @@ package js7.common.metrics
 import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
-import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
-import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
@@ -15,8 +14,8 @@ import scala.util.control.NonFatal
 
 object MetricsProvider:
 
-  type ToMetricsStream = () => fs2.Stream[fs2.Pure, ByteString]
-  type ToMetricsByteString = () => ByteString
+  type ToMetricsStream = Js7ServerId => fs2.Stream[fs2.Pure, ByteString]
+  type ToMetricsByteString = Js7ServerId => ByteString
 
   private val logger = Logger[this.type]
 
@@ -78,23 +77,16 @@ object MetricsProvider:
   private lazy val javaService: Option[MetricsJavaService] =
     findJavaService[MetricsJavaService]
 
-  def toMetricsByteString(
-    ownJs7ServerId: Js7ServerId,
-    configDirectory: Option[Path] = None)
-  : ToMetricsByteString =
-    val toStream = toMetricsStream(ownJs7ServerId, configDirectory)
-    () => toStream().compile.foldMonoid
-
-  def toMetricsStream(ownJs7ServerId: Js7ServerId, configDirectory: Option[Path] = None)
-  : ToMetricsStream =
-    val addAttribute = s"js7Server=\"${toPrometheusString(ownJs7ServerId.toString)}\""
-    () =>
-      javaService match
-        case None =>
+  def toMetricsStream(configDirectory: Option[Path] = None): ToMetricsStream =
+    javaService match
+      case None =>
+        js7ServerId =>
           fs2.Stream.emit:
-            ByteString(s"# $ownJs7ServerId: No MetricsJavaService installed \n")
+            ByteString(s"# $js7ServerId: No MetricsJavaService installed \n")
 
-        case Some(svc) =>
+      case Some(svc) =>
+        js7ServerId =>
+          val addAttribute = s"js7Server=\"${toPrometheusString(js7ServerId.toString)}\""
           try
             svc.metricsLines(configDirectory)(addAttribute = addAttribute)
           catch case NonFatal(t) =>

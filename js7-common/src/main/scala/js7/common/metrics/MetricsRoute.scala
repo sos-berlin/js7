@@ -27,12 +27,14 @@ trait MetricsRoute extends RouteProvider:
     commonConf.config
 
   lazy val toMetricsStream: () => fs2.Stream[fs2.Pure, ByteString] =
-    js7ServerId match
-      case None =>
-        () => fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
-      case Some(serverId) =>
-        () => MetricsProvider
-          .toMetricsStream(serverId, Some(commonConf.configDirectory))()
+    val toMetricsStream = MetricsProvider.toMetricsStream(Some(commonConf.configDirectory))
+    val unknown = fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
+    () =>
+      js7ServerId match
+        case None =>
+          unknown
+        case Some(serverId) =>
+          toMetricsStream(serverId)
 
   /** /metrics web service according to Prometheus.
     * <p>
@@ -69,4 +71,3 @@ trait MetricsRoute extends RouteProvider:
     given IORuntime = ioRuntime
     completeWithStream(contentType):
       toMetricsStream()
-

@@ -31,7 +31,7 @@ import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProbl
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.metrics.MetricsProvider.{ToMetricsStream, toMetricsStream}
+import js7.common.metrics.MetricsProvider.toMetricsStream
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -67,7 +67,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var toLocalMetrics: ToMetricsStream = () => fs2.Stream.empty
+  private var toLocalMetrics: fs2.Stream[fs2.Pure, ByteString] = fs2.Stream.empty
   private var _isActive = false
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
@@ -231,7 +231,7 @@ extends ControllerApiWithHttp:
       _singleton := Some(existing)
       throw new IllegalStateException(
         s"ControllerApi#makeSingleton($proxyId) called twice (the other is ${existing.proxyId})")
-    toLocalMetrics = toMetricsStream(proxyId.toSubagentId)
+    toLocalMetrics = toMetricsStream(configDirectory = None)(proxyId.toSubagentId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *
@@ -252,7 +252,7 @@ extends ControllerApiWithHttp:
           IO.pure(fs2.Stream.empty)
       .map:
         _.append:
-          toLocalMetrics()
+          toLocalMetrics
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
