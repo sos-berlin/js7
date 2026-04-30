@@ -7,7 +7,7 @@ import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
 
 final class MetricsProviderTest extends OurAsyncTestSuite:
 
-  "splitMeasurements" in:
+  "separateMeasurements" in:
     val input =
       """# HELP
         |#X
@@ -27,7 +27,7 @@ final class MetricsProviderTest extends OurAsyncTestSuite:
       .chunkN(20)
       .map(_.toByteString)
       .through:
-        MetricsProvider.splitMeasurements[fs2.Pure]
+        MetricsProvider.separateMeasurements[fs2.Pure]
       .map:
         _.utf8String
       .compile.toList

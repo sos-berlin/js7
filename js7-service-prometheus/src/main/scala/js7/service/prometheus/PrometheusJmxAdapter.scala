@@ -1,5 +1,6 @@
 package js7.service.prometheus
 
+import cats.effect.IO
 import io.prometheus.jmx.JmxCollector
 import io.prometheus.metrics.exporter.common.PrometheusScrapeHandler
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
@@ -22,6 +23,8 @@ import org.apache.pekko.util.ByteString
 import scala.jdk.CollectionConverters.*
 
 private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = None):
+
+  logger.info("Using Prometheus monitoring")
 
   private val registry = new PrometheusRegistry
   private val jmxCollector =
@@ -47,14 +50,15 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   def metricsLines(
     addAttribute: String,
     scrapeRequest: Option[PrometheusScrapeRequest] = None)
-  : fs2.Stream[fs2.Pure, ByteString] =
+  : fs2.Stream[IO, ByteString] =
     meter:
       val attributeInBraces = ByteString(s"{$addAttribute}")
       val attributeWithComma = ByteString(s"$addAttribute,")
-      fs2.Stream.emit:
-        metrics_[ByteString](scrapeRequest)
+      fs2.Stream.eval:
+        IO:
+          metrics_[ByteString](scrapeRequest)
       .through:
-        byteChunksToLines[fs2.Pure, ByteString](breakLinesLongerThan = Some(1024))
+        byteChunksToLines(breakLinesLongerThan = None)
       .map: line =>
         if line.isEmpty || !Character.isLetter(line(0).toChar) then
           line

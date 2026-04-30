@@ -1,5 +1,6 @@
 package js7.common.metrics
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.auth.ReadMetricsPermission
@@ -29,7 +30,7 @@ trait MetricsRoute extends RouteProvider:
   protected final def config: Config =
     commonConf.config
 
-  lazy val toMetricsStream: () => fs2.Stream[fs2.Pure, ByteString] =
+  lazy val toMetricsStream: () => fs2.Stream[IO, ByteString] =
     val toMetricsStream = MetricsProvider.toMetricsStream(Some(commonConf.configDirectory))
     val unknown = fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
     () =>

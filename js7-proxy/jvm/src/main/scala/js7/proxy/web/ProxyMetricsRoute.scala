@@ -1,6 +1,8 @@
 package js7.proxy.web
 
 import cats.effect.unsafe.IORuntime
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
 import js7.common.metrics.RemoteMetricsRoute
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
@@ -30,3 +32,6 @@ trait ProxyMetricsRoute extends RemoteMetricsRoute:
                     ByteString(toPrometheuesErrorLines(problem.toString))
                 case Right(stream) =>
                   stream.map(_.toByteString)
+                    .map(_.toChunk).unchunks
+                    .chunkN(httpChunkSize)
+                    .map(_.toByteString)

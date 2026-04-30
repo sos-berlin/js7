@@ -67,7 +67,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var toLocalMetrics: fs2.Stream[fs2.Pure, ByteString] = fs2.Stream.empty
+  private var localMetrics: fs2.Stream[IO, ByteString] = fs2.Stream.empty
   private var _isActive = false
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
@@ -231,7 +231,7 @@ extends ControllerApiWithHttp:
       _singleton := Some(existing)
       throw new IllegalStateException(
         s"ControllerApi#makeSingleton($proxyId) called twice (the other is ${existing.proxyId})")
-    toLocalMetrics = toMetricsStream(configDirectory = None)(proxyId.toSubagentId)
+    localMetrics = toMetricsStream()(proxyId.toJs7ServerId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *
@@ -252,7 +252,7 @@ extends ControllerApiWithHttp:
           IO.pure(fs2.Stream.empty)
       .map:
         _.append:
-          toLocalMetrics
+          localMetrics
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =

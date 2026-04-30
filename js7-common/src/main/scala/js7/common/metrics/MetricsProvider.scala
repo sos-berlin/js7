@@ -1,5 +1,6 @@
 package js7.common.metrics
 
+import cats.effect.IO
 import java.nio.file.Path
 import java.util.UUID.randomUUID
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
@@ -16,9 +17,6 @@ import org.apache.pekko.util.ByteString
 import scala.util.control.NonFatal
 
 object MetricsProvider:
-
-  type ToMetricsStream = Js7ServerId => fs2.Stream[fs2.Pure, ByteString]
-  type ToMetricsByteString = Js7ServerId => ByteString
 
   private val logger = Logger[this.type]
   private val EndMarker = ByteString(s"# ${randomUUID()}\n")
@@ -81,7 +79,8 @@ object MetricsProvider:
   private lazy val javaService: Option[MetricsJavaService] =
     findJavaService[MetricsJavaService]
 
-  def toMetricsStream(configDirectory: Option[Path] = None): ToMetricsStream =
+  def toMetricsStream(configDirectory: Option[Path] = None)
+  : Js7ServerId => fs2.Stream[IO, ByteString] =
     javaService match
       case None =>
         js7ServerId =>
@@ -89,10 +88,11 @@ object MetricsProvider:
             ByteString(s"# $js7ServerId: No MetricsJavaService installed \n")
 
       case Some(svc) =>
+        val metricsLines = svc.metricsLines(configDirectory)
         js7ServerId =>
           val addAttribute = s"js7Server=\"${toPrometheusString(js7ServerId.toString)}\""
           try
-            svc.metricsLines(configDirectory)(addAttribute = addAttribute)
+            metricsLines(addAttribute = addAttribute)
           catch case NonFatal(t) =>
             logger.error(s"toMetricsStream: ${t.toString}", t)
             fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))
@@ -106,11 +106,18 @@ object MetricsProvider:
       .replace("\n", "\\n")
       .replace("\\", "\\\\")
 
-  private[metrics] def splitMeasurements[F[_]]: fs2.Pipe[F, ByteString, ByteString] =
+  /** A stream of ByteStrings where each contains a single measurement.
+    *
+    * The incoming stream may be any chunks.
+    *
+    * The outcoming stream consists of a ByteString for each measurement.
+    * A measurement consists of comment lines followed by data lines.
+    */
+  private[metrics] def separateMeasurements[F[_]]: fs2.Pipe[F, ByteString, ByteString] =
     _.through:
       byteChunksToLines(breakLinesLongerThan = None)
     .append(fs2.Stream.emit:
-      EndMarker /*to force emission of last collected measurement*/)
+      EndMarker /*to force emission of last collected measurement, will be dropped at end*/)
     .mapAccumulate((ByteString.empty, false)):
       case ((measurement, lastWasData), line) =>
         if line.startsWith("#") then

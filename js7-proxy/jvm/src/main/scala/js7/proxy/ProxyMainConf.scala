@@ -28,7 +28,7 @@ private final case class ProxyMainConf(
   config: Config)
 extends CommonConfiguration:
 
-  val maybeJs7ServerId = proxyId.map(_.toSubagentId)
+  val maybeJs7ServerId = proxyId.map(_.toJs7ServerId)
   val logDirectory = dataDir / "logs"
 
   val name = "Proxy"

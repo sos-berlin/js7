@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 29,
+    "generation": 31,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -1705,6 +1705,21 @@
                         "id": "color",
                         "value": {
                           "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Cluster acknowledgement"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "yellow",
                           "mode": "fixed"
                         }
                       }
@@ -5226,7 +5241,7 @@
         "spec": {
           "id": 31,
           "title": "HTTP chunks",
-          "description": "",
+          "description": "Number of sent HTTP chunks and received network chunks",
           "links": [],
           "data": {
             "kind": "QueryGroup",

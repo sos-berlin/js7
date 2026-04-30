@@ -15,7 +15,7 @@ import js7.base.web.HttpClient
 import js7.common.configuration.CommonConfiguration
 import js7.common.http.StandardHttpClient
 import js7.common.http.StreamingSupport.asFs2Stream
-import js7.common.metrics.MetricsProvider.{splitMeasurements, toPrometheuesErrorLines}
+import js7.common.metrics.MetricsProvider.{separateMeasurements, toPrometheuesErrorLines}
 import js7.common.metrics.RemoteMetricsRoute.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -82,7 +82,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
     val (serverIds, streams) = metricFetchers.map(_.toPair).unzip
     releaseUnknownHttpClients(isKnown = serverIds.toSet).productR:
       completeWithIOStream(contentType):
-        val allStreams = toMetricsStream().covary[IO] :: streams.toList
+        val allStreams = toMetricsStream() :: streams.toList
         locally:
           if streams.sizeIs <= 1 then
             allStreams
@@ -90,7 +90,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
           else
             // Deliver measurement of all sources concurrently merged
             allStreams.map:
-              _.through(splitMeasurements)
+              _.through(separateMeasurements) // Merge only whole measurements
             .parJoinUnbounded
         .map(_.toChunk).unchunks
         .chunkN(httpChunkSize)

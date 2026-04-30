@@ -6,7 +6,7 @@ import js7.data.node.Js7ServerId
 
 final case class ProxyId(string: String) extends GenericString:
 
-  def toSubagentId: Js7ServerId.Proxy =
+  def toJs7ServerId: Js7ServerId.Proxy =
     Js7ServerId.Proxy(this)
 
   override def toString = s"Proxy:$string"
