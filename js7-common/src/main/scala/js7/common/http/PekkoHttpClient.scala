@@ -448,10 +448,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             case t: Throwable => IO.raiseError(toPrettyThrowable(t))
           .map(decompressResponse)
           .pipe: responseIO =>
-            if logger.isDebugEnabled then
+            if !dontLog && logger.isDebugEnabled then
               logResponding(request, responseIO, responseLogPrefix)
                 .map: response =>
-                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = dontLog):
+                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = false):
                     response
             else
               // Statistics only, no logging:
