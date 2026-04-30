@@ -1,6 +1,7 @@
 package js7.common.metrics
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import js7.base.auth.Admission
@@ -15,11 +16,11 @@ import js7.common.http.StandardHttpClient
 import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
 import js7.common.metrics.RemoteMetricsRoute.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.mapAndRechunkToByteStringBuffered
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithIOStream, completeWithStream}
 import js7.data.node.Js7ServerId
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity}
-import org.apache.pekko.http.scaladsl.server.Directives.complete
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.ByteString
 
@@ -84,15 +85,15 @@ trait RemoteMetricsRoute extends MetricsRoute:
         // If it's only the local metrics, we return the ByteString as a simple HttpEntity,
         // avoiding the streaming debug logging.
         IO:
-          complete:
-            metricsHttpEntity(contentType)
+          given IORuntime = ioRuntime
+          completeWithStream(contentType):
+            toMetricsStream()
+              .mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
       else
         completeWithIOStream(contentType):
-          // We return the Chunks as they come.
-          // No measurement must span two HTTP chunks (beware a HTTP proxy) !!!
-          val local = fs2.Stream.eval(IO:
-            toMetricsByteString())
-          (local :: streams.toList).combineAll //.parJoinUnbounded
+          (toMetricsStream() :: streams.toList)
+            .combineAll
+            .mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
 
   private def releaseUnknownHttpClients(isKnown: Js7ServerId => Boolean): IO[Unit] =
     uriToHttp.toMap.map:
