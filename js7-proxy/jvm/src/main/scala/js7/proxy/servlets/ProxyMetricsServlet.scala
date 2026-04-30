@@ -13,7 +13,7 @@ import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
-import js7.common.metrics.MetricsProvider.PrometheusContentType
+import js7.common.metrics.MetricsProvider.{PrometheusContentType, toPrometheuesErrorLines}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.proxy.ControllerApi
 import js7.proxy.servlets.ProxyMetricsServlet.*
@@ -64,7 +64,7 @@ final class ProxyMetricsServlet extends HttpServlet:
               if !response.isCommitted then
                 respond(response, SC_INTERNAL_SERVER_ERROR, s"$t\n")
               else
-                response.getOutputStream.write(s"\n# ERROR: $t\n".getBytes(UTF_8))
+                response.getOutputStream.write(toPrometheuesErrorLines(t.toString).getBytes(UTF_8))
             catch case NonFatal(t2) =>
               if t ne t2 then t.addSuppressed(t2)
               logger.error(t.toString, t2)

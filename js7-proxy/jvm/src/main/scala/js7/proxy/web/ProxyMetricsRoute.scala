@@ -1,7 +1,7 @@
 package js7.proxy.web
 
 import cats.effect.unsafe.IORuntime
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
 import js7.common.metrics.RemoteMetricsRoute
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -27,7 +27,6 @@ trait ProxyMetricsRoute extends RemoteMetricsRoute:
               controllerApi.metrics.map:
                 case Left(problem) =>
                   fs2.Stream.emit:
-                    ByteString(s"# ERROR ${
-                      problem.toString.truncateWithEllipsis(1000, firstLineOnly = true)}\n")
+                    ByteString(toPrometheuesErrorLines(problem.toString))
                 case Right(stream) =>
                   stream.map(_.toByteString)

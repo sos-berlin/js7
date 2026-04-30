@@ -13,6 +13,7 @@ import js7.base.web.HttpClient
 import js7.common.configuration.CommonConfiguration
 import js7.common.http.StandardHttpClient
 import js7.common.http.StreamingSupport.asFs2Stream
+import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
 import js7.common.metrics.RemoteMetricsRoute.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
 import js7.data.node.Js7ServerId
@@ -67,7 +68,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
               case Left(problem) =>
                 logger.debug(s"💥 Error when accessing $serverId: $problem")
                 val problemString = problem.toString.truncateWithEllipsis(1000, firstLineOnly = true)
-                fs2.Stream.emit(ByteString(s"# ERROR $serverId: $problemString\n"))
+                fs2.Stream.emit(ByteString(toPrometheuesErrorLines("$serverId: $problemString")))
               case Right(entity) =>
                 entity.dataBytes.asFs2Stream())
   end remoteMetricFetcher

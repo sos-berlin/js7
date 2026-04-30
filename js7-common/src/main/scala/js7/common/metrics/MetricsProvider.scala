@@ -3,7 +3,7 @@ package js7.common.metrics
 import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
@@ -98,11 +98,13 @@ object MetricsProvider:
           try
             svc.metricsLines(configDirectory)(addAttribute = addAttribute)
           catch case NonFatal(t) =>
-            logger.error(s"toMetricsStream: ${t.toStringWithCauses}", t)
-            fs2.Stream.emit:
-              ByteString(s"# $ownJs7ServerId: ${toPrometheusString(t.toString)}\n")
+            logger.error(s"toMetricsStream: ${t.toString}", t)
+            fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))
 
-  def toPrometheusString(string: String): String =
+  def toPrometheuesErrorLines(message: String): String =
+    s"\n# ERROR: ${message.truncateWithEllipsis(1000, firstLineOnly = true)}\n\n"
+
+private def toPrometheusString(string: String): String =
     string
       .replace("\"", "\\\"")
       .replace("\n", "\\n")
