@@ -17,7 +17,7 @@ final class PrometheusJmxAdapterTest extends OurTestSuite:
     val adapter = new PrometheusJmxAdapter
     val string = adapter.metrics[ByteArray]().utf8String
     logger.info(string)
-    assert(string.startsWith(PrometheusJmxAdapter.Headline + "# HELP"))
+    assert(string.startsWith("# HELP"))
 
   "Speed" in:
     if isIntelliJIdea then

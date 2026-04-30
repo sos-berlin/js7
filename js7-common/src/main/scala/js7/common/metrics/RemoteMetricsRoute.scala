@@ -1,10 +1,11 @@
 package js7.common.metrics
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import js7.base.auth.Admission
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.utils.Allocated
@@ -14,10 +15,10 @@ import js7.base.web.HttpClient
 import js7.common.configuration.CommonConfiguration
 import js7.common.http.StandardHttpClient
 import js7.common.http.StreamingSupport.asFs2Stream
-import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
+import js7.common.metrics.MetricsProvider.{splitMeasurements, toPrometheuesErrorLines}
 import js7.common.metrics.RemoteMetricsRoute.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.mapAndRechunkToByteStringBuffered
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithIOStream, completeWithStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.Js7ServerId
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity}
@@ -63,8 +64,7 @@ trait RemoteMetricsRoute extends MetricsRoute:
                   import httpClient.implicitSessionToken
                   httpClient.get_[HttpEntity](
                     admission.uri / s"metrics${onlyThisServer ?? "?onlyThisServer=true"}",
-                    MetricsProvider.PrometheusRequestHeaders,
-                    /*FIXME TEST dontLog = true*/)
+                    MetricsProvider.PrometheusRequestHeaders)
             .map:
               case Left(problem) =>
                 logger.debug(s"💥 Error when accessing $serverId: $problem")
@@ -81,19 +81,20 @@ trait RemoteMetricsRoute extends MetricsRoute:
   : IO[Route] =
     val (serverIds, streams) = metricFetchers.map(_.toPair).unzip
     releaseUnknownHttpClients(isKnown = serverIds.toSet).productR:
-      if streams.isEmpty then
-        // If it's only the local metrics, we return the ByteString as a simple HttpEntity,
-        // avoiding the streaming debug logging.
-        IO:
-          given IORuntime = ioRuntime
-          completeWithStream(contentType):
-            toMetricsStream()
-              .mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
-      else
-        completeWithIOStream(contentType):
-          (toMetricsStream() :: streams.toList)
-            .combineAll
-            .mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
+      completeWithIOStream(contentType):
+        val allStreams = toMetricsStream().covary[IO] :: streams.toList
+        locally:
+          if streams.sizeIs <= 1 then
+            allStreams
+              .combineAll
+          else
+            // Deliver measurement of all sources concurrently merged
+            allStreams.map:
+              _.through(splitMeasurements)
+            .parJoinUnbounded
+        .map(_.toChunk).unchunks
+        .chunkN(httpChunkSize)
+        .map(_.toByteString)
 
   private def releaseUnknownHttpClients(isKnown: Js7ServerId => Boolean): IO[Unit] =
     uriToHttp.toMap.map:
@@ -106,7 +107,6 @@ trait RemoteMetricsRoute extends MetricsRoute:
 object RemoteMetricsRoute:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
-  private val Separator = ByteString(s"\n# ${"─" * 98}\n")
 
   /** Wrapped IO that fetches Prometheus metrics for a Js7ServerId.
     */

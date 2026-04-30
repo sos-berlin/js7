@@ -6,7 +6,6 @@ import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.{PrometheusRegistry, PrometheusScrapeRequest}
 import java.io.IOException
 import java.lang.management.ManagementFactory
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{NoSuchFileException, Path}
 import javax.management.ObjectName
 import js7.base.data.ByteSequence.ops.*
@@ -20,7 +19,6 @@ import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
 import org.apache.pekko.util.ByteString
-import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
 private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = None):
@@ -80,7 +78,6 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   private def metrics_[ByteSeq: ByteSequence](scrapeRequest: Option[PrometheusScrapeRequest] = None)
   : ByteSeq =
     val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
-    outputStream.writeBytes(HeadlineBytes)
     textWriter.write(outputStream, registry.scrape(scrapeRequest.orNull))
     lastSize = outputStream.size()
     outputStream.byteSeq[ByteSeq]
@@ -90,11 +87,6 @@ private[prometheus] object PrometheusJmxAdapter:
   private val logger = Logger[this.type]
   private val meter = CallMeter("PrometheusJmxAdapter")
   private val DefaultYamlResource = JavaResource("js7/service/prometheus/prometheus-jmx.yaml")
-
-  private val HeadlineBytes = s"# Experimental metrics for Prometheus\n".getBytes(UTF_8)
-
-  @TestOnly
-  val Headline = new String(HeadlineBytes, UTF_8)
 
   logger.trace("Available JMX MBeans:")
   ManagementFactory.getPlatformMBeanServer.queryNames(null, null).asScala.toArray

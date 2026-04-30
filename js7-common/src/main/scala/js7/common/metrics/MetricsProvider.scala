@@ -1,9 +1,12 @@
 package js7.common.metrics
 
 import java.nio.file.Path
+import java.util.UUID.randomUUID
+import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
 import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
@@ -18,6 +21,7 @@ object MetricsProvider:
   type ToMetricsByteString = Js7ServerId => ByteString
 
   private val logger = Logger[this.type]
+  private val EndMarker = ByteString(s"# ${randomUUID()}\n")
 
   /** The 'accept' header of Prometheus 1_4_3. */
   val PrometheusAcceptHeaderValue: String =
@@ -96,8 +100,26 @@ object MetricsProvider:
   def toPrometheuesErrorLines(message: String): String =
     s"\n# ERROR: ${message.truncateWithEllipsis(1000, firstLineOnly = true)}\n\n"
 
-private def toPrometheusString(string: String): String =
+  private def toPrometheusString(string: String): String =
     string
       .replace("\"", "\\\"")
       .replace("\n", "\\n")
       .replace("\\", "\\\\")
+
+  private[metrics] def splitMeasurements[F[_]]: fs2.Pipe[F, ByteString, ByteString] =
+    _.through:
+      byteChunksToLines(breakLinesLongerThan = None)
+    .append(fs2.Stream.emit:
+      EndMarker /*to force emission of last collected measurement*/)
+    .mapAccumulate((ByteString.empty, false)):
+      case ((measurement, lastWasData), line) =>
+        if line.startsWith("#") then
+          if lastWasData then // First comment after data: flush
+            ((line, false), measurement)
+          else
+            ((measurement ++ line, false), ByteString.empty)
+        else
+          ((measurement ++ line, true), ByteString.empty)
+    .map(_._2)
+    .filter: byteString =>
+      byteString.nonEmpty && byteString != EndMarker
