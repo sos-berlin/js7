@@ -22,10 +22,6 @@ object ByteChunksLineSplitter:
 
   assert(TruncationMarkerLength == TruncationMarker.length)
 
-  def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
-  : Pipe[F, ByteSeq, String] =
-    byteChunksToLineStrings[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan: Option[Int])
-
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
     * A final partial line is emitted too.
@@ -37,18 +33,6 @@ object ByteChunksLineSplitter:
   def byteChunksToLines[F[_], ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
   : Pipe[F, ByteSeq, ByteSeq] =
     byteChunksToLines_[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan)
-
-  //def byteChunksToLines[F[_]: RaiseThrowable as F, ByteSeq: ByteSequence](breakLinesLongerThan: Option[Int])
-  //: Pipe[F, ByteSeq, ByteSeq] =
-  //  byteChunksToLines_[F, ByteSeq](breakLinesLongerThan = breakLinesLongerThan)
-
-  private[fs2utils] def byteChunksToLineStrings[F[_], ByteSeq: ByteSequence as ByteSeq](
-    separator: Byte = '\n',
-    breakLinesLongerThan: Option[Int])
-  : Pipe[F, ByteSeq, String] =
-    stream =>
-      byteChunksToLines_(separator, breakLinesLongerThan)(stream)
-        .map(_.utf8String)
 
   /** Collect bytes until '\n' is encountered, then emit the bytes including '\n'.
     *
