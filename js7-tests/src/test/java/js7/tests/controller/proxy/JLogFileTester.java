@@ -14,6 +14,7 @@ import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
+import js7.proxy.javaapi.log.JLogSelection;
 import org.slf4j.Logger;
 import reactor.core.scheduler.Schedulers;
 import static java.lang.Thread.currentThread;
@@ -34,7 +35,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3),
-                OptionalLong.empty()/*special case for test*/)
+                JLogSelection.empty()/*special case for test*/)
             .doOnNext(chunk ->
                 assertIsProxyThread())
             .flatMapIterable(identity())
@@ -48,7 +49,7 @@ final class JLogFileTester {
                         Js7ServerId.primaryController,
                         LogLevel.info(),
                         lastKey,
-                        /*lines=*/OptionalLong.of(2))
+                        JLogSelection.empty().withLineLimit(OptionalLong.of(2)))
                     .flatMapIterable(identity())
                     .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
@@ -76,7 +77,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                /*lines=*/OptionalLong.empty()/*special case for test*/)
+                JLogSelection.empty()/*special case for test*/)
             .doOnNext(ignore ->
                 assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())
@@ -105,7 +106,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                /*lines=*/OptionalLong.empty()/*special case for test*/)
+                JLogSelection.empty()/*special case for test*/)
             // Switch to a blocking thread pool. Apparently not slower.
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
@@ -125,7 +126,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                /*lines=*/OptionalLong.empty()/*special case for test*/)
+                JLogSelection.empty()/*special case, otherwise set lineLimit!*/)
             .doOnNext(ignore ->
                 assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {

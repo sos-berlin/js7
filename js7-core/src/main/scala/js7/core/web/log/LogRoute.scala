@@ -9,6 +9,7 @@ import java.nio.file.Path
 import java.time
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.util.regex.Pattern
 import js7.base.auth.ValidUserPermission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
@@ -16,7 +17,7 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.reader.LogFileReader.growingLogFileStream
-import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey}
+import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey, LogSelection}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
@@ -26,6 +27,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
+import js7.common.pekkohttp.StandardMarshallers
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -36,6 +38,7 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshaller
 import scala.concurrent.duration.FiniteDuration
 
 trait LogRoute extends RouteProvider:
@@ -119,24 +122,30 @@ trait LogRoute extends RouteProvider:
         .interruptWhenF(shutdownSignaled)
 
   private def section(logLevel: LogLevel, begin: Instant | LogLineKey): Route =
-    parameter("lines".as[Long].?): lineLimit =>
-      completeWithStream(`text/plain(UTF-8)`):
-        toStream(logLevel, begin)
-          .pipeMaybe(lineLimit):
-            _.take(_)
-          .map(_.byteLine)
-          .chunks
-          .rechunkToByteStringSporadic(httpChunkSize)
-          .map(_.toByteString)
-      ~
-        completeWithStream(`application/x-ndjson`):
-          toStream(logLevel, begin)
-            .pipeMaybe(lineLimit):
-              _.take(_)
-            .map(_.toKeyedLogLine)
-            .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+    import StandardMarshallers.{instantUnmarshaller, patternUnmarshaller}
+    parameter("lineLimit".as[Long].?): lineLimit =>
+      parameter("end".as[Instant].?): end =>
+        parameter("pattern".as[Pattern].?): pattern =>
+          val logSelection = LogSelection(
+            end = end, lineLimit = lineLimit, pattern = pattern,
+            byteChunkSize = httpChunkSize)
+          completeWithStream(`text/plain(UTF-8)`):
+            toStream(logLevel, begin, logSelection)
+              .pipeMaybe(lineLimit):
+                _.take(_)
+              .map(_.byteLine)
+              .chunks
+              .rechunkToByteStringSporadic(httpChunkSize)
+              .map(_.toByteString)
+          ~
+            completeWithStream(`application/x-ndjson`):
+              toStream(logLevel, begin, logSelection)
+                .pipeMaybe(lineLimit):
+                  _.take(_)
+                .map(_.toKeyedLogLine)
+                .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
 
-  private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey)
+  private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
       given Config = config
@@ -144,10 +153,11 @@ trait LogRoute extends RouteProvider:
     .flatMap: logDirectoryIndex =>
       begin match
         case instant: Instant =>
-          logDirectoryIndex.instantToKeyedByteLogLineStream(instant, byteChunkSize = httpChunkSize)
+          logDirectoryIndex.instantToKeyedByteLogLineStream(instant, logSelection)
         case logLineKey: LogLineKey =>
-          logDirectoryIndex.keyToKeyedByteLogLineStream(logLineKey, byteChunkSize = httpChunkSize)
+          logDirectoryIndex.keyToKeyedByteLogLineStream(logLineKey, logSelection)
             .drop(1)
+
 
 object LogRoute:
   private val logger = Logger[LogRoute]

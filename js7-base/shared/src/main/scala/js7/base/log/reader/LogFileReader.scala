@@ -25,7 +25,6 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
-import scala.util.matching.Regex
 
 object LogFileReader:
   private val logger = Logger[this.type]
@@ -47,23 +46,22 @@ object LogFileReader:
       """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
     s"""^$HighlightRegex?($datetime) """.r.pattern
 
-  private val LogLinePattern: Pattern =
+  private val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
-    val threadInBrackets = """\[[^]]+]""".r  // Very slow!
-    val logger = """[\p{Alnum}._$-]+""".r
+    //val threadInBrackets = """\[[^]]+]""".r  // Very slow!
+    //val logger = """[\p{Alnum}._$-]+""".r
     //val message = """(?:.*)""".r
     // threadInBrackets is slow. Also, a thread name may contain a ']'.
     //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
-    Regex(s"""^$HighlightRegex?(${FastTimestampParser.DateTimeRegex}) $level """).pattern
+    Pattern.compile(s"""^$HighlightRegex?(${FastTimestampParser.DateTimeRegex}) $level """)
+
+  val FastPrefixPattern: Pattern =
+    Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")
 
   private val HeaderDateTimeParser: DateTimeFormatter =
-    val base =
-      new DateTimeFormatterBuilder()
-        .appendPattern("yyyy-MM-dd")
-
     def withDateTimeSeparator(sep: Char) =
       new DateTimeFormatterBuilder()
-        .append(base.toFormatter)
+        .append(new DateTimeFormatterBuilder().appendPattern("yyyy-MM-dd").toFormatter)
         .appendLiteral(sep)
         .appendPattern("HH:mm:ss")
 
@@ -123,7 +121,7 @@ object LogFileReader:
     parseTimestampInLogLine(line)(parse)
 
   def parseTimestampInLogLine(line: CharSequence)(parse: CharSequence => EpochNano): EpochNano =
-    parseTimestamp(LogLinePattern, line)(parse)
+    parseTimestamp(LogLineStartPattern, line)(parse)
 
   private inline def parseTimestamp(pattern: Pattern, line: CharSequence)
     (inline parse: CharSequence => EpochNano)
@@ -135,7 +133,7 @@ object LogFileReader:
   private def matchTimestamp(pattern: Pattern, line: CharSequence): CharSequence | Null =
     meterRegex:
       val matcher = pattern.matcher(line)
-      if matcher.find() then
+      if matcher.lookingAt() then
         val start = matcher.start(1)
         if start >= 0 then
           line.subSequence(start, matcher.end(1))
@@ -146,7 +144,7 @@ object LogFileReader:
 
   @TestOnly
   private[reader] def matchTimestampInLogLine(line: CharSequence): CharSequence | Null =
-    matchTimestamp(LogLinePattern, line)
+    matchTimestamp(LogLineStartPattern, line)
 
   def growingLogFileStream[ByteSeq: {ByteSequence, Tag}](
     file: Path,
@@ -221,14 +219,12 @@ object LogFileReader:
       ).use: reader =>
         reader.read(UniqueHeaderSize)
 
-  def takeUntilInstant(using ZoneId)
-    (instant: Option[Instant],
-    fastTimestampParser: => FastTimestampParser = FastTimestampParser())
-  : fs2.Pipe[IO, (Long, Chunk[Byte]), (Long, Chunk[Byte])] =
+  def takeUntilInstant(instant: Option[Instant], fastTimestampParser: => FastTimestampParser)
+  : fs2.Pipe[IO, PosAndLine, PosAndLine] =
     stream =>
       instant.fold(stream): instant =>
         val timestampParser = fastTimestampParser // call-by-name
         val endEpochNano = instant.toEpochNano
-        stream.takeWhile: (_, byteLine) =>
-          val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
+        stream.takeWhile: posAndLine =>
+          val epochNano = parseTimestampInLogLine(posAndLine.byteLine)(timestampParser.parse)
           epochNano < endEpochNano

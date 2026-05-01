@@ -15,7 +15,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
-import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest}
+import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest, LogSelection}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
@@ -60,7 +60,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         given Config = Js7Config.defaultConfig
         LogDirectoryIndex.directory(dir, Info, _ => true)
           .use: logDirectoryIndex =>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
+            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -138,7 +138,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h)
                 .map(instantToFile)
           *>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
+            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -151,7 +151,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h, startInstant + 48.h)
                   .map(instantToFile)
           *>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, byteChunkSize = 8192)
+            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -187,7 +187,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 ).use: logDirectoryIndex =>
                   logDirectoryIndex.instantToKeyedByteLogLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),
-                    byteChunkSize = 8192
+                    LogSelection()
                   ).take(1).compile.drain *>
                     IO:
                       val elapsed = t.elapsed

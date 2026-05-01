@@ -1,5 +1,8 @@
 package js7.common.pekkohttp
 
+import java.time.Instant
+import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.util.regex.Pattern
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime
@@ -38,6 +41,14 @@ object StandardMarshallers:
     Marshaller.withOpenCharset(`text/plain`) { (string, charset) =>
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
+
+  given instantUnmarshaller: Unmarshaller[String, Instant] =
+    Unmarshaller.strict: string =>
+      ISO_INSTANT.parse(string, Instant.from)
+
+  given patternUnmarshaller: Unmarshaller[String, Pattern] =
+    Unmarshaller.strict: string =>
+      Pattern.compile(string)
 
   implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
     Unmarshaller.strict(stringToFiniteDuration)

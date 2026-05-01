@@ -13,6 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.node.Js7ServerId
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.javaapi.JControllerApi
+import js7.proxy.javaapi.log.JLogSelection
 import js7.tests.log.LogFileTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -58,7 +59,8 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
-            js7ServerId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
+            js7ServerId, LogLevel.None /*test*/ , begin = Instant.now,
+            JLogSelection(lineLimit = OptionalLong.of(1)))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

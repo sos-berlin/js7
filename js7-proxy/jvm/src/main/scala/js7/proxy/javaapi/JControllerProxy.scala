@@ -5,7 +5,6 @@ import cats.effect.{IO, Resource, ResourceIO}
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
-import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -32,6 +31,7 @@ import js7.proxy.ControllerProxy
 import js7.proxy.javaapi.JControllerProxy.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
+import js7.proxy.javaapi.log.JLogSelection
 import reactor.core.publisher.Flux
 
 /** Observes the Controller's event stream and provides the current JControllerState.
@@ -84,52 +84,68 @@ final class JControllerProxy private[proxy](
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
+  def keyedLogLineFlux(
+    serverId: Js7ServerId,
+    logLevel: LogLevel,
+    begin: Instant,
+    logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    keyedLogLineFlux_(serverId, logLevel, begin, lines)
+    keyedLogLineFlux_(serverId, logLevel, begin, logSelection)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def keyedLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
+  def keyedLogLineFlux(
+    serverId: Js7ServerId,
+    logLevel: LogLevel,
+    key: LogLineKey,
+    logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    keyedLogLineFlux_(serverId, logLevel, key, lines)
+    keyedLogLineFlux_(serverId, logLevel, key, logSelection)
 
   private def keyedLogLineFlux_(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: OptionalLong)
+    logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
     fs2.Stream.resource:
       JEngineLog.resource(this, serverId)
     .flatMap: jEngineLog =>
-      jEngineLog.keyedLogLineStream(logLevel, begin, lines)
+      jEngineLog.keyedLogLineStream(logLevel, begin, logSelection)
     .chunks
     .map(_.asJava)
     .asFlux
 
   /** Read log lines from `begin`. */
   @Nonnull
-  def rawLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, begin: Instant, lines: OptionalLong)
+  def rawLogLineFlux(
+    serverId: Js7ServerId,
+    logLevel: LogLevel,
+    begin: Instant,
+    logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    rawLogLineFlux_(serverId, logLevel, begin, lines)
+    rawLogLineFlux_(serverId, logLevel, begin, logSelection)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
-  def rawLogLineFlux(serverId: Js7ServerId, logLevel: LogLevel, key: LogLineKey, lines: OptionalLong)
+  def rawLogLineFlux(
+    serverId: Js7ServerId,
+    logLevel: LogLevel,
+    key: LogLineKey,
+    logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    rawLogLineFlux_(serverId, logLevel, key, lines)
+    rawLogLineFlux_(serverId, logLevel, key, logSelection)
 
   private def rawLogLineFlux_(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: OptionalLong)
+    logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
     fs2.Stream.resource:
       JEngineLog.resource(this, serverId)
     .flatMap: jEngineLog =>
-      jEngineLog.logSection_(logLevel, begin, lines)
+      jEngineLog.logSection_(logLevel, begin, logSelection.toScala)
     .map(_.toArray) // Copy, or has Java an immutable array?
     .chunks
     .map(_.asJava)

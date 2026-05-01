@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogFileIndex;
+import js7.proxy.javaapi.log.JLogSelection;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.startsWith;
@@ -32,7 +33,9 @@ public final class JLogFileIndexTester {
     {
         return
             JLogFileIndex.build(file, zoneId, proxyContext).thenCompose(logFileIndex ->
-                logFileIndex.instantToFilePosition(Instant.parse("2026-02-12T14:00:01+02:00"))
+                logFileIndex.instantToFilePosition(
+                        Instant.parse("2026-02-12T14:00:01+02:00"),
+                        JLogSelection.empty())
                     .thenAccept(position ->
                         assertThat(position.getAsLong(), equalTo((long) writtenLines.get(0).length()/*pure ASCII*/))));
     }
@@ -43,7 +46,8 @@ public final class JLogFileIndexTester {
                 logFileIndex
                     .lineFlux(
                         Instant.parse("2026-02-12T14:00:01+02:00"),
-                        Optional.of(Instant.parse("2026-02-12T14:00:04+02:00"))
+                        JLogSelection.empty().withEnd(
+                            Optional.of(Instant.parse("2026-02-12T14:00:04+02:00")))
                     ).take(100) // Guard against too many lines
                     .collectList()
                     .toFuture()

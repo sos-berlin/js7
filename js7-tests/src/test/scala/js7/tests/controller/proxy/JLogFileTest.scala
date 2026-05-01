@@ -14,6 +14,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.Info
 import js7.base.log.Logger
+import js7.base.log.reader.LogSelection
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
@@ -66,7 +67,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
       // Info because our log filename does not contain "debug-"
-      controllerApi.getLogLines(Info, begin = Instant.now - 3.s)
+      controllerApi.getLogLines(Info, begin = Instant.now - 3.s, LogSelection())
         .flatMap: stream =>
           stream.map(_.utf8String)
             .takeUntil: line =>

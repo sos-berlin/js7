@@ -9,10 +9,9 @@ import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
-import js7.base.log.reader.{KeyedLogLine, LogLineKey}
+import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogSelection}
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
-import js7.base.utils.Missing.toMissing
 import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
 import js7.cluster.watch.api.HttpClusterNodeApi
@@ -71,12 +70,11 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Option[Long] = None,
+    logSelection: LogSelection,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     getLogLines_(subagentId, logLevel,
-      "begin" -> begin.toString,
-      "lines" -> lines.map(_.toString).toMissing)
+      ("begin" -> begin.toString) +: logSelection.toKeyValues*)
 
   private def getLogLines_(
     subagentId: Option[SubagentId],
@@ -94,12 +92,11 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getKeyedLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: Option[Long],
+    logSelection: LogSelection,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedLogLine]] =
     getKeyedLogLines_(subagentId, logLevel,
-      "begin" -> begin.toString,
-      "lines" -> lines.map(_.toString).toMissing)
+      ("begin" -> begin.toString) +: logSelection.toKeyValues*)
 
   private def getKeyedLogLines_(
     subagentId: Option[SubagentId],
@@ -181,6 +178,7 @@ object HttpControllerApi:
       IO:
         new HttpControllerApi.Standard(admission, httpClient, loginDelays)
 
+
   final class Standard(
     admission: Admission,
     val httpClient: PekkoHttpClient,
@@ -188,3 +186,4 @@ object HttpControllerApi:
   extends HttpControllerApi:
     val baseUri: Uri = admission.uri
     protected val userAndPassword = admission.userAndPassword
+

@@ -61,8 +61,6 @@ extends Service.StoppableByCancel:
     ConcurrentHashMap.from:
       instantToLogFile.asScala.toMap.map((instant, logFile) => logFile.filename -> instant)
 
-  import ByteSeqFileReader.BufferSize as DefaultBufferSize
-
   protected def start =
     startService:
       run.guarantee:
@@ -95,69 +93,78 @@ extends Service.StoppableByCancel:
       instantToLogFile.values.asScala.toVector.parFoldMapA: logFile =>
         logFile.release
 
-  def instantToLogLineKey(instant: Instant): IO[Option[LogLineKey]] =
-    instantToKeyedByteLogLineStream(instant)
-      .head.compile.last.map(_.map(_.key))
+  def instantToLogLineKey(instant: Instant, logSelection: LogSelection): IO[Option[LogLineKey]] =
+    instantToKeyedByteLogLineStream(instant, logSelection)
+      .head.compile.last.map(_.map(_.logLineKey))
 
-  def instantToKeyedByteLogLineStream(begin: Instant, byteChunkSize: Int = DefaultBufferSize)
+  def instantToKeyedByteLogLineStream(begin: Instant, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
       if instantToLogFile.isEmpty then
         Stream.empty
       else
         val logFile = instantToLogFile(begin)
-        streamAndContinueWithNextFile(logFile, begin, byteChunkSize = byteChunkSize)
+        streamAndContinueWithNextFile(logFile, begin, logSelection)
 
-  def keyToKeyedByteLogLineStream(logLineKey: LogLineKey, byteChunkSize: Int = DefaultBufferSize)
+  def keyToKeyedByteLogLineStream(logLineKey: LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
-      if logLineKey.logLevel != logLevel then throw IllegalArgumentException(s"Wrong LogLevel")
+      if logLineKey.logLevel != logLevel then throw IllegalArgumentException("Wrong LogLevel")
       if instantToLogFile.isEmpty then
         Stream.empty
       else
         val logFile = instantToLogFile(logLineKey.fileInstant)
-        streamAndContinueWithNextFile(logFile, logLineKey.position, byteChunkSize = byteChunkSize)
+        streamAndContinueWithNextFile(logFile, logLineKey.position, logSelection)
 
   private def instantToLogFile(instant: Instant): LogFile =
     instantToLogFile.floorEntry(instant) match
       case null => instantToLogFile.firstEntry.getValue
       case o => o.getValue
 
-  private def streamAndContinueWithNextFile(logFile: LogFile, instant: Instant, byteChunkSize: Int)
+  private def streamAndContinueWithNextFile(
+    logFile: LogFile,
+    instant: Instant,
+    logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
       toDeferredIndex(logFile)
     .map:
       _.logFileIndex
     .flatMap: logFileIndex =>
-      logFileIndex.streamPosAndLine(instant, byteChunkSize = byteChunkSize).map: (pos, line) =>
-        KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
+      logFileIndex.streamPosAndLine(instant, logSelection)
+        .map: posAndLine =>
+          KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
     .append:
-      streamSectionAfter(logFile.fileInstant, byteChunkSize = byteChunkSize)
+      streamSectionAfter(logFile.fileInstant, logSelection)
 
-  private def streamAndContinueWithNextFile(logFile: LogFile, position: Long, byteChunkSize: Int)
+  private def streamAndContinueWithNextFile(
+    logFile: LogFile,
+    position: Long,
+    logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
+    import logSelection.byteChunkSize
     Stream.eval:
       toDeferredIndex(logFile) // todo? Don't build logFile.logFileIndex. Only decompressed file is required
     .flatMap: deferredIndex =>
       Stream.resource:
         ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file, bufferSize = byteChunkSize)
     .flatMap: reader =>
-      reader.streamPosAndLines(
-        position = position,
-        breakLinesLongerThan = breakLinesLongerThan
-      ).map: (pos, line) =>
-        KeyedByteLogLine(logFile.toLogLineKey(logLevel, pos), line)
+      reader.streamPosAndLines(position = position, breakLinesLongerThan = breakLinesLongerThan)
+        .map(PosAndLine.fromPair)
+        .through:
+          LogFileIndex.applyLogSelection(logSelection, FastTimestampParser())
+        .map: posAndLine =>
+          KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
     .append:
-      streamSectionAfter(logFile.fileInstant, byteChunkSize = byteChunkSize)
+      streamSectionAfter(logFile.fileInstant, logSelection)
 
-  private def streamSectionAfter(instant: Instant, byteChunkSize: Int)
+  private def streamSectionAfter(instant: Instant, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
       Option:
         instantToLogFile.higherEntry(instant)
       .map(_.getValue).fold(Stream.empty): logFile =>
-        streamAndContinueWithNextFile(logFile, instant, byteChunkSize = byteChunkSize)
+        streamAndContinueWithNextFile(logFile, instant, logSelection)
 
   private def toDeferredIndex(logFile: LogFile): IO[DeferredIndex] =
     logFile.deferredIndexCell.evalUpdateAndGet: maybe =>

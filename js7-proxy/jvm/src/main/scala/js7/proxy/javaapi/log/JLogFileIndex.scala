@@ -3,10 +3,8 @@ package js7.proxy.javaapi.log
 import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
+import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
-import java.util.{Optional, OptionalLong}
-import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.AnsiEscapeCodes.removeHighlights
 import js7.base.log.reader.LogFileIndex
 import js7.data_for_java.reactor.ReactorConverters.asFlux
@@ -17,14 +15,15 @@ import scala.jdk.OptionShape.*
 
 final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
-  def lineFlux(begin: Instant, end: Optional[Instant]): Flux[String] =
-    logFileIndex.streamPosAndLine(begin = begin, end = end.toScala)
-      .map: (_, byteLine) =>
-        removeHighlights(byteLine.utf8String)
+  def lineFlux(begin: Instant, logSelection: JLogSelection): Flux[String] =
+    logFileIndex.streamPosAndLine(begin = begin, logSelection.toScala)
+      .map: posAndLine =>
+        removeHighlights(posAndLine.lineAsString)
     .asFlux
 
-  def instantToFilePosition(instant: Instant): CompletableFuture[OptionalLong] =
-    logFileIndex.instantToFilePosition(instant)
+  def instantToFilePosition(instant: Instant, logSelection: JLogSelection)
+  : CompletableFuture[OptionalLong] =
+    logFileIndex.instantToFilePosition(instant, logSelection.toScala)
       .map(_.toJavaPrimitive)
       .unsafeToCompletableFuture()
 

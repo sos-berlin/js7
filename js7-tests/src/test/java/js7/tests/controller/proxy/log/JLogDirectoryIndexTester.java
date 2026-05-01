@@ -3,12 +3,12 @@ package js7.tests.controller.proxy.log;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.log.LogLevel;
 import js7.base.log.reader.LogLineKey;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogDirectoryIndex;
+import js7.proxy.javaapi.log.JLogSelection;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -24,7 +24,9 @@ final class JLogDirectoryIndexTester {
             ).use(logDirectoryIndex ->
                 logDirectoryIndex
                     // 🟢 instantToLogLineKey
-                    .instantToLogLineKey(ZonedDateTime.parse("2026-03-01T02:00:02+02").toInstant())
+                    .instantToLogLineKey(
+                        ZonedDateTime.parse("2026-03-01T02:00:02+02").toInstant(),
+                        JLogSelection.empty())
                     .thenAccept(logLineKey ->
                         assertThat(logLineKey.get(), equalTo(LogLineKey.apply(
                             logLevel,
@@ -35,7 +37,7 @@ final class JLogDirectoryIndexTester {
                     .thenCompose(unused ->
                         logDirectoryIndex.keyedLogLineFlux(
                                 ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(),
-                                Optional.empty())
+                                JLogSelection.empty())
                             .map(keyedLogLine -> keyedLogLine.line())
                             .collectList().toFuture())
                     .thenAccept(lines ->

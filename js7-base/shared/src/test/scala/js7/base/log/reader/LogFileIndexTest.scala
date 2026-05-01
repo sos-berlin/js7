@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
+import java.util.regex.Pattern
 import java.util.zip.GZIPOutputStream
 import js7.base.config.{Js7Conf, Js7Config}
 import js7.base.data.ByteSequence.ops.*
@@ -56,7 +57,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(begin)
+            logFileIndex.streamLines(begin, LogSelection())
               .map(_.utf8String)
               .head.compile.last
 
@@ -77,6 +78,24 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
               assert(line.isEmpty)
           yield succeed
 
+  "pattern" in:
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
+    temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
+      IO.defer:
+        val lines = Vector(
+          bold("2026-02-12 14:00:00.000 info [thread] class - ORANGE") + "\n",
+          "2026-02-12 14:00:01.000 info [thread] class - CITRON\n",
+          "2026-02-12 14:00:02.000 info [thread] class - ORANGE\n")
+        file := lines.mkString
+        LogFileIndex.fromFile(file).flatMap: logFileIndex =>
+          logFileIndex.streamLines(
+              Instant.parse("2026-02-12T14:00:00+02:00"),
+              LogSelection(pattern = Some(Pattern.compile("20.* - ORANGE$"))))
+            .map(_.utf8String)
+            .compile.toList
+            .map: readLines =>
+              assert(readLines == Vector(lines(0), lines(2)))
+
   "Growing" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
@@ -87,7 +106,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
         LogFileIndex.buildGrowing(file, poll = 100.ms).use: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(begin)
+            logFileIndex.streamLines(begin, LogSelection())
               .map(_.utf8String)
               .head.compile.last
 
@@ -113,7 +132,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
     LogFileIndex.fromFile(logFile).flatMap: logFileIndex =>
       IO.defer:
-        logFileIndex.streamLines(begin = begin.toInstant)
+        logFileIndex.streamLines(begin = begin.toInstant, LogSelection())
           .through:
             byteChunksToLines(breakLinesLongerThan = None)
           .filter: byteLine =>

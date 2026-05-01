@@ -14,6 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.node.Js7ServerId
 import js7.proxy.javaapi.JControllerApi
+import js7.proxy.javaapi.log.JLogSelection
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.jdk.CollectionConverters.*
@@ -44,7 +45,8 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .rawLogLineFlux(
-            serverId, LogLevel.None /*test*/ , begin = Instant.now, lines = OptionalLong.of(1))
+            serverId, LogLevel.None /*test*/ , begin = Instant.now,
+            JLogSelection(lineLimit = OptionalLong.of(1)))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

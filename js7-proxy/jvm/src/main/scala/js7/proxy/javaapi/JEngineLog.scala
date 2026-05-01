@@ -4,17 +4,16 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import cats.syntax.foldable.*
 import java.time.Instant
-import java.util.OptionalLong
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.{KeyedLogLine, LogLineKey}
+import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogSelection}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
 import js7.data.node.{Js7ServerId, NodeId}
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.JEngineLog.*
+import js7.proxy.javaapi.log.JLogSelection
 import reactor.core.publisher.Flux
-import scala.jdk.OptionConverters.*
 
 final class JEngineLog(
   jProxy: JControllerProxy,
@@ -35,17 +34,17 @@ final class JEngineLog(
     .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
 
-  def logSection(logLevel: LogLevel, begin: Instant, lines: OptionalLong)
+  def logSection(logLevel: LogLevel, begin: Instant, logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    logSection_(logLevel, begin, lines)
+    logSection_(logLevel, begin, logSelection.toScala)
       .map(_.toArray) // Copy, or has Java an immutable array?
       .chunks
       .map(_.asJava)
       .asFlux
 
-  def logSection(logLevel: LogLevel, begin: LogLineKey, lines: OptionalLong)
+  def logSection(logLevel: LogLevel, begin: LogLineKey, logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    logSection_(logLevel, begin, lines)
+    logSection_(logLevel, begin, logSelection.toScala)
       .map(_.toArray) // Copy, or has Java an immutable array?
       .chunks
       .map(_.asJava)
@@ -54,33 +53,33 @@ final class JEngineLog(
   private[javaapi] def logSection_(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: OptionalLong)
+    logSelection: LogSelection)
   : fs2.Stream[IO, fs2.Chunk[Byte]] =
     fs2.Stream.force:
       serverId match
         case Js7ServerId.Controller.Primary =>
-          primaryControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala)
+          primaryControllerApi.getLogLines(logLevel, begin = begin, logSelection)
         case Js7ServerId.Controller.Backup =>
-          backupControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala)
+          backupControllerApi.getLogLines(logLevel, begin = begin, logSelection)
         case Js7ServerId.Subagent(subagentId) =>
-          activeControllerApi.getLogLines(logLevel, begin = begin, lines = lines.toScala,
+          activeControllerApi.getLogLines(logLevel, begin = begin, logSelection,
             subagentId = Some(subagentId))
         case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
 
   private[javaapi] def keyedLogLineStream(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    lines: OptionalLong)
+    logSelection: JLogSelection)
   : fs2.Stream[IO, KeyedLogLine] =
     logger.traceStream(s"keyedLogLineFlux Stream"):
       fs2.Stream.force:
         serverId match
           case Js7ServerId.Controller.Primary =>
-            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala)
+            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala)
           case Js7ServerId.Controller.Backup =>
-            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala)
+            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, lines = lines.toScala,
+            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala,
               subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
 
