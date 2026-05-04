@@ -77,9 +77,10 @@ object Stopwatch:
     Result(duration, n, ops).toString
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
-    if n < 10_000_000 then
+    val nPerS = if duration.toSeconds == 0 then 1 else n / duration.toSeconds
+    if n < 10_000_000 || nPerS < 1_000_000 then
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000, "kB", gap = false)
-    else if n < 1_000_000_000L then
+    else if n < 1_000_000_000L || nPerS < 10_000_000 then
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000, "MB")
     else
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000_000, "GB")
@@ -108,12 +109,14 @@ object Stopwatch:
       n.setScale(0, HALF_UP).toString
     else if n == 1_000_000 then
       "million"
-    else if n % 1_000_000 == 0 then
-      s"${n / 1_000_000}m"
-    else if n % 1000 == 0 then
-      s"${n / 1000}k"
+    //else if n >= 100_000_000 then
+    //  s"${n.toLong / 1_000_000}m"
+    //else if n >= 100_000 then
+    //  s"${n.toLong / 1000}k"
+    //else if n >= 100 then
+    //  s"${n.toLong}"
     else
-      decimalFormat.format(n)
+      decimalFormat.format(n.toBigInt)
 
   final case class Result(
     duration: FiniteDuration,

@@ -113,7 +113,6 @@ object LogFileIndex:
   private val EntrySize = 16 // Size of a EpochNanoToPos entry (two Longs)
   private val NoEntryWarnThreshold = 128 * 1024
   private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
-  private val MinimumLogDuration = 100.ms
   private val PollDuration = 100.ms
   private val logger = Logger[LogFileIndex]
 
@@ -161,7 +160,7 @@ object LogFileIndex:
       ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
         Resource.make(
           acquire =
-            meter:
+            meterIndexing:
               buildIndex(startPosition = 0):
                 reader.streamUntilEnd
             .flatMap: _ =>
@@ -187,12 +186,13 @@ object LogFileIndex:
       toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
       logWriter: ResourceIO[LogWriter])
     : IO[LogFileIndex] =
-      buildIndex(startPosition = 0, toBuilderStream(BuildBufferSize), logWriter)
-        .map: _ =>
-          if nanoToPos.isEmpty then
-            logger.debug(s"❓ No timestamped line in $label")
-          nanoToPos.shrink()
-          new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan))
+      meterIndexing:
+        buildIndex(startPosition = 0, toBuilderStream(BuildBufferSize), logWriter)
+      .map: _ =>
+        if nanoToPos.isEmpty then
+          logger.debug(s"❓ No timestamped line in $label")
+        nanoToPos.shrink()
+        new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan))
 
     /** Build the index in `nanoToPos`.
       *
@@ -253,13 +253,12 @@ object LogFileIndex:
               _.flush
             .compile.drain
 
-    private def meter(body: IO[Unit]): IO[Unit] =
+    private def meterIndexing(body: IO[Unit]): IO[Unit] =
       IO.defer:
         val t = Deadline.now
         body.map: _ =>
           val elapsed = t.elapsed
-          if elapsed >= MinimumLogDuration then
-            logger.debug(s"$label: ${bytesPerSecondString(elapsed, nanoToPos.byteCount)} indexed")
+          logger.debug(s"$label: ${bytesPerSecondString(elapsed, nanoToPos.byteCount)} indexed")
 
 
     private final class WriteOpsBuffer(logWriter: LogWriter):

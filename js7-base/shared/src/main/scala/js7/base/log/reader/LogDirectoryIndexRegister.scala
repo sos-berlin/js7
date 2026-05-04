@@ -12,7 +12,6 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndexRegister.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
@@ -58,24 +57,23 @@ extends Service.StoppableByRequest:
       if isStopping then
         Resource.pure(Map.empty)
       else
-        logger.debugResource:
-          for
-            levelToFilesAndQueue <- watchDirectoryAndDispatchEvents
-            levelToIndex <-
-              Resource.make(
-                acquire =
-                  LogDirectoryIndex.LogLevels.toSeq.traverse: logLevel =>
-                    val (files, queue) = levelToFilesAndQueue(logLevel)
-                    LogDirectoryIndex.directory(
+        for
+          levelToFilesAndQueue <- watchDirectoryAndDispatchEvents
+          levelToIndex <-
+            Resource.make(
+              acquire =
+                LogDirectoryIndex.LogLevels.toSeq.traverse: logLevel =>
+                  val (files, queue) = levelToFilesAndQueue(logLevel)
+                  LogDirectoryIndex.directory(
                       directory, logLevel, files,
                       fs2.Stream.fromQueueNoneTerminatedChunk(queue)
                     ).toAllocated
-                      .map(logLevel -> _)
-                  .map(_.toMap))(
-                release =
-                  _.values.toSeq.parTraverseVoid(_.release))
-          yield
-            levelToIndex
+                    .map(logLevel -> _)
+                .map(_.toMap))(
+              release =
+                _.values.toSeq.parTraverseVoid(_.release))
+        yield
+          levelToIndex
 
   /** Return for each LogLevel the initial files and a Queue of DirectoryEvents. */
   private def watchDirectoryAndDispatchEvents
