@@ -1,14 +1,14 @@
 package js7.base.io
 
-import java.io.{FilterOutputStream, OutputStream}
+import java.io.OutputStream
 import java.util.zip.Deflater
 
 /** A deflating output stream that supports independent compressed chunks.
   *
-  * Each chunk is compressed independently with finish()+reset(), making them
+  * Each chunk is compressed independently with finish() and reset(), making them
   * separately inflatable. The chunks are concatenated in the output stream.
   *
-  * Call `finishChunk()` to complete the current independent chunk and get its
+  * Call `markPosition()` to complete the current independently compressed chunk and get its
   * position in the output stream. Use these positions to inflate individual chunks.
   *
   * The entire stream can also be inflated by concatenating all chunks with a
@@ -16,21 +16,21 @@ import java.util.zip.Deflater
   *
   * @param out The underlying output stream
   */
-final class ChunkedDeflaterOutputStream(
+final class DeflaterSeekableOutputStream(
   out: OutputStream,
   deflater: Deflater = new Deflater,
   bufferSize: Int = 512)
-extends FilterOutputStream(out):
+extends SeekableOutputStream(out):
 
   private val buffer = new Array[Byte](bufferSize)
   private var byteCount = 0L
   private var closed = false
+  private val singleByte = new Array[Byte](1)
 
   override def write(b: Int): Unit =
     ensureOpen()
-    val single = new Array[Byte](1)
-    single(0) = b.toByte
-    write(single, 0, 1)
+    singleByte(0) = b.toByte
+    write(singleByte, 0, 1)
 
   override def write(array: Array[Byte]): Unit =
     ensureOpen()
@@ -52,7 +52,7 @@ extends FilterOutputStream(out):
     *
     * @return The byte position where this chunk ends (and next chunk begins)
     */
-  def finishChunk(): Long =
+  def markPosition(): Long =
     ensureOpen()
     deflater.finish()
     while !deflater.finished() do

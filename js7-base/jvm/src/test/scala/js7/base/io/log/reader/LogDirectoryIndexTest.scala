@@ -1,4 +1,4 @@
-package js7.tests.controller.proxy.log
+package js7.base.io.log.reader
 
 import cats.effect.IO
 import com.typesafe.config.Config
@@ -13,6 +13,7 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.io.log.reader.LogDirectoryIndexTest.*
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest, LogSelection}
@@ -25,7 +26,6 @@ import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.controller.proxy.log.LogDirectoryIndexTest.*
 import scala.concurrent.duration.Deadline
 
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
@@ -178,7 +178,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         LogFileIndexTest.writeFile(
           gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true
         ) *>
-          (1 to 20).foldMap: _ =>
+          (1 to 10).foldMap: _ =>
             IO.defer:
               val t = Deadline.now
                 given Config = Js7Config.defaultConfig

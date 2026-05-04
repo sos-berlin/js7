@@ -7,11 +7,15 @@ import java.io.{InputStream, OutputStream}
 import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
 import js7.base.io.CountingOutputStream
 import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.utils.ScalaUtils.syntax.*
 
 private[reader] case object GzipRecompressor extends Recompressor:
 
+  def findRecompressor(name: String) =
+    (name == "gzip") ? this
+
   def decompressingInputStream(in: InputStream): InputStream =
-    new GZIPInputStream(in, 4096/*guess*/)
+    new GZIPInputStream(in, 8192/*guess*/)
 
   def toLogWriter(out: OutputStream): Resource[IO, LogWriter] =
     Resource.fromAutoCloseable:

@@ -25,7 +25,7 @@ import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogFileReader.UniqueHeaderSize
-import js7.base.log.reader.recompressors.{DeflaterRecompressor, Recompressor}
+import js7.base.log.reader.recompressors.Recompressor
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
@@ -137,17 +137,34 @@ extends Service.StoppableByCancel:
     .append:
       streamSectionAfter(logFile.fileInstant, logSelection)
 
+  // TODO Maybe: When continuing with next file, don't build logFile.logFileIndex (if it hasn't
+  //  been built yet). The original .gz file can be read directly (maybe skipping the header line).
+  //  Then, we could read the complete log without recompressing and indexing.
+  //  Also, no disk space for recompressed is needed.
+  //private def continueWithNextFile(logFile: LogFile, logSelection: LogSelection)
+  //: Stream[IO, KeyedByteLogLine] =
+  //  Stream.force:
+  //    // todo? Don't build logFile.logFileIndex. Only decompressed file is required
+  //    logFile.deferredIndexCell.get.map:
+  //      case None =>
+  //        if logFile.isGzipped then
+  //          toGzipDecompressingStream(logFile.originalFile, 8192)
+  //        else
+  //          ByteSeqFileReader.stream[fs2.Chunk[Byte]](logFile.originalFile, 8192)
+  //      case Some(Allocated(deferredIndex, _)) =>
+  //        ByteSeqFileReader.stream[fs2.Chunk[Byte]](deferredIndex.file, 8192)
+
   private def streamAndContinueWithNextFile(
     logFile: LogFile,
     position: Long,
     logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
-    import logSelection.byteChunkSize
     Stream.eval:
-      toDeferredIndex(logFile) // todo? Don't build logFile.logFileIndex. Only decompressed file is required
+      toDeferredIndex(logFile)
     .flatMap: deferredIndex =>
       Stream.resource:
-        ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file, bufferSize = byteChunkSize)
+        ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file,
+          bufferSize = logSelection.byteChunkSize)
     .flatMap: reader =>
       reader.streamPosAndLines(position = position, breakLinesLongerThan = breakLinesLongerThan)
         .map(PosAndLine.fromPair)
@@ -217,7 +234,7 @@ extends Service.StoppableByCancel:
             acquire =
               LogFileIndex.fromStream(
                 label = tmpFile.getFileName.toString,
-                toBuilderStream = toDecompressingStream(gzFile, _, recompressor),
+                toBuilderStream = toGzipDecompressingStream(gzFile, _),
                 toPositionedStream = positionedTmpFileStream(tmpFile, _, _, recompressor),
                 logWriter = recompressor.toLogWriter(tmpFile)
               ).map: logFileIndex =>
@@ -287,9 +304,10 @@ object LogDirectoryIndex:
 
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
-    (using ZoneId)
+    (using zoneId: ZoneId, config: Config)
   : ResourceIO[LogDirectoryIndex] =
-    resource(files, Paths.get(".")/*not used*/, Stream.empty, logLevel, poll, DeflaterRecompressor)
+    resource(files, Paths.get(".")/*not used*/, Stream.empty, logLevel, poll,
+      Recompressor.fromConfig(config))
 
   private def resource(
     files: Iterable[Path],
@@ -326,7 +344,7 @@ object LogDirectoryIndex:
         if file.getFileName.toString.endsWith(".gz") then
           readLogFileInstant:
             IO:
-              new GZIPInputStream(new FileInputStream(file.toFile), 512)
+              new GZIPInputStream(new FileInputStream(file.toFile), 8192)
           .map: maybeInstant =>
             maybeInstant.fold(none): instant =>
               Some(LogFile(instant, file, cell, isGzipped = true))
@@ -378,8 +396,7 @@ object LogDirectoryIndex:
   private[reader] def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
-  private def toDecompressingStream(gzFile: Path, bufferSize: Int, recompressor: Recompressor)
-  : Stream[IO, Chunk[Byte]] =
+  private def toGzipDecompressingStream(gzFile: Path, bufferSize: Int): Stream[IO, Chunk[Byte]] =
     Stream.resource:
       Resource.fromAutoCloseable:
         IO.blocking:

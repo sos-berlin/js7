@@ -51,9 +51,10 @@ object JLogDirectoryIndex:
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
     import ctx.given_IORuntime
-    resource_(logLevel, zoneId):
-      given Config = ctx.config
-      LogDirectoryIndex.directory(directory, logLevel, isValidFile.asScala)(using zoneId)
+    given Config = ctx.config
+    given ZoneId = zoneId
+    resource_(logLevel):
+      LogDirectoryIndex.directory(directory, logLevel, isValidFile.asScala)
 
   def files(
     files: java.lang.Iterable[Path],
@@ -62,10 +63,12 @@ object JLogDirectoryIndex:
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
     import ctx.given_IORuntime
-    resource_(logLevel, zoneId):
-      LogDirectoryIndex.files(files.asScala, logLevel)(using zoneId)
+    given ZoneId = zoneId
+    given Config = ctx.config
+    resource_(logLevel):
+      LogDirectoryIndex.files(files.asScala, logLevel)
 
-  private def resource_(logLevel: LogLevel, zoneId: ZoneId)
+  private def resource_(logLevel: LogLevel)
     (to: => ResourceIO[LogDirectoryIndex])
     (using IORuntime)
   : JResource[JLogDirectoryIndex] =

@@ -1,6 +1,6 @@
 package js7.base.io
 
-import java.io.{FilterInputStream, IOException, InputStream}
+import java.io.{IOException, InputStream}
 import java.util.zip.Inflater
 import scala.annotation.tailrec
 
@@ -9,18 +9,18 @@ import scala.annotation.tailrec
   * Reads from a specific position and inflates all chunks until EOF.
   * Automatically resets the inflater between chunks to handle multiple
   * independent deflate streams concatenated together (as produced by
-  * ChunkedDeflaterOutputStream).
+  * DeflaterSeekableOutputStream).
   *
   * @param in The underlying input stream positioned at the start of a chunk
   * @param inflater The inflater to use (caller manages lifecycle)
   * @param bufferSize Size of the internal buffer for reading compressed data
   */
-final class ChunkedInflaterInputStream(
+final class InflaterSeekableInputStream(
   in: InputStream,
   inflater: Inflater = new Inflater,
   dictionary: Array[Byte] = Array.empty,
   bufferSize: Int = 512)
-extends FilterInputStream(in):
+extends SeekableInputStream(in):
 
   private val inputBuffer = new Array[Byte](bufferSize)
   private var bufferOffset = 0

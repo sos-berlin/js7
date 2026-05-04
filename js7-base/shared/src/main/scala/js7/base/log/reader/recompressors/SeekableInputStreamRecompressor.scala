@@ -4,25 +4,24 @@ import cats.effect.{IO, Resource}
 import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.zip.Deflater
-import js7.base.io.{ChunkedDeflaterOutputStream, ChunkedInflaterInputStream}
+import js7.base.io.{SeekableInputStream, SeekableOutputStream}
 import js7.base.log.reader.LogFileIndex
 import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor.*
 
-private[reader] case object DeflaterRecompressor extends Recompressor:
+trait SeekableInputStreamRecompressor extends Recompressor:
 
-  private val dictionary = "".getBytes(UTF_8) // not tested
+  private val dictionary = Dictionary
 
-  def decompressingInputStream(in: InputStream): InputStream =
-    ChunkedInflaterInputStream(in, dictionary = dictionary, bufferSize = 4096/*guess*/)
+  protected def newCompressiongOutputStream(out: OutputStream): SeekableOutputStream
+
+  def decompressingInputStream(in: InputStream): SeekableInputStream
 
   def toLogWriter(out: OutputStream): Resource[IO, LogWriter] =
     Resource.fromAutoCloseable:
       IO.blocking:
-        val deflater = new Deflater(Deflater.BEST_SPEED)
-        deflater.setDictionary(dictionary)
-        ChunkedDeflaterOutputStream(out, deflater, bufferSize = 32*1024)
-    .flatMap: (out: ChunkedDeflaterOutputStream) =>
+        newCompressiongOutputStream(out)
+    .flatMap: (out: SeekableOutputStream) =>
       Resource.fromAutoCloseable:
         IO:
           new LogFileIndex.LogWriter with AutoCloseable:
@@ -32,7 +31,10 @@ private[reader] case object DeflaterRecompressor extends Recompressor:
               out.write(chunk.toArray)
 
             def markPosition() =
-              out.finishChunk()
+              out.markPosition()
 
             def close() =
               out.close()
+
+object SeekableInputStreamRecompressor:
+  private val Dictionary = "".getBytes(UTF_8) // not tested

@@ -67,8 +67,7 @@ final class LogFileIndex private(
       .compile.last
       .map(_.map(_._1))
 
-  def streamPosAndLine(begin: Instant, logSelection: LogSelection)
-  : Stream[IO, PosAndLine] =
+  def streamPosAndLine(begin: Instant, logSelection: LogSelection): Stream[IO, PosAndLine] =
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
@@ -109,7 +108,7 @@ object LogFileIndex:
     */
   private val BuildBufferSize = 1024 * 1024
   /** One index entry per 32KiB-block or a half MiB per GiB log file. */
-  private[log] inline val LogBytesPerEntry = 32 * 1024
+  val LogBytesPerEntry = 32 * 1024
   private val EntrySize = 16 // Size of a EpochNanoToPos entry (two Longs)
   private val NoEntryWarnThreshold = 128 * 1024
   private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
@@ -325,9 +324,10 @@ object LogFileIndex:
   : fs2.Pipe[IO, PosAndLine, PosAndLine] =
     _.through:
       LogFileReader.takeUntilInstant(logSelection.end, fastTimestampParser)
-    .pipeMaybe(logSelection.pattern): (stream, pattern) =>
-      stream.through:
-        filterPattern(pattern)
+    .through: stream =>
+      logSelection.pattern match
+        case None => stream.prefetch
+        case Some(pattern) => stream.through(filterPattern(pattern))
     .pipeMaybe(logSelection.lineLimit): (stream, n) =>
       stream.take(n)
 

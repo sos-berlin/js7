@@ -235,6 +235,7 @@ lazy val `js7-install` = project
     `js7-engine`,
     `js7-provider`,
     `js7-license-fake`,
+    `js7-service-lz4`,
     `js7-service-prometheus`,
     `js7-tests`)
   .settings(commonSettings)
@@ -258,6 +259,7 @@ lazy val `js7-install` = project
             !path.endsWith(".jar") ||
             // But include these into the tar file:
             path.contains("js7-license-fake") ||
+            path.contains("js7-service-lz4") ||
             path.contains("js7-service-prometheus") ||
             path.contains("js7-provider")
           def isRelevant = // Ignore irrelevant and testing jars
@@ -398,8 +400,7 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       val file = (Compile / resourceManaged).value / "js7/js7-engine.properties"
       IO.write(file, BuildInfos.info.value.buildPropertiesString)
       Seq(file)
-    }.taskValue,
-  )
+    }.taskValue)
 
 /** js7-build-info provides version info in a Scala-free jar. */
 lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
@@ -789,6 +790,15 @@ lazy val `js7-license-fake` = project
   .dependsOn(`js7-license`)
   .settings(commonSettings)
 
+lazy val `js7-service-lz4` = project
+  .dependsOn(
+    `js7-base`.jvm,
+    `js7-base`.jvm % "test->test")
+  .settings(commonSettings)
+  .settings {
+    libraryDependencies +="at.yawk.lz4" % "lz4-java" % "1.11.0"
+  }
+
 lazy val `js7-service-pgp` = project
   .dependsOn(
     `js7-base`.jvm,
@@ -829,6 +839,7 @@ lazy val `js7-tests` = project
     `js7-launcher-for-java` % "test->test",
     `js7-launcher-for-windows` % "test->test",
     `js7-license-fake`,
+    `js7-service-lz4` % "test",
     `js7-service-pgp`,
     `js7-service-prometheus` % "test")
   .settings(

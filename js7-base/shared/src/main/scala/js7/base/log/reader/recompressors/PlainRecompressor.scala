@@ -4,8 +4,12 @@ import cats.effect.{IO, Resource}
 import fs2.Chunk
 import java.io.{BufferedInputStream, BufferedOutputStream, InputStream, OutputStream}
 import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.utils.ScalaUtils.syntax.*
 
 private[reader] case object PlainRecompressor extends Recompressor:
+
+  def findRecompressor(name: String) =
+    (name == "plain") ? this
 
   def decompressingInputStream(in: InputStream) =
     new BufferedInputStream(in, 32*1024/*guess*/)
