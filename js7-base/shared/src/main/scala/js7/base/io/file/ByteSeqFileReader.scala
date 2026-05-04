@@ -84,19 +84,15 @@ final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
   private def readBuffer(buffer: ByteBuffer): IO[ByteSeq] =
     IO.blocking:
       buffer.clear()
-      channel.read(buffer) match
-        case -1 =>
-          EmptyByteBuffer
-        case _ =>
-          buffer.flip()
-    .map: resultBuffer =>
-      ByteSeq.readByteBuffer(resultBuffer)
+      channel.read(buffer)
+      buffer.flip()
+    .map:
+      ByteSeq.readByteBuffer
 
 
 object ByteSeqFileReader:
   val BufferSize = 64*1024
   private val logger = Logger[this.type]
-  private val EmptyByteBuffer = ByteBuffer.allocate(0)
 
   def resource[ByteSeq: ByteSequence](
     file: Path,
