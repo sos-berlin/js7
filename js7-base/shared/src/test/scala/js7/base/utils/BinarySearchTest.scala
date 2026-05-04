@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import js7.base.test.OurTestSuite
-import js7.base.utils.BinarySearch.{binarySearch, binarySearchNew}
+import js7.base.utils.BinarySearch.binarySearch
 
 final class BinarySearchTest extends OurTestSuite:
 
@@ -39,25 +39,25 @@ final class BinarySearchTest extends OurTestSuite:
             Logger.trace(s"$searched $cmp ${seq(index)} ")
             r
 
-      assert(binarySearchNew(0, 0)(compare("-1")) == (0, false) && comparisons == 0)
-      assert(binarySearchNew(0, 1)(compare("-1")) == (0, false) && comparisons == 1)
+      assert(binarySearch(0, 0)(compare("-1")) == (0, false) && comparisons == 0)
+      assert(binarySearch(0, 1)(compare("-1")) == (0, false) && comparisons == 1)
 
-      assert(binarySearchNew(0, 7)(compare("-1")) == (0, false) && comparisons == 3)
-      assert(binarySearchNew(0, 7)(compare("0")) == (0, true) && comparisons == 3)
-      assert(binarySearchNew(0, 7)(compare("1")) == (1, true) && comparisons == 2)
-      assert(binarySearchNew(0, 7)(compare("2")) == (2, true) && comparisons == 3)
-      assert(binarySearchNew(0, 7)(compare("3")) == (3, true) && comparisons == 1)
-      assert(binarySearchNew(0, 7)(compare("4")) == (4, true) && comparisons == 3)
-      assert(binarySearchNew(0, 7)(compare("5")) == (5, true) && comparisons == 2)
-      assert(binarySearchNew(0, 7)(compare("6")) == (6, true) && comparisons == 3)
-      assert(binarySearchNew(0, 7)(compare("7")) == (7, false) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("-1")) == (0, false) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("0")) == (0, true) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("1")) == (1, true) && comparisons == 2)
+      assert(binarySearch(0, 7)(compare("2")) == (2, true) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("3")) == (3, true) && comparisons == 1)
+      assert(binarySearch(0, 7)(compare("4")) == (4, true) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("5")) == (5, true) && comparisons == 2)
+      assert(binarySearch(0, 7)(compare("6")) == (6, true) && comparisons == 3)
+      assert(binarySearch(0, 7)(compare("7")) == (7, false) && comparisons == 3)
 
-      assert(binarySearchNew(0, n)(compare("-1")) == (0, false) && comparisons == 20)
-      assert(binarySearchNew(0, n)(compare("0")) == (0, true) && comparisons == 20)
-      assert(binarySearchNew(0, n)(compare("1")) == (1, true) && comparisons == 19)
-      assert(binarySearchNew(0, n)(compare("2")) == (2, true) && comparisons == 20)
-      assert(binarySearchNew(0, n)(compare("3")) == (3, true) && comparisons == 18)
-      assert(binarySearchNew(0, n)(compare("250000")) == (250000, true) && comparisons == 2)
-      assert(binarySearchNew(0, n)(compare("499999")) == (499999, true) && comparisons == 19)
-      assert(binarySearchNew(0, n)(compare("500000")) == (500000, true) && comparisons == 1)
-      assert(binarySearchNew(0, n)(compare("1000000")) == (1000000, false) && comparisons == 19)
+      assert(binarySearch(0, n)(compare("-1")) == (0, false) && comparisons == 20)
+      assert(binarySearch(0, n)(compare("0")) == (0, true) && comparisons == 20)
+      assert(binarySearch(0, n)(compare("1")) == (1, true) && comparisons == 19)
+      assert(binarySearch(0, n)(compare("2")) == (2, true) && comparisons == 20)
+      assert(binarySearch(0, n)(compare("3")) == (3, true) && comparisons == 18)
+      assert(binarySearch(0, n)(compare("250000")) == (250000, true) && comparisons == 2)
+      assert(binarySearch(0, n)(compare("499999")) == (499999, true) && comparisons == 19)
+      assert(binarySearch(0, n)(compare("500000")) == (500000, true) && comparisons == 1)
+      assert(binarySearch(0, n)(compare("1000000")) == (1000000, false) && comparisons == 19)

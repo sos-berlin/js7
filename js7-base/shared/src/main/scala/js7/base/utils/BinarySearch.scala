@@ -6,13 +6,13 @@ object BinarySearch:
 
   def binarySearch[A](indexedSeq: IndexedSeq[A])(value: A)(using ordering: Ordering[A])
   : (Int, Boolean) =
-    binarySearchNew(0, indexedSeq.length): i =>
+    binarySearch(0, indexedSeq.length): i =>
       ordering.compare(value, indexedSeq(i))
 
   def binarySearch[A, B](indexedSeq: IndexedSeq[A], convert: A => B)(value: B)
     (using ordering: Ordering[B])
   : (Int, Boolean) =
-    binarySearchNew(0, indexedSeq.length): i =>
+    binarySearch(0, indexedSeq.length): i =>
       ordering.compare(value, convert(indexedSeq(i)))
 
   /** Binary search in an ordered sequence.
@@ -24,7 +24,7 @@ object BinarySearch:
    * @param start the first index
    * @param end the index after the last one.
    * @param compareTo argument is an index */
-  def binarySearchNew(start: Int, end: Int)(compareTo: Int => Int): (Int, Boolean) =
+  def binarySearch(start: Int, end: Int)(compareTo: Int => Int): (Int, Boolean) =
     @tailrec def loop(low: Int, high: Int): (Int, Boolean) =
       // high is the index *after*, high - low == length
       if low < high then
