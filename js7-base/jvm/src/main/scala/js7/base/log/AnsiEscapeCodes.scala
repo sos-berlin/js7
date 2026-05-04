@@ -9,7 +9,7 @@ import scala.util.matching.Regex
 object AnsiEscapeCodes:
 
   /** Reset color and mode. */
-  inline val resetColor = "\u001B[0m"
+  inline val resetColor = "\u001B[m"
   inline val bold = "\u001B[1m"
   inline val black = "\u001B[30m"
   inline val red = "\u001B[31m"
