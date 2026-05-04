@@ -34,7 +34,12 @@ object EpochNano:
       if epochNano == 0L then
         "0"
       else
-        java.math.BigDecimal.valueOf(epochNano, 9).toString
+        val string = java.math.BigDecimal.valueOf(epochNano, 9).toPlainString
+        var i = string.length
+        while string(i - 1) == '0' do i -= 1
+        if string(i - 1) == '.' then i -= 1
+        assert(i > 0)
+        string.substring(0, i)
 
     def toInstant: Instant =
       Instant.ofEpochSecond(
@@ -43,6 +48,10 @@ object EpochNano:
 
     def show: String =
       epochNano.toInstant.toString
+
+
+  def fromDecimalString(string: String): EpochNano =
+    java.math.BigDecimal(string).movePointRight(9).longValue
 
   given Ordering[EpochNano] = Ordering.Long
 

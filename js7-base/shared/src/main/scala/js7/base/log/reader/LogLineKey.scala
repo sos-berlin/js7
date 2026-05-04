@@ -3,6 +3,7 @@ package js7.base.log.reader
 import java.time.Instant
 import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.EpochNano
 import js7.base.time.JavaTimeExtensions.toEpochNano
 import scala.util.control.NonFatal
 
@@ -27,10 +28,13 @@ object LogLineKey:
     try
       string match
         case KeyRegex(logLevel: String, instant: String, position: String) =>
+          val bigDecimal = BigDecimal(instant)
+          val second = (bigDecimal).toLong
+          val nano = (bigDecimal % 1 * 1_000_000_000).toLong
           Right:
             LogLineKey(
               LogLevel(logLevel),
-              Instant.ofEpochSecond((BigDecimal(instant) / 1_000_000_000).toLong),
+              EpochNano.fromDecimalString(instant).toInstant,
               position.toLong)
         case _ => throw new RuntimeException
     catch
