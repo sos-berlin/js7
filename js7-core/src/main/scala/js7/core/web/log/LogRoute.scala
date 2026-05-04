@@ -24,8 +24,7 @@ import js7.base.problem.Checked.catchNonFatal
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{encodeJsonAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.{mapAndRechunkToByteStringSporadic, rechunkToByteStringSporadic}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithStream}
 import js7.common.pekkohttp.StandardMarshallers
 import js7.common.pekkohttp.StandardMarshallers.*
@@ -126,24 +125,22 @@ trait LogRoute extends RouteProvider:
     parameter("lineLimit".as[Long].?): lineLimit =>
       parameter("end".as[Instant].?): end =>
         parameter("pattern".as[Pattern].?): pattern =>
-          val logSelection = LogSelection(
-            end = end, lineLimit = lineLimit, pattern = pattern,
-            byteChunkSize = httpChunkSize)
-          completeWithStream(`text/plain(UTF-8)`):
-            toStream(logLevel, begin, logSelection)
-              .pipeMaybe(lineLimit):
-                _.take(_)
-              .map(_.byteLine)
-              .chunks
-              .rechunkToByteStringSporadic(httpChunkSize)
-              .map(_.toByteString)
-          ~
-            completeWithStream(`application/x-ndjson`):
-              toStream(logLevel, begin, logSelection)
-                .pipeMaybe(lineLimit):
-                  _.take(_)
-                .map(_.toKeyedLogLine)
-                .encodeJsonAndRechunkToByteStringSporadic(httpChunkSize)
+          parameter("withKey".as[Boolean] ? false): withKey =>
+            completeWithStream(`text/plain(UTF-8)`):
+              val logSelection = LogSelection(
+                end = end, lineLimit = lineLimit, pattern = pattern, byteChunkSize = httpChunkSize)
+              val stream =
+                toStream(logLevel, begin, logSelection)
+                  .pipeMaybe(lineLimit):
+                    _.take(_)
+              if withKey then
+                stream.mapAndRechunkToByteStringSporadic(httpChunkSize):
+                  _.asByteSeq.toByteString
+              else
+                stream.map(_.byteLine)
+                  .chunks
+                  .rechunkToByteStringSporadic(httpChunkSize)
+                  .map(_.toByteString)
 
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =

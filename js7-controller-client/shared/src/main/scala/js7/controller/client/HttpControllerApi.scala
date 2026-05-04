@@ -10,6 +10,7 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
 import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogSelection}
+import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
 import js7.base.web.Uri
@@ -104,15 +105,17 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     queries: (String, String | Missing)*)
   : IO[Stream[IO, KeyedLogLine]] =
     loginAndRetryIfSessionLost:
-      httpClient.getDecodedLinesStream[KeyedLogLine](
+      httpClient.getTextAsRawLines(
         Uri:
           subagentId.match
             case None =>
               (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString
             case Some(subagentId) =>
               (prefixedUri / "api" / "subagent-forward" / subagentId.string / logLevel.toString.toLowerCase(Locale.ROOT)).toString
-          + encodeQuery(queries*),
+          + encodeQuery(queries :+ ("withKey" -> "true") *),
           dontLog = true)
+      .map(_.map: byteLine =>
+        KeyedLogLine.parse(byteLine).orThrow)
 
   @TestOnly
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
@@ -186,4 +189,3 @@ object HttpControllerApi:
   extends HttpControllerApi:
     val baseUri: Uri = admission.uri
     protected val userAndPassword = admission.userAndPassword
-

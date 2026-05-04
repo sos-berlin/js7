@@ -1,6 +1,8 @@
 package js7.base.log.reader
 
 import java.time.Instant
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.EpochNano
@@ -24,7 +26,10 @@ final case class LogLineKey private[log](logLevel: LogLevel, fileInstant: Instan
 object LogLineKey:
   private val KeyRegex = """([A-Za-z]+)/(\d+(?:[.]\d+)?)/(\d+)""".r
 
-  def parse(string: String): Checked[LogLineKey] =
+  def parse(byteSeq: fs2.Chunk[Byte]): Checked[LogLineKey] =
+    parse(byteSeq.asciiCharSequence)
+
+  def parse(string: CharSequence): Checked[LogLineKey] =
     try
       string match
         case KeyRegex(logLevel: String, instant: String, position: String) =>

@@ -6,6 +6,7 @@ import java.time.Instant
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.JavaDataJsonCodecs.instant.NumericInstantJsonCodec
 import js7.base.log.{AnsiEscapeCodes, LogLevel}
+import js7.base.problem.{Checked, Problem}
 
 final case class KeyedLogLine(key: LogLineKey, line: String):
   export key.{fileInstant, position}
@@ -13,17 +14,33 @@ final case class KeyedLogLine(key: LogLineKey, line: String):
   def removeHighlights: KeyedLogLine =
     copy(line = AnsiEscapeCodes.removeHighlights(line))
 
+  def asString: String =
+    s"${key.asString} $line"
+
 
 object KeyedLogLine:
-  def apply(logLevel: LogLevel, instant: Instant, position: Long, line: String): KeyedLogLine =
-    KeyedLogLine(LogLineKey(logLevel, instant, position), line)
+  def apply(logLevel: LogLevel, fileInstant: Instant, position: Long, line: String): KeyedLogLine =
+    KeyedLogLine(LogLineKey(logLevel, fileInstant, position), line)
+
+  def parse(string: String): Checked[KeyedLogLine] =
+    string.split(" ", 2) match
+      case Array(keyString, line) =>
+        LogLineKey.parse(keyString).map(KeyedLogLine(_, line))
+      case _ =>
+        Left(Problem("Invalid KeyedLogLine format"))
+
+  def parse(byteLine: fs2.Chunk[Byte]): Checked[KeyedLogLine] =
+    KeyedByteLogLine.parse(byteLine).map(_.toKeyedLogLine)
+
 
   given Codec[Instant] = NumericInstantJsonCodec
 
-  given Encoder[KeyedLogLine] = o =>
+  /** Not used */
+  private[reader] given Encoder[KeyedLogLine] = o =>
     Json.arr(o.key.asString.asJson, o.line.asJson)
 
-  given Decoder[KeyedLogLine] = c =>
+  /** Not used */
+  private[reader] given Decoder[KeyedLogLine] = c =>
     c.values match
       case None => Left(DecodingFailure("Array expected", c.history))
       case Some(iterable) =>
