@@ -17,6 +17,7 @@ object AnsiEscapeCodes:
   inline val blue = "\u001B[34m"
   inline val magenta = "\u001B[38;5;13m"
   inline val orange = "\u001B[38;5;9m"
+  inline val defaultColor = "\u001B[39m"
 
   val HighlightRegex: Regex =
     """(?:\u001b\[[0-9;]*m)""".r

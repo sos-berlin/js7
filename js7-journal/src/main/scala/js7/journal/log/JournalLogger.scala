@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
 import js7.base.log.CorrelId
 import js7.base.log.Logger.syntax.*
-import js7.base.log.LoggingEscapeCodes.{isColorAllowed, resetColor}
+import js7.base.log.LoggingEscapeCodes.{highlightStartWithSpace, isColorAllowed, resetColor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
@@ -148,12 +148,11 @@ private[journal] final class JournalLogger(
         else
           event.toShortString.truncateWithEllipsis(200, firstLineOnly = true)
       if isColorAllowed && !event.isMinor then
-        sb.append(" \u001b[39m\u001b[1m") // default color, bold
+        sb.append(highlightStartWithSpace)
         val i = eventString.indexOfOrLength('(')
         sb.underlying.append(eventString, 0, i)
-        sb.append("\u001b[0m") // all attributes off
-        sb.underlying.append(eventString, i, eventString.length)
         sb.append(resetColor)
+        sb.underlying.append(eventString, i, eventString.length)
       else
         sb.append(' ')
         sb.append(eventString)

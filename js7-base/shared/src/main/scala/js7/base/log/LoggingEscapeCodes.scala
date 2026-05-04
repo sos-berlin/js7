@@ -10,6 +10,7 @@ object LoggingEscapeCodes:
 
   /** Reset color and mode. */
   val resetColor: String = isColorAllowed ?? AnsiEscapeCodes.resetColor
+  val defaultColor: String = isColorAllowed ?? AnsiEscapeCodes.defaultColor
   val bold: String = isColorAllowed ?? AnsiEscapeCodes.bold
   val black: String = isColorAllowed ?? AnsiEscapeCodes.black
   val red: String = isColorAllowed ?? AnsiEscapeCodes.red
@@ -17,3 +18,5 @@ object LoggingEscapeCodes:
   val blue: String = isColorAllowed ?? AnsiEscapeCodes.blue
   val magenta: String = isColorAllowed ?? AnsiEscapeCodes.magenta
   val orange: String = isColorAllowed ?? AnsiEscapeCodes.orange
+
+  val highlightStartWithSpace = s"$defaultColor$bold "
