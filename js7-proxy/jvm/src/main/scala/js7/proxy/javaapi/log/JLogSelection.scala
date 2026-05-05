@@ -15,11 +15,20 @@ final case class JLogSelection(
   def toScala: LogSelection =
     LogSelection(end.toScala, lineLimit.toScala, pattern.toScala)
 
+  def withEnd(end: Instant): JLogSelection =
+    copy(end = Optional.of(end))
+
   def withEnd(end: Optional[Instant]): JLogSelection =
     copy(end = end)
 
+  def withLineLimit(lineLimit: Long): JLogSelection =
+    copy(lineLimit = OptionalLong.of(lineLimit))
+
   def withLineLimit(lineLimit: OptionalLong): JLogSelection =
     copy(lineLimit = lineLimit)
+
+  def withPattern(pattern: Pattern): JLogSelection =
+    copy(pattern = Optional.of(pattern))
 
   def withPattern(pattern: Optional[Pattern]): JLogSelection =
     copy(pattern = pattern)

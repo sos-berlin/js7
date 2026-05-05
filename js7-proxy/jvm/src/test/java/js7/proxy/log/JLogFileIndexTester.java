@@ -47,7 +47,7 @@ public final class JLogFileIndexTester {
                     .lineFlux(
                         Instant.parse("2026-02-12T14:00:01+02:00"),
                         JLogSelection.empty().withEnd(
-                            Optional.of(Instant.parse("2026-02-12T14:00:04+02:00")))
+                            Instant.parse("2026-02-12T14:00:04+02:00"))
                     ).take(100) // Guard against too many lines
                     .collectList()
                     .toFuture()

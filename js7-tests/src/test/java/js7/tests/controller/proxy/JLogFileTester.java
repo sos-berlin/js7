@@ -49,7 +49,7 @@ final class JLogFileTester {
                         Js7ServerId.primaryController,
                         LogLevel.info(),
                         lastKey,
-                        JLogSelection.empty().withLineLimit(OptionalLong.of(2)))
+                        JLogSelection.empty().withLineLimit(2))
                     .flatMapIterable(identity())
                     .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
