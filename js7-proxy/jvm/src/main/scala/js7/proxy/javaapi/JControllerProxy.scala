@@ -10,6 +10,8 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.catsutils.Environment.environment
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
@@ -146,7 +148,7 @@ final class JControllerProxy private[proxy](
       JEngineLog.resource(this, serverId)
     .flatMap: jEngineLog =>
       jEngineLog.logSection_(logLevel, begin, logSelection.toScala)
-    .map(_.toArray) // Copy, or has Java an immutable array?
+    .map(_.unsafeArray)
     .chunks
     .map(_.asJava)
     .asFlux
