@@ -249,7 +249,10 @@ extends ControllerApiWithHttp:
         if _isActive then
           api.metrics
         else
-          IO.pure(fs2.Stream.empty)
+          IO.pure(fs2.Stream.emit(ByteString(_singleton.get match
+            case None => "# Not a ControllerApi singleton.\n"
+            case Some((proxyId, this, _)) => "# $proxyId is not active.\n"
+            case Some((proxyId, _, _)) => "# Another ControllerApi is the singleton.\n")))
       .map:
         _.append:
           localMetrics
