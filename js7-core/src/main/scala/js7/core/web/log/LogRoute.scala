@@ -17,7 +17,7 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.reader.LogFileReader.growingLogFileStream
-import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey, LogSelection}
+import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey, LogReaders, LogSelection}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
@@ -34,10 +34,12 @@ import js7.core.web.log.LogRoute.*
 import js7.data.node.Js7ServerId
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
+import org.apache.pekko.http.scaladsl.model.headers.`User-Agent`
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshaller
+import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.FiniteDuration
 
 trait LogRoute extends RouteProvider:
@@ -126,21 +128,28 @@ trait LogRoute extends RouteProvider:
       parameter("end".as[Instant].?): end =>
         parameter("pattern".as[Pattern].?): pattern =>
           parameter("withKey".as[Boolean] ? false): withKey =>
-            completeWithStream(`text/plain(UTF-8)`):
-              val logSelection = LogSelection(
-                end = end, lineLimit = lineLimit, pattern = pattern, byteChunkSize = httpChunkSize)
-              val stream =
-                toStream(logLevel, begin, logSelection)
-                  .pipeMaybe(lineLimit):
-                    _.take(_)
-              if withKey then
-                stream.mapAndRechunkToByteStringSporadic(httpChunkSize):
-                  _.asByteSeq.toByteString
-              else
-                stream.map(_.byteLine)
-                  .chunks
-                  .rechunkToByteStringSporadic(httpChunkSize)
-                  .map(_.toByteString)
+            optionalHeaderValueByType(`User-Agent`): userAgent =>
+              completeWithStream(`text/plain(UTF-8)`):
+                val logSelection = LogSelection(
+                  end = end, lineLimit = lineLimit, pattern = pattern, byteChunkSize = httpChunkSize)
+                val stream =
+                  toStream(logLevel, begin, logSelection)
+                    .pipeMaybe(lineLimit):
+                      _.take(_)
+                locally:
+                  if withKey then
+                    stream.mapAndRechunkToByteStringSporadic(httpChunkSize):
+                      _.asByteSeq.toByteString
+                  else
+                    stream.map(_.byteLine)
+                      .chunks
+                      .rechunkToByteStringSporadic(httpChunkSize)
+                      .map(_.toByteString)
+                // We send heartbeats, because recompressing and indexing make take some time.
+                .keepAlive(
+                  if userAgent.exists(_.value.contains("JS7")) then EngineHeartbeatPeriod
+                  else OtherHeartbeatPeriod,
+                  IO.pure(LogHeartbeat))
 
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
@@ -158,6 +167,9 @@ trait LogRoute extends RouteProvider:
 
 object LogRoute:
   private val logger = Logger[LogRoute]
+  private val EngineHeartbeatPeriod = 1.s
+  private val OtherHeartbeatPeriod = 10.s
+  private val LogHeartbeat = ByteString(LogReaders.LogHeartbeat)
 
   private[log] def stringToInstant(string: String): Checked[Instant] =
     catchNonFatal:

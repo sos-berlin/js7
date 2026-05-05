@@ -3,13 +3,14 @@ package js7.controller.client
 import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
 import java.util.Locale
 import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
-import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogSelection}
+import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogReaders, LogSelection}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
@@ -114,8 +115,11 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
               (prefixedUri / "api" / "subagent-forward" / subagentId.string / logLevel.toString.toLowerCase(Locale.ROOT)).toString
           + encodeQuery(queries :+ ("withKey" -> "true") *),
           dontLog = true)
-      .map(_.map: byteLine =>
-        KeyedLogLine.parse(byteLine).orThrow)
+      .map:
+        _.filter:
+          _ != LogHeartbeat
+        .map: byteLine =>
+          KeyedLogLine.parse(byteLine).orThrow
 
   @TestOnly
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =
@@ -170,6 +174,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
 object HttpControllerApi:
   val UriPrefixPath = "/controller"
+  private val LogHeartbeat = fs2.Chunk.array(LogReaders.LogHeartbeat.getBytes(UTF_8))
 
   /** Logs out when the resource is being released. */
   def resource(
