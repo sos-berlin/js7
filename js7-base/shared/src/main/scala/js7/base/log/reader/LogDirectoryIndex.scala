@@ -103,8 +103,7 @@ extends Service.StoppableByCancel:
       if instantToLogFile.isEmpty then
         Stream.empty
       else
-        val logFile = instantToLogFile(begin)
-        streamAndContinueWithNextFile(logFile, begin, logSelection)
+        streamAndContinueWithNextFiles(instantToLogFile(begin), begin, logSelection)
 
   def keyToKeyedByteLogLineStream(logLineKey: LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
@@ -114,16 +113,31 @@ extends Service.StoppableByCancel:
         Stream.empty
       else
         val logFile = instantToLogFile(logLineKey.fileInstant)
-        streamAndContinueWithNextFile(logFile, logLineKey.position, logSelection)
+        Stream.eval:
+          toDeferredIndex(logFile)
+        .flatMap: deferredIndex =>
+          Stream.resource:
+            ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file,
+              bufferSize = logSelection.byteChunkSize)
+        .flatMap: reader =>
+          reader.streamPosAndLines(position = logLineKey.position, breakLinesLongerThan = breakLinesLongerThan)
+            .map:
+              PosAndLine.fromPair
+            .through:
+              LogFileIndex.applyLogSelection(logSelection, FastTimestampParser())
+            .map: posAndLine =>
+              KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
+        .append:
+          continueWithNextFiles(logFile.fileInstant, logSelection)
 
   private def instantToLogFile(instant: Instant): LogFile =
     instantToLogFile.floorEntry(instant) match
       case null => instantToLogFile.firstEntry.getValue
       case o => o.getValue
 
-  private def streamAndContinueWithNextFile(
+  private def streamAndContinueWithNextFiles(
     logFile: LogFile,
-    instant: Instant,
+    begin: Instant,
     logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
@@ -131,57 +145,19 @@ extends Service.StoppableByCancel:
     .map:
       _.logFileIndex
     .flatMap: logFileIndex =>
-      logFileIndex.streamPosAndLine(instant, logSelection)
+      logFileIndex.streamPosAndLine(begin, logSelection)
         .map: posAndLine =>
           KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
     .append:
-      streamSectionAfter(logFile.fileInstant, logSelection)
+      continueWithNextFiles(logFile.fileInstant, logSelection)
 
-  // TODO Maybe: When continuing with next file, don't build logFile.logFileIndex (if it hasn't
-  //  been built yet). The original .gz file can be read directly (maybe skipping the header line).
-  //  Then, we could read the complete log without recompressing and indexing.
-  //  Also, no disk space for recompressed is needed.
-  //private def continueWithNextFile(logFile: LogFile, logSelection: LogSelection)
-  //: Stream[IO, KeyedByteLogLine] =
-  //  Stream.force:
-  //    // todo? Don't build logFile.logFileIndex. Only decompressed file is required
-  //    logFile.deferredIndexCell.get.map:
-  //      case None =>
-  //        if logFile.isGzipped then
-  //          toGzipDecompressingStream(logFile.originalFile, 8192)
-  //        else
-  //          ByteSeqFileReader.stream[fs2.Chunk[Byte]](logFile.originalFile, 8192)
-  //      case Some(Allocated(deferredIndex, _)) =>
-  //        ByteSeqFileReader.stream[fs2.Chunk[Byte]](deferredIndex.file, 8192)
-
-  private def streamAndContinueWithNextFile(
-    logFile: LogFile,
-    position: Long,
-    logSelection: LogSelection)
-  : Stream[IO, KeyedByteLogLine] =
-    Stream.eval:
-      toDeferredIndex(logFile)
-    .flatMap: deferredIndex =>
-      Stream.resource:
-        ByteSeqFileReader.resource[fs2.Chunk[Byte]](deferredIndex.file,
-          bufferSize = logSelection.byteChunkSize)
-    .flatMap: reader =>
-      reader.streamPosAndLines(position = position, breakLinesLongerThan = breakLinesLongerThan)
-        .map(PosAndLine.fromPair)
-        .through:
-          LogFileIndex.applyLogSelection(logSelection, FastTimestampParser())
-        .map: posAndLine =>
-          KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
-    .append:
-      streamSectionAfter(logFile.fileInstant, logSelection)
-
-  private def streamSectionAfter(instant: Instant, logSelection: LogSelection)
+  private def continueWithNextFiles(lastFileInstant: Instant, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
       Option:
-        instantToLogFile.higherEntry(instant)
+        instantToLogFile.higherEntry(lastFileInstant)
       .map(_.getValue).fold(Stream.empty): logFile =>
-        streamAndContinueWithNextFile(logFile, instant, logSelection)
+        streamAndContinueWithNextFiles(logFile, begin = Instant.EPOCH, logSelection)
 
   private def toDeferredIndex(logFile: LogFile): IO[DeferredIndex] =
     logFile.deferredIndexCell.evalUpdateAndGet: maybe =>
@@ -197,7 +173,7 @@ extends Service.StoppableByCancel:
           else if logFile.isGzipped &&
             allo.allocatedThing.fileSize.exists(_.original != Files.size(logFile.originalFile))
           then
-            // Happens when a compressed file has been indexed but decompression hasn't finished
+            // Happens when a compressed file has been indexed while compression hasn't finished
             logger.debug:
               s"${logFile.originalFile.getFileName} changed its size — rebuilding index"
             allo.release *> buildIndex(logFile).toAllocated
