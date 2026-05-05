@@ -21,12 +21,6 @@ private[reader] trait Recompressor:
     .flatMap:
       toLogWriter
 
-  def label: String =
-    if this eq PlainRecompressor then
-      "Decompressed and indexed"
-    else
-      "Recompressed and indexed"
-
 
 private[reader] object Recompressor:
   def fromConfig(config: Config): Recompressor =

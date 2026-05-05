@@ -221,7 +221,7 @@ extends Service.StoppableByCancel:
                 toPositionedStream = positionedTmpFileStream(tmpFile, _, _, recompressor),
                 logWriter = recompressor.toLogWriter(tmpFile)
               ).map: logFileIndex =>
-                logger.info(s"${recompressor.label} ${gzFile.getFileName}: ${
+                logger.info(s"Recompressed and indexed ${gzFile.getFileName}: ${
                   bytesPerSecondString(t.elapsed, logFileIndex.byteCount)}")
                 logFileIndex)(
             release = _ =>

@@ -78,9 +78,9 @@ object Stopwatch:
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
     val nPerS = if duration.toSeconds == 0 then 1 else n / duration.toSeconds
-    if n < 10_000_000 || nPerS < 1_000_000 then
+    if n < 10_000_000 /*|| nPerS < 1_000_000*/ then
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000, "kB", gap = false)
-    else if n < 1_000_000_000L || nPerS < 10_000_000 then
+    else if n < 1_000_000_000L /*|| nPerS < 10_000_000*/ then
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000, "MB")
     else
       durationAndPerSecondString(duration, BigDecimal(n) / 1_000_000_000, "GB")

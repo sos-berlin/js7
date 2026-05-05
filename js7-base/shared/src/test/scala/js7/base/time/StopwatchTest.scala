@@ -29,6 +29,10 @@ final class StopwatchTest extends OurTestSuite:
     assert(bytesPerSecondString(10.s, 19_100_000_000L) == "⏱️  10s/19 GB, 1.9 GB/s")
     assert(bytesPerSecondString(10.s, 99_000_000_000L) == "⏱️  10s/99 GB, 9.9 GB/s")
 
+    assert(bytesPerSecondString(500.ms, 1_000_000_000L) == "⏱️  0.5s/1 GB, ~2 GB/s")
+    assert(bytesPerSecondString(700.ms, 1_000_000_000L) == "⏱️  0.7s/1 GB, ~1.4 GB/s")
+    assert(bytesPerSecondString(700.ms, 400_000_000L) == "⏱️  0.7s/400 MB, ~571 MB/s")
+
   "durationAndPerSecondString" in:
     assert(durationAndPerSecondString(2.s, 3000) == "⏱️  2s/3000 ops, 1500 ops/s")
 
