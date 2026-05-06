@@ -216,6 +216,7 @@ lazy val js7Subprojects: Seq[ProjectReference] = {
     `js7-license-fake`,
     `js7-provider`,
     `js7-proxy`,
+    `js7-service-prometheus`,
     `js7-service-pgp`,
     `js7-subagent`,
     `js7-tester`,
