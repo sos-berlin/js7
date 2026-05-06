@@ -26,7 +26,7 @@ import js7.base.fs2utils.StreamExtensions.{interruptWhenF, mapParallelBatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.PauseDetector.{Expired, InTime, Late, detectPauses}
-import js7.base.monixutils.{PauseDetector, RefCountedResource}
+import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.MBeanUtils.registerMBean

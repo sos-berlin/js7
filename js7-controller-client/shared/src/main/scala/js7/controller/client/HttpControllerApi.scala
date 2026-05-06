@@ -114,7 +114,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     logLevel: LogLevel,
     queries: (String, String | Missing)*)
   : IO[Stream[IO, KeyedLogLine]] =
-    getKeyedByteLogLines_(subagentId, logLevel, queries: _*)
+    getKeyedByteLogLines_(subagentId, logLevel, queries*)
       .map(_.map(_.toKeyedLogLine))
 
   private def getKeyedByteLogLines_(

@@ -25,7 +25,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{Allocated, ScalaConcurrentHashMap, Tests}
+import js7.base.utils.{Allocated, ScalaConcurrentHashMap}
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
