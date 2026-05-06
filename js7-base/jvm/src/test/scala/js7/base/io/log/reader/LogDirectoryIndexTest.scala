@@ -60,7 +60,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         given Config = Js7Config.defaultConfig
         LogDirectoryIndex.directory(dir, Info, _ => true)
           .use: logDirectoryIndex =>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
+            logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -138,7 +138,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h)
                 .map(instantToFile)
           *>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
+            logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -151,7 +151,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h, startInstant + 48.h)
                   .map(instantToFile)
           *>
-            logDirectoryIndex.instantToKeyedByteLogLineStream(startInstant, LogSelection())
+            logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -185,7 +185,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 LogDirectoryIndex.directory(
                   dir, Debug, isValidFile = _ => true
                 ).use: logDirectoryIndex =>
-                  logDirectoryIndex.instantToKeyedByteLogLineStream(
+                  logDirectoryIndex.keyedByteLogLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),
                     LogSelection()
                   ).take(1).compile.drain *>

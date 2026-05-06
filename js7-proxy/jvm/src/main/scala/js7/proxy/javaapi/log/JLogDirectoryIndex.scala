@@ -20,19 +20,19 @@ import scala.jdk.OptionConverters.*
 final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(using IORuntime):
 
   def lineFlux(begin: Instant, logSelection: JLogSelection): Flux[String] =
-    logDirectoryIndex.instantToKeyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
       .map(_.lineAsString)
       .asFlux
 
   def keyedLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[KeyedLogLine] =
-    logDirectoryIndex.instantToKeyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
       .map(_.toKeyedLogLine)
       .asFlux
 
   def keyedByteLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[KeyedByteLogLine] =
-    logDirectoryIndex.instantToKeyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
       .asFlux
 
   def instantToLogLineKey(instant: Instant, logSelection: JLogSelection): CompletableFuture[Optional[LogLineKey]] =

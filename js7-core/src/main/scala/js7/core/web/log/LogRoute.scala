@@ -6,7 +6,6 @@ import com.typesafe.config.Config
 import fs2.Stream
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
-import java.time
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
 import java.util.regex.Pattern
@@ -124,45 +123,42 @@ trait LogRoute extends RouteProvider:
 
   private def section(logLevel: LogLevel, begin: Instant | LogLineKey): Route =
     import StandardMarshallers.{instantUnmarshaller, patternUnmarshaller}
-    parameter("lineLimit".as[Long].?): lineLimit =>
-      parameter("end".as[Instant].?): end =>
-        parameter("pattern".as[Pattern].?): pattern =>
-          parameter("withKey".as[Boolean] ? false): withKey =>
-            optionalHeaderValueByType(`User-Agent`): userAgent =>
-              completeWithStream(`text/plain(UTF-8)`):
-                val logSelection = LogSelection(
-                  end = end, lineLimit = lineLimit, pattern = pattern, byteChunkSize = httpChunkSize)
-                val stream =
-                  toStream(logLevel, begin, logSelection)
-                    .pipeMaybe(lineLimit):
-                      _.take(_)
-                locally:
-                  if withKey then
-                    stream.mapAndRechunkToByteStringSporadic(httpChunkSize):
-                      _.asByteSeq.toByteString
-                  else
-                    stream.map(_.byteLine)
-                      .chunks
-                      .rechunkToByteStringSporadic(httpChunkSize)
-                      .map(_.toByteString)
-                // We send heartbeats, because recompressing and indexing make take some time.
-                .keepAlive(
-                  if userAgent.exists(_.value.contains("JS7")) then EngineHeartbeatPeriod
-                  else OtherHeartbeatPeriod,
-                  IO.pure(LogHeartbeat))
+    (parameter("end".as[Instant].?) &
+      parameter("lineLimit".as[Long].?) &
+      parameter("pattern".as[Pattern].?) &
+      parameter("withKey".as[Boolean] ? false) &
+      optionalHeaderValueByType(`User-Agent`)
+    ): (end, lineLimit, pattern, withKey, userAgent) =>
+      completeWithStream(`text/plain(UTF-8)`):
+        given Config = config
+        val logSelection = LogSelection(
+          end = end, lineLimit = lineLimit, pattern = pattern, byteChunkSize = httpChunkSize)
+        Stream.eval:
+          logDirectoryIndexRegister.forLogLevel(logLevel)
+        .through: stream =>
+          if withKey then
+            stream.flatMap:
+              _.keyedByteLogLineStream(begin, logSelection)
+            .mapAndRechunkToByteStringSporadic(httpChunkSize):
+              _.asByteSeq.toByteString
+          else
+            stream.flatMap:
+              _.byteLineStream(begin, logSelection)
+            .chunks.rechunkToByteStringSporadic(httpChunkSize)
+            .map(_.toByteString)
+        // We send heartbeats because recompressing and indexing may take some time.
+        .keepAlive(
+          if userAgent.exists(_.value.contains("JS7")) then EngineHeartbeatPeriod
+          else OtherHeartbeatPeriod,
+          IO.pure(LogHeartbeat))
 
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
       given Config = config
       logDirectoryIndexRegister.forLogLevel(logLevel)
-    .flatMap: logDirectoryIndex =>
-      begin match
-        case instant: Instant =>
-          logDirectoryIndex.instantToKeyedByteLogLineStream(instant, logSelection)
-        case logLineKey: LogLineKey =>
-          logDirectoryIndex.keyToKeyedByteLogLineStream(logLineKey, logSelection)
-            .drop(1)
+    .flatMap:
+      _.keyedByteLogLineStream(begin, logSelection)
 
 
 object LogRoute:

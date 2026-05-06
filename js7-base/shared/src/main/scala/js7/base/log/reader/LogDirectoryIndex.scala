@@ -97,7 +97,20 @@ extends Service.StoppableByCancel:
     instantToKeyedByteLogLineStream(instant, logSelection)
       .head.compile.last.map(_.map(_.logLineKey))
 
-  def instantToKeyedByteLogLineStream(begin: Instant, logSelection: LogSelection)
+  def byteLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
+  : Stream[IO, fs2.Chunk[Byte]] =
+    // OPTIMISE Maybe, when reading without LogLineKey, no recompressing and indexing is
+    // required for the log files following the first one.
+    keyedByteLogLineStream(begin, logSelection)
+      .map(_.byteLine)
+
+  def keyedByteLogLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
+  : Stream[IO, KeyedByteLogLine] =
+    begin match
+      case begin: Instant => instantToKeyedByteLogLineStream(begin, logSelection)
+      case key: LogLineKey => keyToKeyedByteLogLineStream(key, logSelection)
+
+  private def instantToKeyedByteLogLineStream(begin: Instant, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
       if instantToLogFile.isEmpty then
@@ -105,7 +118,7 @@ extends Service.StoppableByCancel:
       else
         streamAndContinueWithNextFiles(instantToLogFile(begin), begin, logSelection)
 
-  def keyToKeyedByteLogLineStream(logLineKey: LogLineKey, logSelection: LogSelection)
+  private def keyToKeyedByteLogLineStream(logLineKey: LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
       if logLineKey.logLevel != logLevel then throw IllegalArgumentException("Wrong LogLevel")
