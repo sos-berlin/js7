@@ -73,9 +73,13 @@ object LogLevel:
 
 
   def apply(name: String): LogLevel =
-    try LogLevel.valueOf(name.toLowerCase(Locale.ROOT).capitalize)
+    try
+      LogLevel.valueOf(name) // Try first as is
     catch case _: IllegalArgumentException =>
-      throw new IllegalArgumentException(s"Invalid LogLevel: $name")
+      try
+        LogLevel.valueOf(name.toLowerCase(Locale.ROOT).capitalize)
+      catch case _: IllegalArgumentException =>
+        throw new IllegalArgumentException(s"Invalid LogLevel: $name")
 
   implicit val StringAsLogLevel: As[String, LogLevel] =
     As[String, LogLevel](LogLevel.apply)

@@ -10,7 +10,7 @@ import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.log.LogLevel
-import js7.base.log.reader.{KeyedLogLine, LogLineKey, LogReaders, LogSelection}
+import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogLineKey, LogReaders, LogSelection}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
@@ -72,7 +72,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    logSelection: LogSelection,
+    logSelection: LogSelection = LogSelection.default,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     getLogLines_(subagentId, logLevel,
@@ -94,10 +94,19 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getKeyedLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    logSelection: LogSelection,
+    logSelection: LogSelection = LogSelection.default,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedLogLine]] =
-    getKeyedLogLines_(subagentId, logLevel,
+    getKeyedByteLogLines(logLevel, begin, logSelection, subagentId)
+      .map(_.map(_.toKeyedLogLine))
+
+  final def getKeyedByteLogLines(
+    logLevel: LogLevel,
+    begin: Instant | LogLineKey,
+    logSelection: LogSelection = LogSelection.default,
+    subagentId: Option[SubagentId] = None)
+  : IO[Stream[IO, KeyedByteLogLine]] =
+    getKeyedByteLogLines_(subagentId, logLevel,
       ("begin" -> begin.toString) +: logSelection.toKeyValues*)
 
   private def getKeyedLogLines_(
@@ -105,6 +114,14 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     logLevel: LogLevel,
     queries: (String, String | Missing)*)
   : IO[Stream[IO, KeyedLogLine]] =
+    getKeyedByteLogLines_(subagentId, logLevel, queries: _*)
+      .map(_.map(_.toKeyedLogLine))
+
+  private def getKeyedByteLogLines_(
+    subagentId: Option[SubagentId],
+    logLevel: LogLevel,
+    queries: (String, String | Missing)*)
+  : IO[Stream[IO, KeyedByteLogLine]] =
     loginAndRetryIfSessionLost:
       httpClient.getTextAsRawLines(
         Uri:
@@ -117,9 +134,9 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
           dontLog = true)
       .map:
         _.filter:
-          _ != LogHeartbeat
-        .map: byteLine =>
-          KeyedLogLine.parse(byteLine).orThrow
+            _ != LogHeartbeat
+          .map: byteLine =>
+            KeyedByteLogLine.parse(byteLine).orThrow
 
   @TestOnly
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =

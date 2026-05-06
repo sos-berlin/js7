@@ -4,7 +4,6 @@ import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import js7.base.log.LogLevel;
@@ -19,6 +18,7 @@ import org.slf4j.Logger;
 import reactor.core.scheduler.Schedulers;
 import static java.lang.Thread.currentThread;
 import static java.util.function.Function.identity;
+import static js7.proxy.javaapi.JProxyContext.assertIsNotProxyThread;
 import static js7.proxy.javaapi.JProxyContext.assertIsProxyThread;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.startsWith;
@@ -83,13 +83,10 @@ final class JLogFileTester {
             // 8% slower: .flatMapIterable(identity())
             .doOnNext(keyedLogLines -> {
                 for (var keyedLogLine: keyedLogLines)
-                    doSomethingNonBlocking(keyedLogLine.line());
+                    doSomething(keyedLogLine.line());
             })
             .reduce(0L, (a, lines) -> a + lines.size()) // Count lines
             .toFuture();
-    }
-
-    static void doSomethingNonBlocking(String line) {
     }
 
     static CompletableFuture<Long> prettyTestBlocking(List<JAdmission> admissions) {
@@ -113,11 +110,27 @@ final class JLogFileTester {
                 assertThat(currentThread().getName(), startsWith("boundedElastic-")))
             .flatMapIterable(identity())
             .doOnNext(keyedLogLine ->
-                doSomethingBlocking(keyedLogLine.line()))
+                doSomething(keyedLogLine.line()))
             .count().toFuture();
     }
 
-    private static void doSomethingBlocking(String line) {
+    static CompletableFuture<Long> testRawBlocking(JControllerProxy controllerProxy) {
+        return controllerProxy
+            .rawLogLineFlux(
+                Js7ServerId.primaryController,
+                LogLevel.info(),
+                Instant.now().minusSeconds(3600),
+                JLogSelection.empty()/*special case, otherwise set lineLimit!*/)
+            .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
+            .doOnNext(ignore ->
+                assertIsNotProxyThread())
+            .doOnNext(lines -> {
+                for (var line: lines) {
+                    doSomething(line);
+                }
+            })
+            .reduce(0L, (a, lines) -> a + lines.size()) // Count lines
+            .toFuture();
     }
 
     static CompletableFuture<Long> testRawNonBlocking(JControllerProxy controllerProxy) {
@@ -131,14 +144,14 @@ final class JLogFileTester {
                 assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {
                 for (var line: lines) {
-                    doSomethingWithRawLineNonBlocking(line);
+                    doSomething(line);
                 }
             })
             .reduce(0L, (a, lines) -> a + lines.size()) // Count lines
             .toFuture();
     }
 
-    private static void doSomethingWithRawLineNonBlocking(byte[] line) {
+    private static void doSomething(Object line) {
     }
 
     /**

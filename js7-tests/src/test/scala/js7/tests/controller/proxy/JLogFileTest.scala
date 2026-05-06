@@ -14,7 +14,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.Info
 import js7.base.log.Logger
-import js7.base.log.reader.LogSelection
+import js7.base.log.reader.{KeyedByteLogLine, LogSelection}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.*
 import js7.base.time.ScalaTime.*
@@ -61,7 +61,22 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   private val jAdmissions = asList(JAdmission(controllerAdmission))
 
-  "Scala" in:
+  "Scala, KeyedLogLine" in:
+    val instant = Instant.now
+    val logText = "🍊🍊🍊 HELLO FROM JLogFileTest.scala! 🍊🍊🍊"
+    logger.info(logText)
+    controllerApiResource.use: controllerApi =>
+      // Info because our log filename does not contain "debug-"
+      controllerApi.getKeyedLogLines(Info, begin = Instant.now - 3.s)
+        .flatMap: stream =>
+          stream.map(_.line)
+            .takeUntil: line =>
+              line.contains(logText)
+            .compile
+            .toVector.map: lines =>
+              assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+
+  "Scala, raw" in:
     val instant = Instant.now
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest.scala! 🌶️🌶️🌶️"
     logger.info(logText)
@@ -111,6 +126,31 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       (1L to (expectedSize - Files.size(logFile)) / (90 + line.length)).foreach: i =>
         logger.debug(line)
 
+    "Scala KeyedByteLogLine" in :
+      if !isIntelliJIdea then
+        IO.pure(pending)
+      else
+        fillLog
+        val size = Files.size(logFile)
+        controllerApiResource.use: controllerApi =>
+          (1 to 4).toVector.traverse: _ =>
+            IO.defer:
+              val t = Deadline.now
+              fs2.Stream.force:
+                // Info because our log filename does not contain "debug-"
+                controllerApi.getKeyedByteLogLines(Info, begin = Instant.now() - 1.h)
+              .scan(0): (n, keyedByteLogLine: KeyedByteLogLine) =>
+                n + 1
+              .compile.last
+              .map(_.get)
+              .map: lineCount =>
+                val elapsed = t.elapsed
+                logger.info(bold("Scala KeyedLogLine " + bytesPerSecondString(elapsed, size)))
+                logger.info(bold("Scala KeyedLogLine " + itemsPerSecondString(elapsed, lineCount, "lines")))
+                lineCount
+          .map(_.last) // Line count of last run
+          .as(succeed)
+
     "Non-blocking" in:
       runMyTest("Non blocking: "):
         JLogFileTester.prettyTestNonBlocking
@@ -118,6 +158,10 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     "Blocking" in:
       runMyTest("Blocking: "):
         JLogFileTester.prettyTestBlocking
+
+    "Blocking raw lines" in:
+      runMyTest("Non blocking raw: "):
+        JLogFileTester.testRawBlocking
 
     "Non-blocking raw lines" in:
       runMyTest("Non blocking raw: "):

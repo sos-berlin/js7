@@ -10,16 +10,17 @@ final class KeyedByteLogLineTest extends OurTestSuite:
 
   private val keyedByteLogLine = KeyedByteLogLine(
     logLevel = Info,
-    fileInstant = Instant.parse("2026-04-30T00:00:00Z"),
+    fileInstant = Instant.parse("2026-04-30T00:00:00.12345Z"),
     PosAndLine(
       1112223334445556667L,
       toChunk("LINE\n")))
 
   "asString, parse" in:
-    val byteString = toChunk("Info/1777507200/1112223334445556667 LINE\n")
+    val byteString = toChunk("Info/1777507200.12345/1112223334445556667 LINE\n")
     assert(keyedByteLogLine.asByteSeq == byteString)
     assert(KeyedByteLogLine.parse(byteString) == Right(keyedByteLogLine))
-    assert(KeyedByteLogLine.parse(toChunk("Info/1/2")) == Left(Problem("Invalid KeyedByteLogLine format")))
+    assert(KeyedByteLogLine.parse(toChunk("Info/1/2")) == Left(Problem:
+      "Invalid KeyedByteLogLine format"))
 
 
   private def toChunk(string: String) =
