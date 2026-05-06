@@ -38,9 +38,17 @@ object Proxy extends ServiceApp:
     runService(args, ProxyMainConf.fromCommandLine):
       Proxy.completeResource
 
+  /** @param singleton Only on Proxy may run in a JVM (or ClassLoader) as a singleton with a ProxyId. */
   @TestOnly
-  def runAsTest(args: List[String])(use: Proxy => IO[ProgramTermination]): IO[ExitCode] =
-    runService(args, ProxyMainConf.fromCommandLine, suppressLogShutdown = true)(
+  def runAsTest(args: List[String], singleton: Boolean = false)
+    (use: Proxy => IO[ProgramTermination]): IO[ExitCode] =
+    runService(
+      args,
+      a =>
+        // See makeSingleton, only one Proxy in a JVM is allowed to have a ProxyId
+        val conf = ProxyMainConf.fromCommandLine(a)
+        if singleton then conf else conf.copy(proxyId = None),
+      suppressLogShutdown = true)(
       Proxy.completeResource,
       use = (_, service: Proxy) => use(service))
 

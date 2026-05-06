@@ -60,7 +60,7 @@ final class ProxyPrometheusMetricsTest extends OurAsyncTestSuite, ControllerClus
           s"--data-directory=$dir")
 
         val termination =
-          Proxy.runAsTest(args): proxy =>
+          Proxy.runAsTest(args, singleton = true): proxy =>
             IO.blocking:
               runControllerAndBackup(): (_, controller, _, _, _, _, _) =>
                 val orderId = OrderId("ORDER")

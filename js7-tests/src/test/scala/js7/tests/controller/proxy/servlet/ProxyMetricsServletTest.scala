@@ -6,7 +6,9 @@ import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.metrics.MetricsProvider
 import js7.common.pekkoutils.Pekkos
@@ -44,6 +46,9 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
           assert:
             response.statusCode == SC_SERVICE_UNAVAILABLE &
               response.body == "No js7.proxy.ControllerApi with a ProxyId has been started\n"
+        .onErrorRestartLoop(0): (throwable, i, restart) =>
+          if i >= 10 then throw throwable
+          restart(i).delayBy(100.ms)
         .productR:
           Pekkos.actorSystemResource("ProxyMetricsServletTest").use: actorSystem =>
             given ActorSystem = actorSystem
