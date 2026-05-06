@@ -30,6 +30,9 @@ final case class ClusterTiming(
     else
       Left(Problem.pure("Invalid cluster timing values"))
 
+  def warnTimeout: FiniteDuration =
+    heartbeat min 1.s
+
     /** Timeout for `ClusterPassivelost`.
     *
     * Duration without heartbeat after which the active node considers the passive node to be lost.
