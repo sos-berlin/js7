@@ -3,7 +3,6 @@ package js7.proxy
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
-import cats.syntax.option.*
 import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Json, JsonObject}
@@ -22,11 +21,11 @@ import js7.base.monixutils.{AsyncVariable, RefCountedResource}
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Atomic}
+import js7.base.utils.Tests.isTest
+import js7.base.utils.{Allocated, ScalaConcurrentHashMap, Tests}
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
@@ -70,6 +69,10 @@ extends ControllerApiWithHttp:
   private var localMetrics: fs2.Stream[IO, ByteString] = fs2.Stream.empty
   private var _isActive = false
 
+  // ControllerApi is used in a ScalaConcurrentHashMap
+  override def equals(o: Any) = this eq o.asInstanceOf[AnyRef]
+  override def hashCode() = System.identityHashCode(this)
+
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
 
@@ -82,8 +85,7 @@ extends ControllerApiWithHttp:
     logger.debugIO:
       IO.defer:
         setActive(false)
-        if singleton.exists(_.controllerApi == this) then
-          _singleton := None
+        ControllerApi.proxyIdToProxy.remove(this)
         IO.whenA(dontLogout):
           apiCache.cachedValue
             .fold(IO.unit): api =>
@@ -227,10 +229,14 @@ extends ControllerApiWithHttp:
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
   private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
     logger.debug(s"makeSingleton $proxyId")
-    _singleton.getAndSet(Some((proxyId, this, ioRuntime))).foreach: existing =>
-      _singleton := Some(existing)
-      throw new IllegalStateException(
-        s"ControllerApi#makeSingleton($proxyId) called twice (the other is ${existing.proxyId})")
+    ControllerApi.proxyIdToProxy.updateWith(this):
+      case None =>
+        Some((proxyId, this, ioRuntime))
+      case Some((existingProxyId, _, _)) =>
+        val msg = s"ControllerApi#makeSingleton($proxyId) called twice (the other is $existingProxyId)"
+        logger.error(msg)
+        if isTest then throw new IllegalStateException(msg)
+        Some((proxyId, this, ioRuntime))
     localMetrics = toMetricsStream()(proxyId.toJs7ServerId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
@@ -249,10 +255,11 @@ extends ControllerApiWithHttp:
         if _isActive then
           api.metrics
         else
-          IO.pure(fs2.Stream.emit(ByteString(_singleton.get match
-            case None => "# Not a ControllerApi singleton.\n"
-            case Some((proxyId, this, _)) => s"# $proxyId is not active.\n"
-            case Some((proxyId, _, _)) => "# Another ControllerApi is the singleton.\n")))
+          IO.pure(fs2.Stream.emit(ByteString:
+            ControllerApi.proxyIdToProxy.get(this) match
+              case None => "# Not a ControllerApi singleton.\n"
+              case Some((proxyId, this, _)) => s"# $proxyId is not active.\n"
+              case Some((proxyId, _, _)) => "# Another ControllerApi is the singleton.\n"))
       .map:
         _.append:
           localMetrics
@@ -318,18 +325,11 @@ extends ControllerApiWithHttp:
 object ControllerApi:
   private val logger = Logger[this.type]
 
-  private val _singleton = Atomic(none[(
-    proxyId: ProxyId,
-    controllerApi: ControllerApi,
-    ioRuntime: IORuntime
-  )])
+  private type ProxyEntry = (proxyId: ProxyId, controllerApi: ControllerApi, ioRuntime: IORuntime)
+  private val proxyIdToProxy = ScalaConcurrentHashMap[ControllerApi, ProxyEntry]
 
-  def singleton: Option[(
-    proxyId: ProxyId,
-    controllerApi: ControllerApi,
-    ioRuntime: IORuntime
-  )] =
-    _singleton.get()
+  def proxies: Seq[ProxyEntry] =
+    proxyIdToProxy.values.toSeq
 
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
