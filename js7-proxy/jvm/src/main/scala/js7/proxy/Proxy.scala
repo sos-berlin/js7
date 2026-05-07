@@ -52,7 +52,7 @@ object Proxy extends ServiceApp:
       Proxy.completeResource,
       use = (_, service: Proxy) => use(service))
 
-  private def completeResource(conf: ProxyMainConf): ResourceIO[Proxy] =
+  def completeResource(conf: ProxyMainConf): ResourceIO[Proxy] =
     for
       given IORuntime <- Resource.eval(IO.unsafeRuntime)
       given ActorSystem <- Pekkos.actorSystemResource("Proxy")

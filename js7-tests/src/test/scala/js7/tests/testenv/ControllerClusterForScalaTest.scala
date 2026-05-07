@@ -83,10 +83,10 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   sys.props(testAckLossPropertyKey) = "false"
   sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
-  final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
+  final def runControllerAndBackup[R](suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
-            DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => Unit)
-  : Unit =
+            DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => R)
+  : R =
     withControllerAndBackup(suppressClusterWatch):
       (primary, primaryAgents, backup, backupAgents, clusterSetting) =>
         runControllers(primary, backup) { (primaryController, backupController) =>
@@ -96,20 +96,18 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             clusterSetting)
         }
 
-  final def withControllerAndBackup(suppressClusterWatch: Boolean = false)
-    (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => Unit)
-  : Unit =
+  final def withControllerAndBackup[R](suppressClusterWatch: Boolean = false)
+    (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => R)
+  : R =
     withControllerAndBackupWithoutAgents(suppressClusterWatch):
       (primary, backup, setting) =>
-        backup.runAgents() { backupAgents =>
-          primary.runAgents() { primaryAgents =>
+        backup.runAgents(): backupAgents =>
+          primary.runAgents(): primaryAgents =>
             body(primary, primaryAgents, backup, backupAgents, setting)
-          }
-        }
 
-  final def withControllerAndBackupWithoutAgents(suppressClusterWatch: Boolean = false)
-    (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
-  : Unit =
+  final def withControllerAndBackupWithoutAgents[R](suppressClusterWatch: Boolean = false)
+    (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => R)
+  : R =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val (agentPorts, backupAgentPorts) = findFreeTcpPorts(2 * agentPaths.size)
@@ -185,7 +183,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
           js7.auth.users.Controller {
-            password = "plain:AGENT-PASSWORD" 
+            password = "plain:AGENT-PASSWORD"
             permissions = [ ReadMetrics ]
           }
           """
@@ -216,9 +214,9 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             clusterWatchId = Some(clusterWatchId)))
     }
 
-  protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
-    (body: (TestController, TestController) => Unit)
-  : Unit =
+  protected final def runControllers[R](primary: DirectoryProvider, backup: DirectoryProvider)
+    (body: (TestController, TestController) => R)
+  : R =
     backup.runController(dontWaitUntilReady = true): backupController =>
       primary.runController(): primaryController =>
         primaryController.eventWatch.await[ClusterCoupled]()

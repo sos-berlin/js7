@@ -17,7 +17,7 @@ import js7.data.proxy.ProxyId
 import js7.proxy.configuration.{ProxyConf, ProxyConfs}
 import scala.jdk.CollectionConverters.*
 
-private final case class ProxyMainConf(
+final case class ProxyMainConf(
   proxyId: Option[ProxyId] = None,
   configDirectory: Path,
   dataDir: Path,
@@ -34,7 +34,7 @@ extends CommonConfiguration:
   val name = "Proxy"
 
 
-private object ProxyMainConf:
+object ProxyMainConf:
 
   def fromCommandLine(args: CommandLineArguments): ProxyMainConf =
     val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(args)
