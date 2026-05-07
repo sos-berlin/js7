@@ -8,5 +8,5 @@ trait MetricsJavaService:
 
   /** @param configDirectory Path of the 'config' directory, if any
     */
-  def metricsLines(configDirectory: Option[Path])
+  def toMetricLineStream(configDirectory: Option[Path])
   : (addAttribute: String) => fs2.Stream[IO, ByteString]

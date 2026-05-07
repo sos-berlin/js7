@@ -8,8 +8,7 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.common.metrics.RemoteMetricsRoute
-import js7.common.metrics.RemoteMetricsRoute.MetricFetcher
+import js7.common.metrics.{MetricFetcher, RemoteMetricsRoute}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.ControllerMetricsRoute.*
@@ -47,7 +46,7 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
       import Directives.*
       parameter("onlyThisServer" ? false):
         case true =>
-          metricsRawRoute(contentType)
+          onlyThisServerMetricsRoute(contentType)
         case false =>
           ioRoute:
             controllerState.map:
@@ -55,10 +54,10 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
                 logger.debug(s"Controller is not ready: $problem")
                 Nil
               case Right(controllerState) =>
-                clusterPeerMetricFetcher(controllerState).toSeq ++
+                clusterPeerMetricFetcher(controllerState).toList :::
                   agentMetricFetchers(controllerState)
-            .flatMap:
-              completeMetricFetchers(contentType, _)
+            .flatMap: metricFetchers =>
+              completeMetricFetchers(contentType, localMetricFetcher ++: metricFetchers)
 
   private def clusterPeerMetricFetcher(controllerState: ControllerState): Option[MetricFetcher] =
     controllerState.toPeerAndAdmission(controllerConfiguration.clusterConf.ownId).toOption
@@ -74,9 +73,9 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
       onlyThisServer = true,
       label = serverId.toString)
 
-  private def agentMetricFetchers(controllerState: ControllerState): Seq[MetricFetcher] =
+  private def agentMetricFetchers(controllerState: ControllerState): List[MetricFetcher] =
     val toSubagentItem = controllerState.keyToItem(SubagentItem)
-    controllerState.keyTo(AgentRefState).values.toSeq.flatMap: agentRefState =>
+    controllerState.keyTo(AgentRefState).values.toList.flatMap: agentRefState =>
       toSubagentItem.get(agentRefState.activeDirector).map: subagentItem =>
         fetchAgentMetrics(agentRefState.path, subagentItem)
 

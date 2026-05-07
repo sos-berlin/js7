@@ -7,7 +7,7 @@ import org.apache.pekko.util.ByteString
 
 final class PrometheusMetricsJavaService extends MetricsJavaService:
 
-  def metricsLines(configDirectory: Option[Path])
+  def toMetricLineStream(configDirectory: Option[Path])
   : (addAttribute: String) => fs2.Stream[IO, ByteString] =
     val adapter = new PrometheusJmxAdapter(configDirectory)
     addAttribute => adapter.metricsLines(addAttribute = addAttribute)

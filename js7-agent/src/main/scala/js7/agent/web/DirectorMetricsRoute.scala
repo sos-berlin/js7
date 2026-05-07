@@ -13,7 +13,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.metrics.RemoteMetricsRoute
-import js7.common.metrics.RemoteMetricsRoute.MetricFetcher
+import js7.common.metrics.MetricFetcher
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.data.agent.AgentRefState
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -35,15 +35,16 @@ trait DirectorMetricsRoute extends AgentRouteProvider, RemoteMetricsRoute:
       import Directives.*
       parameter("onlyThisServer" ? false):
         case true =>
-          metricsRawRoute(contentType)
+          onlyThisServerMetricsRoute(contentType)
         case false =>
           ioRoute:
             agentState.flatMap: checkedAgentState =>
               completeMetricFetchers(
                 contentType,
-                checkedAgentState.toOption.fold(Nil)(subagentMetricFetchers))
+                localMetricFetcher ++:
+                  checkedAgentState.toOption.fold(Nil)(subagentMetricFetchers))
 
-  private def subagentMetricFetchers(agentState: AgentState): Seq[MetricFetcher] =
+  private def subagentMetricFetchers(agentState: AgentState): List[MetricFetcher] =
     val ownSubagentId =
       agentState.meta.directors(agentConfiguration.clusterConf.isBackup.toInt)
     agentState.keyTo(AgentRefState).values.view.flatMap: agentRefState =>
@@ -62,4 +63,4 @@ trait DirectorMetricsRoute extends AgentRouteProvider, RemoteMetricsRoute:
         uriPath = "subagent",
         onlyThisServer = true,
         label = subagentId.toString)
-    .toSeq
+    .toList

@@ -1,6 +1,7 @@
 package js7.common.metrics
 
 import cats.effect.IO
+import cats.syntax.foldable.*
 import java.nio.file.Path
 import java.util.UUID.randomUUID
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
@@ -88,7 +89,7 @@ object MetricsProvider:
             ByteString(s"# $js7ServerId: No MetricsJavaService installed \n")
 
       case Some(svc) =>
-        val metricsLines = svc.metricsLines(configDirectory)
+        val metricsLines = svc.toMetricLineStream(configDirectory)
         js7ServerId =>
           val addAttribute = s"js7Server=\"${toPrometheusString(js7ServerId.toString)}\""
           try
@@ -105,6 +106,18 @@ object MetricsProvider:
       .replace("\"", "\\\"")
       .replace("\n", "\\n")
       .replace("\\", "\\\\")
+
+  /** Merge several Prometheus metric streams asynchronously. */
+  def mergeMetricStreams(streams: Seq[fs2.Stream[IO, ByteString]])
+  : fs2.Stream[IO, ByteString] =
+    locally:
+      if streams.sizeIs <= 1 then
+        streams.combineAll
+      else
+        // Deliver measurement of all sources concurrently merged
+        streams.toList.map:
+          _.through(separateMeasurements) // Merge only whole measurements
+        .parJoinUnbounded
 
   /** A stream of ByteStrings where each contains a single measurement.
     *

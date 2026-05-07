@@ -30,7 +30,10 @@ trait MetricsRoute extends RouteProvider:
   protected final def config: Config =
     commonConf.config
 
-  lazy val toMetricsStream: () => fs2.Stream[IO, ByteString] =
+  protected final def localMetricFetcher: Option[MetricFetcher] =
+    js7ServerId.map(MetricFetcher(_, toMetricsStream()))
+
+  protected final lazy val toMetricsStream: () => fs2.Stream[IO, ByteString] =
     val toMetricsStream = MetricsProvider.toMetricsStream(Some(commonConf.configDirectory))
     val unknown = fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
     () =>
@@ -49,7 +52,7 @@ trait MetricsRoute extends RouteProvider:
     */
   protected final lazy val metricsRoute: Route =
     wrapMetricsRoute:
-      metricsRawRoute
+      onlyThisServerMetricsRoute
 
   protected final def wrapMetricsRoute(route: ContentType => Route): Route =
     authorized(ReadMetricsPermission):
@@ -71,11 +74,10 @@ trait MetricsRoute extends RouteProvider:
         finally
           isLocked := false)
 
-  protected final def metricsRawRoute(contentType: ContentType): Route =
+  protected final def onlyThisServerMetricsRoute(contentType: ContentType): Route =
     given IORuntime = ioRuntime
     completeWithStream(contentType):
       toMetricsStream()
         .map(_.toChunk).unchunks
         .chunkN(httpChunkSize)
         .map(_.toByteString)
-

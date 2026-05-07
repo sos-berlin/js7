@@ -22,7 +22,7 @@ trait ProxyMetricsRoute extends RemoteMetricsRoute:
       import Directives.*
       parameter("onlyThisServer" ? false):
         case true =>
-          metricsRawRoute(contentType)
+          onlyThisServerMetricsRoute(contentType)
         case false =>
           completeWithStream(contentType):
             fs2.Stream.force:
