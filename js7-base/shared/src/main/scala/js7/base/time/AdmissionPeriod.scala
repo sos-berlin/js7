@@ -26,8 +26,8 @@ extends AdmissionPeriod:
   def checked: Checked[DailyPeriod] =
     if secondOfDay < 0 || secondOfDay >= DaySeconds then
       Left(Problem(s"Invalid daytime number: $toString"))
-    else if !duration.isPositive || duration > DayDuration then
-      Left(Problem(s"Duration must be positive and not longer than 24 hours: $toString"))
+    else if !duration.isPositive then
+      Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
 

@@ -212,12 +212,28 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
         Some(LocalInterval(local("2025-11-04T17:30"), 30.minutes)))
   }
 
+  "DailyPeriod longer than 24h" in:
+    given AdmissionTimeScheme = AdmissionTimeScheme(Seq:
+      RestrictedScheme:
+        Seq(
+          DailyPeriod(LocalTime.of(2, 0), 4.h),
+          DailyPeriod(LocalTime.of(12, 0), 73.h)))
+
+    // Only the start of the period is relevant
+    assert(localIntervals(local("2026-05-01T00:00"), until = local("2026-05-04T00:00")) == Seq(
+      1 -> LocalInterval(local("2026-04-30T12:00"), 73.h),
+      0 -> LocalInterval(local("2026-05-01T02:00"), 4.h),
+      1 -> LocalInterval(local("2026-05-01T12:00"), 73.h),
+      0 -> LocalInterval(local("2026-05-02T02:00"), 4.h),
+      1 -> LocalInterval(local("2026-05-02T12:00"), 73.h),
+      0 -> LocalInterval(local("2026-05-03T02:00"), 4.h),
+      1 -> LocalInterval(local("2026-05-03T12:00"), 73.h)))
+
+
   private def localIntervals(from: LocalDateTime, until: LocalDateTime)
     (using scheme: AdmissionTimeScheme)
   : Seq[(Int, LocalInterval)] =
-    scheme.findLocalIntervals(from, until, dateOffset)
-      //??? .takeWhile(_._2.startsBefore(until))
-      .toSeq
+    scheme.findLocalIntervals(from, until, dateOffset).toSeq
 
   "findTimeInterval" in:
     assert(scheme.findTimeInterval(ts"2023-07-03T23:00:00Z", 99999.days, dateOffset) ==

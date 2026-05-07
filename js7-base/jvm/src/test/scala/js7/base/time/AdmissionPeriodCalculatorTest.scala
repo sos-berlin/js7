@@ -8,7 +8,6 @@ import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionPeriod.WeekSeconds
 import js7.base.time.AdmissionPeriodCalculator.{DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, SpecificDatePeriodCalculator, WeekdayPeriodCalculator, startOfWeek}
 import js7.base.time.ScalaTime.*
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
 
 final class AdmissionPeriodCalculatorTest extends OurTestSuite:
@@ -201,10 +200,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite:
         assert(calculator.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-10-01")))
 
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 0.s) ==
-          Left(Problem("Duration must be positive and not longer than 24 hours: DailyPeriod(daily at 12:00, 0s)")))
-
-        assert(DailyPeriod.checked(LocalTime.parse("12:00"), 24.h + FiniteDuration.Epsilon) ==
-          Left(Problem("Duration must be positive and not longer than 24 hours: DailyPeriod(daily at 12:00, 24h)")))
+          Left(Problem("Duration must be positive: DailyPeriod(daily at 12:00, 0s)")))
 
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 1.ms).isRight)
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 24.h).isRight)
