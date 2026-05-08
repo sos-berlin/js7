@@ -6,7 +6,7 @@ import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.DelayConf
-import org.eclipse.jetty.ee11.servlet.{DefaultServlet, ServletContextHandler, ServletHolder}
+import org.eclipse.jetty.ee10.servlet.{DefaultServlet, ServletContextHandler, ServletHolder}
 import org.eclipse.jetty.server.{Server, ServerConnector}
 
 object JettyWebServer:

@@ -10,6 +10,7 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
@@ -79,7 +80,8 @@ final class ProxyMetricsServlet extends HttpServlet:
       .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
       .foreach: chunk =>
         IO.blocking:
-          out.write(chunk.toByteBuffer)
+          out.write(chunk.unsafeArray)
+          // Java EE 11: out.write(chunk.toByteBuffer)
       .compile.drain
 
   private def respond(response: HttpServletResponse, status: Int, message: String): Unit =
