@@ -2,14 +2,14 @@ package js7.proxy.servlets
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import jakarta.servlet.ServletException
+import fs2.Stream
 import jakarta.servlet.http.HttpServletResponse.{SC_OK, SC_SERVICE_UNAVAILABLE}
 import jakarta.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
-import java.io.{IOException, OutputStream}
+import jakarta.servlet.{ServletException, ServletOutputStream}
+import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
@@ -19,9 +19,9 @@ import js7.common.metrics.MetricsProvider
 import js7.common.metrics.MetricsProvider.{PrometheusContentType, toPrometheuesErrorLines}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.proxy.ControllerApi
+import js7.proxy.ControllerApi.Registered
 import js7.proxy.servlets.ProxyMetricsServlet.*
 import org.apache.pekko.util.ByteString
-import scala.util.control.NonFatal
 
 //@WebServlet(urlPatterns = Array("/metrics"))
 final class ProxyMetricsServlet extends HttpServlet:
@@ -33,8 +33,9 @@ final class ProxyMetricsServlet extends HttpServlet:
   override protected def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit =
     // Jakarta and Jetty both don't seem to offer a content-type negotiation via API ?
     try
-      val proxies = ControllerApi.proxies
-      if proxies.isEmpty then
+      // Each Proxy corresponds to a separate Engine (with own ControllerId)
+      val registeredControllerApis = ControllerApi.registeredControllerApis
+      if registeredControllerApis.isEmpty then
         respond(response, SC_SERVICE_UNAVAILABLE,
           s"No ${classOf[ControllerApi].getName} with a ProxyId has been started\n")
       else if isInUse.getAndSet(true) then
@@ -45,58 +46,40 @@ final class ProxyMetricsServlet extends HttpServlet:
           response.setCharacterEncoding("UTF-8")
           response.setContentType(PrometheusContentType.toString)
 
-          given IORuntime = proxies.head.ioRuntime
-
-          val streams = proxies.map:
-            case (_, controllerApi, ioRuntime) =>
-              if ioRuntime != summon[IORuntime] then
-                logger.error:
-                  s"$controllerApi has a different IORuntime (JProxyContext) than the others"
-                fs2.Stream.empty
-              else
-                fs2.Stream.force:
-                  controllerApi.metrics // Read Engine metrics
-                    .handleProblem: problem =>
-                      fs2.Stream.emit(ByteString(toPrometheuesErrorLines(problem.toString)))
-          val out = response.getOutputStream
-
-          MetricsProvider.mergeMetricStreams(streams)
-            .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
-            .foreach: chunk =>
-              IO.blocking:
-                out.write(chunk.unsafeArray)
-            .compile.drain
-            .awaitInfinite
+          given IORuntime = registeredControllerApis.head.ioRuntime
+          respondWithMetricStream(
+            getEngineStreams(registeredControllerApis),
+            response.getOutputStream
+          ).awaitInfinite
         finally
           isInUse := false
     catch
       case t: (IOException | RuntimeException | Error) => throw t
       case t => throw new ServletException(t.toString, t)
 
-  private def responseWithMetrics(controllerApi: ControllerApi, out: OutputStream)
+  private def getEngineStreams(registeredControllerApis: Seq[Registered])(using IORuntime)
+  : Seq[Stream[IO, ByteString]] =
+    registeredControllerApis.map:
+      case (_, controllerApi, ioRuntime) =>
+        if ioRuntime != summon[IORuntime] then
+          logger.error:
+            s"$controllerApi has a different IORuntime (JProxyContext) than the others"
+          Stream.empty
+        else
+          Stream.force:
+            controllerApi.metrics // Read Engine metrics
+              .handleProblem: problem =>
+                Stream.emit(ByteString(toPrometheuesErrorLines(problem.toString)))
+          .handleErrorWith: throwable =>
+            Stream.emit(ByteString(toPrometheuesErrorLines(throwable.toString)))
+
+  private def respondWithMetricStream(streams: Seq[Stream[IO, ByteString]], out: ServletOutputStream)
   : IO[Unit] =
-    IO.defer:
-      controllerApi.metrics.flatMap:
-        case Left(problem) =>
-          IO.blocking:
-            out.write(toPrometheuesErrorLines(problem.toString).getBytes(UTF_8))
-
-        case Right(stream) =>
-          writeMetricsStream(stream, out)
-      .handleErrorWith: t =>
+    MetricsProvider.mergeMetricStreams(streams)
+      .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
+      .foreach: chunk =>
         IO.blocking:
-          logger.trace(s"💥 $t")
-          try
-            out.write(toPrometheuesErrorLines(t.toString).getBytes(UTF_8))
-          catch case NonFatal(t2) =>
-            if t ne t2 then t.addSuppressed(t2)
-            logger.error(t.toString, t2)
-
-  private def writeMetricsStream(stream: fs2.Stream[IO, ByteString], out: OutputStream): IO[Unit] =
-    IO.defer:
-      stream.foreach: chunk =>
-        IO.blocking:
-          out.write(chunk.unsafeArray)
+          out.write(chunk.toByteBuffer)
       .compile.drain
 
   private def respond(response: HttpServletResponse, status: Int, message: String): Unit =

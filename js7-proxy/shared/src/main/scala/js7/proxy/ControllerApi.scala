@@ -85,7 +85,7 @@ extends ControllerApiWithHttp:
     logger.debugIO:
       IO.defer:
         setActive(false)
-        ControllerApi.proxyIdToProxy.remove(this)
+        ControllerApi.controllerApiToRegistered.remove(this)
         IO.whenA(dontLogout):
           apiCache.cachedValue
             .fold(IO.unit): api =>
@@ -229,7 +229,7 @@ extends ControllerApiWithHttp:
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
   private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
     logger.debug(s"makeSingleton $proxyId")
-    ControllerApi.proxyIdToProxy.updateWith(this):
+    ControllerApi.controllerApiToRegistered.updateWith(this):
       case None =>
         Some((proxyId, this, ioRuntime))
       case Some((existingProxyId, _, _)) =>
@@ -256,7 +256,7 @@ extends ControllerApiWithHttp:
           api.metrics
         else
           IO.pure(fs2.Stream.emit(ByteString:
-            ControllerApi.proxyIdToProxy.get(this) match
+            ControllerApi.controllerApiToRegistered.get(this) match
               case None => "# Not a ControllerApi singleton.\n"
               case Some((proxyId, this, _)) => s"# $proxyId is not active.\n"
               case Some((proxyId, _, _)) => "# Another ControllerApi is the singleton.\n"))
@@ -325,11 +325,11 @@ extends ControllerApiWithHttp:
 object ControllerApi:
   private val logger = Logger[this.type]
 
-  private type ProxyEntry = (proxyId: ProxyId, controllerApi: ControllerApi, ioRuntime: IORuntime)
-  private val proxyIdToProxy = ScalaConcurrentHashMap[ControllerApi, ProxyEntry]
+  type Registered = (proxyId: ProxyId, controllerApi: ControllerApi, ioRuntime: IORuntime)
+  private val controllerApiToRegistered = ScalaConcurrentHashMap[ControllerApi, Registered]
 
-  def proxies: Seq[ProxyEntry] =
-    proxyIdToProxy.values.toSeq
+  def registeredControllerApis: Seq[Registered] =
+    controllerApiToRegistered.values.toSeq
 
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
