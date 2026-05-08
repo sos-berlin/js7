@@ -27,7 +27,7 @@ final class AdmissionPeriodTest extends OurTestSuite:
           "duration": 0
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem(
-            "JSON DecodingFailure at : Duration must be positive and not longer than 24 hours: DailyPeriod(daily at 03:00, 0s)")))
+            "JSON DecodingFailure at : Duration must be positive: DailyPeriod(daily at 03:00, 0s)")))
 
     "Weekday" in:
       testJson[AdmissionPeriod](
