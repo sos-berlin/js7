@@ -849,7 +849,7 @@ lazy val `js7-tests` = project
     description := "JS7 Tests")
   .settings {
     import Dependencies.*
-    val jettyVersion  = "12.1.8"
+    val jettyVersion  = "12.1.9"
     libraryDependencies ++=
       pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
@@ -857,7 +857,7 @@ lazy val `js7-tests` = project
       log4j % "test" ++
       lmaxDisruptor % "test" ++
       "org.eclipse.jetty" % "jetty-server" % jettyVersion % "test" ++
-      "org.eclipse.jetty.ee10" % "jetty-ee10-servlet" % jettyVersion % "test"
+      "org.eclipse.jetty.ee11" % "jetty-ee11-servlet" % jettyVersion % "test"
   }
 
 lazy val `js7-benchmark` = project
