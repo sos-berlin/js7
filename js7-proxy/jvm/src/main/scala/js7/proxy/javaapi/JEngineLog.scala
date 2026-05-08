@@ -138,7 +138,7 @@ final class JEngineLog(
           case Js7ServerId.Subagent(subagentId) =>
             activeControllerApi.getLogLines(logLevel, begin = begin, logSelection.toScala,
               subagentId = Some(subagentId))
-          case _: Js7ServerId.Proxy => IO.pure(fs2.Stream.empty)
+          case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
       .map(convert)
       .chunks
       .map(_.asJava)
