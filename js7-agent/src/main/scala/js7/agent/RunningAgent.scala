@@ -324,6 +324,7 @@ object RunningAgent:
             routeBinding,
             runningAgent.executeCommand, clusterNode,
             () => forDirector.subagent.subagentId,
+            () => forDirector.subagent.controllerId,
             conf,
             GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply,
               // AgentDirectorPermission is not used for local Subagent.

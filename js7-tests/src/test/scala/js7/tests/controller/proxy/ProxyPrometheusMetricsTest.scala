@@ -75,12 +75,12 @@ final class ProxyPrometheusMetricsTest extends OurAsyncTestSuite, ControllerClus
 
             proxy.metrics.orThrow.flatMap(_.compile.foldMonoid).map(_.utf8String).await(99.s)
       .map: string =>
-        assert(string.contains("""js7_JournaledProxy_EventCount{js7Server="Proxy:MY-CLUSTER-WATCH",name="Proxy"}"""))
-        assert(string.contains("""js7_LogDirectory_Size{js7Server="Controller/primary""""))
-        assert(string.contains("""js7_LogDirectory_Size{js7Server="Controller/backup""""))
-        assert(string.contains("""js7_LogDirectory_Size{js7Server="Subagent:AGENT-0""""))
+        assert(string.contains("""js7_JournaledProxy_EventCount{js7ServerId="Proxy:MY-CLUSTER-WATCH",js7ServerGroupId="Proxy:PROXY",name="Proxy"}"""))
+        assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller""""))
+        assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/secondary",js7ServerGroupId="Engine:Controller""""))
+        assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Subagent:AGENT-0",js7ServerGroupId="Engine:Controller""""))
         // For bare Subagent, see ControllerPrometheusMetricsTest
-        // assert(string.contains("""js7_Sessions_SessionCount{js7Server="Subagent:BARE-SUBAGENT"}"""))
+        // assert(string.contains("""js7_Sessions_SessionCount{js7ServerId="Subagent:BARE-SUBAGENT"}"""))
 
 
 object ProxyPrometheusMetricsTest:

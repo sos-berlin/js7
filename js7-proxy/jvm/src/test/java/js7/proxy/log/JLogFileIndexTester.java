@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogFileIndex;

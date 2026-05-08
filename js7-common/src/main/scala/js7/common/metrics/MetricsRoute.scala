@@ -2,6 +2,7 @@ package js7.common.metrics
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.semigroupal.*
 import com.typesafe.config.Config
 import js7.base.auth.ReadMetricsPermission
 import js7.base.data.ByteSequence.ops.*
@@ -13,7 +14,7 @@ import js7.common.metrics.MetricsProvider.PrometheusContentType
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.node.Js7ServerId
+import js7.data.node.{Js7ServerGroupId, Js7ServerId}
 import org.apache.pekko.http.scaladsl.model.ContentType
 import org.apache.pekko.http.scaladsl.model.StatusCodes.TooManyRequests
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -24,6 +25,7 @@ trait MetricsRoute extends RouteProvider:
 
   protected def commonConf: CommonConfiguration
   protected def js7ServerId: Option[Js7ServerId]
+  protected def serverGroupId: Option[Js7ServerGroupId]
 
   private val isLocked = Atomic(false)
 
@@ -37,11 +39,11 @@ trait MetricsRoute extends RouteProvider:
     val toMetricsStream = MetricsProvider.toMetricsStream(Some(commonConf.configDirectory))
     val unknown = fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
     () =>
-      js7ServerId match
+      serverGroupId.product(js7ServerId) match
         case None =>
           unknown
-        case Some(serverId) =>
-          toMetricsStream(serverId)
+        case Some((groupId, serverId)) =>
+          toMetricsStream(groupId, serverId)
 
   /** /metrics web service according to Prometheus.
     * <p>

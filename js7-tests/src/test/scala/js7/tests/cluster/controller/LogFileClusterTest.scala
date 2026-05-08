@@ -37,7 +37,7 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
     runControllerAndBackup(): (primary, primaryController, _, backup, backupController, _, _) =>
       val admission = backup.controllerAdmission(backupController.runningController)
       getLog(admission, Js7ServerId.primaryController).map: line =>
-        assert(line.contains("TEST ONLY: Controller/backup, "))
+        assert(line.contains("TEST ONLY: Controller/secondary, "))
       .await(99.s)
 
   private def getLog(admission: Admission, serverId: Js7ServerId): IO[String] =

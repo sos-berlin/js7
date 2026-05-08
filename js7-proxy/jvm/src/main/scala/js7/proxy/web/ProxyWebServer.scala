@@ -25,6 +25,7 @@ object ProxyWebServer:
         new ProxyRoute(controllerApi, sessionRegister):
           protected def commonConf = conf
           protected val js7ServerId = conf.maybeJs7ServerId
+          protected def serverGroupId = None
           protected val gateKeeper = GateKeeper(routeBinding.webServerBinding, conf, SimpleUser.apply)
           override def toString = "Proxy web services"
         .webServerRoute

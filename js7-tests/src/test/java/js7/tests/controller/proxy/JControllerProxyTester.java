@@ -37,7 +37,6 @@ class JControllerProxyTester
     private void test(List<String> itemJsons, List<String> manyItemJsons) throws Exception {
         testJsonCommand();
         testHttpGet();
-
         JControllerProxyRepoTester repoTester = new JControllerProxyRepoTester(proxy);
         repoTester.addTamperedItems(manyItemJsons);
         repoTester.addItems(itemJsons);

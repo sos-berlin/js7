@@ -41,7 +41,7 @@ import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
-import js7.data.node.NodeId
+import js7.data.node.{Js7ServerGroupId, NodeId}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi.*
@@ -227,7 +227,11 @@ extends ControllerApiWithHttp:
           allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
 
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
-  private[proxy] def makeSingleton(proxyId: ProxyId, ioRuntime: IORuntime): Unit =
+  private[proxy] def makeSingleton(
+    groupId: Js7ServerGroupId.Proxy,
+    proxyId: ProxyId,
+    ioRuntime: IORuntime)
+  : Unit =
     logger.debug(s"makeSingleton $proxyId")
     ControllerApi.controllerApiToRegistered.updateWith(this):
       case None =>
@@ -237,12 +241,12 @@ extends ControllerApiWithHttp:
         logger.error(msg)
         if isTest then throw new IllegalStateException(msg)
         Some((proxyId, this, ioRuntime))
-    localMetrics = toMetricsStream()(proxyId.toJs7ServerId)
+    localMetrics = toMetricsStream()(groupId, proxyId.toJs7ServerId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *
-    * Don't set a second instance of ControllerApi (Proxy) as active,
-    * otherwise Prometheus would collect Engine metrics twice,
+    * Don't set a second instance of ControllerApi (Proxy) as active.
+    * Otherwise, Prometheus would collect Engine metrics twice,
     * doubling measurements, CPU and Disk usage.
     */
   def setActive(isActive: Boolean): Unit =
@@ -333,7 +337,7 @@ object ControllerApi:
 
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
-    proxyId: Option[ProxyId] = None,
+    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None,
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerApi] =
     // Don't use any other Resource here, because public ControllerApi#stop is called directly,
@@ -343,7 +347,7 @@ object ControllerApi:
         Resource.make(
           acquire = IO:
             val api = ControllerApi(apisResource, proxyConf)
-            proxyId.foreach: proxyId =>
-              api.makeSingleton(proxyId, ioRuntime)
+            proxyId.foreach: (groupId, proxyId) =>
+              api.makeSingleton(groupId, proxyId, ioRuntime)
             api)(
           release = _.stop)

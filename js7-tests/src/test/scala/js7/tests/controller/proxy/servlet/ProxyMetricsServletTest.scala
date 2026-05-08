@@ -14,6 +14,7 @@ import js7.common.metrics.MetricsProvider
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
+import js7.data.node.Js7ServerGroupId
 import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi
 import js7.proxy.servlets.ProxyMetricsServlet
@@ -56,7 +57,7 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
               admissionsToApiResource(Nel.one(controllerAdmission)),
               // Anchors ControllerApi as a singleton for ProxyMetricsServlet.
               // Don't do this in any other test when it could run concurrently !!!
-              proxyId = Some(ProxyId("PROXY"))
+              proxyId = Some( Js7ServerGroupId.Proxy("PROXY") -> ProxyId("proxy"))
             ).use: controllerApi =>
               controllerApi.setActive(true) // Enable Engine metrics
                 client.send(request, BodyHandlers.ofString)
@@ -67,6 +68,6 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
             response.headers().firstValue("Content-Type").toScala.contains(
               "text/plain; version=0.0.4;charset=utf-8") &
             body.contains(
-            """java_lang_OperatingSystem_FreeMemorySize{js7Server="Proxy:PROXY"}""") &
+            """java_lang_OperatingSystem_FreeMemorySize{js7ServerId="Proxy:proxy",js7ServerGroupId="Proxy:PROXY"""") &
             body.contains(
-              """java_lang_OperatingSystem_FreeMemorySize{js7Server="Controller/primary"}""")
+              """java_lang_OperatingSystem_FreeMemorySize{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller"""")

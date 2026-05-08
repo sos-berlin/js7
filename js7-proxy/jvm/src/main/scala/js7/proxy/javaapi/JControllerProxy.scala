@@ -22,7 +22,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId}
-import js7.data.node.Js7ServerId
+import js7.data.node.{Js7ServerGroupId, Js7ServerId}
 import js7.data.proxy.ProxyId
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
@@ -209,7 +209,7 @@ object JControllerProxy:
   def completeResource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[ProxyId] = None)
+    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None)
   : ResourceIO[JControllerProxy] =
     for
       jContext <- JProxyContext.resource()

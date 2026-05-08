@@ -47,6 +47,9 @@ object MinimumWebServer:
     protected val sessionEncoder = summon[Encoder.AsObject[SimpleSession]]
 
     protected def js7ServerId = commonConf.maybeJs7ServerId
+
+    protected def serverGroupId = None
+
     protected val gateKeeper = GateKeeper(
       routeBinding.webServerBinding,
       GateKeeper.Configuration.fromConfig(config))

@@ -26,6 +26,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
+import js7.data.node.Js7ServerGroupId
 import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.common.JavaUtils.{-->, Void}
@@ -99,7 +100,7 @@ extends AutoCloseable:
   def runControllerApi[A](
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
-    proxyId: Optional[ProxyId],
+    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     CompletableFuture.supplyAsync: () =>
@@ -116,7 +117,7 @@ extends AutoCloseable:
   def controllerApiResource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[ProxyId] = None)
+    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None)
   : ResourceIO[JControllerApi] =
     Resource.make(
       acquire = IO:
@@ -138,15 +139,15 @@ extends AutoCloseable:
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
     @Nonnull httpsConfig: JHttpsConfig = JHttpsConfig.empty,
-    @Nonnull proxyId: Optional[ProxyId] = Optional.empty)
+    @Nonnull proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)] = Optional.empty)
   : JControllerApi =
     val apiResource = admissionsToApiResource(
       admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala
     )(using actorSystem)
     val api = new ControllerApi(apiResource, proxyConf)
-    proxyId.toScala.foreach: proxyId =>
-      api.makeSingleton(proxyId, ioRuntime)
+    proxyId.toScala.foreach: (groupId, proxyId) =>
+      api.makeSingleton(groupId, proxyId, ioRuntime)
     new JControllerApi(api, config)
 
 

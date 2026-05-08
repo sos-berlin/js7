@@ -42,7 +42,7 @@ object Js7ServerId:
 
     case object Backup extends Controller:
       val nodeId = NodeId.backup
-      override def toString = "Controller/backup"
+      override def toString = "Controller/secondary" // "secondary" sorts after "primary"
 
 
   final case class Subagent(subagentId: SubagentId) extends Js7ServerId:

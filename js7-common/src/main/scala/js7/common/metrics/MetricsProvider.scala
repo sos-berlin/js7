@@ -9,7 +9,7 @@ import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.node.Js7ServerId
+import js7.data.node.{Js7ServerGroupId, Js7ServerId}
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`}
@@ -81,19 +81,25 @@ object MetricsProvider:
     findJavaService[MetricsJavaService]
 
   def toMetricsStream(configDirectory: Option[Path] = None)
-  : Js7ServerId => fs2.Stream[IO, ByteString] =
+  : (groupId: Js7ServerGroupId, js7ServerId: Js7ServerId) => fs2.Stream[IO, ByteString] =
     javaService match
       case None =>
-        js7ServerId =>
+        (groupId, js7ServerId) =>
           fs2.Stream.emit:
-            ByteString(s"# $js7ServerId: No MetricsJavaService installed \n")
+            ByteString(s"# $js7ServerId ($groupId): No MetricsJavaService installed \n")
 
       case Some(svc) =>
         val metricsLines = svc.toMetricLineStream(configDirectory)
-        js7ServerId =>
-          val addAttribute = s"js7Server=\"${toPrometheusString(js7ServerId.toString)}\""
+        (groupId: Js7ServerGroupId, js7ServerId: Js7ServerId) =>
+          val sb = new StringBuilder(64)
+          sb.append("js7ServerId=\"")
+          sb.append(toPrometheusString(js7ServerId.toString))
+          sb.append("\"")
+          sb.append(",js7ServerGroupId=\"")
+          sb.append(toPrometheusString(groupId.toString))
+          sb.append("\"")
           try
-            metricsLines(addAttribute = addAttribute)
+            metricsLines(addAttribute = sb.toString)
           catch case NonFatal(t) =>
             logger.error(s"toMetricsStream: ${t.toString}", t)
             fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))

@@ -75,17 +75,17 @@ final class ControllerPrometheusMetricsTest extends OurTestSuite, ControllerAgen
       lines.foreachWithBracket()((line, br) => logger.info(s"$br${line.trim}"))
 
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Controller/primary"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller"}"""))
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Subagent:AGENT-0"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Subagent:AGENT-0",js7ServerGroupId="Engine:Controller"}"""))
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Subagent:BARE-SUBAGENT"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Subagent:BARE-SUBAGENT",js7ServerGroupId="Engine:Controller"}"""))
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Controller/primary"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller"}"""))
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Subagent:AGENT-0"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Subagent:AGENT-0",js7ServerGroupId="Engine:Controller"}"""))
       assert(lines.exists(_.startsWith:
-        """js7_EngineState_OrderCount{js7Server="Subagent:BARE-SUBAGENT"}"""))
+        """js7_EngineState_OrderCount{js7ServerId="Subagent:BARE-SUBAGENT",js7ServerGroupId="Engine:Controller"}"""))
 
   "/grafana/dashboard" in:
     val json = controller.api.httpGetJson("/grafana/dashboard")

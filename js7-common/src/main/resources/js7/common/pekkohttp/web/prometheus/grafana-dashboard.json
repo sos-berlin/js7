@@ -55,7 +55,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Memory_HeapMemoryUsage_max{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Memory_HeapMemoryUsage_max{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "Max",
@@ -80,7 +80,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "code",
-                        "expr": "java_lang_Memory_HeapMemoryUsage_committed{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Memory_HeapMemoryUsage_committed{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -107,7 +107,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Memory_HeapMemoryUsage_used{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Memory_HeapMemoryUsage_used{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "Used",
@@ -133,7 +133,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Memory_HeapMemoryUsage_init{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Memory_HeapMemoryUsage_init{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "Init",
@@ -157,7 +157,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "java_lang_G1_Old_Gen_Usage_used{type=\"MemoryPool\",js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_G1_Old_Gen_Usage_used{type=\"MemoryPool\",js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Old used",
                         "range": true
@@ -428,7 +428,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "code",
-                        "expr": "js7_Process_Running{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Process_Running{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "Processes",
@@ -452,7 +452,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Process_Starts{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Process_Starts{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Starts/s",
                         "range": true
@@ -623,7 +623,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_AsyncLock_QueuedCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_AsyncLock_QueuedCount{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "queued",
                         "range": true
                       },
@@ -644,7 +644,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_AsyncLock_LockedCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_AsyncLock_LockedCount{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "locked",
                         "range": true
@@ -796,7 +796,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "java_lang_G1_Young_Generation_LastGcInfo_GcThreadCount{type=\"GarbageCollector\", js7Server=\"$js7Server\"} / on() \njava_lang_OperatingSystem_AvailableProcessors{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_G1_Young_Generation_LastGcInfo_GcThreadCount{type=\"GarbageCollector\", js7ServerId=\"$js7Server\"} / on() \njava_lang_OperatingSystem_AvailableProcessors{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Thread limit",
                         "range": true
@@ -818,7 +818,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Old_Generation_CollectionTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000",
+                        "expr": "rate(java_lang_G1_Old_Generation_CollectionTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000",
                         "instant": false,
                         "legendFormat": "Old generation",
                         "range": true
@@ -840,7 +840,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Concurrent_GC_CollectionTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000",
+                        "expr": "rate(java_lang_G1_Concurrent_GC_CollectionTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000",
                         "instant": false,
                         "legendFormat": "Concurrent",
                         "range": true
@@ -862,7 +862,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Young_Generation_CollectionTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000",
+                        "expr": "rate(java_lang_G1_Young_Generation_CollectionTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000",
                         "legendFormat": "Young generation",
                         "range": true
                       },
@@ -883,7 +883,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_Memory_TotalGcCpuTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000000000 / java_lang_OperatingSystem_AvailableProcessors{js7Server=\"$js7Server\"}",
+                        "expr": "rate(java_lang_Memory_TotalGcCpuTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000000000 / java_lang_OperatingSystem_AvailableProcessors{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "CPU",
                         "range": true
@@ -1078,7 +1078,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_OrderStdWrittenStatistics_CharacterTotal{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000",
+                        "expr": "rate(js7_OrderStdWrittenStatistics_CharacterTotal{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000",
                         "legendFormat": "stdout and stderr",
                         "range": true
                       },
@@ -1198,7 +1198,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_EventCalcSecondsTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_EventCalcSecondsTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "EventCalc",
                         "range": true
@@ -1220,7 +1220,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_JsonWriteSecondsTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_JsonWriteSecondsTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "write as JSON",
                         "range": true
@@ -1242,7 +1242,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_AckSecondsTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_AckSecondsTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Cluster acknowledgement",
                         "range": true
                       },
@@ -1405,7 +1405,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_EventCalcSecondsTotal{js7Server=\"$js7Server\"}[$__rate_interval]) / \nrate(js7_Journal_PersistTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_EventCalcSecondsTotal{js7ServerId=\"$js7Server\"}[$__rate_interval]) / \nrate(js7_Journal_PersistTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "EventCalc",
                         "range": true
@@ -1427,7 +1427,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_CallMeter_FileJournal_jsonWrite_Seconds{js7Server=\"$js7Server\"}[$__rate_interval]) / \nrate(js7_CallMeter_FileJournal_jsonWrite_Total{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_CallMeter_FileJournal_jsonWrite_Seconds{js7ServerId=\"$js7Server\"}[$__rate_interval]) / \nrate(js7_CallMeter_FileJournal_jsonWrite_Total{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "write as JSON",
                         "range": true
@@ -1449,7 +1449,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate((js7_CallMeter_FileJournal_ack_Seconds{js7Server=\"$js7Server\"}[$__rate_interval])) / \nrate(js7_CallMeter_FileJournal_ack_Total{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate((js7_CallMeter_FileJournal_ack_Seconds{js7ServerId=\"$js7Server\"}[$__rate_interval])) / \nrate(js7_CallMeter_FileJournal_ack_Total{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "format": "time_series",
                         "legendFormat": "Cluster acknowledgement",
                         "range": true
@@ -1471,7 +1471,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_PersistSecondsTotal{js7Server=\"$js7Server\"}[$__rate_interval]) / rate(js7_Journal_PersistTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_PersistSecondsTotal{js7ServerId=\"$js7Server\"}[$__rate_interval]) / rate(js7_Journal_PersistTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "persist",
                         "range": true
@@ -1493,7 +1493,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Journal_ActiveHeartbeatDelay{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Journal_ActiveHeartbeatDelay{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Active's heartbeat delay",
                         "range": true
@@ -1515,7 +1515,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_JournaledProxy_EventDelay{js7Server=\"$js7Server\"}",
+                        "expr": "js7_JournaledProxy_EventDelay{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Event delay ({{name}})",
                         "range": true
@@ -1752,7 +1752,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_OrderMotor_OrderQueueLength{js7Server=\"$js7Server\"}",
+                        "expr": "js7_OrderMotor_OrderQueueLength{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "OrderMotor queue length",
                         "range": true
@@ -1775,7 +1775,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_CallMeter_JobOrderQueue_Entry_Running{js7Server=\"$js7Server\"}",
+                        "expr": "js7_CallMeter_JobOrderQueue_Entry_Running{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "JobMotors order queue length",
                         "range": true
@@ -1797,7 +1797,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_JobMotorKeeper_OrderQueueLength{js7Server=\"$js7Server\"}",
+                        "expr": "js7_JobMotorKeeper_OrderQueueLength{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "∑ Job order queue lengths",
                         "range": true
@@ -1819,7 +1819,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_JobMotorKeeper_ProcessCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_JobMotorKeeper_ProcessCount{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Active execute instructions",
                         "range": true
@@ -2002,7 +2002,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_CallMeter_JobOrderQueue_Entry_Seconds{js7Server=\"$js7Server\"}[$__rate_interval]) / rate(js7_CallMeter_JobOrderQueue_Entry_Total{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_CallMeter_JobOrderQueue_Entry_Seconds{js7ServerId=\"$js7Server\"}[$__rate_interval]) / rate(js7_CallMeter_JobOrderQueue_Entry_Total{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Average time an Order queues for job execution",
                         "range": true
                       },
@@ -2140,7 +2140,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "builder",
-                        "expr": "js7_EngineState_OrderStatusToCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_EngineState_OrderStatusToCount{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "{{key}}",
@@ -2279,7 +2279,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_CallMeter_FileJournal_persist_Running{js7Server=\"$js7Server\"}",
+                        "expr": "js7_CallMeter_FileJournal_persist_Running{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "Current persists",
                         "range": true
                       },
@@ -2428,7 +2428,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "java_lang_Threading_ThreadCount{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Threading_ThreadCount{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "Threads",
                         "range": true
                       },
@@ -2449,7 +2449,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "jdk_management_VirtualThreadScheduler_MountedVirtualThreadCount{js7Server=\"$js7Server\"}",
+                        "expr": "jdk_management_VirtualThreadScheduler_MountedVirtualThreadCount{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Mounted virtual",
                         "range": true
@@ -2471,7 +2471,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "jdk_management_VirtualThreadScheduler_QueuedVirtualThreadCount{js7Server=\"$js7Server\"}",
+                        "expr": "jdk_management_VirtualThreadScheduler_QueuedVirtualThreadCount{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Queued virtual",
                         "range": true
@@ -2493,7 +2493,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "jdk_management_VirtualThreadScheduler_getPoolSize{js7Server=\"$js7Server\"}",
+                        "expr": "jdk_management_VirtualThreadScheduler_getPoolSize{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Virtual pool",
                         "range": true
@@ -2515,7 +2515,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_FileSystemWatchThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_FileSystemWatchThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "FileWatch",
                         "range": true
@@ -2537,7 +2537,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_G1GCThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_G1GCThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "G1",
                         "range": true
@@ -2559,7 +2559,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_CommonPoolThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_CommonPoolThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Common",
                         "range": true
@@ -2581,7 +2581,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_OtherThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_OtherThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "other",
                         "range": true
@@ -2603,7 +2603,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_CatsEffectComputeThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_CatsEffectComputeThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Cats Effect",
                         "range": true
@@ -2626,7 +2626,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_Threads_PekkoThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_PekkoThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Pekko",
                         "range": true
@@ -2648,7 +2648,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_CatsEffectBlockingThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_CatsEffectBlockingThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Blocking",
                         "range": true
@@ -2670,7 +2670,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Threads_ProcessReaperThreads{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Threads_ProcessReaperThreads{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Process reaper",
                         "range": true
@@ -3047,7 +3047,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_EngineState_ClusterStateCode{js7Server=\"$js7Server\"}",
+                        "expr": "js7_EngineState_ClusterStateCode{js7ServerId=\"$js7Server\"}",
                         "format": "time_series",
                         "instant": false,
                         "interval": "",
@@ -3217,7 +3217,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "sum(js7_EngineState_OrderCount{js7Server=\"$js7Server\"})",
+                        "expr": "sum(js7_EngineState_OrderCount{js7ServerId=\"$js7Server\"})",
                         "instant": true,
                         "legendFormat": "Orders",
                         "range": false
@@ -3240,7 +3240,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_EngineState_OrderStatusToCount{key=\"Failed\", js7Server=\"$js7Server\"}",
+                        "expr": "js7_EngineState_OrderStatusToCount{key=\"Failed\", js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Failed Orders",
                         "range": false
@@ -3263,7 +3263,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_CallMeter_Process_Running{js7Server=\"$js7Server\"}",
+                        "expr": "js7_CallMeter_Process_Running{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Processes",
                         "range": false
@@ -3286,7 +3286,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Threading_ThreadCount{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Threading_ThreadCount{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Threads",
                         "range": false
@@ -3309,7 +3309,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_Process_Running{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Process_Running{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Processes",
                         "range": false
@@ -3332,7 +3332,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Memory_HeapMemoryUsage_committed{js7Server=\"$js7Server\"} ",
+                        "expr": "java_lang_Memory_HeapMemoryUsage_committed{js7ServerId=\"$js7Server\"} ",
                         "instant": true,
                         "legendFormat": "Heap",
                         "range": false
@@ -3355,7 +3355,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_Runtime_Uptime{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_Runtime_Uptime{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Up",
                         "range": false
@@ -3378,7 +3378,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_EngineState_ClusterStateCode{js7Server=\"$js7Server\"}",
+                        "expr": "js7_EngineState_ClusterStateCode{js7ServerId=\"$js7Server\"}",
                         "format": "time_series",
                         "instant": true,
                         "legendFormat": "Cluster",
@@ -3425,7 +3425,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_EngineState_JVMRunningSeconds{js7Server=\"$js7Server\"}",
+                        "expr": "js7_EngineState_JVMRunningSeconds{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "JVM time",
                         "range": false
@@ -3448,7 +3448,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "js7_Journal_OperatingSeconds{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Journal_OperatingSeconds{js7ServerId=\"$js7Server\"}",
                         "instant": true,
                         "legendFormat": "Total",
                         "range": false
@@ -3654,7 +3654,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ServerReceivedByteTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ServerReceivedByteTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Server in",
                         "range": true
@@ -3676,7 +3676,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ServerSentByteTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ServerSentByteTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Server out",
                         "range": true
@@ -3698,7 +3698,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ClientReceivedByteTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ClientReceivedByteTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Client in",
                         "range": true
@@ -3720,7 +3720,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ClientSentByteTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ClientSentByteTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Client out",
                         "range": true
                       },
@@ -3932,7 +3932,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_HttpMXBean_ServerRequestActiveCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_HttpMXBean_ServerRequestActiveCount{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Server",
                         "range": true
@@ -3954,7 +3954,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_HttpMXBean_ClientRequestActiveCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_HttpMXBean_ClientRequestActiveCount{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "Client",
                         "range": true
                       },
@@ -4134,7 +4134,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ServerRequestTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ServerRequestTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Server",
                         "range": true
@@ -4156,7 +4156,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ClientRequestTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ClientRequestTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Client",
                         "range": true
                       },
@@ -4328,7 +4328,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_InternalResponsiveness_DelaySeconds{js7Server=\"$js7Server\"}",
+                        "expr": "js7_InternalResponsiveness_DelaySeconds{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "Internal response time",
                         "range": true
                       },
@@ -4349,7 +4349,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "cats_effect_unsafe_metrics_CpuStarvation_CurrentClockDriftMs{js7Server=\"$js7Server\"}",
+                        "expr": "cats_effect_unsafe_metrics_CpuStarvation_CurrentClockDriftMs{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Cats Effect",
                         "range": true
@@ -4371,7 +4371,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Journal_ActiveHeartbeatDelay{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Journal_ActiveHeartbeatDelay{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Active's cluster node heartbeat delay",
                         "range": true
@@ -4539,7 +4539,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Sessions_SessionCount{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Sessions_SessionCount{js7ServerId=\"$js7Server\"}",
                         "legendFormat": "Sessions",
                         "range": true
                       },
@@ -4672,7 +4672,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Old_Generation_CollectionCount{js7Server=\"$js7Server\"}[$__rate_interval]) ",
+                        "expr": "rate(java_lang_G1_Old_Generation_CollectionCount{js7ServerId=\"$js7Server\"}[$__rate_interval]) ",
                         "instant": false,
                         "legendFormat": "Old generation",
                         "range": true
@@ -4694,7 +4694,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Concurrent_GC_CollectionCount{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(java_lang_G1_Concurrent_GC_CollectionCount{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Concurrent",
                         "range": true
@@ -4716,7 +4716,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_G1_Young_Generation_CollectionCount{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(java_lang_G1_Young_Generation_CollectionCount{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Young generation",
                         "range": true
                       },
@@ -4879,7 +4879,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "java_lang_OperatingSystem_CpuLoad{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_OperatingSystem_CpuLoad{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Computer",
                         "range": true
@@ -4903,7 +4903,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "java_lang_OperatingSystem_ProcessCpuLoad{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_OperatingSystem_ProcessCpuLoad{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "JS7 Engine load",
@@ -4927,7 +4927,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "java_lang_OperatingSystem_SystemLoadAverage{js7Server=\"$js7Server\"}",
+                        "expr": "java_lang_OperatingSystem_SystemLoadAverage{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "System load average",
                         "range": true
@@ -4949,7 +4949,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_Compilation_TotalCompilationTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1000 / java_lang_OperatingSystem_AvailableProcessors",
+                        "expr": "rate(java_lang_Compilation_TotalCompilationTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1000 / java_lang_OperatingSystem_AvailableProcessors",
                         "instant": false,
                         "legendFormat": "Java compiler?",
                         "range": true
@@ -4971,7 +4971,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_OperatingSystem_ProcessCpuTime{js7Server=\"$js7Server\"}[$__rate_interval]) / 1e9 / java_lang_OperatingSystem_AvailableProcessors{js7Server=\"$js7Server\"}",
+                        "expr": "rate(java_lang_OperatingSystem_ProcessCpuTime{js7ServerId=\"$js7Server\"}[$__rate_interval]) / 1e9 / java_lang_OperatingSystem_AvailableProcessors{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "{{js7Server}}",
                         "range": true
@@ -5124,7 +5124,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(java_lang_Threading_TotalThreadAllocatedBytes{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(java_lang_Threading_TotalThreadAllocatedBytes{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Heap allocation rate",
                         "range": true
                       },
@@ -5256,7 +5256,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ServerReceivedChunksTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ServerReceivedChunksTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Server in",
                         "range": true
@@ -5278,7 +5278,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ServerSentChunksTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ServerSentChunksTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Server out",
                         "range": true
@@ -5300,7 +5300,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ClientReceivedChunksTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ClientReceivedChunksTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Client in",
                         "range": true
@@ -5322,7 +5322,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_HttpMXBean_ClientSentChunksTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_HttpMXBean_ClientSentChunksTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "Client out",
                         "range": true
                       },
@@ -5534,7 +5534,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_LogDirectory_Size{js7Server=\"$js7Server\"}",
+                        "expr": "js7_LogDirectory_Size{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Logs directory",
                         "range": true
@@ -5556,7 +5556,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_LogDirectoryIndex_TmpFilesSize{js7Server=\"$js7Server\"}",
+                        "expr": "js7_LogDirectoryIndex_TmpFilesSize{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Temporary indexed log files",
                         "range": true
@@ -5578,7 +5578,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "js7_Journal_AllFileSize{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Journal_AllFileSize{js7ServerId=\"$js7Server\"}",
                         "instant": false,
                         "legendFormat": "Journal files",
                         "range": true
@@ -5601,7 +5601,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "code",
-                        "expr": "js7_Journal_FileSize{js7Server=\"$js7Server\"}",
+                        "expr": "js7_Journal_FileSize{js7ServerId=\"$js7Server\"}",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "legendFormat": "Current journal file",
@@ -5787,7 +5787,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(js7_Journal_EventTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_EventTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "events",
                         "range": true
@@ -5810,7 +5810,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_CommitTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_CommitTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "fullMetaSearch": false,
                         "includeNullMetadata": false,
                         "legendFormat": "commits (persists)",
@@ -5835,7 +5835,7 @@
                       "spec": {
                         "disableTextWrap": false,
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_FlushTotal{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_FlushTotal{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "fullMetaSearch": false,
                         "includeNullMetadata": false,
                         "legendFormat": "flushs",
@@ -5859,7 +5859,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_JournaledProxy_EventCount{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_JournaledProxy_EventCount{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "Received events ({{name}})",
                         "range": true
@@ -6025,7 +6025,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_Journal_FileSize{js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_Journal_FileSize{js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "written/s",
                         "range": true
                       },
@@ -6148,7 +6148,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", js7Server=\"$js7Server\"}[$__rate_interval]) + rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", js7ServerId=\"$js7Server\"}[$__rate_interval]) + rate(js7_EngineState_StatisticsEventTotal{key=\"OrderStdoutWritten\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderStdWritten",
                         "range": true
@@ -6170,7 +6170,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessingStarted\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessingStarted\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderProcessingStarted",
                         "range": true
@@ -6192,7 +6192,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessed\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderProcessed\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderProcessed",
                         "range": true
@@ -6214,7 +6214,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderStarted\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderStarted\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "legendFormat": "OrderStarted",
                         "range": true
                       },
@@ -6235,7 +6235,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderAdded\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderAdded\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderAdded",
                         "range": true
@@ -6257,7 +6257,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFailed\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFailed\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderFailed",
                         "range": true
@@ -6279,7 +6279,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFinished\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderFinished\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderFinished",
                         "range": true
@@ -6301,7 +6301,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderCancelled\", js7Server=\"$js7Server\"}[$__rate_interval])",
+                        "expr": "rate(js7_EngineState_StatisticsEventToTotal{key=\"OrderCancelled\", js7ServerId=\"$js7Server\"}[$__rate_interval])",
                         "instant": false,
                         "legendFormat": "OrderCancelled",
                         "range": true

@@ -40,6 +40,7 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools.unlimitedExecutionContextResource
 import js7.core.command.CommandMeta
+import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
@@ -210,6 +211,9 @@ extends MainService, Service.StoppableByRequest:
   def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
     IO(checkedDedicatedSubagent).flatMapT:
       _.releaseEvents(eventId)
+
+  def controllerId: Option[ControllerId] =
+    maybeDedicatedSubagent.map(_.controllerId)
 
   def subagentId: Option[SubagentId] =
     maybeDedicatedSubagent.map(_.subagentId)

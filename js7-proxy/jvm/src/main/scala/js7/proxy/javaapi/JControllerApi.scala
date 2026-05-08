@@ -34,7 +34,7 @@ import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.node.NodeId
+import js7.data.node.{Js7ServerGroupId, NodeId}
 import js7.data.order.OrderId
 import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
@@ -474,7 +474,7 @@ object JControllerApi:
     config: Config,
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
-    proxyId: Optional[ProxyId],
+    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     JProxyContext.run(
@@ -488,7 +488,7 @@ object JControllerApi:
   def run[A](
     admissions: Iterable[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Optional[ProxyId] = Optional.empty,
+    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)] = Optional.empty,
     config: Config = ConfigFactory.empty)
     (body: JControllerApi --> CompletableFuture[A])
   : IO[A] =
@@ -499,7 +499,7 @@ object JControllerApi:
   def resource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[ProxyId] = None,
+    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None,
     config: Config = Js7Config.defaultConfig)
     (using ActorSystem)
   : ResourceIO[JControllerApi] =

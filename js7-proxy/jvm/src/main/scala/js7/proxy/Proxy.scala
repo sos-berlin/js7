@@ -10,6 +10,7 @@ import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.startup.ServiceApp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
+import js7.data.node.Js7ServerGroupId
 import js7.data.state.EngineStateMXBean
 import js7.proxy.Proxy.*
 import js7.proxy.web.ProxyWebServer
@@ -58,7 +59,10 @@ object Proxy extends ServiceApp:
       given ActorSystem <- Pekkos.actorSystemResource("Proxy")
       sessionRegister <- SessionRegister.service(SimpleSession(_), conf.config)
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
-      controllerApi <- ControllerApi.resource(apisResource, conf.proxyId, conf.proxyConf)
+      controllerApi <- ControllerApi.resource(
+        apisResource,
+        conf.proxyId.map(Js7ServerGroupId.Proxy("PROXY") -> _),
+        conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
         controllerApi.clusterWatchResource(clusterWatchId, config = conf.config)
       _ <- EngineStateMXBean.register
