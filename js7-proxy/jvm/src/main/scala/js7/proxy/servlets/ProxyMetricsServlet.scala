@@ -9,11 +9,13 @@ import java.io.{IOException, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
+import js7.base.problem.Checked.*
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.common.metrics.MetricsProvider
 import js7.common.metrics.MetricsProvider.{PrometheusContentType, toPrometheuesErrorLines}
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.proxy.ControllerApi
@@ -40,15 +42,31 @@ final class ProxyMetricsServlet extends HttpServlet:
       else
         try
           response.setStatus(SC_OK)
-          response.setCharacterEncoding("UTF-8") //?
+          response.setCharacterEncoding("UTF-8")
           response.setContentType(PrometheusContentType.toString)
-          val out = response.getOutputStream
 
           given IORuntime = proxies.head.ioRuntime
-          proxies.foldMap:
-            case (proxyId, controllerApi, ioRuntime) =>
-              responseWithMetrics(controllerApi, out)
-          .awaitInfinite
+
+          val streams = proxies.map:
+            case (_, controllerApi, ioRuntime) =>
+              if ioRuntime != summon[IORuntime] then
+                logger.error:
+                  s"$controllerApi has a different IORuntime (JProxyContext) than the others"
+                fs2.Stream.empty
+              else
+                fs2.Stream.force:
+                  controllerApi.metrics // Read Engine metrics
+                    .handleProblem: problem =>
+                      fs2.Stream.emit(ByteString(toPrometheuesErrorLines(problem.toString)))
+          val out = response.getOutputStream
+
+          MetricsProvider.mergeMetricStreams(streams)
+            .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
+            .foreach: chunk =>
+              IO.blocking:
+                out.write(chunk.unsafeArray)
+            .compile.drain
+            .awaitInfinite
         finally
           isInUse := false
     catch
@@ -74,8 +92,7 @@ final class ProxyMetricsServlet extends HttpServlet:
             if t ne t2 then t.addSuppressed(t2)
             logger.error(t.toString, t2)
 
-  private def writeMetricsStream(stream: fs2.Stream[IO, ByteString], out: OutputStream)
-  : IO[Unit] =
+  private def writeMetricsStream(stream: fs2.Stream[IO, ByteString], out: OutputStream): IO[Unit] =
     IO.defer:
       stream.foreach: chunk =>
         IO.blocking:
@@ -95,3 +112,4 @@ final class ProxyMetricsServlet extends HttpServlet:
 
 object ProxyMetricsServlet:
   private val logger = Logger[this.type]
+  private val httpChunkSize = 1024 * 1024

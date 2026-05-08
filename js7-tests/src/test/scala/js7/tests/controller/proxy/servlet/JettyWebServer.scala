@@ -11,7 +11,8 @@ import org.eclipse.jetty.server.{Server, ServerConnector}
 
 object JettyWebServer:
 
-  def resource(interface: String, port: Int, servlet: Iterable[(String, Servlet)]): ResourceIO[Server] =
+  def resource(interface: String, port: Int, pathToServlet: Iterable[(String, Servlet)])
+  : ResourceIO[Server] =
     Resource.make(
       acquire = IO.blocking:
         val server = new Server
@@ -24,7 +25,7 @@ object JettyWebServer:
 
         server.setHandler:
           val handler = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
-          servlet.foreach: (path, servlet) =>
+          pathToServlet.foreach: (path, servlet) =>
             handler.addServlet(new ServletHolder(servlet), path)
           handler.addServlet(classOf[DefaultServlet], "/") // 404 for everything else
           handler
