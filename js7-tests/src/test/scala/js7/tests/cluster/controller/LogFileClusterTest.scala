@@ -44,7 +44,7 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
     JControllerApi.run(admission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
-          .rawLogLineFlux(
+          .byteLogLineFlux(
             serverId, LogLevel.None /*test*/ , begin = Instant.now,
             JLogSelection(lineLimit = OptionalLong.of(1)))
           .flatMapIterable(identity)

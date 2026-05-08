@@ -76,7 +76,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
             .toVector.map: lines =>
               assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
-  "Scala, raw" in:
+  "Scala, String lines" in:
     val instant = Instant.now
     val logText = "🌶️🌶️🌶️ HELLO FROM JLogFileTest.scala! 🌶️🌶️🌶️"
     logger.info(logText)

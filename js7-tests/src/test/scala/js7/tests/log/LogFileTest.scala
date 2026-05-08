@@ -58,7 +58,7 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     JControllerApi.run(controllerAdmission :: Nil): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
-          .rawLogLineFlux(
+          .byteLogLineFlux(
             js7ServerId, LogLevel.None /*test*/ , begin = Instant.now,
             JLogSelection(lineLimit = OptionalLong.of(1)))
           .flatMapIterable(identity)

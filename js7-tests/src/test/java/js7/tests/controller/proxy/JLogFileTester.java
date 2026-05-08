@@ -116,7 +116,7 @@ final class JLogFileTester {
 
     static CompletableFuture<Long> testRawBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
-            .rawLogLineFlux(
+            .byteLogLineFlux(
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
@@ -135,7 +135,7 @@ final class JLogFileTester {
 
     static CompletableFuture<Long> testRawNonBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
-            .rawLogLineFlux(
+            .byteLogLineFlux(
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),

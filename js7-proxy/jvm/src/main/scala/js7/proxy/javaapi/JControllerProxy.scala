@@ -92,7 +92,8 @@ final class JControllerProxy private[proxy](
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    keyedLogLineFlux_(serverId, logLevel, begin, logSelection)
+    toJEngineLogFlux(serverId):
+      _.keyedLogLineStream(logLevel, begin, logSelection)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
@@ -102,55 +103,58 @@ final class JControllerProxy private[proxy](
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    keyedLogLineFlux_(serverId, logLevel, key, logSelection)
+    toJEngineLogFlux(serverId):
+      _.keyedLogLineStream(logLevel, key, logSelection)
 
-  private def keyedLogLineFlux_(
-    serverId: Js7ServerId,
-    logLevel: LogLevel,
-    begin: Instant | LogLineKey,
-    logSelection: JLogSelection)
-  : Flux[java.util.List[KeyedLogLine]] =
-    fs2.Stream.resource:
-      JEngineLog.resource(this, serverId)
-    .flatMap: jEngineLog =>
-      jEngineLog.keyedLogLineStream(logLevel, begin, logSelection)
-    .chunks
-    .map(_.asJava)
-    .asFlux
-
-  /** Read log lines from `begin`. */
+  /** Read log lines as Array[Byte] beginning with `begin`. */
   @Nonnull
-  def rawLogLineFlux(
+  def byteLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    rawLogLineFlux_(serverId, logLevel, begin, logSelection)
+    toJEngineLogFlux(serverId):
+      _.logLineStream(logLevel, begin, logSelection, _.unsafeArray)
 
-  /** Read log lines beginning after the line denoted by `key`. */
+  /** Read log lines as Array[Byte] beginning after the line denoted by `key`. */
   @Nonnull
-  def rawLogLineFlux(
+  def byteLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    rawLogLineFlux_(serverId, logLevel, key, logSelection)
+    toJEngineLogFlux(serverId):
+      _.logLineStream(logLevel, key, logSelection, _.unsafeArray)
 
-  private def rawLogLineFlux_(
+  /** Read log lines from `begin`. */
+  @Nonnull
+  def stringLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
-    begin: Instant | LogLineKey,
+    begin: Instant,
     logSelection: JLogSelection)
-  : Flux[java.util.List[Array[Byte]]] =
+  : Flux[java.util.List[String]] =
+    toJEngineLogFlux(serverId):
+      _.logLineStream(logLevel, begin, logSelection, _.utf8String)
+
+  /** Read log lines beginning after the line denoted by `key`. */
+  @Nonnull
+  def stringLogLineFlux(
+    serverId: Js7ServerId,
+    logLevel: LogLevel,
+    key: LogLineKey,
+    logSelection: JLogSelection)
+  : Flux[java.util.List[String]] =
+    toJEngineLogFlux(serverId):
+      _.logLineStream(logLevel, key, logSelection, _.utf8String)
+
+  private def toJEngineLogFlux[R](js7ServerId: Js7ServerId)(f: JEngineLog => fs2.Stream[IO, R])
+  : Flux[R] =
     fs2.Stream.resource:
-      JEngineLog.resource(this, serverId)
-    .flatMap: jEngineLog =>
-      jEngineLog.logSection_(logLevel, begin, logSelection.toScala)
-    .map(_.unsafeArray)
-    .chunks
-    .map(_.asJava)
+      JEngineLog.resource(this, js7ServerId)
+    .flatMap(f)
     .asFlux
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
