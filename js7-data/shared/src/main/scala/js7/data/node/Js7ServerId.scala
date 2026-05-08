@@ -22,7 +22,11 @@ object Js7ServerId:
     Subagent(subagentId)
 
   @javaApi
-  def proxy(proxyId: ProxyId): Js7ServerId =
+  def proxy(proxyId: String): Proxy =
+    proxy(ProxyId(proxyId))
+
+  @javaApi
+  def proxy(proxyId: ProxyId): Proxy =
     Proxy(proxyId)
 
   final case class Proxy(proxyId: ProxyId) extends Js7ServerId:

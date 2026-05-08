@@ -7,12 +7,16 @@ sealed trait Js7ServerGroupId
 
 object Js7ServerGroupId:
 
+  @javaApi @Deprecated
+  def controller(controllerId: ControllerId): Engine =
+    engine(controllerId)
+
   @javaApi
-  def controller(controllerId: ControllerId): Js7ServerGroupId =
+  def engine(controllerId: ControllerId): Engine =
     Engine(controllerId)
 
   @javaApi
-  def proxy(name: String): Js7ServerGroupId =
+  def proxy(name: String): Proxy =
     Proxy(name)
 
 
