@@ -59,7 +59,10 @@ object Atomic:
       def nonConcurrent[F[_] : Sync as F, A: Monoid as A](body: F[A]): F[A] =
         whenInUse(F.pure(A.empty), body)
 
-      private[Atomic] def whenInUse[F[_] : Sync as F, A](whenInUse: => F[A], use: => F[A]): F[A] =
+      private[Atomic] def whenInUse[F[_] : Sync as F, A](
+        whenInUse: => F[A],
+        otherwiseUse: => F[A])
+      : F[A] =
         Resource:
           F.delay:
             atomic.getAndSet(true) ->
@@ -68,7 +71,7 @@ object Atomic:
           if _ then
             whenInUse
           else
-            use
+            otherwiseUse
 
     extension (atomic: AtomicInteger)
       inline def :=(n: Int): Unit =
@@ -169,4 +172,4 @@ object Atomic:
       whenInUse: => F[A]
     ):
       inline def otherwiseUse(inline use: F[A]): F[A] =
-        atomic.whenInUse(whenInUse, use)
+        atomic.whenInUse(whenInUse = whenInUse, otherwiseUse = use)
