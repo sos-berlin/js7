@@ -1,7 +1,6 @@
 package js7.service.prometheus
 
 import io.prometheus.jmx.JmxCollector
-import io.prometheus.metrics.exporter.common.PrometheusScrapeHandler
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import java.io.IOException
@@ -13,7 +12,6 @@ import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
-import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest}
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 
@@ -33,7 +31,6 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
 
   jmxCollector.register(registry)
 
-  private val scrapeHandler = new PrometheusScrapeHandler(registry)
   private val textWriter = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
 
@@ -45,12 +42,12 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
       lastSize = outputStream.size()
       outputStream.byteSeq[ByteString]
 
-  // Not used !!!
-  private def metricsByteString(request: HttpRequest = HttpRequest(HttpMethods.GET, "/metrics"))
-  : ByteString =
-    val exchange = new PrometheusJmxAdapterForHttp.PekkoPromtheusExchange(request)
-    scrapeHandler.handleRequest(exchange)
-    exchange.metricsByteString
+  //// Not used !!!
+  //private def metricsByteString(request: HttpRequest = HttpRequest(HttpMethods.GET, "/metrics"))
+  //: ByteString =
+  //  val exchange = new PrometheusJmxAdapterForHttp.PekkoPromtheusExchange(request)
+  //  scrapeHandler.handleRequest(exchange)
+  //  exchange.metricsByteString
 
 
 private[prometheus] object PrometheusJmxAdapter:
