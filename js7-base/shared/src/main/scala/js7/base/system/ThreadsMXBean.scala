@@ -10,14 +10,14 @@ trait ThreadsMXBean:
   //def getG1GCThreads: Int =
   //  computed().g1GCThreads
 
-  def getFileSystemWatchThreads: Int =
-    computed().fileSystemWatchThreads
+  def getFileSystemWatchThreads: Double =
+    zeroToNaN(computed().fileSystemWatchThreads)
 
-  def getCommonPoolThreads: Int =
-    computed().commonPoolThreads
+  def getCommonPoolThreads: Double =
+    zeroToNaN(computed().commonPoolThreads)
 
-  def getPekkoThreads: Int =
-    computed().pekkoThreads
+  def getPekkoThreads: Double =
+    zeroToNaN(computed().pekkoThreads)
 
   def getCatsEffectComputeThreads: Int =
     computed().catsEffectComputeThreads
@@ -25,11 +25,19 @@ trait ThreadsMXBean:
   def getCatsEffectBlockingThreads: Int =
     computed().catsEffectBlockingThreads
 
-  def getProcessReaperThreads: Int =
-    computed().processReaperThreads
+  def getProcessReaperThreads: Double =
+    zeroToNaN(computed().processReaperThreads)
+
+  def getJettyThreads: Double =
+    zeroToNaN(computed().jettyThreads)
 
   def getOtherThreads: Int =
     computed().otherThreads
+
+  private def zeroToNaN(n: Int): Double =
+    n match
+      case 0 => Double.NaN
+      case n => n.toDouble
 
 
 object ThreadsMXBean:
@@ -71,7 +79,7 @@ object ThreadsMXBean:
 
     val catsEffectComputeThreads =
       countThreads(threads): name =>
-        name.startsWith("js7-") && name.length > 4 && name(4).isDigit
+        name.length > 4 && name.startsWith("js7-") && name(4).isDigit
 
     val catsEffectBlockingThreads =
       countThreads(threads): name =>
@@ -80,6 +88,10 @@ object ThreadsMXBean:
     val processReaperThreads =
       countThreads(threads): name =>
         name.startsWith("process reaper")
+
+    val jettyThreads =
+      countThreads(threads): name =>
+        name.startsWith("qtp")
 
     val otherThreads =
       threads.length
@@ -90,6 +102,7 @@ object ThreadsMXBean:
         - catsEffectComputeThreads
         - catsEffectBlockingThreads
         - processReaperThreads
+        - jettyThreads
 
     // threads argument avoids that threads sticks to the Bean
     private def countThreads[A](threads: Array[ThreadInfo])(predicate: String => Boolean): Int =
