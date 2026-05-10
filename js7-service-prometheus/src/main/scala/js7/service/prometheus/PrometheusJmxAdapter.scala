@@ -2,13 +2,11 @@ package js7.service.prometheus
 
 import cats.effect.IO
 import io.prometheus.jmx.JmxCollector
-import io.prometheus.metrics.exporter.common.PrometheusScrapeHandler
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.{PrometheusRegistry, PrometheusScrapeRequest}
 import java.io.IOException
 import java.lang.management.ManagementFactory
 import java.nio.file.{NoSuchFileException, Path}
-import javax.management.ObjectName
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteSeqOutputStream, ByteSequence}
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
@@ -43,7 +41,6 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
 
   jmxCollector.register(registry)
 
-  private val scrapeHandler = new PrometheusScrapeHandler(registry)
   private val textWriter = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
 
