@@ -8,7 +8,6 @@ import izumi.reflect.Tag
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
 import js7.base.scalasource.ScalaSourceLocation
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
@@ -63,11 +62,6 @@ object CatsBlocking:
           .timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
           .logWhenItTakesLonger(name)
           .unsafeRunSyncX()
-
-      def awaitInfinite(using IORuntime, Traverse[F], Tag[F[A]],
-        sourcecode.Enclosing, ScalaSourceLocation)
-      : F[A] =
-        iterable.sequence.unsafeToFuture().awaitInfinite
 
 
   extension[A](io: IO[A])
