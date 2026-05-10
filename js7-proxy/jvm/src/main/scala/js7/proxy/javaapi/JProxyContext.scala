@@ -7,7 +7,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
 import java.util.Optional
 import java.util.concurrent.{CompletableFuture, Executor}
-import java.util.function.Supplier
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
@@ -26,23 +25,38 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
-import js7.data.node.Js7ServerGroupId
-import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.javaapi.JProxyContext.*
 import scala.annotation.static
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 /** The class to start. */
-final class JProxyContext(config_ : Config, computeExecutor: Executor | Null)
+final class JProxyContext private(
+  groupAndProxyId: Option[GroupAndProxyId] = None,
+  config_ : Config = ConfigFactory.empty(),
+  computeExecutor: Option[Executor] = None)
 extends AutoCloseable:
 
-  def this() = this(ConfigFactory.empty, null)
-  def this(config: Config) = this(config, null)
+  def this() =
+    this(None, ConfigFactory.empty, None)
+
+  def this(groupAndProxyId: Optional[GroupAndProxyId]) =
+    this(groupAndProxyId.toScala, ConfigFactory.empty, None)
+
+  def this(groupAndProxyId: Optional[GroupAndProxyId], config: Config) =
+    this(groupAndProxyId.toScala, config, None)
+
+  def this(
+    groupAndProxyId: Optional[GroupAndProxyId],
+    config: Config,
+    computeExecutor: Executor | Null)
+  =
+    this(groupAndProxyId.toScala, config, nullToNone(computeExecutor))
 
   Logger.dontInitialize()
   logger.info(StartUp.startUpLine("JS7 Proxy"))
@@ -56,7 +70,7 @@ extends AutoCloseable:
   private val proxyConf = ProxyConfs.fromConfig(config)
 
   private val (ioRuntime, ioRuntimeShutdown) =
-    OurIORuntime.resource[SyncIO](ThreadPoolName, config, computeExecutor = nullToNone(computeExecutor))
+    OurIORuntime.resource[SyncIO](ThreadPoolName, config, computeExecutor = computeExecutor)
       .flatTap: ioRuntime =>
         val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
         Js7Conf.registerInEnvironment[SyncIO](env, config)
@@ -100,11 +114,10 @@ extends AutoCloseable:
   def runControllerApi[A](
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
-    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     CompletableFuture.supplyAsync: () =>
-      newControllerApi(admissions, httpsConfig, proxyId)
+      newControllerApi(admissions, httpsConfig)
     .thenCompose: jControllerApi =>
       body(jControllerApi)
         .thenCompose: result =>
@@ -116,15 +129,13 @@ extends AutoCloseable:
   /** For Scala usage. */
   def controllerApiResource(
     admissions: Nel[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None)
+    httpsConfig: HttpsConfig = HttpsConfig.empty)
   : ResourceIO[JControllerApi] =
     Resource.make(
       acquire = IO:
         newControllerApi(
           admissions.toList.map(JAdmission(_)).asJava,
-          JHttpsConfig(httpsConfig),
-          proxyId.toJava))(
+          JHttpsConfig(httpsConfig)))(
       release = api =>
         IO.fromCompletableFuture:
           IO:
@@ -138,16 +149,15 @@ extends AutoCloseable:
   @javaApi @Nonnull
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
-    @Nonnull httpsConfig: JHttpsConfig = JHttpsConfig.empty,
-    @Nonnull proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)] = Optional.empty)
+    @Nonnull httpsConfig: JHttpsConfig = JHttpsConfig.empty)
   : JControllerApi =
     val apiResource = admissionsToApiResource(
       admissions = Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala
     )(using actorSystem)
     val api = new ControllerApi(apiResource, proxyConf)
-    proxyId.toScala.foreach: (groupId, proxyId) =>
-      api.makeSingleton(groupId, proxyId, ioRuntime)
+    groupAndProxyId.foreach:
+      api.anchorInStatic(_, ioRuntime)
     new JControllerApi(api, config)
 
 
@@ -160,9 +170,13 @@ object JProxyContext:
 
   /** Runs `body` with an own [[JProxyContext]]. */
   @javaApi
-  def run[A](config: Config, body: JProxyContext --> CompletableFuture[A]): CompletableFuture[A] =
+  def run[A](
+    groupAndProxyId: Optional[GroupAndProxyId],
+    config: Config,
+    body: JProxyContext --> CompletableFuture[A])
+  : CompletableFuture[A] =
     CompletableFuture.supplyAsync: () =>
-      new JProxyContext()
+      new JProxyContext(groupAndProxyId.toScala, config)
     .thenCompose: jProxyContext =>
       body(jProxyContext)
         .thenCompose: result =>
@@ -180,11 +194,12 @@ object JProxyContext:
 
   /** For Scala usage. */
   def resource(
+    groupAndProxyId: Option[GroupAndProxyId] = None,
     config: Config = ConfigFactory.empty,
-    computeExecutor: Executor | Null = null)
+    computeExecutor: Option[Executor] = None)
   : ResourceIO[JProxyContext] =
     Resource.make(
-      acquire = IO(new JProxyContext(config, computeExecutor)))(
+      acquire = IO(new JProxyContext(groupAndProxyId, config, computeExecutor)))(
       release = _.releaseIO)
 
   def assertIsNotProxyThread(): Unit =

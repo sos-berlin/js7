@@ -123,7 +123,7 @@ final class JSubagentTester
             try (CouplingState couplingState = new CouplingState(proxyEventBus)) {
                 try (JProxyContext context = new JProxyContext()) {
                     CompletableFuture<JControllerProxy> whenStarted = context
-                        .newControllerApi(admissions, httpsConfig, Optional.empty())
+                        .newControllerApi(admissions, httpsConfig)
                         .startProxy(proxyEventBus);
 
                     // Avoid deadlock while blocking for firstProblem but whenStarted failed

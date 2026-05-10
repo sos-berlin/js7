@@ -1,8 +1,7 @@
 package js7.tests.controller.proxy;
 
-import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -67,14 +66,14 @@ public final class TestJControllerProxy
     }
 
     private static void run(Iterable<JAdmission> admissions) throws InterruptedException, ExecutionException, TimeoutException {
-        try(JProxyContext context = new JProxyContext(ConfigFactory.empty())) {
+        try(JProxyContext context = new JProxyContext()) {
             JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
             proxyEventBus.subscribe(
-                asList(ProxyEvent.class),
+                List.of(ProxyEvent.class),
                 out::println);
 
             JControllerProxy proxy = context
-                .newControllerApi(admissions, JHttpsConfig.empty(), Optional.empty())
+                .newControllerApi(admissions, JHttpsConfig.empty())
                 .startProxy(proxyEventBus)
                 .get(99, SECONDS);
             try {

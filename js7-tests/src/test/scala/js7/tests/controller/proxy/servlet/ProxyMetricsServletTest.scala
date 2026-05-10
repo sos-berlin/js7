@@ -1,6 +1,5 @@
 package js7.tests.controller.proxy.servlet
 
-import cats.effect.IO
 import jakarta.servlet.http.HttpServletResponse.{SC_OK, SC_SERVICE_UNAVAILABLE}
 import java.net.URI
 import java.net.http.HttpRequest
@@ -14,9 +13,8 @@ import js7.common.metrics.MetricsProvider
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
-import js7.data.node.Js7ServerGroupId
-import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.servlets.ProxyMetricsServlet
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.apache.pekko.actor.ActorSystem
@@ -57,7 +55,7 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
               admissionsToApiResource(Nel.one(controllerAdmission)),
               // Anchors ControllerApi as a singleton for ProxyMetricsServlet.
               // Don't do this in any other test when it could run concurrently !!!
-              proxyId = Some( Js7ServerGroupId.Proxy("PROXY") -> ProxyId("proxy"))
+              groupAndProxyId = Some(GroupAndProxyId.of("PROXY", "proxy"))
             ).use: controllerApi =>
               controllerApi.setActive(true) // Enable Engine metrics
                 client.send(request, BodyHandlers.ofString)

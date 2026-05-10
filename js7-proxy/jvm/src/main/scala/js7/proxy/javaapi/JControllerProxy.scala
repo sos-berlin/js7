@@ -22,14 +22,14 @@ import js7.base.utils.CatsUtils.Nel
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId}
-import js7.data.node.{Js7ServerGroupId, Js7ServerId}
-import js7.data.proxy.ProxyId
+import js7.data.node.Js7ServerId
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
 import js7.data_for_java.order.JFreshOrder
 import js7.data_for_java.reactor.ReactorConverters.*
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.proxy.ControllerProxy
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.javaapi.JControllerProxy.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
@@ -209,11 +209,11 @@ object JControllerProxy:
   def completeResource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None)
+    groupAndProxyId: Option[GroupAndProxyId] = None)
   : ResourceIO[JControllerProxy] =
     for
-      jContext <- JProxyContext.resource()
-      jControllerApi <- jContext.controllerApiResource(admissions, httpsConfig, proxyId)
+      jContext <- JProxyContext.resource(groupAndProxyId)
+      jControllerApi <- jContext.controllerApiResource(admissions, httpsConfig)
       jProxy <- jControllerApi.proxyResource()
     yield
       jProxy

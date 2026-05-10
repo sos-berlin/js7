@@ -1,7 +1,5 @@
 package js7.tests.controller.proxy;
 
-import com.typesafe.config.ConfigFactory;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -29,7 +27,7 @@ import static js7.data_for_java.vavr.VavrUtils.await;
 public final class JControllerFluxTester
 implements AutoCloseable
 {
-    private final JProxyContext context = new JProxyContext(ConfigFactory.empty(), ForkJoinPool.commonPool());
+    private final JProxyContext context = new JProxyContext();
     private final JControllerApi api;
     private final JControllerProxy proxy;
     private int orderCounter = 0;
@@ -38,7 +36,7 @@ implements AutoCloseable
         Iterable<JAdmission> admissions,
         JHttpsConfig httpsConfig)
         throws InterruptedException, ExecutionException, TimeoutException {
-        api = context.newControllerApi(admissions, httpsConfig, Optional.empty());
+        api = context.newControllerApi(admissions, httpsConfig);
         proxy = api.startProxyAwaitCoupling().get(99, SECONDS);
     }
 

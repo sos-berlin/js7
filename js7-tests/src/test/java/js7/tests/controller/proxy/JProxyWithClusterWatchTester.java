@@ -2,7 +2,6 @@ package js7.tests.controller.proxy;
 
 import io.vavr.control.Either;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.eventbus.StandardEventBus;
 import js7.base.problem.Problem;
@@ -31,8 +30,7 @@ final class JProxyWithClusterWatchTester
         throws Exception
     {
         try (JProxyContext context = new JProxyContext()) {
-            JControllerApi controllerApi = context
-                .newControllerApi(admissions, httpsConfig, Optional.empty());
+            JControllerApi controllerApi = context.newControllerApi(admissions, httpsConfig);
 
             JStandardEventBus<ClusterNodeLossNotConfirmedProblem> eventBus =
                 new JStandardEventBus<>(new StandardEventBus<>(ClusterNodeLossNotConfirmedProblem.class));

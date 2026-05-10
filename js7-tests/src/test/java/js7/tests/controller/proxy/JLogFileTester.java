@@ -161,11 +161,10 @@ final class JLogFileTester {
         List<JAdmission> admissions,
         Function<JControllerProxy, CompletableFuture<A>> body) {
         return
-            JProxyContext.run(ConfigFactory.empty(), jProxyContext ->
+            JProxyContext.run(Optional.empty(), ConfigFactory.empty(), jProxyContext ->
                 jProxyContext.runControllerApi(
                     admissions,
                     JHttpsConfig.empty(),
-                    Optional.empty(),
                     jControllerApi ->
                         jControllerApi.runControllerProxy(body)));
     }

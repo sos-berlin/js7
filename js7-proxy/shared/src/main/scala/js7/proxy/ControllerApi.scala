@@ -41,12 +41,13 @@ import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
-import js7.data.node.{Js7ServerGroupId, NodeId}
+import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
@@ -227,21 +228,23 @@ extends ControllerApiWithHttp:
           allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
 
   /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
-  private[proxy] def makeSingleton(
-    groupId: Js7ServerGroupId.Proxy,
-    proxyId: ProxyId,
+  private[proxy] def anchorInStatic(
+    groupAndProxyId: GroupAndProxyId,
     ioRuntime: IORuntime)
   : Unit =
-    logger.debug(s"makeSingleton $proxyId")
+    import groupAndProxyId.proxyId
+    logger.debug(s"anchorInStatic $groupAndProxyId")
     ControllerApi.controllerApiToRegistered.updateWith(this):
       case None =>
         Some((proxyId, this, ioRuntime))
       case Some((existingProxyId, _, _)) =>
-        val msg = s"ControllerApi#makeSingleton($proxyId) called twice (the other is $existingProxyId)"
+        val msg = s"ControllerApi#anchorInStatic($proxyId) called twice (the other is $existingProxyId)"
         logger.error(msg)
         if isTest then throw new IllegalStateException(msg)
         Some((proxyId, this, ioRuntime))
-    localMetrics = toMetricsStream()(groupId, proxyId.toJs7ServerId)
+    localMetrics = toMetricsStream()(
+      groupAndProxyId.groupId,
+      groupAndProxyId.proxyId.toJs7ServerId)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *
@@ -337,7 +340,7 @@ object ControllerApi:
 
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
-    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None,
+    groupAndProxyId: Option[GroupAndProxyId] = None,
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerApi] =
     // Don't use any other Resource here, because public ControllerApi#stop is called directly,
@@ -347,7 +350,7 @@ object ControllerApi:
         Resource.make(
           acquire = IO:
             val api = ControllerApi(apisResource, proxyConf)
-            proxyId.foreach: (groupId, proxyId) =>
-              api.makeSingleton(groupId, proxyId, ioRuntime)
+            groupAndProxyId.foreach:
+              api.anchorInStatic(_, ioRuntime)
             api)(
           release = _.stop)

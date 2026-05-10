@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogFileIndex;
@@ -18,6 +19,7 @@ public final class JLogFileIndexTester {
     static CompletableFuture<Void> test(Path file, ZoneId zoneId, List<String> writtenLines) {
         return
             JProxyContext.run(
+                Optional.empty(),
                 ConfigFactory.empty(),
                 proxyContext ->
                     test1(file, zoneId, proxyContext, writtenLines).thenCompose(ignore ->

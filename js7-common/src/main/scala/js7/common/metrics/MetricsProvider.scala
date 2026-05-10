@@ -81,12 +81,12 @@ object MetricsProvider:
     findJavaService[MetricsJavaService]
 
   def toMetricsStream(configDirectory: Option[Path] = None)
-  : (groupId: Js7ServerGroupId, js7ServerId: Js7ServerId) => fs2.Stream[IO, ByteString] =
+  : (groupAndServerId: (Js7ServerGroupId, Js7ServerId)) => fs2.Stream[IO, ByteString] =
     javaService match
       case None =>
-        (groupId, js7ServerId) =>
+        (groupId, serverId) =>
           fs2.Stream.emit:
-            ByteString(s"# $js7ServerId ($groupId): No MetricsJavaService installed \n")
+            ByteString(s"# $serverId ($groupId): No MetricsJavaService installed \n")
 
       case Some(svc) =>
         val metricsLines = svc.toMetricLineStream(configDirectory)

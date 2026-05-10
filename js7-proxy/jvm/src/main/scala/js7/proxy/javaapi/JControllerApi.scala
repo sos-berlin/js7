@@ -15,28 +15,23 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.run
-import js7.base.catsutils.Environment.environment
-import js7.base.config.Js7Config
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryMXBean
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
 import js7.base.utils.Atomic
-import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
 import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.node.{Js7ServerGroupId, NodeId}
+import js7.data.node.NodeId
 import js7.data.order.OrderId
-import js7.data.proxy.ProxyId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
 import js7.data_for_java.common.JavaUtils.{-->, Void}
@@ -47,11 +42,11 @@ import js7.data_for_java.reactor.ReactorConverters.*
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.javaapi.JControllerApi.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import org.apache.pekko.actor.ActorSystem
 import reactor.core.publisher.Flux
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
@@ -474,12 +469,13 @@ object JControllerApi:
     config: Config,
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig,
-    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)],
+    groupAndProxyId: Optional[GroupAndProxyId],
     body: JControllerApi --> CompletableFuture[A])
   : CompletableFuture[A] =
     JProxyContext.run(
+      groupAndProxyId,
       config,
-      _.runControllerApi(admissions, httpsConfig, proxyId, body))
+      _.runControllerApi(admissions, httpsConfig, body))
 
   /** For Scala usage.
     *
@@ -488,25 +484,24 @@ object JControllerApi:
   def run[A](
     admissions: Iterable[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Optional[(Js7ServerGroupId.Proxy, ProxyId)] = Optional.empty,
+    groupAndProxyId: Optional[GroupAndProxyId] = Optional.empty,
     config: Config = ConfigFactory.empty)
     (body: JControllerApi --> CompletableFuture[A])
   : IO[A] =
     IO.fromCompletableFuture:
       IO:
-        run(config, admissions.map(JAdmission(_)).asJava, JHttpsConfig(httpsConfig), proxyId, body)
+        run(config, admissions.map(JAdmission(_)).asJava,
+          JHttpsConfig(httpsConfig), groupAndProxyId, body)
 
-  def resource(
-    admissions: Nel[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty,
-    proxyId: Option[(Js7ServerGroupId.Proxy, ProxyId)] = None,
-    config: Config = Js7Config.defaultConfig)
-    (using ActorSystem)
-  : ResourceIO[JControllerApi] =
-    for
-      given IORuntime <- Resource.eval(environment[IORuntime])
-      controllerApi <- ControllerApi.resource(
-        admissionsToApiResource(admissions, httpsConfig),
-        proxyId)
-    yield
-      JControllerApi(controllerApi, config)
+  //def resource(
+  //  admissions: Nel[Admission],
+  //  httpsConfig: HttpsConfig = HttpsConfig.empty,
+  //  config: Config = Js7Config.defaultConfig)
+  //  (using ActorSystem)
+  //: ResourceIO[JControllerApi] =
+  //  for
+  //    given IORuntime <- Resource.eval(environment[IORuntime])
+  //    controllerApi <- ControllerApi.resource(
+  //      admissionsToApiResource(admissions, httpsConfig))
+  //  yield
+  //    JControllerApi(controllerApi, config)

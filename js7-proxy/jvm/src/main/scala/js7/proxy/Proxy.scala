@@ -12,7 +12,7 @@ import js7.common.system.startup.ServiceApp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.node.Js7ServerGroupId
 import js7.data.state.EngineStateMXBean
-import js7.proxy.Proxy.*
+import js7.proxy.data.GroupAndProxyId
 import js7.proxy.web.ProxyWebServer
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
@@ -46,7 +46,7 @@ object Proxy extends ServiceApp:
     runService(
       args,
       a =>
-        // See makeSingleton, only one Proxy in a JVM is allowed to have a ProxyId
+        // See anchorInStatic, only one Proxy in a JVM is allowed to have a ProxyId
         val conf = ProxyMainConf.fromCommandLine(a)
         if singleton then conf else conf.copy(proxyId = None),
       suppressLogShutdown = true)(
@@ -61,7 +61,7 @@ object Proxy extends ServiceApp:
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
       controllerApi <- ControllerApi.resource(
         apisResource,
-        conf.proxyId.map(Js7ServerGroupId.Proxy("PROXY") -> _),
+        conf.proxyId.map(GroupAndProxyId(Js7ServerGroupId.Proxy("PROXY"), _)),
         conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
         controllerApi.clusterWatchResource(clusterWatchId, config = conf.config)
