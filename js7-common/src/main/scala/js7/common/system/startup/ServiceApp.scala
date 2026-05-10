@@ -2,18 +2,12 @@ package js7.common.system.startup
 
 import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{ExitCode, IO, ResourceIO}
-import cats.implicits.catsSyntaxApplicativeByName
 import js7.base.catsutils.OurApp
-import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
 import js7.base.service.{MainService, Service, SimpleMainService}
-import js7.base.system.MBeanUtils.registerStaticMBean
-import js7.base.system.ThreadsMXBean
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichJavaClass}
-import js7.base.utils.{AsyncLock, ProgramTermination}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.common.http.HttpMXBean
-import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.system.startup.ServiceApp.*
 import scala.concurrent.duration.Duration
 
@@ -50,12 +44,7 @@ trait ServiceApp extends OurApp:
         suppressLogShutdown = suppressLogShutdown)(
       toServiceResource = cnf =>
         for
-          _ <- CallMeterLoggingService.service(cnf.config)
-          _ <- ResponsivenessMeter.service(cnf.config).whenA(useOwnResponsivenessMeter)
-          _ <- registerStaticMBean("Threads", ThreadsMXBean.Bean)
-          _ <- registerStaticMBean("AsyncLock", AsyncLock.Bean)
-          _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
-          _ <- registerStaticMBean("Sessions", SessionRegister.Bean)
+          _ <- MainSupportService.service(cnf.config, useOwnResponsivenessMeter = true)
           svc <- program(cnf)
         yield
           svc,
