@@ -66,7 +66,7 @@ public final class TestJControllerProxy
     }
 
     private static void run(Iterable<JAdmission> admissions) throws InterruptedException, ExecutionException, TimeoutException {
-        try(JProxyContext context = new JProxyContext()) {
+        try(JProxyContext context = JProxyContext.start().get()) {
             JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
             proxyEventBus.subscribe(
                 List.of(ProxyEvent.class),

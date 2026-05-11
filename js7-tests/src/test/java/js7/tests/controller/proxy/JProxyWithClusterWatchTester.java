@@ -29,7 +29,7 @@ final class JProxyWithClusterWatchTester
     static void test(List<JAdmission> admissions, JHttpsConfig httpsConfig)
         throws Exception
     {
-        try (JProxyContext context = new JProxyContext()) {
+        try (JProxyContext context = JProxyContext.start().get()) {
             JControllerApi controllerApi = context.newControllerApi(admissions, httpsConfig);
 
             JStandardEventBus<ClusterNodeLossNotConfirmedProblem> eventBus =

@@ -2,16 +2,15 @@ package js7.proxy.javaapi
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
-import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
 import java.util.Optional
-import java.util.concurrent.{CompletableFuture, Executor}
+import java.util.concurrent.{CompletableFuture, Executor, ForkJoinPool}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
-import js7.base.catsutils.CatsEffectExtensions.run
+import js7.base.catsutils.CatsEffectExtensions.{run, unsafeRuntime}
 import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
 import js7.base.config.Js7Conf
 import js7.base.io.https.HttpsConfig
@@ -19,16 +18,12 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
+import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
 import js7.base.utils.CatsUtils.*
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.Nulls.nullToNone
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{Atomic, Lazy}
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
-import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.system.startup.MainSupportService
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
@@ -37,6 +32,8 @@ import js7.proxy.configuration.ProxyConfs
 import js7.proxy.data.GroupAndProxyId
 import js7.proxy.javaapi.JProxyContext.*
 import js7.proxy.{ControllerApi, ControllerApiRegister, MetricsForServlet}
+import org.apache.pekko.actor.ActorSystem
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.static
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
@@ -46,86 +43,47 @@ import scala.jdk.OptionConverters.*
   * @param groupAndProxyId Required for Prometheus metrics. Call makeSingleton, too!
   */
 final class JProxyContext private(
-  groupAndProxyId: Option[GroupAndProxyId] = None,
-  config_ : Config = ConfigFactory.empty(),
-  computeExecutor: Option[Executor] = None)
+  groupAndProxyId: Option[GroupAndProxyId],
+  val config: Config,
+  actorSystem: ActorSystem)
+  (using val ioRuntime: IORuntime)
 extends AutoCloseable:
 
-  def this() =
-    this(None, ConfigFactory.empty, None)
-
-  def this(groupAndProxyId: Optional[GroupAndProxyId]) =
-    this(groupAndProxyId.toScala, ConfigFactory.empty, None)
-
-  def this(groupAndProxyId: Optional[GroupAndProxyId], config: Config) =
-    this(groupAndProxyId.toScala, config, None)
-
-  def this(
-    groupAndProxyId: Optional[GroupAndProxyId],
-    config: Config,
-    computeExecutor: Executor | Null)
-  =
-    this(groupAndProxyId.toScala, config, nullToNone(computeExecutor))
-
-  val config: Config =
-    config_
-      .withFallback(ConfigFactory.systemProperties)
-      .withFallback(ProxyConfs.defaultConfig)
-
   private val proxyConf = ProxyConfs.fromConfig(config)
-
-  private val (ioRuntime, ioRuntimeShutdown) =
-    OurIORuntime.resource[SyncIO](ThreadPoolName, config, computeExecutor = computeExecutor)
-      .flatTap: ioRuntime =>
-        val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
-        Js7Conf.registerInEnvironment[SyncIO](env, config)
-      .allocated
-      .run()
-
-  private val actorSystemLazy = Lazy.blocking(newActorSystem(
-    "JS7-Proxy",
-    executionContext = ioRuntime.compute))
-  private lazy val actorSystem = actorSystemLazy()
   private val _controllerApiRegister = new ControllerApiRegister(groupAndProxyId)
+  private var releaseOuter: IO[Unit] = IO.unit
+  private var releaseIORuntime: SyncIO[Unit] = SyncIO.unit
 
-  given IORuntime = ioRuntime
-
-  /// Initialisation ///
-  Logger.dontInitialize()
-  logger.info(StartUp.startUpLine("JS7 Proxy"))
-  ProblemCodeMessages.initialize()
-
-  // TODO Make JProxyContext a Service(?) with a JProxyContext.start or .run method
-  private val stopSupportService: IO[Unit] =
-    MainSupportService.service(config, useOwnResponsivenessMeter = true).allocated.map(_._2)
-      .awaitInfinite
+  private def setReleaser(release: IO[Unit], releaseIORuntime: SyncIO[Unit]): Unit =
+    this.releaseOuter = release
+    this.releaseIORuntime = releaseIORuntime
 
   /** Blockingly release this `JProxyContext`.*/
   def close(): Unit =
-    logger.debugCall("close JS7 JProxyContext"):
-      try
-        releaseIO
-          .logWhenItTakesLonger.awaitInfinite
-      finally
-        ioRuntimeShutdown.run()
+    release().get()
 
   /** Asynchronously release this `JProxyContext`.*/
-  private def release(): CompletableFuture[Void] =
-    releaseIO
+  def release(): CompletableFuture[Void] =
+    releaseOuterResources
       .guarantee:
-        IO:
-          ioRuntimeShutdown.run()
-      .as(Void).unsafeToCompletableFuture()
+        releaseMe
+      .unsafeToCompletableFuture()
+      .thenApplyAsync(
+        _ =>
+          releaseIORuntime.run()
+          Void,
+        ForkJoinPool.commonPool)
 
-  private def releaseIO: IO[Unit] =
-    logger.debugIO("releaseIO"):
+  private def releaseOuterResources: IO[Unit] =
+    logger.debugIO("releaseOuterResources"):
       IO.defer:
         _singleton := None
-        stopSupportService
-          .guarantee:
-            IO.defer:
-              actorSystemLazy.toOption.foldMap:
-                Pekkos.terminate
+        releaseOuter
+
+  private def releaseMe =
+    // Don't release outer resources here
+    IO:
+      _singleton := None
 
   /** Make this one and only `JProxyContext` statically known.
     *
@@ -212,38 +170,89 @@ object JProxyContext:
     config: Config,
     body: JProxyContext --> CompletableFuture[A])
   : CompletableFuture[A] =
-    CompletableFuture.supplyAsync: () =>
-      new JProxyContext(groupAndProxyId.toScala, config)
-    .thenCompose: jProxyContext =>
-      body(jProxyContext)
-        .thenCompose: result =>
-          jProxyContext.release().thenApply(_ => result)
-        .exceptionallyCompose: throwable =>
-          jProxyContext.release().thenCompose: _ =>
-            CompletableFuture.failedFuture(throwable)
+    start(groupAndProxyId, config)
+      .thenCompose: jProxyContext =>
+        body(jProxyContext)
+          .thenCompose: result =>
+            jProxyContext.release().thenApply(_ => result)
+          .exceptionallyCompose: throwable =>
+            jProxyContext.release().thenCompose: _ =>
+              CompletableFuture.failedFuture(throwable)
+
+  @TestOnly
+  def apply(groupAndProxyId: Option[GroupAndProxyId] = None, config: Config = ConfigFactory.empty)(using IORuntime)
+  : JProxyContext =
+    resource(groupAndProxyId, config = config)
+      .allocated.map: (jCtx, release) =>
+        jCtx.setReleaser(release, SyncIO.unit)
+        jCtx
+      .awaitInfinite
+
+  @javaApi
+  def start(): CompletableFuture[JProxyContext] =
+    start(Optional.empty(), ConfigFactory.empty())
+
+  @javaApi
+  def start(config: Config)
+  : CompletableFuture[JProxyContext] =
+    start(Optional.empty(), config)
 
   @javaApi
   def start(groupAndProxyId: Optional[GroupAndProxyId], config: Config)
   : CompletableFuture[JProxyContext] =
-    CompletableFuture.supplyAsync: () =>
-      new JProxyContext(groupAndProxyId.toScala, config)
+    val ((ioRuntime, resource), releaseRuntime) =
+      resourceWithIORuntime(groupAndProxyId.toScala, config).allocated.run()
+    given IORuntime = ioRuntime
+    resource.allocated.map: (jCtx, release) =>
+      jCtx.setReleaser(release, releaseRuntime)
+      jCtx
+    .unsafeToCompletableFuture()
 
-  /** For Scala usage. */
-  //def resourceWithOwnIORuntime(config: Config = ConfigFactory.empty)
-  //: ResourceIO[JProxyContext] =
-  //  for
-  //    jProxyContext <-
-  //  yield jProxyContext
-
-  /** For Scala usage. */
-  def resource(
+  private def resourceWithIORuntime(
     groupAndProxyId: Option[GroupAndProxyId] = None,
     config: Config = ConfigFactory.empty,
     computeExecutor: Option[Executor] = None)
+  : Resource[SyncIO, (IORuntime, ResourceIO[JProxyContext])] =
+    val config_ = configWithDefaults(config)
+    for
+      _ <- Resource.eval:
+        SyncIO:
+          Logger.dontInitialize()
+          logger.info(StartUp.startUpLine("JS7 Proxy"))
+          ProblemCodeMessages.initialize()
+      ioRuntime <-
+        OurIORuntime.resource[SyncIO](ThreadPoolName, config_, computeExecutor = computeExecutor)
+    yield
+      ioRuntime -> resource_(groupAndProxyId, config_)
+
+  def resource(
+    groupAndProxyId: Option[GroupAndProxyId] = None,
+    config: Config = ConfigFactory.empty)
   : ResourceIO[JProxyContext] =
-    Resource.make(
-      acquire = IO(new JProxyContext(groupAndProxyId, config, computeExecutor)))(
-      release = _.releaseIO)
+    resource_(groupAndProxyId, configWithDefaults(config))
+
+  private def resource_(
+    groupAndProxyId: Option[GroupAndProxyId] = None,
+    config: Config = ConfigFactory.empty)
+  : ResourceIO[JProxyContext] =
+    Resource.suspend:
+      IO.unsafeRuntime.map: ioRuntime =>
+        given IORuntime = ioRuntime
+        for
+          env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+          _ <- Js7Conf.registerInEnvironment[IO](env, config)
+          actorSystem <- Pekkos.actorSystemResource("JS7-Proxy", config)
+          _ <- MainSupportService.service(config, useOwnResponsivenessMeter = true)
+          result <- Resource.make(
+            acquire = IO(new JProxyContext(groupAndProxyId, config, actorSystem)))(
+            release = _.releaseMe)
+        yield
+          result
+
+  private def configWithDefaults(config: Config): Config =
+    config
+      .withFallback(ConfigFactory.systemProperties)
+      .withFallback(ProxyConfs.defaultConfig)
 
   def assertIsNotProxyThread(): Unit =
     assert(!currentThread.getName.startsWith(ThreadNamePrefix), "Running in a Proxy thread")

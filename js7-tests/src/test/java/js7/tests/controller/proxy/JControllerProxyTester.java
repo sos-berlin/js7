@@ -77,7 +77,7 @@ class JControllerProxyTester
     {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             try (CouplingState couplingState = new CouplingState(proxyEventBus)) {
-                try (JProxyContext context = new JProxyContext()) {
+                try (JProxyContext context = JProxyContext.start().get()) {
                     CompletableFuture<JControllerProxy> whenStarted = context
                         .newControllerApi(admissions, httpsConfig)
                         .startProxy(proxyEventBus);

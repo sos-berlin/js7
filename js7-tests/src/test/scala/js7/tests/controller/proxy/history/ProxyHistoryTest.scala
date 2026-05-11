@@ -6,7 +6,6 @@ import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
-import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
@@ -39,7 +38,7 @@ import js7.data.workflow.position.Position
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.proxy.ControllerApi
-import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
+import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest
@@ -219,7 +218,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
 
   "Java history" in:
     runControllerAndBackup() { (primary, _, _, _, _, _, _) =>
-      autoClosing(new JProxyContext) { context =>
+      autoClosing(JProxyContext()) { context =>
         val api = context.newControllerApi(
           admissions.map(JAdmission.apply).toList.asJava,
           JHttpsConfig.empty)

@@ -184,14 +184,14 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
                   IO.fromCompletableFuture:
                     IO:
                       body(jControllerProxy)
-                    .evalOn(jProxyContext.given_IORuntime.compute)
+                    .evalOn(jProxyContext.ioRuntime.compute)
                   .map: lineCount =>
                     val elapsed = t.elapsed
                     logger.info(bold(prefix + bytesPerSecondString(elapsed, size)))
                     logger.info(bold(prefix + itemsPerSecondString(elapsed, lineCount, "lines")))
                     lineCount
               .map(_.last) // Line count of last run
-            .evalOn(jProxyContext.given_IORuntime.compute) // Due to assertion in the JLogFileTester
+            .evalOn(jProxyContext.ioRuntime.compute) // Due to assertion in the JLogFileTester
         .as(succeed)
   }
 

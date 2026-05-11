@@ -50,7 +50,7 @@ object JLogDirectoryIndex:
     zoneId: ZoneId,
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
-    import ctx.given_IORuntime
+    import ctx.ioRuntime
     given Config = ctx.config
     given ZoneId = zoneId
     resource_(logLevel):
@@ -62,7 +62,7 @@ object JLogDirectoryIndex:
     zoneId: ZoneId,
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
-    import ctx.given_IORuntime
+    import ctx.ioRuntime
     given ZoneId = zoneId
     given Config = ctx.config
     resource_(logLevel):

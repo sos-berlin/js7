@@ -35,7 +35,7 @@ object JLogFileIndex:
 
   def build(file: Path, label: String, zoneId: ZoneId, context: JProxyContext)
   : CompletableFuture[JLogFileIndex] =
-    import context.given_IORuntime
+    import context.ioRuntime
     LogFileIndex.fromFile(file, label)(using zoneId)
       .map(JLogFileIndex(_))
       .unsafeToCompletableFuture()

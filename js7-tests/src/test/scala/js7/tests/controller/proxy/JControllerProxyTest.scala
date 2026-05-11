@@ -65,7 +65,7 @@ final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScala
     directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(1.s))
 
   "JControllerProxy" in:
-    directoryProvider.runAgents() { _ =>
+    directoryProvider.runAgents(): _ =>
       val port = findFreeTcpPort()
       val controller = Lazy(
         directoryProvider.newController(httpPort = Some(port)))
@@ -83,11 +83,10 @@ final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScala
       finally
         for controller <- controller do
           controller.stop.await(99.s)
-    }
 
   "cancel startProxy" in:
     val admissions = List(JAdmission.of("http://127.0.0.1:0", JCredentials.noCredentials)).asJava
-    autoClosing(new JProxyContext) { context =>
+    autoClosing(JProxyContext()): context =>
       val api = context.newControllerApi(admissions, JHttpsConfig.empty)
       val future = api.startProxyAwaitCoupling()
       Try(future.get(2, SECONDS)) match
@@ -97,7 +96,6 @@ final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScala
       future.cancel(false)
       val tried = Try(future.get(9, SECONDS))
       assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
-    }
 
 
 object JControllerProxyTest:

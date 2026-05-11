@@ -25,7 +25,6 @@ import js7.controller.web.controller.api.ApiRoute
 import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.Stamped
-import js7.data.node.Js7ServerGroupId
 import js7.journal.watch.FileEventWatch
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
