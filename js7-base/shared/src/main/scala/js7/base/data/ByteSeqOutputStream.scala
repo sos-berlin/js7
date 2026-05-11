@@ -7,4 +7,10 @@ extends ByteArrayOutputStream(initialSize):
 
   def byteSeq[ByteSeq: ByteSequence]: ByteSeq =
     synchronized:
+      ByteSequence[ByteSeq].unsafeWrap(toByteArray)
+
+  /** After a call, don't write anything to ByteSeqOutputStream.
+    */
+  def unsafeByteSeq[ByteSeq: ByteSequence]: ByteSeq =
+    synchronized:
       ByteSequence[ByteSeq].unsafeWrap(buf, 0, count)

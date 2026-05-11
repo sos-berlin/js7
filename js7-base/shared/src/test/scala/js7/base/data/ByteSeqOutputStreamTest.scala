@@ -5,10 +5,10 @@ import js7.base.test.OurTestSuite
 
 final class ByteSeqOutputStreamTest extends OurTestSuite:
 
-  "byteSeq[ByteArray]" in:
+  "unsafeByteSeq[ByteArray]" in:
     myTest[ByteArray]()
 
-  "byteSeq[fs2.Chunk]" in:
+  "unsafeByteSeq[fs2.Chunk]" in:
     myTest[fs2.Chunk[Byte]]()
 
   private def myTest[ByteSeq: ByteSequence as ByteSeq]() =
@@ -17,7 +17,7 @@ final class ByteSeqOutputStreamTest extends OurTestSuite:
     val byteSeqs: Seq[ByteSeq] =
       (0 until n).map: i =>
         out.write(i.toByte)
-        out.byteSeq[ByteSeq]
+        out.unsafeByteSeq[ByteSeq]
     (0 until n).foreach: i =>
       assert:
         byteSeqs(i) == ByteSeq.unsafeWrap(Array.iterate[Byte](0, i + 1)(i => (i + 1).toByte))
