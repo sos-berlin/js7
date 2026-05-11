@@ -1,23 +1,19 @@
 package js7.service.prometheus
 
-import cats.effect.IO
 import io.prometheus.jmx.JmxCollector
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
-import io.prometheus.metrics.model.registry.{PrometheusRegistry, PrometheusScrapeRequest}
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import java.io.IOException
 import java.lang.management.ManagementFactory
 import java.nio.file.{NoSuchFileException, Path}
-import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteSeqOutputStream, ByteSequence}
-import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.utils.ScalaUtils.syntax.foreachWithBracket
-import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.service.prometheus.PrometheusJmxAdapter.*
-import org.apache.pekko.util.ByteString
 import scala.jdk.CollectionConverters.*
 
 private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = None):
@@ -25,58 +21,38 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   logger.info("Using Prometheus monitoring")
 
   private val registry = new PrometheusRegistry
-  private val jmxCollector =
-    new JmxCollector(
-      configDir.flatMap: configDir =>
-        val file = configDir / "prometheus-jmx.yaml"
-        try
-          Some(file.contentString)
-        catch
-          case _: NoSuchFileException => None
-          case e: IOException =>
-            logger.warn(s"$file: $e • Using default configuration")
-            None
-      .getOrElse:
-        DefaultYamlResource.asUTF8String)
-
-  jmxCollector.register(registry)
-
-  private val textWriter = PrometheusTextFormatWriter.builder().build()
+  private val writer = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
+  private var contentTypeWarned = false
 
-  def metricsLines(addAttribute: String): fs2.Stream[IO, ByteString] =
-    meter:
-      val attributeInBraces = ByteString(s"{$addAttribute}")
-      val attributeWithComma = ByteString(s"$addAttribute,")
-      fs2.Stream.eval:
-        IO:
-          metrics_[ByteString]()
-      .through:
-        byteChunksToLines(breakLinesLongerThan = None)
-      .map: line =>
-        if line.isEmpty || !Character.isLetter(line(0).toChar) then
-          line
-        else
-          line.vectorIndexOf('{') match
-            case -1 =>
-              line.vectorIndexOf(' ') match
-                case -1 => line
-                case i =>
-                  val (a, b) = line.splitAt(i)
-                  a ++ attributeInBraces ++ b
-            case i =>
-              val (a, b) = line.splitAt(i + 1)
-              a ++ attributeWithComma ++ b
+  new JmxCollector(
+    configDir.flatMap: configDir =>
+      val file = configDir / "prometheus-jmx.yaml"
+      try
+        Some(file.contentString)
+      catch
+        case _: NoSuchFileException => None
+        case e: IOException =>
+          logger.error(s"$file: $e • Using default configuration")
+          None
+    .getOrElse:
+      DefaultYamlResource.asUTF8String
+  ).register(registry)
 
   def metrics[ByteSeq: ByteSequence](): ByteSeq =
-    meter:
-      metrics_[ByteSeq]()
+    logger.traceCall:
+      meter:
+        val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
+        writer.write(outputStream, registry.scrape())
+        lastSize = outputStream.size()
 
-  private def metrics_[ByteSeq: ByteSequence](): ByteSeq =
-    val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
-    textWriter.write(outputStream, registry.scrape(null.asInstanceOf[PrometheusScrapeRequest]))
-    lastSize = outputStream.size()
-    outputStream.byteSeq[ByteSeq]
+        val contentType = writer.getContentType
+        if contentType != "text/plain; version=0.0.4; charset=utf-8" then
+          if !contentTypeWarned then
+            logger.warn(s"Prometheus JMX adapter returned an unexpected content type: $contentType")
+            contentTypeWarned = true
+
+        outputStream.unsafeByteSeq[ByteSeq]
 
 
 private[prometheus] object PrometheusJmxAdapter:

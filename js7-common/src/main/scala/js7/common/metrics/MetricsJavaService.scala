@@ -1,12 +1,10 @@
 package js7.common.metrics
 
-import cats.effect.IO
 import java.nio.file.Path
-import org.apache.pekko.util.ByteString
+import js7.base.data.ByteSequence
 
 trait MetricsJavaService:
 
   /** @param configDirectory Path of the 'config' directory, if any
     */
-  def toMetricLineStream(configDirectory: Option[Path])
-  : (addAttribute: String) => fs2.Stream[IO, ByteString]
+  def toMetrics[ByteSeq: ByteSequence](configDirectory: Option[Path]): () => ByteSeq

@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.syntax.foldable.*
 import java.nio.file.Path
 import java.util.UUID.randomUUID
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.log.Logger
 import js7.base.system.JavaServiceProviders.findJavaService
@@ -15,7 +16,6 @@ import org.apache.pekko.http.scaladsl.model.MediaTypes.{`application/json`, `tex
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`}
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpHeader, MediaType}
 import org.apache.pekko.util.ByteString
-import scala.util.control.NonFatal
 
 object MetricsProvider:
 
@@ -89,21 +89,39 @@ object MetricsProvider:
             ByteString(s"# $serverId ($groupId): No MetricsJavaService installed \n")
 
       case Some(svc) =>
-        val metricsLines = svc.toMetricLineStream(configDirectory)
-        (groupId: Js7ServerGroupId, js7ServerId: Js7ServerId) =>
-          val sb = new StringBuilder(64)
-          sb.append("js7ServerId=\"")
-          sb.append(toPrometheusString(js7ServerId.toString))
-          sb.append("\"")
-          sb.append(",js7ServerGroupId=\"")
-          sb.append(toPrometheusString(groupId.toString))
-          sb.append("\"")
-          try
-            metricsLines(addAttribute = sb.toString)
-          catch case NonFatal(t) =>
-            logger.error(s"toMetricsStream: ${t.toString}", t)
-            fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))
+        val toMetrics = svc.toMetrics[ByteString](configDirectory)
+        groupAndServerId =>
+          insertAttributes(toMetrics, toAttributeString(groupAndServerId))
 
+  private def toAttributeString(groupAndServerId: (Js7ServerGroupId, Js7ServerId)): String =
+    val (groupId, js7ServerId) = groupAndServerId
+    s"js7ServerId=\"${toPrometheusString(js7ServerId.toString
+      )}\",js7ServerGroupId=\"${toPrometheusString(groupId.toString)}\""
+
+  private def insertAttributes(toMetrics: () => ByteString, attributes: String)
+  : fs2.Stream[IO, ByteString] =
+    val attributeInBraces = ByteString(s"{$attributes}")
+    val attributeWithComma = ByteString(s"$attributes,")
+    fs2.Stream.eval(IO(toMetrics()))
+      .handleErrorWith: t =>
+        logger.error(s"toMetricsStream: ${t.toString}", t)
+        fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))
+      .through:
+        byteChunksToLines(breakLinesLongerThan = None)
+      .map: line =>
+        if line.isEmpty || !Character.isLetter(line(0).toChar) then
+          line
+        else
+          line.vectorIndexOf('{') match
+            case -1 =>
+              line.vectorIndexOf(' ') match
+                case -1 => line
+                case i =>
+                  val (a, b) = line.splitAt(i)
+                  a ++ attributeInBraces ++ b
+            case i =>
+              val (a, b) = line.splitAt(i + 1)
+              a ++ attributeWithComma ++ b
 
   def toPrometheuesErrorLines(message: String): String =
     s"\n# ERROR: ${message.truncateWithEllipsis(1000, firstLineOnly = true)}\n\n"

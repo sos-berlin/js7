@@ -2,7 +2,7 @@ package js7.service.prometheus
 
 import js7.base.data.ByteArray
 import js7.base.test.OurTestSuite
-import js7.base.time.ScalaTime.RichDeadline
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.ByteStrings.syntax.*
