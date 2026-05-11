@@ -44,16 +44,13 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
   private val textWriter = PrometheusTextFormatWriter.builder().build()
   private var lastSize = 128 * 1024
 
-  def metricsLines(
-    addAttribute: String,
-    scrapeRequest: Option[PrometheusScrapeRequest] = None)
-  : fs2.Stream[IO, ByteString] =
+  def metricsLines(addAttribute: String): fs2.Stream[IO, ByteString] =
     meter:
       val attributeInBraces = ByteString(s"{$addAttribute}")
       val attributeWithComma = ByteString(s"$addAttribute,")
       fs2.Stream.eval:
         IO:
-          metrics_[ByteString](scrapeRequest)
+          metrics_[ByteString]()
       .through:
         byteChunksToLines(breakLinesLongerThan = None)
       .map: line =>
@@ -71,15 +68,13 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
               val (a, b) = line.splitAt(i + 1)
               a ++ attributeWithComma ++ b
 
-  def metrics[ByteSeq: ByteSequence](scrapeRequest: Option[PrometheusScrapeRequest] = None)
-  : ByteSeq =
+  def metrics[ByteSeq: ByteSequence](): ByteSeq =
     meter:
-      metrics_[ByteSeq](scrapeRequest)
+      metrics_[ByteSeq]()
 
-  private def metrics_[ByteSeq: ByteSequence](scrapeRequest: Option[PrometheusScrapeRequest] = None)
-  : ByteSeq =
+  private def metrics_[ByteSeq: ByteSequence](): ByteSeq =
     val outputStream = new ByteSeqOutputStream(lastSize + lastSize / 5)
-    textWriter.write(outputStream, registry.scrape(scrapeRequest.orNull))
+    textWriter.write(outputStream, registry.scrape(null.asInstanceOf[PrometheusScrapeRequest]))
     lastSize = outputStream.size()
     outputStream.byteSeq[ByteSeq]
 
@@ -89,7 +84,8 @@ private[prometheus] object PrometheusJmxAdapter:
   private val meter = CallMeter("PrometheusJmxAdapter")
   private val DefaultYamlResource = JavaResource("js7/service/prometheus/prometheus-jmx.yaml")
 
-  logger.trace("Available JMX MBeans:")
-  ManagementFactory.getPlatformMBeanServer.queryNames(null, null).asScala.toArray
-    .map(_.getCanonicalName).sorted.foreachWithBracket(): (o, br) =>
-      logger.trace(s"$br$o")
+  logger.whenTraceEnabled:
+    logger.trace("Available JMX MBeans:")
+    ManagementFactory.getPlatformMBeanServer.queryNames(null, null).asScala.toArray
+      .map(_.getCanonicalName).sorted.foreachWithBracket(): (o, br) =>
+        logger.trace(s"$br$o")

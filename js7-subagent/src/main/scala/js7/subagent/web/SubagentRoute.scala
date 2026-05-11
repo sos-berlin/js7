@@ -1,5 +1,6 @@
 package js7.subagent.web
 
+import cats.syntax.semigroupal.*
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
@@ -56,8 +57,8 @@ extends
   protected def commonConf = subagent.conf
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
-  protected def js7ServerId = subagent.subagentId.map(Js7ServerId.Subagent(_))
-  protected def serverGroupId = subagent.controllerId.map(Js7ServerGroupId.Engine(_))
+  protected def groupAndServerId = subagent.controllerId.map(Js7ServerGroupId.Engine(_)).product:
+    subagent.subagentId.map(Js7ServerId.Subagent(_))
   protected val logDirectory: Path = subagent.conf.logDirectory
   protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
   protected val eventWatch = subagent.journal.eventWatch

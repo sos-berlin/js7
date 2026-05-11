@@ -11,6 +11,7 @@ object Js7ServerGroupId:
   def controller(controllerId: ControllerId): Engine =
     engine(controllerId)
 
+  /** @param controllerId The whole JS7 JobScheduler Engine is identified by it's ControllerId. */
   @javaApi
   def engine(controllerId: ControllerId): Engine =
     Engine(controllerId)
@@ -23,6 +24,8 @@ object Js7ServerGroupId:
   final case class Proxy(name: String) extends Js7ServerGroupId:
     override def toString = if name.isEmpty then "Proxy" else s"Proxy:$name"
 
+  object Proxy:
+    val empty: Proxy = Proxy("")
 
   type Provider = Provider.type
   case object Provider extends Js7ServerGroupId:
@@ -38,3 +41,6 @@ object Js7ServerGroupId:
     @javaApi
     def of(controllerId: ControllerId): Engine =
       Engine(controllerId)
+
+
+type GroupAndServerId = (groupId: Js7ServerGroupId, serverId: Js7ServerId)

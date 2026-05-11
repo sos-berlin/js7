@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-import js7.base.catsutils.CatsEffectExtensions.orThrow
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
@@ -73,9 +72,9 @@ final class ProxyPrometheusMetricsTest extends OurAsyncTestSuite, ControllerClus
             //assert:
             //  beanServer.getAttribute(new ObjectName("js7:type=EngineState,*"), "EventTotal").asInstanceOf[Long] > 2
 
-            proxy.metrics.orThrow.flatMap(_.compile.foldMonoid).map(_.utf8String).await(99.s)
+            proxy.metricsForTest.compile.foldMonoid.map(_.utf8String).await(99.s)
       .map: string =>
-        assert(string.contains("""js7_JournaledProxy_EventCount{js7ServerId="Proxy:MY-CLUSTER-WATCH",js7ServerGroupId="Proxy:PROXY",name="Proxy"}"""))
+        assert(string.contains("""js7_JournaledProxy_EventCount{js7ServerId="Proxy:MY-CLUSTER-WATCH",js7ServerGroupId="Proxy",name="Proxy""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/secondary",js7ServerGroupId="Engine:Controller""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Subagent:AGENT-0",js7ServerGroupId="Engine:Controller""""))

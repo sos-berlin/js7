@@ -33,9 +33,6 @@ final case class AgentConfiguration(
   name: String)
 extends CommonConfiguration:
 
-  override def maybeJs7ServerId: None.type =
-    None
-
   def configDirectory: Path =
     subagentConf.configDirectory
 

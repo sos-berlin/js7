@@ -30,14 +30,13 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.core.web.log.LogRoute.*
-import js7.data.node.Js7ServerId
+import js7.data.node.GroupAndServerId
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.model.headers.`User-Agent`
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.{path, pathEnd}
-import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshaller
 import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.FiniteDuration
 
@@ -45,7 +44,7 @@ trait LogRoute extends RouteProvider:
 
   protected def ioRuntime: IORuntime
   protected def config: Config
-  protected def js7ServerId: Option[Js7ServerId]
+  protected def groupAndServerId: Option[GroupAndServerId]
   protected def logDirectory: Path
   protected def logDirectoryIndexRegister: LogDirectoryIndexRegister
 
@@ -75,7 +74,8 @@ trait LogRoute extends RouteProvider:
           // LogLevel.None returns a line for  testing
           completeIO:
             IO:
-              s"TEST ONLY: ${js7ServerId.getOrElse("No Js7ServerId")}, ${operatingSystem.hostname}\n"
+              s"TEST ONLY: ${groupAndServerId.fold("No Js7ServerId")(_.serverId)
+              }, ${operatingSystem.hostname}\n"
 
   private def fileRoute(logLevel: LogLevel, currentLogFile: Path): Route =
     path("raw"):

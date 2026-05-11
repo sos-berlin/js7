@@ -33,6 +33,7 @@ import js7.data.calendar.Calendar
 import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.node.{Js7ServerGroupId, Js7ServerId}
 import js7.data.plan.PlanSchema
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
@@ -223,7 +224,9 @@ object Provider:
   def resource(conf: ProviderConfiguration)(using IORuntime): ResourceIO[Provider] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
-      _ <- MinimumWebServer.service(conf)
+      _ <- MinimumWebServer.service(
+        conf,
+        groupAndServerId = Some(Js7ServerGroupId.Provider -> Js7ServerId.Provider))
       provider <- resource2(conf)
     yield
       provider

@@ -2,6 +2,7 @@ package js7.agent.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.semigroupal.*
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -18,7 +19,6 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
 import js7.data.event.Stamped
-import js7.data.node.Js7ServerGroupId
 import js7.data.subagent.SubagentId
 import js7.subagent.DirectorRouteVariable.DirectorRoutes
 import js7.subagent.SubagentSession
@@ -49,8 +49,8 @@ extends WebLogDirectives, ApiRoute, DirectorMetricsRoute, ClusterNodeRouteBindin
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected val agentState = clusterNode.currentState
-  protected def js7ServerId = subagentId().map(_.toJs7ServerId)
-  protected def serverGroupId = controllerId().map(Js7ServerGroupId.Engine(_))
+  protected def groupAndServerId =
+    controllerId().map(_.toServerGroupId).product(subagentId().map(_.toJs7ServerId))
   protected def eventWatch = clusterNode.recoveredExtract.eventWatch
   protected def commonConf = agentConfiguration
   protected def actorRefFactory = actorSystem

@@ -18,14 +18,13 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.web.session.SimpleSession
-import js7.core.web.log.LogRoute
 import js7.core.web.log.LogRoute.stringToInstant
 import js7.core.web.test.RouteTester
-import js7.data.node.Js7ServerId
+import js7.data.controller.ControllerId
+import js7.data.node.{Js7ServerGroupId, Js7ServerId}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.duration.*
 
 /**
@@ -38,7 +37,8 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Deferred.unsafe
   protected lazy val logFile: Path = createTempFile("LogRouteTest-", ".log")
   protected val logDirectory = logFile.getParent
-  protected val js7ServerId = Some(Js7ServerId.primaryController)
+  protected val groupAndServerId = Some:
+    Js7ServerGroupId.engine(ControllerId("Controller")) -> Js7ServerId.primaryController
   protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
 
   override protected def config = config"""

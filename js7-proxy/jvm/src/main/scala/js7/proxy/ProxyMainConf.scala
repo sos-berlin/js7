@@ -13,12 +13,14 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.data.cluster.ClusterWatchId
+import js7.data.node.Js7ServerGroupId
 import js7.data.proxy.ProxyId
 import js7.proxy.configuration.{ProxyConf, ProxyConfs}
+import js7.proxy.data.GroupAndProxyId
 import scala.jdk.CollectionConverters.*
 
 final case class ProxyMainConf(
-  proxyId: Option[ProxyId] = None,
+  groupAndProxyId: Option[GroupAndProxyId] = None,
   configDirectory: Path,
   dataDir: Path,
   admissions: Nel[Admission],
@@ -28,7 +30,6 @@ final case class ProxyMainConf(
   config: Config)
 extends CommonConfiguration:
 
-  val maybeJs7ServerId = proxyId.map(_.toJs7ServerId)
   val logDirectory = dataDir / "logs"
 
   val name = "Proxy"
@@ -73,7 +74,8 @@ object ProxyMainConf:
             "Missing Cluster node admissions: js7.cluster.watch.nodes[]")
 
     ProxyMainConf(
-      clusterWatchId.map(ProxyId.fromClusterWatchId),
+      clusterWatchId.map: id =>
+        GroupAndProxyId(Js7ServerGroupId.Proxy.empty, ProxyId.fromClusterWatchId(id)),
       configDirectory = configDir,
       dataDir = dataDir,
       admissions,

@@ -7,31 +7,34 @@ import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
-import js7.proxy.{ControllerApi, ProxyMainConf}
+import js7.data.node.GroupAndServerId
+import js7.proxy.ProxyMainConf
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.util.ByteString
 
 object ProxyWebServer:
 
   def service(
-    controllerApi: ControllerApi,
+    metrics: fs2.Stream[IO, ByteString],
     sessionRegister: SessionRegister[SimpleSession],
-    conf: ProxyMainConf)
+    conf: ProxyMainConf,
+    groupAndServerId: Option[GroupAndServerId] = None)
     (using ActorSystem, IORuntime)
   : ResourceIO[PekkoWebServer] =
+    val groupAndServerId_ = groupAndServerId
     PekkoWebServer.service(conf.webServerBindings, conf.config): routeBinding =>
       PekkoWebServer.BoundRoute.simple(conf):
-        new ProxyRoute(controllerApi, sessionRegister):
+        new ProxyRoute(metrics, sessionRegister):
           protected def commonConf = conf
-          protected val js7ServerId = conf.maybeJs7ServerId
-          protected def serverGroupId = None
+          protected def groupAndServerId = groupAndServerId_
           protected val gateKeeper = GateKeeper(routeBinding.webServerBinding, conf, SimpleUser.apply)
           override def toString = "Proxy web services"
         .webServerRoute
 
   private trait ProxyRoute(
-    protected val controllerApi: ControllerApi,
+    protected val metrics: fs2.Stream[IO, ByteString],
     protected val sessionRegister: SessionRegister[SimpleSession])
     (using
       protected val ioRuntime: IORuntime,
@@ -41,8 +44,6 @@ object ProxyWebServer:
     WebLogDirectives,
     //LogRoute,
     ProxyMetricsRoute:
-
-    override protected type OurSession = SimpleSession
 
     protected val whenShuttingDown = Deferred.unsafe/*???*/
 

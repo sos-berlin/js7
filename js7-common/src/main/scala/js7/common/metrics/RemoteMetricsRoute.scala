@@ -16,7 +16,10 @@ trait RemoteMetricsRoute extends MetricsRoute:
   private given ActorSystem = actorSystem
 
   private val uriToHttp = AsyncMap[Js7ServerId, Allocated[IO, StandardHttpClient]]
-  private val metricFetchers = MetricFetchers(js7ServerId, httpChunkSize = httpChunkSize, commonConf)
+
+  private lazy val metricFetchers = MetricFetchers(
+    groupAndServerId.map(_.serverId),
+    httpChunkSize = httpChunkSize, commonConf)
 
   // TODO Still unused!
   final def release: IO[Unit] =

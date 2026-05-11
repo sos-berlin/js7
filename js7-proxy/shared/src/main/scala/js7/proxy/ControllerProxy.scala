@@ -23,7 +23,6 @@ extends
   Service.Trivial, JournaledProxy[ControllerState]:
 
   export journaledProxy.*
-  export api.metrics
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     api.addOrders(orders)

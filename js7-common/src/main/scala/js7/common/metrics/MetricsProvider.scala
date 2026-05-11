@@ -104,6 +104,7 @@ object MetricsProvider:
             logger.error(s"toMetricsStream: ${t.toString}", t)
             fs2.Stream.emit(ByteString(toPrometheuesErrorLines(t.toString)))
 
+
   def toPrometheuesErrorLines(message: String): String =
     s"\n# ERROR: ${message.truncateWithEllipsis(1000, firstLineOnly = true)}\n\n"
 
@@ -114,14 +115,13 @@ object MetricsProvider:
       .replace("\\", "\\\\")
 
   /** Merge several Prometheus metric streams asynchronously. */
-  def mergeMetricStreams(streams: Seq[fs2.Stream[IO, ByteString]])
-  : fs2.Stream[IO, ByteString] =
+  def mergeMetricStreams(streams: List[fs2.Stream[IO, ByteString]]): fs2.Stream[IO, ByteString] =
     locally:
       if streams.sizeIs <= 1 then
         streams.combineAll
       else
         // Deliver measurement of all sources concurrently merged
-        streams.toList.map:
+        streams.map:
           _.through(separateMeasurements) // Merge only whole measurements
         .parJoinUnbounded
 

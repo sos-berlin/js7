@@ -1,88 +1,98 @@
 package js7.proxy.servlets
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.Stream
+import cats.effect.{IO, SyncIO}
+import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletResponse.{SC_OK, SC_SERVICE_UNAVAILABLE}
 import jakarta.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
-import jakarta.servlet.{ServletException, ServletOutputStream}
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.data.ByteSequence
+import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
-import js7.base.problem.Checked.*
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.:=
-import js7.common.metrics.MetricsProvider
-import js7.common.metrics.MetricsProvider.{PrometheusContentType, toPrometheuesErrorLines}
+import js7.base.utils.Atomic.extensions.{+=, whenInUse}
+import js7.common.http.{HttpMXBean, HttpMXBeanUtils}
+import js7.common.metrics.MetricsProvider.PrometheusContentType
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.proxy.ControllerApi
-import js7.proxy.ControllerApi.Registered
+import js7.proxy.MetricsForServlet
+import js7.proxy.javaapi.JProxyContext
 import js7.proxy.servlets.ProxyMetricsServlet.*
 import org.apache.pekko.util.ByteString
 
 //@WebServlet(urlPatterns = Array("/metrics"))
-final class ProxyMetricsServlet extends HttpServlet:
+final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServlet])
+  extends HttpServlet:
+
+  /** Use this constructor, when this Servlet is registered programmatically after
+    * [[JProxyContext]] has been established.
+    *
+    * No call to [[JProxyContext#makeSingleton()]] needed, no static variable is used.
+    */
+  def this(jProxyContext: JProxyContext) =
+    this(() => Some(jProxyContext.metricsForServlet))
+
+  /** Parameterless constructor, when this Servlet is registered via web xml.
+    *
+    * A call to [[JProxyContext#makeSingleton()]] gives this Servlet access to
+    * [[MetricsForServlet]] (i.e., metrics of this JVM and the observed JS7 Engines)
+    * through a static variable.
+    */
+  def this() =
+    this(() => JProxyContext.metricsForServlet)
+
 
   private val isInUse = Atomic(false)
+
+  logger.debug("ProxyMetricsServlet")
 
   @throws[ServletException]
   @throws[IOException]
   override protected def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit =
     // Jakarta and Jetty both don't seem to offer a content-type negotiation via API ?
-    try
-      // Each Proxy corresponds to a separate Engine (with own ControllerId)
-      val registeredControllerApis = ControllerApi.registeredControllerApis
-      if registeredControllerApis.isEmpty then
-        respond(response, SC_SERVICE_UNAVAILABLE,
-          s"No ${classOf[ControllerApi].getName} with a ProxyId has been started\n")
-      else if isInUse.getAndSet(true) then
-        respond(response, SC_SERVICE_UNAVAILABLE, "Still processing a concurrent GET request\n")
-      else
-        try
-          response.setStatus(SC_OK)
-          response.setCharacterEncoding("UTF-8")
-          response.setContentType(PrometheusContentType.toString)
+    HttpMXBeanUtils.clientRequestResource[SyncIO].surround:
+      isInUse.whenInUse:
+        SyncIO:
+          respond(response, SC_SERVICE_UNAVAILABLE, "Still processing a concurrent GET request\n")
+      .otherwiseUse:
+        SyncIO:
+          toMetricsForServlet().match
+            case None =>
+              respond(response, SC_SERVICE_UNAVAILABLE, "No JControllerContext singleton here\n")
 
-          given IORuntime = registeredControllerApis.head.ioRuntime
-          respondWithMetricStream(
-            getEngineStreams(registeredControllerApis),
-            response.getOutputStream
-          ).awaitInfinite
-        finally
-          isInUse := false
-    catch
-      case t: (IOException | RuntimeException | Error) => throw t
-      case t => throw new ServletException(t.toString, t)
+            case Some(metricsForServlet) =>
+              given IORuntime = metricsForServlet.ioRuntime
+              doGet2(request, response, metricsForServlet.metrics)
+                .handleErrorWith:
+                  case t: (IOException | RuntimeException) => IO.raiseError(t)
+                  case t: Exception => IO.raiseError(new ServletException(t.toString, t))
+                  case t => IO.raiseError(t)
+                .awaitInfinite
+    .run()
 
-  private def getEngineStreams(registeredControllerApis: Seq[Registered])(using IORuntime)
-  : Seq[Stream[IO, ByteString]] =
-    registeredControllerApis.map:
-      case (_, controllerApi, ioRuntime) =>
-        if ioRuntime != summon[IORuntime] then
-          logger.error:
-            s"$controllerApi has a different IORuntime (JProxyContext) than the others"
-          Stream.empty
-        else
-          Stream.force:
-            controllerApi.metrics // Read Engine metrics
-              .handleProblem: problem =>
-                Stream.emit(ByteString(toPrometheuesErrorLines(problem.toString)))
-          .handleErrorWith: throwable =>
-            Stream.emit(ByteString(toPrometheuesErrorLines(throwable.toString)))
-
-  private def respondWithMetricStream(streams: Seq[Stream[IO, ByteString]], out: ServletOutputStream)
+  @throws[ServletException]
+  @throws[IOException]
+  private def doGet2(request: HttpServletRequest, response: HttpServletResponse,
+    metrics: fs2.Stream[IO, ByteString])
   : IO[Unit] =
-    MetricsProvider.mergeMetricStreams(streams)
-      .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
-      .foreach: chunk =>
-        IO.blocking:
-          out.write(chunk.unsafeArray)
-          // Java EE 11: out.write(chunk.toByteBuffer)
-      .compile.drain
+    IO.defer:
+      // Jakarta and Jetty both don't seem to offer a content-type negotiation via API ?
+      response.setStatus(SC_OK)
+      response.setCharacterEncoding("UTF-8")
+      response.setContentType(PrometheusContentType.toString)
+
+      val out = response.getOutputStream
+      metrics
+        .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
+        .foreach: chunk =>
+          IO.blocking:
+            // Java EE 11: out.write(chunk.toByteBuffer)
+            out.write(chunk.unsafeArray)
+            HttpMXBean.Bean.serverSentChunksTotal += 1
+            HttpMXBean.Bean.serverSentByteTotal += chunk.size
+        .compile.drain
 
   private def respond(response: HttpServletResponse, status: Int, message: String): Unit =
     Logger.traceCall("response", (status, message)):

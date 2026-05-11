@@ -1,14 +1,12 @@
 package js7.proxy
 
 import cats.effect.kernel.Resource
-import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Json, JsonObject}
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
-import js7.base.catsutils.Environment.environment
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
@@ -21,16 +19,14 @@ import js7.base.monixutils.{AsyncVariable, RefCountedResource}
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
-import js7.base.utils.{Allocated, ScalaConcurrentHashMap}
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.metrics.MetricsProvider.toMetricsStream
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
@@ -43,11 +39,9 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersion
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.proxy.ProxyId
 import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.GroupAndProxyId
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
@@ -58,6 +52,7 @@ import scala.util.Failure
 final class ControllerApi(
   val apisResource: ResourceIO[Nel[HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default,
+  register: Option[ControllerApiRegister] = None,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
 
@@ -67,8 +62,9 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var localMetrics: fs2.Stream[IO, ByteString] = fs2.Stream.empty
   private var _isActive = false
+
+  register.foreach(_.add(this))
 
   // ControllerApi is used in a ScalaConcurrentHashMap
   override def equals(o: Any) = this eq o.asInstanceOf[AnyRef]
@@ -86,7 +82,7 @@ extends ControllerApiWithHttp:
     logger.debugIO:
       IO.defer:
         setActive(false)
-        ControllerApi.controllerApiToRegistered.remove(this)
+        register.foreach(_.remove(this))
         IO.whenA(dontLogout):
           apiCache.cachedValue
             .fold(IO.unit): api =>
@@ -227,25 +223,6 @@ extends ControllerApiWithHttp:
         case Some(allo) =>
           allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
 
-  /** Anchor this ControllerApi in a static variable to be available for a Servlet. */
-  private[proxy] def anchorInStatic(
-    groupAndProxyId: GroupAndProxyId,
-    ioRuntime: IORuntime)
-  : Unit =
-    import groupAndProxyId.proxyId
-    logger.debug(s"anchorInStatic $groupAndProxyId")
-    ControllerApi.controllerApiToRegistered.updateWith(this):
-      case None =>
-        Some((proxyId, this, ioRuntime))
-      case Some((existingProxyId, _, _)) =>
-        val msg = s"ControllerApi#anchorInStatic($proxyId) called twice (the other is $existingProxyId)"
-        logger.error(msg)
-        if isTest then throw new IllegalStateException(msg)
-        Some((proxyId, this, ioRuntime))
-    localMetrics = toMetricsStream()(
-      groupAndProxyId.groupId,
-      groupAndProxyId.proxyId.toJs7ServerId)
-
   /** When active, the Engine's Prometheus metrics will be queried.
     *
     * Don't set a second instance of ControllerApi (Proxy) as active.
@@ -262,14 +239,7 @@ extends ControllerApiWithHttp:
         if _isActive then
           api.metrics
         else
-          IO.pure(fs2.Stream.emit(ByteString:
-            ControllerApi.controllerApiToRegistered.get(this) match
-              case None => "# Not a ControllerApi singleton.\n"
-              case Some((proxyId, this, _)) => s"# $proxyId is not active.\n"
-              case Some((proxyId, _, _)) => "# Another ControllerApi is the singleton.\n"))
-      .map:
-        _.append:
-          localMetrics
+          IO.pure(fs2.Stream.emit(ByteString(s"# ControllerApi is not active.\n")))
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
@@ -332,25 +302,13 @@ extends ControllerApiWithHttp:
 object ControllerApi:
   private val logger = Logger[this.type]
 
-  type Registered = (proxyId: ProxyId, controllerApi: ControllerApi, ioRuntime: IORuntime)
-  private val controllerApiToRegistered = ScalaConcurrentHashMap[ControllerApi, Registered]
-
-  def registeredControllerApis: Seq[Registered] =
-    controllerApiToRegistered.values.toSeq
-
   def resource(
     apisResource: ResourceIO[Nel[HttpControllerApi]],
-    groupAndProxyId: Option[GroupAndProxyId] = None,
+    register: Option[ControllerApiRegister] = None,
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerApi] =
     // Don't use any other Resource here, because public ControllerApi#stop is called directly,
     // which can't release outer Resources.
-    Resource.suspend:
-      environment[IORuntime].map: ioRuntime =>
-        Resource.make(
-          acquire = IO:
-            val api = ControllerApi(apisResource, proxyConf)
-            groupAndProxyId.foreach:
-              api.anchorInStatic(_, ioRuntime)
-            api)(
-          release = _.stop)
+    Resource.make(
+      acquire = IO(ControllerApi(apisResource, proxyConf, register)))(
+      release = _.stop)

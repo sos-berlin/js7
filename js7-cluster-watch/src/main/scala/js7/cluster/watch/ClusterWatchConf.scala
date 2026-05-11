@@ -26,9 +26,6 @@ final case class ClusterWatchConf(
   config: Config)
 extends CommonConfiguration:
 
-  override def maybeJs7ServerId: None.type =
-    None
-
   val name = "ClusterWatch"
 
 

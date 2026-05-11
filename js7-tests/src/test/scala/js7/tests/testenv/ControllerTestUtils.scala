@@ -8,6 +8,7 @@ import org.jetbrains.annotations.TestOnly
 
 @TestOnly
 object ControllerTestUtils:
+
   def newControllerApi(controller: TestController, userAndPassword: Option[UserAndPassword] = None) =
     new ControllerApi(
       admissionsToApiResource(Nel.one(Admission(controller.localUri, userAndPassword)))(

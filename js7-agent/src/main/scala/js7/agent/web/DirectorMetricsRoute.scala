@@ -12,13 +12,11 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.common.metrics.RemoteMetricsRoute
-import js7.common.metrics.MetricFetcher
+import js7.common.metrics.{MetricFetcher, RemoteMetricsRoute}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.data.agent.AgentRefState
-import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.data.subagent.SubagentItem
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.server.Directives.parameter
 import org.apache.pekko.http.scaladsl.server.{Directives, Route}
 
 trait DirectorMetricsRoute extends AgentRouteProvider, RemoteMetricsRoute:

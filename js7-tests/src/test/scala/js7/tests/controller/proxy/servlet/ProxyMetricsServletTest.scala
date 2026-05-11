@@ -1,21 +1,19 @@
 package js7.tests.controller.proxy.servlet
 
-import jakarta.servlet.http.HttpServletResponse.{SC_OK, SC_SERVICE_UNAVAILABLE}
+import jakarta.servlet.http.HttpServletResponse.SC_OK
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.metrics.MetricsProvider
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
-import js7.proxy.ControllerApi
 import js7.proxy.data.GroupAndProxyId
 import js7.proxy.servlets.ProxyMetricsServlet
+import js7.proxy.{ControllerApi, ControllerApiRegister}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.apache.pekko.actor.ActorSystem
 import scala.jdk.OptionConverters.*
@@ -34,31 +32,27 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
 
   "test" in:
     val port = findFreeTcpPort()
-    JettyWebServer.resource("127.0.0.1", port, Seq("/metrics" -> new ProxyMetricsServlet)).surround:
+    val controllerApiRegister =
+      new ControllerApiRegister(Some(GroupAndProxyId.of("PROXY", "proxy")))(using ioRuntime) // normally provided by JProxyContext
+    JettyWebServer.resource(
+      "127.0.0.1", port, Seq(
+        "/metrics" -> new ProxyMetricsServlet(() => Some(controllerApiRegister)))
+    ).surround:
       OurHttpClient.resource.use: client =>
         val request = HttpRequest.newBuilder
           .uri:
             URI.create(s"http://127.0.0.1:$port/metrics")
           .setHeader("Accept", MetricsProvider.PrometheusAcceptHeaderValue)
           .build()
-        client.send(request, BodyHandlers.ofString).map: response =>
-          assert:
-            response.statusCode == SC_SERVICE_UNAVAILABLE &
-              response.body == "No js7.proxy.ControllerApi with a ProxyId has been started\n"
-        .onErrorRestartLoop(0): (throwable, i, restart) =>
-          if i >= 10 then throw throwable
-          restart(i).delayBy(100.ms)
-        .productR:
-          Pekkos.actorSystemResource("ProxyMetricsServletTest").use: actorSystem =>
-            given ActorSystem = actorSystem
-            ControllerApi.resource(
-              admissionsToApiResource(Nel.one(controllerAdmission)),
-              // Anchors ControllerApi as a singleton for ProxyMetricsServlet.
-              // Don't do this in any other test when it could run concurrently !!!
-              groupAndProxyId = Some(GroupAndProxyId.of("PROXY", "proxy"))
-            ).use: controllerApi =>
-              controllerApi.setActive(true) // Enable Engine metrics
-                client.send(request, BodyHandlers.ofString)
+        Pekkos.actorSystemResource("ProxyMetricsServletTest").use: actorSystem =>
+          given ActorSystem = actorSystem
+          ControllerApi.resource(
+            admissionsToApiResource(Nel.one(controllerAdmission)),
+            // Anchors ControllerApi as a singleton for ProxyMetricsServlet.
+            register = Some(controllerApiRegister)
+          ).use: controllerApi =>
+            controllerApi.setActive(true) // Enable Engine metrics
+              client.send(request, BodyHandlers.ofString)
       .map: response =>
         val body = response.body
         assert:

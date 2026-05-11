@@ -75,7 +75,7 @@ final case class MetricFetchers(
     val (serverIds, streams) = metricFetchers.map(_.toPair).unzip
     releaseUnknownHttpClients(isKnown = serverIds.toSet).productR:
       completeWithIOStream(contentType):
-        MetricsProvider.mergeMetricStreams(streams)
+        MetricsProvider.mergeMetricStreams(streams.toList)
           .map(_.toChunk).unchunks[Byte].chunkN(httpChunkSize)
           .map(_.toByteString)
 

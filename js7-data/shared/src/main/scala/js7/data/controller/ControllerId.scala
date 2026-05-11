@@ -4,16 +4,20 @@ import js7.base.auth.UserId
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.data.node.Js7ServerGroupId
 
-/**
-  * @author Joacim Zschimmer
+/** Identifies a JS7 JobScheduler Engine.
   */
 final case class ControllerId private(string: String) extends GenericString:
+
+  def toServerGroupId: Js7ServerGroupId.Engine =
+    Js7ServerGroupId.Engine(this)
 
   // UserId is wrong when ControllerId is Undefined (only at Controller initialization)
   def unsafeUserId: UserId =
     UserId.unchecked(string)
 
+  /** The UserId the Controller uses for contacting the peer Cluster node and the Directors. */
   def toUserId: Checked[UserId] =
     check.flatMap: _ =>
       UserId.checked(string)

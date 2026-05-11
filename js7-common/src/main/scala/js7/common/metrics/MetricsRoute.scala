@@ -2,7 +2,6 @@ package js7.common.metrics
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.semigroupal.*
 import com.typesafe.config.Config
 import js7.base.auth.ReadMetricsPermission
 import js7.base.data.ByteSequence.ops.*
@@ -14,7 +13,7 @@ import js7.common.metrics.MetricsProvider.PrometheusContentType
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.node.{Js7ServerGroupId, Js7ServerId}
+import js7.data.node.GroupAndServerId
 import org.apache.pekko.http.scaladsl.model.ContentType
 import org.apache.pekko.http.scaladsl.model.StatusCodes.TooManyRequests
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -24,8 +23,7 @@ import org.apache.pekko.util.ByteString
 trait MetricsRoute extends RouteProvider:
 
   protected def commonConf: CommonConfiguration
-  protected def js7ServerId: Option[Js7ServerId]
-  protected def serverGroupId: Option[Js7ServerGroupId]
+  protected def groupAndServerId: Option[GroupAndServerId]
 
   private val isLocked = Atomic(false)
 
@@ -33,13 +31,13 @@ trait MetricsRoute extends RouteProvider:
     commonConf.config
 
   protected final def localMetricFetcher: Option[MetricFetcher] =
-    js7ServerId.map(MetricFetcher(_, toMetricsStream()))
+    groupAndServerId.map(o => MetricFetcher(o.serverId, toMetricsStream()))
 
   protected final lazy val toMetricsStream: () => fs2.Stream[IO, ByteString] =
     val toMetricsStream = MetricsProvider.toMetricsStream(Some(commonConf.configDirectory))
     val unknown = fs2.Stream.emit(ByteString("# Js7ServerId of this server is (still) unknown\n"))
     () =>
-      serverGroupId.product(js7ServerId) match
+      groupAndServerId match
         case None =>
           unknown
         case Some((groupId, serverId)) =>
