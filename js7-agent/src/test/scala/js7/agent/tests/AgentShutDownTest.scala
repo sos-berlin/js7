@@ -1,6 +1,7 @@
 package js7.agent.tests
 
 import cats.effect.unsafe.IORuntime
+import cats.syntax.foldable.*
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -78,15 +79,17 @@ final class AgentShutDownTest
           AttachSignedItem(itemSigner.sign(SimpleTestWorkflow))
         .await(99.s).orThrow
 
-        (for orderId <- orderIds yield
-          client.commandExecute(AttachOrder(
-            Order(
-              orderId,
-              SimpleTestWorkflow.id /: Position(0),
-              Order.Ready(),
-              Map("a" -> StringValue("A"))),
-            TestAgentPath))
-        ).await(99.s)
+        orderIds.traverseVoid: orderId =>
+          client
+            .commandExecute(AttachOrder(
+              Order(
+                orderId,
+                SimpleTestWorkflow.id /: Position(0),
+                Order.Ready(),
+                Map("a" -> StringValue("A"))),
+              TestAgentPath))
+            .map(_.orThrow)
+        .await(99.s)
 
         for orderId <- orderIds do
           agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)

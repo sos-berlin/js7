@@ -1,9 +1,7 @@
 package js7.base.thread
 
-import cats.Traverse
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.syntax.traverse.*
 import izumi.reflect.Tag
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
@@ -52,16 +50,16 @@ object CatsBlocking:
       : A =
         await(Duration.Inf)
 
-    extension [F[_], A](iterable: F[IO[A]])
-      def await(duration: FiniteDuration)(using
-        rt: IORuntime, t: Traverse[F], A: Tag[A], loc: ScalaSourceLocation)
-      : F[A] =
-        inline def name = makeBlockingWaitingString
-        iterable
-          .sequence
-          .timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
-          .logWhenItTakesLonger(name)
-          .unsafeRunSyncX()
+    //extension [F[_], A](iterable: F[IO[A]])
+    //  def await(duration: FiniteDuration)(using
+    //    rt: IORuntime, t: Traverse[F], A: Tag[A], loc: ScalaSourceLocation)
+    //  : F[A] =
+    //    inline def name = makeBlockingWaitingString
+    //    iterable
+    //      .sequence
+    //      .timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
+    //      .logWhenItTakesLonger(name)
+    //      .unsafeRunSyncX()
 
 
   extension[A](io: IO[A])
