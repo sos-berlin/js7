@@ -106,5 +106,6 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
 
 
 object ProxyMetricsServlet:
+  Logger.dontInitialize()
   private val logger = Logger[this.type]
   private val httpChunkSize = 1024 * 1024
