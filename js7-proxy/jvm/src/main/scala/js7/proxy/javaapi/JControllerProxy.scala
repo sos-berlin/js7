@@ -35,6 +35,7 @@ import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import js7.proxy.javaapi.log.JLogSelection
 import reactor.core.publisher.Flux
+import scala.reflect.ClassTag
 
 /** Observes the Controller's event stream and provides the current JControllerState.
   * After use, stop with `stop()`.
@@ -150,7 +151,8 @@ final class JControllerProxy private[proxy](
     toJEngineLogFlux(serverId):
       _.logLineStream(logLevel, key, logSelection, _.utf8String)
 
-  private def toJEngineLogFlux[R](js7ServerId: Js7ServerId)(f: JEngineLog => fs2.Stream[IO, R])
+  private def toJEngineLogFlux[R <: AnyRef: ClassTag](js7ServerId: Js7ServerId)
+    (f: JEngineLog => fs2.Stream[IO, R])
   : Flux[R] =
     fs2.Stream.resource:
       JEngineLog.resource(this, js7ServerId)

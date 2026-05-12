@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.data_for_java.reactor.ReactorConverters.{asFlux, asFs2Stream}
+import js7.data_for_java.reactor.ReactorConverters.{asFlux, asFluxSingleElements, asFs2Stream}
 import js7.data_for_java.reactor.ReactorConvertersTest.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertions.assert
@@ -30,7 +30,7 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
         .evalTap(i => IO:
           assert(acquired.get == 1 && released.get == 0)
           logger.info(s"--> $i"))
-        .asFlux
+        .asFluxSingleElements
       assert(acquired.get == 0 && released.get == 0)
 
       val result = flux.toIterable(1).asScala.toSeq // Blocks !!!
@@ -42,7 +42,7 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
       import preparation.{acquired, last, released}
       val flux = preparation.stream
         .flatMap(_ +: Stream.raiseError[IO](new TestException))
-        .asFlux
+        .asFluxSingleElements
 
       intercept[TestException]:
         flux.toIterable(1).asScala.toSeq
@@ -54,7 +54,7 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
       val flux = preparation
         .stream
         .flatMap(_ +: Stream.never[IO])
-        .asFlux
+        .asFluxSingleElements
 
       val disposable = flux.subscribe()
       sleep(100.ms)
@@ -67,7 +67,8 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
   "asFs2Stream" in:
     assert(Flux.just(1, 2, 3).asFs2Stream().compile.toList.await(9.s) == List(1, 2, 3))
     assert(Flux.just(1, 2, 3).asFs2Stream(bufferSize = 9).compile.toList.await(9.s) == List(1, 2, 3))
-    assert(Flux.just(1, 2, 3).asFs2Stream().asFlux.toIterable().asScala.toList == List(1, 2, 3))
+    assert(Flux.just(1, 2, 3).asFs2Stream().asFluxSingleElements.toIterable().asScala.toList == List(1, 2, 3))
+    assert(Flux.just(1, 2, 3).map(Int.box).asFs2Stream().asFlux.toIterable().asScala.toList == List(1, 2, 3))
 
 
 object ReactorConvertersTest:
