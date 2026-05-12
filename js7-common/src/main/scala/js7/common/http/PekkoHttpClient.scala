@@ -557,7 +557,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                   def string =
                     if isUtf8 then
                       chunk.data.utf8String.truncateWithEllipsis(
-                        200, showLength = true, firstLineOnly = true, quote = true)
+                        195/*appropriate for MacBook Pro screen size*/,
+                        showLength = true, firstLineOnly = true, quote = true)
                     else
                       s"${chunk.data.length} bytes"
 
