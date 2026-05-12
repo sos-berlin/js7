@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import cats.syntax.option.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
+import java.nio.file.Path
 import java.util.Optional
 import java.util.concurrent.{CompletableFuture, Executor, ForkJoinPool}
 import javax.annotation.Nonnull
@@ -16,6 +17,7 @@ import js7.base.config.Js7Conf
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.reader.LogDirectoryMXBean
 import js7.base.system.startup.StartUp
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
@@ -53,6 +55,7 @@ extends AutoCloseable:
   private val _controllerApiRegister = new ControllerApiRegister(groupAndProxyId)
   private var releaseOuter: IO[Unit] = IO.unit
   private var releaseIORuntime: SyncIO[Unit] = SyncIO.unit
+  private val releaseLogDirectoryMBean = Atomic(SyncIO.unit)
 
   private def setReleaser(release: IO[Unit], releaseIORuntime: SyncIO[Unit]): Unit =
     this.releaseOuter = release
@@ -84,6 +87,8 @@ extends AutoCloseable:
     // Don't release outer resources here
     IO:
       _singleton := None
+    .guarantee:
+      releaseLogDirectoryMBean.getAndSet(SyncIO.unit).to[IO]
 
   /** Make this one and only `JProxyContext` statically known.
     *
@@ -95,6 +100,11 @@ extends AutoCloseable:
     _singleton.getAndSet(Some(this)).foreach: former =>
       logger.error(s"Second call to makeSingleton(): $this, former was: $former")
       if isTest then throw new IllegalStateException("Second call to makeSingleton")
+
+  def registerLogDirectoryMBean(logDirectory: Path): Unit =
+    val release = LogDirectoryMXBean.register[SyncIO](logDirectory).allocated.run()._2
+    val former = releaseLogDirectoryMBean.getAndSet(release)
+    former.run()
 
   def metricsForServlet: MetricsForServlet =
     _controllerApiRegister
