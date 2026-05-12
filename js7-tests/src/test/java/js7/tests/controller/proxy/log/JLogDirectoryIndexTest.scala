@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
-import js7.base.config.Js7Conf
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
