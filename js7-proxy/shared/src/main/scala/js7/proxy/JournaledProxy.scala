@@ -1,6 +1,6 @@
 package js7.proxy
 
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
@@ -17,7 +17,7 @@ import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, DelayConf, Delayer}
+import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -55,7 +55,6 @@ object JournaledProxy:
     EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
   private val logger = Logger[this.type]
-  private val nameCounter = Atomic(1)
 
   def stream[S <: JournaledState[S]](
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],
@@ -66,8 +65,10 @@ object JournaledProxy:
     (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     Stream.resource:
-      JournaledProxy.registerMXBean(
-        name = if beanName.isEmpty then s"$S-${nameCounter.incrementAndGet()}" else beanName)
+      if beanName.isEmpty then
+        Resource.pure(new Bean)
+      else
+        JournaledProxy.registerMXBean(name = beanName)
     .flatMap: bean =>
       stream2(apisResource, fromEventId, onProxyEvent, bean, proxyConf)
 
