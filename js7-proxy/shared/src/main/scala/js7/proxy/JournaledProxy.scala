@@ -8,6 +8,7 @@ import fs2.Stream
 import izumi.reflect.Tag
 import java.lang.System.currentTimeMillis
 import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -96,19 +97,22 @@ object JournaledProxy:
           .flatMap: (stateFetchDuration, state) =>
             var lastState = state
             streamWithState(api, state, stateFetchDuration)
-              .map: o =>
-                lastState = o.state
-                o
-              .pipe: obs =>
-                fromEventId.fold(obs):
-                  dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
+              .onStart:
+                delayer.reset
+              .mapChunks: chunk =>
+                chunk.last.foreach: o =>
+                  lastState = o.state
+                chunk
+              .pipe: stream =>
+                fromEventId.fold(stream):
+                  dropEventsUntilRequestedEventIdAndReinsertProxyStarted(stream, _)
+              .chunks // speed-up asynchronous tailRecM loop with chunks
               .map(Right.apply)
-              .evalTap(_ => delayer.reset)
               .handleErrorWith: t =>
                 if t.getClass.getName == "org.apache.pekko.stream.AbruptTerminationException"
                   || fromEventId.nonEmpty && isTorn(t)
                 then
-                  Stream.raiseError(t)
+                  Stream.raiseError[IO](t)
                 else
                   Stream
                     .suspend(Stream.emit(Left:
@@ -124,6 +128,7 @@ object JournaledProxy:
                           EventId.toString(state.eventId))
                         Some(lastState)))
                     .evalTap(_ => delayer.sleep)
+      .unchunks
 
     def isTorn(t: Throwable) =
       t.checkedSubtype[ProblemException].map(_.problem)
