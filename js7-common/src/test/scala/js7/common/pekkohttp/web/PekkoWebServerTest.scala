@@ -166,8 +166,11 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
       if Runtime.version.feature >= 23 then
         assert(e.getMessage == "(certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found")
       else
-        assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found"
-            || e.getMessage == "General SSLEngine problem")
+        val m = e.getMessage
+        assert:
+          m == "(certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found" // Java EE 11
+            || m == "No subject alternative names matching IP address 127.0.0.1 found"
+            || m == "General SSLEngine problem"
 
     "For this test, localhost must point to 127.0.0.1" in:
       // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).

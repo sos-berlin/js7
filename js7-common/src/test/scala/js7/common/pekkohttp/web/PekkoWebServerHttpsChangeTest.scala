@@ -130,11 +130,13 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
             HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
             changedHttpsConnectionContext)
           .await(99.s)
-      assert(e.getMessage == locally:
-        if Runtime.version.feature >= 23 then
-          "(certificate_unknown) No trusted certificate found"
-        else
-          "No trusted certificate found")
+      if Runtime.version.feature >= 23 then
+        assert:
+          e.getMessage == "(certificate_unknown) No trusted certificate found"
+      else
+        assert:
+          e.getMessage == "(certificate_unknown) No trusted certificate found" /*Java EE 11*/ ||
+          e.getMessage == "No trusted certificate found"
 
     lazy val changedCert = ChangedKeyStoreResource.readAs[ByteArray]
     var writtenLength = 0
