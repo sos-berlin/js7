@@ -1,5 +1,6 @@
 package js7.subagent.director
 
+import cats.effect.std.Mutex
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.instances.option.*
@@ -59,9 +60,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   controllerId: ControllerId,
   failedOverSubagentId: Option[SubagentId],
   journal: Journal[S], // TODO Let the only OrderMotor pipeline persist!
+  selectSubagentMutex: Mutex[IO],
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
-  (implicit ioRuntime: IORuntime, sTag: Tag[S])
+  (using ioRuntime: IORuntime, sTag: Tag[S])
 extends Service.StoppableByRequest:
 
   private val reconnectDelayer: DelayIterator = DelayIterators
@@ -76,6 +78,7 @@ extends Service.StoppableByRequest:
   private val eventCallbackOnce = SetOnce[EventCallback]
   private val orderMotorCoupled = Deferred.unsafe[IO, Unit]
   private val serviceStarted = Deferred.unsafe[IO, Unit]
+  private val counters = SubagentProcessCounters()
   @volatile private var started = false // Delays SubagentDriver#startObserving
 
   journal.untilStopped // TODO Terminate when journal dies
@@ -166,6 +169,11 @@ extends Service.StoppableByRequest:
 
       case Right(Some(selectedDriver)) =>
         processOrderAndForwardEvents(order, endOfAdmissionPeriod, selectedDriver)
+          .onProblem: _ =>
+            // No OrderProcessingStarted: Reverse process incrementation!
+            selectSubagentMutex.lock.surround:
+              IO:
+                counters.decrement(selectedDriver.subagentBundleId, selectedDriver.subagentId)
 
   private def failProcessStart(problem: Problem, order: Order[IsFreshOrReady])
   : IO[Checked[Option[Order[Order.State]]]] =
@@ -250,9 +258,9 @@ extends Service.StoppableByRequest:
 
   def recoverProcessingOrders(orders: Seq[Order[Order.Processing]])
   : IO[Seq[(OrderId, Checked[FiberIO[OrderProcessed]])]] =
-    orders.parTraverse: order =>
-      recoverOrderProcessing(order)
-        .map(order.id -> _)
+      orders.parTraverse: order =>
+        recoverOrderProcessing(order)
+          .map(order.id -> _)
 
   // TODO recover all orders at once
   private def recoverOrderProcessing(order: Order[Order.Processing])
@@ -264,27 +272,34 @@ extends Service.StoppableByRequest:
           _.idToDriver.get(subagentId)
         .flatMap:
           case None =>
-            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure:
-              s"$subagentId is missed"))
+            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted:
+              Problem.pure(s"$subagentId is missed"))
             persist(order.id, orderProcessed :: Nil)
               .flatMapT: _ =>
                 IO.pure(orderProcessed).start // dummy fiber
                   .map(Right(_))
 
           case Some(subagentDriver) =>
-            forProcessingOrder(order, subagentDriver):
-              if failedOverSubagentId contains subagentDriver.subagentId then
-                subagentDriver.emitOrderProcessLostAfterRestart(order)
-                  .flatMapT: orderProcessed =>
-                    IO.pure(orderProcessed).start // dummy fiber
-                      .map(Right(_))
-              else
-                subagentDriver.recoverOrderProcessing(order)
-            .catchIntoChecked
-            .flatTap:
-              case Left(problem) =>
-                IO(logger.error(s"recoverOrderProcessing ${order.id} => $problem"))
-              case Right(_) => IO.unit
+            selectSubagentMutex.lock.surround:
+              // TODO increment all these orders at once, locking once
+              IO:
+                counters.increment(order.state.subagentBundleId, subagentId)
+            *>
+              forProcessingOrder(order, subagentDriver):
+                if failedOverSubagentId contains subagentDriver.subagentId then
+                  subagentDriver.emitOrderProcessLostAfterRestart(order)
+                    .flatMapT: orderProcessed =>
+                      IO.pure(orderProcessed).start // dummy fiber
+                        .map(Right(_))
+                else
+                  subagentDriver.recoverOrderProcessing(order)
+              .catchIntoChecked
+              .onProblem: problem =>
+                logger.error(s"recoverOrderProcessing ${order.id}: $problem")
+                // Reverse process incrementation ???
+                selectSubagentMutex.lock.surround:
+                  IO:
+                    counters.decrement(order.state.subagentBundleId, subagentId)
 
   private def persist[E <: OrderCoreEvent](orderId: OrderId, events: Seq[E])
   : IO[Checked[Persisted[S, E]]] =
@@ -315,9 +330,13 @@ extends Service.StoppableByRequest:
         // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
         fiber.joinStd
           .flatTap: orderProcessed =>
-            journal.aggregate.flatMap:
-              _.idToOrder.get(orderId).fold(IO.right(())): order =>
-                eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
+            selectSubagentMutex.lock.surround:
+              IO:
+                counters.decrement(order.state.subagentBundleId, subagentDriver.subagentId)
+            *>
+              journal.aggregate.flatMap:
+                _.idToOrder.get(orderId).fold(IO.right(())): order =>
+                  eventCallbackOnce.orThrow((orderId <-: orderProcessed) :: Nil)
           .guarantee:
             orderToSubagent.remove(orderId).void
           .start
@@ -372,11 +391,17 @@ extends Service.StoppableByRequest:
     val scope = maybeBundleId.foldMap(bundleProcessCountScope)
     Stream.repeatEval:
       stateVar.value.flatMap: directorState =>
-        IO:
-          def subagentIdToScope(subagentId: SubagentId) =
-            maybeBundleId.fold(Scope.empty): bundleId =>
-              bundleSubagentProcessCountScope(bundleId, subagentId)
-          directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
+        selectSubagentMutex.lock.surround:
+          IO:
+            def subagentIdToScope(subagentId: SubagentId) =
+              maybeBundleId.fold(Scope.empty): bundleId =>
+                bundleSubagentProcessCountScope(bundleId, subagentId)
+            val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
+            result match
+              case Right(Some(driver)) =>
+                counters.increment(maybeBundleId, driver.subagentId)
+              case _ =>
+            result
             //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
     .evalTap:
       // TODO Do not poll (for each Order)
@@ -391,7 +416,8 @@ extends Service.StoppableByRequest:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterProcessCount" =>
-            Some(Right(NumberValue(bundleProcessCount(bundleId))))
+            Some(Right(NumberValue:
+              counters.processCount(bundleId)))
           case _ => None
 
   private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId, subagentId: SubagentId)
@@ -400,34 +426,9 @@ extends Service.StoppableByRequest:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7ClusterSubagentProcessCount" =>
-            Some(Right(NumberValue(bundleSubagentProcessCount(bundleId, subagentId))))
+            Some(Right(NumberValue:
+              counters.processCount(bundleId, subagentId)))
           case _ => None
-
-  /** Number of processes started via the specified SubagentBundleId.
-    */
-  private def bundleProcessCount(bundleId: SubagentBundleId): Int =
-    val state = journal.unsafeAggregate()
-    orderToSubagent.unsafeToMap.keysIterator
-      .flatMap: orderId =>
-        state.idToOrder.get(orderId)
-      .count: order =>
-        order.state match
-          case state: Order.Processing => state.subagentBundleId.contains(bundleId)
-          case _ => false
-
-  /** Number of processes started via the specified SubagentBundleId and
-    * running at the specified Subagent.
-    */
-  private def bundleSubagentProcessCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
-    val state = journal.unsafeAggregate()
-    orderToSubagent.unsafeToMap.iterator
-      .flatMap: (orderId, driver) =>
-        (subagentId == driver.subagentId).thenMaybe:
-          state.idToOrder.get(orderId)
-      .count: order =>
-        order.state match
-          case state: Order.Processing => state.subagentBundleId.contains(bundleId)
-          case _ => false
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:
@@ -690,9 +691,11 @@ object SubagentKeeper:
     actorSystem: ActorSystem)
     (using IORuntime, Tag[S])
   : ResourceIO[SubagentKeeper[S]] =
-    Service.resource:
-      new SubagentKeeper(localSubagentId, localSubagent, agentPath, controllerId,
-        failedOverSubagentId, journal, directorConf, actorSystem)
+    Resource.suspend:
+      Mutex[IO].map: mutex =>
+        Service.resource:
+          new SubagentKeeper(localSubagentId, localSubagent, agentPath, controllerId,
+            failedOverSubagentId, journal, mutex, directorConf, actorSystem)
 
   private[director] def determineSubagentBundle(
     order: Order[IsFreshOrReady],
@@ -717,7 +720,9 @@ object SubagentKeeper:
   private final case class SelectedDriver(
     subagentBundleId: Option[SubagentBundleId],
     subagentDriver: SubagentDriver,
-    stick: Boolean)
+    stick: Boolean):
+    export subagentDriver.subagentId
+
 
 
   private[director] final case class DeterminedSubagentBundle(
@@ -728,3 +733,56 @@ object SubagentKeeper:
     @TestOnly
     def stuck(stuckSubagentId: SubagentId): DeterminedSubagentBundle =
       DeterminedSubagentBundle(Some(SubagentBundleId.fromSubagentId(stuckSubagentId)))
+
+
+  /** Preliminary process counters used by Subagent priorisation. */
+  private final class SubagentProcessCounters:
+    private var subagentToCounter = Map[SubagentId, Int]()
+    private var bundleAndSubagentToCounter = Map[(SubagentBundleId, SubagentId), Int]()
+
+    /** Number of processes started via the specified SubagentBundleId.
+      */
+    def processCount(bundleId: SubagentBundleId): Int =
+      bundleAndSubagentToCounter.valuesIterator.sum
+
+    /** Number of processes started via the specified SubagentBundleId and
+      * running at the specified Subagent.
+      */
+    def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
+      bundleAndSubagentToCounter.getOrElse(bundleId -> subagentId, 0)
+
+    def increment(bundleId: Option[SubagentBundleId], subagentId: SubagentId): Unit =
+      add(1, bundleId, subagentId)
+
+    def decrement(bundleId: Option[SubagentBundleId], subagentId: SubagentId): Unit =
+      add(-1, bundleId, subagentId)
+
+    private def add(plusMinus: 1 | -1, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
+    : Unit =
+      subagentToCounter = subagentToCounter.updatedWith(subagentId):
+        _.fold(Some(plusMinus)): o =>
+          assertIfStrict(o + plusMinus >= 0)
+          Some(o + plusMinus)
+      assertIfStrict(subagentToCounter(subagentId) >= 0)
+
+      bundleId.foreach: bundleId =>
+        bundleAndSubagentToCounter = bundleAndSubagentToCounter.updatedWith(bundleId -> subagentId):
+          _.fold(Some(plusMinus))(o => Some(o + plusMinus))
+        assertIfStrict(bundleAndSubagentToCounter(bundleId -> subagentId) >= 0)
+
+    def removeSubagent(subagentId: SubagentId): Unit =
+      assertIfStrict(subagentToCounter.get(subagentId).contains(0))
+      subagentToCounter = subagentToCounter - subagentId
+      bundleAndSubagentToCounter = bundleAndSubagentToCounter.filter:
+        case ((bundleId, subagentId_), n) =>
+          subagentId_ != subagentId || locally:
+            assertIfStrict(n == 0, bundleId.toString)
+            false
+
+    def removeBundle(bundleId: SubagentBundleId): Unit =
+      bundleAndSubagentToCounter = bundleAndSubagentToCounter.filter:
+        case ((bundleId_, _), n) =>
+          bundleId_ != bundleId || locally:
+            assertIfStrict(n == 0, bundleId.toString)
+            false
+  end SubagentProcessCounters
