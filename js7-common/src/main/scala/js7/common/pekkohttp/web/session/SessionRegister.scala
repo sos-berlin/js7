@@ -139,6 +139,7 @@ extends Service.TrivialReleasable:
 
             updated -> entry)
     .flatMap: entry =>
+      Bean.loginCount += 1
       Bean.sessionCount += 1
       IO.unlessA(isEternalSession):
         CatsDeadline.now.flatMap: now =>
@@ -290,8 +291,12 @@ object SessionRegister:
   sealed trait SessionsMXBean:
     this: Bean.type =>
 
+    def getLoginCount: Int =
+      loginCount.get
+
     def getSessionCount: Int =
       sessionCount.get
 
   object Bean extends SessionsMXBean:
-    val sessionCount = Atomic(0)
+    private[SessionRegister] val loginCount = Atomic(0)
+    private[SessionRegister] val sessionCount = Atomic(0)

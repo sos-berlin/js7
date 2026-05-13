@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 40,
+    "generation": 42,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -568,8 +568,8 @@
                   },
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "Starts/s"
+                      "id": "byFrameRefID",
+                      "options": "starts"
                     },
                     "properties": [
                       {
@@ -581,19 +581,8 @@
                         "value": "right"
                       },
                       {
-                        "id": "min",
-                        "value": 0
-                      },
-                      {
-                        "id": "max",
-                        "value": 1
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
+                        "id": "custom.axisColorMode",
+                        "value": "series"
                       }
                     ]
                   }
@@ -3080,6 +3069,46 @@
                         }
                       }
                     ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byValue",
+                      "options": {
+                        "op": "gte",
+                        "reducer": "allIsNull",
+                        "value": 0
+                      }
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": true,
+                          "viz": false
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byValue",
+                      "options": {
+                        "op": "gte",
+                        "reducer": "allIsZero",
+                        "value": 0
+                      }
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": true,
+                          "viz": false
+                        }
+                      }
+                    ]
                   }
                 ]
               }
@@ -4600,6 +4629,28 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
+                        "expr": "rate(js7_Sessions_LoginCount{js7ServerId=\"$js7ServerId\", js7ServerGroupId=\"$js7ServerGroupId\"}[$__rate_interval])",
+                        "instant": false,
+                        "legendFormat": "Logins",
+                        "range": true
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "prometheus-1"
+                      }
+                    },
+                    "refId": "Logins",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
                         "expr": "js7_Sessions_SessionCount{js7ServerId=\"$js7ServerId\", js7ServerGroupId=\"$js7ServerGroupId\"}",
                         "legendFormat": "Sessions",
                         "range": true
@@ -4631,7 +4682,7 @@
                   "calcs": [],
                   "displayMode": "list",
                   "placement": "bottom",
-                  "showLegend": false
+                  "showLegend": true
                 },
                 "tooltip": {
                   "hideZeros": false,
@@ -4661,7 +4712,6 @@
                     "axisColorMode": "text",
                     "axisLabel": "",
                     "axisPlacement": "auto",
-                    "axisSoftMax": 10,
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
@@ -4695,15 +4745,52 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Sessions"
+                      "scope": "series",
+                      "options": "Logins"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-blue",
+                          "fixedColor": "yellow",
                           "mode": "fixed"
                         }
+                      },
+                      {
+                        "id": "unit",
+                        "value": "/s"
+                      },
+                      {
+                        "id": "custom.axisColorMode",
+                        "value": "series"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Sessions"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisSoftMax",
+                        "value": 10
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "text",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "left"
                       }
                     ]
                   }
