@@ -83,11 +83,11 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       SubagentBundleId("BUNDLE"),
       subagentToPriority = Map(
         aSubagentId ->
-          // Number of processes started via our subagent bundle, allow 1
+          // Number of processes in this Subagent started via our SubagentBundle, allow 1
           expr"if $$js7ClusterSubagentProcessCount < 1 then 1 else missing",
         bSubagentId ->
-          // Number of processes in the subagent started via our subagent bundle, allow 2
-          expr"if $$js7ClusterProcessCount < 2 then 2 else missing",
+          // Number of processes started via our SubagentBundle, allow 3
+          expr"if $$js7ClusterProcessCount < 3 then 2 else missing",
         cSubagentId -> NumericConstant(0)))
 
     val otherSubagentBundle = SubagentBundle(

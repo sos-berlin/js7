@@ -5,6 +5,7 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
@@ -90,7 +91,9 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
               assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
               assertEqualJournalFiles(primaryDirectorEnv, backupDirectorEnv, n = 1)
 
-              primaryController.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
+              primaryController.api.addOrder:
+                FreshOrder(failOverOrderId, workflow.path, scheduledFor = Some(Timestamp.now + 1.s))
+              .await(99.s).orThrow
               val forceOrderProcessingStarted = await[OrderProcessingStarted](_.key == failOverOrderId)
                 .last.value.event
               assert(forceOrderProcessingStarted.subagentId contains subagentIds(0))
