@@ -9,12 +9,11 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.{ifFalse, tryIt, untry}
 import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.configutils.Configs.RichConfig
+import js7.base.fs2utils.HeartbeatDetector.{Alive, Expired, Late, detectHeartbeat}
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onlyNewest}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.PauseDetector
-import js7.base.monixutils.PauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.system.startup.Halt
@@ -529,9 +528,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                       s"❌❌ Received acknowledgements are suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k"
                     logged = true
                   !suppress
-            .detectPauses(expired = timing.passiveLostTimeout, late = timing.warnTimeout, tick = timing.heartbeat)
+            .detectHeartbeat(
+              heartbeat = timing.heartbeat,
+              late = timing.warnTimeout,
+              expired = timing.passiveLostTimeout,
+              tick = timing.heartbeat)
             .filter:
-              case PauseDetector.InTime(EventId.Heartbeat) => false
+              case Alive(EventId.Heartbeat) => false
               case _ => true
             .through: stream =>
               stream.onlyNewest
@@ -540,24 +543,21 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
               stopAcknowledging.get *> IO:
                 logger.debug("Stop fetchAndHandleAcknowledgedEventIds2 due to stopAcknowledging")
             .flatMap: // Turn into Stream[,Problem]
-              case PauseDetector.Late(noHeartbeatSince) =>
+              case Alive(eventId) =>
+                Stream.exec:
+                  journal.onPassiveNodeHasAcknowledged(eventId = eventId)
+              case Late(noHeartbeatSince) =>
                 fs2.Stream.exec:
                   SyncDeadline.usingNow:
-                    logger.warn(s"Heartbeat from the currently passive cluster ${passiveId
-                      } will be late after ${noHeartbeatSince.elapsed.pretty}")
-                fs2.Stream.empty
-
-              case PauseDetector.Expired(noHeartbeatSince) =>
+                    logger.warn(s"Heartbeat of passive cluster $passiveId is ${
+                      noHeartbeatSince.elapsed.pretty} late")
+              case Expired(noHeartbeatSince) =>
                 Stream.eval:
                   SyncDeadline.usingNow:
                     MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
                 .flatMap: problem =>
                   logger.debug(s"💥 $problem")
                   Stream.emit(problem)
-
-              case PauseDetector.InTime(eventId) =>
-                Stream.exec:
-                  journal.onPassiveNodeHasAcknowledged(eventId = eventId)
         .head.compile.last // The first problem, if any
         .map(_.toLeft(()))
       .map(_.flatten)

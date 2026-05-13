@@ -21,11 +21,11 @@ import js7.base.catsutils.SyncDeadline
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.HeartbeatDetector.{Alive, Expired, Late, detectHeartbeat}
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, mapParallelBatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.PauseDetector.{Expired, InTime, Late, detectPauses}
-import js7.base.monixutils.{PauseDetector, RefCountedResource}
+import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.MBeanUtils.registerMBean
@@ -400,7 +400,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
           logger.debug(s"observeJournalFile($activeNodeApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
           Stream.raiseError[IO](t)
-        // detectPauses here ???
+        // detectHeartbeat here ???
         .mapParallelBatch(
           /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = true*/)(
@@ -410,11 +410,17 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
               positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .pipeIf(clusterConf.testHeartbeatLossPropertyKey.isDefined):
           _.filter(testHeartbeatSuppressor) // for testing
-        .detectPauses(expired = timing.passiveLostTimeout, late = timing.warnTimeout, tick = timing.heartbeat)
+        .detectHeartbeat(
+          heartbeat = timing.heartbeat,
+          late = timing.warnTimeout,
+          expired = timing.activeLostTimeout,
+          tick = timing.tick)
         .flatMap[IO, Checked[Unit]]:
           case Late(noHeartbeatSince) =>
-            logger.warn(s"Heartbeat from the currently active cluster $activeId will be late after ${noHeartbeatSince.elapsed.pretty}")
+            logger.warn:
+              s"Heartbeat of active cluster $activeId is ${noHeartbeatSince.elapsed.pretty} late"
             fs2.Stream.empty
+
           case Expired(noHeartbeatSince) =>
             val aggregate =
               if isReplicatingHeadOfFile then continuation.aggregate else recoverer.result()
@@ -507,19 +513,19 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                   "clusterState=" + clusterState)
                 Stream.empty  // Ignore
 
-          case InTime((_, h @ StampedHeartbeatByteArray, _)) =>
+          case Alive((_, h @ StampedHeartbeatByteArray, _)) =>
             // Already logged by PekkoHttpClient:
             //logger.trace(h.utf8String.trim)
             Stream.empty
 
-          case InTime((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
+          case Alive((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             // fileLength may be advanced to end of file when file's last record is truncated
             logger.debug("End of replicated journal file reached: " +
               s"${file.getFileName} eventId=${recoverer.eventId} fileLength=$fileLength")
             _eof = true
             Stream.emit(Left(EndOfJournalFileMarker))
 
-          case InTime((fileLength, line, journalRecord)) =>
+          case Alive((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
             // Already logged by PekkoHttpClient:
             //logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
