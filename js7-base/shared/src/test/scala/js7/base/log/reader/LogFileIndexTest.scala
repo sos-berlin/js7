@@ -5,7 +5,7 @@ import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
+import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.regex.Pattern
 import java.util.zip.GZIPOutputStream
 import js7.base.config.{Js7Conf, Js7Config}
@@ -166,7 +166,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           val lineLength = 130
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
-            writeFile(file, lineLength = lineLength, lineCount = lineCount, extra) *>
+            writeFile(file, lineLength = lineLength, lineCount = lineCount, extra = extra) *>
               (1 to 20).foldMap: _ =>
                 IO.defer:
                   System.gc()
@@ -199,14 +199,16 @@ object LogFileIndexTest:
     file: Path,
     lineLength: Int,
     lineCount: Int,
+    startTime: String = "2026-02-12T00:00:00.000",
     extra: String = "",
     gzip: Boolean = false)
   : IO[Unit] =
-    val aTimestamp = "2026-02-12T00:00:00.000"
+    assert(startTime.length == 23, s"startTime must be 23 chars long, but was $startTime")
+    LocalDateTime.parse(startTime) // Must be parseable
     val lineRemainder =
       val middle = s" info  js7-7  js7.logger - message "
-      middle + extra + "." * (lineLength - aTimestamp.length - middle.length - extra.length - 1) + "\n"
-    assert(lineRemainder.length == lineLength - aTimestamp.length)
+      middle + extra + "." * (lineLength - startTime.length - middle.length - extra.length - 1) + "\n"
+    assert(lineRemainder.length == lineLength - startTime.length)
     val epochMilli = Instant.parse("2026-02-12T00:00:00Z").toEpochMilli
     Resource.fromAutoCloseable:
       IO.blocking:
@@ -215,7 +217,7 @@ object LogFileIndexTest:
           if gzip then new GZIPOutputStream(out) else out,
           UTF_8)
     .use: writer =>
-      writer.write("2026-02-12T00:00:00.000 ... timezone=Europe/Mariehamn ...\n")
+      writer.write(s"$startTime+02:00 ...\n")
       IO.blocking:
         val t = Deadline.now
         meterWrite:
@@ -224,4 +226,4 @@ object LogFileIndexTest:
             if isTest then assert(ts.length == 23 & 23 + lineRemainder.length == lineLength)
             writer.write(ts)
             writer.write(lineRemainder)
-        logger.info(bold("File written: " + bytesPerSecondString(t.elapsed, Files.size(file))))
+        logger.info("File written: " + bytesPerSecondString(t.elapsed, Files.size(file)))

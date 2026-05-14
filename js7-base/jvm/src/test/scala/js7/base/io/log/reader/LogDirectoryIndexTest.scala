@@ -159,7 +159,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-02 00:00:00.000 info LogDirectoryIndexTest - MESSAGE\n",
                   "2026-03-03 00:00:00.000 info LogDirectoryIndexTest - MESSAGE\n"))
 
-  "1 GiB debug-log file" in {
+  "Five 100MB debug-log files" in {
     if !isIntelliJIdea && !sys.props.contains("test.speed") then
       IO.pure(pending)
     else
@@ -170,14 +170,17 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         if !isIntelliJIdea then
           println(s"➤LogFileIndex: $line")
 
-      val logFileSize = 1024 * 1024 * 1024
+      val logFileSize = 100 * 1024 * 1024
       val lineLength = 130
       val lineCount = logFileSize / lineLength
       temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
-        val gzFile = dir / "js7-debug-2026-03-21-3.log.gz"
-        LogFileIndexTest.writeFile(
-          gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true
-        ) *>
+        (1 to 5).foldMap: i =>
+          val date = s"2026-05-1$i"
+          val gzFile = dir / s"js7-debug-$date-1.log.gz"
+          LogFileIndexTest.writeFile(
+            gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true,
+            startTime = s"${date}T00:00:00.000")
+        *>
           (1 to 10).foldMap: _ =>
             IO.defer:
               val t = Deadline.now
@@ -185,10 +188,10 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 LogDirectoryIndex.directory(
                   dir, Debug, isValidFile = _ => true
                 ).use: logDirectoryIndex =>
-                  logDirectoryIndex.keyedByteLogLineStream(
+                  logDirectoryIndex.byteLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),
                     LogSelection()
-                  ).take(1).compile.drain *>
+                  ).compile.drain *>
                     IO:
                       val elapsed = t.elapsed
                       val used = sys.runtime.totalMemory - sys.runtime.freeMemory
