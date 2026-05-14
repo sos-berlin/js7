@@ -362,10 +362,5 @@ object LogFileIndex:
       matcher.region(b, e max b)
     end if
 
-  def positionedStream(file: Path, position: Long, bufferSize: Int): Stream[IO, Chunk[Byte]] =
-    Stream.resource:
-      ByteSeqFileReader.resource[Chunk[Byte]](file, bufferSize = bufferSize)
-        .evalTap: reader =>
-          reader.setPosition(position)
-    .flatMap:
-      _.streamUntilEnd
+  private def positionedStream(file: Path, position: Long, bufferSize: Int): Stream[IO, Chunk[Byte]] =
+    ByteSeqFileReader.streamFromPosition(file, position = position, byteChunkSize = bufferSize)

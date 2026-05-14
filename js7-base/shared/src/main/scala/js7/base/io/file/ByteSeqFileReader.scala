@@ -9,7 +9,6 @@ import java.nio.file.StandardOpenOption.READ
 import java.nio.file.{NoSuchFileException, Path}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2Utils.toPosAndLines
 import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -126,19 +125,17 @@ object ByteSeqFileReader:
     .flatMap:
       _.streamUntilEnd
 
+  def streamFromPosition[ByteSeq: ByteSequence](file: Path, position: Long, byteChunkSize: Int)
+  : Stream[IO, ByteSeq] =
+    Stream.resource:
+      resource(file, bufferSize = byteChunkSize)
+        .evalTap:
+          _.setPosition(position)
+    .flatMap:
+      _.streamUntilEnd
+
 
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
-
-    def streamPosAndLines(position: Long, breakLinesLongerThan: Option[Int])
-      (using ByteSeq: ByteSequence[ByteSeq])
-    : Stream[IO, (Long, ByteSeq)] =
-      fs2.Stream.exec:
-        reader.setPosition(position)
-      .append:
-        streamUntilEnd
-      .through:
-        toPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
-
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
       streamEndlessly.takeWhile(_.nonEmpty)
 
@@ -165,3 +162,4 @@ object ByteSeqFileReader:
             buffer.remaining
           else
             -1
+  end extension

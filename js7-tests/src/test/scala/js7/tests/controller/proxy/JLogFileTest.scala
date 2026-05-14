@@ -121,7 +121,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   "Speed tests" - {
     lazy val fillLog =
-      val expectedSize = 200_000_000L
+      val expectedSize = if isIntelliJIdea then 1024 * 1024 * 1024L else 1 * 1024 * 1024L
       val line = "FILLER " + "+" * 200
       (1L to (expectedSize - Files.size(logFile)) / (90 + line.length)).foreach: i =>
         logger.debug(line)
