@@ -3,7 +3,8 @@ package js7.base.log.reader.recompressors
 import cats.effect.{IO, Resource}
 import fs2.Chunk
 import java.io.{BufferedInputStream, BufferedOutputStream, InputStream, OutputStream}
-import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.io.OpaquePos
+import js7.base.log.reader.LogWriter
 import js7.base.utils.ScalaUtils.syntax.*
 
 private[reader] case object PlainRecompressor extends Recompressor:
@@ -19,14 +20,17 @@ private[reader] case object PlainRecompressor extends Recompressor:
       IO:
         new LogWriter with AutoCloseable:
           private val _out = new BufferedOutputStream(out)
-          private var lastByteCount = 0L
+          private var _position = 0L
 
           def write(chunk: Chunk[Byte]): Unit =
             _out.write(chunk.toArray)
-            lastByteCount += chunk.size
+            _position += chunk.size
 
-          def markPosition() =
-            lastByteCount
+          def position =
+            _position
+
+          def markOpaquePos() =
+            OpaquePos(_position)
 
           def close() =
             _out.close()

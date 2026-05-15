@@ -1,22 +1,28 @@
 package js7.base.log.reader
 
 import java.util.Arrays.binarySearch
+import js7.base.io.OpaquePos
 import js7.base.time.EpochNano
 import org.jetbrains.annotations.TestOnly
 
 /** Like a reduced Java ConcurrentSkipListMap, but with small arrays and binary search.
   *
-  * Requires 16 bytes per entry.
-  * Or not more then twice as much before calling [[shrink]].
+  * For a given EpochNano returns a byte position and a
+  * OpaquePos (position of a chunk in a compressed file).
+  *
+  * Same for a given byte position.
+  *
+  * Requires 24 bytes per entry, after [[shrink]] has been called.
   *
   * EpochNanoToPos needs only a fraction of memory compared with TreeMap or ConcurrentSkipListMap.
   */
-private final class EpochNanoToPos(initialSize: Int = 1024):
+private final class EpochNanoToPos(initialSize: Int = 32):
 
   private var _length = 1
   private var _byteCount = 0L
   private var epochNanos: Array[Long] = Array.fill(initialSize)(0L)
-  private var positions: Array[Long] = Array.fill(initialSize)(0L)
+  private var opaquePositions: Array[Long] = Array.fill(initialSize)(0L)
+  private var bytePositions: Array[Long] = Array.fill(initialSize)(0L)
 
   epochNanos(0) = Long.MinValue
 
@@ -44,29 +50,44 @@ private final class EpochNanoToPos(initialSize: Int = 1024):
   /** The last entry, or (`EpochNano(Long.MinValue), 0)` if empty.*/
   def lastEntry: (EpochNano, Long) =
     val i = _length - 1
-    EpochNano(epochNanos(i)) -> positions(i)
+    EpochNano(epochNanos(i)) -> opaquePositions(i)
+
+  def posToChunkPosAndOpaquePos(position: Long): (Long, OpaquePos) =
+    toPosAndOpaque(posToEpochNano(position))
+
+  private def posToEpochNano(position: Long): EpochNano =
+    // No synchronization needed
+    val i = binarySearch(bytePositions, 0, _length, position)
+    if i < 0 then
+      EpochNano(epochNanos(-i - 2))
+    else
+      EpochNano(epochNanos(i))
 
   /** Return the position corresponding to the greatest [[EpochNano]]
     * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
     */
-  def toPos(epochNano: EpochNano): Long =
+  def toOpaquePos(epochNano: EpochNano): OpaquePos =
+    toPosAndOpaque(epochNano)._2
+
+  private def toPosAndOpaque(epochNano: EpochNano): (Long, OpaquePos) =
     // No synchronization needed
     val i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
     if i < 0 then
-      positions(-i - 2)
+      bytePositions(-i - 2) -> OpaquePos(opaquePositions(-i - 2))
     else
-      positions(i)
+      bytePositions(i) -> OpaquePos(opaquePositions(i))
 
   /** `epochNano` must be greater than the last added [[EpochNano]].*/
-  def add(epochNano: EpochNano, pos: Long) =
-    // Update in a way that toPos works without synchronization
+  def add(epochNano: EpochNano, opaquePos: OpaquePos, position: Long): Unit =
+    // Update in a way that toOpaquePos works without synchronization
     synchronized:
       if epochNano.toLong <= epochNanos(_length - 1) then throw new IllegalArgumentException(
         s"EpochNanoToPos: Added values must be strictly monotonic increasing: add(${
           epochNano.show}) <= ${lastEpochNano.show}")
       if _length == epochNanos.length then
         resize(2 * _length max 16)
-      positions(_length) = pos
+      bytePositions(_length) = position
+      opaquePositions(_length) = opaquePos.toLong
       epochNanos(_length) = epochNano.toLong
       _length += 1
 
@@ -77,11 +98,17 @@ private final class EpochNanoToPos(initialSize: Int = 1024):
           resize(_length)
 
   private def resize(newSize: Int): Unit =
-    val newPositions = new Array[Long](newSize)
-    val newEpochNanos = new Array[Long](newSize)
-    System.arraycopy(positions, 0, newPositions, 0, _length)
-    System.arraycopy(epochNanos, 0, newEpochNanos, 0, _length)
-    positions = newPositions
-    epochNanos = newEpochNanos
+    bytePositions = resizeArray(bytePositions, newSize)
+    opaquePositions = resizeArray(opaquePositions, newSize)
+    epochNanos = resizeArray(epochNanos, newSize)
+
+  private def resizeArray(array: Array[Long], newSize: Int): Array[Long] =
+    val a = new Array[Long](newSize)
+    System.arraycopy(array, 0, a, 0, _length)
+    a
 
   override def toString = s"EpochNanoToPos($length entries})"
+
+
+object EpochNanoToPos:
+  val EntrySize: Int = 3 * 8 // Three Array[Long]

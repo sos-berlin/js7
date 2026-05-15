@@ -19,6 +19,7 @@ import js7.base.config.Js7Conf
 import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.{inputStreamToStream, toPosAndLines}
+import js7.base.io.OpaquePos
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
@@ -163,7 +164,8 @@ extends Service.StoppableByCancel:
       toDeferredIndex(logFile)
     .flatMap: deferredIndex =>
       if logFile.isGzipped then
-        ??? // FIXME deferredIndex.logFileIndex.positionToLines(position, logSelection)
+        // LogLineIndex converts the (uncompressed) position into a OpaquePos in the compressed file
+        deferredIndex.logFileIndex.positionToLines(position, logSelection)
       else
         ByteSeqFileReader.streamFromPosition[fs2.Chunk[Byte]](
           deferredIndex.file,
@@ -423,7 +425,7 @@ object LogDirectoryIndex:
 
   private def positionedTmpFileStream(
     file: Path,
-    position: Long,
+    opaquePos: OpaquePos,
     bufferSize: Int,
     recompressor: Recompressor)
   : Stream[IO, Chunk[Byte]] =
@@ -433,7 +435,7 @@ object LogDirectoryIndex:
           new FileInputStream(file.toFile)
     .evalMap: (in: FileInputStream) =>
       IO.blocking:
-        in.skip(position)
+        in.skip(opaquePos.toLong)
         recompressor.decompressingInputStream(in)
     .flatMap: in =>
       inputStreamToStream(in, bufferSize)

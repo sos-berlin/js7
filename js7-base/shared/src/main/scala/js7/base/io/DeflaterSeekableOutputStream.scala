@@ -2,13 +2,14 @@ package js7.base.io
 
 import java.io.OutputStream
 import java.util.zip.Deflater
+import js7.base.io.OpaquePos
 
 /** A deflating output stream that supports independent compressed chunks.
   *
   * Each chunk is compressed independently with finish() and reset(), making them
   * separately inflatable. The chunks are concatenated in the output stream.
   *
-  * Call `markPosition()` to complete the current independently compressed chunk and get its
+  * Call `markOpaquePos()` to complete the current independently compressed chunk and get its
   * position in the output stream. Use these positions to inflate individual chunks.
   *
   * The entire stream can also be inflated by concatenating all chunks with a
@@ -23,7 +24,7 @@ final class DeflaterSeekableOutputStream(
 extends SeekableOutputStream(out):
 
   private val buffer = new Array[Byte](bufferSize)
-  private var byteCount = 0L
+  private var compressedPos = 0L
   private var closed = false
   private val singleByte = new Array[Byte](1)
 
@@ -52,13 +53,13 @@ extends SeekableOutputStream(out):
     *
     * @return The byte position where this chunk ends (and next chunk begins)
     */
-  def markPosition(): Long =
+  def markOpaquePos() =
     ensureOpen()
     deflater.finish()
     while !deflater.finished() do
       deflate()
     deflater.reset()
-    byteCount
+    OpaquePos(compressedPos)
 
   override def flush(): Unit =
     ensureOpen()
@@ -82,7 +83,7 @@ extends SeekableOutputStream(out):
     val len = deflater.deflate(buffer, 0, buffer.length)
     if len > 0 then
       out.write(buffer, 0, len)
-      byteCount += len
+      compressedPos += len
 
   private def ensureOpen(): Unit =
     if closed then

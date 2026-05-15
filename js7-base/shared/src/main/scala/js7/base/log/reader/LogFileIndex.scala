@@ -11,6 +11,7 @@ import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.toPosAndLines
 import js7.base.fs2utils.StreamExtensions.cedePeriodically
+import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogFileIndex.*
 import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
@@ -44,7 +45,7 @@ import scala.math.Ordered.orderingToOrdered
   * @param nanoToPos may grow concurrently
   */
 final class LogFileIndex private(
-  toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+  toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos,
   breakLinesLongerThan: Option[Int])
   (using ZoneId):
@@ -73,10 +74,10 @@ final class LogFileIndex private(
       var droppedLines, droppedBytes = 0L
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
-      val position = nanoToPos.toPos(begin.toEpochNano)
-      toPositionedStream(position, logSelection.byteChunkSize)
+      val opaquePos = nanoToPos.toOpaquePos(begin.toEpochNano)
+      toPositionedStream(opaquePos, logSelection.byteChunkSize)
         .through:
-          toPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
+          toPosAndLines(firstPosition = opaquePos.toLong, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = parseTimestampInLogLine(byteLine)(timestampParser.parse) < beginEpochNano
           if drop then
@@ -86,14 +87,44 @@ final class LogFileIndex private(
             val elapsed = t.elapsed
             logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
               } skipped after indexed position · ${elapsed.pretty}")
-            if pos - position >= NoEntryWarnThreshold then
+            val skipped = pos - opaquePos.toLong
+            if skipped >= NoEntryWarnThreshold then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
-                toKiBGiB(pos - position)}, found position=$position")
+                toKiBGiB(skipped)}, found position=$opaquePos")
           drop
       .map: (pos, line) =>
         PosAndLine(pos, line)
       .through:
         applyLogSelection(logSelection, timestampParser)
+
+  def positionToLines(position: Long, logSelection: LogSelection): Stream[IO, PosAndLine] =
+    Stream.suspend:
+      // Convert the byte position of the desired line into the byte position of the corresponding
+      // (compressed) chunk and the OpaquePos (the position in the compressed file) of this chunk.
+      val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
+      val t = Deadline.now
+      var droppedLines, droppedBytes = 0L
+      toPositionedStream(opaquePos, logSelection.byteChunkSize)
+        .through:
+          toPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
+        .dropWhile: (pos, byteLine) =>
+          val drop = pos < position
+          if drop then
+            droppedLines += 1
+            droppedBytes += byteLine.size
+          else
+            val elapsed = t.elapsed
+            logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
+              } skipped after indexed position · ${elapsed.pretty}")
+            if pos - position >= NoEntryWarnThreshold then
+              logger.warn(s"Slow direct log file access due to missing index entry for ${
+                toKiBGiB(pos - position)
+              }, found position=$position")
+          drop
+        .map: (pos, line) =>
+          PosAndLine(pos, line)
+        .through:
+          applyLogSelection(logSelection, FastTimestampParser())
 
   override def toString =
     s"LogFileIndex(${nanoToPos.length}×${toKiBGiB(LogBytesPerEntry)})"
@@ -108,15 +139,14 @@ object LogFileIndex:
     */
   private val BuildBufferSize = 1024 * 1024
   /** One index entry per 32KiB-block or a half MiB per GiB log file. */
-  val LogBytesPerEntry = 32 * 1024
-  private val EntrySize = 16 // Size of a EpochNanoToPos entry (two Longs)
+  val LogBytesPerEntry: Int = 32 * 1024
   private val NoEntryWarnThreshold = 128 * 1024
   private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
   private val PollDuration = 100.ms
   private val logger = Logger[LogFileIndex]
 
   logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, requiring 1/${
-    LogBytesPerEntry / EntrySize} of log file's size as heap space")
+    LogBytesPerEntry / EpochNanoToPos.EntrySize} of log file's size as heap space")
 
   /** Builds a concurrently updated [[LogFileIndex]] from a growing log file. */
   def buildGrowing(
@@ -134,13 +164,13 @@ object LogFileIndex:
   def fromFile(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
     fromStream(
       resolveLabel(logFile, label),
-      toBuilderStream = positionedStream(logFile, 0, _),
+      toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
       toPositionedStream = positionedStream(logFile, _, _))
 
   def fromStream(
     label: String,
     toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
-    toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+    toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
     logWriter: ResourceIO[LogWriter] = Resource.eval(IO(LogWriter.Void())))
     (using ZoneId)
   : IO[LogFileIndex] =
@@ -182,7 +212,7 @@ object LogFileIndex:
 
     def fromStream(
       toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
-      toPositionedStream: (pos: Long, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+      toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
       logWriter: ResourceIO[LogWriter])
     : IO[LogFileIndex] =
       meterIndexing:
@@ -280,44 +310,14 @@ object LogFileIndex:
             case chunk: Chunk[Byte @unchecked] =>
               logWriter.write(chunk)
             case epochNano: EpochNano @unchecked =>
-              val markedPos = logWriter.markPosition()
-              nanoToPos.add(epochNano, markedPos)
+              val pos = logWriter.position
+              val opaquePos = logWriter.markOpaquePos()
+              nanoToPos.add(epochNano, opaquePos, pos)
 
     end WriteOpsBuffer
   end Builder
 
 
-  /** Allows writing a compressed file and marks seekable positions in this file.
-    *
-    * For easier handling, despite I/O, the methods don't return IO.
-    * The calls are expected to be fast and done only during indexing.
-    */
-  trait LogWriter:
-    def write(chunk: Chunk[Byte]): Unit
-
-    /** Mark the current position as positionable and return the position.
-      *
-      * A simple file would simply return the written byte count (see also the [[Void]] subclass)
-      *
-      * For a compress file, the compression would be finished.
-      * The following data must be decompressable without knowledge of the forgoing data.
-      */
-    def markPosition(): Long
-
-  object LogWriter:
-    final class Void(startPosition: Long = 0) extends LogWriter:
-      private var position = startPosition
-
-      def write(chunk: Chunk[Byte]) =
-        position += chunk.size
-
-      def markPosition() =
-        position
-
-    object Void:
-      def resource(startPosition: Long = 0): ResourceIO[Void] =
-        Resource.eval(IO(LogWriter.Void(startPosition)))
-  end LogWriter
 
 
   def applyLogSelection(logSelection: LogSelection, fastTimestampParser: => FastTimestampParser)
@@ -362,5 +362,5 @@ object LogFileIndex:
       matcher.region(b, e max b)
     end if
 
-  private def positionedStream(file: Path, position: Long, bufferSize: Int): Stream[IO, Chunk[Byte]] =
-    ByteSeqFileReader.streamFromPosition(file, position = position, byteChunkSize = bufferSize)
+  private def positionedStream(file: Path, position: OpaquePos, bufferSize: Int): Stream[IO, Chunk[Byte]] =
+    ByteSeqFileReader.streamFromPosition(file, position = position.toLong, byteChunkSize = bufferSize)

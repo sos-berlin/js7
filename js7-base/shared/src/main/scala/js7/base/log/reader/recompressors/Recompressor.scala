@@ -6,7 +6,7 @@ import java.io.{FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Path
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.log.reader.LogWriter
 import js7.base.system.JavaServiceProviders
 
 trait Recompressor:

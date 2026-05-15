@@ -26,16 +26,33 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
   def keyedLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[KeyedLogLine] =
+    keyedLogLineFlux_(begin, logSelection)
+
+  def keyedLogLineFlux(begin: LogLineKey, logSelection: JLogSelection)
+  : Flux[KeyedLogLine] =
+    keyedLogLineFlux_(begin, logSelection)
+
+  private def keyedLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
+  : Flux[KeyedLogLine] =
     logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
       .map(_.toKeyedLogLine)
       .asFlux
 
   def keyedByteLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[KeyedByteLogLine] =
+    keyedByteLogLineFlux_(begin, logSelection)
+
+  def keyedByteLogLineFlux(begin: LogLineKey, logSelection: JLogSelection)
+  : Flux[KeyedByteLogLine] =
+    keyedByteLogLineFlux_(begin, logSelection)
+
+  private def keyedByteLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
+  : Flux[KeyedByteLogLine] =
     logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
       .asFlux
 
-  def instantToLogLineKey(instant: Instant, logSelection: JLogSelection): CompletableFuture[Optional[LogLineKey]] =
+  def instantToLogLineKey(instant: Instant, logSelection: JLogSelection)
+  : CompletableFuture[Optional[LogLineKey]] =
     logDirectoryIndex.instantToLogLineKey(instant, logSelection.toScala)
       .map(_.toJava)
       .unsafeToCompletableFuture()

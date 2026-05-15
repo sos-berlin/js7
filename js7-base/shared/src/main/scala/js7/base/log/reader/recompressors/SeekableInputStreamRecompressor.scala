@@ -5,8 +5,7 @@ import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.io.{SeekableInputStream, SeekableOutputStream}
-import js7.base.log.reader.LogFileIndex
-import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.log.reader.LogWriter
 import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor.*
 
 trait SeekableInputStreamRecompressor extends Recompressor:
@@ -24,14 +23,19 @@ trait SeekableInputStreamRecompressor extends Recompressor:
     .flatMap: (out: SeekableOutputStream) =>
       Resource.fromAutoCloseable:
         IO:
-          new LogFileIndex.LogWriter with AutoCloseable:
+          new LogWriter with AutoCloseable:
             private val buf = new Array[Byte](512)
+            private var _bytePosition = 0L
 
             def write(chunk: Chunk[Byte]): Unit =
               out.write(chunk.toArray)
+              _bytePosition += chunk.size
 
-            def markPosition() =
-              out.markPosition()
+            def position: Long =
+              _bytePosition
+
+            def markOpaquePos() =
+              out.markOpaquePos()
 
             def close() =
               out.close()

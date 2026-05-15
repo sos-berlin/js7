@@ -5,10 +5,11 @@ import cats.syntax.option.none
 import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
-import js7.base.io.CountingOutputStream
-import js7.base.log.reader.LogFileIndex.LogWriter
+import js7.base.io.{CountingOutputStream, OpaquePos}
+import js7.base.log.reader.LogWriter
 import js7.base.utils.ScalaUtils.syntax.*
 
+// Slower than DeflateRecompressor
 private[reader] case object GzipRecompressor extends Recompressor:
 
   def findRecompressor(name: String) =
@@ -21,7 +22,8 @@ private[reader] case object GzipRecompressor extends Recompressor:
     Resource.fromAutoCloseable:
       IO:
         new LogWriter with AutoCloseable:
-          private var lastByteCount = 0L
+          private var _position = 0L
+          private var _compressesPosition = 0L
           private var _gzip = none[MyGzipOutputStream]
 
           def write(chunk: Chunk[Byte]): Unit =
@@ -30,16 +32,20 @@ private[reader] case object GzipRecompressor extends Recompressor:
               _gzip = Some(gzip)
               gzip
             gzip.write(chunk.toArray)
+            _position += chunk.size
 
-          def markPosition() =
+          def position =
+            _position
+
+          def markOpaquePos() =
             _gzip.foreach: gzip =>
               _gzip = None
               gzip.close()
-              lastByteCount += gzip.byteCount
-            lastByteCount
+              _compressesPosition = _compressesPosition + gzip.byteCount
+            OpaquePos(_compressesPosition)
 
           def close() =
-            markPosition()
+            markOpaquePos()
 
 
   private final class MyGzipOutputStream private(out: CountingOutputStream)
