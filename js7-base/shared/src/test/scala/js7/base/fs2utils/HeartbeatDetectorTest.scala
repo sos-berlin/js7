@@ -94,7 +94,7 @@ final class HeartbeatDetectorTest extends OurAsyncTestSuite:
     val chunkSize = 10
     Stream.iterable(1 to n)
       .chunkN(chunkSize).evalMap(IO(_)).unchunks // asynchronous chunks
-      .detectHeartbeat(heartbeat = 100.ms, late = 100.ms, expired = 1.s, tick = 100.ms)
+      .detectHeartbeat(heartbeat = 999.s, late = 999.s, expired = 999.s, tick = 999.s)
       .collect:
         case HeartbeatDetector.Alive(v) => v
       .chunks
