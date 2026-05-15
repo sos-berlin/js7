@@ -2,8 +2,8 @@ package js7.proxy
 
 import cats.effect.std.Supervisor
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
-import fs2.Stream
 import fs2.concurrent.Topic
+import fs2.{Chunk, Stream}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
@@ -19,7 +19,7 @@ private final class JournaledProxyService[S <: SnapshotableState[S]] private[Jou
   underlyingStream: Stream[IO, EventAndState[Event, S]],
   proxyConf: ProxyConf,
   onEvent: EventAndState[Event, S] => Unit,
-  topic: Topic[IO, EventAndState[Event, S]],
+  topic: Topic[IO, Chunk[EventAndState[Event, S]]],
   supervisor: Supervisor[IO])
   (using S: SnapshotableState.Companion[S])
 extends Service.StoppableByRequest, JournaledProxy[S]:
@@ -43,24 +43,27 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   private def readAndPublishUnderlyingStream(whenStateFetched: Deferred[IO, Unit]): IO[Unit] =
     logger.traceIO:
       underlyingStream
-        .evalTap: eventAndState =>
-          IO.defer:
+        .chunks
+        .evalTapChunk: chunk =>
+          chunk.foreach: eventAndState =>
             _currentState = eventAndState.state
             S.updateStaticReference(eventAndState.state)
-            whenStateFetched.complete(()).void *>
-              IO(onEvent(eventAndState))
+            onEvent(eventAndState)
+          whenStateFetched.complete(()).void
         .interruptWhen(untilStopRequested.attempt)
-        .through(topic.publish)
-        .compile
-        .drain
+        .through:
+          topic.publish
+        .compile.drain
 
   def subscribe(maxQueued: Option[Int] = None)
   : ResourceIO[Stream[IO, EventAndState[Event, S]]] =
     topic.subscribeAwait(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
+      .map(_.unchunks)
 
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
     logger.debugStream(s"Stream[IO, EventAndState[Event, $S]"):
       topic.subscribe(maxQueued = queueSize getOrElse proxyConf.eventQueueSize)
+        .unchunks
 
   def sync(eventId: EventId): IO[Unit] =
    logger.traceIO("sync", EventId.toString(eventId)):
@@ -104,7 +107,7 @@ private object JournaledProxyService:
   private val logger = Logger[this.type]
 
   def service[S <: SnapshotableState[S]](
-    baseStream: Stream[IO, EventAndState[Event, S]],
+    underlyingStream: Stream[IO, EventAndState[Event, S]],
     proxyConf: ProxyConf,
     onEvent: EventAndState[Event, S] => Unit)
     (using SnapshotableState.Companion[S])
@@ -112,9 +115,9 @@ private object JournaledProxyService:
     for
       supervisor <- Supervisor[IO]
       topic <- Resource.make(
-        acquire = Topic[IO, EventAndState[Event, S]])(
+        acquire = Topic[IO, Chunk[EventAndState[Event, S]]])(
         release = _.close.void)
       journaledProxy <- Service:
-        JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor)
+        JournaledProxyService[S](underlyingStream, proxyConf, onEvent, topic, supervisor)
     yield
       journaledProxy
