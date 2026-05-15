@@ -20,9 +20,9 @@ import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.{inputStreamToStream, toPosAndLines}
 import js7.base.io.OpaquePos
+import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, DirectoryWatchSettings}
-import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogFileReader.UniqueHeaderSize
@@ -481,6 +481,8 @@ object LogDirectoryIndex:
         _.foldMap: allo =>
           allo.allocatedThing.fileSize.foreach: o =>
             Bean.tmpFilesSize -= o.decompressed
+          if allo.allocatedThing.file != originalFile then
+            FileDeleter.tryDeleteFile(allo.allocatedThing.file)
           allo.release
 
     def toLogLineKey(logLevel: LogLevel, position: Long): LogLineKey =

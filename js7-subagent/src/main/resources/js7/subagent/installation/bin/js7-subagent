@@ -199,7 +199,10 @@ while true; do
 
   if [[ $exitCode -eq 0 ]] || [[ $exitCode -ge 97 ]] && [[ $exitCode -le 99 ]]; then
     log "Clear $workDir"
-    find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
+    #?find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
+    rm -fv "$workDir/*"
+    log "Clear $logs"
+    rm -fv "$logs"/*-indexed.tmp
   fi
 
   # For testing, we restart after SIGKILL, too
