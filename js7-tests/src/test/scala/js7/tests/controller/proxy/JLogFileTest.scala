@@ -67,14 +67,14 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
       // Info because our log filename does not contain "debug-"
-      controllerApi.getKeyedLogLines(Info, begin = Instant.now - 3.s)
-        .flatMap: stream =>
-          stream.map(_.line)
-            .takeUntil: line =>
-              line.contains(logText)
-            .compile
-            .toVector.map: lines =>
-              assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+      fs2.Stream.force:
+        controllerApi.getKeyedLogLines(Info, begin = Instant.now - 3.s)
+      .map(_.line)
+      .takeUntil: line =>
+        line.contains(logText)
+      .compile
+      .toVector.map: lines =>
+        assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
   "Scala, String lines" in:
     val instant = Instant.now
@@ -82,14 +82,14 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     logger.info(logText)
     controllerApiResource.use: controllerApi =>
       // Info because our log filename does not contain "debug-"
-      controllerApi.getLogLines(Info, begin = Instant.now - 3.s, LogSelection())
-        .flatMap: stream =>
-          stream.map(_.utf8String)
-            .takeUntil: line =>
-              line.contains(logText)
-            .compile
-            .toVector.map: lines =>
-              assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+      fs2.Stream.force:
+        controllerApi.getLogLines(Info, begin = Instant.now - 3.s, LogSelection())
+      .map(_.utf8String)
+      .takeUntil: line =>
+        line.contains(logText)
+      .compile
+      .toVector.map: lines =>
+        assert(lines.size >= 1 & lines.exists(_.contains(logText)))
 
   "Java" in:
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTester.java! 🍋🍋🍋"
@@ -118,6 +118,14 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
     .evalOnExecutor(ForkJoinPool.commonPool)
     .map: n =>
       assert(n >= 1)
+
+  "Java testScrolling" in:
+    IO.fromCompletableFuture:
+      IO:
+        JLogFileTester.testScrolling(jAdmissions)
+    .evalOnExecutor(ForkJoinPool.commonPool)
+    .map: result =>
+      assert(result == "FINISHED")
 
   "Speed tests" - {
     lazy val fillLog =

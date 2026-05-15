@@ -113,6 +113,36 @@ final class JLogFileTester {
             .count().toFuture();
     }
 
+    static CompletableFuture<String> testScrolling(List<JAdmission> admissions) {
+        return runWithProxy(admissions, controllerProxy ->
+            controllerProxy
+                // Read the lines
+                .keyedLogLineFlux(
+                    Js7ServerId.primaryController,
+                    LogLevel.info(),
+                    Instant.now().minusSeconds(3600),
+                    JLogSelection.empty().withLineLimit(3))
+                .publishOn(Schedulers.boundedElastic())
+                .flatMapIterable(identity())
+                .last()
+                .flatMap(last ->
+                    // Continue reading with the last of the three read log lines
+                    controllerProxy
+                        .keyedLogLineFlux(
+                            Js7ServerId.primaryController,
+                            LogLevel.info(),
+                            last.key(),
+                            JLogSelection.empty().withLineLimit(1))
+                        .flatMapIterable(identity())
+                        .last()
+                        .map(next -> {
+                            // First line is the last of the three read log lines
+                            assert next.equals(last);
+                            return "FINISHED";
+                        }))
+                .toFuture());
+    }
+
     static CompletableFuture<Long> testRawBlocking(JControllerProxy controllerProxy) {
         return controllerProxy
             .byteLogLineFlux(
