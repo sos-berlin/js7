@@ -98,11 +98,7 @@ extends Service.StoppableByCancel:
     */
   def byteLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, fs2.Chunk[Byte]] =
-    if instantToLogFile.isEmpty then
-      Stream.empty
-    else
-      Stream.eval:
-        fileToKeyedByteLogLines(begin, logSelection)
+    fileToKeyedByteLogLines(begin, logSelection)
       .flatMap: (logFile, stream) =>
         stream.map(_.byteLine) ++ nextFilesToByteLines(logFile.fileInstant, logSelection)
 
@@ -137,19 +133,12 @@ extends Service.StoppableByCancel:
     *         Otherwise the LogLineKey of the instant of an instant that would be at this position.
     */
   def instantToLogLineKey(instant: Instant, logSelection: LogSelection): IO[Option[LogLineKey]] =
-    if instantToLogFile.isEmpty then
-      IO.none
-    else
-      keyedByteLogLineStream(instant, logSelection)
-        .head.compile.last.map(_.map(_.logLineKey))
+    keyedByteLogLineStream(instant, logSelection)
+      .head.compile.last.map(_.map(_.logLineKey))
 
   def keyedByteLogLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
-    if instantToLogFile.isEmpty then
-      Stream.empty
-    else
-      Stream.eval:
-        fileToKeyedByteLogLines(begin, logSelection)
+    fileToKeyedByteLogLines(begin, logSelection)
       .flatMap: (logFile, stream) =>
         stream ++ nextFilesToKeyedLogLines(logFile.fileInstant, logSelection)
 
@@ -199,11 +188,6 @@ extends Service.StoppableByCancel:
       logFileIndex.streamPosAndLine(begin, logSelection)
     .map: posAndLine =>
       KeyedByteLogLine(logLevel, logFile.fileInstant, posAndLine)
-
-  private def instantToLogFile(instant: Instant): LogFile =
-    instantToLogFile.floorEntry(instant) match
-      case null => instantToLogFile.firstEntry.getValue
-      case o => o.getValue
 
   private def nextFilesToKeyedLogLines(lastFileInstant: Instant, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =

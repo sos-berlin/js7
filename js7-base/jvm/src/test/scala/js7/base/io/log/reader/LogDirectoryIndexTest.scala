@@ -28,6 +28,7 @@ import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.duration.Deadline
 
+// See JLogDirectoryIndexTester, LogFileTest, LogFileClusterTest for more tests
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
   override def resourceForIORuntime =
