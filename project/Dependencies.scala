@@ -6,11 +6,11 @@ import scala.language.implicitConversions
 object Dependencies
 {
   val bouncyCastleVersion = "1.84"
-  val pekkoVersion = "1.5.0"
+  val pekkoVersion = "1.6.0"
   val pekkoHttpVersion = "1.3.0"
-  val slf4jVersion = "2.0.17"  // See also plugins.sbt
+  val slf4jVersion = "2.0.18"  // See also plugins.sbt
   val log4jVersion = "2.24.3"  // See also plugins.sbt
-//val log4jVersion = "2.25.2"  // See also plugins.sbt      2.25.2 throws NullPointerException
+//val log4jVersion = "2.26.0"  // See also plugins.sbt   2.25.0...2.26.0 throw NullPointerException
   val catsVersion = "2.13.0"
   val catsEffectVersion = "3.7.0"
   val catsEffectTestingVersion = catsEffectVersion
@@ -31,8 +31,8 @@ object Dependencies
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"
-  val reactorVersion = "3.8.3"
-  val vavrVersion = "0.10.7"
+  val reactorVersion = "3.8.5"
+  val vavrVersion = "1.0.1"
   val jnaVersion = "5.18.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
@@ -57,7 +57,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.6"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.8"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
