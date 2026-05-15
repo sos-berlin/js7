@@ -144,18 +144,28 @@ extends Service.StoppableByCancel:
         stream ++ nextFilesToKeyedLogLines(logFile.fileInstant, logSelection)
 
   private def fileToKeyedByteLogLines(begin: Instant | LogLineKey, logSelection: LogSelection)
-  : IO[(LogFile, Stream[IO, KeyedByteLogLine])] =
+  : Stream[IO, (LogFile, Stream[IO, KeyedByteLogLine])] =
     begin match
       case begin: Instant =>
-        IO:
-          val logFile = instantToLogFile(begin)
-          logFile -> fileToKeyedByteLogLines(logFile, begin, logSelection)
+        Stream.suspend:
+          instantToLogFile(begin).fold(Stream.empty): logFile =>
+            Stream.emit:
+              logFile -> fileToKeyedByteLogLines(logFile, begin, logSelection)
 
       case LogLineKey(logLevel, fileInstant, position) =>
-        IO:
-          if logLevel != this.logLevel then throw IllegalArgumentException("Wrong LogLevel")
-          val logFile = instantToLogFile(fileInstant)
-          logFile -> fileToKeyedByteLogLines(logFile, position, logSelection)
+        Stream.suspend:
+          if logLevel != this.logLevel then
+            Stream.raiseError(new IllegalArgumentException("Wrong LogLevel"))
+          else
+            instantToLogFile(fileInstant).fold(Stream.empty): logFile =>
+              Stream.emit:
+                logFile -> fileToKeyedByteLogLines(logFile, position, logSelection)
+
+  /** @return None if instantToLogFile is empty. */
+  private def instantToLogFile(instant: Instant): Option[LogFile] =
+    instantToLogFile.floorEntry(instant) match
+      case null => Option(instantToLogFile.firstEntry).map(_.getValue)
+      case o => Some(o.getValue)
 
   private def fileToKeyedByteLogLines(logFile: LogFile, position: Long, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =

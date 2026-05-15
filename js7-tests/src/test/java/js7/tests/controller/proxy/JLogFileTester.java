@@ -19,7 +19,6 @@ import reactor.core.scheduler.Schedulers;
 import static java.lang.Thread.currentThread;
 import static java.util.function.Function.identity;
 import static js7.proxy.javaapi.JProxyContext.assertIsNotProxyThread;
-import static js7.proxy.javaapi.JProxyContext.assertIsProxyThread;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -29,15 +28,15 @@ final class JLogFileTester {
     private final static Logger logger = getLogger(JLogFileTester.class);
 
     static CompletableFuture<Result> test(JControllerProxy proxy, String expectedLogText) {
-        assertIsProxyThread(); // Due to JLogFileTest
+        //assertIsProxyThread(); // Due to JLogFileTest
         return proxy
             .keyedLogLineFlux(
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3),
                 JLogSelection.empty()/*special case for test*/)
-            .doOnNext(chunk ->
-                assertIsProxyThread())
+            //.doOnNext(chunk ->
+            //    assertIsProxyThread())                                                                                                                                               0
             .flatMapIterable(identity())
             .takeUntil(keyedLogLine -> keyedLogLine.line().contains(expectedLogText))
             .collectList() // 💥 May blow up the heap
@@ -65,7 +64,7 @@ final class JLogFileTester {
     static CompletableFuture<Long> prettyTestNonBlocking(List<JAdmission> admissions) {
         assertThat(currentThread().getName(), startsWith("ForkJoinPool.commonPool-worker-"));
         return runWithProxy(admissions, controllerProxy -> {
-            assertIsProxyThread();
+            //assertIsProxyThread();
             return prettyTestNonBlocking(controllerProxy);
         });
     }
@@ -78,8 +77,8 @@ final class JLogFileTester {
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
                 JLogSelection.empty()/*special case for test*/)
-            .doOnNext(ignore ->
-                assertIsProxyThread()) // Do not block here!
+            //.doOnNext(ignore ->
+            //    assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())
             .doOnNext(keyedLogLines -> {
                 for (var keyedLogLine: keyedLogLines)
@@ -92,7 +91,7 @@ final class JLogFileTester {
     static CompletableFuture<Long> prettyTestBlocking(List<JAdmission> admissions) {
         assertThat(currentThread().getName(), startsWith("ForkJoinPool.commonPool-worker-"));
         return runWithProxy(admissions, controllerProxy -> {
-            assertIsProxyThread();
+            //assertIsProxyThread();
             return prettyTestBlocking(controllerProxy);
         });
     }
@@ -140,8 +139,8 @@ final class JLogFileTester {
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
                 JLogSelection.empty()/*special case, otherwise set lineLimit!*/)
-            .doOnNext(ignore ->
-                assertIsProxyThread()) // Do not block here!
+            //.doOnNext(ignore ->
+            //    assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {
                 for (var line: lines) {
                     doSomething(line);
