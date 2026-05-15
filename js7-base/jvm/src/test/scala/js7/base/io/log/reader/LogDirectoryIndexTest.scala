@@ -61,11 +61,14 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         given Config = Js7Config.defaultConfig
         LogDirectoryIndex.directory(dir, Info, _ => true)
           .use: logDirectoryIndex =>
+            /// Read *all* log files as text lines ///
             logDirectoryIndex.byteLineStream(startInstant, LogSelection())
               .map(_.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
-                //"2026-03-01 00:00:00.000+0200 HEADER\n",
+                  // Because we read from the very first log file, NO INDEXING OCCURS and
+                  // we read from the start of the file, including the header line.
+                  "2026-03-01 00:00:00.000+0200 HEADER\n",
                   "2026-03-01 00:00:01.000 info LogDirectoryIndexTest - MESSAGE 1\n",
                   "2026-03-01 00:00:02.000 info LogDirectoryIndexTest - MESSAGE 2\n",
                   "2026-03-01 00:00:03.000 info LogDirectoryIndexTest - MESSAGE 3\n",
@@ -111,6 +114,21 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-03 02:00:02.000 info LogDirectoryIndexTest - MESSAGE 26\n",
                   "2026-03-03 02:00:03.000 info LogDirectoryIndexTest - MESSAGE 27\n"))
               .productR:
+                val instant = ZonedDateTime.parse("2026-03-01T00:00:01.000+02").toInstant
+                logDirectoryIndex.byteLineStream(instant, LogSelection())
+                  .take(5)
+                  .map(_.utf8String)
+                  .compile.toList.map: lines =>
+                    assert(lines == List(
+                      "2026-03-01 00:00:01.000 info LogDirectoryIndexTest - MESSAGE 1\n",
+                      "2026-03-01 00:00:02.000 info LogDirectoryIndexTest - MESSAGE 2\n",
+                      "2026-03-01 00:00:03.000 info LogDirectoryIndexTest - MESSAGE 3\n",
+
+                      // Header lines included due to sequential reading without LogFileIndex
+                      "2026-03-01 01:00:00.000+0200 HEADER\n",
+                      "2026-03-01 01:00:01.000 info LogDirectoryIndexTest - MESSAGE 4\n"))
+              .productR:
+                /// Read all log files as KeyedByteLogLine ///
                 logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
                   .compile.toList
               .flatMap: keyedByteLogLines =>

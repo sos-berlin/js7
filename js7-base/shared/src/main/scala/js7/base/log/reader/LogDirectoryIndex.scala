@@ -41,6 +41,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ConcurrentHashMap}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
+import scala.math.Ordered.orderingToOrdered
 
 /** Provides a continuous stream of log lines over all log files in the directory.
   * @param directoryEvents updates the file list, must emit events only from `directory`
@@ -99,9 +100,18 @@ extends Service.StoppableByCancel:
     */
   def byteLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, fs2.Chunk[Byte]] =
-    fileToKeyedByteLogLines(begin, logSelection)
-      .flatMap: (logFile, stream) =>
-        stream.map(_.byteLine) ++ nextFilesToByteLines(logFile.fileInstant, logSelection)
+    begin match
+      case begin: Instant if Option(instantToLogFile.firstKey).forall(begin <= _) =>
+        // If `begin` is less or equal the Instant of the first log file, then we don't need to
+        // recompress and index. We simply read sequentially, starting with the first log file.
+        Option(instantToLogFile.firstEntry).map(_.getValue).fold(Stream.empty): logFile =>
+          completeFileToByteLines(logFile, logSelection) ++
+            nextFilesToByteLines(logFile.fileInstant, logSelection)
+
+      case begin =>
+        fileToKeyedByteLogLines(begin, logSelection)
+          .flatMap: (logFile, stream) =>
+            stream.map(_.byteLine) ++ nextFilesToByteLines(logFile.fileInstant, logSelection)
 
   private def nextFilesToByteLines(lastFileInstant: Instant, logSelection: LogSelection)
   : Stream[IO, fs2.Chunk[Byte]] =
@@ -112,6 +122,11 @@ extends Service.StoppableByCancel:
       .fold(Stream.empty): logFile =>
         completeFileToByteLines(logFile, logSelection) ++
           nextFilesToByteLines(logFile.fileInstant, logSelection)
+
+  private def nextFilesToByteLines(logFile: LogFile, logSelection: LogSelection)
+  : Stream[IO, fs2.Chunk[Byte]] =
+    completeFileToByteLines(logFile, logSelection) ++
+      nextFilesToByteLines(logFile.fileInstant, logSelection)
 
   private def completeFileToByteLines(logFile: LogFile, logSelection: LogSelection)
   : Stream[IO, fs2.Chunk[Byte]] =
