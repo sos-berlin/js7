@@ -125,7 +125,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
 
     "success" in:
       val orderIds = (1 to 2).map(i => OrderId(s"ORDER-$i")).toSet
-      val whenFinished = proxy.stream()
+      val whenFinished = proxy.stream
         .collect:
           case EventAndState(Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)), _, _)
             if orderIds contains orderId =>
@@ -171,7 +171,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
         val orderId = OrderId("SPEED")
         val t = Deadline.now
         val n =
-          proxy.stream()
+          proxy.stream
             .onStart:
               controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
                 .orThrow.void

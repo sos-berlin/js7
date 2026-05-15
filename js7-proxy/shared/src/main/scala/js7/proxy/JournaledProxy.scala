@@ -41,9 +41,9 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
 
   def name: String
 
-  def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
+  def stream: Stream[IO, EventAndState[Event, S]]
 
-  def subscribe(maxQueued: Option[Int] = None): ResourceIO[Stream[IO, EventAndState[Event, S]]]
+  def subscribe: ResourceIO[Stream[IO, EventAndState[Event, S]]]
 
   def sync(eventId: EventId): IO[Unit]
 

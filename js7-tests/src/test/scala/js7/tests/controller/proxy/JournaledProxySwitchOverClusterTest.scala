@@ -35,7 +35,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
       var lastEventId = EventId.BeforeFirst
 
       def runOrder(orderId: OrderId): Unit =
-        val whenFinished = proxy.stream()
+        val whenFinished = proxy.stream
           .find:
             case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) =>
               true

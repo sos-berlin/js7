@@ -34,10 +34,9 @@ object JournaledProxyStreamTester:
   : IO[EventAndState[E, S]] =
     // The observing promise tries to avoid the race condition between start of stream and body.
     val observingStarted = Promise[Unit]()
-    val whenAdded = proxy.stream()
-      .onStart(IO {
-        observingStarted.success(())
-      })
+    val whenAdded = proxy.stream
+      .onStart:
+        IO(observingStarted.success(()))
       .collect:
         case es @ EventAndState(Stamped(_, _, KeyedEvent(_, event)), _, _)
           if implicitClass[E].isAssignableFrom(event.getClass) =>

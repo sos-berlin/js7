@@ -61,7 +61,7 @@ final class JControllerProxy private[proxy](
   /** Listen to the already running event stream. */
   @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =
-    asScala.stream()
+    asScala.stream
       .map(JEventAndControllerState.apply)
       .asFlux
 

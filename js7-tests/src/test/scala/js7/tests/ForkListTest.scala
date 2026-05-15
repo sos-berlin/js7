@@ -75,7 +75,7 @@ final class ForkListTest
     val orderId = OrderId("SNAPSHOT-TEST")
     val n = 3
 
-    val asserted = proxy.stream()
+    val asserted = proxy.stream
       .collect:
         case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderForked)), _, state) =>
           assert(state.idToOrder(orderId) ==
@@ -333,7 +333,7 @@ final class ForkListTest
     val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
     val eventId = eventWatch.lastAddedEventId
 
-    val childOrdersProcessed = proxy.stream()
+    val childOrdersProcessed = proxy.stream
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, event: OrderEvent)

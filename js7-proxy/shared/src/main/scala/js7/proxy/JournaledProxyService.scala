@@ -55,21 +55,20 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
           topic.publish
         .compile.drain
 
-  def subscribe(maxQueued: Option[Int] = None)
-  : ResourceIO[Stream[IO, EventAndState[Event, S]]] =
-    topic.subscribeAwait(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
+  def subscribe: ResourceIO[Stream[IO, EventAndState[Event, S]]] =
+    topic.subscribeAwait(maxQueued = 1)
       .map(_.unchunks)
 
-  def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
+  def stream: Stream[IO, EventAndState[Event, S]] =
     logger.debugStream(s"Stream[IO, EventAndState[Event, $S]"):
-      topic.subscribe(maxQueued = queueSize getOrElse proxyConf.eventQueueSize)
+      topic.subscribe(maxQueued = 1)
         .unchunks
 
   def sync(eventId: EventId): IO[Unit] =
    logger.traceIO("sync", EventId.toString(eventId)):
     IO.defer:
       IO.unlessA(currentState.eventId >= eventId):
-        subscribe().use:
+        subscribe.use:
           _.dropWhile(_.stampedEvent.eventId < eventId)
             .merge:
               Stream.fixedRateStartImmediately[IO](proxyConf.syncPolling)
@@ -83,7 +82,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
 
   /** For testing: wait for a condition in the running event stream. * */
   def when(predicate: EventAndState[Event, S] => Boolean): IO[EventAndState[Event, S]] =
-    subscribe().use:
+    subscribe.use:
       _.filter(predicate)
         .head.compile.last
         .map(_.getOrElse(throw new EndOfEventStreamException))
