@@ -1356,8 +1356,16 @@ object ScalaUtils:
       val s = make(i)
       if !exists(s) then return s
       i += 1
-    null.asInstanceOf[String] // unreachable code
+    unreachable
 
   /** Like a `let a <- expr in body(a)`. */
   final inline def eval[A, B](inline expr: A)(inline body: A => B): B =
     body(expr)
+
+  /** Use this after endless loops like `while true`.
+    *
+    * Especially when the while loop is exited with a return instruction.
+    */
+  final def unreachable[A](using loc: ScalaSourceLocation): A =
+    // Should never happen!
+    throw new AssertionError(s"Supposed unreachable code executed in $loc")

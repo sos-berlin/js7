@@ -1241,6 +1241,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
   "eval" in:
     assert(eval(7)(a => 3 * a) == 21)
 
+
 object ScalaUtilsTest:
 
   private val logger = Logger[this.type]
