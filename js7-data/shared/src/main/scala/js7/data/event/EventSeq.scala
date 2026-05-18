@@ -1,9 +1,5 @@
 package js7.data.event
 
-import io.circe.generic.semiauto.deriveCodec
-import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CloseableIterator
 import js7.data.event.EventSeq.{Empty, NonEmpty}
@@ -35,10 +31,6 @@ object TearableEventSeq:
         try NonEmpty(stampeds.toVector)
         finally stampeds.close()
 
-  implicit def jsonCodec[E: Encoder: Decoder]: Codec.AsObject[TearableEventSeq[Seq, E]] =
-    TypedJsonCodec[TearableEventSeq[Seq, E]](
-      Subtype[EventSeq[Seq, E]],
-      Subtype(deriveCodec[Torn]))
 
 
 sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
@@ -56,14 +48,3 @@ object EventSeq:
   final case class Empty(lastEventId: EventId)
   extends EventSeq[Nothing, Nothing]:
     override def toString = s"EventSeq.Empty($lastEventId)"
-
-  implicit def nonEmptyJsonEncoder[E: Encoder]: Encoder.AsObject[NonEmpty[Seq, E]] =
-    eventSeq => JsonObject.singleton("stamped", eventSeq.stamped.asJson)
-
-  implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
-    _.get[Seq[Stamped[E]]]("stamped") map NonEmpty.apply
-
-  implicit def jsonCodec[E: Encoder: Decoder]: Codec.AsObject[EventSeq[Seq, E]] =
-    TypedJsonCodec[EventSeq[Seq, E]](
-      Subtype[NonEmpty[Seq, E]],
-      Subtype(deriveCodec[Empty]))
