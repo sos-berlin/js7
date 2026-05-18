@@ -20,6 +20,22 @@ object EpochNano:
   def from(instant: Instant): EpochNano =
     instant.getEpochSecond * 1_000_000_000L + instant.getNano
 
+  def fromDecimalString(string: String): EpochNano =
+    java.math.BigDecimal(string).movePointRight(9).longValue
+
+  given Ordering[EpochNano] = Ordering.Long
+
+  given Show[EpochNano] = _.show
+
+  given Encoder[EpochNano] =
+    case EpochNano.Zero => zeroJson
+    case epochNano => Json.fromBigDecimal:
+      java.math.BigDecimal.valueOf(epochNano.toLong, 6)
+
+  given Decoder[EpochNano] = c =>
+    c.as[java.math.BigDecimal].map:
+      _.movePointRight(6).longValue
+
   extension (epochNano: EpochNano)
     inline def toLong: Long =
       epochNano
@@ -48,20 +64,4 @@ object EpochNano:
 
     def show: String =
       epochNano.toInstant.toString
-
-
-  def fromDecimalString(string: String): EpochNano =
-    java.math.BigDecimal(string).movePointRight(9).longValue
-
-  given Ordering[EpochNano] = Ordering.Long
-
-  given Show[EpochNano] = _.show
-
-  given Encoder[EpochNano] =
-    case EpochNano.Zero => zeroJson
-    case epochNano => Json.fromBigDecimal:
-      java.math.BigDecimal.valueOf(epochNano.toLong, 9)
-
-  given Decoder[EpochNano] = c =>
-    c.as[java.math.BigDecimal].map:
-      _.movePointRight(9).longValue
+  end extension
