@@ -10,77 +10,76 @@ final class TimeHistogramTest extends OurTestSuite:
   private val logger = Logger[this.type]
   private val periods = Seq(1.s, 10.s, 1.minute, 10.minutes, 1.hour)
 
-  private def counters(histogram: TimeHistogram) =
-    histogram.periods.map(histogram.last)
+  private def weights(histogram: TimeHistogram) =
+    histogram.periods.indices.map(histogram.weight)
 
   "test" in:
-    val histogram = TimeHistogram(periods)
+    var histogram = TimeHistogram(periods)
     Example.foreach: (time, n, sums) =>
-      histogram.setTime(time)
-      histogram.add(n)
+      histogram = histogram.add(time, n)
       for (period, i) <- histogram.periods.zipWithIndex do
         val what = s"($time, +$n, ${period.pretty})"
         withClue(s"$what --> "):
-          assert(histogram.last(period) == sums(i))
+          assert(histogram.speed(i) == Speed(sums(i), period))
         logger.info(s"$what ✔")
 
-    histogram.setTime(3.h)
-    assert(histogram.last(1.h) == 0)
+    histogram = histogram.setTime(3.h)
+    assert(histogram.speed(1.h) == Speed(0, 1.h))
 
   "test2" in:
-    val histogram = TimeHistogram(periods, fractions = 10)
-    histogram.setTime(0.s)
-    histogram.add(1) // value 1
-    histogram.setTime(5.s)
-    histogram.add(2) // value 2
-    histogram.setTime(9.s)
-    histogram.add(3) // value 3
-    assert(counters(histogram) == Seq(3, 6, 6, 6, 6))
+    var histogram = TimeHistogram(periods, fractions = 10)
+    histogram = histogram.setTime(0.s)
+    histogram = histogram.add(1) // value 1
+    histogram = histogram.setTime(5.s)
+    histogram = histogram.add(2) // value 2
+    histogram = histogram.setTime(9.s)
+    histogram = histogram.add(3) // value 3
+    assert(weights(histogram) == Seq(3, 6, 6, 6, 6))
 
     // Value 1 is no longer in last second
-    histogram.setTime(10.s)
-    assert(counters(histogram) == Seq(0, 5, 6, 6, 6))
+    histogram = histogram.setTime(10.s)
+    assert(weights(histogram) == Seq(0, 5, 6, 6, 6))
 
-    histogram.setTime(14.s)
-    assert(counters(histogram) == Seq(0, 5, 6, 6, 6))
+    histogram = histogram.setTime(14.s)
+    assert(weights(histogram) == Seq(0, 5, 6, 6, 6))
 
     // Value 2 is no longer in last 10 seconds
-    histogram.setTime(15.s)
-    assert(counters(histogram) == Seq(0, 3, 6, 6, 6))
+    histogram = histogram.setTime(15.s)
+    assert(weights(histogram) == Seq(0, 3, 6, 6, 6))
 
-    histogram.setTime(18.s)
-    assert(counters(histogram) == Seq(0, 3, 6, 6, 6))
+    histogram = histogram.setTime(18.s)
+    assert(weights(histogram) == Seq(0, 3, 6, 6, 6))
 
     // Value 3 is no longer in last 10 seconds
-    histogram.setTime(19.s)
-    assert(counters(histogram) == Seq(0, 0, 6, 6, 6))
+    histogram = histogram.setTime(19.s)
+    assert(weights(histogram) == Seq(0, 0, 6, 6, 6))
 
-    histogram.setTime(1.minute - 1.ns)
-    assert(counters(histogram) == Seq(0, 0, 6, 6, 6))
+    histogram = histogram.setTime(1.minute - 1.ns)
+    assert(weights(histogram) == Seq(0, 0, 6, 6, 6))
 
     // Value 3 is no longer in last minute
-    histogram.setTime(1.minute)
-    assert(counters(histogram) == Seq(0, 0, 3, 6, 6))
+    histogram = histogram.setTime(1.minute)
+    assert(weights(histogram) == Seq(0, 0, 3, 6, 6))
 
-    histogram.setTime(1.minute + 5.s)
-    assert(counters(histogram) == Seq(0, 0, 3, 6, 6))
+    histogram = histogram.setTime(1.minute + 5.s)
+    assert(weights(histogram) == Seq(0, 0, 3, 6, 6))
 
     // 1 minute / 10 fractions = 6s
     // Value 3 added 57s ago is no longer in last minute due to fraction duration of 6s
-    histogram.setTime(1.minute + 6.s)
-    assert(counters(histogram) == Seq(0, 0, 0, 6, 6))
+    histogram = histogram.setTime(1.minute + 6.s)
+    assert(weights(histogram) == Seq(0, 0, 0, 6, 6))
 
-    histogram.setTime(10.minutes - 1.s)
-    assert(counters(histogram) == Seq(0, 0, 0, 6, 6))
+    histogram = histogram.setTime(10.minutes - 1.s)
+    assert(weights(histogram) == Seq(0, 0, 0, 6, 6))
 
-    histogram.setTime(10.minutes)
-    assert(counters(histogram) == Seq(0, 0, 0, 0, 6))
+    histogram = histogram.setTime(10.minutes)
+    assert(weights(histogram) == Seq(0, 0, 0, 0, 6))
 
-    histogram.setTime(1.h - 1.ms)
-    assert(counters(histogram) == Seq(0, 0, 0, 0, 6))
+    histogram = histogram.setTime(1.h - 1.ms)
+    assert(weights(histogram) == Seq(0, 0, 0, 0, 6))
 
-    histogram.setTime(1.h)
-    assert(counters(histogram) == Seq(0, 0, 0, 0, 0))
+    histogram = histogram.setTime(1.h)
+    assert(weights(histogram) == Seq(0, 0, 0, 0, 0))
 
 
 private object TimeHistogramTest:
