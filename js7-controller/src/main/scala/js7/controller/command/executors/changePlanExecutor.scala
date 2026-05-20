@@ -13,7 +13,7 @@ private[command] def changePlanExecutor: CommandEventConverter[ChangePlan] =
         plan <- planSchemaState.plan(cmd.planId.planKey)
         coll <- plan.changePlanStatusEvents(
           cmd.status,
-          coll.now,
+          coll.timestamp,
           planSchemaState.finishedPlanRetentionPeriod)
       yield
         coll

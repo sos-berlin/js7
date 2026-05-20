@@ -361,7 +361,7 @@ object EventCollCtx:
   //</editor-fold
 
   extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
-    def now: Timestamp =
+    def timestamp: Timestamp =
       eventColl.context
 
 

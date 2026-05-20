@@ -27,7 +27,7 @@ object ControllerEventColl:
   //: Checked[Vector[KeyedEvent[E]]] =
   //  EventColl.keyedEvents(controllerState)(body)
   //
-  //inline def keyedEvents[E <: Event](controllerState: ControllerState, now: Timestamp)
+  //inline def keyedEvents[E <: Event](controllerState: ControllerState, timestamp: Timestamp)
   //  (body: EventColl[ControllerState, E] => Checked[EventColl[ControllerState, E]])
   //: Checked[Vector[KeyedEvent[E]]] =
-  //  EventColl.keyedEvents(controllerState, now)(body)
+  //  EventColl.keyedEvents(controllerState, timestamp)(body)

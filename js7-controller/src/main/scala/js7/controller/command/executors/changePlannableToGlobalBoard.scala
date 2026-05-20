@@ -12,7 +12,7 @@ private[command] def changePlannableToGlobalBoardExecutor
   CommandEventConverter.coll[ChangePlannableToGlobalBoard]: (cmd, coll) =>
     coll:
       import cmd.{globalBoard, planSchemaId}
-      globalBoard.evalEndOfLife(NowScope(coll.now)).flatMap: endOfLife =>
+      globalBoard.evalEndOfLife(NowScope(coll.timestamp)).flatMap: endOfLife =>
         ControllerStatePlanFunctions.changeBoardType(
           globalBoard,
           fromPlanSchemaId = planSchemaId,

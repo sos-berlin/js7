@@ -21,7 +21,7 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
           for
             coll <- coll.narrowAggregate[ControllerState]
             workflowId <- coll.aggregate.workflowPathToId(instr.workflowPath)
-            scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.now)
+            scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.timestamp)
             addedOrderIdString <- instr.orderId.evalAsString(
               using scope |+| UniqueOrderIdScope(coll.aggregate.idToOrder.keySet))
             planId <- instr.planId.fold(Checked(order.planId))(PlanId.evalPlanIdExpr(_, scope))

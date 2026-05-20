@@ -38,7 +38,7 @@ private trait EventInstructionExecutor extends InstructionExecutor:
     coll.order(orderId).flatMap: order =>
       if order.isStarted then
         body(coll, order)
-      else if order.isStartable(coll.now) then
+      else if order.isStartable(coll.timestamp) then
         for
           coll <- coll:
             order.id <-: OrderStarted

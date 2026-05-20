@@ -50,8 +50,9 @@ object ControllerStateExecutor:
       coll:
         freshOrders.checkUniquenessBy(_.id) *>
           freshOrders.flatTraverse:
-            addOrder(coll.aggregate, _, coll.now, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-              .map(_.toOption.toList.flatMap(_.toKeyedEvents))
+            addOrder(
+              coll.aggregate, _, coll.timestamp, suppressOrderIdCheckFor = suppressOrderIdCheckFor
+            ).map(_.toOption.toList.flatMap(_.toKeyedEvents))
 
   /** @return Right(Left(existingOrder)). */
   def addOrder(
@@ -363,7 +364,7 @@ object ControllerStateExecutor:
         coll <- coll:
           nextOrderEvents(touchedOrderIds)
         coll <- coll:
-          nextOrderWatchOrderEvents(coll.aggregate, coll.now)
+          nextOrderWatchOrderEvents(coll.aggregate, coll.timestamp)
       yield
         coll
 

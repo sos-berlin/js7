@@ -26,12 +26,12 @@ private object IfExecutor extends EventInstructionExecutor_[If], PositionInstruc
         coll.nix
       else
         try
-          throwingNextMove(instr, order, coll.aggregate, coll.now).flatMap:
+          throwingNextMove(instr, order, coll.aggregate, coll.timestamp).flatMap:
             case OrderMoved(to, reason) =>
               coll:
                 moveOrder(order, to, reason)
         catch case _: OrderNotStartedException =>
-          if !order.isStartable(coll.now) then
+          if !order.isStartable(coll.timestamp) then
             logger.trace(s"🪱 Useless execution of clock-querying if-instruction when ${
               order.id} has not reached its scheduled time")
             coll.nix

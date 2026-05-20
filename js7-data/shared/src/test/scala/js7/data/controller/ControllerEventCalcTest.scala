@@ -25,7 +25,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
     val controllerInitialized: EventCalcCtx[ControllerState, ControllerInitialized, TimeCtx] =
       EventCalc: coll =>
         coll:
-          NoKey <-: ControllerInitialized(ControllerId("Controller"), coll.now)
+          NoKey <-: ControllerInitialized(ControllerId("Controller"), coll.timestamp)
 
     // Second EventCalc //
     val itemAdded: EventCalcCtx[ControllerState, InventoryItemEvent, Any] =

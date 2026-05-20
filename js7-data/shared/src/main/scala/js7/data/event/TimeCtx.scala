@@ -8,5 +8,5 @@ type TimeCtx = Timestamp
 
 object TimeCtx:
 
-  inline def apply(now: Timestamp): TimeCtx =
-    now
+  inline def apply(timestamp: Timestamp): TimeCtx =
+    timestamp

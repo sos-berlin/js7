@@ -185,7 +185,7 @@ object OrderEventSource:
   : EventCalc[S, OrderCoreEvent] =
     val orderId = order.id
     EventCalc: coll =>
-      awokeEvent(order, coll.now).ifNonEmpty.map: events =>
+      awokeEvent(order, coll.timestamp).ifNonEmpty.map: events =>
         coll.addWithKey(orderId):
           events
       .getOrElse:
@@ -336,7 +336,7 @@ object OrderEventSource:
             coll <- coll:
               order.id <-: orderDeleted
             coll <- coll:
-              coll.aggregate.maybePlanFinished(order.planId, coll.now)
+              coll.aggregate.maybePlanFinished(order.planId, coll.timestamp)
           yield coll.widen
         .getOrElse:
           coll.nix
@@ -655,7 +655,7 @@ object OrderEventSource:
             case Some(orderMoved) =>
               Right(Some(orderMoved))
             case None =>
-              InstructionExecutor.nextMove(order, coll.aggregate, coll.now)
+              InstructionExecutor.nextMove(order, coll.aggregate, coll.timestamp)
     yield
       maybeMoved
 
@@ -663,7 +663,7 @@ object OrderEventSource:
     coll: EventColl[S, ? <: OrderCoreEvent],
     order: Order[Order.State])
   : Option[OrderMoved] =
-    (order.isSkippable(coll.now) && isSkippedDueToWorkflowPathControl(coll.aggregate, order)) ?
+    (order.isSkippable(coll.timestamp) && isSkippedDueToWorkflowPathControl(coll.aggregate, order)) ?
       OrderMoved(order.position.increment, Some(OrderMoved.SkippedDueToWorkflowPathControl))
 
   private def isSkippedDueToWorkflowPathControl(engineState: EngineState, order: Order[Order.State])

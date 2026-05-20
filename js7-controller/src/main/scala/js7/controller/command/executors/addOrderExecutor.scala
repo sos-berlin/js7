@@ -20,7 +20,7 @@ extends CommandEventConverter[AddOrder]:
       coll:
         coll.aggregate.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
           ControllerStateExecutor
-            .addOrder(coll.aggregate, cmd.order, coll.now,
+            .addOrder(coll.aggregate, cmd.order, coll.timestamp,
               suppressOrderIdCheckFor = suppressOrderIdCheckFor)
             .map:
               case Left(existing) =>

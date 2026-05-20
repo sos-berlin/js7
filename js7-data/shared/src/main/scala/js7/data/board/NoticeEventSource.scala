@@ -36,7 +36,7 @@ final class NoticeEventSource(forCommand: Boolean):
         notices <- boardStates.traverse: boardState =>
           boardState.board.match
             case board: GlobalBoard =>
-              board.postingOrderToNotice(order, coll.aggregate, coll.now)
+              board.postingOrderToNotice(order, coll.aggregate, coll.timestamp)
 
             case board: PlannableBoard =>
               board.postingOrderToNotice(order, coll.aggregate)
@@ -54,13 +54,13 @@ final class NoticeEventSource(forCommand: Boolean):
     EventCalc: coll =>
       for
         boardState <- coll.aggregate.keyTo(BoardState).checked(boardPath)
-        notice <- boardState.board.toNotice(plannedNoticeKey, endOfLife)(NowScope(coll.now))
+        notice <- boardState.board.toNotice(plannedNoticeKey, endOfLife)(NowScope(coll.timestamp))
         _ <- coll.aggregate.updatePlannedBoard(postNotice.noticeId.plannedBoardId):
           _.addNotice(notice) // Check only
         coll <- coll:
           NoticePosted.toKeyedEvent(notice)
         coll <-
-          if endOfLife.exists(_ <= coll.now) then
+          if endOfLife.exists(_ <= coll.timestamp) then
             logger.debug(s"Delete $notice immediately because endOfLife has been reached")
             coll:
               boardPath <-: NoticeDeleted(plannedNoticeKey)

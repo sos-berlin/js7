@@ -45,13 +45,13 @@ extends EventInstructionExecutor_[Instr]:
   def toEventCalc[S <: EngineState_[S]](instr: Instr, orderId: OrderId)
   : EventCalc[S, OrderCoreEvent] =
     useOrder(orderId): (coll, order) =>
-      ifReadyOrStartable(order, coll.now).map: order =>
+      ifReadyOrStartable(order, coll.timestamp).map: order =>
         coll:
           forkOrder(instr, order)
       .orElse:
         order.ifState[Order.Forked].map: order =>
           coll:
-            toJoined(order, instr, coll.aggregate, coll.now)
+            toJoined(order, instr, coll.aggregate, coll.timestamp)
       .orElse:
         order.ifState[Order.Processed].map: order =>
           if order.lastOutcome.isSucceeded then
@@ -74,7 +74,7 @@ extends EventInstructionExecutor_[Instr]:
     val orderId = order.id
     EventCalc: coll =>
       def checkedOrderForked(coll: EventColl[S, OrderCoreEvent]) =
-        toForkedEvent(instr, order, coll.aggregate, coll.now).flatTap: orderForked =>
+        toForkedEvent(instr, order, coll.aggregate, coll.timestamp).flatTap: orderForked =>
           checkOrderIdCollisions(orderForked, coll.aggregate)
 
       for
@@ -136,7 +136,7 @@ extends EventInstructionExecutor_[Instr]:
   : EventCalc[S, OrderCoreEvent] =
     EventCalc: coll =>
       coll:
-        tryJoinChildOrder(fork, order, coll.aggregate, coll.now)
+        tryJoinChildOrder(fork, order, coll.aggregate, coll.timestamp)
 
   private def tryJoinChildOrder(fork: Instr, childOrder: Order[Order.State], state: EngineState, now: Timestamp)
   : Option[KeyedEvent[OrderCoreEvent]] =

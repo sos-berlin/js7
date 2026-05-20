@@ -44,7 +44,7 @@ private object AdmissionTimeExecutor extends EventInstructionExecutor_[Admission
             case None =>
               // OPTIMISE: Result of findTimeInterval could be cached for the workflow position,
               // to avoid re-evaluation for each order.
-              val now = coll.now
+              val now = coll.timestamp
               instr.admissionTimeScheme
                 .findTimeInterval(now, limit = FindTimeIntervalLimit, dateOffset = noDateOffset)
               match

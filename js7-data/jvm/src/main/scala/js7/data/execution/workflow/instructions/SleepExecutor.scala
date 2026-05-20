@@ -22,21 +22,21 @@ private object SleepExecutor extends EventInstructionExecutor_[Sleep]:
       order.ifState[Order.IsFreshOrReady].map: order =>
         start(coll, orderId): (coll, order) =>
           for
-            scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.now)
+            scope <- coll.aggregate.toImpureOrderExecutingScope(order, coll.timestamp)
             value <- instr.duration.eval(using scope).map(_.missingTo(NumberValue.Zero))
             numberValue <- value.toNumberValue
             duration = bigDecimalSecondsToDuration(numberValue.number)
             coll <-
               if duration.isPositive then
                 coll:
-                  order.id <-: OrderSleeping(coll.now + duration)
+                  order.id <-: OrderSleeping(coll.timestamp + duration)
               else
                 coll:
                   moveOrderToNextInstruction(order)
           yield coll
       .orElse:
         order.ifState[Order.Sleeping].map: order =>
-          if order.state.until <= coll.now then
+          if order.state.until <= coll.timestamp then
             coll:
               moveOrderToNextInstruction(order)
           else
