@@ -128,6 +128,48 @@ object ScalaTime:
         case o: FiniteDuration => Some(o)
         case _: Duration.Infinite => None
 
+    def show: String =
+      if duration.length == 0 then
+        "0s"
+      else
+        val sb = StringBuilder()
+        val nanos = duration.toNanos.abs
+        if duration.length < 0 then sb += '-'
+
+        if nanos < 1_000 then
+          sb.append(nanos)
+          sb ++= "ns"
+        else if nanos < 1_000_000 then
+          sb ++= BigDecimal(nanos, 3).bigDecimal.stripTrailingZeros.toPlainString
+          sb ++= "µs"
+        else if nanos < 1_000_000_000 then
+          sb ++= BigDecimal(nanos, 6).bigDecimal.stripTrailingZeros.toPlainString
+          sb ++= "ms"
+        else if nanos < 60_000_000_000L then
+          sb ++= BigDecimal(nanos, 9).bigDecimal.stripTrailingZeros.toPlainString
+          sb ++= "s"
+        else
+          val days = nanos / (24 * 3600 * 1_000_000_000L)
+          if days > 0 then
+            sb.append(days)
+            sb += 'd'
+
+          val hours = nanos / (3600 * 1_000_000_000L) % 24
+          if hours < 10 then sb += '0'
+          sb.append(hours)
+          sb += ':'
+
+          val minutes = nanos / (60 * 1_000_000_000L) % 60
+          if minutes < 10 then sb += '0'
+          sb.append(minutes)
+          sb += ':'
+
+          val a = nanos % 60_000_000_000L
+          if a < 10_000_000_000L then sb += '0'
+          sb ++= f"${BigDecimal(a, 9).bigDecimal.stripTrailingZeros.toPlainString}"
+        sb.toString
+    end show
+
     override def toString: String = pretty  // For ScalaTest
 
     def msPretty: String =
