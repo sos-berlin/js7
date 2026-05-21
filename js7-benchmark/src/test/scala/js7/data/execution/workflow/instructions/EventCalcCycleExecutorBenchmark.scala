@@ -54,7 +54,7 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
     Order(orderId, workflow.id /: Position(0), Order.Ready())
 
   private val controllerState =
-    ControllerState.empty
+    ControllerState.emptyForTest
       .copy(idToOrder = Map(order.id -> order))
       .applyKeyedEvents(Seq(
         NoKey <-: UnsignedSimpleItemAdded(calendar.copy(itemRevision = Some(ItemRevision(1)))),

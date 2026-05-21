@@ -10,13 +10,13 @@ import js7.journal.data.JournalLocation
 import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration.*
 
-final class Recovered[S <: SnapshotableState[S]] private(
+final class Recovered[S <: SnapshotableState[S]: SnapshotableState.Companion as S] private(
   val journalLocation: JournalLocation,
   val recoveredJournalFile: Option[RecoveredJournalFile[S]],
   val totalRunningSince: Deadline,
+  initialVolatile: S.Volatile,
   config: Config,
   val eventWatch: JournalEventWatch)
-  (implicit S: SnapshotableState.Companion[S])
 extends AutoCloseable:
 
   def close(): Unit =
@@ -27,7 +27,7 @@ extends AutoCloseable:
     * because JournalEventWatch remains the same.
     */
   def changeRecoveredJournalFile(recoveredJournalFile: Option[RecoveredJournalFile[S]]) =
-    new Recovered(journalLocation, recoveredJournalFile, totalRunningSince, config, eventWatch)
+    new Recovered(journalLocation, recoveredJournalFile, totalRunningSince, initialVolatile, config, eventWatch)
 
   def eventId: EventId =
     recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
@@ -40,7 +40,7 @@ extends AutoCloseable:
       case o: FailedOver => o.passiveId
 
   def state: S =
-    recoveredJournalFile.fold(S.empty)(_.state)
+    recoveredJournalFile.fold(S.empty(initialVolatile))(_.state)
 
   def recoveredState: Option[S] =
     recoveredJournalFile.map(_.state)
@@ -56,30 +56,32 @@ extends AutoCloseable:
 
 
 object Recovered:
-  def fromJournalFile[S <: SnapshotableState[S]](
+  def fromJournalFile[S <: SnapshotableState[S]: SnapshotableState.Companion as S](
     journalLocation: JournalLocation,
     recoveredJournalFile: RecoveredJournalFile[S],
     totalRunningSince: Deadline,
+    initialVolatile: S.Volatile,
     config: Config)
-    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     new Recovered(
       journalLocation,
       Some(recoveredJournalFile),
       totalRunningSince,
+      initialVolatile,
       config,
       new JournalEventWatch(journalLocation, config, Some(recoveredJournalFile.eventId)))
 
-  def noJournalFile[S <: SnapshotableState[S]](
+  def noJournalFile[S <: SnapshotableState[S]: SnapshotableState.Companion as S](
     journalLocation: JournalLocation,
+    initialVolatile: S.Volatile,
     config: Config,
     totalRunningSince: Deadline = Deadline.now)
-    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
     new Recovered(
       journalLocation,
       recoveredJournalFile = None,
       totalRunningSince,
+      initialVolatile,
       config,
       new JournalEventWatch(journalLocation, config, Some(EventId.BeforeFirst)))
 

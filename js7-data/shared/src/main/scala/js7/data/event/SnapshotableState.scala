@@ -19,6 +19,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
+import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
 /** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
@@ -26,7 +27,7 @@ trait SnapshotableState[S <: SnapshotableState[S]]
 extends JournaledState[S]:
   this: S =>
 
-  def companion: SnapshotableState.Companion[S]
+  val companion: SnapshotableState.Companion[S]
 
   def name: String
 
@@ -67,10 +68,11 @@ extends JournaledState[S]:
   def eventId: EventId
 
   /** For testing, should be equal to this. */
-  final def toRecovered: S =
+  final def toRecovered(volatile: companion.Volatile): S =
     given Codec[Any] = companion.snapshotObjectJsonCodec
-    companion.fromStreamSync:
-      toSnapshotStream.map(_.asJson.as[Any].orThrow)
+    companion.fromStreamSync(
+      volatile,
+      toSnapshotStream.map(_.asJson.as[Any].orThrow))
     .withEventId(eventId)
 
 
@@ -135,13 +137,21 @@ object SnapshotableState:
   extends JournaledState.Companion[S], HasCodec:
     final given snapshotableStateCompanion: Companion[S] = this
 
-    def empty: S
+    @TestOnly
+    final lazy val emptyForTest: S =
+      empty(EmptyVolatile)
 
-    def newRecoverer(): SnapshotableStateRecoverer[S]
+    def empty(volatile: Volatile): S
 
+    def newRecoverer(volatile: Volatile): SnapshotableStateRecoverer[S]
+
+    @TestOnly
     final def fromStream(snapshotObjects: Stream[IO, Any]): IO[S] =
+      fromStream(EmptyVolatile, snapshotObjects)
+
+    final def fromStream(volatile: Volatile, snapshotObjects: Stream[IO, Any]): IO[S] =
       IO.defer:
-        val recoverer = newRecoverer()
+        val recoverer = newRecoverer(volatile)
         snapshotObjects.chunks.foreach: snapshots =>
           IO:
             snapshots.foreach: o =>
@@ -151,8 +161,8 @@ object SnapshotableState:
           IO:
             recoverer.result()
 
-    final def fromStreamSync(snapshotObjects: Stream[fs2.Pure, Any]): S =
-      val recoverer = newRecoverer()
+    final def fromStreamSync(volatile: Volatile, snapshotObjects: Stream[fs2.Pure, Any]): S =
+      val recoverer = newRecoverer(volatile)
       snapshotObjects.chunks.map: snapshots =>
         snapshots.foreach: o =>
           recoverer.addSnapshotObject(o)

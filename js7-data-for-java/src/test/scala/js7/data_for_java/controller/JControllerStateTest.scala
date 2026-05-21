@@ -73,7 +73,7 @@ private object JControllerStateTest:
   private val itemSigner = new ItemSigner(SillySigner.Default, versionedItemJsonCodec)
 
   private val planId = PlanSchemaId("DailyPlan") / "2025-01-29"
-  private val controllerState = ControllerState.empty.copy(
+  private val controllerState = ControllerState.emptyForTest.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
@@ -89,7 +89,7 @@ private object JControllerStateTest:
       ControllerId("CONTROLLER-ID"),
       ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")),
-    keyToUnsignedItemState_ = ControllerState.empty.keyToUnsignedItemState_ ++
+    keyToUnsignedItemState_ = ControllerState.emptyForTest.keyToUnsignedItemState_ ++
       Seq(
         AgentRefState(
           AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),

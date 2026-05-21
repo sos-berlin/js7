@@ -1,5 +1,6 @@
 package js7.data.event
 
+import com.typesafe.config.Config
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.OrderCannotAttachedToPlanProblem
@@ -22,6 +23,12 @@ extends EventDrivenState_[S, Event]:
     else
       withEventId_(eventId)
 
+  /** `eventId` is updated independently of `applyKeyedEvent`.
+    *
+    * Don't use eventId in [[applyKeyedEvent]]. It may be outdated.
+    *
+    * @see [[withEventId(EventId)]]
+    */
   def eventId: EventId
 
   final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
@@ -60,3 +67,23 @@ object JournaledState:
   extends EventDrivenState.Companion[S], HasEventCodec:
 
     given journaledStateCompanion: Companion[S] = this
+
+    type Volatile
+
+    def EmptyVolatile: Volatile
+
+    def configToVolatile(config: Config): Volatile =
+      EmptyVolatile
+
+
+  object Companion:
+    trait NoVolatile[S <: JournaledState[S]] extends Companion[S]:
+      final type NoVolatile = Unit
+      final type Volatile = NoVolatile
+
+      final val EmptyVolatile = ()
+
+      val empty: S
+
+      final def empty(volatile: NoVolatile): S =
+        empty

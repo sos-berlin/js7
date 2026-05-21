@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
+import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.metering.ResponsivenessEvent.InternalResponseTime
@@ -38,7 +38,7 @@ final class ResponsivenessMeterTest extends OurAsyncTestSuite:
     for
       recovered =
         val loc = JournalLocation(MyAggregate, dir / "test")
-        Recovered.noJournalFile[MyAggregate](loc, config)
+        Recovered.noJournalFile(using MyAggregate)(loc, MyAggregate.EmptyVolatile, config)
       journal <- FileJournal.service[MyAggregate](recovered, JournalConf.fromConfig(config))
       service <- ResponsivenessMeter.service(
         ResponsivenessMeter.Conf(
@@ -62,7 +62,7 @@ object ResponsivenessMeterTest:
     standards: SnapshotableState.Standards)
     extends SnapshotableState[MyAggregate]:
 
-    def companion = MyAggregate
+    val companion = MyAggregate
 
     def name = "MyAggregate"
 
@@ -81,16 +81,19 @@ object ResponsivenessMeterTest:
         case KeyedEvent(NoKey, _: ResponsivenessEvent.InternalResponseTime) => Right(this)
         case _ => applyStandardEvent(keyedEvent)
 
-  private object MyAggregate extends SnapshotableState.Companion[MyAggregate]:
+  private object MyAggregate extends
+    SnapshotableState.Companion[MyAggregate],
+    JournaledState.Companion.NoVolatile[MyAggregate]:
+
     val empty = MyAggregate(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
-    def newRecoverer(): SnapshotableStateRecoverer[MyAggregate] =
+    def newRecoverer(volatile: NoVolatile): SnapshotableStateRecoverer[MyAggregate] =
       new SnapshotableStateRecoverer[MyAggregate]:
         protected val S = MyAggregate
         protected def onAddSnapshotObject = PartialFunction.empty
         def journalState: JournalState = JournalState.empty
         def clusterState: ClusterState = ClusterState.Empty
-        def result() = MyAggregate.empty
+        def result() = MyAggregate.emptyForTest
 
     def keyedEventJsonCodec = KeyedEventTypedJsonCodec(
       KeyedSubtype[ResponsivenessEvent],

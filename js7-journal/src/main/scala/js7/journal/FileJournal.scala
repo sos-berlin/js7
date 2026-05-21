@@ -325,7 +325,11 @@ extends
     requireClusterAck.get
 
   protected def assertIsRecoverable(aggregate: S, keyedEvents: Iterable[AnyKeyedEvent] = Nil): Unit =
-    assertEqualSnapshotState("Recovered", aggregate, aggregate.toRecovered, keyedEvents)
+    assertEqualSnapshotState(
+      "Recovered",
+      aggregate,
+      aggregate.toRecovered(aggregate.companion.EmptyVolatile),
+      keyedEvents)
 
   protected def assertEqualSnapshotState(
     what: String,

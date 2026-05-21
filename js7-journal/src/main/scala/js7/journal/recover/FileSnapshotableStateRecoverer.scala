@@ -19,12 +19,13 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
 final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
-  journalFileForInfo: Path,
-  expectedJournalId: Option[JournalId])
-  (using S: SnapshotableState.Companion[S]):
+  using S: SnapshotableState.Companion[S])
+  (journalFileForInfo: Path,
+  expectedJournalId: Option[JournalId],
+  volatile: S.Volatile):
 
   private val since = now
-  private var _progress: Progress = Initial(S.newRecoverer())
+  private var _progress: Progress = Initial(S.newRecoverer(volatile))
   private var _snapshotCount = 0
   private var _eventCount = 0L
 

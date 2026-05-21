@@ -65,7 +65,7 @@ extends JournaledState[SubagentState], ItemContainer:
 
 
 object SubagentState
-extends JournaledState.Companion[SubagentState], ItemContainer.Companion[SubagentState]:
+extends JournaledState.Companion.NoVolatile[SubagentState], ItemContainer.Companion[SubagentState]:
 
   val empty: SubagentState = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 

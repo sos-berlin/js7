@@ -1122,7 +1122,7 @@ final class CancelOrdersExprFunctionSpeedTest extends OurTestSuite:
   "Speed test Expression" in:
     val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
     val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Seq(Sleep(expr"1")))
-    val controllerState = ControllerState.empty
+    val controllerState = ControllerState.emptyForTest
       .applyKeyedEvents(Seq(
         NoKey <-: VersionAdded(workflow.id.versionId),
         NoKey <-: VersionedItemAdded(itemSigner.sign(workflow))))

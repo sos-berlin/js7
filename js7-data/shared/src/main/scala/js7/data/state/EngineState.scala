@@ -304,7 +304,7 @@ object EngineState:
   private val meterChildOrderIsJoinable = CallMeter("EngineState.childOrderIsJoinable")
 
   trait Companion[T <: EngineState_[T]]
-    extends EventDrivenState.Companion[T]:
+  extends EventDrivenState.Companion[T]:
     override def updateStaticReference(engineState: T): Unit =
       EngineStateMXBean.setEngineState(engineState)
 

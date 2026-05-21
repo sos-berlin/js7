@@ -5,7 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
+import js7.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +16,7 @@ final case class TestState(
   keyToAggregate: Map[String, TestAggregate])
 extends SnapshotableState[TestState]:
 
-  def companion = TestState
+  val companion = TestState
 
   def name = "TestState"
 
@@ -62,14 +62,20 @@ extends SnapshotableState[TestState]:
     copy(standards = standards)
 
 
-object TestState extends SnapshotableState.Companion[TestState]:
+object TestState extends
+  SnapshotableState.Companion[TestState],
+  JournaledState.Companion.NoVolatile[TestState]:
+
   val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 
-  def newRecoverer() = new SnapshotableStateRecoverer.Simple(TestState):
-    def onAddSnapshotObject =
-      case o: TestAggregate =>
-        updateState(state.copy(keyToAggregate =
-          state.keyToAggregate + (o.key -> o)))
+  def newRecoverer(volatile: NoVolatile) =
+    new SnapshotableStateRecoverer.Simple(using TestState)(volatile):
+      protected val S: SnapshotableState.Companion[TestState] = TestState
+
+      def onAddSnapshotObject =
+        case o: TestAggregate =>
+          updateState(state.copy(keyToAggregate =
+            state.keyToAggregate + (o.key -> o)))
 
   def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](

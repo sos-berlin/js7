@@ -27,7 +27,7 @@ final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected val whenShuttingDown = Deferred.unsafe
 
-  protected def controllerState = IO.pure(Right(ControllerState.empty.copy(
+  protected def controllerState = IO.pure(Right(ControllerState.emptyForTest.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),

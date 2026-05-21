@@ -17,7 +17,7 @@ final class ControllerCommandToEventCalcTest extends OurTestSuite:
   "DeleteNoticeConverter" in:
     val eventCalc = ControllerCommandToEventCalc(ConfigFactory.empty).commandToEventCalc:
       DeleteNotice(PlanId.Global / BoardPath("BOARD") / "NOTICE")
-    val checked = eventCalc.calculate(ControllerState.empty, ctx)
+    val checked = eventCalc.calculate(ControllerState.emptyForTest, ctx)
     assert(checked == Left(UnknownKeyProblem("BoardPath", BoardPath("BOARD"))))
 
 

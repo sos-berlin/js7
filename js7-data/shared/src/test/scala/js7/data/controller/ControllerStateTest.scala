@@ -6,6 +6,7 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.crypt.silly.SillySigner
+import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
@@ -154,8 +155,16 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
   "fromStream is the reverse of toSnapshotStream" in:
     ControllerState
-      .fromStream(controllerState.toSnapshotStream)
-      .map(expectedState => assertEqual(controllerState, expectedState))
+      .fromStream(ControllerState.EmptyVolatile, controllerState.toSnapshotStream)
+      .map: recoveredState =>
+        if recoveredState == controllerState then
+          succeed
+        else
+          recoveredState.emitLineStream: line =>
+            logger.error(s"recovered: $line")
+          controllerState.emitLineStream: line =>
+            logger.error(s"expected : $line")
+          fail("recoveredState != controllerState")
       .unsafeToFuture()
 
   private val expectedSnapshotJsonArray =
@@ -360,7 +369,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     testJson(jsonArray, expectedSnapshotJsonArray)
 
   "ControllerStateRecoverer.addSnapshotObject" in:
-    val recoverer = new ControllerStateRecoverer
+    val recoverer = new ControllerStateRecoverer(ControllerVolatile.forTest)
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
       .foreach(recoverer.addSnapshotObject)
@@ -384,7 +393,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
   "v2.2 compatiblity" - {
     // COMPATIBLE with v2.2
-    var cs = ControllerState.empty
+    var cs = ControllerState.emptyForTest
     val eventIds = Iterator.from(1)
     val agentPath = AgentPath("v2.2")
     val uri = Uri("https://localhost")
@@ -409,7 +418,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
 
     "AgentRefState snapshot object" in:
-      val recoverer = ControllerState.newRecoverer()
+      val recoverer = ControllerState.newRecoverer(ControllerState.EmptyVolatile)
       recoverer.addSnapshotObject(AgentRefState(agentRef))
       assert(recoverer.result() ==
         cs.withEventId(0).withoutStatistics)
@@ -432,6 +441,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
 object ControllerStateTest:
 
+  private val logger = Logger[this.type]
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val itemSigner = ControllerState.toItemSigner(SillySigner.Default)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
@@ -556,5 +566,6 @@ object ControllerStateTest:
         Order.ExpectingNotices(Vector(
           expectedNoticeId)))
     ).toKeyedMap(_.id),
-    EngineStateStatistics.empty
+    EngineStateStatistics.empty,
+    volatile = ControllerVolatile.forTest
   ).finish.orThrow

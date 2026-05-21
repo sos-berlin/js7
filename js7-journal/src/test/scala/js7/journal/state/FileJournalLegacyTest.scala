@@ -24,7 +24,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer, Stamped}
+import js7.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
@@ -240,7 +240,7 @@ private object FileJournalLegacyTest:
     protected type Snapshot = NumberThing
     protected type E = NumberEvent
 
-    def companion = TestState
+    val companion = TestState
 
     def name = "TestState"
 
@@ -263,11 +263,16 @@ private object FileJournalLegacyTest:
     def toSnapshotStream = Stream.iterable(numberThingCollection.numberThings.values)
 
 
-  object TestState extends SnapshotableState.Companion[TestState]:
+  object TestState extends
+    SnapshotableState.Companion[TestState],
+    JournaledState.Companion.NoVolatile[TestState]:
+
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
-    def newRecoverer(): SnapshotableStateRecoverer[TestState] =
-      new SnapshotableStateRecoverer.Simple(TestState):
+    def newRecoverer(volatile: NoVolatile): SnapshotableStateRecoverer[TestState] =
+      new SnapshotableStateRecoverer.Simple(using TestState)(volatile):
+        protected val S: SnapshotableState.Companion[TestState] = TestState
+
         protected def onAddSnapshotObject =
           case numberThing: NumberThing =>
             updateState(result().copy(numberThingCollection = result().numberThingCollection.copy(

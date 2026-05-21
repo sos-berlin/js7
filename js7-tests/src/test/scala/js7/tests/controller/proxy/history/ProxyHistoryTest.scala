@@ -91,7 +91,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
 
         var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
-        @volatile var lastState = ControllerState.empty
+        @volatile var lastState = ControllerState.emptyForTest
         @volatile var finished = false
         var rounds = 0
         while !finished && rounds <= maxRounds do

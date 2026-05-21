@@ -30,7 +30,7 @@ object TestRecovery extends ServiceApp:
     IO:
       val journalHeader = JournalHeader.readJournalHeader(conf.journalFile)
       val journalFilename = s"controller--${journalHeader.eventId}.journal"
-      val controllerState = StateRecoverer.recoverFile[ControllerState](conf.journalFile)
+      val controllerState = StateRecoverer.recoverFile(using ControllerState)(conf.journalFile, ControllerState.EmptyVolatile)
 
       controllerState.emitLineStream(logger.info(_))
       val directoryProvider = DirectoryProvider(

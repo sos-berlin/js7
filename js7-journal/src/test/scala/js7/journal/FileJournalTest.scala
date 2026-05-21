@@ -220,7 +220,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
         dir <- temporaryDirectoryResource[IO]("FileJournalTest-")
         journalLocation = JournalLocation(TestState, dir / "test")
         journal <- FileJournal.service(
-          Recovered.noJournalFile[TestState](journalLocation, myConfig),
+          Recovered.noJournalFile(using TestState)(journalLocation, TestState.EmptyVolatile, myConfig),
           JournalConf.fromConfig(myConfig))
       yield
         journal

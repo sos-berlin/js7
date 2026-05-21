@@ -64,16 +64,17 @@ object StateRecoverer:
     Resource.fromAutoCloseable(IO(
       StateRecoverer.recover[S](journalLocation, config)))
 
-  def recover[S <: SnapshotableState[S]](
-    journalLocation: JournalLocation,
+  def recover[S <: SnapshotableState[S]](using S: SnapshotableState.Companion[S])
+    (journalLocation: JournalLocation,
     config: Config,
     runningSince: Deadline = now)
-    (using S: SnapshotableState.Companion[S])
   : Recovered[S] =
+    val initialVolatile = S.configToVolatile(config)
     val file = journalLocation.currentFile.toOption
     val fileJournaledStateRecoverer = new FileSnapshotableStateRecoverer(
       journalFileForInfo = file getOrElse journalLocation.file(EventId.BeforeFirst)/*the expected new filename*/,
-      expectedJournalId = None)
+      expectedJournalId = None,
+      initialVolatile)
 
     file match
       case Some(file) =>
@@ -94,18 +95,21 @@ object StateRecoverer:
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
             fileJournaledStateRecoverer.result()),
           totalRunningSince = runningSince - nextJournalHeader.totalRunningTime,
+          initialVolatile,
           config)
 
       case None =>
         // An active cluster node will start a new journal
         // A passive cluster node will provide the JournalId later
-        Recovered.noJournalFile(journalLocation, config, runningSince)
+        Recovered.noJournalFile(journalLocation, initialVolatile, config, runningSince)
 
-  def recoverFile[S <: SnapshotableState[S]](file: Path)(using S: SnapshotableState.Companion[S])
+  def recoverFile[S <: SnapshotableState[S]: SnapshotableState.Companion as S](
+    file: Path, volatile: S.Volatile)
   : S =
     val fileRecoverer = new FileSnapshotableStateRecoverer[S](
       journalFileForInfo = file,
-      expectedJournalId = None)
+      expectedJournalId = None,
+      volatile)
     autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
         fileRecoverer.put(S.decodeJournalJson(json).orThrow)

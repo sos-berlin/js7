@@ -26,7 +26,7 @@ import js7.data.subagent.SubagentItemState
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
-private final class ControllerStateRecoverer
+private final class ControllerStateRecoverer(initialVolatile: ControllerVolatile)
 extends
   SnapshotableStateRecoverer[ControllerState],
   StandardsRecoverer,
@@ -39,10 +39,11 @@ extends
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _keyToUnsignedItemState: mutable.Map[UnsignedItemKey, UnsignedItemState] =
-    ControllerState.empty.keyToUnsignedItemState_.to(mutable.Map)
+    ControllerState.DefaultKeyToUnsignedItemState.to(mutable.Map)
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
-  private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
+  private val pathToSignedSimpleItem = 
+    mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
   private val _noticeSnapshots = mutable.Buffer.empty[Notice | NoticePlace.Snapshot]
   private val _noticeConsumptionSnapshots = mutable.Buffer.empty[NoticeConsumptionSnapshot]
   private val statistics = EngineStateStatistics.Builder()
@@ -176,7 +177,8 @@ extends
       agentAttachments,
       deletionMarkedItems.toSet,
       _idToOrder.toMap,
-      statistics.result()
+      statistics.result(),
+      volatile = initialVolatile
     ).finish.orThrow
 
   // NoticeSnapshots can only be added after idToOrder has been filled.

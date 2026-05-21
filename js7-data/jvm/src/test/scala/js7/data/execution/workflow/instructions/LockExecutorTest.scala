@@ -196,7 +196,7 @@ final class LockExecutorTest extends OurTestSuite:
 
   private def check(orderId: OrderId, events: OrderLockEvent*)
   : Checked[List[KeyedEvent[OrderEvent.OrderCoreEvent]]] =
-    val myControllerState = ControllerState.empty.applyKeyedEvents(events.map(orderId <-: _))
+    val myControllerState = ControllerState.emptyForTest.applyKeyedEvents(events.map(orderId <-: _))
       .orThrow
     InstructionExecutor.toEventCalc(orderId)
       .calculate(EventColl(myControllerState, Timestamp.now, 0.s))

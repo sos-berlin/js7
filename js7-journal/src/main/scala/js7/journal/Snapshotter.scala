@@ -80,7 +80,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
         totalRunningTime = totalRunningTime.roundUpToNext(1.ms),
         timestamp = clock.now())
       logSnapshotFile(file, journalHeader)
-      val checkingRecoverer = conf.slowCheckState ? S.newRecoverer()
+      val checkingRecoverer = conf.slowCheckState ? S.newRecoverer(S.EmptyVolatile)
       for
         (fileSize, fileLengthBeforeEventsAndEventId) <-
           SnapshotJournalWriter.writeSnapshotStream(

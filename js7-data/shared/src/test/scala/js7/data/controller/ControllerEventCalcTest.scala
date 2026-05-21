@@ -41,14 +41,14 @@ final class ControllerEventCalcTest extends OurTestSuite:
     // Calculate EventColl with events and aggregate //
     val context = TimeCtx(initiallyStartedAt, 0.s)
     val eventColl: EventCollCtx[ControllerState, NoKeyEvent, TimeCtx] =
-      eventCalc.calculate(ControllerState.empty, context).orThrow
+      eventCalc.calculate(ControllerState.emptyForTest, context).orThrow
 
     assert(eventColl.keyedEventList == List(
       NoKey <-: ControllerInitialized(ControllerId("Controller"), initiallyStartedAt),
       NoKey <-: UnsignedSimpleItemAdded(planSchema),
       NoKey <-: UnsignedSimpleItemAdded(board)))
 
-    assert(eventColl.aggregate == ControllerState.empty.copy(
+    assert(eventColl.aggregate == ControllerState.emptyForTest.copy(
       controllerMetaState = ControllerMetaState(
         ControllerId("Controller"),
         initiallyStartedAt,
@@ -64,6 +64,6 @@ final class ControllerEventCalcTest extends OurTestSuite:
 
     locally:
       val eventColl2 = (controllerInitialized.widen |+| itemAdded.widen)
-        .calculate(ControllerState.empty, context).orThrow
+        .calculate(ControllerState.emptyForTest, context).orThrow
 
       assert(eventColl2 == eventColl)

@@ -29,10 +29,10 @@ final class PostNoticesExecutorTest extends OurTestSuite:
   "PostNotices and ExpectNotices" in:
     var state =
       val signedString = SignedString("??", GenericSignature("??", "??"))
-      ControllerState.empty.copy(
+      ControllerState.emptyForTest.copy(
         keyToUnsignedItemState_ = (boards :+ PlanSchema.Global)
           .map(_.toInitialItemState).toKeyedMap(_.path),
-        repo = ControllerState.empty.repo.applyEvents(Seq(
+        repo = ControllerState.emptyForTest.repo.applyEvents(Seq(
           VersionAdded(versionId),
           VersionedItemAdded(Signed(postingWorkflow, signedString)),
           VersionedItemAdded(Signed(expecting02or13Workflow, signedString)),

@@ -7,6 +7,7 @@ import js7.base.utils.StackTraces.*
 import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.SnapshotableStateRecoverer.*
+import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
 trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
@@ -66,9 +67,11 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
 
 object SnapshotableStateRecoverer:
 
-  abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
+  @TestOnly
+  abstract class Simple[S <: SnapshotableState[S]: SnapshotableState.Companion as S](
+    volatile: S.Volatile)
   extends SnapshotableStateRecoverer[S], StandardsRecoverer:
-    private var _state = S.empty
+    private var _state = S.empty(volatile)
 
     override def addSnapshotObject(obj: Any): Unit = obj match
       case o: JournalState =>

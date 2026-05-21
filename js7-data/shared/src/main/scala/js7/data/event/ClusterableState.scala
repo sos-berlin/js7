@@ -13,7 +13,7 @@ trait ClusterableState[S <: ClusterableState[S]]
 extends SnapshotableState[S]:
   this: S =>
 
-  override def companion: ClusterableState.Companion[S]
+  override val companion: ClusterableState.Companion[S]
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName]
 
@@ -51,7 +51,5 @@ object ClusterableState:
   trait Companion[S <: ClusterableState[S]]
   extends SnapshotableState.Companion[S]:
     implicit final val implicitClusterableStateCompanion: Companion[S] = this
-
-    def empty: S
 
     def callExpliclitlyAfterAggregateInitialisation = false

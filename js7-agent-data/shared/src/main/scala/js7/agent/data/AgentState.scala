@@ -22,7 +22,7 @@ import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
@@ -68,7 +68,7 @@ extends
   def controllerId: ControllerId =
     meta.controllerId
 
-  def companion: AgentState.type = AgentState
+  val companion: AgentState.type = AgentState
 
   def name: String =
     if meta.agentPath.isEmpty then
@@ -398,6 +398,7 @@ extends
 object AgentState
 extends
   EngineState.Companion[AgentState],
+  JournaledState.Companion.NoVolatile[AgentState],
   ClusterableState.Companion[AgentState],
   ItemContainer.Companion[AgentState]:
 
@@ -410,7 +411,7 @@ extends
   private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
     Set(AgentRefState, SubagentItemState, FileWatchState)
 
-  def newRecoverer() = new AgentStateRecoverer
+  def newRecoverer(volatile: Volatile) = new AgentStateRecoverer
 
   protected val inventoryItems = Vector(
     AgentRef, SubagentItem, SubagentBundle,
@@ -423,7 +424,7 @@ extends
     workflows: IterableOnce[Workflow] = Nil,
     itemStates: IterableOnce[UnsignedSimpleItemState] = Nil)
   : AgentState =
-    AgentState.empty.copy(
+    AgentState.emptyForTest.copy(
       idToOrder = orders.toEagerSeq.toKeyedMap(_.id),
       idToWorkflow = workflows.toEagerSeq.toKeyedMap(_.id),
       keyToUnsignedItemState_ = itemStates.toEagerSeq.toKeyedMap(_.path))

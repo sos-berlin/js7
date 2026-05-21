@@ -3,6 +3,7 @@ package js7.data.controller
 import cats.data.NonEmptyList
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
+import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import js7.base.annotation.slow
@@ -16,7 +17,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.WallClock
+import js7.base.time.{SpeedLimiter, WallClock}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
@@ -79,7 +80,9 @@ final case class ControllerState(
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
   statistics: EngineStateStatistics,
-  workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
+  workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty),
+  volatile: ControllerVolatile)
+  // ❗️ See also fields in equals, toStringStream, toSnapshotStream, estimatedSnapshotSize
 extends
   ControllerStateNoticeFunctions,
   OrderWatchStateHandler[ControllerState],
@@ -87,6 +90,23 @@ extends
   ControllerStatePlanFunctions[ControllerState]:
 
   type This = ControllerState
+
+  override def equals(other: Any) =
+    other match
+      case o: ControllerState =>
+        eventId == eventId &&
+        standards == standards &&
+        controllerMetaState == controllerMetaState &&
+        keyToUnsignedItemState_ == keyToUnsignedItemState_ &&
+        repo == repo &&
+        pathToSignedSimpleItem == pathToSignedSimpleItem &&
+        agentAttachments == agentAttachments &&
+        deletionMarkedItems == deletionMarkedItems &&
+        idToOrder == idToOrder &&
+        statistics == statistics &&
+        workflowToOrders == workflowToOrders
+        // volatile is not compared.
+      case _ => false
 
   override def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit[fs2.Pure, String]("ControllerState:\n")
@@ -128,13 +148,15 @@ extends
           workflowToOrders.toStringStream
       .append:
         statistics.toStringStream
+      .append:
+        Stream.emit(volatile.toString)
 
   def isAgent = false
 
   def controllerId: ControllerId =
     controllerMetaState.controllerId
 
-  def companion: ControllerState.type =
+  val companion: ControllerState.type =
     ControllerState
 
   def name: String =
@@ -995,31 +1017,41 @@ extends
   ClusterableState.Companion[ControllerState],
   ItemContainer.Companion[ControllerState]:
 
+  type Volatile = ControllerVolatile
+
+  val EmptyVolatile: ControllerVolatile =
+    ControllerVolatile(SpeedLimiter.Unlimited)
+
+  override def configToVolatile(config: Config): ControllerVolatile =
+    ControllerVolatile(SpeedLimiter.fromConfig(config).orThrow)
+
   private val logger = Logger[this.type]
 
   // Required because controllerMetaState.controllerId must be initialized first.
   // Controller will call afterAggregateInitialisation.
   override val callExpliclitlyAfterAggregateInitialisation = true
 
-  val Undefined: ControllerState = ControllerState(
-    EventId.BeforeFirst,
-    SnapshotableState.Standards.empty,
-    ControllerMetaState.Undefined,
-    Map.empty,
-    Repo.empty,
-    Map.empty,
-    ClientAttachments.empty,
-    Set.empty,
-    Map.empty,
-    EngineStateStatistics.empty,
-    WorkflowToOrders(Map.empty))
+  val DefaultKeyToUnsignedItemState: Map[UnsignedItemKey, UnsignedItemState] =
+    Seq(PlanSchemaState.initialGlobal)
+      .toKeyedMap(_.id)
 
-  val empty: ControllerState =
-    Undefined.copy(
-      keyToUnsignedItemState_ = Undefined.keyToUnsignedItemState_
-        .updated(PlanSchemaId.Global, PlanSchemaState.initialGlobal))
+  def empty(volatile: Volatile): ControllerState =
+    ControllerState(
+      EventId.BeforeFirst,
+      SnapshotableState.Standards.empty,
+      ControllerMetaState.Undefined,
+      DefaultKeyToUnsignedItemState,
+      Repo.empty,
+      Map.empty,
+      ClientAttachments.empty,
+      Set.empty,
+      Map.empty,
+      EngineStateStatistics.empty,
+      WorkflowToOrders(Map.empty),
+      volatile)
 
-  def newRecoverer() = new ControllerStateRecoverer
+  def newRecoverer(volatile: ControllerVolatile): ControllerStateRecoverer =
+    new ControllerStateRecoverer(volatile)
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
     AgentRef, SubagentItem, SubagentBundle, Lock,
@@ -1081,13 +1113,13 @@ extends
     workflows: IterableOnce[Workflow] = Nil,
     itemStates: IterableOnce[UnsignedSimpleItemState] = Nil)
   : ControllerState =
-    val controllerState = ControllerState.empty
+    val controllerState = ControllerState.emptyForTest
     controllerState.copy(
-      controllerMetaState = ControllerState.empty.controllerMetaState.copy(
+      controllerMetaState = ControllerState.emptyForTest.controllerMetaState.copy(
         controllerId = ControllerId("CONTROLLER")),
       idToOrder = orders.toEagerSeq.toKeyedMap(_.id),
       repo =
-        ControllerState.empty.repo.applyEvents:
+        ControllerState.emptyForTest.repo.applyEvents:
           workflows.toEagerSeq.groupBy(_.id.versionId).flatMap: (versionId, workflows) =>
             VersionAdded(versionId) ::
               workflows.toList.map: workflow =>

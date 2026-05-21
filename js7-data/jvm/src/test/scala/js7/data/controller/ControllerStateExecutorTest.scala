@@ -251,8 +251,8 @@ final class ControllerStateExecutorTest extends OurTestSuite:
   }
 
   "addSubsequentEvents" - {
-    var _controllerState = ControllerState.empty
-    var updated = ControllerState.empty
+    var _controllerState = ControllerState.emptyForTest
+    var updated = ControllerState.emptyForTest
 
     def applyEvents(keyedEvents: KeyedEvent[Event]*) =
       val executor = Executor(_controllerState)
@@ -267,7 +267,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
     "Add agents, workflows and orders" in:
       assert(
-        VerifiedUpdateItemsExecutor.execute(stdVerifiedUpdateItems, ControllerState.empty) ==
+        VerifiedUpdateItemsExecutor.execute(stdVerifiedUpdateItems, ControllerState.emptyForTest) ==
           Right(Seq[AnyKeyedEvent](
             NoKey <-: SignedItemAdded(sign(aJobResource)),
             NoKey <-: SignedItemAdded(sign(bJobResource)),
@@ -496,7 +496,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
         val keyedEvents = Seq(NoKey <-: VersionAdded(VersionId("TEST")))
         controllerState.applyKeyedEvents(keyedEvents)
           .map(X(_, keyedEvents))
-    val controllerState = ControllerState.empty
+    val controllerState = ControllerState.emptyForTest
     for
       x <- X(controllerState).doSomething
       x <- x.doSomething
@@ -568,7 +568,7 @@ object ControllerStateExecutorTest:
   private class Executor(var coll: EventColl[ControllerState, Event]):
     def controllerState = coll.aggregate
 
-    def this(controllerState: ControllerState = ControllerState.empty) =
+    def this(controllerState: ControllerState = ControllerState.emptyForTest) =
       this(EventColl(controllerState, now, 0.s))
 
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
@@ -612,7 +612,7 @@ object ControllerStateExecutorTest:
     private def update(coll: EventColl[ControllerState, Event]): Unit =
       assert(coll.originalAggregate == this.coll.aggregate) // fails better then eq
       assert(coll.originalAggregate eq this.coll.aggregate)
-      assert(coll.aggregate.toRecovered == coll.aggregate)
+      assert(coll.aggregate.toRecovered(coll.aggregate.companion.EmptyVolatile) == coll.aggregate)
       this.coll = coll.forward
 
     def toSnapshot: Seq[Any] =

@@ -16,7 +16,7 @@ import js7.data.node.NodeId
   * @author Joacim Zschimmer
   */
 final class ClusterableStateTest extends OurTestSuite:
-  private var s = MyState.empty
+  private var s = MyState.emptyForTest
 
   "applyStandardEvent and applyKeyedEvents" in:
     s = s.applyKeyedEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
@@ -48,7 +48,7 @@ private object ClusterableStateTest:
 
   private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)
   extends ClusterableState[MyState]:
-    def companion = MyState
+    val companion = MyState
 
     def name = "MyState"
 
@@ -70,12 +70,16 @@ private object ClusterableStateTest:
 
     def clusterNodeToUserId(nodeId: NodeId) =
       Left(Problem("clusterNodeToUserId not implemented"))
-  private object MyState extends ClusterableState.Companion[MyState]:
+
+  private object MyState extends
+    ClusterableState.Companion[MyState],
+    JournaledState.Companion.NoVolatile[MyState]:
+
     val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
     // TODO Refactor this into a separate common trait
     def snapshotObjectJsonCodec = throw new NotImplementedError
     implicit def keyedEventJsonCodec = throw new NotImplementedError
-    def newRecoverer() = throw new NotImplementedError
+    def newRecoverer(volatile: Volatile) = throw new NotImplementedError
 
   private case object MyEvent extends NoKeyEvent

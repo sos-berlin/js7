@@ -123,7 +123,8 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
             .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
               logger.debug:
                 s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
-          .flatMap(S.fromStream)
+          .flatMap:
+            S.fromStream(S.EmptyVolatile, _)
 
 
 object HttpSessionApi:

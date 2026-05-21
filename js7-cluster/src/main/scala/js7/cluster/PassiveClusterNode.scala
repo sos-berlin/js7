@@ -82,6 +82,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 
+  private val initialVolatile = S.configToVolatile(clusterConf.config)
   private val shutdown = Deferred.unsafe[IO, Unit]
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
@@ -309,7 +310,8 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
 
       val recoverer = new FileSnapshotableStateRecoverer(
         journalFileForInfo = file.getFileName,
-        continuation.maybeJournalId)
+        continuation.maybeJournalId,
+        initialVolatile)
 
       def releaseEvents: IO[Unit] =
         IO.whenA(journalConf.deleteObsoleteFiles):
@@ -780,7 +782,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
 
   private sealed case class NoLocalJournal(fileEventId: EventId)
   extends Continuation.Replicatable:
-    def aggregate: S = S.empty
+    def aggregate: S = S.empty(initialVolatile)
     def fileLength = 0
     def firstEventPosition = None
     def lastProperEventPosition = -1L  // Invalid value

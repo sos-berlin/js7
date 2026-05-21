@@ -8,7 +8,7 @@ import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.{unsafeToCancelableFuture}
+import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
@@ -90,7 +90,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
 
         def firstUpdate(state: TestState) =
           state match
-            case TestState.empty => Right(Seq(
+            case TestState.`emptyForTest` => Right(Seq(
               "A" <-: TestEvent.Added("A"),
               "B" <-: TestEvent.Added("B")))
             case _ => Left(Problem("FAILED"))
@@ -270,7 +270,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
 
   private def journal(size: Int = Int.MaxValue): ResourceIO[MemoryJournal[TestState]] =
     MemoryJournal.service(
-      TestState.empty,
+      TestState.emptyForTest,
       size = size,
       infoLogEvents = Set.empty,
       eventIdGenerator = EventIdGenerator.withFixedClock(epochMilli = 1))

@@ -57,7 +57,7 @@ final class EventCollTest extends OurTestSuite:
     val orderId = OrderId("ORDER")
     val workflow = Workflow.of(WorkflowPath("W") ~ "1")
     val coll =
-      val coll = EventCollCtx[ControllerState, Event, Unit](ControllerState.empty, ())
+      val coll = EventCollCtx[ControllerState, Event, Unit](ControllerState.emptyForTest, ())
       val signer = ControllerState.toItemSigner(SillySigner.Default)
       locally:
         for
