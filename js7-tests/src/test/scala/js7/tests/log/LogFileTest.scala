@@ -3,10 +3,10 @@ package js7.tests.log
 import cats.effect.IO
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
-import java.util.OptionalLong
 import java.util.function.Function.identity
 import js7.base.configutils.Configs.*
 import js7.base.log.LogLevel
+import js7.base.log.reader.LogSelection
 import js7.base.test.OurAsyncTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
@@ -60,7 +60,7 @@ final class LogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         jControllerProxy
           .byteLogLineFlux(
             js7ServerId, LogLevel.None /*test*/ , begin = Instant.now,
-            JLogSelection(lineLimit = OptionalLong.of(1)))
+            JLogSelection(LogSelection(lineLimit = Some(1))))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

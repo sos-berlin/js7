@@ -6,7 +6,7 @@ import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, DateTimeParseException}
 import java.time.temporal.ChronoField.NANO_OF_SECOND
-import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId}
+import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
 import java.util.regex.Pattern
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
@@ -24,7 +24,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
-import scala.math.Ordered.orderingToOrdered
 
 object LogFileReader:
   private val logger = Logger[this.type]
@@ -218,13 +217,3 @@ object LogFileReader:
         waitUntilExists = Some((poll = 100.ms /*TODO*/ , timeout = 3.s))
       ).use: reader =>
         reader.read(UniqueHeaderSize)
-
-  def takeUntilInstant(instant: Option[Instant], fastTimestampParser: => FastTimestampParser)
-  : fs2.Pipe[IO, PosAndLine, PosAndLine] =
-    stream =>
-      instant.fold(stream): instant =>
-        val timestampParser = fastTimestampParser // call-by-name
-        val endEpochNano = instant.toEpochNano
-        stream.takeWhile: posAndLine =>
-          val epochNano = parseTimestampInLogLine(posAndLine.byteLine)(timestampParser.parse)
-          epochNano < endEpochNano

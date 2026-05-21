@@ -6,35 +6,44 @@ import java.util.{Optional, OptionalLong}
 import js7.base.log.reader.LogSelection
 import scala.jdk.OptionConverters.*
 
-final case class JLogSelection(
-  end: Optional[Instant] = Optional.empty,
-  lineLimit: OptionalLong = OptionalLong.empty,
-  pattern: Optional[Pattern] = Optional.empty,
-  byteChunkSize: Int = LogSelection.default.byteChunkSize):
+final case class JLogSelection(asScala: LogSelection = LogSelection.default):
 
-  def toScala: LogSelection =
-    LogSelection(end.toScala, lineLimit.toScala, pattern.toScala)
+  def end: Optional[Instant] =
+    asScala.end.toJava
+
+  def lineLimit: Optional[Long] =
+    asScala.lineLimit.toJava
+
+  def pattern: Optional[Pattern] =
+    asScala.pattern.toJava
 
   def withEnd(end: Instant): JLogSelection =
-    copy(end = Optional.of(end))
+    copy(asScala.copy(
+      end = Some(end)))
 
   def withEnd(end: Optional[Instant]): JLogSelection =
-    copy(end = end)
+    copy(asScala.copy(
+      end = end.toScala))
 
   def withLineLimit(lineLimit: Long): JLogSelection =
-    copy(lineLimit = OptionalLong.of(lineLimit))
+    copy(asScala.copy(
+      lineLimit = Some(lineLimit)))
 
   def withLineLimit(lineLimit: OptionalLong): JLogSelection =
-    copy(lineLimit = lineLimit)
+    copy(asScala.copy(
+      lineLimit = lineLimit.toScala))
 
   def withPattern(pattern: Pattern): JLogSelection =
-    copy(pattern = Optional.of(pattern))
+    copy(asScala.copy(
+      pattern = Some(pattern)))
 
   def withPattern(pattern: Optional[Pattern]): JLogSelection =
-    copy(pattern = pattern)
+    copy(asScala.copy(
+      pattern = pattern.toScala))
 
   def withByteChunkSize(byteChunkSize: Int): JLogSelection =
-    copy(byteChunkSize = byteChunkSize)
+    copy(asScala.copy(
+      byteChunkSize = byteChunkSize))
 
 
 object JLogSelection:

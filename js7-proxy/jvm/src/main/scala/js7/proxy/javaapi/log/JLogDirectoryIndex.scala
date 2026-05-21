@@ -20,7 +20,7 @@ import scala.jdk.OptionConverters.*
 final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(using IORuntime):
 
   def lineFlux(begin: Instant, logSelection: JLogSelection): Flux[String] =
-    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.asScala)
       .map(_.lineAsString)
       .asFlux
 
@@ -34,7 +34,7 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
   private def keyedLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
   : Flux[KeyedLogLine] =
-    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.asScala)
       .map(_.toKeyedLogLine)
       .asFlux
 
@@ -48,12 +48,12 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
   private def keyedByteLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
   : Flux[KeyedByteLogLine] =
-    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.toScala)
+    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.asScala)
       .asFlux
 
   def instantToLogLineKey(instant: Instant, logSelection: JLogSelection)
   : CompletableFuture[Optional[LogLineKey]] =
-    logDirectoryIndex.instantToLogLineKey(instant, logSelection.toScala)
+    logDirectoryIndex.instantToLogLineKey(instant, logSelection.asScala)
       .map(_.toJava)
       .unsafeToCompletableFuture()
 

@@ -73,11 +73,11 @@ final class JEngineLog(
       fs2.Stream.force:
         serverId match
           case Js7ServerId.Controller.Primary =>
-            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala)
+            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Controller.Backup =>
-            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala)
+            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.toScala,
+            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala,
               subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
     .chunks.map(_.asSeq.asJava)
@@ -132,11 +132,11 @@ final class JEngineLog(
       fs2.Stream.force:
         serverId match
           case Js7ServerId.Controller.Primary =>
-            primaryControllerApi.getLogLines(logLevel, begin = begin, logSelection.toScala)
+            primaryControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Controller.Backup =>
-            backupControllerApi.getLogLines(logLevel, begin = begin, logSelection.toScala)
+            backupControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeControllerApi.getLogLines(logLevel, begin = begin, logSelection.toScala,
+            activeControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala,
               subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
       .map(convert)

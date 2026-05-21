@@ -4,10 +4,10 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
-import java.util.OptionalLong
 import java.util.function.Function.identity
 import js7.base.auth.Admission
 import js7.base.log.LogLevel
+import js7.base.log.reader.LogSelection
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
@@ -46,7 +46,7 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
         jControllerProxy
           .byteLogLineFlux(
             serverId, LogLevel.None /*test*/ , begin = Instant.now,
-            JLogSelection(lineLimit = OptionalLong.of(1)))
+            JLogSelection(LogSelection(lineLimit = Some(1))))
           .flatMapIterable(identity)
           .map(new String(_, UTF_8))
           .collectList()

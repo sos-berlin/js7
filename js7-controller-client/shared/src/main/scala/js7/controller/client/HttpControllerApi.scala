@@ -14,6 +14,7 @@ import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogLineKey, LogReade
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.utils.Missing
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
 import js7.cluster.watch.api.HttpClusterNodeApi
@@ -84,12 +85,8 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     queries: (String, String | Missing)*)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     loginAndRetryIfSessionLost:
-      val path = subagentId match
-        case None => prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)
-        case Some(subagentId) =>
-          prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" /
-            logLevel.toString.toLowerCase(Locale.ROOT)
-      httpClient.getTextAsRawLines(Uri(path.toString + encodeQuery(queries*)))
+      httpClient.getTextAsRawLines:
+        toLogUri(subagentId, logLevel, queries)
 
   final def getKeyedLogLines(
     logLevel: LogLevel,
@@ -123,20 +120,28 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     queries: (String, String | Missing)*)
   : IO[Stream[IO, KeyedByteLogLine]] =
     loginAndRetryIfSessionLost:
-      httpClient.getTextAsRawLines(
-        Uri:
-          subagentId.match
-            case None =>
-              (prefixedUri / "api" / "log" / logLevel.toString.toLowerCase(Locale.ROOT)).toString
-            case Some(subagentId) =>
-              (prefixedUri / "api" / "subagent-forward" / subagentId.string / logLevel.toString.toLowerCase(Locale.ROOT)).toString
-          + encodeQuery(queries :+ ("withKey" -> "true") *),
-          dontLog = true)
+      httpClient.getTextAsRawLines:
+        toLogUri(subagentId, logLevel, queries, withKey = true)
       .map:
         _.filter:
             _ != LogHeartbeat
           .map: byteLine =>
             KeyedByteLogLine.parse(byteLine).orThrow
+
+  private def toLogUri(
+    subagentId: Option[SubagentId],
+    logLevel: LogLevel,
+    queries: Seq[(String, String | Missing)],
+    withKey: Boolean = false): Uri =
+    val logLevelString = logLevel.toString.toLowerCase(Locale.ROOT)
+    Uri:
+      subagentId.match
+        case None =>
+          prefixedUri / "api" / "log" / logLevelString
+        case Some(subagentId) =>
+          prefixedUri / "api" / "subagent-forward" / subagentId.string / "log" / logLevelString
+      .toString
+        + encodeQuery(queries ++ (withKey ? ("withKey" -> "true")))
 
   @TestOnly
   final def getRawLinesStream(uriTail: String): IO[Stream[IO, fs2.Chunk[Byte]]] =

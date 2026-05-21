@@ -4,7 +4,6 @@ import cats.effect.{IO, Resource, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
-import java.util.regex.{Matcher, Pattern}
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
@@ -15,7 +14,8 @@ import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogFileIndex.*
 import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
-import js7.base.log.{AnsiEscapeCodes, Logger}
+import js7.base.log.reader.LogFileUtils.applyLogSelection
+import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.JavaTimeExtensions.toEpochNano
 import js7.base.time.ScalaTime.*
@@ -45,10 +45,10 @@ import scala.math.Ordered.orderingToOrdered
   * @param nanoToPos may grow concurrently
   */
 final class LogFileIndex private(
-  toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+  toPositionedStream: (pos: OpaquePos, byteChunkSize: Int) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos,
   breakLinesLongerThan: Option[Int])
-  (using ZoneId):
+  (using val zoneId: ZoneId):
 
   def indexSize: Int =
     nanoToPos.length
@@ -60,22 +60,27 @@ final class LogFileIndex private(
     nanoToPos.byteCount
 
   def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
-    streamPosAndLine(begin, logSelection)
+    streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
+      .through:
+        applyLogSelection(logSelection)
       .map(_._2)
 
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
-    streamPosAndLine(instant, logSelection).head
+    streamPosAndLine(instant, byteChunkSize = logSelection.byteChunkSize)
+      .through:
+        applyLogSelection(logSelection)
+      .head
       .compile.last
       .map(_.map(_._1))
 
-  def streamPosAndLine(begin: Instant, logSelection: LogSelection): Stream[IO, PosAndLine] =
+  def streamPosAndLine(begin: Instant, byteChunkSize: Int): Stream[IO, PosAndLine] =
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
       val opaquePos = nanoToPos.toOpaquePos(begin.toEpochNano)
-      toPositionedStream(opaquePos, logSelection.byteChunkSize)
+      toPositionedStream(opaquePos, byteChunkSize = byteChunkSize)
         .through:
           toPosAndLines(firstPosition = opaquePos.toLong, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
@@ -94,17 +99,15 @@ final class LogFileIndex private(
           drop
       .map: (pos, line) =>
         PosAndLine(pos, line)
-      .through:
-        applyLogSelection(logSelection, timestampParser)
 
-  def positionToLines(position: Long, logSelection: LogSelection): Stream[IO, PosAndLine] =
+  def positionToLines(position: Long, byteChunkSize: Int): Stream[IO, PosAndLine] =
     Stream.suspend:
       // Convert the byte position of the desired line into the byte position of the corresponding
       // (compressed) chunk and the OpaquePos (the position in the compressed file) of this chunk.
       val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
-      toPositionedStream(opaquePos, logSelection.byteChunkSize)
+      toPositionedStream(opaquePos, byteChunkSize)
         .through:
           toPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
@@ -123,8 +126,6 @@ final class LogFileIndex private(
           drop
         .map: (pos, line) =>
           PosAndLine(pos, line)
-        .through:
-          applyLogSelection(logSelection, FastTimestampParser())
 
   override def toString =
     s"LogFileIndex(${nanoToPos.length}×${toKiBGiB(LogBytesPerEntry)})"
@@ -317,50 +318,6 @@ object LogFileIndex:
     end WriteOpsBuffer
   end Builder
 
-
-
-
-  def applyLogSelection(logSelection: LogSelection, fastTimestampParser: => FastTimestampParser)
-  : fs2.Pipe[IO, PosAndLine, PosAndLine] =
-    _.through:
-      LogFileReader.takeUntilInstant(logSelection.end, fastTimestampParser)
-    .through: stream =>
-      logSelection.pattern match
-        case None => stream.prefetch
-        case Some(pattern) => stream.through(filterPattern(pattern))
-    .pipeMaybe(logSelection.lineLimit): (stream, n) =>
-      stream.take(n)
-
-  private def filterPattern(pattern: Pattern): fs2.Pipe[IO, PosAndLine, PosAndLine] =
-    stream =>
-      // Requires some heap!!! heap =~ availableProcessors * logSelection.byteChunkSize
-      stream.chunks.parEvalMap(sys.runtime.availableProcessors): chunk =>
-        IO:
-          chunk.filter: posAndLine =>
-            val line = /*slow: removeHighlights*/(posAndLine.lineAsString)
-            val matcher = pattern.matcher(line)
-            tailorRegion(line, matcher)
-            matcher.lookingAt() // SLOW
-      .unchunks
-
-  private def tailorRegion(line: String, matcher: Matcher): Unit =
-    // It's faster if we truncate \n at of the line. And we can use $ anchor for end of line.
-    // Also, skip ANSI highlighting at begin and end of line. It's fast.
-    var b = 0
-    var e = line.length
-    if e >= 1 then
-      if line(e - 1) == '\n' then e -= 1
-      if e >= 1 && line(e - 1) == '\r' then e -= 1
-      // Remove highlightíng at begin and end of line
-      import AnsiEscapeCodes.resetColor
-      if line.startsWith(resetColor, e - resetColor.length) then
-        e -= resetColor.length
-      if e >= 4 && line(0) == '\u001b' && line(1) == '[' then
-        val i = line.indexOf('m', 2)
-        if i > 0 then
-          b = i + 1
-      matcher.region(b, e max b)
-    end if
 
   private def positionedStream(file: Path, position: OpaquePos, bufferSize: Int): Stream[IO, Chunk[Byte]] =
     ByteSeqFileReader.streamFromPosition(file, position = position.toLong, byteChunkSize = bufferSize)
