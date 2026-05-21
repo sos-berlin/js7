@@ -74,5 +74,5 @@ object Proxy extends ServiceApp:
       _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
       service <- Service(Proxy(controllerProxy, controllerApiRegister.metrics/*test only*/))
     yield
-      controllerApi.setActive(true)
+      controllerApi.allowEngineMetrics(true)
       service

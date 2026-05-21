@@ -62,7 +62,7 @@ extends ControllerApiWithHttp:
       proxyConf.recouplingStreamReaderConf.delayConf))
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
-  private var _isActive = false
+  private var _engineMetricsAllowed = false
 
   register.foreach(_.add(this))
 
@@ -81,7 +81,7 @@ extends ControllerApiWithHttp:
   def stop(dontLogout: Boolean = true): IO[Unit] =
     logger.debugIO:
       IO.defer:
-        setActive(false)
+        allowEngineMetrics(false)
         register.foreach(_.remove(this))
         IO.whenA(dontLogout):
           apiCache.cachedValue
@@ -229,14 +229,14 @@ extends ControllerApiWithHttp:
     * Otherwise, Prometheus would collect Engine metrics twice,
     * doubling measurements, CPU and Disk usage.
     */
-  def setActive(isActive: Boolean): Unit =
-    logger.debug(s"setActive $isActive")
-    _isActive = isActive
+  def allowEngineMetrics(allowed: Boolean): Unit =
+    logger.debug(s"allowEngineMetrics $allowed")
+    _engineMetricsAllowed = allowed
 
   def metrics: IO[Checked[fs2.Stream[IO, ByteString]]] =
     useApi: api =>
       locally:
-        if _isActive then
+        if _engineMetricsAllowed then
           api.metrics
         else
           IO.pure(fs2.Stream.emit(ByteString(s"# ControllerApi is not active.\n")))

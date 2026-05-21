@@ -51,7 +51,7 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
             // Anchors ControllerApi as a singleton for ProxyMetricsServlet.
             register = Some(controllerApiRegister)
           ).use: controllerApi =>
-            controllerApi.setActive(true) // Enable Engine metrics
+            controllerApi.allowEngineMetrics(true) // Enable Engine metrics
               client.send(request, BodyHandlers.ofString)
       .map: response =>
         val body = response.body

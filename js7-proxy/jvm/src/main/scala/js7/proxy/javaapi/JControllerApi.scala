@@ -401,8 +401,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       asScala.when(es => predicate(JEventAndControllerState(es)))
         .map(JEventAndControllerState.apply)
 
-  def setActive(isActive: Boolean): Unit =
-    asScala.setActive(isActive)
+  def allowEngineMetrics(isActive: Boolean): Unit =
+    asScala.allowEngineMetrics(isActive)
 
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
