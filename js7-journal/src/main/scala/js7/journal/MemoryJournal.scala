@@ -8,6 +8,7 @@ import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
+import js7.base.system.startup.StartUp
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.BinarySearch.binarySearch
@@ -86,7 +87,7 @@ extends
         val aggregate = _aggregate
         locally:
           for
-            coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now()))
+            coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now(), StartUp.elapsed))
             updated <- aggregate.applyKeyedEvents(coll.keyedEvents)
             stampedEvents = coll.timestampedKeyedEvents.map(eventIdGenerator.stamp)
           yield

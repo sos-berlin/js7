@@ -8,10 +8,12 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Once
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -91,3 +93,11 @@ object StartUp:
       .replace('T', ' ')
       .take(23)/*ms*/
       + zonedDateTime.getOffset.toString.replace(":", "")
+
+  private val sinceNano = System.nanoTime()
+
+  def elapsed: FiniteDuration =
+    elapsedNanos.ns
+
+  def elapsedNanos: Long =
+    System.nanoTime() - sinceNano

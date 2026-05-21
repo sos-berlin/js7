@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.data.agent.AgentPath
@@ -48,7 +49,7 @@ final class TryExecutorTest extends OurTestSuite:
   "toEvents" in:
     assert:
       InstructionExecutor.toEventCalc(AOrder.id).
-        calculateEventList(EventColl(engineState, now)) ==
+        calculateEventList(EventColl(engineState, now, 0.s)) ==
         Right(List(AOrder.id <-: OrderMoved(Position(1) / try_(0) % 0)))
 
 

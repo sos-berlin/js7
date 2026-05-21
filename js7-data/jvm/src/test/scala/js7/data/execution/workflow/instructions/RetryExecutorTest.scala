@@ -3,7 +3,6 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl
@@ -75,4 +74,4 @@ object RetryExecutorTest:
           Gap(),
           tryInstruction.copy(retryDelays = Some(delays.toVector)))))
     RetryExecutor.toEventCalc(Retry(), order.id)
-      .calculateEventList(EventColl(engineState, now))
+      .calculateEventList(EventColl(engineState, now, 0.s))

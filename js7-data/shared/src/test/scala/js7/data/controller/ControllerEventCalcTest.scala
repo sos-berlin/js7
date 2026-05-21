@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.Timezone
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -38,7 +39,7 @@ final class ControllerEventCalcTest extends OurTestSuite:
       controllerInitialized.widen |+| itemAdded.widen
 
     // Calculate EventColl with events and aggregate //
-    val context = TimeCtx(initiallyStartedAt)
+    val context = TimeCtx(initiallyStartedAt, 0.s)
     val eventColl: EventCollCtx[ControllerState, NoKeyEvent, TimeCtx] =
       eventCalc.calculate(ControllerState.empty, context).orThrow
 

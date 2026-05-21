@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.{ControllerEventColl, ControllerState}
@@ -19,7 +20,7 @@ import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import org.scalatest.Assertions.fail
 import scala.annotation.tailrec
@@ -198,7 +199,7 @@ final class LockExecutorTest extends OurTestSuite:
     val myControllerState = ControllerState.empty.applyKeyedEvents(events.map(orderId <-: _))
       .orThrow
     InstructionExecutor.toEventCalc(orderId)
-      .calculate(EventColl(myControllerState, Timestamp.now))
+      .calculate(EventColl(myControllerState, Timestamp.now, 0.s))
       .map: coll =>
         coll.keyedEventList
 
@@ -256,4 +257,4 @@ object LockExecutorTest:
   private def makeControllerEventColl(workflows: Seq[Workflow]): ControllerEventColl =
     ControllerEventColl(
       ControllerState.forTest(workflows = workflows),
-      Timestamp.now)
+      Timestamp.now, 0.s)

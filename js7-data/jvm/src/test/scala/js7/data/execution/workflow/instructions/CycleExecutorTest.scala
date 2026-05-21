@@ -9,7 +9,6 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
-import js7.base.utils.ScalaUtils.syntax
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.controller.ControllerState
@@ -450,7 +449,7 @@ object CycleExecutorTest:
     def step(): Seq[OrderCoreEvent] =
       val coll = InstructionExecutor
         .toEventCalc(orderId)
-        .calculate(EventColl(engineState, clock.now()))
+        .calculate(EventColl(engineState, clock.now(), 0.s))
         .orThrow
 
       coll.foreachEventString(o => logger.debug(s"${clock.now()} $o"))

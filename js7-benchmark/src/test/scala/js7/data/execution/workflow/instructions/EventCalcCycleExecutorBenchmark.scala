@@ -67,5 +67,5 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
   @Benchmark
   def eventCalcCycleExecutor: EventColl[ControllerState, OrderCoreEvent] =
     CycleExecutor.toEventCalc[ControllerState](cycle, orderId)
-      .calculate(controllerState, TimeCtx(ts"2025-03-14T12:00:00Z"))
+      .calculate(controllerState, TimeCtx(ts"2025-03-14T12:00:00Z", ZeroDuration))
       .orThrow

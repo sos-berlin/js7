@@ -4,6 +4,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
@@ -50,5 +51,5 @@ final class ExecuteTest extends OurTestSuite:
       idToOrder = engineState.idToOrder.updated(order.id, order))
 
     ExecuteExecutor.toEventCalc(executeAnonymous, orderId)
-      .calculateEventList(EventColl(myEngineState, ts"2026-01-21T12:00:00Z"))
+      .calculateEventList(EventColl(myEngineState, ts"2026-01-21T12:00:00Z", 0.s))
       .orThrow

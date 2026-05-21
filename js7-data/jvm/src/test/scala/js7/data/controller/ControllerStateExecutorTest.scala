@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
@@ -13,7 +14,7 @@ import js7.data.controller.ControllerStateExecutorTest.*
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, KeyedEvent, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventColl, KeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -256,7 +257,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
     def applyEvents(keyedEvents: KeyedEvent[Event]*) =
       val executor = Executor(_controllerState)
       val result = executor.applyWithSubsequentEvents:
-        EventColl(_controllerState, ts"2025-04-26T12:00:00Z")
+        EventColl(_controllerState, ts"2025-04-26T12:00:00Z", 0.s)
           .add(keyedEvents).orThrow.keyedEventList
       updated = executor.controllerState
       result
@@ -568,7 +569,7 @@ object ControllerStateExecutorTest:
     def controllerState = coll.aggregate
 
     def this(controllerState: ControllerState = ControllerState.empty) =
-      this(EventColl(controllerState, now))
+      this(EventColl(controllerState, now, 0.s))
 
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[Seq[AnyKeyedEvent]] =

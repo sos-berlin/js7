@@ -3,6 +3,7 @@ package js7.data.controller
 import js7.base.time.Timestamp
 import js7.data.event.{Event, EventColl}
 import js7.data.state.{EngineEventCalc_, EngineEventColl_}
+import scala.concurrent.duration.FiniteDuration
 
 type ControllerEventCalc =
   ControllerEventCalc_[Event]
@@ -18,9 +19,9 @@ type ControllerEventColl_[E <: Event] =
 
 object ControllerEventColl:
 
-  def apply(aggregate: ControllerState, now: Timestamp)
+  def apply(aggregate: ControllerState, now: Timestamp, monotonic: FiniteDuration)
   : EventColl[ControllerState, Event] =
-    EventColl(aggregate, now)
+    EventColl(aggregate, now, monotonic)
 
   //inline def keyedEvents[E <: Event](controllerState: ControllerState)
   //  (body: EventCollCtx[ControllerState, E, Any] => Checked[EventCollCtx[ControllerState, E, Any]])

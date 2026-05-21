@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.data.controller.ControllerState
 import js7.data.event.EventColl
@@ -10,7 +11,7 @@ import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.{EmptyInstruction, Fail, Fork, ForkBranchId}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.{InstructionNr, Position}
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 
 /**
@@ -34,7 +35,7 @@ final class FailExecutorTest extends OurTestSuite:
           workflows = Seq(workflow))
         assert:
           InstructionExecutor.toEventCalc(order.id)
-            .calculateEventList(EventColl(controllerState, now)) ==
+            .calculateEventList(EventColl(controllerState, now, 0.s)) ==
             Right(List(
               order.id <-: OrderStarted,
               order.id <-: OrderOutcomeAdded(OrderOutcome.failed),
@@ -47,7 +48,7 @@ final class FailExecutorTest extends OurTestSuite:
             workflows = Seq(workflow))
           assert:
             InstructionExecutor.toEventCalc(order.id)
-              .calculateEventList(EventColl(controllerState, now)) ==
+              .calculateEventList(EventColl(controllerState, now, 0.s)) ==
               Right(List(
                 order.id <-: OrderOutcomeAdded(OrderOutcome.failed),
                 order.id <-: OrderFailed(Position(1))))

@@ -2,8 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
-import js7.base.time.ScalaTime.ZeroDuration
-import js7.base.time.Timestamp
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
@@ -23,7 +22,7 @@ import js7.data.workflow.instructions.ConsumeNotices
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{DontWait, SkipWhenNoNotice, Wait}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalactic.source
 import scala.language.implicitConversions
 
@@ -375,7 +374,7 @@ object ConsumeNoticesExecutorTest:
 
     ConsumeNoticesExecutor.toEventCalc(instr, order.id)
       .calculateEventList:
-        EventColl(controllerState, ts"2024-11-25T12:00:00Z")
+        EventColl(controllerState, ts"2024-11-25T12:00:00Z", 0.s)
       .map:
         _.map:
           case KeyedEvent(`orderId`, event) => event

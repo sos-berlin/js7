@@ -1,11 +1,11 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerEventColl, ControllerState}
-import js7.data.event.Event
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderForked, OrderStarted}
@@ -31,7 +31,7 @@ final class ForkInstructionExecutorTest extends OurTestSuite:
 
       val coll = ControllerEventColl(
         ControllerState.forTest(workflows = Seq(workflow)),
-        Timestamp.now)
+        Timestamp.now, 0.s)
       val result =
         locally:
           for
@@ -66,7 +66,7 @@ final class ForkInstructionExecutorTest extends OurTestSuite:
 
       val coll = ControllerEventColl(
         ControllerState.forTest(workflows = Seq(workflow)),
-        Timestamp.now)
+        Timestamp.now, 0.s)
       val result =
         locally:
           for

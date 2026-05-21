@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.agent.{AgentPath, AtController}
 import js7.data.controller.{ControllerEventColl, ControllerState}
@@ -31,7 +32,8 @@ final class EventInstructionExecutorTest extends OurTestSuite:
 
     val coll = ControllerEventColl(
       ControllerState.forTest(workflows = Seq(workflow)),
-      Timestamp.now)
+      Timestamp.now,
+      0.s)
 
     "predict the Agent" in:
       val checked = EventInstructionExecutor.predictNextAgent(

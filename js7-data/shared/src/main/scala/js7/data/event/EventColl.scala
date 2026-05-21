@@ -10,6 +10,7 @@ import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.KeyedEvent.NoKey
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 /** EventDrivenState event collection.
@@ -362,8 +363,10 @@ object EventCollCtx:
 
   extension [S <: EventDrivenState_[S, E], E <: Event](eventColl: EventColl[S, E])
     def timestamp: Timestamp =
-      eventColl.context
+      eventColl.context.timestamp
 
+    def monotonic: FiniteDuration =
+      eventColl.context.monotonic
 
 /** A `EventCollCtx` with a `TimeCtx`.
   * <p>
@@ -376,9 +379,12 @@ type EventColl[S <: EventDrivenState_[S, E], E <: Event] =
 object EventColl:
   private val logger = Logger[this.type]
 
-  def apply[S <: EventDrivenState_[S, E], E <: Event](aggregate: S, now: Timestamp)
+  def apply[S <: EventDrivenState_[S, E], E <: Event](
+    aggregate: S,
+    now: Timestamp,
+    monotonic: FiniteDuration)
   : EventColl[S, E] =
-    EventCollCtx(aggregate, TimeCtx(now))
+    EventCollCtx(aggregate, TimeCtx(now, monotonic))
 
   /** Returns a `EventCollCtx` with `context: Unit`. */
   inline def apply[S <: EventDrivenState_[S, E], E <: Event](inline aggregate: S)

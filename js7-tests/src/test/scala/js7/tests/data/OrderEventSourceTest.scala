@@ -5,6 +5,7 @@ import js7.agent.data.AgentState
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -50,7 +51,7 @@ final class OrderEventSourceTest extends OurTestSuite:
 
     def testX[S <: EngineState_[S]](order: Order[Order.State], engineState: S) =
       val now = ts"2026-01-21T12:00:00Z"
-      assert(OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(engineState, now)) ==
+      assert(OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(engineState, now, 0.s)) ==
         Right(List:
           order.id <-: OrderMoved(order.position))) // Move to same InstructionNr to repeat the job
 
@@ -220,7 +221,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         "Detached" in :
           testController(freshOrder, detached): (order, controllerState) =>
             assert:
-              OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(controllerState, now)) ==
+              OrderEventSource.nextStepEvents(order.id).calculateEventList(EventColl(controllerState, now, 0.s)) ==
                 Right(Seq(
                   order.id <-: OrderStarted,
                   order.id <-: OrderForked(Vector(
@@ -229,7 +230,7 @@ final class OrderEventSourceTest extends OurTestSuite:
 
         testController(freshOrder, detached): (order, controllerState) =>
           assert(OrderEventSource.cancel(order.id, CancellationMode.FreshOnly)
-            .calculateEventList(EventColl(controllerState, now))
+            .calculateEventList(EventColl(controllerState, now, 0.s))
             == Right(Seq:
             orderId <-: OrderCancelled))
 
@@ -237,7 +238,7 @@ final class OrderEventSourceTest extends OurTestSuite:
           eventCalc: EventCalc[S, OrderCoreEvent],
           engineState: S)
         : Checked[Vector[KeyedEvent[OrderCoreEvent]]] =
-          eventCalc.calculateEventList(EventColl(engineState, now)).map(_.toVector)
+          eventCalc.calculateEventList(EventColl(engineState, now, 0.s)).map(_.toVector)
 
         assert:
           testController2(freshOrder, detached):
@@ -1669,7 +1670,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       (op: EventCalc[ControllerState, E])
     : Checked[Seq[KeyedEvent[E]]] =
       testController(templateOrder, attachedState): (order, controllerState) =>
-        op.calculateEventList(EventColl(controllerState, now))
+        op.calculateEventList(EventColl(controllerState, now, 0.s))
 
     def testController[R](
       templateOrder: Order[Order.State],
@@ -1689,7 +1690,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       (op: EventCalc[AgentState, E])
     : Checked[Seq[KeyedEvent[E]]] =
       testAgent(templateOrder, attachedState): (order, agentState) =>
-        op.calculateEventList(EventColl(agentState, now))
+        op.calculateEventList(EventColl(agentState, now, 0.s))
 
     def testAgent[R](templateOrder: Order[Order.State], attachedState: Option[Order.AttachedState])
                     (body: (Order[Order.State], AgentState) => R)
@@ -1767,7 +1768,7 @@ final class OrderEventSourceTest extends OurTestSuite:
           workflows = Seq(workflow),
           itemStates = Seq(LockState(Lock(lockPath))))
         OrderEventSource.resume(order.id, Some(to), Nil, false, None)
-          .calculateEventList(EventColl(controllerState, now))
+          .calculateEventList(EventColl(controllerState, now, 0.s))
     }
   }
 
@@ -1780,20 +1781,20 @@ final class OrderEventSourceTest extends OurTestSuite:
       workflows = Seq(workflow))
     assert:
       OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(controllerState, now))
+        .calculateEventList(EventColl(controllerState, now, 0.s))
         == Right(Nil)
     assert:
       OrderEventSource.suspend(order.id, SuspensionMode())
-        .calculateEventList(EventColl(controllerState, now))
+        .calculateEventList(EventColl(controllerState, now, 0.s))
         == Left(CannotSuspendOrderProblem)
     assert:
       OrderEventSource.cancel(order.id, CancellationMode.Default)
-        .calculateEventList(EventColl(controllerState, now)) ==
+        .calculateEventList(EventColl(controllerState, now, 0.s)) ==
         Right(List:
           order.id <-: OrderCancelled)
     assert:
       OrderEventSource.resume(order.id, None, Nil, false, None)
-        .calculateEventList(EventColl(controllerState, now)) ==
+        .calculateEventList(EventColl(controllerState, now, 0.s)) ==
         Right(List:
           order.id <-: OrderResumed(None, Nil))
 
@@ -1828,7 +1829,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       def failToPosition(position: Position, uncatchable: Boolean = false) =
         OrderEventSource.fail(order.id, outcome = None, uncatchable = uncatchable)
           .calculateEventList:
-            EventColl(newControllerState(order.withPosition(position)), now)
+            EventColl(newControllerState(order.withPosition(position)), now, 0.s)
 
 
       assert(failToPosition(Position(0)) == Right(List:
@@ -1866,14 +1867,14 @@ final class OrderEventSourceTest extends OurTestSuite:
     "Fresh at try instruction -> OrderMoved" in :
       val order = Order(orderId, workflow.id /: Position(0), Order.Fresh())
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
 
     "Ready at instruction -> OrderMoved" in :
       val order = Order(orderId, workflow.id /: Position(0), Order.Ready())
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
 
@@ -1882,7 +1883,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0)))
 
@@ -1891,7 +1892,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / catch_(0) % 0)))
 
@@ -1900,7 +1901,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderFailed(pos)))
 
@@ -1909,7 +1910,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderCaught(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
 
@@ -1918,7 +1919,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       val order = Order(orderId, workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(Position(0), failed7)))
       assert(OrderEventSource.nextStepEvents(order.id)
-        .calculateEventList(EventColl(newControllerState(order), now)) ==
+        .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
         Right(Seq:
           order.id <-: OrderFailed(pos)))
 
@@ -1928,7 +1929,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert:
         OrderEventSource.nextStepEvents(order.id)
-          .calculateEventList(EventColl(newControllerState(order), now)) ==
+          .calculateEventList(EventColl(newControllerState(order), now, 0.s)) ==
           Right(Seq:
             order.id <-: OrderFailed(pos))
 
@@ -1974,7 +1975,7 @@ final class OrderEventSourceTest extends OurTestSuite:
 
       var coll = locally:
         for
-          coll <- Right(EventColl(controllerState, now))
+          coll <- Right(EventColl(controllerState, now, 0.s))
           coll <- coll:
             OrderEventSource.fail(aChild.id)
           coll <- coll:
@@ -2106,7 +2107,9 @@ object OrderEventSourceTest:
 
           case _ =>
             OrderEventSource.nextStepEvents(orderId)
-              .untypedCalculateEventList(newEngineState(isAgent = order.isAttached), TimeCtx(now))
+              .untypedCalculateEventList(
+                newEngineState(isAgent = order.isAttached),
+                TimeCtx(now, 0.s))
               .orThrow
 
     def update(keyedEvent: KeyedEvent[OrderEvent | PlanFinishedEvent]): Unit =

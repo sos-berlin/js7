@@ -25,6 +25,7 @@ import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRates
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.startup.StartUp
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -664,7 +665,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
         case calendar: Calendar =>
           CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
       })
-      coll <- EventColl(controllerState(), clock.now()).add(keyedEvents)
+      coll <- EventColl(controllerState(), clock.now(), StartUp.elapsed).add(keyedEvents)
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
@@ -847,7 +848,9 @@ extends Stash, JournalingActor[ControllerState, Event]:
                     Future.successful(Left(Problem.pure(s"AgentRef is already in $reset state")))
                   case _ =>
                     ControllerStateExecutor.startResetAgent(agentPath, force = force)
-                      .calculate(journal.unsafeAggregate(), TimeCtx(Timestamp.now))
+                      .calculate(
+                        journal.unsafeAggregate(),
+                        TimeCtx(Timestamp.now, StartUp.elapsed))
                     match
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(coll) =>
@@ -964,7 +967,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
     eventCalc: EventCalc[ControllerState, Event])
     (handle: Persisted[ControllerState, Event] => Checked[R])
   : Future[Checked[R]] =
-    eventCalc.calculate(controllerState(), TimeCtx(clock.now())) match
+    eventCalc.calculate(controllerState(), TimeCtx(clock.now(), StartUp.elapsed)) match
       case Left(problem) => Future.successful(Left(problem))
       case Right(coll) =>
         persistTransactionAndSubsequentEvents(coll): persisted =>

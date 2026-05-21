@@ -7,7 +7,6 @@ import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Chunk
-import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.{False, True, startAndForget}
 import js7.base.catsutils.CatsEffectUtils.{outcomeToEither, whenDeferred}
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
@@ -18,6 +17,7 @@ import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.service.Service
+import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ByteUnits.toKBGB
@@ -224,7 +224,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     private def applyEventCalcs(chunk: Chunk[QueuedPersist[S]]): IO[Chunk[Applied]] =
       state.updateWithResult: state =>
         IO:
-          val ctx = TimeCtx(clock.now())
+          val ctx = TimeCtx(clock.now(), StartUp.elapsed)
           chunk.asSeq.view.scanLeft(state -> new VectorBuilder[Checked[Applied]]):
             case ((state, results), queuedPersist) =>
               if _isSwitchedOver then

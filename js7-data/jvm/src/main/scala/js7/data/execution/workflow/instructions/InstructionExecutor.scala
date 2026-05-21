@@ -2,11 +2,11 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SubclassToX
 import js7.data.event.{EventCalc, EventColl, KeyedEvent}
-import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.OrderEventSource.moveOrder
 import js7.data.execution.workflow.instructions.InstructionExecutor.*
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderMoved}
@@ -97,7 +97,7 @@ object InstructionExecutor:
     now: Timestamp = Timestamp("2099-01-01T00:00:00Z"))
   : Checked[List[KeyedEvent[OrderCoreEvent]]] =
     toEventCalc(orderId)
-      .calculateEvents(EventColl(engineState, now))
+      .calculateEvents(EventColl(engineState, now, monotonic = 0.s))
       .map(_.toList)
 
   @TestOnly

@@ -3,6 +3,7 @@ package js7.controller.command
 import com.typesafe.config.ConfigFactory
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.controller.command.ControllerCommandToEventCalcTest.*
 import js7.data.board.BoardPath
@@ -21,4 +22,4 @@ final class ControllerCommandToEventCalcTest extends OurTestSuite:
 
 
 object ControllerCommandToEventCalcTest:
-  private val ctx = TimeCtx(ts"2025-03-12T00:00:00Z")
+  private val ctx = TimeCtx(ts"2025-03-12T00:00:00Z", 0.s)
