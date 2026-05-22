@@ -410,10 +410,28 @@ final class OrderTest extends OurTestSuite:
           }""")
 
       "Sleeping" in:
-        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z"),
+        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z", OrderSleeping.Cause.SleepInstruction),
+          json"""{
+            "TYPE": "Sleeping",
+            "until": 1734523200000,
+            "cause": {
+              "TYPE": "SleepInstruction"
+            }
+          }""")
+
+        testJsonDecoder[State](Sleeping(ts"2024-12-18T12:00:00Z", OrderSleeping.Cause.SleepInstruction),
           json"""{
             "TYPE": "Sleeping",
             "until": 1734523200000
+          }""")
+
+        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z", OrderSleeping.Cause.SpeedLimit),
+          json"""{
+            "TYPE": "Sleeping",
+            "until": 1734523200000,
+            "cause": {
+              "TYPE": "SpeedLimit"
+            }
           }""")
 
       "WaitingForAdmission" in:
@@ -564,7 +582,7 @@ final class OrderTest extends OurTestSuite:
       OrderStickySubagentEntered(agentPath),
 
       OrderSaid(StringValue("Said"): Value),
-      OrderSleeping(ts"2024-12-18T00:00:00Z"),
+      OrderSleeping(ts"2024-12-18T00:00:00Z", OrderSleeping.Cause.SleepInstruction),
       OrderWaitingForAdmission(ts"2024-12-18T00:00:00Z"),
       OrderTransferred(workflowId /: Position(0)),
 
@@ -750,7 +768,9 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderBroken      , _                 , _, _                                  ) => _.isInstanceOf[Broken])
 
     "Sleeping" in:
-      checkAllEvents(Order(orderId, workflowId /: Position(0), Sleeping(ts"2025-10-15T12:00:00Z"),
+      checkAllEvents(
+        Order(orderId, workflowId /: Position(0),
+          Sleeping(ts"2025-10-15T12:00:00Z", OrderSleeping.Cause.SleepInstruction),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         cancelMarkedAllowed[Sleeping] orElse
         suspendMarkedAllowed[Sleeping] orElse

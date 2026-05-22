@@ -29,7 +29,8 @@ private object SleepExecutor extends EventInstructionExecutor_[Sleep]:
             coll <-
               if duration.isPositive then
                 coll:
-                  order.id <-: OrderSleeping(coll.timestamp + duration)
+                  order.id <-:
+                    OrderSleeping(coll.timestamp + duration, OrderSleeping.Cause.SleepInstruction)
               else
                 coll:
                   moveOrderToNextInstruction(order)
@@ -50,7 +51,7 @@ private object SleepExecutor extends EventInstructionExecutor_[Sleep]:
     now: Timestamp)
   : Checked[Set[OrderObstacle]] =
     order.state match
-      case Order.Sleeping(until) =>
+      case Order.Sleeping(until, _) =>
         Right(Set(WaitingForOtherTime(until)))
 
       case _ =>

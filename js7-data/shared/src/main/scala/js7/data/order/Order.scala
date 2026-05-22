@@ -597,10 +597,10 @@ extends
               .copy(
                 state = BetweenCycles(cycleState))
 
-      case OrderSleeping(until) =>
+      case OrderSleeping(until, cause) =>
         check(isState[Ready] && isDetachedOrAttached,
           copy(
-            state = Sleeping(until)))
+            state = Sleeping(until, cause)))
 
       case OrderTransferred(workflowPosition) =>
         if isDetached then
@@ -1139,7 +1139,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       Subtype(Cancelled),
       Subtype(Deleted),
       Subtype(deriveCodec[Prompting]),
-      Subtype(deriveCodec[Sleeping]),
+      Subtype[Sleeping],
       Subtype(deriveCodec[Broken]),
       Subtype(deriveCodec[WaitingForAdmission]))
 
@@ -1394,7 +1394,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
         OrderGoes :: OrderCycleStarted() :: Nil
 
 
-  final case class Sleeping(until: Timestamp)
+  final case class Sleeping(until: Timestamp, cause: OrderSleeping.Cause)
   extends IsStarted, IsDetachable, IsGoCommandable, IsResettable, IsTransferable:
     type Self = Sleeping
 
@@ -1403,6 +1403,15 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     def go(order: Order[Sleeping]): Right[Problem, List[OrderGoes | OrderAwoke | OrderMoved]] =
       Right:
         List(OrderGoes, OrderAwoke, OrderMoved(order.position.increment))
+
+  object Sleeping:
+    given Encoder.AsObject[Sleeping] = deriveCodec
+    given Decoder[Sleeping] = c =>
+      for
+        until <- c.get[Timestamp]("until")
+        cause <- c.getOrElse[OrderSleeping.Cause]("cause")(OrderSleeping.Cause.SleepInstruction)
+      yield
+        Sleeping(until, cause)
 
 
   type Failed = Failed.type

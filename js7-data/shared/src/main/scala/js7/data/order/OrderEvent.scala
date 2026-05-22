@@ -871,8 +871,27 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCycleEvent
 
 
-  final case class OrderSleeping(until: Timestamp)
+  final case class OrderSleeping(until: Timestamp, cause: OrderSleeping.Cause)
   extends OrderActorEvent
+
+  object OrderSleeping:
+    sealed trait Cause
+
+    object Cause:
+      case object SleepInstruction extends Cause
+      case object SpeedLimit extends Cause
+
+      given TypedJsonCodec[Cause] = TypedJsonCodec(
+        Subtype(SleepInstruction),
+        Subtype(SpeedLimit))
+
+    given Encoder.AsObject[OrderSleeping] = deriveEncoder
+    given Decoder[OrderSleeping] = c =>
+      for
+        until <- c.get[Timestamp]("until")
+        cause <- c.getOrElse[OrderSleeping.Cause]("cause")(Cause.SleepInstruction)
+      yield
+        OrderSleeping(until, cause)
 
 
   final case class OrderWaitingForAdmission(until: Timestamp)

@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
+import js7.base.time.{SpeedLimiter, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeKey, NoticeV2_3}
@@ -1078,11 +1079,40 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderSleeping" in:
-    testJson[OrderEvent](OrderSleeping(ts"2024-12-18T12:00:00Z"),
+    testJson[OrderEvent](
+      OrderSleeping(
+        ts"2024-12-18T12:00:00Z",
+        OrderSleeping.Cause.SleepInstruction),
+      json"""
+      {
+        "TYPE": "OrderSleeping",
+        "until": 1734523200000,
+        "cause": {
+          "TYPE": "SleepInstruction"
+        }
+      }""")
+
+    testJsonDecoder[OrderEvent](
+      OrderSleeping(
+        ts"2024-12-18T12:00:00Z",
+        OrderSleeping.Cause.SleepInstruction),
       json"""
       {
         "TYPE": "OrderSleeping",
         "until": 1734523200000
+      }""")
+
+    testJson[OrderEvent](
+      OrderSleeping(
+        ts"2024-12-18T12:00:00Z",
+        OrderSleeping.Cause.SpeedLimit),
+      json"""
+      {
+        "TYPE": "OrderSleeping",
+        "until": 1734523200000,
+        "cause": {
+          "TYPE": "SpeedLimit"
+        }
       }""")
 
   "OrderTransferred" in:
