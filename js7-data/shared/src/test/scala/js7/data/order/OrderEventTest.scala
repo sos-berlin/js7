@@ -6,7 +6,6 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{SpeedLimiter, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -93,7 +92,8 @@ final class OrderEventTest extends OurTestSuite:
         startPosition = Some(Position(1) / "then" % 2),
         stopPositions = Set(Position(1) / "then" % 9, Label("LABEL")),
         deleteWhenTerminated = true,
-        forceAdmission = true),
+        forceAdmission = true,
+        speedRecord = Some(SpeedLimiter.Record(1234.ms, 0.5))),
       json"""
       {
         "TYPE": "OrderOrderAdded",
@@ -109,7 +109,11 @@ final class OrderEventTest extends OurTestSuite:
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 1, "then", 9 ], "LABEL"],
         "deleteWhenTerminated": true,
-        "forceAdmission": true
+        "forceAdmission": true,
+        "speedRecord": {
+          "time": 1.234,
+          "weight": 0.5
+        }
       }""")
 
     testJsonDecoder[OrderEvent](

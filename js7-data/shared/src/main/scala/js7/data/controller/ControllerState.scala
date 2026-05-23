@@ -49,7 +49,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
@@ -517,14 +517,21 @@ extends
             workflowToOrders = workflowToOrders
               .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
 
-      case orderAdded: OrderAddedX =>
-        val addedOrderId = orderAdded.ownOrderId getOrElse orderId
+      case event: OrderAddedX =>
+        val addedOrderId = event.ownOrderId getOrElse orderId
         for
           _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          r <- addOrders(Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil,
+          r <- addOrders(Order.fromOrderAdded(addedOrderId, event) :: Nil,
             allowClosedPlan = true/*the issuer of the event has already checked this*/)
         yield
-          r
+          event match
+            case event: OrderOrderAdded =>
+              event.speedRecord.fold(r): record =>
+                r.copy(
+                  volatile = r.volatile.copy(
+                    addOrderInstrSpeedLimiter =
+                      r.volatile.addOrderInstrSpeedLimiter.record(record)))
+            case _ => r
 
       case _ =>
         super.applyOrderEvent(orderId, event)

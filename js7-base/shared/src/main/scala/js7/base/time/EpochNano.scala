@@ -3,6 +3,7 @@ package js7.base.time
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import java.time.Instant
+import scala.concurrent.duration.FiniteDuration
 
 /** A Long denoting the number of nanoseconds since the Unix epoch. */
 opaque type EpochNano = Long
@@ -16,6 +17,9 @@ object EpochNano:
 
   inline def apply(epochNano: Long): EpochNano =
     epochNano
+
+  inline def of(duration: FiniteDuration): EpochNano =
+    duration.toNanos
 
   def from(instant: Instant): EpochNano =
     instant.getEpochSecond * 1_000_000_000L + instant.getNano

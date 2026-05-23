@@ -8,7 +8,7 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{TestAlarmClock, Timestamp}
+import js7.base.time.{SpeedLimiter, TestAlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -48,7 +48,12 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
   "AddOrder" in:
     val orderId = OrderId("🔷")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
-    assert(events.map(_.value) == Seq(
+      .map(_.value)
+      .collect:
+        case event: OrderOrderAdded =>
+          event.copy(speedRecord = event.speedRecord.map(_.copy(time = 7.s)))
+        case event => event
+    assert(events == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
       OrderOrderAdded(
@@ -56,7 +61,8 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         bWorkflow.id,
         Map(
           "year" -> StringValue("2099")),
-        deleteWhenTerminated = true),
+        deleteWhenTerminated = true,
+        speedRecord = Some(SpeedLimiter.Record(7.s, 1.0))),
       OrderMoved(Position(1)),
       OrderFinished()))
     eventWatch.await[OrderPrompted](_.key == OrderId("🟦"))
@@ -83,6 +89,10 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
     locally:
       val orderId = OrderId("START-AND-STOP")
       val events = controller.runOrder(FreshOrder(orderId, c1Workflow.path)).map(_.value)
+        .collect:
+          case event: OrderOrderAdded =>
+            event.copy(speedRecord = event.speedRecord.map(_.copy(time = 7.s)))
+          case event => event
       assert(events == Seq(
         OrderAdded(c1Workflow.id),
         OrderStarted,
@@ -91,7 +101,8 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
           c2Workflow.id,
           startPosition = Some(Position(1)),
           stopPositions = Set(Position(2)),
-          deleteWhenTerminated = true),
+          deleteWhenTerminated = true,
+          speedRecord = Some(SpeedLimiter.Record(7.s, 1.0))),
         OrderMoved(Position(1)),
         OrderFinished()))
 

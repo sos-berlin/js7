@@ -12,7 +12,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
+import js7.base.time.{SpeedLimiter, Timestamp}
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.functionCallToString
@@ -166,7 +166,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     forceAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
-    stopPositions: Set[PositionOrLabel] = Set.empty)
+    stopPositions: Set[PositionOrLabel] = Set.empty,
+    speedRecord: Option[SpeedLimiter.Record] = None)
   extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
 
@@ -190,7 +191,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "forceAdmission" -> o.forceAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
         "startPosition" -> o.startPosition.asJson,
-        "stopPositions" -> o.stopPositions.??.asJson)
+        "stopPositions" -> o.stopPositions.??.asJson,
+        "speedRecord" -> o.speedRecord.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderOrderAdded] =
       c => for
@@ -205,10 +207,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceAdmission <- c.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
           c.getOrElse[Boolean]("forceAdmission")(false)
+        speedRecord <- c.get[Option[SpeedLimiter.Record]]("speedRecord")
       yield
         OrderOrderAdded(orderId, workflowId, arguments, planId, priority,
           deleteWhenTerminated, forceAdmission,
-          innerBlock, startPosition, stopPositions)
+          innerBlock, startPosition, stopPositions, speedRecord)
 
 
   /** Agent-only event. */
@@ -980,7 +983,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderCyclingPrepared]),
     Subtype(deriveCodecWithDefaults[OrderCycleStarted]),
     Subtype(deriveCodec[OrderCycleFinished]),
-    Subtype(deriveCodec[OrderSleeping]),
+    Subtype[OrderSleeping],
     Subtype(deriveCodec[OrderTransferred]),
     Subtype(deriveCodec[OrderPlanAttached]),
     Subtype(deriveCodec[OrderSaid]),

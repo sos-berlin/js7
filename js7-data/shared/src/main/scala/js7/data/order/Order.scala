@@ -598,7 +598,9 @@ extends
                 state = BetweenCycles(cycleState))
 
       case OrderSleeping(until, cause) =>
-        check(isState[Ready] && isDetachedOrAttached,
+        check(
+          (isState[Ready] || cause == OrderSleeping.Cause.SpeedLimit && isState[Sleeping])
+            && isDetachedOrAttached,
           copy(
             state = Sleeping(until, cause)))
 
