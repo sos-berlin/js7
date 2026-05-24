@@ -1,6 +1,5 @@
 package js7.base.time
 
-import js7.base.time.ScalaTime.*
 import js7.base.time.SpeedLimiter.{Record, TooFast}
 import scala.concurrent.duration.FiniteDuration
 
@@ -18,9 +17,9 @@ import scala.concurrent.duration.FiniteDuration
   * Immutable.
   */
 final class StandardSpeedLimiter private(
-  speedLimits: Seq[Speed],
-  histogram: TimeHistogram,
-  startTime: FiniteDuration)
+  private val speedLimits: Seq[Speed],
+  private val histogram: TimeHistogram,
+  unit: SpeedUnit)
 extends SpeedLimiter:
 
   protected type Self = StandardSpeedLimiter
@@ -28,21 +27,28 @@ extends SpeedLimiter:
   def setTime(time: FiniteDuration): StandardSpeedLimiter =
     new StandardSpeedLimiter(
       speedLimits,
-      histogram.setTime(time - startTime),
-      startTime)
+      histogram.setTime(time),
+      unit)
 
   /** Try to record a weight while checking the limit.
     *
     * Or "Try to accelerate but check the speed limit"
     * Or "Try to heat up but the temperature limit"
     *
-    * @return `Left[TooFast]` if the speed limit would be exceeded.
+    * @return `Left[TooFast]` if the speed limit is exceeded.
     *         The weight may be added after the retured `delay` has passed.
     *         `Right[StandardSpeedLimiter]` if acceleration was possible.
     */
   def tryRecord(record: Record): Either[TooFast, StandardSpeedLimiter] =
     val updated = this.record(record)
-    updated.tooFast.toLeft(updated)
+    updated.speedLimits.iterator.zipWithIndex.map:
+      case pair @ (speedLimit, i) => (pair, updated.histogram.recordedSpeed(i))
+    .collect:
+      case ((speedLimit, i), recordedSpeed) if recordedSpeed.speed.weight > speedLimit.weight =>
+        val end = histogram.recordedSpeed(i).end
+        TooFast(speedLimit, delay = end - record.time)
+    .maxByOption(_.delay)
+    .toLeft(updated)
 
   /** Like [[tryRecord]] but doesn't check speed limit. */
   def record(record: Record): StandardSpeedLimiter =
@@ -51,39 +57,21 @@ extends SpeedLimiter:
     else
       new StandardSpeedLimiter(
         speedLimits,
-        histogram = histogram.add(record.time - startTime, record.weight),
-        startTime = startTime)
-
-  /** Return the remaining time until the speed has lowered below the limits.
-    *
-    * @return `Some[TooFast]` if the speed is above a limit.
-    *         `None` if the speed is not above a limit .
-    */
-  private def tooFast: Option[TooFast] =
-    speedLimits.iterator.zipWithIndex.map:
-      case (speedLimit, i) => speedLimit -> histogram.recordedSpeed(i)
-    .collect:
-      case (speedLimit, recordedSpeed) if recordedSpeed.speed.weight > speedLimit.weight =>
-        TooFast(
-          speedLimit,
-          delay = recordedSpeed.end - time)
-          //delay = speedLimit.period - (time.toNanos % speedLimit.period.toNanos).ns.toCoarsest)
-    .maxByOption(_.delay)
+        histogram = histogram.add(record.time, record.weight),
+        unit)
 
   private def time: FiniteDuration =
-    histogram.time - startTime
+    histogram.time
 
-  override def toString = s"StandardSpeedLimiter($histogram)"
+  override def toString =
+    s"StandardSpeedLimiter(${speedLimits.mkString("(", ", ", ")")}, $histogram)"
 
 
 object StandardSpeedLimiter:
 
-  def apply(
-    speeds: Seq[Speed],
-    startTime: FiniteDuration = ZeroDuration,
-    fractions: Int = 10)
+  def apply(speeds: Seq[Speed], fractions: Int = 10, unit: SpeedUnit = SpeedUnit.empty)
   : StandardSpeedLimiter =
     new StandardSpeedLimiter(
       speeds,
-      TimeHistogram(speeds.map(_.period), fractions),
-      startTime)
+      TimeHistogram(speeds.map(_.period), fractions, unit),
+      unit)

@@ -34,9 +34,9 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
               addOrderInstrSpeedLimiter.tryRecord(speedRecord) match
                 case Left(tooFast) =>
                   val delay = tooFast.delay.roundUpToNext(1.ms)
-                  val again = order.ifState[Order.Sleeping].fold("")(_ => " again")
-                  logger.info(s"🐌 $orderId is being delayed$again by ${
-                    delay.show} due to AddOrder speed limit of ${tooFast.speedLimit}")
+                  //val again = order.ifState[Order.Sleeping].fold("")(_ => " again")
+                  //Could be many orders: logger.info(s"🐌 $orderId is being delayed$again by ${
+                  //  delay.show} due to speed limit of ${tooFast.speedLimit}")
                   coll.add:
                     // TODO Introduce OrderDelaying event with monotonic time?
                     order.id <-:

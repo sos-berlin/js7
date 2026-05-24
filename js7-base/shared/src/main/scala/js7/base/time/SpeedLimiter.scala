@@ -33,6 +33,7 @@ trait SpeedLimiter:
 object SpeedLimiter:
 
   def fromConfig(config: Config): Checked[SpeedLimiter] =
+    val unit = SpeedUnit("AddOrder", "AddOrders")
     if !config.hasPath("js7.instruction.addOrder.speedLimit") then
       Right(Unlimited)
     else
@@ -41,17 +42,17 @@ object SpeedLimiter:
           limit = cnf.getDouble("limit")
           period <- cnf.finiteDuration("period")
         yield
-          Speed(limit, period)
+          Speed(limit, period, unit)
       .map: speeds =>
-        StandardSpeedLimiter(speeds)
+        StandardSpeedLimiter(speeds, unit = unit)
 
   type Zero = Zero.type
 
   object Zero extends SpeedLimiter:
     protected type Self = Zero
 
-    private val period = 24.days * 365
-    val tooFast: TooFast =
+    private val tooFast: TooFast =
+      val period = 24.days * 365
       TooFast(
         speedLimit = Speed(0, period),
         delay = period /*could be infinite*/)
@@ -93,4 +94,5 @@ object SpeedLimiter:
     * @param speedLimit the breached speed limit
     * @param delay duration until the speed no longer is breached (assuming weight is a tiny amount)
     */
-  final case class TooFast(speedLimit: Speed, delay: FiniteDuration)
+  final case class TooFast(speedLimit: Speed, delay: FiniteDuration):
+    override def toString = s"TooFast($speedLimit delay=${delay.show})"

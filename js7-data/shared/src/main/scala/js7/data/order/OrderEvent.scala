@@ -875,9 +875,20 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderSleeping(until: Timestamp, cause: OrderSleeping.Cause)
-  extends OrderActorEvent
+  extends OrderActorEvent:
+    override def toString =
+      val elapsed = Timestamp.now - until
+      val elapsedString =
+        if elapsed.isNegative && elapsed >= -OrderSleeping.LogMax then
+          s" -${(-elapsed).pretty}"
+        else if elapsed.isPositive && elapsed <= OrderSleeping.LogMax then
+          s" +${elapsed.pretty}"
+        else ""
+      s"OrderSleeping($until$elapsedString, $cause)"
 
   object OrderSleeping:
+    private val LogMax = 1.h.toNanos.ns
+
     sealed trait Cause
 
     object Cause:

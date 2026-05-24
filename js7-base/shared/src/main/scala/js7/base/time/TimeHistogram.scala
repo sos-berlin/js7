@@ -73,7 +73,7 @@ final class TimeHistogram private(
     entries.map(_.period.ns)
 
   override def toString =
-    s"TimeHistogram($time, fractions=$fractions, ${entries.mkString(" ")})"
+    s"TimeHistogram(${time.show} -> ${entries.mkString(" ")})"
 
 
 object TimeHistogram:
@@ -85,23 +85,31 @@ object TimeHistogram:
     * @param fractions The number of fractions per period.
     *                  Higher numbers yield more precision, but also more memory.
     */
-  def apply(periods: Seq[FiniteDuration], fractions: Int = 10): TimeHistogram =
+  def apply(periods: Seq[FiniteDuration], fractions: Int = 10, unit: SpeedUnit = SpeedUnit.empty)
+  : TimeHistogram =
     new TimeHistogram(
       ZeroDuration,
       entries =
         periods.map: period =>
-          Entry(start = 0, period.toNanos, IArray.fill(fractions)(0))
-       .toArray.asInstanceOf[IArray[Entry]],
+          Entry(start = 0, period.toNanos, IArray.fill(fractions)(0), unit)
+        .toArray.asInstanceOf[IArray[Entry]],
       fractions = fractions)
 
   /**
     * Recorded weights (on per fraction) in the last period starting at start.
+    *
     * @param start  the start at which the period starts, in nanoseconds
     * @param period speed limit period, in nanoseconds
     * @param weights the recorded weights for each fraction of the period
     *                `weight(0)` is the latest recorded weight
     */
-  private final class Entry(val start: Long, val period: Long, weights: IArray[Double]):
+  // Keep small with Long instead of FiniteDuration
+  private final class Entry(
+    val start: Long,
+    val period: Long,
+    weights: IArray[Double],
+    unit: SpeedUnit):
+
     private val periodFraction = period / weights.length
 
     def setTime(newTime: Long): Entry =
@@ -122,23 +130,25 @@ object TimeHistogram:
         Entry(
           start = start + periodFraction * shift,
           period,
-          weights = newCounters.asInstanceOf[IArray[Double]])
-      end if
+          weights = newCounters.asInstanceOf[IArray[Double]],
+          unit)
 
     def recordedSpeed: RecordedSpeed =
       RecordedSpeed(start.ns, speed)
 
     def speed: Speed =
-      Speed(weight, period.ns)
+      Speed(weight, period.ns, unit)
 
     def weight: Double =
       weights.sum
 
     override def toString =
-      s"Entry(${period.ns.show}: start=${start.ns.show}, weights=${
+      s"Entry(period=${period.ns.show} start=${start.ns.show} -> ${
         weights.map(_.toString.stripSuffix(".0")).mkString(" ")})"
 
 
   final case class RecordedSpeed(start: FiniteDuration, speed: Speed):
     def end: FiniteDuration =
       start + speed.period
+
+    override def toString = s"RecordedSpeed(${start.show} -> $speed)"

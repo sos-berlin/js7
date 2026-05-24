@@ -9,25 +9,26 @@ final class TimeHistogramTest extends OurTestSuite:
 
   private val logger = Logger[this.type]
   private val periods = Seq(1.s, 10.s, 1.minute, 10.minutes, 1.hour)
+  private val unit = SpeedUnit("event", "events")
 
   private def weights(histogram: TimeHistogram) =
     histogram.periods.indices.map(histogram.weight)
 
   "test" in:
-    var histogram = TimeHistogram(periods)
+    var histogram = TimeHistogram(periods, unit = unit)
     Example.foreach: (time, n, sums) =>
       histogram = histogram.add(time, n)
       for (period, i) <- histogram.periods.zipWithIndex do
         val what = s"($time, +$n, ${period.pretty})"
         withClue(s"$what --> "):
-          assert(histogram.speed(i) == Speed(sums(i), period))
+          assert(histogram.speed(i) == Speed(sums(i), period, unit))
         logger.info(s"$what ✔")
 
     histogram = histogram.setTime(3.h)
-    assert(histogram.speed(1.h) == Speed(0, 1.h))
+    assert(histogram.speed(1.h) == Speed(0, 1.h, unit))
 
   "test2" in:
-    var histogram = TimeHistogram(periods, fractions = 10)
+    var histogram = TimeHistogram(periods, fractions = 10, unit)
     histogram = histogram.setTime(0.s)
     histogram = histogram.add(1) // value 1
     histogram = histogram.setTime(5.s)
