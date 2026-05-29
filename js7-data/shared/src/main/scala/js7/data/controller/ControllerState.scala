@@ -541,8 +541,9 @@ extends
     val orderId = order.id
     event match
       case OrderNoticeAnnounced(noticeId) =>
-        updatePlannedBoard(noticeId.plannedBoardId)(_.announceNotice(noticeId.noticeKey))
-          .map(_ :: Nil)
+        updatePlannedBoard(noticeId.plannedBoardId):
+          _.announceNotice(noticeId.noticeKey)
+        .map(_ :: Nil)
 
       case OrderNoticePostedV2_3(notice) =>
         for
@@ -554,8 +555,9 @@ extends
           planSchemaState :: Nil
 
       case OrderNoticePosted(noticeId, endOfLife) =>
-        updatePlannedBoard(noticeId.plannedBoardId)(_.addNotice(Notice(noticeId, endOfLife)))
-          .map(_ :: Nil)
+        updatePlannedBoard(noticeId.plannedBoardId):
+          _.addNotice(Notice(noticeId, endOfLife))
+        .map(_ :: Nil)
 
       case OrderNoticeExpected(noticeKey) =>
         // COMPATIBLE with v2.3

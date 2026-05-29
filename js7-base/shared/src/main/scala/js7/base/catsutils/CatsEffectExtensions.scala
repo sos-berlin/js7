@@ -230,15 +230,6 @@ object CatsEffectExtensions:
     def unsafeRuntime: IO[IORuntime] =
       IO.executionContext.map(OurIORuntimeRegister.toIORuntime)
 
-    //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =
-    //  for
-    //    ec <- IO.executionContext
-    //    a <- IO.fromCancelableFuture(io(ec))
-    //  yield a
-    //
-    //def fromCancelableFuture[A](io: IO[CancelableFuture[A]]): IO[A] =
-    //  io.flatMap(future => IO.fromFutureCancelable(future, future.cancelToFuture)
-
 
   extension [A](syncIO: SyncIO[A])
     /** A less dangerous name. */
