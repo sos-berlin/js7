@@ -28,6 +28,14 @@ trait EngineStateMXBean:
   def getStatisticsEventTotal: Long =
     engineState.statistics.eventCounter.totalEventCount
 
+  def getHistoricOutcomesPerOrder: java.lang.Integer =
+    val n = engineState.idToOrder.size
+    if n == 0 then
+      null
+    else
+      engineState.idToOrder.valuesIterator.map(_.historicOutcomes.size).sum /
+        engineState.idToOrder.size
+
   def getJVMRunningSeconds: Double =
     ManagementFactory.getRuntimeMXBean.getUptime / 1000.0
 
