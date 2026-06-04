@@ -18,7 +18,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, Unsig
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{ExpectingNotices, IsFreshOrReady, Processing, WaitingForLock}
-import js7.data.order.OrderEvent.{LockDemand, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderOrderAdded, OrderStateReset, OrderStdWritten}
+import js7.data.order.OrderEvent.{LockDemand, OrderCoreEvent, OrderForked, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.PlanSchemaState
 import js7.data.state.EngineState.*
@@ -29,6 +29,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, Execute, LockInstruction, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import scala.annotation.switch
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
@@ -359,34 +360,35 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
   override def companion: Companion[This]
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This] =
-    event match
-      case _: OrderAddedX | _: OrderEvent.OrderAttachedToAgent =>
+    (event.tag: @switch) match
+      case 1 | 2 | 3 => // OrderAdded | OrderOrderAdded | OrderAttachedToAgent
         // Event is handled by one of ControllerState and AgentState only
         Left(EventNotHandledHereProblem(event, companion))
 
-      case event: OrderCoreEvent =>
-        applyOrderCoreEvent(orderId, event)
-
-      case _: OrderStdWritten =>
+      case 7 | 8 => // OrderStdoutWritten | OrderStderrWritten
         // OrderStdWritten is not applied. But check OrderId.
         idToOrder.checked(orderId).rightAs(this)
+
+      case _ =>
+        applyOrderCoreEvent(orderId, event.asInstanceOf[OrderCoreEvent])
 
   protected final def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This] =
     for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
-      result <- event match
-        case OrderDetached =>
+      result <- (event.tag: @switch) match
+        case 34 => // OrderDetached
           if isAgent then
             update(removeOrders = orderId :: Nil)
           else
             update(updateOrders = updatedOrder :: Nil)
 
-        case event: OrderForked =>
+        case 10 => // OrderForked
+          val e = event.asInstanceOf[OrderForked]
           update(updatedOrder :: Nil).flatMap:
-            _.addOrders(previousOrder.newForkedOrders(event), allowClosedPlan = true)
+            _.addOrders(previousOrder.newForkedOrders(e), allowClosedPlan = true)
 
-        case event: OrderJoined =>
+        case 11 => // OrderJoined
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
@@ -400,26 +402,34 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
                 Left(Problem:
                   s"For event $event, $orderId must be in Forked state, not: $state")
 
-        case event: OrderLockEvent =>
-          event
-            .match
-              case OrderLocksQueued(demands) =>
-                foreachLockDemand(demands):
-                  _.enqueue(orderId, _)
+        case 56 =>
+          val OrderLocksQueued(demands) = event.asInstanceOf[OrderLocksQueued]
+          foreachLockDemand(demands):
+            _.enqueue(orderId, _)
+          .flatMap: lockStates =>
+            update(
+              updateOrders = updatedOrder :: Nil,
+              addItemStates = lockStates)
 
-              case OrderLocksAcquired(demands) =>
-                foreachLockDemand(demands):
-                  _.acquire(orderId, _)
+        case 57 =>
+          val OrderLocksAcquired(demands) = event.asInstanceOf[OrderLocksAcquired]
+          foreachLockDemand(demands):
+            _.acquire(orderId, _)
+          .flatMap: lockStates =>
+            update(
+              updateOrders = updatedOrder :: Nil,
+              addItemStates = lockStates)
 
-              case OrderLocksReleased(lockPaths) =>
-                foreachLock(lockPaths):
-                  _.release(orderId)
-            .flatMap: lockStates =>
-              update(
-                updateOrders = updatedOrder :: Nil,
-                addItemStates = lockStates)
+        case 58 =>
+          val OrderLocksReleased(lockPaths) = event.asInstanceOf[OrderLocksReleased]
+          foreachLock(lockPaths):
+            _.release(orderId)
+          .flatMap: lockStates =>
+            update(
+              updateOrders = updatedOrder :: Nil,
+              addItemStates = lockStates)
 
-        case OrderStateReset =>
+        case 41 => // OrderStateReset
           previousOrder.ifState[WaitingForLock].map: order =>
             val instr = instruction_[LockInstruction](order.workflowPosition).orThrow
             foreachLock(instr.lockPaths): lockState =>
@@ -439,7 +449,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
             update(
               updateOrders = updatedOrder :: Nil)
 
-        case _: OrderCancelled =>
+        case 42 => // OrderCancelled
           previousOrder
             // COMPATIBLE Since v2.7.2 an OrderStateReset is emitted and the
             // following code is superfluous (but still needed for old journals)
@@ -450,22 +460,22 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
                   updateOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
 
-        case OrderExternalVanished =>
+        case 36 => // OrderExternalVanished
           if updatedOrder.externalOrder.isEmpty then
             Left(Problem(s"OrderExternalVanished but $orderId is not linked to an external order"))
           else
             update(externalVanishedOrders = updatedOrder :: Nil)
 
-        case OrderDeletionMarked =>
+        case 37 => // OrderDeletionMarked
           update(updateOrders = updatedOrder :: Nil)
 
-        case OrderDeleted =>
+        case 38 => // OrderDeleted
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
             update(removeOrders = orderId :: Nil)
 
-        case event: OrderOrderAdded =>
+        case 2 => // OrderOrderAdded
           // ControllerState handles this event
           Left(EventNotHandledHereProblem(event, companion))
 

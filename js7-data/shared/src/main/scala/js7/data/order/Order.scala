@@ -31,7 +31,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.annotation.{nowarn, tailrec}
+import scala.annotation.{nowarn, switch, tailrec}
 import scala.collection.{MapView, mutable}
 import scala.reflect.ClassTag
 
@@ -122,8 +122,9 @@ extends
     def check[A](okay: => Boolean, updated: A) =
       if okay then Right(updated) else inapplicable
 
-    event match
-      case OrderMoved(to, _) =>
+    (event.tag: @switch) match
+      case 23 =>
+        val OrderMoved(to, _) = event.asInstanceOf[OrderMoved]
         check(
           (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
             isState[Sleeping] || isState[WaitingForAdmission])
@@ -132,11 +133,14 @@ extends
             isResumed = false,
             state = if isState[Fresh] then state else Ready()))
 
-      case OrderOutcomeAdded(outcome) =>
+      case 24 =>
+        val OrderOutcomeAdded(outcome) = event.asInstanceOf[OrderOutcomeAdded]
         Right(copy(
           historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderProcessingStarted(subagentId, subagentBundleId, stick, endOfAdmissionPeriod) =>
+      case 6 =>
+        val OrderProcessingStarted(subagentId, subagentBundleId, stick, endOfAdmissionPeriod) =
+          event.asInstanceOf[OrderProcessingStarted]
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
           && (!stick || stickySubagents.nonEmpty),
           copy(
@@ -148,25 +152,27 @@ extends
                 stickySubagents,
             mark = cleanMark))
 
-      case OrderProcessed(outcome_) =>
+      case 9 =>
+        val OrderProcessed(outcome_) = event.asInstanceOf[OrderProcessed]
         check(isState[Processing] && !isSuspendedOrStopped && isAttached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-      case _: OrderAdded | _: OrderAttachedToAgent =>
+      case 1 | 3 => // OrderAdded | OrderAttachedToAgent
         Left(Problem:
           "OrderAdded and OrderAttachedToAgent events are not handled by the Order itself")
 
-      case OrderStarted =>
+      case 5 => // OrderStarted
         check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(state = Ready()))
 
-      case OrderProcessingKilled =>
+      case 20 => // OrderProcessingKilled
         check(isState[Processed] && !isSuspendedOrStopped && isAttached,
           copy(state = ProcessingKilled))
 
-      case OrderFailed(movedTo, outcome_) =>
+      case 25 =>
+        val OrderFailed(movedTo, outcome_) = event.asInstanceOf[OrderFailed]
         check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached,
           copy(
             state = if isState[Fresh] then FailedWhileFresh else Failed,
@@ -177,7 +183,8 @@ extends
             historicOutcomes = outcome_.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderFailedInFork(movedTo, outcome) =>
+      case 26 =>
+        val OrderFailedInFork(movedTo, outcome) = event.asInstanceOf[OrderFailedInFork]
         check(parent.nonEmpty
           && isFailable
           && !isState[Fresh],
@@ -194,7 +201,8 @@ extends
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderCatched(movedTo, outcome) =>
+      case 27 =>
+        val OrderCatched(movedTo, outcome) = event.asInstanceOf[OrderCatched]
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
           isDetachedOrAttached,
@@ -205,7 +213,8 @@ extends
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderCaught(movedTo, outcome) =>
+      case 28 =>
+        val OrderCaught(movedTo, outcome) = event.asInstanceOf[OrderCaught]
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
           isDetachedOrAttached,
@@ -220,7 +229,8 @@ extends
               isResumed = false,
               historicOutcomes = h))
 
-      case OrderRetrying(maybeDelayUntil, movedTo) =>
+      case 29 =>
+        val OrderRetrying(maybeDelayUntil, movedTo) = event.asInstanceOf[OrderRetrying]
         check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
           maybeDelayUntil
             .fold[Order[State]](this/*Ready*/)(o => copy(
@@ -228,26 +238,29 @@ extends
             .pipeMaybe(movedTo):
               _.withPosition(_))
 
-      case OrderAwoke =>
+      case 30 => // OrderAwoke
         check(
           (isState[Sleeping] || isState[DelayingRetry] || isState[DelayedAfterError])
             && !isSuspendedOrStopped
             && isDetachedOrAttached,
           copy(state = Ready()))
 
-      case OrderForked(children) =>
+      case 10 =>
+        val OrderForked(children) = event.asInstanceOf[OrderForked]
         check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(
             state = Forked(children),
             mark = cleanMark))
 
-      case OrderJoined(outcome) =>
+      case 11 =>
+        val OrderJoined(outcome) = event.asInstanceOf[OrderJoined]
         check(isState[Forked] && !isSuspendedOrStopped && isDetached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderFinished(maybeOutcome) =>
+      case 35 =>
+        val OrderFinished(maybeOutcome) = event.asInstanceOf[OrderFinished]
         check(isState[Ready] && isDetached && !isSuspendedOrStopped,
           copy(
             state = Finished,
@@ -256,32 +269,35 @@ extends
             mark = None,
             isResumed = false))
 
-      case OrderDeletionMarked =>
+      case 37 => // OrderDeletionMarked
         check(parent.isEmpty,
           copy(deleteWhenTerminated = true))
 
-      case OrderExternalVanished =>
+      case 36 => // OrderExternalVanished
         check(parent.isEmpty,
           copy(
             externalOrder = externalOrder.map(_.copy(
               vanished = true))))
 
-      case OrderDeleted =>
+      case 38 => // OrderDeleted
         check(isState[IsTerminated] && isDetached && parent.isEmpty,
           copy(state = Deleted))
 
-      case OrderBroken(maybeProblem) =>
+      case 31 =>
+        val OrderBroken(maybeProblem) = event.asInstanceOf[OrderBroken]
         check(!isState[IsTerminated],
           copy(
             state = Broken(maybeProblem),
             historicOutcomes = maybeProblem.fold(historicOutcomes): problem =>
               historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem))))
 
-      case OrderAttachable(agentPath) =>
+      case 32 =>
+        val OrderAttachable(agentPath) = event.asInstanceOf[OrderAttachable]
         check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
           copy(attachedState = Some(Attaching(agentPath))))
 
-      case OrderAttached(agentPath) =>
+      case 4 =>
+        val OrderAttached(agentPath) = event.asInstanceOf[OrderAttached]
         attachedState match
           case Some(Attaching(`agentPath`)) =>
             check(isState[IsFreshOrReady] || isState[Forked],
@@ -289,25 +305,26 @@ extends
           case _ =>
             inapplicable
 
-      case OrderDetachable =>
+      case 33 => // OrderDetachable
         attachedState match
           case Some(Attached(agentPath)) if state.isDetachable =>
             Right(copy(attachedState = Some(Detaching(agentPath))))
           case _ =>
             inapplicable
 
-      case OrderDetached =>
+      case 34 => // OrderDetached
         check(!isDetached && state.isDetachable,
           copy(attachedState = None))
 
-      case OrderCancellationMarked(mode) =>
+      case 39 =>
+        val OrderCancellationMarked(mode) = event.asInstanceOf[OrderCancellationMarked]
         check(isMarkable,
           copy(mark = Some(OrderMark.Cancelling(mode))))
 
-      case OrderCancellationMarkedOnAgent =>
+      case 40 => // OrderCancellationMarkedOnAgent
         Right(this)
 
-      case OrderStateReset =>
+      case 41 => // OrderStateReset
         // Event precedes OrderCancelled in the same transaction,
         // maybe before some block-leaving events which rely on state == Ready.
         check(state.isInstanceOf[IsResettable],
@@ -315,40 +332,42 @@ extends
             state = Ready(),
             mark = None))
 
-      case OrderCancelled =>
+      case 42 => // OrderCancelled
         check(isCancelable && isDetached,
           copy(
             state = Cancelled,
             isSuspended = false,
             mark = None))
 
-      case OrderSuspensionMarked(mode) =>
+      case 43 =>
+        val OrderSuspensionMarked(mode) = event.asInstanceOf[OrderSuspensionMarked]
         check(isMarkable,
           copy(mark = Some(OrderMark.Suspending(mode))))
 
-      case OrderSuspensionMarkedOnAgent =>
+      case 46 => // OrderSuspensionMarkedOnAgent
         Right(this)
 
-      case OrderSuspended =>
+      case 47 => // OrderSuspended
         check(isSuspendibleNow && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
           copy(
             isSuspended = true,
             mark = None,
             state = if isSuspendingWithKill && isState[ProcessingKilled] then Ready() else state))
 
-      case OrderStopped =>
+      case 49 => // OrderStopped
         check(isFailable && isDetached,
           copy(
             state = if isState[Fresh] then StoppedWhileFresh else Stopped))
 
-      case OrderGoMarked(position) =>
+      case 44 =>
+        val OrderGoMarked(position) = event.asInstanceOf[OrderGoMarked]
         if isGoCommandable(position) && isAttached then
           Right(copy(
             mark = Some(OrderMark.Go(position))))
         else
           inapplicable
 
-      case OrderGoes =>
+      case 45 => // OrderGoes
         if isGoCommandable then
           Right:
             mark match
@@ -357,7 +376,9 @@ extends
         else
           inapplicable
 
-      case OrderResumptionMarked(position, historyOperations, asSucceeded, restartKilledJob) =>
+      case 50 =>
+        val OrderResumptionMarked(position, historyOperations, asSucceeded, restartKilledJob) =
+          event.asInstanceOf[OrderResumptionMarked]
         if !isMarkable then
           inapplicable
         else if isSuspended then
@@ -376,7 +397,9 @@ extends
             mark = Some(OrderMark.Resuming()),
             isResumed = true))
 
-      case OrderResumed(maybePosition, historyOps, asSucceeded, restartKilledJob) =>
+      case 51 =>
+        val OrderResumed(maybePosition, historyOps, asSucceeded, restartKilledJob) =
+          event.asInstanceOf[OrderResumed]
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 
         var outcomes = historicOutcomes
@@ -461,21 +484,22 @@ extends
                   state,
               historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
 
-      case event: OrderPriorityChanged =>
+      case 48 =>
+        val OrderPriorityChanged(priority) = event.asInstanceOf[OrderPriorityChanged]
         if isState[IsTerminated] then
           Left(Problem.pure("Order is terminated"))
         else
           Right(copy(
-            priority = event.priority))
+            priority = priority))
 
-      case _: OrderLocksAcquired =>
+      case 57 => // OrderLocksAcquired
         // LockState handles this event, too
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),
           withPosition(position / BranchId.Lock % 0)
             .copy(
               state = Ready()))
 
-      case _: OrderLocksReleased =>
+      case 58 => // OrderLocksReleased
         // LockState handles this event, too
         if isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/ then
           position
@@ -484,47 +508,48 @@ extends
         else
           inapplicable
 
-      case _: OrderLocksQueued =>
+      case 56 => // OrderLocksQueued
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
 
-      case e: LegacyOrderLockEvent =>
-        Left(EventNotApplicableProblem(id <-: e, this))
+      case 52 | 53 | 54 | 55 => // LegacyOrderLockEvent
+        Left(EventNotApplicableProblem(id <-: event, this))
 
-      case _: OrderNoticeAnnounced =>
+      case 12 => // OrderNoticeAnnounced
         check(isDetached && isState[Fresh],
           this)
 
-      case _: OrderNoticePostedV2_3 =>
+      case 13 => //  OrderNoticePostedV2_3
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           this)
 
-      case _: OrderNoticePosted =>
+      case 14 => // OrderNoticePosted
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           this)
 
-      case OrderNoticeExpected(_) =>
+      case 15 => // OrderNoticeExpected
         // ControllerStateRecoverer converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
-      case OrderNoticesExpected(noticeIds) =>
+      case 16 =>
+        val OrderNoticesExpected(noticeIds) = event.asInstanceOf[OrderNoticesExpected]
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           copy(
             state = ExpectingNotices(noticeIds)))
 
-      case OrderNoticesRead =>
+      case 17 => // OrderNoticesRead
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
           copy(
             state = Ready()))
 
-      case OrderNoticesConsumptionStarted(_) =>
+      case 18 => // OrderNoticesConsumptionStarted
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
           withPosition(position / BranchId.ConsumeNotices % 0)
             .copy(
               state = Ready()))
 
-      case OrderNoticesConsumed(_) =>
+      case 19 => // OrderNoticesConsumed
         check(isDetached,
           position.checkedParent.map: parentPos =>
             withPosition(parentPos.increment)
@@ -532,7 +557,9 @@ extends
                 state = Ready())
         ).flatten
 
-      case OrderStickySubagentEntered(agentPath, subagentBundleId) =>
+      case 21 =>
+        val OrderStickySubagentEntered(agentPath, subagentBundleId) =
+          event.asInstanceOf[OrderStickySubagentEntered]
         check(isState[IsFreshOrReady]
           && isDetachedOrAttached
           && !isSuspendedOrStopped
@@ -541,7 +568,7 @@ extends
             .copy(
               stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
 
-      case OrderStickySubagentLeaved =>
+      case 22 => // OrderStickySubagentLeaved
         if isDetachedOrAttached && stickySubagents.nonEmpty then
           val branchPath = position.branchPath.dropUntilMoveBoundary // in case of failure
           if !branchPath.lastOption.map(_.branchId).contains(BranchId.StickySubagent) then
@@ -554,29 +581,32 @@ extends
         else
           inapplicable
 
-      case OrderPrompted(question) =>
+      case 60 =>
+        val OrderPrompted(question) = event.asInstanceOf[OrderPrompted]
         check(isDetached && isState[Ready],
           copy(state = Prompting(question)))
 
-      case OrderPromptAnswered() =>
+      case 61 => // OrderPromptAnswered
         check(isDetached && isState[Prompting],
           copy(
             state = Ready()))
             //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case _: OrderOrderAdded =>
+      case 2 => // OrderOrderAdded
         // See also ControllerState, ControllerStateRecoverer
         check(isDetached && isState[Ready],
           this)
 
-      case OrderCyclingPrepared(cycleState) =>
+      case 62 =>
+        val OrderCyclingPrepared(cycleState) = event.asInstanceOf[OrderCyclingPrepared]
         check(isDetachedOrAttached
           & (isState[Ready] || isState[BetweenCycles])
           & !isSuspendedOrStopped,
           copy(
             state = BetweenCycles(Some(cycleState))))
 
-      case OrderCycleStarted(maybeSkipped) =>
+      case 63 =>
+        val OrderCycleStarted(maybeSkipped) = event.asInstanceOf[OrderCycleStarted]
         state match
           case BetweenCycles(Some(cycleState)) =>
             val branchId = BranchId.cycle(
@@ -589,7 +619,8 @@ extends
 
           case _ => inapplicable
 
-      case OrderCycleFinished(cycleState) =>
+      case 64 =>
+        val OrderCycleFinished(cycleState) = event.asInstanceOf[OrderCycleFinished]
         position.parent
           .toChecked(inapplicableProblem)
           .map: cyclePosition =>
@@ -597,20 +628,23 @@ extends
               .copy(
                 state = BetweenCycles(cycleState))
 
-      case OrderSleeping(until, cause) =>
+      case 65 =>
+        val OrderSleeping(until, cause) = event.asInstanceOf[OrderSleeping]
         check(
           (isState[Ready] || cause == OrderSleeping.Cause.Throttle && isState[Sleeping])
             && isDetachedOrAttached,
           copy(
             state = Sleeping(until, cause)))
 
-      case OrderTransferred(workflowPosition) =>
+      case 67 =>
+        val OrderTransferred(workflowPosition) = event.asInstanceOf[OrderTransferred]
         if isDetached then
           Right(copy(workflowPosition = workflowPosition))
         else
           inapplicable
 
-      case OrderPlanAttached(planId) =>
+      case 68 =>
+        val OrderPlanAttached(planId) = event.asInstanceOf[OrderPlanAttached]
         val reason =
           if planId.isGlobal then
             "OrderPlanAttached(PlanId.Global) is not applicable"
@@ -630,14 +664,18 @@ extends
           Right(copy(
             planId = planId))
 
-      case OrderSaid(value) =>
+      case 69 =>
+        val OrderSaid(value) = event.asInstanceOf[OrderSaid]
         check(isState[IsFreshOrReady] && isDetachedOrAttached,
           this)
 
-      case OrderWaitingForAdmission(until) =>
+      case 66 =>
+        val OrderWaitingForAdmission(until) = event.asInstanceOf[OrderWaitingForAdmission]
         check((isState[Ready] || isState[WaitingForAdmission]) && isDetachedOrAttached,
           copy(
             state = WaitingForAdmission(until)))
+
+      case _ => inapplicable
   end applyEvent
 
   /** An Order being transferred back to Controller, should fail after failure. */

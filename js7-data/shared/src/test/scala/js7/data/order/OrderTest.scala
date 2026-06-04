@@ -9,6 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TimeInterval, Timestamp}
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -597,6 +598,9 @@ final class OrderTest extends OurTestSuite:
           .filterNot(_ == classOf[OrderNoticeExpected])
           .filterNot(classOf[LegacyOrderLockEvent].isAssignableFrom)
           .toVector.sortBy(_.getName))
+
+    "tag is unique" in:
+      allEvents.map(_.tag).checkUniqueness.orThrow
 
     val IsDetached  = none[AttachedState]
     val IsAttaching = Some(Attaching(agentPath))
