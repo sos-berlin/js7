@@ -261,15 +261,14 @@ lazy val `js7-install` = project
             !path.endsWith(".jar") ||
             // But include these into the tar file:
             path.contains("js7-license-fake") ||
+            path.contains("js7-provider") ||
             path.contains("js7-service-lz4") ||
             path.contains("js7-service-prometheus") ||
-            path.contains("js7-provider")
+            path.contains("js7-tests")
           def isRelevant = // Ignore irrelevant and testing jars
             path.startsWith("lib/") && !isExcludedJar(path.stripPrefix("lib/"))
 
-          val r = isNotJs7Subproject && isRelevant
-          //if (!r) println(s"### - $path")
-          r
+          isNotJs7Subproject && isRelevant
         }
         // Add our js7-engine.jar with all our relevant subprojects (build above)
         .:+(js7EngineJar -> ("lib/com.sos-berlin.js7.engine." + js7EngineJar.getName))
@@ -301,8 +300,8 @@ lazy val `js7-engine` = project.in(file("target/js7-engine"))
     `js7-subagent`,
     `js7-launcher-for-java`,
     `js7-launcher-for-windows`,
-    `js7-service-pgp`,
-    `js7-tests`)
+    `js7-service-pgp`
+    /*this would include js7-license-fake: `js7-tests`*/)
   .settings(commonSettings)
   .settings(
     // Provide a single jar with all our relevant subprojects:
