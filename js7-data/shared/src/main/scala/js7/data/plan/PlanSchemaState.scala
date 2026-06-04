@@ -22,6 +22,7 @@ import js7.data.plan.PlanStatus.{Closed, Deleted, Finished, Open}
 import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
 import scala.collection.View
+import scala.collection.immutable.ArraySeq
 import scala.collection.immutable.Map.Map1
 import scala.concurrent.duration.FiniteDuration
 
@@ -111,8 +112,9 @@ extends UnsignedSimpleItemState:
   def addOrder(planKey: PlanKey, orderId: OrderId, allowClosedPlan: Boolean): Checked[PlanSchemaState] =
     addOrders(Map1(planKey, Set(orderId)), allowClosedPlan = allowClosedPlan)
 
-  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]], allowClosedPlan: Boolean): Checked[PlanSchemaState] =
-    planToOrders.toVector.traverse: (planKey, orderIds) =>
+  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]], allowClosedPlan: Boolean)
+  : Checked[PlanSchemaState] =
+    planToOrders.to(ArraySeq).traverse: (planKey, orderIds) =>
       plan(planKey).flatMap:
         _.addOrders(orderIds, allowClosedPlan = allowClosedPlan)
     .map(updatePlans)

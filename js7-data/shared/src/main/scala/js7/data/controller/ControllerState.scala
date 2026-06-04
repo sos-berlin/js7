@@ -31,7 +31,6 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
-import js7.data.controller.ControllerEvent.ControllerTestEvent
 import js7.data.controller.ControllerState.{WorkflowToOrders, logger}
 import js7.data.event.EventCounter.EventCount
 import js7.data.event.KeyedEvent.NoKey
@@ -221,20 +220,54 @@ extends
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
     keyedEvent.match
-      case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
-        Right(copy(controllerMetaState = controllerMetaState.copy(
-          controllerId = controllerId,
-          initiallyStartedAt = intiallyStartedAt)))
+      case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+        applyOrderEvent(orderId, event)
 
-      case KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady) =>
-        Right(copy(controllerMetaState = controllerMetaState.copy(
-          timezone = event.timezone)))
+      case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
+        updatePlannedBoard(noticePosted.planId / boardPath):
+          _.addNotice(noticePosted.toNotice(boardPath))
+        .map: planSchemaState =>
+          copy(
+            keyToUnsignedItemState_ = keyToUnsignedItemState_
+              .updated(planSchemaState.id, planSchemaState))
 
-      case KeyedEvent(_: NoKey, _: ControllerEvent.ControllerShutDown) =>
-        Right(this)
+      case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
+        updatePlannedBoard(plannedNoticeKey.planId / boardPath):
+          _.removeNotice(plannedNoticeKey.noticeKey)
+        .map: planSchemaState =>
+          copy(
+            keyToUnsignedItemState_ = keyToUnsignedItemState_
+              .updated(planSchemaState.id, planSchemaState))
 
-      case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
-        Right(this)
+      case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
+        import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
+        if toPlannedNoticeKey.planId == fromPlannedNoticeKey.planId then
+          Left(Problem(s"$keyedEvent: PlanIds must be different"))
+        else
+          for
+            fromPlannedBoard <- maybePlannedBoard(fromPlannedNoticeKey.planId / boardPath).toRight:
+              Problem(s"${fromPlannedNoticeKey.planId / boardPath} does not exist")
+            noticePlace <- fromPlannedBoard.toNoticePlace.checked(fromPlannedNoticeKey.noticeKey)
+            from <- updatePlannedBoard(fromPlannedNoticeKey.planId / boardPath):
+              _.moveFromNoticePlace(fromPlannedNoticeKey.noticeKey)
+            to <- updatePlannedBoard(toPlannedNoticeKey.planId / boardPath):
+              _.moveToNoticePlace(toPlannedNoticeKey.noticeKey, noticePlace, endOfLife)
+          yield
+            copy(
+              keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
+                View(from, to).map(o => o.path -> o))
+
+      case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
+        ow.onOrderWatchEvent(orderWatchPath <-: event)
+
+      case KeyedEvent(planId: PlanId, event: PlanEvent) =>
+        import planId.{planKey, planSchemaId}
+        for
+          planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+          planSchemaState <- planSchemaState.applyPlanEvent(planKey, event)
+        yield
+          copy(keyToUnsignedItemState_ =
+            keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
 
       case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
         event match
@@ -402,46 +435,6 @@ extends
         yield copy(
           keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
-      case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        applyOrderEvent(orderId, event)
-
-      case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
-        updatePlannedBoard(noticePosted.planId / boardPath):
-          _.addNotice(noticePosted.toNotice(boardPath))
-        .map: planSchemaState =>
-          copy(
-            keyToUnsignedItemState_ = keyToUnsignedItemState_
-              .updated(planSchemaState.id, planSchemaState))
-
-      case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
-        updatePlannedBoard(plannedNoticeKey.planId / boardPath):
-          _.removeNotice(plannedNoticeKey.noticeKey)
-        .map: planSchemaState =>
-          copy(
-            keyToUnsignedItemState_ = keyToUnsignedItemState_
-              .updated(planSchemaState.id, planSchemaState))
-
-      case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
-        import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
-        if toPlannedNoticeKey.planId == fromPlannedNoticeKey.planId then
-          Left(Problem(s"$keyedEvent: PlanIds must be different"))
-        else
-          for
-            fromPlannedBoard <- maybePlannedBoard(fromPlannedNoticeKey.planId / boardPath).toRight:
-              Problem(s"${fromPlannedNoticeKey.planId / boardPath} does not exist")
-            noticePlace <- fromPlannedBoard.toNoticePlace.checked(fromPlannedNoticeKey.noticeKey)
-            from <- updatePlannedBoard(fromPlannedNoticeKey.planId / boardPath):
-              _.moveFromNoticePlace(fromPlannedNoticeKey.noticeKey)
-            to <- updatePlannedBoard(toPlannedNoticeKey.planId / boardPath):
-              _.moveToNoticePlace(toPlannedNoticeKey.noticeKey, noticePlace, endOfLife)
-          yield
-            copy(
-              keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
-                View(from, to).map(o => o.path -> o))
-
-      case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-        ow.onOrderWatchEvent(orderWatchPath <-: event)
-
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match
           case SubagentShutdownStarted | SubagentShutdown | SubagentShutdownV7
@@ -464,22 +457,25 @@ extends
           copy(keyToUnsignedItemState_ =
             keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
 
-      case KeyedEvent(planId: PlanId, event: PlanEvent) =>
-        import planId.{planKey, planSchemaId}
-        for
-          planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
-          planSchemaState <- planSchemaState.applyPlanEvent(planKey, event)
-        yield
-          copy(keyToUnsignedItemState_ =
-            keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+      case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
+        Right(copy(controllerMetaState = controllerMetaState.copy(
+          controllerId = controllerId,
+          initiallyStartedAt = intiallyStartedAt)))
 
-      case KeyedEvent(_, ControllerTestEvent) =>
+      case KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady) =>
+        Right(copy(controllerMetaState = controllerMetaState.copy(
+          timezone = event.timezone)))
+
+      case KeyedEvent(_: NoKey, _: ControllerEvent.ControllerShutDown) =>
+        Right(this)
+
+      case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
         Right(this)
 
       case _ => applyStandardEvent(keyedEvent)
-    .map: controllerState =>
-      controllerState.copy(
-        statistics = controllerState.statistics.applyKeyedEvent(keyedEvent))
+    //.map: controllerState =>
+    //  controllerState.copy(
+    //    statistics = controllerState.statistics.applyKeyedEvent(keyedEvent))
 
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
   : Checked[ControllerState] =
@@ -521,7 +517,7 @@ extends
         val addedOrderId = event.ownOrderId getOrElse orderId
         for
           _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          r <- addOrders(Order.fromOrderAdded(addedOrderId, event) :: Nil,
+          r <- addOrder(Order.fromOrderAdded(addedOrderId, event),
             allowClosedPlan = true/*the issuer of the event has already checked this*/)
         yield
           event match
@@ -733,6 +729,10 @@ extends
     update(
       addItemStates = orderWatchStates,
       removeUnsignedSimpleItems = remove)
+
+  protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
+  : Checked[ControllerState] =
+    ControllerState.addOrder(this, order, allowClosedPlan = allowClosedPlan)
 
   protected def addOrders(orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
   : Checked[ControllerState] =
@@ -1159,22 +1159,38 @@ extends
     yield
       s
 
+  // See also addOrders below
+  private def addOrder(s: ControllerState, order: Order[Order.State], allowClosedPlan: Boolean)
+  : Checked[ControllerState] =
+    for
+      _ <- s.checkOrdersDoNotExist(order.id :: Nil)
+      s <- addOrUpdateOrder_(s, order)
+      s <- continueAddOrders(s, order :: Nil, allowClosedPlan = allowClosedPlan)
+    yield s
+
+  // See also addOrder above
   private def addOrders(s: ControllerState, orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
   : Checked[ControllerState] =
     if orders.isEmpty then
       Right(s)
     else
-      s.checkOrdersDoNotExist(orders.view.map(_.id)).flatMap: _ =>
-        for
-          s <- orders.foldEithers(s)(addOrUpdateOrder_)
-          updatedPlanSchemaStates <- PlanSchemaState.addOrderIds(
-            orders,
-            s.keyTo(PlanSchemaState).checked,
-            allowClosedPlan = allowClosedPlan)
-        yield
-          s.copy(
-            keyToUnsignedItemState_ = s.keyToUnsignedItemState_
-              ++ updatedPlanSchemaStates.map(o => o.id -> o))
+      for
+        _ <- s.checkOrdersDoNotExist(orders.view.map(_.id))
+        s <- orders.foldEithers(s)(addOrUpdateOrder_)
+        s <- continueAddOrders(s, orders, allowClosedPlan = allowClosedPlan)
+      yield s
+
+  private def continueAddOrders(
+    s: ControllerState, orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
+  : Checked[ControllerState] =
+    PlanSchemaState.addOrderIds(
+      orders,
+      s.keyTo(PlanSchemaState).checked,
+      allowClosedPlan = allowClosedPlan
+    ).map: updatedPlanSchemaStates =>
+      s.copy(
+        keyToUnsignedItemState_ = s.keyToUnsignedItemState_
+          ++ updatedPlanSchemaStates.map(o => o.id -> o))
 
   private def updateOrders(s: ControllerState, orders: Seq[Order[Order.State]])
   : Checked[ControllerState] =

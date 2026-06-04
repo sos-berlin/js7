@@ -61,7 +61,6 @@ object OrderEventSource:
           throw new AssertionError(s"🔥 ${coll.keyedEvents.size} events generated, probably a loop")
         end if
         //</editor-fold>
-
         if queue.isEmpty then
           Right(coll)
         else
@@ -88,24 +87,25 @@ object OrderEventSource:
     val t = System.nanoTime()
     EventCalc[S, ResultEvent]: coll =>
       val idToOrder = coll.aggregate.idToOrder
-      val orderIds_ = orderIds.toEagerSeq
-      queue.enqueue(orderIds_.flatMap(idToOrder.get))
-      loop(coll).map: coll2 =>
+      queue.enqueue(orderIds.view.flatMap(idToOrder.get))
+      loop(coll)
         //<editor-fold desc="if false && isTest ...">
-        if false && isTest then // Log if no events have been emitted for some OrderIds
-          // Maybe irrelevant, because it seems that a useless call doesn't take too much time ...
-          if coll2 eq coll then
-            logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: nothing done · ${
-              orderIds_}")
-          else if orderIds_.sizeIs > 1 then
-            val eventless = orderIds_.filter:
-              coll2.keyedEvents.collect:
-                case KeyedEvent(orderId: OrderId, _: OrderEvent) => orderId
-              .toSet
-            logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: no events for ${
-              eventless}")
+        .pipeIf(false && isTest): // Log if no events have been emitted for some OrderIds
+          _.map: coll2 =>
+            val orderIds_ = orderIds.toEagerSeq
+            // Maybe irrelevant, because it seems that a useless call doesn't take too much time ...
+            if coll2 eq coll then
+              logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: nothing done · ${
+                orderIds_}")
+            else if orderIds_.sizeIs > 1 then
+              val eventless = orderIds_.filter:
+                coll2.keyedEvents.collect:
+                  case KeyedEvent(orderId: OrderId, _: OrderEvent) => orderId
+                .toSet
+              logger.trace(s"🪱 nextEvents ${(System.nanoTime() - t).ns.pretty}: no events for ${
+                eventless}")
+            coll2
         //</editor-fold>
-        coll2
 
 
   private final class OrderQueue:
@@ -132,7 +132,9 @@ object OrderEventSource:
       extends Ordered[NextOrder]:
       def compare(o: NextOrder): Int =
         priority compare o.priority match
-          case 0 => o.index compare index // Reverse, because early index has higher priority
+          case 0 =>
+            // Reverse, because early index has higher priority
+            java.lang.Long.compare(o.index, index)
           case n => n
 
     // Lower index means higher priority, when order.priority is equal

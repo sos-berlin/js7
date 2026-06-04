@@ -123,13 +123,18 @@ extends
       if okay then Right(updated) else inapplicable
 
     event match
-      case _: OrderAdded | _: OrderAttachedToAgent =>
-        Left(Problem:
-          "OrderAdded and OrderAttachedToAgent events are not handled by the Order itself")
+      case OrderMoved(to, _) =>
+        check(
+          (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
+            isState[Sleeping] || isState[WaitingForAdmission])
+            && isDetachedOrAttached,
+          withPosition(to).copy(
+            isResumed = false,
+            state = if isState[Fresh] then state else Ready()))
 
-      case OrderStarted =>
-        check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
-          copy(state = Ready()))
+      case OrderOutcomeAdded(outcome) =>
+        Right(copy(
+          historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderProcessingStarted(subagentId, subagentBundleId, stick, endOfAdmissionPeriod) =>
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
@@ -149,13 +154,17 @@ extends
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
+      case _: OrderAdded | _: OrderAttachedToAgent =>
+        Left(Problem:
+          "OrderAdded and OrderAttachedToAgent events are not handled by the Order itself")
+
+      case OrderStarted =>
+        check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
+          copy(state = Ready()))
+
       case OrderProcessingKilled =>
         check(isState[Processed] && !isSuspendedOrStopped && isAttached,
           copy(state = ProcessingKilled))
-
-      case OrderOutcomeAdded(outcome) =>
-        Right(copy(
-          historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderFailed(movedTo, outcome_) =>
         check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached,
@@ -237,15 +246,6 @@ extends
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
-
-      case OrderMoved(to, _) =>
-        check(
-          (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
-            isState[Sleeping] || isState[WaitingForAdmission])
-            && isDetachedOrAttached,
-          withPosition(to).copy(
-            isResumed = false,
-            state = if isState[Fresh] then state else Ready()))
 
       case OrderFinished(maybeOutcome) =>
         check(isState[Ready] && isDetached && !isSuspendedOrStopped,

@@ -135,7 +135,7 @@ extends
         if idToOrder isDefinedAt orderId then
           Left(Problem.pure(s"Duplicate order attached: $orderId"))
         else
-          addOrders(Order.fromOrderAttached(orderId, event) :: Nil, allowClosedPlan = true)
+          addOrder(Order.fromOrderAttached(orderId, event), allowClosedPlan = true)
 
       case _ =>
         super.applyOrderEvent(orderId, event)
@@ -317,7 +317,14 @@ extends
       addItemStates = fileWatchStates,
       removeUnsignedSimpleItems = remove)
 
-  protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
+  protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
+  : Checked[AgentState] =
+    // allowClosedPlan is ignored because the Agent does not know Plans
+    checkOrdersDoNotExist(order.id :: Nil).flatMap: _ =>
+      Right(copy(
+        idToOrder = idToOrder.updated(order.id, order)))
+
+  protected def addOrders(orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
   : Checked[AgentState] =
     // allowClosedPlan is ignored because the Agent does not know Plans
     checkOrdersDoNotExist(orders.view.map(_.id)).flatMap: _ =>

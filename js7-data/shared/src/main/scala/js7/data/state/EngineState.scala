@@ -100,7 +100,7 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
-  def checkOrdersDoNotExist(orderIds: Iterable[OrderId]): Checked[Unit] =
+  def checkOrdersDoNotExist(orderIds: => Iterable[OrderId]): Checked[Unit] =
     if isStrict then
       val known = orderIds.filter(idToOrder.isDefinedAt)
       known.isEmpty !! Problem(s"Orders already exist: ${known.toArray.sorted.mkString(", ")}")
@@ -234,6 +234,9 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
       keyToLockState.checked(lockPath)
         .flatMap(op)
 
+  protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
+  : Checked[This]
+
   protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
   : Checked[This]
 
@@ -324,6 +327,10 @@ object EngineState:
     def clusterState: ClusterState = ClusterState.Empty
 
     def workflowPathToId(workflowPath: WorkflowPath): Left[Problem, Nothing] =
+      reject
+
+    protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
+    : Left[Problem, Nothing] =
       reject
 
     protected def addOrders(orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
