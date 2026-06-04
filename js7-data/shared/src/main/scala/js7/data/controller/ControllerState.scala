@@ -491,6 +491,22 @@ extends
         yield
           controllerState
 
+      case event: OrderAddedX =>
+        val addedOrderId = event.ownOrderId getOrElse orderId
+        for
+          _ <- idToOrder.checkNoDuplicate(addedOrderId)
+          r <- addOrder(Order.fromOrderAdded(addedOrderId, event),
+            allowClosedPlan = true/*the issuer of the event has already checked this*/)
+        yield
+          event match
+            case event: OrderOrderAdded =>
+              event.speedRecord.fold(r): record =>
+                r.copy(
+                  volatile = r.volatile.copy(
+                    addOrderInstrThrottle =
+                      r.volatile.addOrderInstrThrottle.record(record)))
+            case _ => r
+
       case OrderPlanAttached(planId) =>
         for
           self <- super.applyOrderEvent(orderId, event)
@@ -512,22 +528,6 @@ extends
           updated.copy(
             workflowToOrders = workflowToOrders
               .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
-
-      case event: OrderAddedX =>
-        val addedOrderId = event.ownOrderId getOrElse orderId
-        for
-          _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          r <- addOrder(Order.fromOrderAdded(addedOrderId, event),
-            allowClosedPlan = true/*the issuer of the event has already checked this*/)
-        yield
-          event match
-            case event: OrderOrderAdded =>
-              event.speedRecord.fold(r): record =>
-                r.copy(
-                  volatile = r.volatile.copy(
-                    addOrderInstrThrottle =
-                      r.volatile.addOrderInstrThrottle.record(record)))
-            case _ => r
 
       case _ =>
         super.applyOrderEvent(orderId, event)
