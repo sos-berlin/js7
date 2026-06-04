@@ -1222,7 +1222,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
         pending
       else
         logger.info:
-          val set = (1 to 100_000).map(i => s"A-$i").toSet
+          val set = (1 to 1_000_000).map(i => s"A-$i").toSet
           measureTime(n = 10, "makeUnique"):
             makeUnique("A-%d", set)
         succeed
@@ -1232,7 +1232,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
         pending
       else
         logger.info:
-          val set = (1 to 100_000).map(i => s"A-$i-Z").toSet
+          val set = (1 to 1_000_000).map(i => s"A-$i-Z").toSet
           measureTime(n = 10, "makeUnique"):
             makeUnique("A-%d-Z", set)
         succeed

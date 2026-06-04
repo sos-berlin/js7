@@ -28,10 +28,9 @@ import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
-import scala.util.boundary.break
 import scala.util.chaining.*
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try, boundary}
+import scala.util.{Failure, Success, Try}
 
 object ScalaUtils:
 
@@ -1328,35 +1327,36 @@ object ScalaUtils:
     */
   def makeUnique(pattern: String, exists: String => Boolean): Checked[String] =
     makeUniqueMeter:
-      if pattern.endsWith("%d") && pattern.lastIndexOf('%', pattern.length - 3) == -1 then
-        // Optimized
-        val prefix = pattern.dropRight(2)
-        Right:
-          findUnique(exists)(prefix + _)
-      else
-        try
-          boundary:
-            val sb = new java.lang.StringBuilder
-            val formatter = new Formatter(sb, formatLocale)
-            val result =
-              findUnique(exists): i =>
-                sb.setLength(0)
-                formatter.format(pattern, i)
-                val result = sb.toString
-                if result == pattern then
-                  break(Left(Problem("Invalid pattern for makeUnique function")))
-                result
-            Right(result)
-        catch case NonFatal(e) =>
-          Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
+      makeUnique1(pattern, exists)
 
-  private def findUnique(exists: String => Boolean)(make: Int => String): String =
-    var i = 1
-    while true do
-      val s = make(i)
-      if !exists(s) then return s
-      i += 1
-    unreachable
+  private def makeUnique1(pattern: String, exists: String => Boolean): Checked[String] =
+    if pattern.endsWith("%d") && pattern.lastIndexOf('%', pattern.length - 3) == -1 then
+      // Optimized
+      val prefix = pattern.dropRight(2)
+      val sb = new java.lang.StringBuilder(prefix.length + 10)
+      var i = 1
+      while true do
+        sb.setLength(0)
+        val string = sb.append(prefix).append(i).toString
+        if !exists(string) then return Right(string)
+        i += 1
+      unreachable
+    else
+      try
+        val sb = new java.lang.StringBuilder
+        val formatter = new Formatter(sb, formatLocale)
+        var i = 1
+        while true do
+          sb.setLength(0)
+          formatter.format(pattern, i)
+          val string = sb.toString
+          if string == pattern then
+            return Left(Problem("Invalid pattern for makeUnique function"))
+          if !exists(string) then return Right(string)
+          i += 1
+        unreachable
+      catch case NonFatal(e) =>
+        Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
 
   /** Like a `let a <- expr in body(a)`. */
   final inline def eval[A, B](inline expr: A)(inline body: A => B): B =
