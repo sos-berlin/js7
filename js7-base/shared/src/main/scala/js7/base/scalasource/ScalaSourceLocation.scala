@@ -5,14 +5,10 @@ import js7.base.utils.Tests.isIntelliJIdea
 import scala.quoted.{Expr, Quotes, quotes}
 import sourcecode.{SourceCompanion, SourceValue}
 
-final class ScalaSourceLocation private(val value: (String, Int))
+final class ScalaSourceLocation private(val filename: String, val line: Int)
   extends SourceValue[(String, Int)]:
 
-  def filename: String =
-    value._1
-
-  def line: Int =
-    value._2
+  def value = (filename, line)
 
   def asString: String =
     s"$filename:$line"
@@ -27,10 +23,10 @@ final class ScalaSourceLocation private(val value: (String, Int))
 
 
 object ScalaSourceLocation
-  extends SourceCompanion[(String, Int), ScalaSourceLocation](new ScalaSourceLocation(_)):
+  extends SourceCompanion[(String, Int), ScalaSourceLocation](new ScalaSourceLocation(_, _)):
 
   def apply(filename: String, line: Int): ScalaSourceLocation =
-    new ScalaSourceLocation((filename, line))
+    new ScalaSourceLocation(filename, line)
 
   inline implicit def generate: ScalaSourceLocation =
     ${ ScalaSourceLocationMacros.fileLocationMacro }
