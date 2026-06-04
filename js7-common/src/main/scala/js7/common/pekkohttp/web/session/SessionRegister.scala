@@ -121,7 +121,7 @@ extends Service.TrivialReleasable:
             val updated = state.copy(
               tokenToSession = state.tokenToSession.updated(session.sessionToken, entry))
 
-            logger.info(s"${session.sessionToken} for ${user.id} Login" +
+            logger.info(s"${session.sessionToken} for ${user.id} login" +
               clientVersion.fold("")(v =>
                 " (" + v + (
                   if v == Js7Version then
