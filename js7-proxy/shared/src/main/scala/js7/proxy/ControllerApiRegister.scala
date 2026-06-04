@@ -46,13 +46,16 @@ extends MetricsForServlet:
     if register.remove(controllerApi).isDefined then
       logger.debug(s"Removed $controllerApi")
 
-  def metrics: Stream[IO, ByteString] =
-    mergeMetricStreams(localMetrics :: engineStreams)
+  def metrics(deep: Boolean): Stream[IO, ByteString] =
+    if deep then
+      mergeMetricStreams(localMetrics :: engineStreams)
+    else
+      localMetrics
 
   private def engineStreams: List[Stream[IO, ByteString]] =
     register.keys.toList.map: controllerApi =>
       Stream.force:
-        controllerApi.metrics // Read Engine metrics
+        controllerApi.metrics(deep = true) // Read Engine metrics
           .handleProblem: problem =>
             Stream.emit(ByteString(toPrometheuesErrorLines(problem.toString)))
       .handleErrorWith: throwable =>

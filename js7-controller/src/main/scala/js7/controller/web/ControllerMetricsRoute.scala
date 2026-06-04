@@ -18,6 +18,7 @@ import js7.data.controller.ControllerState
 import js7.data.node.{Js7ServerId, NodeNameToPassword}
 import js7.data.subagent.SubagentItem
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.ContentType
 import org.apache.pekko.http.scaladsl.server.Directives.parameter
 import org.apache.pekko.http.scaladsl.server.{Directives, Route}
 
@@ -44,20 +45,23 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
   protected final lazy val controllerMetricsRoute: Route =
     wrapMetricsRoute: contentType =>
       import Directives.*
-      parameter("onlyThisServer" ? false):
-        case true =>
-          onlyThisServerMetricsRoute(contentType)
+      parameter("deep" ? false):
         case false =>
-          ioRoute:
-            controllerState.map:
-              case Left(problem) =>
-                logger.debug(s"Controller is not ready: $problem")
-                Nil
-              case Right(controllerState) =>
-                clusterPeerMetricFetcher(controllerState).toList :::
-                  agentMetricFetchers(controllerState)
-            .flatMap: metricFetchers =>
-              completeMetricFetchers(contentType, localMetricFetcher ++: metricFetchers)
+          onlyThisServerMetricsRoute(contentType)
+        case true =>
+          deepMetricsRoute(contentType)
+
+  private def deepMetricsRoute(contentType: ContentType): Route =
+    ioRoute:
+      controllerState.map:
+        case Left(problem) =>
+          logger.debug(s"Controller is not ready: $problem")
+          Nil
+        case Right(controllerState) =>
+          clusterPeerMetricFetcher(controllerState).toList :::
+            agentMetricFetchers(controllerState)
+      .flatMap: metricFetchers =>
+        completeMetricFetchers(contentType, localMetricFetcher ++: metricFetchers)
 
   private def clusterPeerMetricFetcher(controllerState: ControllerState): Option[MetricFetcher] =
     controllerState.toPeerAndAdmission(controllerConfiguration.clusterConf.ownId).toOption
@@ -70,7 +74,7 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
       serverId,
       admission,
       uriPath = "controller",
-      onlyThisServer = true,
+      deep = false,
       label = serverId.toString)
 
   private def agentMetricFetchers(controllerState: ControllerState): List[MetricFetcher] =
@@ -89,7 +93,7 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
         .map:
           UserAndPassword(controllerConfiguration.controllerId.unsafeUserId, _)),
       uriPath = "agent",
-      onlyThisServer = false,
+      deep = true,
       label = agentPath.toString)
 
 

@@ -4,7 +4,23 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: 'JS7'
+  - job_name: 'JS7 complete'
+    # Metrics of all Engine servers are fetched via the JS7 Engine Proxy (which is included in JOC).
+    scheme: https
+    tls_config:
+      ca_file: "/var/opt/prometheus/private/CA.crt"
+      cert_file: "/var/opt/prometheus/private/prometheus.crt"
+      key_file: "/var/opt/prometheus/private/prometheus.key"
+    metrics_path: "/metrics"
+    params:
+      deep: ['true']
+    static_configs:
+      - targets:
+        - js7-proxy:4443
+        - js7-proxy-b:4443
+
+  - job_name: 'JS7 single servers'
+    # Metrics of the Engine servers are fetched explicitly via Prometheus targets
     scheme: https
     tls_config:
       ca_file: "/var/opt/prometheus/private/CA.crt"
@@ -12,7 +28,15 @@ scrape_configs:
       key_file: "/var/opt/prometheus/private/prometheus.key"
     static_configs:
       - targets:
-        #- js7-controller:4443
         - js7-provider:4443
-        - js7-proxy:4443
-        - js7-proxy-b:4443
+        #- js7-cluster-watch:4443
+        #- js7-cluster-watch-b:4443
+        #
+        # When enabling the following servers, then the 'JS7 complete' job above should be disabled.
+        # Otherwise, the metrics will be duplicated.
+        #- js7-controller:4443
+        #- js7-backup-controller:4443
+        #- js7-subagent-1a:4443
+        #- js7-subagent-1b:4443
+        #- js7-subagent-1c:4443
+        #- js7-subagent-2a:4443

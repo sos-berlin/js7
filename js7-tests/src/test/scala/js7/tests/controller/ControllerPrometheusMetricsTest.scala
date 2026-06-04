@@ -69,7 +69,7 @@ final class ControllerPrometheusMetricsTest extends OurTestSuite, ControllerAgen
     runSubagent(bareSubagentItem, suppressSignatureKeys = true): _ =>
       val lines: Seq[String] =
         fs2.Stream.force:
-          controller.api.httpGetRawLinesStream("/metrics").orThrow
+          controller.api.httpGetRawLinesStream("/metrics?deep=true").orThrow
         .map(_.utf8String).compile.toVector.await(99.s)
 
       lines.foreachWithBracket()((line, br) => logger.info(s"$br${line.trim}"))

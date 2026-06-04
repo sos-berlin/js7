@@ -40,7 +40,8 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   /** Host URI or empty for addressing base on "controller/" */
   def baseUri: Uri
 
-  protected final def prefixedUri = baseUri / UriPrefixPath
+  protected final lazy val prefixedUri = baseUri / UriPrefixPath
+  private lazy val metricsUri = baseUri / "metrics"
 
   //protected final def sessionUri = uris.session
 
@@ -158,10 +159,10 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   //  httpClient.post[AgentCommand, AgentCommand.Response](uris.agentCommand(agentPath), command)
   //    .map(_.asInstanceOf[command.Response])
 
-  def metrics: IO[fs2.Stream[IO, ByteString]] =
+  def metrics(deep: Boolean): IO[fs2.Stream[IO, ByteString]] =
     loginAndRetryIfSessionLost:
       httpClient.getByteStream(
-        baseUri / "metrics",
+        Uri(metricsUri.string + (deep ?? "?deep=true")),
         MetricsProvider.PrometheusRequestHeaders,
         dontLog = true)
 

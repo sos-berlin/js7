@@ -42,7 +42,7 @@ final case class MetricFetchers(
     serverId: Js7ServerId,
     admission: Admission,
     uriPath: String,
-    onlyThisServer: Boolean,
+    deep: Boolean,
     label: String)
   : MetricFetcher =
     val stream = fs2.Stream.force:
@@ -58,7 +58,7 @@ final case class MetricFetchers(
             httpClient.loginAndRetryIfSessionLost:
               import httpClient.implicitSessionToken
               httpClient.get_[HttpEntity](
-                admission.uri / s"metrics${onlyThisServer ?? "?onlyThisServer=true"}",
+                admission.uri / s"metrics${deep ?? "?deep=true"}",
                 MetricsProvider.PrometheusRequestHeaders)
         .map:
           case Left(problem) =>

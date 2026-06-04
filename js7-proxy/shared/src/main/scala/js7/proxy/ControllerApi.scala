@@ -233,11 +233,11 @@ extends ControllerApiWithHttp:
     logger.debug(s"allowEngineMetrics $allowed")
     _engineMetricsAllowed = allowed
 
-  def metrics: IO[Checked[fs2.Stream[IO, ByteString]]] =
+  def metrics(deep: Boolean): IO[Checked[fs2.Stream[IO, ByteString]]] =
     useApi: api =>
       locally:
         if _engineMetricsAllowed then
-          api.metrics
+          api.metrics(deep = deep)
         else
           IO.pure(fs2.Stream.emit(ByteString(s"# ControllerApi is not active.\n")))
 

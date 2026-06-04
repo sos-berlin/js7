@@ -18,10 +18,10 @@ trait ProxyMetricsRoute extends RemoteMetricsRoute:
   protected final lazy val proxyMetricsRoute: Route =
     wrapMetricsRoute: contentType =>
       import Directives.*
-      parameter("onlyThisServer" ? false):
-        case true =>
-          onlyThisServerMetricsRoute(contentType)
+      parameter("deep" ? false):
         case false =>
+          onlyThisServerMetricsRoute(contentType)
+        case true =>
           completeWithStream(contentType):
             metrics
               .map(_.toChunk).unchunks.chunkN(httpChunkSize)

@@ -8,4 +8,4 @@ trait MetricsForServlet:
 
   def ioRuntime: IORuntime
 
-  def metrics: fs2.Stream[IO, ByteString]
+  def metrics(deep: Boolean): fs2.Stream[IO, ByteString]

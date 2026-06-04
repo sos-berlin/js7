@@ -8,6 +8,7 @@ import jakarta.servlet.http.{HttpServlet, HttpServletRequest, HttpServletRespons
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.catsutils.CatsEffectExtensions.run
+import js7.base.convert.As.StringAsBoolean
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
@@ -52,19 +53,20 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
   @throws[IOException]
   override protected def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit =
     // Jakarta and Jetty both don't seem to offer a content-type negotiation via API ?
+    val deep = request.getParameterValues("deep").forall(StringAsBoolean)
     HttpMXBeanUtils.clientRequestResource[SyncIO].surround:
       isInUse.whenInUse:
         SyncIO:
           respond(response, SC_SERVICE_UNAVAILABLE, "Still processing a concurrent GET request\n")
       .otherwiseUse:
         SyncIO:
-          toMetricsForServlet().match
+          toMetricsForServlet() match
             case None =>
               respond(response, SC_SERVICE_UNAVAILABLE, "No JControllerContext singleton here\n")
 
             case Some(metricsForServlet) =>
               given IORuntime = metricsForServlet.ioRuntime
-              doGet2(request, response, metricsForServlet.metrics)
+              doGet2(request, response, metricsForServlet.metrics(deep = deep))
                 .handleErrorWith:
                   case t: (IOException | RuntimeException) => IO.raiseError(t)
                   case t: Exception => IO.raiseError(new ServletException(t.toString, t))

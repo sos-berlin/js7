@@ -41,7 +41,7 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
       OurHttpClient.resource.use: client =>
         val request = HttpRequest.newBuilder
           .uri:
-            URI.create(s"http://127.0.0.1:$port/metrics")
+            URI.create(s"http://127.0.0.1:$port/metrics?deep=true")
           .setHeader("Accept", MetricsProvider.PrometheusAcceptHeaderValue)
           .build()
         Pekkos.actorSystemResource("ProxyMetricsServletTest").use: actorSystem =>
