@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
-import js7.base.time.SpeedLimiter
+import js7.base.time.Throttle
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerState
 import js7.data.event.EventCalc
@@ -28,19 +28,19 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
         then
           for
             coll <- coll.narrowAggregate[ControllerState]
-            speedRecord = SpeedLimiter.Record(coll.monotonic, 1)
+            speedRecord = Throttle.Record(coll.monotonic, 1)
             coll <-
-              import coll.aggregate.volatile.addOrderInstrSpeedLimiter
-              addOrderInstrSpeedLimiter.tryRecord(speedRecord) match
+              import coll.aggregate.volatile.addOrderInstrThrottle
+              addOrderInstrThrottle.tryRecord(speedRecord) match
                 case Left(tooFast) =>
                   val delay = tooFast.delay.roundUpToNext(1.ms)
                   //val again = order.ifState[Order.Sleeping].fold("")(_ => " again")
                   //Could be many orders: logger.info(s"🐌 $orderId is being delayed$again by ${
-                  //  delay.show} due to speed limit of ${tooFast.speedLimit}")
+                  //  delay.show} due to speed limit of ${tooFast.throttle}")
                   coll.add:
                     // TODO Introduce OrderDelaying event with monotonic time?
                     order.id <-:
-                      OrderSleeping(coll.timestamp + delay, OrderSleeping.Cause.SpeedLimit)
+                      OrderSleeping(coll.timestamp + delay, OrderSleeping.Cause.Throttle)
 
                 case Right(_) =>
                   for
@@ -56,7 +56,7 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
                           .checkPlanAcceptsOrders(planId, allowClosedPlan = planId == order.planId)
                         args <- evalExpressionMap(instr.arguments, scope)
                         coll <- coll:
-                          // TODO Zeitpunkt und Gewicht des SpeedLimiter hinzufügen.
+                          // TODO Zeitpunkt und Gewicht des Throttle hinzufügen.
                           //  Dann braucht ControllerState nicht auf Deadline.now zurückzugreifen.
                           order.id <-: OrderOrderAdded(
                             addedOrderId, workflowId, args,
@@ -66,13 +66,11 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
                             stopPositions = instr.stopPositions,
                             deleteWhenTerminated = instr.deleteWhenTerminated,
                             forceAdmission = instr.forceAdmission,
-                            speedRecord = addOrderInstrSpeedLimiter.isRecorder ? speedRecord)
+                            speedRecord = addOrderInstrThrottle.isRecorder ? speedRecord)
                         coll <- coll:
                           moveOrderToNextInstruction(order)
                       yield coll
-                  yield
-                      coll
-          yield
-            coll
+                  yield coll
+          yield coll
         else
           coll.nix

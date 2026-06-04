@@ -31,7 +31,7 @@ trait EngineStateMXBean:
   def getHistoricOutcomesPerOrder: java.lang.Integer =
     val n = engineState.idToOrder.size
     if n == 0 then
-      null
+      null.asInstanceOf[java.lang.Integer]
     else
       engineState.idToOrder.valuesIterator.map(_.historicOutcomes.size).sum /
         engineState.idToOrder.size

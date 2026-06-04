@@ -8,7 +8,7 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{SpeedLimiter, TestAlarmClock, Timestamp}
+import js7.base.time.{TestAlarmClock, Throttle, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -62,7 +62,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         Map(
           "year" -> StringValue("2099")),
         deleteWhenTerminated = true,
-        speedRecord = Some(SpeedLimiter.Record(7.s, 1.0))),
+        speedRecord = Some(Throttle.Record(7.s, 1.0))),
       OrderMoved(Position(1)),
       OrderFinished()))
     eventWatch.await[OrderPrompted](_.key == OrderId("🟦"))
@@ -102,7 +102,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
           startPosition = Some(Position(1)),
           stopPositions = Set(Position(2)),
           deleteWhenTerminated = true,
-          speedRecord = Some(SpeedLimiter.Record(7.s, 1.0))),
+          speedRecord = Some(Throttle.Record(7.s, 1.0))),
         OrderMoved(Position(1)),
         OrderFinished()))
 

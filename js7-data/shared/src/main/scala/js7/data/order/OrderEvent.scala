@@ -12,7 +12,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.time.{SpeedLimiter, Timestamp}
+import js7.base.time.{Throttle, Timestamp}
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.functionCallToString
@@ -167,7 +167,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty,
-    speedRecord: Option[SpeedLimiter.Record] = None)
+    speedRecord: Option[Throttle.Record] = None)
   extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
 
@@ -207,7 +207,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceAdmission <- c.get[Boolean]("forceJobAdmission"/*COMPATIBLE with 2.8.1*/).orElse:
           c.getOrElse[Boolean]("forceAdmission")(false)
-        speedRecord <- c.get[Option[SpeedLimiter.Record]]("speedRecord")
+        speedRecord <- c.get[Option[Throttle.Record]]("speedRecord")
       yield
         OrderOrderAdded(orderId, workflowId, arguments, planId, priority,
           deleteWhenTerminated, forceAdmission,
@@ -894,11 +894,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     object Cause:
       case object SleepInstruction extends Cause
-      case object SpeedLimit extends Cause
+      case object Throttle extends Cause
 
       given TypedJsonCodec[Cause] = TypedJsonCodec(
         Subtype(SleepInstruction),
-        Subtype(SpeedLimit))
+        Subtype(Throttle))
 
     given Encoder.AsObject[OrderSleeping] = deriveEncoder
     given Decoder[OrderSleeping] = c =>

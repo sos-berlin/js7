@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{SpeedLimiter, Timestamp}
+import js7.base.time.{Throttle, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeKey, NoticeV2_3}
@@ -93,7 +93,7 @@ final class OrderEventTest extends OurTestSuite:
         stopPositions = Set(Position(1) / "then" % 9, Label("LABEL")),
         deleteWhenTerminated = true,
         forceAdmission = true,
-        speedRecord = Some(SpeedLimiter.Record(1234.ms, 0.5))),
+        speedRecord = Some(Throttle.Record(1234.ms, 0.5))),
       json"""
       {
         "TYPE": "OrderOrderAdded",
@@ -1109,13 +1109,13 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderSleeping(
         ts"2024-12-18T12:00:00Z",
-        OrderSleeping.Cause.SpeedLimit),
+        OrderSleeping.Cause.Throttle),
       json"""
       {
         "TYPE": "OrderSleeping",
         "until": 1734523200000,
         "cause": {
-          "TYPE": "SpeedLimit"
+          "TYPE": "Throttle"
         }
       }""")
 

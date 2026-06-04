@@ -599,7 +599,7 @@ extends
 
       case OrderSleeping(until, cause) =>
         check(
-          (isState[Ready] || cause == OrderSleeping.Cause.SpeedLimit && isState[Sleeping])
+          (isState[Ready] || cause == OrderSleeping.Cause.Throttle && isState[Sleeping])
             && isDetachedOrAttached,
           copy(
             state = Sleeping(until, cause)))

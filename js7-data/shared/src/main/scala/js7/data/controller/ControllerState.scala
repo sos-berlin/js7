@@ -17,7 +17,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.{SpeedLimiter, WallClock}
+import js7.base.time.{Throttle, WallClock}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
@@ -525,8 +525,8 @@ extends
               event.speedRecord.fold(r): record =>
                 r.copy(
                   volatile = r.volatile.copy(
-                    addOrderInstrSpeedLimiter =
-                      r.volatile.addOrderInstrSpeedLimiter.record(record)))
+                    addOrderInstrThrottle =
+                      r.volatile.addOrderInstrThrottle.record(record)))
             case _ => r
 
       case _ =>
@@ -1029,10 +1029,10 @@ extends
   type Volatile = ControllerVolatile
 
   val EmptyVolatile: ControllerVolatile =
-    ControllerVolatile(SpeedLimiter.Unlimited)
+    ControllerVolatile(Throttle.Unlimited)
 
   override def configToVolatile(config: Config): ControllerVolatile =
-    ControllerVolatile(SpeedLimiter.fromConfig(config).orThrow)
+    ControllerVolatile(Throttle.fromConfig(config).orThrow)
 
   private val logger = Logger[this.type]
 

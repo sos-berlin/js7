@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import js7.base.time.SpeedLimiter
+import js7.base.time.Throttle
 import org.jetbrains.annotations.TestOnly
 
 /** Data that is not persisted.
@@ -8,11 +8,11 @@ import org.jetbrains.annotations.TestOnly
   * No Events, no snapshot. Values vanish after Controller restart.
   */
 final case class ControllerVolatile(
-  addOrderInstrSpeedLimiter: SpeedLimiter)
+  addOrderInstrThrottle: Throttle)
 
 
 object ControllerVolatile:
 
   @TestOnly
   def forTest: ControllerVolatile =
-    new ControllerVolatile(SpeedLimiter.Unlimited)
+    new ControllerVolatile(Throttle.Unlimited)

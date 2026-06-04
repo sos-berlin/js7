@@ -1,6 +1,6 @@
 package js7.base.time
 
-import js7.base.time.SpeedLimiter.{Record, TooFast}
+import js7.base.time.Throttle.{Record, TooFast}
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -16,17 +16,17 @@ import scala.concurrent.duration.FiniteDuration
   *
   * Immutable.
   */
-final class StandardSpeedLimiter private(
-  private val speedLimits: Seq[Speed],
+final class StandardThrottle private(
+  private val throttles: Seq[Speed],
   private val histogram: TimeHistogram,
   unit: SpeedUnit)
-extends SpeedLimiter:
+extends Throttle:
 
-  protected type Self = StandardSpeedLimiter
+  protected type Self = StandardThrottle
 
-  def setTime(time: FiniteDuration): StandardSpeedLimiter =
-    new StandardSpeedLimiter(
-      speedLimits,
+  def setTime(time: FiniteDuration): StandardThrottle =
+    new StandardThrottle(
+      throttles,
       histogram.setTime(time),
       unit)
 
@@ -37,26 +37,26 @@ extends SpeedLimiter:
     *
     * @return `Left[TooFast]` if the speed limit is exceeded.
     *         The weight may be added after the retured `delay` has passed.
-    *         `Right[StandardSpeedLimiter]` if acceleration was possible.
+    *         `Right[StandardThrottle]` if acceleration was possible.
     */
-  def tryRecord(record: Record): Either[TooFast, StandardSpeedLimiter] =
+  def tryRecord(record: Record): Either[TooFast, StandardThrottle] =
     val updated = this.record(record)
-    updated.speedLimits.iterator.zipWithIndex.map:
-      case pair @ (speedLimit, i) => (pair, updated.histogram.recordedSpeed(i))
+    updated.throttles.iterator.zipWithIndex.map:
+      case pair @ (throttle, i) => (pair, updated.histogram.recordedSpeed(i))
     .collect:
-      case ((speedLimit, i), recordedSpeed) if recordedSpeed.speed.weight > speedLimit.weight =>
+      case ((throttle, i), recordedSpeed) if recordedSpeed.speed.weight > throttle.weight =>
         val end = histogram.recordedSpeed(i).end
-        TooFast(speedLimit, delay = end - record.time)
+        TooFast(throttle, delay = end - record.time)
     .maxByOption(_.delay)
     .toLeft(updated)
 
   /** Like [[tryRecord]] but doesn't check speed limit. */
-  def record(record: Record): StandardSpeedLimiter =
-    if speedLimits.isEmpty then
+  def record(record: Record): StandardThrottle =
+    if throttles.isEmpty then
       this
     else
-      new StandardSpeedLimiter(
-        speedLimits,
+      new StandardThrottle(
+        throttles,
         histogram = histogram.add(record.time, record.weight),
         unit)
 
@@ -64,14 +64,14 @@ extends SpeedLimiter:
     histogram.time
 
   override def toString =
-    s"StandardSpeedLimiter(${speedLimits.mkString("(", ", ", ")")}, $histogram)"
+    s"StandardThrottle(${throttles.mkString("(", ", ", ")")}, $histogram)"
 
 
-object StandardSpeedLimiter:
+object StandardThrottle:
 
   def apply(speeds: Seq[Speed], fractions: Int = 10, unit: SpeedUnit = SpeedUnit.empty)
-  : StandardSpeedLimiter =
-    new StandardSpeedLimiter(
+  : StandardThrottle =
+    new StandardThrottle(
       speeds,
       TimeHistogram(speeds.map(_.period), fractions, unit),
       unit)

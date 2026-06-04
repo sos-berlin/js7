@@ -425,12 +425,12 @@ final class OrderTest extends OurTestSuite:
             "until": 1734523200000
           }""")
 
-        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z", OrderSleeping.Cause.SpeedLimit),
+        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z", OrderSleeping.Cause.Throttle),
           json"""{
             "TYPE": "Sleeping",
             "until": 1734523200000,
             "cause": {
-              "TYPE": "SpeedLimit"
+              "TYPE": "Throttle"
             }
           }""")
 

@@ -12,15 +12,15 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.expr
 import js7.data.workflow.instructions.AddOrder
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.addOrders.AddOrderInstructionSpeedLimitTest.*
+import js7.tests.addOrders.AddOrderInstructionThrottleTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.matchers.should.Matchers.*
 
-final class AddOrderInstructionSpeedLimitTest extends OurTestSuite, ControllerAgentForScalaTest:
+final class AddOrderInstructionThrottleTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.instruction.addOrder.speedLimit = [
+    js7.instruction.addOrder.throttle = [
       # First entry should be <= 10000 to keep generated event chunk small
       #{ limit: 3, period: 1ms }
       #{ limit: 10, period: 250ms }
@@ -67,7 +67,7 @@ final class AddOrderInstructionSpeedLimitTest extends OurTestSuite, ControllerAg
     // Orders continue to start !!!
 
 
-object AddOrderInstructionSpeedLimitTest:
+object AddOrderInstructionThrottleTest:
   private val simpleWorkflowPath = WorkflowPath.of("SIMPLE")
   private val simpleWorkflow = Workflow.of(simpleWorkflowPath,
     AddOrder(
