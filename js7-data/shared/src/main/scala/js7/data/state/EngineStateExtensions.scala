@@ -5,7 +5,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent
 import js7.data.lock.LockState
-import js7.data.order.OrderEvent.{OrderDetachable, OrderForked, OrderLocksReleased, OrderOrderAdded}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderPriorityChanged, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSaid, OrderSleeping, OrderStarted, OrderStateReset, OrderStdWritten, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred, OrderWaitingForAdmission}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.Instruction
 import scala.reflect.ClassTag
@@ -92,5 +92,73 @@ object EngineStateExtensions:
         case orderOrderAdded: OrderOrderAdded => // Controller only
           keyedEvent.key :: orderOrderAdded.orderId :: Nil
 
-        case _ =>
-          keyedEvent.key :: Nil
+        case _: (
+          OrderAdded |
+          OrderAttached |
+          OrderAttachedToAgent |
+          OrderAwoke |
+          OrderBroken |
+          OrderCancelled |
+          OrderCatched |
+          OrderCaught |
+          OrderCycleFinished |
+          OrderCycleStarted |
+          OrderCyclingPrepared |
+          OrderDetached |
+          OrderExternalVanished |
+          OrderFailed |
+          OrderFailedInFork |
+          OrderFinished |
+          OrderGoes |
+          OrderJoined |
+          OrderLockAcquired |
+          OrderLockDequeued |
+          OrderLockReleased |
+          OrderLocksAcquired |
+          OrderLocksReleased |
+          OrderMoved |
+          OrderNoticesConsumed |
+          OrderNoticesConsumptionStarted |
+          OrderNoticesRead |
+          OrderOutcomeAdded |
+          OrderPlanAttached |
+          OrderPriorityChanged |
+          OrderProcessingKilled |
+          OrderPromptAnswered |
+          OrderResumed |
+          OrderRetrying |
+          OrderStarted |
+          OrderStateReset |
+          OrderStickySubagentEntered |
+          OrderStickySubagentLeaved
+          ) => keyedEvent.key :: Nil
+
+        case _: (
+          OrderAttachable |
+          OrderDetachable |
+          OrderCancellationMarked |
+          OrderCancellationMarkedOnAgent |
+          OrderDeleted |
+          OrderDeletionMarked |
+          OrderGoMarked |
+          OrderLockQueued |
+          OrderLocksQueued |
+          OrderNoticeAnnounced |
+          OrderNoticeExpected |
+          OrderNoticePosted |
+          OrderNoticePostedV2_3 |
+          OrderNoticesExpected |
+          OrderProcessingStarted |
+          OrderProcessed |
+          OrderPrompted |
+          OrderResumptionMarked |
+          OrderSaid |
+          OrderSleeping |
+          OrderStdWritten |
+          OrderStopped |
+          OrderSuspended |
+          OrderSuspensionMarked |
+          OrderSuspensionMarkedOnAgent |
+          OrderWaitingForAdmission |
+          OrderTransferred
+          ) => Nil

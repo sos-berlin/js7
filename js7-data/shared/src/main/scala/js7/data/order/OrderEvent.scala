@@ -516,6 +516,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       "subagentSelectionId" -> "subagentBundleId"))
 
 
+  type OrderStickySubagentLeaved = OrderStickySubagentLeaved.type
   case object OrderStickySubagentLeaved
   extends OrderActorEvent
 
@@ -789,22 +790,22 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   // COMPATIBLE with v2.4
-  private final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int])
+  final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent
 
 
   // COMPATIBLE with v2.4
-  private final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
+  final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent
 
 
   // COMPATIBLE with v2.4
-  private final case class OrderLockDequeued(lockPath: LockPath)
+  final case class OrderLockDequeued(lockPath: LockPath)
   extends LegacyOrderLockEvent
 
 
   // COMPATIBLE with v2.4
-  private final case class OrderLockReleased(lockPath: LockPath)
+  final case class OrderLockReleased(lockPath: LockPath)
   extends LegacyOrderLockEvent
 
 
