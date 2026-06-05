@@ -5,7 +5,7 @@ import java.time.Instant
 import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.EpochNano
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.JavaVectors.vectorIndexOf
 import scala.util.control.NonFatal
 

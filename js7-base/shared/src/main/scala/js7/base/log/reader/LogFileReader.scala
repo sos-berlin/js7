@@ -19,7 +19,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly

@@ -2,7 +2,7 @@ package js7.base.time
 
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
-import java.time.Instant
+import java.time.{Instant, ZonedDateTime}
 import scala.concurrent.duration.FiniteDuration
 
 /** A Long denoting the number of nanoseconds since the Unix epoch. */
@@ -20,9 +20,6 @@ object EpochNano:
 
   inline def of(duration: FiniteDuration): EpochNano =
     duration.toNanos
-
-  def from(instant: Instant): EpochNano =
-    instant.getEpochSecond * 1_000_000_000L + instant.getNano
 
   def fromDecimalString(string: String): EpochNano =
     java.math.BigDecimal(string).movePointRight(9).longValue
@@ -69,3 +66,17 @@ object EpochNano:
     def show: String =
       epochNano.toInstant.toString
   end extension
+
+
+  private val MinNanoInstant = Instant.ofEpochMilli(Long.MinValue)
+  private val MaxNanoInstant = Instant.ofEpochMilli(Long.MaxValue)
+
+  extension (instant: Instant)
+    def toEpochNano: EpochNano =
+      if instant.isBefore(MinNanoInstant) || instant.isAfter(MaxNanoInstant) then
+        throw new IllegalArgumentException(s"Instant $instant is out of range for EpochNano")
+      EpochNano(instant.getEpochSecond * 1_000_000_000L + instant.getNano)
+
+  extension (zonedDateTime: ZonedDateTime)
+    def toEpochNano: EpochNano =
+      zonedDateTime.toInstant.toEpochNano

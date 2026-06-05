@@ -13,7 +13,7 @@ import js7.base.log.Logger
 import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, growingLogFileStream, matchTimestampInLogLine, parseTimestampInHeaderLine, parseTimestampInLogLine}
 import js7.base.log.reader.LogFileReaderTest.*
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.{EpochNano, Stopwatch}
 import js7.base.utils.ScalaUtils.syntax.foldMap

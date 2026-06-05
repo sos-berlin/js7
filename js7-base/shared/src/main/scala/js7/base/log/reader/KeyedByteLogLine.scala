@@ -7,7 +7,7 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 
 final case class KeyedByteLogLine(logLevel: LogLevel, fileInstant: Instant, posAndLine: PosAndLine):
 

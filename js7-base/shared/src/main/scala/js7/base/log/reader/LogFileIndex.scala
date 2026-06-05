@@ -17,7 +17,7 @@ import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
 import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB

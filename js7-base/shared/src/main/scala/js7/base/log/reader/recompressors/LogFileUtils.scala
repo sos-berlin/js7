@@ -9,7 +9,7 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
 import js7.base.log.{AnsiEscapeCodes, reader}
 import js7.base.time.EpochNano
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.math.Ordered.orderingToOrdered
 

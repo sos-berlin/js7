@@ -4,13 +4,14 @@ import io.circe.syntax.EncoderOps
 import java.time.Instant
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.tester.CirceJsonTester.testJson
 
 final class EpochNanoTest extends OurTestSuite:
 
   "Range" in:
     assert(EpochNano(Long.MaxValue).toInstant == Instant.parse("2262-04-11T23:47:16.854775807Z"))
+    assert(Instant.parse("2262-04-11T23:47:16.854775807Z").toEpochNano == EpochNano(Long.MaxValue))
     assert(EpochNano(0).toInstant == Instant.parse("1970-01-01T00:00:00Z"))
 
   "JSON" in:

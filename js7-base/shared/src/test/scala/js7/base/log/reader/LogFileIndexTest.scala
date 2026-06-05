@@ -20,7 +20,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndexTest.*
 import js7.base.metering.CallMeter
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.JavaTimeExtensions.toEpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
