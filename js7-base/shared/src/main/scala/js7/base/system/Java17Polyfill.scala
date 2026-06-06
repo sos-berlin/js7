@@ -24,8 +24,12 @@ object Java17Polyfill:
       //getCharsMethod match
       //  case null =>
       charSequence match
+        case o: CharSequenceJava17 =>
+          o.getChars(srcBegin, srcEnd, dst, dstBegin)
+
         case string: String =>
           string.getChars(srcBegin, srcEnd, dst, dstBegin)
+
         case _ =>
           Objects.checkFromToIndex(srcBegin, srcEnd, charSequence.length)
           Objects.checkIndex(dstBegin, dst.length - (srcEnd - srcBegin) + 1)

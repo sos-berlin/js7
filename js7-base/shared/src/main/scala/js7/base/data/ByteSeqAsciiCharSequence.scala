@@ -3,6 +3,7 @@ package js7.base.data
 import java.util.Objects.{checkFromToIndex, checkIndex}
 import js7.base.data.ByteSeqAsciiCharSequence.*
 import js7.base.data.ByteSequence.ops.*
+import js7.base.system.CharSequenceJava17
 
 /** Interprets a ByteSeq as a CharSequence of ASCII characters.
   *
@@ -12,7 +13,7 @@ final class ByteSeqAsciiCharSequence[ByteSeq: ByteSequence](
   private val byteSeq: ByteSeq,
   private val begin: Int,
   private val end: Int)
-extends CharSequence:
+extends CharSequenceJava17:
 
   def this(byteSeq: ByteSeq) =
     this(byteSeq, 0, byteSeq.length)
