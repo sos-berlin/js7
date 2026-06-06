@@ -3,7 +3,6 @@ package js7.base.fs2utils
 import cats.Eq
 import fs2.Chunk
 import java.nio.ByteBuffer
-import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.StreamExtensions.byteAt
 import js7.base.utils.JavaVectors.vectorIndexOf
@@ -89,7 +88,19 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.drop(n)
 
   override def slice(chunk: Chunk[Byte], from: Int, until: Int): Chunk[Byte] =
-    chunk.drop(from).take(until - from)
+    chunk match
+      case chunk: Chunk.ArraySlice[Byte] =>
+        if from == 0 && until - from > chunk.length then
+          chunk
+        else
+          val end = chunk.offset + until min chunk.values.length
+          val start = chunk.offset + from
+          if end <= start then
+            Chunk.empty
+          else
+            Chunk.ArraySlice(chunk.values, start, length = end - start)
+      case _ =>
+        chunk.drop(from).take(until - from)
 
   def iterator(chunk: Chunk[Byte]): Iterator[Byte] =
     chunk.iterator
@@ -112,8 +123,23 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
       case _ =>
         None
 
-  override def copyToArray(chunk: Chunk[Byte], array: Array[Byte], start: Int, len: Int): Int =
-    chunk.copyToArray(array, start, len)
+  override def copyToArray(chunk: Chunk[Byte], array: Array[Byte]): Int =
+    chunk.copyToArray(array, start = 0)
+    array.length
+
+  override def copyToArray(
+    chunk: Chunk[Byte], srcStart: Int, array: Array[Byte], dstStart: Int, length: Int)
+  : Int =
+    chunk match
+      case chunk: Chunk.ArraySlice[Byte] =>
+        if srcStart < 0 || length < 0 then
+          throw new IndexOutOfBoundsException(s"srcStart=$srcStart length=$length")
+        var len = chunk.length - srcStart
+        if length < len then len = length
+        System.arraycopy(chunk.values, chunk.offset + srcStart, array, dstStart, len)
+        len
+      case _ =>
+        super.copyToArray(chunk, srcStart, array, dstStart, length)
 
   override def toByteBuffer(chunk: Chunk[Byte]): ByteBuffer =
     chunk.toByteBuffer.asReadOnlyBuffer

@@ -26,9 +26,14 @@ final class ByteArray private(val unsafeArray: Array[Byte]):
   def copyToArray(array: Array[Byte]): Int =
     copyToArray(array, 0, Int.MaxValue)
 
-  def copyToArray(array: Array[Byte], start: Int, len: Int): Int =
-    val n = len min unsafeArray.length min array.length - start
-    arraycopy(unsafeArray, 0, array, start, n)
+  def copyToArray(array: Array[Byte], dstStart: Int, len: Int): Int =
+    val n = len min unsafeArray.length min array.length - dstStart
+    arraycopy(unsafeArray, 0, array, dstStart, n)
+    n
+
+  def copyToArray(srcStart: Int, array: Array[Byte], dstStart: Int, len: Int): Int =
+    val n = len min unsafeArray.length min array.length - dstStart
+    arraycopy(unsafeArray, srcStart, array, dstStart, n)
     n
 
   def slice(from: Int, until: Int): ByteArray =

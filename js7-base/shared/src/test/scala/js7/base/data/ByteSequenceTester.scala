@@ -51,6 +51,24 @@ extends OurTestSuite:
     assert(ByteSeq.fromArray(a, 2, 2) == ByteSeq.empty)
     assert(ByteSeq.fromArray(a, 3, 2) == ByteSeq.empty)
 
+  "copyToArray" in:
+    val byteSeq = ByteSeq.fromString("0123456789")
+    val array = new Array[Byte](byteSeq.length)
+    byteSeq.copyToArray(array)
+    assert(array.sameElements(byteSeq.unsafeArray))
+
+  "copyToArray with dstStart" in:
+    val byteSeq = ByteSeq.fromString("0123456789")
+    val array = "??????".getBytes(UTF_8)
+    byteSeq.copyToArray(array, 1, 3)
+    assert(new String(array, UTF_8) == "?012??")
+
+  "copyToArray with srcStart" in:
+    val byteSeq = ByteSeq.fromString("0123456789")
+    val array = "??????".getBytes(UTF_8)
+    byteSeq.copyToArray(1, array, 2, 3)
+    assert(new String(array, UTF_8) == "??123?")
+
   "readByteBuffer" - {
     "slice" in:
       val buffer = ByteBuffer.allocate(64)

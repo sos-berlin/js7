@@ -3,6 +3,7 @@ package js7.base.data
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.semigroup.*
 import cats.{Eq, Monoid, Show}
+import fs2.Chunk
 import io.circe.{Decoder, Json}
 import java.io.{FileInputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
@@ -264,6 +265,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def iterator(byteSeq: ByteSeq): Iterator[Byte]
 
+  def iterator(byteSeq: ByteSeq, start: Int): Iterator[Byte] =
+    if start < 0 then throw new IllegalArgumentException("ByteSequence.iterator: negative start")
+    iterator(byteSeq).drop(start)
+
   def utf8String(byteSeq: ByteSeq): String =
     new String(unsafeArray(byteSeq), UTF_8)
 
@@ -301,8 +306,21 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     * Copying will stop once either all the elements of this ByteSeq have been copied,
     * or the end of the array is reached, or `len` elements have been copied.
     */
-  def copyToArray(byteSeq: ByteSeq, array: Array[Byte], start: Int, len: Int): Int =
-    iterator(byteSeq).copyToArray(array, start, len)
+  def copyToArray(byteSeq: ByteSeq, array: Array[Byte], dstStart: Int, len: Int): Int =
+    copyToArray(byteSeq, 0, array, dstStart, len)
+
+  def copyToArray(byteSeq: ByteSeq, srcStart: Int, array: Array[Byte], dstStart: Int, length: Int): Int =
+    if srcStart < 0 || length < 0 then
+      throw new IndexOutOfBoundsException(s"srcStart=$srcStart length=$length")
+    var i = dstStart
+    val len = length min (array.length - dstStart) min (this.length(byteSeq) - srcStart)
+    var end = dstStart + len
+    var j = srcStart
+    while i < end do
+      array(i) = at(byteSeq, j)
+      i += 1
+      j += 1
+    len
 
   def toByteArray(byteSeq: ByteSeq): ByteArray =
     toByteSequence(byteSeq)(using ByteArray)
@@ -473,8 +491,11 @@ object ByteSequence:
       * Copying will stop once either all the elements of this ByteSeq have been copied,
       * or the end of the array is reached, or `len` elements have been copied.
       */
-    def copyToArray(array: Array[Byte], start: Int, len: Int): Int =
-      typeClassInstance.copyToArray(self, array, start, len)
+    def copyToArray(array: Array[Byte], dstStart: Int, len: Int): Int =
+      typeClassInstance.copyToArray(self, array, dstStart, len)
+
+    def copyToArray(srcStart: Int, array: Array[Byte], dstStart: Int, len: Int): Int =
+      typeClassInstance.copyToArray(self, srcStart, array, dstStart, len)
 
     def toByteArray: ByteArray =
       typeClassInstance.toByteArray(self)
