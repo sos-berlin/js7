@@ -8,7 +8,6 @@ import java.time.{ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
@@ -47,7 +46,6 @@ final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
 
 
 object JLogDirectoryIndexTest:
-  private val logger = Logger[this.type]
   private val zoneId = ZoneId.of("Europe/Mariehamn")
-  private val headerTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSXX")
-  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+  private val headerTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSX")
+  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSX")

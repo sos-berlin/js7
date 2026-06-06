@@ -2,7 +2,7 @@ package js7.base.time
 
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
-import java.time.{Instant, ZonedDateTime}
+import java.time.{Instant, OffsetDateTime, ZonedDateTime}
 import scala.concurrent.duration.FiniteDuration
 
 /** A Long denoting the number of nanoseconds since the Unix epoch. */
@@ -70,6 +70,8 @@ object EpochNano:
 
   private val MinNanoInstant = Instant.ofEpochMilli(Long.MinValue)
   private val MaxNanoInstant = Instant.ofEpochMilli(Long.MaxValue)
+  private val MinSecond = Long.MinValue / 1_000_000_000
+  private val MaxSecond = Long.MaxValue / 1_000_000_000
 
   extension (instant: Instant)
     def toEpochNano: EpochNano =
@@ -77,6 +79,16 @@ object EpochNano:
         throw new IllegalArgumentException(s"Instant $instant is out of range for EpochNano")
       EpochNano(instant.getEpochSecond * 1_000_000_000L + instant.getNano)
 
+  extension (offsetDateTime: OffsetDateTime)
+    def toEpochNano: EpochNano =
+      val second = offsetDateTime.toEpochSecond
+      if second < MinSecond || second > MaxSecond then
+        throw new IllegalArgumentException(s"OffsetDateTime $offsetDateTime is out of range for EpochNano")
+      EpochNano(second * 1_000_000_000L + offsetDateTime.getNano)
+
   extension (zonedDateTime: ZonedDateTime)
     def toEpochNano: EpochNano =
-      zonedDateTime.toInstant.toEpochNano
+      val second = zonedDateTime.toEpochSecond
+      if second < MinSecond || second > MaxSecond then
+        throw new IllegalArgumentException(s"ZonedDateTime $zonedDateTime is out of range for EpochNano")
+      EpochNano(second * 1_000_000_000L + zonedDateTime.getNano)

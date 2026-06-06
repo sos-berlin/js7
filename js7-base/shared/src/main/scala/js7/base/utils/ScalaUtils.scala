@@ -988,6 +988,26 @@ object ScalaUtils:
           case -1 => string.length
           case i => i
 
+    //extension (charSeq: CharSequence)
+    //  def indexOf(ch: Char): Int =
+    //    indexOf(ch, 0)
+    //
+    //  def indexOf(ch: Char, start: Int): Int =
+    //    val end = charSeq.length
+    //    var i = start
+    //    while i < end do
+    //      if charSeq.charAt(i) == ch then return i
+    //      i += 1
+    //    -1
+    //
+    //  def indexWhere(start: Int, predicate: Char => Boolean): Int =
+    //    val end = charSeq.length
+    //    var i = start
+    //    while i < end do
+    //      if predicate(charSeq.charAt(i)) then return i
+    //      i += 1
+    //    -1
+
     implicit final class RichString(private val underlying: String) extends AnyVal:
       /** Counts bytes of UTF-16 to UTF-8 encoding, the result may be bigger. */
       def estimateUtf8Length: Int =

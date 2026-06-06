@@ -7,7 +7,7 @@ import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import fs2.{Chunk, Stream}
-import java.io.{BufferedInputStream, FileInputStream, InputStream}
+import java.io.{FileInputStream, InputStream}
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
@@ -17,6 +17,7 @@ import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
 import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.{inputStreamToStream, toPosAndLines}
 import js7.base.io.OpaquePos
@@ -25,7 +26,6 @@ import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, D
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.reader.recompressors.Recompressor
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndex, LogLineKey}
@@ -103,8 +103,8 @@ extends Service.StoppableByCancel:
   : Stream[IO, fs2.Chunk[Byte]] =
     import logSelection.byteChunkSize
     begin.match
-      case begin: Instant if Option(instantToLogFile.firstKey).forall(begin <= _) =>
-        // If `begin` is less or equal the Instant of the first log file, then we don't need to
+      case begin: Instant if Option(instantToLogFile.firstKey).forall(begin < _) =>
+        // If `begin` is less than the Instant of the first log file, then we don't need to
         // recompress and index. We simply read sequentially, starting with the first log file.
         Option(instantToLogFile.firstEntry).map(_.getValue).fold(Stream.empty): logFile =>
           completeFile(logFile, byteChunkSize = byteChunkSize) ++
@@ -304,6 +304,9 @@ object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
   private val TmpSuffix = "-indexed.tmp"
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
+  /** First chunk of log file must include the timestamp of the second line
+    * (the line after the header) */
+  private val FirstChunkSize = 1024
   val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
 
   /** LogDirectoryIndex, watching a directory. */
@@ -345,7 +348,6 @@ object LogDirectoryIndex:
             DirectoryWatchSettings.fromConfig(config).orThrow,
             isValidFile,
             Set(ENTRY_CREATE, ENTRY_DELETE))
-
 
   def files(files: Iterable[Path], logLevel: LogLevel, poll: Option[FiniteDuration] = None)
     (using zoneId: ZoneId, config: Config)
@@ -411,14 +413,18 @@ object LogDirectoryIndex:
 
   private def readLogFileInstant(inputStream: IO[InputStream])(using ZoneId): IO[Option[Instant]] =
     Resource.fromAutoCloseable(inputStream).use: in =>
-      val array = new Array[Byte](LogFileReader.UniqueHeaderSize)
+      val array = new Array[Byte](FirstChunkSize)
       IO.blocking:
-        ByteArray.unsafeWrap(in.readNBytes(UniqueHeaderSize))
-      .map: byteArray =>
-        byteArray.length == LogFileReader.UniqueHeaderSize thenMaybe :
-          LogFileReader.parseTimestampInHeaderLine(byteArray.utf8String) match
-            case EpochNano.Nix => None
-            case epochNano => Some(epochNano.toInstant)
+        ByteArray.unsafeWrap(in.readNBytes(FirstChunkSize))
+      .map: chunk =>
+        chunk.indexOf('\n') match
+          case -1 => None
+          case lf =>
+            // Take minimum of header line and first log line timestamps
+            val parser = FastTimestampParser()
+            val headerTs = LogFileReader.parseTimestampInLogLine(chunk.take(lf), parser)
+            val firstTs = LogFileReader.parseTimestampInLogLine(chunk.drop(lf + 1), parser)
+            (headerTs min firstTs).toOption.map(_.toInstant)
 
   private def deleteTmpFiles(directory: Path, logLevel: LogLevel): IO[Unit] =
     IO.blocking:

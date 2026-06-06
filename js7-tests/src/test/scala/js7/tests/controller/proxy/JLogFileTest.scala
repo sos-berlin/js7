@@ -74,7 +74,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         line.contains(logText)
       .compile
       .toVector.map: lines =>
-        assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+        assert(lines.size > 0 && lines.exists(_.contains(logText)))
 
   "Scala, String lines" in:
     val instant = Instant.now
@@ -89,7 +89,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         line.contains(logText)
       .compile
       .toVector.map: lines =>
-        assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+        assert(lines.size > 0 && lines.exists(_.contains(logText)))
 
   "Java" in:
     val logText = "🍋🍋🍋 HELLO FROM JLogFileTester.java! 🍋🍋🍋"
@@ -100,7 +100,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
         JLogFileTester.test(jControllerProxy, logText)
     .map: result =>
       val lines = result.firstList().asScala
-      assert(lines.size >= 1 & lines.exists(_.contains(logText)))
+      assert(lines.size > 0 & lines.exists(_.contains(logText)))
       assert(lines.forall(_.endsWith("\n")))
 
   "Java prettyTestNonBlocking" in:

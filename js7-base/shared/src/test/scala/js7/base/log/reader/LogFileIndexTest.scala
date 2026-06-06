@@ -30,6 +30,7 @@ import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
+import org.scalatest.Assertions.*
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class LogFileIndexTest extends OurAsyncTestSuite:
@@ -46,13 +47,13 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       IO.defer:
         val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
         val lines = Vector(
-          s"2026-02-12 14:00:00.000+0200 HEADER ...\n",
-          s"2026-02-12 14:00:01.000 info [thread] class - $message 1\n",
-          s"2026-02-12 14:00:02.000 info [thread] class - $message 2\n",
-          s"2026-02-12 14:00:03.000 info [thread] class - $message 3\n",
-          s"2026-02-12 14:00:04.000 info [thread] class - $message 4\n",
-          s"2026-02-12 14:00:05.000 info [thread] class - $message 5\n",
-          s"2026-02-12 14:00:06.000 info [thread] class - $message 6\n")
+          s"2026-02-12 14:00:00.000+02 HEADER ...\n",
+          s"2026-02-12 14:00:01.000+02 info [thread] class - $message 1\n",
+          s"2026-02-12 14:00:02.000+02 info [thread] class - $message 2\n",
+          s"2026-02-12 14:00:03.000+02 info [thread] class - $message 3\n",
+          s"2026-02-12 14:00:04.000+02 info [thread] class - $message 4\n",
+          s"2026-02-12 14:00:05.000+02 info [thread] class - $message 5\n",
+          s"2026-02-12 14:00:06.000+02 info [thread] class - $message 6\n")
         file := lines.mkString
 
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
@@ -83,9 +84,9 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
         val lines = Vector(
-          bold("2026-02-12 14:00:00.000 info [thread] class - ORANGE") + "\n",
-          "2026-02-12 14:00:01.000 info [thread] class - CITRON\n",
-          "2026-02-12 14:00:02.000 info [thread] class - ORANGE\n")
+          bold("2026-02-12 14:00:00.000+02 info [thread] class - ORANGE") + "\n",
+          "2026-02-12 14:00:01.000+02 info [thread] class - CITRON\n",
+          "2026-02-12 14:00:02.000+02 info [thread] class - ORANGE\n")
         file := lines.mkString
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
           logFileIndex.streamLines(
@@ -101,8 +102,8 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
         val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
-        val firstLine = s"2026-02-12 14:00:01.000 info [thread] class - $message\n"
-        file := "2026-02-12 14:00:00.000+0200 HEADER ...\n" + firstLine
+        val firstLine = s"2026-02-12 14:00:01.000+02 info [thread] class - $message\n"
+        file := "2026-02-12 14:00:00.000+02 HEADER ...\n" + firstLine
 
         LogFileIndex.buildGrowing(file, poll = 100.ms).use: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
@@ -113,7 +114,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           for
             _ <- readOne(Instant.parse("2026-02-12T14:00:01+02:00")).map: line =>
               assert(line contains firstLine)
-            anotherLine = s"2026-02-12 15:00:00.000 info [thread] class - $message\n"
+            anotherLine = s"2026-02-12 15:00:00.000+02 info [thread] class - $message\n"
             _ =
               file ++= anotherLine
               awaitAndAssert:
@@ -192,7 +193,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 object LogFileIndexTest:
   private val logger = Logger[this.type]
   private val meterWrite = CallMeter("LogFileIndex.write")
-  private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
+  private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX")
     .withZone(ZoneId.of("Europe/Mariehamn"))
 
   def writeFile(
@@ -223,7 +224,7 @@ object LogFileIndexTest:
         meterWrite:
           (0 until lineCount).foreach: i =>
             val ts = dateTimeFormatter.format(Instant.ofEpochMilli(epochMilli + i))
-            if isTest then assert(ts.length == 23 & 23 + lineRemainder.length == lineLength)
+            if isTest then assert(ts.length == 29 & 23 + lineRemainder.length == lineLength)
             writer.write(ts)
             writer.write(lineRemainder)
         logger.info("File written: " + bytesPerSecondString(t.elapsed, Files.size(file)))

@@ -2,15 +2,18 @@ package js7.base.log.reader
 
 import cats.effect.IO
 import cats.effect.std.Queue
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import java.nio.file.Files.deleteIfExists
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import js7.base.data.ByteArray
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, growingLogFileStream, matchTimestampInLogLine, parseTimestampInHeaderLine, parseTimestampInLogLine}
+import js7.base.log.reader.LogFileReader.testing.{matchTimestampInLogLine, parseTimestampInHeaderLine}
+import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, growingLogFileStream, parseTimestampInLogLine}
 import js7.base.log.reader.LogFileReaderTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.EpochNano.toEpochNano
@@ -62,8 +65,9 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
 
   "parseTimestampInLogLine" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
-    val line = bold:
-      "2026-02-24 12:34:56.789 info [thread] com.example.Example - Hello " + "." * 100
+    val line = fs2.Chunk.array(
+      bold("2026-02-24 12:34:56.789 info [thread] com.example.Example - Hello " + "." * 100)
+        .getBytes(UTF_8))
     val timestampParser = FastTimestampParser()
     assert:
       parseTimestampInLogLine(line)(timestampParser.parse(_)) ==
@@ -86,6 +90,12 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
 
     locally:
       val line = bold("2026-02-24 08:05:55,244+0200 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      assert:
+        parseTimestampInHeaderLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24 08:05:55,244+02 Begin JS7 Test · 2.9.0-SNAPSHOT")
       assert:
         parseTimestampInHeaderLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano

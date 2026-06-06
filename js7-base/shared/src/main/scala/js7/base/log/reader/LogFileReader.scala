@@ -1,25 +1,21 @@
 package js7.base.log.reader
 
 import cats.effect.IO
-import fs2.{Chunk, Stream}
+import fs2.Stream
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, DateTimeParseException}
-import java.time.temporal.ChronoField.NANO_OF_SECOND
-import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import java.util.regex.Pattern
-import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
-import js7.base.system.Java17Polyfill.getChars
 import js7.base.time.EpochNano
-import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
@@ -57,93 +53,48 @@ object LogFileReader:
   val FastPrefixPattern: Pattern =
     Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")
 
-  private val HeaderDateTimeParser: DateTimeFormatter =
-    def withDateTimeSeparator(sep: Char) =
-      new DateTimeFormatterBuilder()
-        .append(new DateTimeFormatterBuilder().appendPattern("yyyy-MM-dd").toFormatter)
-        .appendLiteral(sep)
-        .appendPattern("HH:mm:ss")
-
-    // Build one formatter that accepts either 'T' or ' ' by using optional sections
-    new DateTimeFormatterBuilder()
-      .append(withDateTimeSeparator('T').toFormatter)
-      // Optional fraction with '.' (1..9 digits)
-      .optionalStart()
-      .appendLiteral('.')
-      .appendFraction(NANO_OF_SECOND, 1, 9, false)
-      .optionalEnd()
-      // Optional fraction with ',' (1..9 digits)
-      .optionalStart()
-      .appendLiteral(',')
-      .appendFraction(NANO_OF_SECOND, 1, 9, false)
-      .optionalEnd()
-      // Optional offset, e.g. Z or +02:00
-      .optionalStart()
-      .appendOffset("+HHMM", "Z")
-      .optionalEnd()
-      .toFormatter()
-
   private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
-  def parseTimestampInHeaderLine[A](line: CharSequence)(using ZoneId): EpochNano =
+  def parseTimestampInHeaderLine[ByteSeq: ByteSequence](line: ByteSeq)(using ZoneId): EpochNano =
     parseTimestamp(HeaderLinePattern, line):
       headerTimestampToEpochNano
 
-  private def headerTimestampToEpochNano(string: CharSequence)(using zoneId: ZoneId): EpochNano =
+  private def headerTimestampToEpochNano[ByteSeq: ByteSequence](timestamp: ByteSeq)
+    (using zoneId: ZoneId)
+  : EpochNano =
     try
-      val array = new Array[Char](string.length)
-      string.getChars(0, string.length, array, 0)
-      var end = array.length
+      val array = timestamp.toArray.map(_.toChar)
       array(10) = 'T'
       array(19) = '.'
-
-      // Delete optional colon
-      if array(array.length - 3) == ':' then
-        array(array.length - 3) = array(array.length - 2)
-        array(array.length - 2) = array(array.length - 1)
-        end -= 1
-
-      HeaderDateTimeParser.parseBest(
-          scala.runtime.ArrayCharSequence(array, 0, end),
-          OffsetDateTime.from,
-          LocalDateTime.from)
-        .match
-          case o: OffsetDateTime => o.toInstant
-          case o: LocalDateTime => o.atZone(zoneId).toInstant
-        .toEpochNano
+      FastTimestampParser.parseTimestampAsNanos:
+        scala.runtime.ArrayCharSequence(array, 0, array.length)
     catch case e: DateTimeParseException =>
       logger.trace("💥 " + e.toStringWithCauses)
       EpochNano.Nix
 
-  def parseTimestampInLogLine(byteLine: fs2.Chunk[Byte])(parse: CharSequence => EpochNano): EpochNano =
-    val line = byteLine.asciiCharSequence // ASCII !!! is faster than .utf8String
-    parseTimestampInLogLine(line)(parse)
+  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq)(parse: ByteSeq => EpochNano)
+  : EpochNano =
+    parseTimestamp(LogLineStartPattern, byteLine)(parse)
 
-  def parseTimestampInLogLine(line: CharSequence)(parse: CharSequence => EpochNano): EpochNano =
-    parseTimestamp(LogLineStartPattern, line)(parse)
-
-  private inline def parseTimestamp(pattern: Pattern, line: CharSequence)
-    (inline parse: CharSequence => EpochNano)
+  private inline def parseTimestamp[ByteSeq: ByteSequence](pattern: Pattern, line: ByteSeq)
+    (inline parse: ByteSeq => EpochNano)
   : EpochNano =
     matchTimestamp(pattern, line) match
       case null => EpochNano.Nix
       case ts => parse(ts)
 
-  private def matchTimestamp(pattern: Pattern, line: CharSequence): CharSequence | Null =
+  private def matchTimestamp[ByteSeq: ByteSequence](pattern: Pattern, line: ByteSeq)
+  : ByteSeq | Null =
     meterRegex:
-      val matcher = pattern.matcher(line)
+      val matcher = pattern.matcher(line.asciiCharSequence)
       if matcher.lookingAt() then
         val start = matcher.start(1)
         if start >= 0 then
-          line.subSequence(start, matcher.end(1))
+          line.slice(start, matcher.end(1))
         else
           null
       else
         null
-
-  @TestOnly
-  private[reader] def matchTimestampInLogLine(line: CharSequence): CharSequence | Null =
-    matchTimestamp(LogLineStartPattern, line)
 
   def growingLogFileStream[ByteSeq: {ByteSequence, Tag}](
     file: Path,
@@ -217,3 +168,16 @@ object LogFileReader:
         waitUntilExists = Some((poll = 100.ms /*TODO*/ , timeout = 3.s))
       ).use: reader =>
         reader.read(UniqueHeaderSize)
+
+
+  @TestOnly
+  private[reader] object testing:
+    @TestOnly
+    def parseTimestampInHeaderLine(line: String)(using ZoneId): EpochNano =
+      LogFileReader.parseTimestampInHeaderLine(ByteArray(line))
+
+    @TestOnly
+    def matchTimestampInLogLine(line: String): CharSequence | Null =
+      LogFileReader.matchTimestamp(LogLineStartPattern, ByteArray(line)) match
+        case null => null
+        case o => o.utf8String
