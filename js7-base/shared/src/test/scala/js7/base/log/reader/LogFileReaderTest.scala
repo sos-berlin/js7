@@ -12,7 +12,7 @@ import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileReader.testing.{matchTimestampInLogLine, parseTimestampInHeaderLine}
+import js7.base.log.reader.LogFileReader.testing.{matchTimestampInLogLine, testParseTimestampInLogLine}
 import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, growingLogFileStream, parseTimestampInLogLine}
 import js7.base.log.reader.LogFileReaderTest.*
 import js7.base.test.OurAsyncTestSuite
@@ -70,46 +70,43 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
         .getBytes(UTF_8))
     val timestampParser = FastTimestampParser()
     assert:
-      parseTimestampInLogLine(line)(timestampParser.parse(_)) ==
+      parseTimestampInLogLine(line, timestampParser) ==
         ZonedDateTime.parse("2026-02-24T12:34:56.789+02").toInstant.toEpochNano
 
-  "parseTimestampInHeaderLine" in:
-    given ZoneId = ZoneId.of("Europe/Mariehamn")
-    val toEpochNano = FastTimestampParser()
     locally:
-      val line = bold("2026-02-24T08:05:55.244Z Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24T08:05:55.244Z info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244Z").toInstant.toEpochNano
 
     locally:
-      val line = bold("2026-02-24T08:05:55.244+02:00 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24T08:05:55.244+02:00 info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
 
     locally:
-      val line = bold("2026-02-24 08:05:55,244+0200 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24 08:05:55,244+0200 info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
 
     locally:
-      val line = bold("2026-02-24 08:05:55,244+02 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24 08:05:55,244+02 info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
 
     locally:
-      val line = bold("2026-02-24 08:05:55.244272+02:00 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           Instant.parse("2026-02-24T06:05:55.244272Z").toEpochNano
 
     locally:
-      val line = bold("2026-02-24 08:05:55.244272+02:00 Begin JS7 Test · 2.9.0-SNAPSHOT")
+      val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
       assert:
-        parseTimestampInHeaderLine(line) ==
+        testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNano
 
   "growingLogFileStream" in :

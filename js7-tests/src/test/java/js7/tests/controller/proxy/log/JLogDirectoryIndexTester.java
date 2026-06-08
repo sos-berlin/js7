@@ -30,7 +30,7 @@ final class JLogDirectoryIndexTester {
                     .thenAccept(logLineKey ->
                         assertThat(logLineKey.get(), equalTo(LogLineKey.apply(
                             logLevel,
-                            ZonedDateTime.parse("2026-03-01T02:00:00+02").toInstant(),
+                            ZonedDateTime.parse("2026-03-01T02:00:01+02").toInstant(),
                             110))))
 
                     // 🟢 keyedLogLineFlux

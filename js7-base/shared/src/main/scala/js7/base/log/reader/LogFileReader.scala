@@ -5,7 +5,6 @@ import fs2.Stream
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
 import java.time.ZoneId
-import java.time.format.DateTimeParseException
 import java.util.regex.Pattern
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
@@ -17,7 +16,6 @@ import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
 import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
@@ -29,12 +27,13 @@ object LogFileReader:
     * The first line of each log file starts with a timestamp including the timezone offset,
     * to uniquely identify it.
     * <p>
-    * See log4j2.xml header setting. Recommended format:
+    * See log4j2.xml header setting. Some recommended formats:
     * <pre>
-    * %d{yyyy-MM-dd HH:mm:ss.SSSXX} ...
+    * %d{yyyy-MM-dd HH:mm:ss.SSSX} ...
+    * %d{yyyy-MM-dd'T'HH:mm:ss,SSSSSSX} ...
     * </pre>
     */
-  val UniqueHeaderSize = 30
+  private[reader] val UniqueHeaderSize = 30
 
   private val HeaderLinePattern =
     val datetime =
@@ -55,33 +54,16 @@ object LogFileReader:
 
   private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
-  def parseTimestampInHeaderLine[ByteSeq: ByteSequence](line: ByteSeq)(using ZoneId): EpochNano =
-    parseTimestamp(HeaderLinePattern, line):
-      headerTimestampToEpochNano
-
-  private def headerTimestampToEpochNano[ByteSeq: ByteSequence](timestamp: ByteSeq)
-    (using zoneId: ZoneId)
+  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq, parser: FastTimestampParser)
   : EpochNano =
-    try
-      val array = timestamp.toArray.map(_.toChar)
-      array(10) = 'T'
-      array(19) = '.'
-      FastTimestampParser.parseTimestampAsNanos:
-        scala.runtime.ArrayCharSequence(array, 0, array.length)
-    catch case e: DateTimeParseException =>
-      logger.trace("💥 " + e.toStringWithCauses)
-      EpochNano.Nix
+    parseTimestamp(LogLineStartPattern, byteLine, parser)
 
-  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq)(parse: ByteSeq => EpochNano)
-  : EpochNano =
-    parseTimestamp(LogLineStartPattern, byteLine)(parse)
-
-  private inline def parseTimestamp[ByteSeq: ByteSequence](pattern: Pattern, line: ByteSeq)
-    (inline parse: ByteSeq => EpochNano)
+  private inline def parseTimestamp[ByteSeq: ByteSequence](
+    inline pattern: Pattern, inline line: ByteSeq, inline parser: FastTimestampParser)
   : EpochNano =
     matchTimestamp(pattern, line) match
       case null => EpochNano.Nix
-      case ts => parse(ts)
+      case ts => parser.parse(ts)
 
   private def matchTimestamp[ByteSeq: ByteSequence](pattern: Pattern, line: ByteSeq)
   : ByteSeq | Null =
@@ -128,14 +110,14 @@ object LogFileReader:
         else
           fs2.Stream.repeatEval:
             reader.read
-          .flatMap: byteSeqs =>
-            if byteSeqs.nonEmpty then
-              Stream.emit(byteSeqs)
+          .flatMap: byteSeq =>
+            if byteSeq.nonEmpty then
+              Stream.emit(byteSeq)
             else
               Stream.sleep_[IO](pollDuration).append:
                 // TODO Wait longer before reading header again
                 Stream.force:
-                  // When the log file chaned, its header file changed, too
+                  // When the log file changed, its header file changed, too
                   readHeader[ByteSeq](file).map:
                     case `header` =>
                       Stream.empty // Unchanged, continue
@@ -173,8 +155,8 @@ object LogFileReader:
   @TestOnly
   private[reader] object testing:
     @TestOnly
-    def parseTimestampInHeaderLine(line: String)(using ZoneId): EpochNano =
-      LogFileReader.parseTimestampInHeaderLine(ByteArray(line))
+    def testParseTimestampInLogLine(line: String)(using ZoneId): EpochNano =
+      LogFileReader.parseTimestampInLogLine(ByteArray(line), FastTimestampParser())
 
     @TestOnly
     def matchTimestampInLogLine(line: String): CharSequence | Null =

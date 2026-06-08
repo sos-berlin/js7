@@ -84,7 +84,7 @@ final class LogFileIndex private(
         .through:
           toPosAndLines(firstPosition = opaquePos.toLong, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
-          val drop = parseTimestampInLogLine(byteLine)(timestampParser.parse) < beginEpochNano
+          val drop = parseTimestampInLogLine(byteLine, timestampParser) < beginEpochNano
           if drop then
             droppedLines += 1
             droppedBytes += byteLine.size
@@ -261,7 +261,7 @@ object LogFileIndex:
                 val lineLen = byteLine.size
                 nanoToPos.byteCount += lineLen
                 if pos >= nextBlock then
-                  val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
+                  val epochNano = parseTimestampInLogLine(byteLine, timestampParser)
                   if !epochNano.isNix then
                     if epochNano < lastEpochNano && !reverseTimeWarned then
                       reverseTimeWarned = true

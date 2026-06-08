@@ -81,5 +81,5 @@ object LogFileUtils:
             case o: KeyedByteLogLine => o.byteLine
             case o: PosAndLine => o.byteLine
             case o: Chunk[Byte @unchecked] => o
-          val epochNano = parseTimestampInLogLine(byteLine)(timestampParser.parse)
+          val epochNano = parseTimestampInLogLine(byteLine, timestampParser)
           epochNano < endEpochNano

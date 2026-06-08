@@ -3,6 +3,7 @@ package js7.base.time
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import java.time.{Instant, OffsetDateTime, ZonedDateTime}
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 
 /** A Long denoting the number of nanoseconds since the Unix epoch. */
@@ -12,7 +13,8 @@ opaque type EpochNano = Long
 object EpochNano:
   val Zero: EpochNano = 0L
   private inline val nix = -7_777_777_777_777_777_777L // A noticeable number
-  val Nix: EpochNano = nix
+  val NixVal: EpochNano = nix
+  inline def Nix: EpochNano = nix
   private val zeroJson = Json.fromInt(0)
 
   inline def apply(epochNano: Long): EpochNano =
@@ -37,21 +39,30 @@ object EpochNano:
     c.as[java.math.BigDecimal].map:
       _.movePointRight(6).longValue
 
-  extension (epochNano: EpochNano)
+  extension (self: EpochNano)
     inline def toLong: Long =
-      epochNano
+      self
 
     inline def nanosecondSinceSecond: Long =
-      epochNano % 1_000_000_000L
+      self % 1_000_000_000L
 
     inline def isNix: Boolean =
-      epochNano == nix
+      self == nix
+
+    infix def min(o: EpochNano): EpochNano =
+      if isNix then
+        if o.isNix then Nix else o
+      else if o.isNix then Nix
+      else Math.min(self, o)
+
+    def toOption: Option[EpochNano] =
+      !isNix ? self
 
     def toDecimalString: String =
-      if epochNano == 0L then
+      if self == 0L then
         "0"
       else
-        val string = java.math.BigDecimal.valueOf(epochNano, 9).toPlainString
+        val string = java.math.BigDecimal.valueOf(self, 9).toPlainString
         var i = string.length
         while string(i - 1) == '0' do i -= 1
         if string(i - 1) == '.' then i -= 1
@@ -59,19 +70,17 @@ object EpochNano:
         string.substring(0, i)
 
     def toInstant: Instant =
-      Instant.ofEpochSecond(
-        epochNano / 1_000_000_000,
-        (epochNano % 1_000_000_000).toInt)
+      Instant.ofEpochSecond(self / 1_000_000_000, (self % 1_000_000_000).toInt)
 
     def show: String =
-      epochNano.toInstant.toString
+      toInstant.toString
   end extension
 
 
   private val MinNanoInstant = Instant.ofEpochMilli(Long.MinValue)
   private val MaxNanoInstant = Instant.ofEpochMilli(Long.MaxValue)
-  private val MinSecond = Long.MinValue / 1_000_000_000
-  private val MaxSecond = Long.MaxValue / 1_000_000_000
+  private inline val MinSecond = Long.MinValue / 1_000_000_000
+  private inline val MaxSecond = Long.MaxValue / 1_000_000_000
 
   extension (instant: Instant)
     def toEpochNano: EpochNano =

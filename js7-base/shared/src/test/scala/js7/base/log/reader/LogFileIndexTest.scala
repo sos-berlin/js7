@@ -5,7 +5,7 @@ import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, ZoneId}
 import java.util.regex.Pattern
 import java.util.zip.GZIPOutputStream
 import js7.base.config.{Js7Conf, Js7Config}
@@ -200,17 +200,17 @@ object LogFileIndexTest:
     file: Path,
     lineLength: Int,
     lineCount: Int,
-    startTime: String = "2026-02-12T00:00:00.000",
+    startTime: String = "2026-02-12T00:00:00.000+02",
     extra: String = "",
     gzip: Boolean = false)
+    (using ZoneId)
   : IO[Unit] =
-    assert(startTime.length == 23, s"startTime must be 23 chars long, but was $startTime")
-    LocalDateTime.parse(startTime) // Must be parseable
+    FastTimestampParser.parseTimestampAsNanos(startTime) // Must be parseable
     val lineRemainder =
       val middle = s" info  js7-7  js7.logger - message "
       middle + extra + "." * (lineLength - startTime.length - middle.length - extra.length - 1) + "\n"
     assert(lineRemainder.length == lineLength - startTime.length)
-    val epochMilli = Instant.parse("2026-02-12T00:00:00Z").toEpochMilli
+    val epochMilli = Instant.parse(startTime).toEpochMilli
     Resource.fromAutoCloseable:
       IO.blocking:
         val out = new BufferedOutputStream(new FileOutputStream(file.toFile), 256 * 1024)
@@ -224,7 +224,7 @@ object LogFileIndexTest:
         meterWrite:
           (0 until lineCount).foreach: i =>
             val ts = dateTimeFormatter.format(Instant.ofEpochMilli(epochMilli + i))
-            if isTest then assert(ts.length == 29 & 23 + lineRemainder.length == lineLength)
+            if isTest then assert(ts.length == 29 & 26 + lineRemainder.length == lineLength)
             writer.write(ts)
             writer.write(lineRemainder)
         logger.info("File written: " + bytesPerSecondString(t.elapsed, Files.size(file)))
