@@ -195,12 +195,7 @@ object LogFileIndex:
                 reader.streamUntilEnd
             .flatMap: _ =>
               buildIndex(reader.position):
-                reader.streamEndlessly
-                  .flatMap: chunk =>
-                    if chunk.nonEmpty then
-                      fs2.Stream.emit(chunk)
-                    else
-                      Stream.sleep_(poll)
+                reader.streamGrowing(poll)
               .start
               .map: fiber =>
                 fiber -> nanoToPos)(

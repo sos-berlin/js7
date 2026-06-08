@@ -108,31 +108,31 @@ extends Service.StoppableByCancel:
         // recompress and index. We simply read sequentially, starting with the first log file.
         Option(instantToLogFile.firstEntry).map(_.getValue).fold(Stream.empty): logFile =>
           completeFile(logFile, byteChunkSize = byteChunkSize) ++
-            nextFilesToX(logFile.fileInstant, byteChunkSize = byteChunkSize)
+            nextFilesToStream(logFile.fileInstant, byteChunkSize = byteChunkSize)
 
       case begin =>
         fileToKeyedByteLogLines(begin, byteChunkSize = byteChunkSize)
           .flatMap: (logFile, stream) =>
             stream.map(_.posAndLine) ++
-              nextFilesToX(logFile.fileInstant, byteChunkSize = byteChunkSize)
+              nextFilesToStream(logFile.fileInstant, byteChunkSize = byteChunkSize)
     .through:
       applyLogSelection(logSelection)
     .map:
       _.byteLine
 
-  private def nextFilesToX(lastFileInstant: Instant, byteChunkSize: Int): Stream[IO, PosAndLine] =
+  private def nextFilesToStream(lastFileInstant: Instant, byteChunkSize: Int)
+  : Stream[IO, PosAndLine] =
     Stream.suspend:
       Option:
         instantToLogFile.higherEntry(lastFileInstant)
       .map(_.getValue)
       .fold(Stream.empty): logFile =>
         completeFile(logFile, byteChunkSize = byteChunkSize) ++
-          nextFilesToX(logFile.fileInstant, byteChunkSize = byteChunkSize)
+          nextFilesToStream(logFile.fileInstant, byteChunkSize = byteChunkSize)
 
-  private def nextFilesToX(logFile: LogFile, byteChunkSize: Int)
-  : Stream[IO, PosAndLine] =
+  private def nextFilesToStream(logFile: LogFile, byteChunkSize: Int): Stream[IO, PosAndLine] =
     completeFile(logFile, byteChunkSize = byteChunkSize) ++
-      nextFilesToX(logFile.fileInstant, byteChunkSize = byteChunkSize)
+      nextFilesToStream(logFile.fileInstant, byteChunkSize = byteChunkSize)
 
   private def completeFile(logFile: LogFile, byteChunkSize: Int): Stream[IO, PosAndLine] =
     locally:
@@ -158,7 +158,8 @@ extends Service.StoppableByCancel:
   : Stream[IO, KeyedByteLogLine] =
     fileToKeyedByteLogLines(begin, byteChunkSize = logSelection.byteChunkSize)
       .flatMap: (logFile, stream) =>
-        stream ++ nextFilesToKeyedLogLines(logFile.fileInstant, byteChunkSize = logSelection.byteChunkSize)
+        stream ++
+          nextFilesToKeyedLogLines(logFile.fileInstant, byteChunkSize = logSelection.byteChunkSize)
       .through:
         applyLogSelection(logSelection)
 

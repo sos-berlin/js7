@@ -119,11 +119,19 @@ object ByteSeqFileReader:
           IO.whenA(fromEnd):
             reader.seekToEnd
 
-  def stream[ByteSeq: ByteSequence](file: Path, byteChunkSize: Int): Stream[IO, ByteSeq] =
-    Stream.resource:
-      resource(file, bufferSize = byteChunkSize)
-    .flatMap:
-      _.streamUntilEnd
+  def stream[ByteSeq: ByteSequence](
+    file: Path,
+    byteChunkSize: Int,
+    pollGrowing: Option[FiniteDuration] = None)
+  : Stream[IO, ByteSeq] =
+    val readerResource = Stream.resource(resource(file, bufferSize = byteChunkSize))
+    pollGrowing match
+      case None =>
+        readerResource.flatMap:
+          _.streamUntilEnd
+      case Some(poll) =>
+        readerResource.flatMap:
+          _.streamGrowing(poll)
 
   def streamFromPosition[ByteSeq: ByteSequence](file: Path, position: Long, byteChunkSize: Int)
   : Stream[IO, ByteSeq] =
@@ -139,11 +147,20 @@ object ByteSeqFileReader:
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
       streamEndlessly.takeWhile(_.nonEmpty)
 
+    def streamGrowing(poll: FiniteDuration)(using ByteSequence[ByteSeq])
+    : Stream[IO, ByteSeq] =
+      reader.streamEndlessly
+        .flatMap: chunk =>
+          if chunk.nonEmpty then
+            fs2.Stream.emit(chunk)
+          else
+            Stream.sleep_(poll)
+
     /** Emit empty ByteSeqs as long as no data is available.
       *
       * This Stream never ends.
       */
-    def streamEndlessly: Stream[IO, ByteSeq] =
+    private def streamEndlessly: Stream[IO, ByteSeq] =
       Stream.repeatEval:
         reader.read
 

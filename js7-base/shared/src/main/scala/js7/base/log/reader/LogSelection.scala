@@ -9,7 +9,8 @@ final case class LogSelection(
   end: Option[Instant] = None,
   lineLimit: Option[Long] = None,
   pattern: Option[Pattern] = None,
-  byteChunkSize: Int = ByteSeqFileReader.BufferSize):
+  byteChunkSize: Int = ByteSeqFileReader.BufferSize,
+  growing: Boolean = false):
 
   def toKeyValues: Seq[(String, String)] =
     flatten(
