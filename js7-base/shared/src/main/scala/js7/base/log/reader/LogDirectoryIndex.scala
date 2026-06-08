@@ -397,7 +397,7 @@ object LogDirectoryIndex:
         else
           readLogFileInstant:
             IO:
-              new BufferedInputStream(new FileInputStream(file.toFile), UniqueHeaderSize)
+              new FileInputStream(file.toFile)
           .flatMap:
             _.traverse: instant =>
               LogFileIndex.fromFile(file).map: logFileIndex =>

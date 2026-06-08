@@ -59,12 +59,6 @@ final class LogFileIndex private(
   def byteCount: Long =
     nanoToPos.byteCount
 
-  def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
-    streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
-      .through:
-        applyLogSelection(logSelection)
-      .map(_._2)
-
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
     streamPosAndLine(instant, byteChunkSize = logSelection.byteChunkSize)
       .through:
@@ -72,6 +66,12 @@ final class LogFileIndex private(
       .head
       .compile.last
       .map(_.map(_._1))
+
+  def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
+    streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
+      .through:
+        applyLogSelection(logSelection)
+      .map(_._2)
 
   def streamPosAndLine(begin: Instant, byteChunkSize: Int): Stream[IO, PosAndLine] =
     Stream.suspend:

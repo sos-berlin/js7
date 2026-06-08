@@ -36,7 +36,7 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   inline def byteCount: Long =
     _byteCount
 
-  private[reader] inline def byteCount_=(byteCount: Long): Unit =
+  private[reader] inline def byteCount_=(inline byteCount: Long): Unit =
     _byteCount = byteCount
 
   @TestOnly
@@ -71,11 +71,9 @@ private final class EpochNanoToPos(initialSize: Int = 32):
 
   private def toPosAndOpaque(epochNano: EpochNano): (Long, OpaquePos) =
     // No synchronization needed
-    val i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
-    if i < 0 then
-      bytePositions(-i - 2) -> OpaquePos(opaquePositions(-i - 2))
-    else
-      bytePositions(i) -> OpaquePos(opaquePositions(i))
+    var i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
+    if i < 0 then i = -i - 2 // not exact? then return next position
+    bytePositions(i) -> OpaquePos(opaquePositions(i))
 
   /** `epochNano` must be greater than the last added [[EpochNano]].*/
   def add(epochNano: EpochNano, opaquePos: OpaquePos, position: Long): Unit =

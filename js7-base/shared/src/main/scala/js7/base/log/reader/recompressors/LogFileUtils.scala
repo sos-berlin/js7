@@ -50,7 +50,7 @@ object LogFileUtils:
       .unchunks
 
   private def tailorRegion(line: String, matcher: Matcher): Unit =
-    // It's faster if we truncate \n at of the line. And we can use $ anchor for end-of-line.
+    // It's faster if we truncate \n at end of line. And we can use $ anchor for end-of-line.
     // Also, skip ANSI highlighting at begin and end of line. It's fast.
     var b = 0
     var e = line.length

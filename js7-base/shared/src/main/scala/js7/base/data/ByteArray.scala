@@ -113,7 +113,7 @@ object ByteArray extends ByteSequence[ByteArray]:
   override def toByteArray(a: ByteArray): ByteArray =
     a
 
-  def unsafeWrap(bytes: Array[Byte]) =
+  def unsafeWrap(bytes: Array[Byte]): ByteArray =
     new ByteArray(requireNonNull(bytes))
 
   // TODO Implement ByteArray for slices ?

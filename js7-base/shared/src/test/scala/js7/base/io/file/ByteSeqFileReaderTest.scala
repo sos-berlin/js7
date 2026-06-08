@@ -10,7 +10,6 @@ import js7.base.io.file.ByteSeqFileReaderTest.*
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileReader.UniqueHeaderSize
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -84,4 +83,3 @@ final class ByteSeqFileReaderTest extends OurAsyncTestSuite:
 
 object ByteSeqFileReaderTest:
   private val logger = Logger[this.type]
-  private val Stop = ByteArray("STOP" + "." * UniqueHeaderSize)
