@@ -76,7 +76,7 @@ object LogFileUtils:
       instant.fold(stream): instant =>
         val timestampParser = fastTimestampParser // call-by-name
         val endEpochNano = instant.toEpochNano
-        stream.takeThrough: element =>
+        stream.takeWhile: element =>
           val byteLine = element match
             case o: KeyedByteLogLine => o.byteLine
             case o: PosAndLine => o.byteLine

@@ -47,7 +47,7 @@ public final class JLogFileIndexTester {
                 logFileIndex
                     .lineFlux(
                         Instant.parse("2026-02-12T14:00:01+02:00"),
-                        JLogSelection.empty().withEnd(/*including*/
+                        JLogSelection.empty().withEnd(/*excluding*/
                             Instant.parse("2026-02-12T14:00:04+02:00"))
                     ).take(100) // Guard against too many lines
                     .collectList()
@@ -56,8 +56,7 @@ public final class JLogFileIndexTester {
                 assertThat(lines.get(0), startsWith("2026-02-12 14:00:01.000 "));
                 assertThat(lines.get(1), startsWith("2026-02-12 14:00:02.000 "));
                 assertThat(lines.get(2), startsWith("2026-02-12 14:00:03.000 "));
-                assertThat(lines.get(3), startsWith("2026-02-12 14:00:04.000 "));
-                assertThat(lines.size(), equalTo(4));
+                assertThat(lines.size(), equalTo(3));
             });
     }
 }
