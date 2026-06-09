@@ -5,10 +5,13 @@ import java.nio.charset.StandardCharsets
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, DateTimeParseException}
 import java.time.temporal.ChronoField.NANO_OF_SECOND
 import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
+import java.util.regex.Pattern
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.Logger
 import js7.base.log.reader.FastTimestampParser.*
+import js7.base.metering.CallMeter
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
@@ -29,6 +32,12 @@ final class FastTimestampParser()(using zoneId: ZoneId):
   private val ts = new Array[Byte](LongestLength)
 
   assert(lastSecond.length == SecondLength)
+
+  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq)
+  : EpochNano =
+    matchTimestamp(byteLine) match
+      case null => EpochNano.Nix
+      case ts => parse(ts)
 
   def parse(timestamp: String): EpochNano =
     parse(ByteArray(timestamp))
@@ -150,12 +159,22 @@ object FastTimestampParser:
   private inline val SecondLength = 19
   private inline val MinimumLength = SecondLength
   private inline val ZoneSize = 6 // "+01:00"
+  private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
   assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00".length)
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
-  val DateTimeRegex: Regex =
+  private val DateTimeRegex: Regex =
     """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r
+
+  private val LogLineStartPattern: Pattern =
+    val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
+    //val threadInBrackets = """\[[^]]+]""".r  // Very slow!
+    //val logger = """[\p{Alnum}._$-]+""".r
+    //val message = """(?:.*)""".r
+    // threadInBrackets is slow. Also, a thread name may contain a ']'.
+    //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
+    Pattern.compile(s"""^$HighlightRegex?($DateTimeRegex) $level """)
 
   // Faster than ISO_LOCAL_DATE_TIME
   private val dateTimeFormatter: DateTimeFormatter =
@@ -165,6 +184,18 @@ object FastTimestampParser:
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HHMM", "Z").toFormatter)
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HH:mm", "Z").toFormatter)
       .toFormatter
+
+  private[reader] def matchTimestamp[ByteSeq: ByteSequence](line: ByteSeq): ByteSeq | Null =
+    meterRegex:
+      val matcher = LogLineStartPattern.matcher(line.asciiCharSequence)
+      if matcher.lookingAt() then
+        val start = matcher.start(1)
+        if start >= 0 then
+          line.slice(start, matcher.end(1))
+        else
+          null
+      else
+        null
 
   /** @throws IllegalArgumentException
     * @throws DateTimeParseException

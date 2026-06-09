@@ -1,17 +1,18 @@
 package js7.base.log.reader
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.{Instant, ZoneId}
+import java.time.{Instant, ZoneId, ZonedDateTime}
+import js7.base.data.ByteArray
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Logger
 import js7.base.log.reader.FastTimestampParser.parseTimestampAsNanos
 import js7.base.log.reader.FastTimestampParserTest.*
 import js7.base.test.OurTestSuite
-import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.time.{EpochNano, Stopwatch}
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.duration.Deadline
 
@@ -102,6 +103,82 @@ final class FastTimestampParserTest extends OurTestSuite:
       timestampParser.parse("2222-12-12T12:00:00.123+0200") ==
         toEpochNano("2222-12-12T12:00:00.123+02:00")
 
+  "matchTimestamp" - {
+    "matchTimestamp" in :
+      assert:
+        testMatchTimestamp:
+          "2026-02-24 12:34:56.789 info [thread ] com.example.Example - Hello World!"
+        .nn == "2026-02-24 12:34:56.789"
+      assert:
+        testMatchTimestamp:
+          "2026-02-24 12:34:56 INFO com.example.Example - Hello World!"
+        == null // because milliseconds are required
+      assert:
+        testMatchTimestamp:
+          bold("2026-02-24T12:34:56,123456 ERROR Logger -")
+        .nn == "2026-02-24T12:34:56,123456"
+
+    "Speed" in :
+      if !isIntelliJIdea then
+        pending
+      else
+        val line = bold:
+          "2026-02-24 12:34:56.789 info [thread] com.example.Example - Hello " + "." * 100
+        val n = 1_000_000
+
+        (1 to 3).foreach: _ =>
+          assert(testMatchTimestamp(line).nn == "2026-02-24 12:34:56.789")
+          val result = Stopwatch.measureTime(n, warmUp = n / 10):
+            testMatchTimestamp(line)
+          logger.info(bold(s"matchTimestampInLogLine $result"))
+        succeed
+  }
+
+  "parseTimestampInLogLine" in :
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
+    val line = fs2.Chunk.array(
+      bold("2026-02-24 12:34:56.789 info [thread] com.example.Example - Hello " + "." * 100)
+        .getBytes(UTF_8))
+    assert:
+      FastTimestampParser().parseTimestampInLogLine(line) ==
+        ZonedDateTime.parse("2026-02-24T12:34:56.789+02").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24T08:05:55.244Z info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244Z").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24T08:05:55.244+02:00 info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24 08:05:55,244+0200 info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24 08:05:55,244+02 info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+
+    locally:
+      val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          Instant.parse("2026-02-24T06:05:55.244272Z").toEpochNano
+
+    locally:
+      val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
+      assert:
+        testParseTimestampInLogLine(line) ==
+          ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNano
+
   "Speed" in:
     if isIntelliJIdea then
       val timestamp = "2026-02-12T12:00:00.123456+02" // Typical debug log line
@@ -126,3 +203,11 @@ final class FastTimestampParserTest extends OurTestSuite:
 
 object FastTimestampParserTest:
   private val logger = Logger[this.type]
+
+  private def testParseTimestampInLogLine(line: String)(using ZoneId): EpochNano =
+    FastTimestampParser().parseTimestampInLogLine(ByteArray(line))
+
+  private def testMatchTimestamp(line: String): CharSequence | Null =
+    FastTimestampParser.matchTimestamp(ByteArray(line)) match
+      case null => null
+      case o => o.utf8String

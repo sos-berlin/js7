@@ -4,19 +4,15 @@ import cats.effect.IO
 import fs2.Stream
 import izumi.reflect.Tag
 import java.nio.file.{Files, Path}
-import java.time.ZoneId
 import java.util.regex.Pattern
+import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.AnsiEscapeCodes.HighlightRegex
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.metering.CallMeter
-import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.*
-import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 object LogFileReader:
@@ -40,43 +36,8 @@ object LogFileReader:
       """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
     s"""^$HighlightRegex?($datetime) """.r.pattern
 
-  private val LogLineStartPattern: Pattern =
-    val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
-    //val threadInBrackets = """\[[^]]+]""".r  // Very slow!
-    //val logger = """[\p{Alnum}._$-]+""".r
-    //val message = """(?:.*)""".r
-    // threadInBrackets is slow. Also, a thread name may contain a ']'.
-    //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
-    Pattern.compile(s"""^$HighlightRegex?(${FastTimestampParser.DateTimeRegex}) $level """)
-
   val FastPrefixPattern: Pattern =
     Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")
-
-  private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
-
-  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq, parser: FastTimestampParser)
-  : EpochNano =
-    parseTimestamp(LogLineStartPattern, byteLine, parser)
-
-  private inline def parseTimestamp[ByteSeq: ByteSequence](
-    inline pattern: Pattern, inline line: ByteSeq, inline parser: FastTimestampParser)
-  : EpochNano =
-    matchTimestamp(pattern, line) match
-      case null => EpochNano.Nix
-      case ts => parser.parse(ts)
-
-  private def matchTimestamp[ByteSeq: ByteSequence](pattern: Pattern, line: ByteSeq)
-  : ByteSeq | Null =
-    meterRegex:
-      val matcher = pattern.matcher(line.asciiCharSequence)
-      if matcher.lookingAt() then
-        val start = matcher.start(1)
-        if start >= 0 then
-          line.slice(start, matcher.end(1))
-        else
-          null
-      else
-        null
 
   def growingLogFileStream[ByteSeq: {ByteSequence, Tag}](
     file: Path,
@@ -152,14 +113,3 @@ object LogFileReader:
         reader.read(UniqueHeaderSize)
 
 
-  @TestOnly
-  private[reader] object testing:
-    @TestOnly
-    def testParseTimestampInLogLine(line: String)(using ZoneId): EpochNano =
-      LogFileReader.parseTimestampInLogLine(ByteArray(line), FastTimestampParser())
-
-    @TestOnly
-    def matchTimestampInLogLine(line: String): CharSequence | Null =
-      LogFileReader.matchTimestamp(LogLineStartPattern, ByteArray(line)) match
-        case null => null
-        case o => o.utf8String

@@ -13,7 +13,6 @@ import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogFileIndex.*
-import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
 import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
@@ -84,7 +83,7 @@ final class LogFileIndex private(
         .through:
           toPosAndLines(firstPosition = opaquePos.toLong, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
-          val drop = parseTimestampInLogLine(byteLine, timestampParser) < beginEpochNano
+          val drop = timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano
           if drop then
             droppedLines += 1
             droppedBytes += byteLine.size
@@ -256,7 +255,7 @@ object LogFileIndex:
                 val lineLen = byteLine.size
                 nanoToPos.byteCount += lineLen
                 if pos >= nextBlock then
-                  val epochNano = parseTimestampInLogLine(byteLine, timestampParser)
+                  val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
                   if !epochNano.isNix then
                     if epochNano < lastEpochNano && !reverseTimeWarned then
                       reverseTimeWarned = true

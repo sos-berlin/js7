@@ -423,8 +423,8 @@ object LogDirectoryIndex:
           case lf =>
             // Take minimum of header line and first log line timestamps
             val parser = FastTimestampParser()
-            val headerTs = LogFileReader.parseTimestampInLogLine(chunk.take(lf), parser)
-            val firstTs = LogFileReader.parseTimestampInLogLine(chunk.drop(lf + 1), parser)
+            val headerTs = parser.parseTimestampInLogLine(chunk.take(lf))
+            val firstTs = parser.parseTimestampInLogLine(chunk.drop(lf + 1))
             (headerTs min firstTs).toOption.map(_.toInstant)
 
   private def deleteTmpFiles(directory: Path, logLevel: LogLevel): IO[Unit] =
