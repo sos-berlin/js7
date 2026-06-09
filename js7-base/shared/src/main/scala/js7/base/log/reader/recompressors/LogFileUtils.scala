@@ -6,7 +6,6 @@ import java.time.{Instant, ZoneId}
 import java.util.regex.{Matcher, Pattern}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.log.reader.LogFileReader.parseTimestampInLogLine
 import js7.base.log.{AnsiEscapeCodes, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
@@ -19,20 +18,28 @@ object LogFileUtils:
 
   def applyLogSelection[A <: LogLine](logSelection: LogSelection)(using ZoneId)
   : fs2.Pipe[IO, A, A] =
-    applyLogSelection(logSelection, FastTimestampParser())
-
-  def applyLogSelection[A <: LogLine](
-    logSelection: LogSelection,
-    fastTimestampParser: => FastTimestampParser)
-  : fs2.Pipe[IO, A, A] =
     _.through:
-      takeUntilInstant(logSelection.end, fastTimestampParser)
+      takeUntilInstant(logSelection.end)
     .through: stream =>
       logSelection.pattern match
         case None => stream.prefetch
         case Some(pattern) => stream.through(filterPattern(pattern))
     .pipeMaybe(logSelection.lineLimit): (stream, n) =>
       stream.take(n)
+
+
+  def takeUntilInstant[A <: LogLine](instant: Option[Instant])(using ZoneId): fs2.Pipe[IO, A, A] =
+    stream =>
+      instant.fold(stream): instant =>
+        val timestampParser = FastTimestampParser()
+        val endEpochNano = instant.toEpochNano
+        stream.takeWhile: element =>
+          val byteLine = element match
+            case o: KeyedByteLogLine => o.byteLine
+            case o: PosAndLine => o.byteLine
+            case o: Chunk[Byte @unchecked] => o
+          val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
+          epochNano < endEpochNano
 
   private def filterPattern[A <: LogLine](pattern: Pattern): fs2.Pipe[IO, A, A] =
     stream =>
@@ -67,19 +74,3 @@ object LogFileUtils:
           b = i + 1
       matcher.region(b, e max b)
     end if
-
-  def takeUntilInstant[A <: LogLine](
-    instant: Option[Instant],
-    fastTimestampParser: => FastTimestampParser)
-  : fs2.Pipe[IO, A, A] =
-    stream =>
-      instant.fold(stream): instant =>
-        val timestampParser = fastTimestampParser // call-by-name
-        val endEpochNano = instant.toEpochNano
-        stream.takeWhile: element =>
-          val byteLine = element match
-            case o: KeyedByteLogLine => o.byteLine
-            case o: PosAndLine => o.byteLine
-            case o: Chunk[Byte @unchecked] => o
-          val epochNano = parseTimestampInLogLine(byteLine, timestampParser)
-          epochNano < endEpochNano

@@ -22,6 +22,7 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.math.Ordered.orderingToOrdered
@@ -66,6 +67,7 @@ final class LogFileIndex private(
       .compile.last
       .map(_.map(_._1))
 
+  @TestOnly
   def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
     streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
       .through:

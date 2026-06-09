@@ -31,11 +31,6 @@ object LogFileReader:
     */
   private[reader] val UniqueHeaderSize = 30
 
-  private val HeaderLinePattern =
-    val datetime =
-      """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3,6}(?:Z|[+-]\d{2}(:?\d{2})?)?""".r
-    s"""^$HighlightRegex?($datetime) """.r.pattern
-
   val FastPrefixPattern: Pattern =
     Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")
 
@@ -76,7 +71,7 @@ object LogFileReader:
               Stream.emit(byteSeq)
             else
               Stream.sleep_[IO](pollDuration).append:
-                // TODO Wait longer before reading header again
+                // TODO Wait longer before reading header again?
                 Stream.force:
                   // When the log file changed, its header file changed, too
                   readHeader[ByteSeq](file).map:
@@ -85,10 +80,9 @@ object LogFileReader:
                     case h =>
                       logger.debug(s"Log file header has changed: ${h.utf8String}")
                       Stream.emit(null) // Changed, end the stream
-            end if
           .takeWhileNotNull
     .append:
-      waitUntilFileExists(file, pollDuration) // TODO Limit waiting time
+      waitUntilFileExists(file, pollDuration) // TODO Limit waiting time?
     .append:
       growingLogFileStream2(file, byteChunkSize, pollDuration)
 
