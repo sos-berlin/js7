@@ -29,9 +29,9 @@ extends
 
   def findRecompressor(name: String) =
     name match
-      case "lz4" => Some(if isTest then this else NativeLz4)
+      case "lz4" => Some(if isTest then this else FastestLz4)
       case "lz4/java" => Some(this)
-      case "lz4/native" => Some(NativeLz4)
+      case "lz4/fastest" => Some(FastestLz4)
       case _ => None
 
   protected def newCompressiongOutputStream(out: OutputStream): SeekableOutputStream =
@@ -44,8 +44,8 @@ extends
 
 
 private object Lz4Recompressor:
-  // Don't use NativeLz4 in tests
-  private val NativeLz4 = Lz4Recompressor(
+  // Don't use FastestLz4 in tests
+  private val FastestLz4 = Lz4Recompressor(
     () => LZ4Factory.fastestInstance.fastCompressor(),
     () => LZ4Factory.fastestInstance.fastDecompressor(),
     "lz4/native")
