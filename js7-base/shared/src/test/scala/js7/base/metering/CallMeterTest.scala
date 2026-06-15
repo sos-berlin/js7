@@ -17,21 +17,13 @@ final class CallMeterTest extends OurAsyncTestSuite:
   "Call" in:
     val n = 1_000_000
 
-    locally:
-      var i = n
-      while i > 0 do
-        meterConstant:
-          1
+    var i = n
+    while i > 0 do
+      meterDecrement:
         i -= 1
 
-    locally:
-      var i = n
-      while i > 0 do
-        meterDecrement:
-          i -= 1
-
-    assert(meterConstant.total == n)
-    assert(meterConstant.measurement().duration > 0.s)
+    assert(meterDecrement.total == n)
+    assert(meterDecrement.measurement().duration > 0.s)
     CallMeter.logAll()
     succeed
 
@@ -84,7 +76,6 @@ final class CallMeterTest extends OurAsyncTestSuite:
 
 object CallMeterTest:
   private val logger = Logger[this.type]
-  private val meterConstant = CallMeter()
   private val meterDecrement = CallMeter()
   private val meterIO = CallMeter()
   private val meterNanoTime = CallMeter("CallMeterTest.nanoTime")

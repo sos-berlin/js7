@@ -22,9 +22,6 @@ final class CallMeter private(val name: String)
 extends CallMeter.CallMeterMXBean:
 
   private val _sinceNano = System.nanoTime()
-  // We don't synchronize _total and _nanos, to be a little faster.
-  // With big numbers, the error gets small.
-  // With small numbers, concurrent access should occur seldom.
   private val _running = new LongAdder
   private val _total = new LongAdder
   private val _nanos = new LongAdder
@@ -36,7 +33,6 @@ extends CallMeter.CallMeterMXBean:
     ${ CallMeterMacros.applyMacro[T]('this, 'body) }
 
   private[metering] def meterCall[A](body: => A): A =
-    _running += 1
     val t = startMetering_()
     try
       body
@@ -69,27 +65,27 @@ extends CallMeter.CallMeterMXBean:
 
   /** Must be called once and only once. */
   def stopMetering(metering: Metering): Unit =
-    addNanos(System.nanoTime() - metering.asInstanceOf[Long])
+    addNanos_(System.nanoTime() - metering.asInstanceOf[Long])
     _running -= 1
 
   def stopMetering(metering: MeteringN): Unit =
-    addNanos(metering.elapsedNanos)
+    addNanos_(metering.elapsedNanos)
     _running -= metering.n
 
   /** MUST be followed by stopMetering. */
-  private def startMetering_(): Long =
+  private inline def startMetering_(): Long =
     _running += 1
     System.nanoTime()
 
   /** Call only once for each metering!. */
-  private def stopMetering_(sinceNano: Long): Unit =
-    addNanos(System.nanoTime() - sinceNano)
+  private inline def stopMetering_(inline sinceNano: Long): Unit =
+    addNanos_(System.nanoTime() - sinceNano)
     _running -= 1
 
   def addNanos(nanos: Long): Unit =
-    addNanosInline(nanos)
+    addNanos_(nanos)
 
-  private inline def addNanosInline(inline nanos: Long): Unit =
+  private inline def addNanos_(inline nanos: Long): Unit =
     _total += 1
     _nanos += nanos
 

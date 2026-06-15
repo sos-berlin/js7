@@ -30,6 +30,6 @@ object Js7Conf:
 
   def registerInEnvironment[F[_]: Sync](env: Environment, config: Config): Resource[F, Unit] =
     for
-      _ <- env.registerPure[F, Config](config, ignoreDuplicate = true)
+      //Prints content of Config: _ <- env.registerPure[F, Config](config, ignoreDuplicate = true)
       _ <- env.registerPure[F, Js7Conf](Js7Conf.fromConfig(config), ignoreDuplicate = true)
     yield ()
