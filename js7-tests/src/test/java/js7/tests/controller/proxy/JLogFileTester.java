@@ -76,7 +76,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                JLogSelection.empty()/*special case for test*/)
+                JLogSelection.empty()/*beware: no lineLimit here*/)
             //.doOnNext(ignore ->
             //    assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())

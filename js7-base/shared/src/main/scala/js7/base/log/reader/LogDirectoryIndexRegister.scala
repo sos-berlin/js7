@@ -25,15 +25,12 @@ import js7.base.utils.ScalaUtils.syntax.*
   * LogDirectoryIndexes including directory watching are started only when used.
   */
 final class LogDirectoryIndexRegister private(directory: Path)(using zoneId: ZoneId, config: Config)
-extends Service.StoppableByRequest:
+extends Service.TrivialReleasable:
 
+  // TODO Make lazy for each LogLevel separately?
   private val lazyLevelToIndex: IO[Allocated[IO, Map[LogLevel, Allocated[IO, LogDirectoryIndex]]]] =
     memoize:
       watching.toAllocated
-
-  protected def start =
-    startService:
-      untilStopRequested *> release
 
   protected def release =
     // When startWatching has not been called yet, it will be called now with isStopping = true,

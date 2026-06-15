@@ -163,8 +163,8 @@ trait LogRoute extends RouteProvider:
 
 object LogRoute:
   private val logger = Logger[LogRoute]
-  private val EngineHeartbeatPeriod = 1.s
-  private val OtherHeartbeatPeriod = 10.s
+  private val EngineHeartbeatPeriod = 1.s // Short, to allow allow canceling with Cats Effect & Pekko
+  private val OtherHeartbeatPeriod = 10.s // For testing (curl)
   private val LogHeartbeat = ByteString(LogReaders.LogHeartbeat)
 
   private[log] def stringToInstant(string: String): Checked[Instant] =

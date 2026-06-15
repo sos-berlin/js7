@@ -72,7 +72,7 @@ final class LogFileIndex private(
     streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
       .through:
         applyLogSelection(logSelection)
-      .map(_._2)
+      .map(_.byteLine)
 
   def streamPosAndLine(begin: Instant, byteChunkSize: Int): Stream[IO, PosAndLine] =
     Stream.suspend:
@@ -83,7 +83,9 @@ final class LogFileIndex private(
       val opaquePos = nanoToPos.toOpaquePos(begin.toEpochNano)
       toPositionedStream(opaquePos, byteChunkSize = byteChunkSize)
         .through:
-          toPosAndLines(firstPosition = opaquePos.toLong, breakLinesLongerThan = breakLinesLongerThan)
+          toPosAndLines(
+            firstPosition = opaquePos.toLong,
+            breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano
           if drop then
