@@ -42,7 +42,7 @@ final class JLogDirectoryIndexTester {
                             .collectList().toFuture())
                     .thenAccept(lines ->
                         assertThat(lines, equalTo(asList(
-                            //"2026-03-01 00:00:00.000+02 HEADER\n",
+                            "2026-03-01 00:00:00.000+02 HEADER\n",
                             "2026-03-01 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 1\n",
                             "2026-03-01 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 2\n",
                             "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",

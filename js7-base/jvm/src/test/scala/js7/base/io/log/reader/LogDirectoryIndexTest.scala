@@ -135,7 +135,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   .compile.toList
               .flatMap: keyedByteLogLines =>
                 assert(keyedByteLogLines.map(_.lineAsString) == List(
-                  //"2026-03-01 00:00:00.000+02 HEADER\n",
+                  "2026-03-01 00:00:00.000+02 HEADER\n",
                   "2026-03-01 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 1\n",
                   "2026-03-01 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 2\n",
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
@@ -180,9 +180,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-03 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 26\n",
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
 
-                assert(keyedByteLogLines(2).posAndLine.lineAsString ==
+                assert(keyedByteLogLines(3).posAndLine.lineAsString ==
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n")
-                logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(2).logLineKey, LogSelection())
+                logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(3).logLineKey, LogSelection())
                   .take(4)
                   .compile.toList
                   .map: keyedByteLogLines =>
@@ -193,7 +193,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                       "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n"))
                 .productR:
-                  logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(11).logLineKey, LogSelection())
+                  logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(12).logLineKey, LogSelection())
                     .take(4)
                     .compile.toList
                     .map: keyedByteLogLines =>
