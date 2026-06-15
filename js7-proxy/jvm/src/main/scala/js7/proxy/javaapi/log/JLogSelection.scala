@@ -45,6 +45,10 @@ final case class JLogSelection(asScala: LogSelection = LogSelection.default):
     copy(asScala.copy(
       byteChunkSize = byteChunkSize))
 
+  def withGrowing(on: Boolean): JLogSelection =
+    copy(asScala.copy(
+      growing = on))
+
 
 object JLogSelection:
   val empty: JLogSelection = new JLogSelection()

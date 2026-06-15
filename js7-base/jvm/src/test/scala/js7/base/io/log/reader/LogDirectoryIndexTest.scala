@@ -61,7 +61,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     .getBytes(UTF_8)
       .productR:
         given Config = Js7Config.defaultConfig
-        LogDirectoryIndex.directory(dir, Info, _ => true)
+        LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
           .use: logDirectoryIndex =>
             /// Read *all* log files as text lines ///
             logDirectoryIndex.byteLineStream(startInstant, LogSelection())
@@ -140,42 +140,42 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-01 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 2\n",
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
 
-                  //"2026-03-01 01:00:00.000+02 HEADER\n",
+                  "2026-03-01 01:00:00.000+02 HEADER\n",
                   "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                   "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n",
                   "2026-03-01 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 6\n",
 
-                  //"2026-03-01 02:00:00.000+02 HEADER\n",
+                  "2026-03-01 02:00:00.000+02 HEADER\n",
                   "2026-03-01 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 7\n",
                   "2026-03-01 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 8\n",
                   "2026-03-01 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 9\n",
 
-                  //"2026-03-02 00:00:00.000+02 HEADER\n",
+                  "2026-03-02 00:00:00.000+02 HEADER\n",
                   "2026-03-02 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 10\n",
                   "2026-03-02 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 11\n",
                   "2026-03-02 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 12\n",
 
-                  //"2026-03-02 01:00:00.000+02 HEADER\n",
+                  "2026-03-02 01:00:00.000+02 HEADER\n",
                   "2026-03-02 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 13\n",
                   "2026-03-02 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 14\n",
                   "2026-03-02 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 15\n",
 
-                  //"2026-03-02 02:00:00.000+02 HEADER\n",
+                  "2026-03-02 02:00:00.000+02 HEADER\n",
                   "2026-03-02 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 16\n",
                   "2026-03-02 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 17\n",
                   "2026-03-02 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 18\n",
 
-                  //"2026-03-03 00:00:00.000+02 HEADER\n",
+                  "2026-03-03 00:00:00.000+02 HEADER\n",
                   "2026-03-03 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 19\n",
                   "2026-03-03 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 20\n",
                   "2026-03-03 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 21\n",
 
-                  //"2026-03-03 01:00:00.000+02 HEADER\n",
+                  "2026-03-03 01:00:00.000+02 HEADER\n",
                   "2026-03-03 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 22\n",
                   "2026-03-03 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 23\n",
                   "2026-03-03 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 24\n",
 
-                  //"2026-03-03 02:00:00.000+02 HEADER\n",
+                  "2026-03-03 02:00:00.000+02 HEADER\n",
                   "2026-03-03 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 25\n",
                   "2026-03-03 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 26\n",
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
@@ -183,21 +183,22 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 assert(keyedByteLogLines(2).posAndLine.lineAsString ==
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n")
                 logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(2).logLineKey, LogSelection())
-                  .take(3)
+                  .take(4)
                   .compile.toList
                   .map: keyedByteLogLines =>
                     assert(keyedByteLogLines.map(_.lineAsString) == List(
                       // Same line again (user may want to skip it)
                       "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
-                      //"2026-03-01 01:00:00.000+02 HEADER\n",
+                      "2026-03-01 01:00:00.000+02 HEADER\n",
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                       "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n"))
                 .productR:
-                  logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(9).logLineKey, LogSelection())
-                    .take(3)
+                  logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(11).logLineKey, LogSelection())
+                    .take(4)
                     .compile.toList
                     .map: keyedByteLogLines =>
                       assert(keyedByteLogLines.map(_.lineAsString) == List(
+                        "2026-03-02 00:00:00.000+02 HEADER\n",
                         "2026-03-02 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 10\n",
                         "2026-03-02 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 11\n",
                         "2026-03-02 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 12\n"))
@@ -224,7 +225,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       writeFile(startInstant)
       writeFile(startInstant + 24.h)
       given Config = Js7Config.defaultConfig
-      LogDirectoryIndex.directory(dir, Info, _ => true)
+      LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
         .use: logDirectoryIndex =>
           IO:
             assert:
@@ -236,6 +237,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               .compile.toList.map: lines =>
                 assert(lines == List(
                   "2026-03-01 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
+                  "2026-03-02 00:00:00.000+02 HEADER\n",
                   "2026-03-02 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n"))
           *>
             IO:
@@ -249,7 +251,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               .compile.toList.map: lines =>
                 assert(lines == List(
                   "2026-03-01 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
+                  "2026-03-02 00:00:00.000+02 HEADER\n",
                   "2026-03-02 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
+                  "2026-03-03 00:00:00.000+02 HEADER\n",
                   "2026-03-03 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n"))
 
   "Five 100MB debug-log files" in {
@@ -280,7 +284,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               val t = Deadline.now
                 given Config = Js7Config.defaultConfig
                 LogDirectoryIndex.directory(
-                  dir, Debug, isValidFile = _ => true
+                  dir, Debug, watchGrowth = false, isValidFile = _ => true
                 ).use: logDirectoryIndex =>
                   logDirectoryIndex.byteLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),

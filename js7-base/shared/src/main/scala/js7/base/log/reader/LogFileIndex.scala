@@ -12,13 +12,16 @@ import js7.base.fs2utils.Fs2Utils.toPosAndLines
 import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
+import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndex.*
+import js7.base.log.reader.LogFileReader.streamGrowingLogFile
 import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -45,7 +48,7 @@ import scala.math.Ordered.orderingToOrdered
   * @param nanoToPos may grow concurrently
   */
 final class LogFileIndex private(
-  toPositionedStream: (pos: OpaquePos, byteChunkSize: Int) => Stream[IO, Chunk[Byte]],
+  toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos,
   breakLinesLongerThan: Option[Int])
   (using val zoneId: ZoneId):
@@ -60,7 +63,7 @@ final class LogFileIndex private(
     nanoToPos.byteCount
 
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
-    streamPosAndLine(instant, byteChunkSize = logSelection.byteChunkSize)
+    streamPosAndLine(instant, logSelection.forReader)
       .through:
         applyLogSelection(logSelection)
       .head
@@ -69,19 +72,19 @@ final class LogFileIndex private(
 
   @TestOnly
   def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
-    streamPosAndLine(begin, byteChunkSize = logSelection.byteChunkSize)
+    streamPosAndLine(begin, logSelection.forReader)
       .through:
         applyLogSelection(logSelection)
       .map(_.byteLine)
 
-  def streamPosAndLine(begin: Instant, byteChunkSize: Int): Stream[IO, PosAndLine] =
+  def streamPosAndLine(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
-      val opaquePos = nanoToPos.toOpaquePos(begin.toEpochNano)
-      toPositionedStream(opaquePos, byteChunkSize = byteChunkSize)
+      val opaquePos = nanoToPos.toOpaquePos(beginEpochNano)
+      toPositionedStream(opaquePos, forReader)
         .through:
           toPosAndLines(
             firstPosition = opaquePos.toLong,
@@ -103,14 +106,14 @@ final class LogFileIndex private(
       .map: (pos, line) =>
         PosAndLine(pos, line)
 
-  def positionToLines(position: Long, byteChunkSize: Int): Stream[IO, PosAndLine] =
+  def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     Stream.suspend:
       // Convert the byte position of the desired line into the byte position of the corresponding
       // (compressed) chunk and the OpaquePos (the position in the compressed file) of this chunk.
       val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
-      toPositionedStream(opaquePos, byteChunkSize)
+      toPositionedStream(opaquePos, forReader)
         .through:
           toPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
@@ -124,8 +127,7 @@ final class LogFileIndex private(
               } skipped after indexed position · ${elapsed.pretty}")
             if pos - position >= NoEntryWarnThreshold then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
-                toKiBGiB(pos - position)
-              }, found position=$position")
+                toKiBGiB(pos - position)}, found position=$position")
           drop
         .map: (pos, line) =>
           PosAndLine(pos, line)
@@ -169,12 +171,14 @@ object LogFileIndex:
     fromStream(
       resolveLabel(logFile, label),
       toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
-      toPositionedStream = positionedStream(logFile, _, _))
+      toPositionedStream = (pos, forReader) =>
+        assertIfStrict(!forReader.growing)
+        positionedStream(logFile, pos, forReader.byteChunkSize))
 
   def fromStream(
     label: String,
     toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
-    toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+    toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
     logWriter: ResourceIO[LogWriter] = Resource.eval(IO(LogWriter.Void())))
     (using ZoneId)
   : IO[LogFileIndex] =
@@ -190,28 +194,31 @@ object LogFileIndex:
     private val nanoToPos = new EpochNanoToPos
 
     def buildGrowing(logFile: Path, poll: FiniteDuration): ResourceIO[LogFileIndex] =
-      ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
-        Resource.make(
-          acquire =
-            meterIndexing:
-              buildIndex(startPosition = 0):
-                reader.streamUntilEnd
-            .flatMap: _ =>
-              buildIndex(reader.position):
-                reader.streamGrowing(poll)
-              .start
-              .map: fiber =>
-                fiber -> nanoToPos)(
-          release = (fiber, _) => fiber.cancel)
-      .map: (_, nanoToPos) =>
-        new LogFileIndex(
-          positionedStream(logFile, _, _),
-          nanoToPos,
-          breakLinesLongerThan = Some(breakLinesLongerThan))
+      logger.traceResource("buildGrowing", logFile):
+        ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
+          Resource.make(
+            acquire =
+              meterIndexing:
+                buildIndex(startPosition = 0):
+                  reader.streamUntilEnd
+              .flatMap: _ =>
+                buildIndex(reader.position):
+                  streamGrowingLogFile(reader, logFile, byteChunkSize = BuildBufferSize, poll)
+                .start
+                .map: fiber =>
+                  fiber -> nanoToPos)(
+            release = (fiber, _) => fiber.cancel)
+        .map: (_, nanoToPos) =>
+          new LogFileIndex(
+            toPositionedStream = (opaquePos, forReader) =>
+              positionedStream(
+                logFile, opaquePos, forReader.byteChunkSize, forReader.growing ? poll),
+            nanoToPos,
+            breakLinesLongerThan = Some(breakLinesLongerThan))
 
     def fromStream(
       toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
-      toPositionedStream: (pos: OpaquePos, bufferSize: Int) => Stream[IO, Chunk[Byte]],
+      toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
       logWriter: ResourceIO[LogWriter])
     : IO[LogFileIndex] =
       meterIndexing:
@@ -241,8 +248,7 @@ object LogFileIndex:
       environment[Js7Conf].flatMap: js7Conf =>
         logWriter.use: logWriter =>
           val timestampParser = FastTimestampParser()
-          var lineNr = 0L
-          var lastEpochNano = EpochNano.Nix
+          var lastEpochNano = nanoToPos.lastEpochNano
           var reverseTimeWarned = false
           stream.prefetch
             .through:
@@ -255,7 +261,6 @@ object LogFileIndex:
               var nextBlock = posAndNext.nextBlock
               val writeOps = WriteOpsBuffer(logWriter)
               lines.iterator.foreach: byteLine =>
-                lineNr += 1
                 val lineLen = byteLine.size
                 nanoToPos.byteCount += lineLen
                 if pos >= nextBlock then
@@ -263,8 +268,7 @@ object LogFileIndex:
                   if !epochNano.isNix then
                     if epochNano < lastEpochNano && !reverseTimeWarned then
                       reverseTimeWarned = true
-                      logger.warn(s"$label${(startPosition == 0) ?? s":$lineNr"
-                        } contains a timestamp in reverse order: ${
+                      logger.warn(s"$label contains a timestamp in reverse order: ${
                         lastEpochNano.show} followed by ${epochNano.show}")
                     if epochNano > lastEpochNano then
                       lastEpochNano = epochNano
@@ -290,18 +294,22 @@ object LogFileIndex:
 
 
     private final class WriteOpsBuffer(logWriter: LogWriter):
-      val writeOps = mutable.Buffer[Chunk[Byte] | EpochNano]()
+      val writeOps = mutable.ArrayBuffer[Chunk[Byte] | EpochNano]()
 
       def +=(epochNano: EpochNano): Unit =
         writeOps += epochNano
 
       def +=(chunk: Chunk[Byte]): Unit =
-        writeOps.lastOption match
-          case Some(last: Chunk[Byte @unchecked]) =>
-            // Combine chunks for faster writing, especially when compressing with gzip
-            writeOps(writeOps.length - 1) = last ++ chunk
-          case _ =>
-            writeOps += chunk
+        val length = writeOps.length
+        if length == 0 then
+          writeOps += chunk
+        else
+          writeOps(length - 1) match
+            case last: Chunk[Byte @unchecked] =>
+              // Combine chunks for faster writing, especially when compressing with gzip
+              writeOps(length - 1) = last ++ chunk
+            case _ =>
+              writeOps += chunk
 
       def flush: IO[Unit] =
         IO.blocking:
@@ -317,5 +325,15 @@ object LogFileIndex:
   end Builder
 
 
-  private def positionedStream(file: Path, position: OpaquePos, bufferSize: Int): Stream[IO, Chunk[Byte]] =
-    ByteSeqFileReader.streamFromPosition(file, position = position.toLong, byteChunkSize = bufferSize)
+  private def positionedStream(
+    file: Path,
+    position: OpaquePos,
+    bufferSize: Int,
+    pollGrowing: Option[FiniteDuration] = None)
+  : Stream[IO, Chunk[Byte]] =
+    pollGrowing match
+      case None =>
+        ByteSeqFileReader.streamFromPosition(
+          file, position = position.toLong, byteChunkSize = bufferSize, pollGrowing)
+      case Some(poll) =>
+        LogFileReader.streamGrowingLogFile[Chunk[Byte]](file, byteChunkSize = bufferSize, poll, position = position.toLong)

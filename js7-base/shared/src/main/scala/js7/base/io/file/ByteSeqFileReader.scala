@@ -9,10 +9,11 @@ import java.nio.file.StandardOpenOption.READ
 import java.nio.file.{NoSuchFileException, Path}
 import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
-import js7.base.io.file.ByteSeqFileReader.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import scala.annotation.threadUnsafe
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
@@ -101,7 +102,7 @@ object ByteSeqFileReader:
     Resource.suspend:
       IO(Deadline.now).map: t =>
         Resource.fromAutoCloseable:
-          IO:
+          IO.blocking:
             FileChannel.open(file, READ)
           .onErrorRestartLoop(()):
             case (e: NoSuchFileException, _, retry) if waitUntilExists.isDefined =>
@@ -109,7 +110,7 @@ object ByteSeqFileReader:
               if t.elapsed >= timeout then
                 IO.raiseError(e)
               else
-                logger.debug(s"$file: $e")
+                logger.debug(s"${file.getFileName}: $e")
                 retry(()).delayBy(delay)
             case (t, _, _) => IO.raiseError(t)
         .map: channel =>
@@ -124,36 +125,46 @@ object ByteSeqFileReader:
     pollGrowing: Option[FiniteDuration] = None)
   : Stream[IO, ByteSeq] =
     val readerResource = Stream.resource(resource(file, bufferSize = byteChunkSize))
-    pollGrowing match
-      case None =>
-        readerResource.flatMap:
-          _.streamUntilEnd
-      case Some(poll) =>
-        readerResource.flatMap:
-          _.streamGrowing(poll)
+    readerResource.flatMap:
+      _.stream(pollGrowing = pollGrowing)
 
-  def streamFromPosition[ByteSeq: ByteSequence](file: Path, position: Long, byteChunkSize: Int)
+  def streamFromPosition[ByteSeq: ByteSequence](
+    file: Path,
+    position: Long,
+    byteChunkSize: Int,
+    pollGrowing: Option[FiniteDuration] = None)
   : Stream[IO, ByteSeq] =
     Stream.resource:
       resource(file, bufferSize = byteChunkSize)
         .evalTap:
           _.setPosition(position)
     .flatMap:
-      _.streamUntilEnd
+      _.stream(pollGrowing = pollGrowing)
 
+
+  private val growingCounter = Atomic(0)
 
   extension [ByteSeq](reader: ByteSeqFileReader[ByteSeq])
+    def stream(pollGrowing: Option[FiniteDuration])(using ByteSequence[ByteSeq])
+    : Stream[IO, ByteSeq] =
+      pollGrowing match
+        case None =>
+          streamUntilEnd
+        case Some(poll) =>
+          streamGrowing(poll)
+
     def streamUntilEnd(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
       streamEndlessly.takeWhile(_.nonEmpty)
 
-    def streamGrowing(poll: FiniteDuration)(using ByteSequence[ByteSeq])
-    : Stream[IO, ByteSeq] =
-      reader.streamEndlessly
-        .flatMap: chunk =>
-          if chunk.nonEmpty then
-            fs2.Stream.emit(chunk)
-          else
-            Stream.sleep_(poll)
+    def streamGrowing(poll: FiniteDuration)(using ByteSequence[ByteSeq]): Stream[IO, ByteSeq] =
+      val nr = growingCounter.incrementAndGet
+      logger.debugStream(s"streamGrowing #$nr"):
+        reader.streamEndlessly
+          .flatMap: chunk =>
+            if chunk.nonEmpty then
+              fs2.Stream.emit(chunk)
+            else
+              Stream.sleep_(poll)
 
     /** Emit empty ByteSeqs as long as no data is available.
       *

@@ -61,11 +61,12 @@ extends Service.TrivialReleasable:
           levelToIndex <-
             Resource.make(
               acquire =
-                LogDirectoryIndex.LogLevels.toSeq.traverse: logLevel =>
+                LogDirectoryIndex.LogLevels.toSeq.parTraverse: logLevel =>
                   val (files, queue) = levelToFilesAndQueue(logLevel)
                   LogDirectoryIndex.directory(
                       directory, logLevel, files,
-                      fs2.Stream.fromQueueNoneTerminatedChunk(queue)
+                      Stream.fromQueueNoneTerminatedChunk(queue),
+                      watchGrowth = true
                     ).toAllocated
                     .map(logLevel -> _)
                 .map(_.toMap))(

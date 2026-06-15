@@ -11,6 +11,7 @@ final class EpochNanoToPosTest extends OurTestSuite:
     assert(nanoToPos.isEmpty)
     assert(nanoToPos.length == 0)
     assert(nanoToPos.internalSize == 1)
+    assert(nanoToPos.lastEpochNano == EpochNano.MinValue)
     assert(nanoToPos.toOpaquePos(EpochNano(1)) == OpaquePos(0))
 
     nanoToPos.add(EpochNano(10), OpaquePos(1000), 1111)

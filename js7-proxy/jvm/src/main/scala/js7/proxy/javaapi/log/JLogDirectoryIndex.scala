@@ -60,10 +60,19 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
 object JLogDirectoryIndex:
 
+  /**
+    * @param directory Watched directory containing the log files
+    * @param isValidFile Which files should be considered
+    * @param logLevel Error, Info or Debug
+    * @param watchGrowth if growing log files number and size should be watched and indexed
+    * @param zoneId
+    * @param ctx The runtime
+    */
   def directory(
     directory: Path,
     isValidFile: Predicate[Path],
     logLevel: LogLevel,
+    watchGrowth: Boolean,
     zoneId: ZoneId,
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
@@ -71,7 +80,9 @@ object JLogDirectoryIndex:
     given Config = ctx.config
     given ZoneId = zoneId
     resource_(logLevel):
-      LogDirectoryIndex.directory(directory, logLevel, isValidFile.asScala)
+      LogDirectoryIndex.directory(directory, logLevel,
+        watchGrowth = watchGrowth,
+        isValidFile.asScala)
 
   def files(
     files: java.lang.Iterable[Path],

@@ -2,7 +2,10 @@ package js7.base.log.reader
 
 import java.util.Arrays.binarySearch
 import js7.base.io.OpaquePos
+import js7.base.log.Logger
+import js7.base.log.reader.EpochNanoToPos.*
 import js7.base.time.EpochNano
+import js7.base.utils.Tests.isStrict
 import org.jetbrains.annotations.TestOnly
 
 /** Like a reduced Java ConcurrentSkipListMap, but with small arrays and binary search.
@@ -43,11 +46,11 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   private[reader] inline def internalSize: Int =
     epochNanos.length
 
-  /** The last entry's [[EpochNano]], or `EpochNano(Long.MinValue)` if empty.*/
+  /** The last entry's [[EpochNano]], or `MinValue` if empty.*/
   def lastEpochNano: EpochNano =
     EpochNano(epochNanos(_length - 1))
 
-  /** The last entry, or (`EpochNano(Long.MinValue), 0)` if empty.*/
+  /** The last entry, or (`EpochNano.MinValue, 0)` if empty.*/
   def lastEntry: (EpochNano, Long) =
     val i = _length - 1
     EpochNano(epochNanos(i)) -> opaquePositions(i)
@@ -79,15 +82,17 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   def add(epochNano: EpochNano, opaquePos: OpaquePos, position: Long): Unit =
     // Update in a way that toOpaquePos works without synchronization
     synchronized:
-      if epochNano.toLong <= epochNanos(_length - 1) then throw new IllegalArgumentException(
-        s"EpochNanoToPos: Added values must be strictly monotonic increasing: add(${
-          epochNano.show}) <= ${lastEpochNano.show}")
+      if epochNano.toLong <= epochNanos(_length - 1) then
+        val msg = s"EpochNanoToPos: Added values must be strictly monotonic increasing: add(${
+          epochNano.show}) <= ${lastEpochNano.show}"
+        logger.warn(msg)
+        if isStrict then throw IllegalArgumentException(msg)
       if _length == epochNanos.length then
         resize(2 * _length max 16)
       bytePositions(_length) = position
       opaquePositions(_length) = opaquePos.toLong
       epochNanos(_length) = epochNano.toLong
-      _length += 1
+      _length += 1 // Last operation to allow concurrent access
 
   def shrink(): Unit =
     if _length < epochNanos.length then
@@ -109,4 +114,5 @@ private final class EpochNanoToPos(initialSize: Int = 32):
 
 
 object EpochNanoToPos:
+  private val logger = Logger[this.type]
   val EntrySize: Int = 3 * 8 // Three Array[Long]

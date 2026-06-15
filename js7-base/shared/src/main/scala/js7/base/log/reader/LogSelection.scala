@@ -3,7 +3,9 @@ package js7.base.log.reader
 import java.time.Instant
 import java.util.regex.Pattern
 import js7.base.io.file.ByteSeqFileReader
+import js7.base.log.reader.LogSelection.*
 import js7.base.utils.ScalaUtils.flatten
+import js7.base.utils.ScalaUtils.syntax.*
 
 final case class LogSelection(
   end: Option[Instant] = None,
@@ -16,7 +18,11 @@ final case class LogSelection(
     flatten(
       end.map(o => "end" -> o.toString),
       lineLimit.map(o => "lineLimit" -> o.toString),
-      pattern.map(o => "pattern" -> o.pattern))
+      pattern.map(o => "pattern" -> o.pattern),
+      growing ? ("growing" -> "true"))
+
+  def forReader: ForReader =
+    ForReader(growing, byteChunkSize)
 
 
 object LogSelection:
@@ -25,3 +31,5 @@ object LogSelection:
 
   def apply(): LogSelection =
     default
+
+  final case class ForReader(growing: Boolean = false, byteChunkSize: Int)
