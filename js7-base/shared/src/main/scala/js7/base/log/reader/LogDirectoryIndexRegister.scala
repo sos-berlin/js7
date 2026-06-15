@@ -35,8 +35,10 @@ extends Service.TrivialReleasable:
   protected def release =
     // When startWatching has not been called yet, it will be called now with isStopping = true,
     // and return an empty Map.
-    lazyLevelToIndex.flatMap:
-      _.release
+    lazyLevelToIndex.flatMap: allo =>
+      allo.allocatedThing.values.foldMap:
+        _.release
+      *> allo.release
 
   def forLogLevel(logLevel: LogLevel): IO[LogDirectoryIndex] =
     lazyLevelToIndex.flatMap: levelToIndex =>

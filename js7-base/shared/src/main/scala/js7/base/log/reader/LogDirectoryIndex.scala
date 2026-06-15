@@ -84,7 +84,7 @@ extends Service.StoppableByCancel:
 
       case FileDeleted(file) =>
         IO.uncancelable: _ =>
-          fileToInstant.remove(file).foldMap: instant =>
+          fileToInstant.remove(file.getFileName).foldMap: instant =>
             Option(instantToLogFile.remove(instant)).foldMap: logFile =>
               logger.debug(s"Remove $logFile")
               logFile.release
