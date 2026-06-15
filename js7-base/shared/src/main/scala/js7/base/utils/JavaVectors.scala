@@ -73,8 +73,8 @@ object JavaVectors:
           val array = Array.fill[Byte](128*1024)('-')
           assert(array.vectorIndexOf_('-', 0, array.length) == 0)
           assert(array.vectorIndexOf_('x', 0, array.length) == -1)
-          logger.info:
-            s"Using fast Java incubator vectors with ${byteVectorSpecies.length} bytes per vector ☀️"
+          logger.info(s"🌶️  Using fast Java incubator vectors (${
+            byteVectorSpecies.length * 8}-bit/${byteVectorSpecies.length}-byte)")
           true
     catch case t: Throwable =>
       logger.debug(t.toStringWithCauses)

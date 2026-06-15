@@ -44,7 +44,6 @@ final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
         IO.unit
       else
         IO.blocking:
-          logger.trace(s"setPosition from ${channel.position} to $position")
           _next = null
           channel.position(position)
           _nextPosition = position

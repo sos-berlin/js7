@@ -22,10 +22,7 @@ extends
     () => LZ4Factory.fastestJavaInstance.fastDecompressor(),
     "lz4")
 
-  private val logger = Logger[this.type]
   private val BufferSize = ByteSeqFileReader.BufferSize + 1024
-
-  logger.info("Using LZ4 compression")
 
   def findRecompressor(name: String) =
     name match
@@ -49,3 +46,6 @@ private object Lz4Recompressor:
     () => LZ4Factory.fastestInstance.fastCompressor(),
     () => LZ4Factory.fastestInstance.fastDecompressor(),
     "lz4/native")
+  private val logger = Logger[this.type]
+
+  logger.info("Using LZ4 compression")
