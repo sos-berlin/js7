@@ -10,7 +10,6 @@ import java.nio.file.Path
 import java.time.Instant
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.configutils.Configs.*
-import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
