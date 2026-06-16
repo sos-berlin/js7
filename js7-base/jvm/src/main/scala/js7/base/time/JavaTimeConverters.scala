@@ -11,15 +11,6 @@ object JavaTimeConverters:
   private val logger = Logger[this.type]
   private val MaxDuration = Duration.ofNanos(Long.MaxValue)
   private val MinDuration = Duration.ofNanos(Long.MinValue + 1)
-  private lazy val useJava8Workaround =
-    try
-      Duration.ofNanos(Long.MinValue + 1).toNanos
-      false
-    catch { case _: ArithmeticException =>
-      // https://bugs.openjdk.java.net/browse/JDK-8146747
-      logger.debug("Using workaround for bug JDK-8146747")
-      true
-    }
 
   implicit final class AsScalaInstant(private val instant: Instant) extends AnyVal:
     def toTimestamp: Timestamp =
@@ -49,8 +40,6 @@ object JavaTimeConverters:
   private def javaToFiniteDuration(o: Duration): FiniteDuration =
     if o.isZero then
       ZeroDuration // "0 seconds" instead of "0 nanoseconds", for logging
-    else if o.isNegative && useJava8Workaround then
-      new FiniteDuration(-o.negated.toNanos, NANOSECONDS).toCoarsest
     else
       new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest
 
