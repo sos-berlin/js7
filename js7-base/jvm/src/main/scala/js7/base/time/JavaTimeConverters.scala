@@ -37,6 +37,9 @@ object JavaTimeConverters:
     def asJava: Duration =
       Duration.ofNanos(underlying.toNanos)
 
+  /**
+    * @throws ArithmeticException if numeric overflow occurs
+    */
   private def javaToFiniteDuration(o: Duration): FiniteDuration =
     if o.isZero then
       ZeroDuration // "0 seconds" instead of "0 nanoseconds", for logging

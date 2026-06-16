@@ -22,6 +22,9 @@ final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Ke
         key == o.key && event == o.event
       case _ => false
 
+  def tuple: (event.keyCompanion.Key, E) =
+    key -> event
+
   inline def ^(millisSinceEpoch: Long): TimestampedKeyedEvent[E] =
     TimestampedKeyedEvent(this, millisSinceEpoch = millisSinceEpoch)
 
