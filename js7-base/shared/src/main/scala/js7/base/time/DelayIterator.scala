@@ -19,14 +19,16 @@ extends AbstractIterator[FiniteDuration]:
     true
 
   def next(): FiniteDuration =
-    it.next()
+    synchronized:
+      it.next()
 
   def reset(): Iterator[FiniteDuration] =
-    val start = SyncDeadline.fromScheduler()
-    val result = durations.iterator
-      .concat(Iterator.continually(last))
-      .scanLeft(Duration.Zero)((sum, d) => sum + d)
-      .drop(1)
-      .map(d => start + d - SyncDeadline.fromScheduler() max Duration.Zero)
-    it = result
-    result
+    synchronized:
+      val start = SyncDeadline.fromScheduler()
+      val result = durations.iterator
+        .concat(Iterator.continually(last))
+        .scanLeft(Duration.Zero)((sum, d) => sum + d)
+        .drop(1)
+        .map(d => start + d - SyncDeadline.fromScheduler() max Duration.Zero)
+      it = result
+      result
