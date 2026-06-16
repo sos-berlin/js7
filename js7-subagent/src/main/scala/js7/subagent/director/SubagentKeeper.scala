@@ -173,7 +173,7 @@ extends Service.StoppableByRequest:
             // No OrderProcessingStarted: Reverse process incrementation!
             selectSubagentMutex.lock.surround:
               IO:
-                counters.decrement(selectedDriver.subagentBundleId, selectedDriver.subagentId)
+                counters.decrement(order.id, selectedDriver.subagentBundleId, selectedDriver.subagentId)
 
   private def failProcessStart(problem: Problem, order: Order[IsFreshOrReady])
   : IO[Checked[Option[Order[Order.State]]]] =
@@ -286,7 +286,7 @@ extends Service.StoppableByRequest:
             selectSubagentMutex.lock.surround:
               // TODO increment all these orders at once, locking once
               IO:
-                counters.increment(order.state.subagentBundleId, subagentId)
+                counters.increment(order.id, order.state.subagentBundleId, subagentId)
             *>
               forProcessingOrder(order, subagentDriver):
                 if failedOverSubagentId contains subagentDriver.subagentId then
@@ -302,7 +302,7 @@ extends Service.StoppableByRequest:
                 // Reverse process incrementation ???
                 selectSubagentMutex.lock.surround:
                   IO:
-                    counters.decrement(order.state.subagentBundleId, subagentId)
+                    counters.decrement(order.id, order.state.subagentBundleId,  subagentId)
 
   private def persist[E <: OrderCoreEvent](orderId: OrderId, events: Seq[E])
   : IO[Checked[Persisted[S, E]]] =
@@ -335,7 +335,7 @@ extends Service.StoppableByRequest:
           .flatTap: orderProcessed =>
             selectSubagentMutex.lock.surround:
               IO:
-                counters.decrement(order.state.subagentBundleId, subagentDriver.subagentId)
+                counters.decrement(order.id, order.state.subagentBundleId, subagentDriver.subagentId)
             *>
               journal.aggregate.flatMap:
                 _.idToOrder.get(orderId).fold(IO.right(())): order =>
@@ -359,7 +359,7 @@ extends Service.StoppableByRequest:
       import determinedSubagentBundle.{maybeSubagentBundleId, stick}
       cancelableWhileWaitingForSubagent(order.id).use: whenCancelled =>
         whenCancelled.get.race:
-          selectSubagentDriver(maybeSubagentBundleId)
+          selectSubagentDriver(order.id, maybeSubagentBundleId)
       .map:
         case Left(()) => Right(None) // Cancelled
         case Right(checkedDriver) =>
@@ -393,7 +393,7 @@ extends Service.StoppableByRequest:
         release = _ => IO[Unit]:
           orderToWaitForSubagent.remove(orderId))
 
-  private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
+  private def selectSubagentDriver(orderId: OrderId, maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
     val scope = maybeBundleId.foldMap(bundleProcessCountScope)
     Stream.repeatEval:
@@ -406,7 +406,7 @@ extends Service.StoppableByRequest:
             val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
             result match
               case Right(Some(driver)) =>
-                counters.increment(maybeBundleId, driver.subagentId)
+                counters.increment(orderId, maybeBundleId, driver.subagentId)
               case _ =>
             result
             //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
@@ -757,18 +757,22 @@ object SubagentKeeper:
     def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
       bundleAndSubagentToCounter.getOrElse(bundleId -> subagentId, 0)
 
-    def increment(bundleId: Option[SubagentBundleId], subagentId: SubagentId): Unit =
-      add(1, bundleId, subagentId)
-
-    def decrement(bundleId: Option[SubagentBundleId], subagentId: SubagentId): Unit =
-      add(-1, bundleId, subagentId)
-
-    private def add(plusMinus: 1 | -1, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
+    def increment(orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
     : Unit =
-      subagentToCounter = subagentToCounter.updatedWith(subagentId):
-        _.fold(Some(plusMinus)): o =>
+      add(1, orderId, bundleId, subagentId)
+
+    def decrement(orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
+    : Unit =
+      add(-1, orderId, bundleId, subagentId)
+
+    private def add(plusMinus: 1 | -1, orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
+    : Unit =
+      subagentToCounter = subagentToCounter.updatedWith(subagentId): maybe =>
+        maybe.fold(Some(plusMinus)): o =>
           assertIfStrict(o + plusMinus >= 0)
-          Some(o + plusMinus)
+          val r = o + plusMinus
+          logger.trace(s"SubagentProcessCounters.add($plusMinus, $orderId, ${bundleId getOrElse "(no bundle)"}, $subagentId) => $r" )
+          Some(r)
       assertIfStrict(subagentToCounter(subagentId) >= 0)
 
       bundleId.foreach: bundleId =>

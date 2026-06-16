@@ -4,7 +4,8 @@ import cats.effect.kernel.Resource
 import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
-import io.circe.{Json, JsonObject}
+import io.circe.{Decoder, Json, JsonObject}
+import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.circeutils.CirceUtils.RichJson
@@ -34,7 +35,7 @@ import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ClusterAppointNodes, ReleaseEvents}
 import js7.data.controller.ControllerState.*
 import js7.data.controller.{ControllerCommand, ControllerState}
-import js7.data.event.{Event, EventId, JournalInfo}
+import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
 import js7.data.node.NodeId
@@ -98,6 +99,17 @@ extends ControllerApiWithHttp:
         .filter(predicate)
         .head.compile.last
         .map(_.getOrElse(throw new EndOfEventStreamException))
+
+  @TestOnly
+  def eventStream[E <: Event: Tag](eventRequest: EventRequest[E])(using Decoder[KeyedEvent[E]])
+  : Stream[IO, Stamped[KeyedEvent[E]]] =
+    logger.debugStream:
+      Stream.force:
+        apiResource.use: api =>
+          api.loginAndRetryIfSessionLost:
+            IO:
+              api.eventStream(eventRequest, heartbeat = Some(1.s/*TODO*/))
+        .flatten
 
   /** Read events and state from Controller. */
   def eventAndStateStream(
