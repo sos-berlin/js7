@@ -107,7 +107,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
 
   private def logSnapshotFile(file: Path, journalHeader: JournalHeader): Unit =
     val msg =
-      if lastJournalHeader.eventId == EventId.BeforeFirst then
+      if journalHeader.eventId == EventId.BeforeFirst then
         "STARTING NEW EMPTY JOURNAL"
       else
         "Starting new journal"
