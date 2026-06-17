@@ -520,12 +520,12 @@ object ControllerStateExecutor:
           Entry(orderId, order.priority, i)
 
       val queue = mutable.PriorityQueue.from(orderIds.view.flatMap(toEntry))
+      given InstructionExecutorService = InstructionExecutorService(EventCalc.clock)
 
       @tailrec def loop(): Unit =
         if queue.nonEmpty then
           val orderId = queue.dequeue().orderId
           if controllerState.idToOrder contains orderId then {
-            given InstructionExecutorService = InstructionExecutorService(EventCalc.clock)
             val keyedEvents = OrderEventSource(controllerState).nextEvents(orderId)
             if keyedEvents.nonEmpty then
               for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
