@@ -24,9 +24,11 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val items = Seq(workflow)
 
   override protected val controllerConfig = config"""
+    js7.journal.log.info-events = []
     js7.journal.remove-obsolete-files = false"""
 
   override protected val agentConfig = config"""
+    js7.journal.log.info-events = []
     js7.job.execution.signed-script-injection-allowed = yes
     """
 
