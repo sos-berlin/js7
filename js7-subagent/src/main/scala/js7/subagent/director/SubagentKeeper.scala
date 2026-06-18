@@ -395,14 +395,15 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(orderId: OrderId, maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    val scope = maybeBundleId.foldMap(bundleProcessCountScope)
+    val scope = maybeBundleId.foldMap(counters.bundleProcessCountLiveScope)
+    val subagentIdToScope: SubagentId => Scope =
+      maybeBundleId match
+        case None => _ => Scope.empty
+        case Some(bundleId) => counters.bundleSubagentProcessCountLiveScope(bundleId, _)
     Stream.repeatEval:
-      stateVar.value.flatMap: directorState =>
-        selectSubagentMutex.lock.surround:
+      selectSubagentMutex.lock.surround:
+        stateVar.value.flatMap: directorState =>
           IO:
-            def subagentIdToScope(subagentId: SubagentId) =
-              maybeBundleId.fold(Scope.empty): bundleId =>
-                bundleSubagentProcessCountScope(bundleId, subagentId)
             val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
             result match
               case Right(Some(driver)) =>
@@ -411,31 +412,14 @@ extends Service.StoppableByRequest:
             result
             //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
     .evalTap:
-      // TODO Do not poll (for each Order)
-      case Right(None) => IO.sleep(reconnectDelayer.next())
-      case _ => IO(reconnectDelayer.reset())
+      case Right(None) =>
+        // TODO Do not poll for each Order
+        IO.sleep(reconnectDelayer.next())
+      case _ =>
+        IO(reconnectDelayer.reset())
     .map(_.sequence)
-    .flatMap(Stream.fromOption(_))
+    .unNone
     .headL
-
-  private def bundleProcessCountScope(bundleId: SubagentBundleId): Scope =
-    new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
-          case "js7ClusterProcessCount" =>
-            Some(Right(NumberValue:
-              counters.processCount(bundleId)))
-          case _ => None
-
-  private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId, subagentId: SubagentId)
-  : Scope =
-    new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
-          case "js7ClusterSubagentProcessCount" =>
-            Some(Right(NumberValue:
-              counters.processCount(bundleId, subagentId)))
-          case _ => None
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     // TODO Race condition?
@@ -746,15 +730,34 @@ object SubagentKeeper:
     private var subagentToCounter = Map[SubagentId, Int]()
     private var bundleAndSubagentToCounter = Map[(SubagentBundleId, SubagentId), Int]()
 
+    def bundleProcessCountLiveScope(bundleId: SubagentBundleId): Scope =
+      new Scope:
+        override def namedValue(name: String): Option[Checked[Value]] =
+          name match
+            case "js7ClusterProcessCount" =>
+              Some(Right(NumberValue:
+                processCount(bundleId)))
+            case _ => None
+
+    def bundleSubagentProcessCountLiveScope(bundleId: SubagentBundleId, subagentId: SubagentId)
+    : Scope =
+      new Scope:
+        override def namedValue(name: String): Option[Checked[Value]] =
+          name match
+            case "js7ClusterSubagentProcessCount" =>
+              Some(Right(NumberValue:
+                processCount(bundleId, subagentId)))
+            case _ => None
+
     /** Number of processes started via the specified SubagentBundleId.
       */
-    def processCount(bundleId: SubagentBundleId): Int =
+    private def processCount(bundleId: SubagentBundleId): Int =
       bundleAndSubagentToCounter.valuesIterator.sum
 
     /** Number of processes started via the specified SubagentBundleId and
       * running at the specified Subagent.
       */
-    def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
+    private def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
       bundleAndSubagentToCounter.getOrElse(bundleId -> subagentId, 0)
 
     def increment(orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
