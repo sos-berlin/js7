@@ -48,8 +48,7 @@ final class JLogFileTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       }
       TEST-USER = "plain:TEST-PASSWORD"
     }
-    js7.log.info.file  = "${logFile.getFileName}"
-    js7.log.debug.file = "${logFile.getFileName}"
+    js7.log.prefix = "${if isIntelliJIdea then "test" else "build"}"
     """
 
   override protected def agentConfig = config"""

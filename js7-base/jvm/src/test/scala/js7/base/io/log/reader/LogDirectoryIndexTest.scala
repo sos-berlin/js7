@@ -284,7 +284,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               val t = Deadline.now
                 given Config = Js7Config.defaultConfig
                 LogDirectoryIndex.directory(
-                  dir, Debug, watchGrowth = false, isValidFile = _ => true
+                  dir, Debug, watchGrowth = false, isRelevantFile = _ => true
                 ).use: logDirectoryIndex =>
                   logDirectoryIndex.byteLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),

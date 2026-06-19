@@ -12,6 +12,7 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
+import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogDirectoryIndexRegister.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
@@ -31,6 +32,14 @@ extends Service.TrivialReleasable:
   private val lazyLevelToIndex: IO[Allocated[IO, Map[LogLevel, Allocated[IO, LogDirectoryIndex]]]] =
     memoize:
       watching.toAllocated
+
+  private val logFilePrefix = config.getString("js7.log.prefix")
+  private val currentErrorLogFilePrefix = logFilePrefix + "-error."
+  private val currentInfoLogFilePrefix = logFilePrefix + "."
+  private val currentDebugLogFilePrefix = logFilePrefix + "-debug."
+  private val compressedErrorLogFilePrefix = logFilePrefix + "-error-"
+  private val compressedInfoLogFilePrefix = logFilePrefix + "-"
+  private val compressedDebugLogFilePrefix = logFilePrefix + "-debug-"
 
   protected def release =
     // When startWatching has not been called yet, it will be called now with isStopping = true,
@@ -81,8 +90,7 @@ extends Service.TrivialReleasable:
     for
       levelToQueue <- Resource.eval(makeLevelToQueue)
       // TODO Erst lesen, wenn LogDirectoryIndexRegister gebraucht wird ?
-      (files, directoryEvents) <-
-        Resource.eval(watchDirectory)
+      (files, directoryEvents) <- Resource.eval(watchDirectory)
       _ <-
         directoryEvents.filter: o =>
           !LogDirectoryIndex.isOurTmpFile(o.relativePath) // to be sure
@@ -104,20 +112,23 @@ extends Service.TrivialReleasable:
 
   /** Return the initial files and a Stream of DirectoryEvents. */
   private def watchDirectory: IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
-    val isCurrentLog = Set(
-      config.getString("js7.log.error.file"),
-      config.getString("js7.log.info.file"),
-      config.getString("js7.log.debug.file"))
+    def isCurrentFile(filename: String) =
+      filename.endsWith(".log") && (
+        filename.startsWith(currentErrorLogFilePrefix) ||
+        filename.startsWith(currentInfoLogFilePrefix) ||
+        filename.startsWith(currentDebugLogFilePrefix))
 
-    def isValidFile(file: Path) =
-      val filename = file.getFileName
-      val name = filename.toString
-      isCurrentLog(name) ||
-        !name.startsWith("~") &&
-          isCompressedLogFile(file) &&
-          !LogDirectoryIndex.isOurTmpFile(file) // to be sure
+    def isCompressedFile(filename: String): Boolean =
+      filename.endsWith(".log.gz") && (
+        filename.startsWith(compressedErrorLogFilePrefix) ||
+        filename.startsWith(compressedInfoLogFilePrefix) ||
+        filename.startsWith(compressedDebugLogFilePrefix))
 
-    LogDirectoryIndex.watchDirectory(directory, isValidFile)
+    def isRelevantFile(file: Path) =
+      val name = file.getFileName.toString
+      isCurrentFile(name) || isCompressedFile(name)
+
+    LogDirectoryIndex.watchDirectory(directory, isRelevantFile)
 
 
   override def toString = "LogDirectoryIndexRegister"
@@ -129,7 +140,7 @@ object LogDirectoryIndexRegister:
 
   def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndexRegister] =
     for
-      _ <- registerStaticMBean[LogDirectoryIndex.LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean).void
+      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
       service <-
         Service:
           new LogDirectoryIndexRegister(directory)
@@ -141,6 +152,3 @@ object LogDirectoryIndexRegister:
       Queue.bounded[IO, Option[Chunk[DirectoryEvent]]](1).map: queue =>
         logLevel -> queue
     .map(_.toMap)
-
-  private def isCompressedLogFile(file: Path): Boolean =
-    file.toString.endsWith(".log.gz")

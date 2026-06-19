@@ -14,6 +14,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.web.session.SimpleSession
@@ -41,9 +42,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
 
   override protected def config = config"""
-    js7.log.info.file = "${logFile.getFileName}"
-    js7.log.debug.file = "${logFile.getFileName}"
-    js7.web.server.services.log.poll-interval = 1.ms
+    js7.log.prefix = "${if isIntelliJIdea then "test" else "build"}"
     js7.web.chunk-size = 16
     """.withFallback(super.config)
 
@@ -89,7 +88,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   //    assert(status == OK && entityAs[String] == "LOG TEXT")
 
   "/controller/api/log growing" in:
-    pending
+    pending // TODO
 
     // Endless streaming response
     // Pekko testkit seems only support synchronous, blocking calls. So this blocks and fails !!!

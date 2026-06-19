@@ -320,12 +320,12 @@ object LogDirectoryIndex:
     directory: Path,
     logLevel: LogLevel,
     watchGrowth: Boolean,
-    isValidFile: Path => Boolean)
+    isRelevantFile: Path => Boolean)
     (using ZoneId, Config)
   : ResourceIO[LogDirectoryIndex] =
     assertThat(LogLevels(logLevel))
     Resource.suspend:
-      watchDirectory(directory, isValidFile).map: (files, directoryEvents) =>
+      watchDirectory(directory, isRelevantFile).map: (files, directoryEvents) =>
        this.directory(directory, logLevel, files, directoryEvents, watchGrowth = watchGrowth)
 
   /** LogDirectoryIndex, watching a directory. */
@@ -345,19 +345,19 @@ object LogDirectoryIndex:
           resource(files, directory, directoryEvents, logLevel, watchGrowth = watchGrowth,
             recompressor)
 
-  private[reader] def watchDirectory(directory: Path, isValidFile: Path => Boolean)
+  private[reader] def watchDirectory(directory: Path, isRelevantFile: Path => Boolean)
     (using config: Config)
   : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
     directory.directoryStream[IO]
       .filter: file =>
-        !isOurTmpFile(file) && isValidFile(file)
+        !isOurTmpFile(file) && isRelevantFile(file)
       .compile.toVector.map: files =>
         files ->
           DirectoryWatch.stream(
             directory,
             DirectoryState(files.map(_.getFileName)),
             DirectoryWatchSettings.fromConfig(config).orThrow,
-            isValidFile,
+            isRelevantFile,
             Set(ENTRY_CREATE, ENTRY_DELETE))
 
   def files(files: Iterable[Path], logLevel: LogLevel, watchGrowth: Boolean = false)

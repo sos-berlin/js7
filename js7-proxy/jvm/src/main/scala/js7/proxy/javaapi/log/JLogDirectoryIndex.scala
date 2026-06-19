@@ -62,7 +62,7 @@ object JLogDirectoryIndex:
 
   /**
     * @param directory Watched directory containing the log files
-    * @param isValidFile Which files should be considered
+    * @param isRelevantFile Which files should be considered
     * @param logLevel Error, Info or Debug
     * @param watchGrowth if growing log files number and size should be watched and indexed
     * @param zoneId
@@ -70,7 +70,7 @@ object JLogDirectoryIndex:
     */
   def directory(
     directory: Path,
-    isValidFile: Predicate[Path],
+    isRelevantFile: Predicate[Path],
     logLevel: LogLevel,
     watchGrowth: Boolean,
     zoneId: ZoneId,
@@ -82,7 +82,7 @@ object JLogDirectoryIndex:
     resource_(logLevel):
       LogDirectoryIndex.directory(directory, logLevel,
         watchGrowth = watchGrowth,
-        isValidFile.asScala)
+        isRelevantFile.asScala)
 
   def files(
     files: java.lang.Iterable[Path],
