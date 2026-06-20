@@ -101,7 +101,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderAddedX:
     workflowId.requireNonAnonymous()
 
-    private[data] def tag = 1
+    private[data] def tag = TagOrderAdded
 
     def ownOrderId: None.type = None
 
@@ -175,7 +175,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
 
-    private[data] def tag = 2
+    private[data] def tag = TagOrderOrderAdded
 
     def ownOrderId: Some[OrderId] = Some(orderId)
 
@@ -243,7 +243,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCoreEvent:
     workflowPosition.workflowId.requireNonAnonymous()
 
-    private[data] def tag = 3
+    private[data] def tag = TagOrderAttachedToAgent
 
     def workflowId: WorkflowId = workflowPosition.workflowId
 
@@ -258,12 +258,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent:
-    private[data] def tag = 4
+    private[data] def tag = TagOrderAttached
 
 
   type OrderStarted = OrderStarted.type
   case object OrderStarted extends OrderActorEvent:
-    private[data] def tag = 5
+    private[data] def tag = TagOrderStarted
 
 
   // subagentId = None is COMPATIBLE with v2.2
@@ -273,7 +273,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     stick: Boolean = false,
     endOfAdmissionPeriod: Option[Timestamp] = None)
   extends OrderCoreEvent:
-    private[data] def tag = 6
+    private[data] def tag = TagOrderProcessingStarted
 
     override def toString =
       s"OrderProcessingStarted(${Array(subagentId, subagentBundleId, stick ? "stick").flatten.mkString(" ")})"
@@ -314,7 +314,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten:
-    private[data] def tag = 7
+    private[data] def tag = TagOrderStdoutWritten
     def stdoutStderr: StdoutOrStderr = Stdout
     override def toString: String = super.toString
 
@@ -323,7 +323,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten:
-    private[data] def tag = 8
+    private[data] def tag = TagOrderStderrWritten
     def stdoutStderr: StdoutOrStderr = Stderr
     override def toString: String = super.toString
 
@@ -332,7 +332,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderProcessed(outcome: OrderOutcome) extends OrderCoreEvent:
-    private[data] def tag = 9
+    private[data] def tag = TagOrderProcessed
     override def isSucceeded: Boolean = outcome.isSucceeded
 
   object OrderProcessed:
@@ -353,7 +353,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent:
-    private[data] def tag = 10
+    private[data] def tag = TagOrderForked
 
 
   object OrderForked:
@@ -393,7 +393,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderJoined(outcome: OrderOutcome)
   extends OrderActorEvent:
-    private[data] def tag = 11
+    private[data] def tag = TagOrderJoined
     override def isSucceeded: Boolean = outcome.isSucceeded
 
 
@@ -402,7 +402,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderNoticeAnnounced(noticeId: NoticeId)
   extends OrderNoticeEvent:
-    private[data] def tag = 12
+    private[data] def tag = TagOrderNoticeAnnounced
 
   object OrderNoticeAnnounced:
     given Codec.AsObject[OrderNoticeAnnounced] = deriveCodec
@@ -437,7 +437,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   // COMPATIBLE with v2.3
   final case class OrderNoticePostedV2_3(notice: NoticeV2_3)
   extends OrderNoticePosted_ :
-    private[data] def tag = 13
+    private[data] def tag = TagOrderNoticePostedV2_3
 
   object OrderNoticePostedV2_3:
     implicit val jsonEncoder: Encoder.AsObject[OrderNoticePostedV2_3] = deriveEncoder
@@ -447,7 +447,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     noticeId: NoticeId,
     endOfLife: Option[Timestamp] = None)
   extends OrderNoticePosted_ :
-    private[data] def tag = 14
+    private[data] def tag = TagOrderNoticePosted
 
   object OrderNoticePosted:
     private[OrderEvent] val jsonCodec: Codec.AsObject[OrderNoticePosted] = deriveCodecWithDefaults
@@ -456,13 +456,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   // COMPATIBLE with v2.3
   final case class OrderNoticeExpected(private val noticeId: NoticeKey)
   extends OrderNoticeEvent:
-    private[data] def tag = 15
+    private[data] def tag = TagOrderNoticeExpected
     def noticeKey: NoticeKey = noticeId
 
 
   final case class OrderNoticesExpected(noticeIds: Vector[NoticeId])
   extends OrderNoticeEvent:
-    private[data] def tag = 16
+    private[data] def tag = TagOrderNoticesExpected
 
   object OrderNoticesExpected:
     private val jsonCodec: Codec.AsObject[OrderNoticesExpected] = deriveCodec
@@ -494,12 +494,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   type OrderNoticesRead = OrderNoticesRead.type
   case object OrderNoticesRead
   extends OrderNoticeEvent:
-    private[data] def tag = 17
+    private[data] def tag = TagOrderNoticesRead
 
 
   final case class OrderNoticesConsumptionStarted(noticeIds: Vector[NoticeId])
   extends OrderNoticeEvent:
-    private[data] def tag = 18
+    private[data] def tag = TagOrderNoticesConsumptionStarted
     def checked: Checked[this.type] =
       noticeIds.checkUniquenessBy(_.boardPath).rightAs(this)
 
@@ -522,21 +522,21 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderNoticesConsumed(failed: Boolean = false)
   extends OrderNoticeEvent:
-    private[data] def tag = 19
+    private[data] def tag = TagOrderNoticesConsumed
 
   // Similar to OrderProcessingCancelled, but only for the Processing state.
   // Maybe we want to differentiate between cancellation of an order and killing of a process.
   type OrderProcessingKilled = OrderProcessingKilled.type
   case object OrderProcessingKilled
   extends OrderActorEvent:
-    private[data] def tag = 20
+    private[data] def tag = TagOrderProcessingKilled
 
 
   final case class OrderStickySubagentEntered(
     agentPath: AgentPath,
     subagentBundleId: Option[SubagentBundleId] = None)
   extends OrderActorEvent:
-    private[data] def tag = 21
+    private[data] def tag = TagOrderStickySubagentEntered
 
   object OrderStickySubagentEntered:
     given Codec.AsObject[OrderStickySubagentEntered] = deriveRenamingCodec(Map(
@@ -546,12 +546,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   type OrderStickySubagentLeaved = OrderStickySubagentLeaved.type
   case object OrderStickySubagentLeaved
   extends OrderActorEvent:
-    private[data] def tag = 22
+    private[data] def tag = TagOrderStickySubagentLeaved
 
 
   final case class OrderMoved(to: Position, reason: Option[Reason] = None)
   extends OrderActorEvent:
-    private[data] def tag = 23
+    private[data] def tag = TagOrderMoved
     override def toString = s"OrderMoved($to${reason.fold("")(" " + _)})"
   object OrderMoved:
     sealed trait Reason
@@ -573,7 +573,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderOutcomeAdded(outcome: OrderOutcome)
   extends OrderActorEvent:
-    private[data] def tag = 24
+    private[data] def tag = TagOrderOutcomeAdded
 
 
   final case class OrderFailed(
@@ -581,7 +581,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[OrderOutcome.NotSucceeded])
   extends OrderFailedEvent, OrderTerminated:
-    private[data] def tag = 25
+    private[data] def tag = TagOrderFailed
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
 
@@ -598,7 +598,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent, IsControllerOnly:
-    private[data] def tag = 26
+    private[data] def tag = TagOrderFailedInFork
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
   object OrderFailedInFork:
@@ -614,7 +614,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     movedTo: Position,
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
-    private[data] def tag = 27
+    private[data] def tag = TagOrderCatched
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
 
@@ -623,7 +623,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
-    private[data] def tag = 28
+    private[data] def tag = TagOrderCaught
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
   object OrderCaught:
@@ -638,7 +638,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     delayedUntil: Option[Timestamp] = None,
     movedTo: Option[Position] = None /*COMPATIBLE with v2.7.1*/)
   extends OrderActorEvent:
-    private[data] def tag = 29
+    private[data] def tag = TagOrderRetrying
     override def toString =
       if delayedUntil.isEmpty && movedTo.isEmpty then
         "OrderRetrying"
@@ -649,11 +649,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   type OrderAwoke = OrderAwoke.type
   case object OrderAwoke extends OrderActorEvent:
-    private[data] def tag = 30
+    private[data] def tag = TagOrderAwoke
 
 
   final case class OrderBroken(problem: Option[Problem]) extends OrderActorEvent:
-    private[data] def tag = 31
+    private[data] def tag = TagOrderBroken
     override def toString = s"💥 OrderBroken($problem)"
 
   object OrderBroken:
@@ -670,7 +670,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     * Controller may have started to attach Order to Agent.
     */
   final case class OrderAttachable(agentPath: AgentPath) extends OrderActorEvent:
-    private[data] def tag = 32
+    private[data] def tag = TagOrderAttachable
 
 
   type OrderDetachable = OrderDetachable.type
@@ -678,7 +678,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     * Agent has processed all steps and the Order should be fetched by the Controller.
     */
   case object OrderDetachable extends OrderActorEvent:
-    private[data] def tag = 33
+    private[data] def tag = TagOrderDetachable
 
 
   type OrderDetached = OrderDetached.type
@@ -687,28 +687,28 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     * Agent-only event.
     */
   case object OrderDetached extends OrderCoreEvent:
-    private[data] def tag = 34
+    private[data] def tag = TagOrderDetached
 
 
   final case class OrderFinished(outcome: Option[OrderOutcome.Completed] = None)
   extends OrderActorEvent, OrderTerminated:
-    private[data] def tag = 35
+    private[data] def tag = TagOrderFinished
     override def toString = functionCallToString("OrderFinished", outcome)
 
 
   type OrderExternalVanished = OrderExternalVanished.type
   case object OrderExternalVanished extends OrderActorEvent:
-    private[data] def tag = 36
+    private[data] def tag = TagOrderExternalVanished
 
 
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent:
-    private[data] def tag = 37
+    private[data] def tag = TagOrderDeletionMarked
 
 
   type OrderDeleted = OrderDeleted.type
   case object OrderDeleted extends OrderActorEvent:
-    private[data] def tag = 38
+    private[data] def tag = TagOrderDeleted
 
 
   sealed trait OrderKillingMarked extends OrderActorEvent:
@@ -723,7 +723,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     **/
   final case class OrderCancellationMarked(mode: CancellationMode = CancellationMode.Default)
   extends OrderKillingMarked:
-    private[data] def tag = 39
+    private[data] def tag = TagOrderCancellationMarked
 
     def kill: Option[CancellationMode.Kill] = mode match
       case CancellationMode.FreshOrStarted(kill) => kill
@@ -736,54 +736,54 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderCancellationMarkedOnAgent extends OrderActorEvent:
-    private[data] def tag = 40
+    private[data] def tag = TagOrderCancellationMarkedOnAgent
 
 
   type OrderStateReset = OrderStateReset.type
   case object OrderStateReset extends OrderActorEvent:
-    private[data] def tag = 41
+    private[data] def tag = TagOrderStateReset
 
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent, OrderTerminated:
-    private[data] def tag = 42
+    private[data] def tag = TagOrderCancelled
 
 
   final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderKillingMarked:
-    private[data] def tag = 43
+    private[data] def tag = TagOrderSuspensionMarked
     def kill: Option[CancellationMode.Kill] = mode.kill
 
 
   final case class OrderGoMarked(position: Position)
   extends OrderActorEvent:
-    private[data] def tag = 44
+    private[data] def tag = TagOrderGoMarked
 
 
   type OrderGoes = OrderGoes.type
   case object OrderGoes
   extends OrderActorEvent:
-    private[data] def tag = 45
+    private[data] def tag = TagOrderGoes
 
 
   type OrderSuspensionMarkedOnAgent = OrderSuspensionMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderSuspensionMarkedOnAgent extends OrderActorEvent:
-    private[data] def tag = 46
+    private[data] def tag = TagOrderSuspensionMarkedOnAgent
 
 
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent, IsControllerOnly:
-    private[data] def tag = 47
+    private[data] def tag = TagOrderSuspended
 
 
   final case class OrderPriorityChanged(priority: BigDecimal)
   extends OrderActorEvent, IsControllerOnly/*for now*/:
-    private[data] def tag = 48
+    private[data] def tag = TagOrderPriorityChanged
 
   type OrderStopped = OrderStopped.type
   case object OrderStopped extends OrderActorEvent, IsControllerOnly:
-    private[data] def tag = 49
+    private[data] def tag = TagOrderStopped
 
 
   final case class OrderResumptionMarked(
@@ -792,7 +792,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     asSucceeded: Boolean = false,
     restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big:
-    private[data] def tag = 50
+    private[data] def tag = TagOrderResumptionMarked
 
 
   final case class OrderResumed(
@@ -801,7 +801,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     asSucceeded: Boolean = false,
     restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big:
-    private[data] def tag = 51
+    private[data] def tag = TagOrderResumed
     override def toString =
       functionCallToString("OrderResumed", position.view, historyOperations,
         asSucceeded ? "asSucceeded",
@@ -850,25 +850,25 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   // COMPATIBLE with v2.4
   final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent:
-    private[data] def tag = 52
+    private[data] def tag = TagOrderLockAcquired
 
 
   // COMPATIBLE with v2.4
   final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent:
-    private[data] def tag = 53
+    private[data] def tag = TagOrderLockQueued
 
 
   // COMPATIBLE with v2.4
   final case class OrderLockDequeued(lockPath: LockPath)
   extends LegacyOrderLockEvent:
-    private[data] def tag = 54
+    private[data] def tag = TagOrderLockDequeued
 
 
   // COMPATIBLE with v2.4
   final case class OrderLockReleased(lockPath: LockPath)
   extends LegacyOrderLockEvent:
-    private[data] def tag = 55
+    private[data] def tag = TagOrderLockReleased
 
 
   sealed trait OrderLockEvent extends OrderActorEvent:
@@ -877,26 +877,25 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderLocksQueued(demands: List[LockDemand])
   extends OrderLockEvent:
-    private[data] def tag = 56
+    private[data] def tag = TagOrderLocksQueued
     def checked: Checked[OrderLocksQueued] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
 
   final case class OrderLocksAcquired(demands: List[LockDemand])
   extends OrderLockEvent:
-    private[data] def tag = 57
+    private[data] def tag = TagOrderLocksAcquired
     def checked: Checked[OrderLocksAcquired] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
 
   final case class OrderLocksReleased(lockPaths: Seq[LockPath])
   extends OrderLockEvent:
-    private[data] def tag = 58
+    private[data] def tag = TagOrderLocksReleased
     def checked: Checked[OrderLocksReleased] = lockPaths.checkUniqueness.rightAs(this)
 
 
   final case class LockDemand(lockPath: LockPath, count: Option[Int] = None):
-    private[data] def tag = 59
     def checked: Checked[this.type] =
       if count.exists(_ < 1) then
         Left(Problem(s"LockDemand.count must not be below 1 for $lockPath"))
@@ -915,19 +914,19 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderPrompted(question: Value)
   extends OrderActorEvent:
-    private[data] def tag = 60
+    private[data] def tag = TagOrderPrompted
 
 
   final case class OrderPromptAnswered(/*outcome: OrderOutcome.Completed*/)
   extends OrderCoreEvent, IsControllerOnly:
-    private[data] def tag = 61
+    private[data] def tag = TagOrderPromptAnswered
 
 
   sealed trait OrderCycleEvent extends OrderActorEvent
 
   final case class OrderCyclingPrepared(cycleState: CycleState)
   extends OrderCycleEvent:
-    private[data] def tag = 62
+    private[data] def tag = TagOrderCyclingPrepared
 
 
   /**
@@ -937,18 +936,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     */
   final case class OrderCycleStarted(skipped: Option[FiniteDuration] = None)
   extends OrderCycleEvent:
-    private[data] def tag = 63
+    private[data] def tag = TagOrderCycleStarted
     override def toString = s"OrderCycleStarted${skipped.fold("")(o => s"(skipped=${o.pretty})")}"
 
 
   final case class OrderCycleFinished(cycleState: Option[CycleState])
   extends OrderCycleEvent:
-    private[data] def tag = 64
+    private[data] def tag = TagOrderCycleFinished
 
 
   final case class OrderSleeping(until: Timestamp, cause: OrderSleeping.Cause)
   extends OrderActorEvent:
-    private[data] def tag = 65
+    private[data] def tag = TagOrderSleeping
 
     override def toString =
       val elapsed = Timestamp.now - until
@@ -984,24 +983,94 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderWaitingForAdmission(until: Timestamp)
   extends OrderActorEvent:
-    private[data] def tag = 66
+    private[data] def tag = TagOrderWaitingForAdmission
 
 
   final case class OrderTransferred(workflowPosition: WorkflowPosition)
   extends OrderActorEvent:
-    private[data] def tag = 67
+    private[data] def tag = TagOrderTransferred
 
 
   final case class OrderPlanAttached(planId: PlanId)
   extends OrderActorEvent:
-    private[data] def tag = 68
+    private[data] def tag = TagOrderPlanAttached
 
 
   /** TEST ONLY — EXPERIMENTAL */
   final case class OrderSaid(value: Value)
   extends OrderActorEvent:
-    private[data] def tag = 69
+    private[data] def tag = TagOrderSaid
 
+
+  private[data] inline val TagOrderStdoutWritten = 1
+  private[data] inline val TagOrderStderrWritten = 2
+  private[data] inline val TagOrderAdded = 3
+  private[data] inline val TagOrderOrderAdded = 4
+  private[data] inline val TagOrderAttachedToAgent = 5
+  private[data] inline val TagOrderAttached = 6
+  private[data] inline val TagOrderStarted = 7
+  private[data] inline val TagOrderProcessingStarted = 8
+  private[data] inline val TagOrderProcessed = 9
+  private[data] inline val TagOrderForked = 10
+  private[data] inline val TagOrderJoined = 11
+  private[data] inline val TagOrderNoticeAnnounced = 12
+  private[data] inline val TagOrderNoticePostedV2_3 = 13
+  private[data] inline val TagOrderNoticePosted = 14
+  private[data] inline val TagOrderNoticeExpected = 15
+  private[data] inline val TagOrderNoticesExpected = 16
+  private[data] inline val TagOrderNoticesRead = 17
+  private[data] inline val TagOrderNoticesConsumptionStarted = 18
+  private[data] inline val TagOrderNoticesConsumed = 19
+  private[data] inline val TagOrderProcessingKilled = 20
+  private[data] inline val TagOrderStickySubagentEntered = 21
+  private[data] inline val TagOrderStickySubagentLeaved = 22
+  private[data] inline val TagOrderMoved = 23
+  private[data] inline val TagOrderOutcomeAdded = 24
+  private[data] inline val TagOrderFailed = 25
+  private[data] inline val TagOrderFailedInFork = 26
+  private[data] inline val TagOrderCatched = 27
+  private[data] inline val TagOrderCaught = 28
+  private[data] inline val TagOrderRetrying = 29
+  private[data] inline val TagOrderAwoke = 30
+  private[data] inline val TagOrderBroken = 31
+  private[data] inline val TagOrderAttachable = 32
+  private[data] inline val TagOrderDetachable = 33
+  private[data] inline val TagOrderDetached = 34
+  private[data] inline val TagOrderFinished = 35
+  private[data] inline val TagOrderExternalVanished = 36
+  private[data] inline val TagOrderDeletionMarked = 37
+  private[data] inline val TagOrderDeleted = 38
+  private[data] inline val TagOrderCancellationMarked = 39
+  private[data] inline val TagOrderCancellationMarkedOnAgent = 40
+  private[data] inline val TagOrderStateReset = 41
+  private[data] inline val TagOrderCancelled = 42
+  private[data] inline val TagOrderSuspensionMarked = 43
+  private[data] inline val TagOrderGoMarked = 44
+  private[data] inline val TagOrderGoes = 45
+  private[data] inline val TagOrderSuspensionMarkedOnAgent = 46
+  private[data] inline val TagOrderSuspended = 47
+  private[data] inline val TagOrderPriorityChanged = 48
+  private[data] inline val TagOrderStopped = 49
+  private[data] inline val TagOrderResumptionMarked = 50
+  private[data] inline val TagOrderResumed = 51
+  private[data] inline val TagOrderLockAcquired = 52
+  private[data] inline val TagOrderLockQueued = 53
+  private[data] inline val TagOrderLockDequeued = 54
+  private[data] inline val TagOrderLockReleased = 55
+  private[data] inline val TagOrderLocksQueued = 56
+  private[data] inline val TagOrderLocksAcquired = 57
+  private[data] inline val TagOrderLocksReleased = 58
+  //private[data] inline val Tag… = 59
+  private[data] inline val TagOrderPrompted = 60
+  private[data] inline val TagOrderPromptAnswered = 61
+  private[data] inline val TagOrderCyclingPrepared = 62
+  private[data] inline val TagOrderCycleStarted = 63
+  private[data] inline val TagOrderCycleFinished = 64
+  private[data] inline val TagOrderSleeping = 65
+  private[data] inline val TagOrderWaitingForAdmission = 66
+  private[data] inline val TagOrderTransferred = 67
+  private[data] inline val TagOrderPlanAttached = 68
+  private[data] inline val TagOrderSaid = 69
 
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(

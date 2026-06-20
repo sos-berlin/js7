@@ -18,7 +18,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, Unsig
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{ExpectingNotices, IsFreshOrReady, Processing, WaitingForLock}
-import js7.data.order.OrderEvent.{LockDemand, OrderCoreEvent, OrderForked, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
+import js7.data.order.OrderEvent.{LockDemand, OrderCoreEvent, OrderForked, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, TagOrderAdded, TagOrderAttachedToAgent, TagOrderCancelled, TagOrderDeleted, TagOrderDeletionMarked, TagOrderDetached, TagOrderExternalVanished, TagOrderForked, TagOrderJoined, TagOrderLocksAcquired, TagOrderLocksQueued, TagOrderLocksReleased, TagOrderOrderAdded, TagOrderStateReset, TagOrderStderrWritten, TagOrderStdoutWritten}
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.PlanSchemaState
 import js7.data.state.EngineState.*
@@ -361,11 +361,11 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This] =
     (event.tag: @switch) match
-      case 1 | 2 | 3 => // OrderAdded | OrderOrderAdded | OrderAttachedToAgent
+      case TagOrderAdded | TagOrderOrderAdded | TagOrderAttachedToAgent =>
         // Event is handled by one of ControllerState and AgentState only
         Left(EventNotHandledHereProblem(event, companion))
 
-      case 7 | 8 => // OrderStdoutWritten | OrderStderrWritten
+      case TagOrderStdoutWritten | TagOrderStderrWritten => // OrderStdoutWritten | OrderStderrWritten
         // OrderStdWritten is not applied. But check OrderId.
         idToOrder.checked(orderId).rightAs(this)
 
@@ -377,18 +377,18 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
       result <- (event.tag: @switch) match
-        case 34 => // OrderDetached
+        case TagOrderDetached =>
           if isAgent then
             update(removeOrders = orderId :: Nil)
           else
             update(updateOrders = updatedOrder :: Nil)
 
-        case 10 => // OrderForked
+        case TagOrderForked =>
           val e = event.asInstanceOf[OrderForked]
           update(updatedOrder :: Nil).flatMap:
             _.addOrders(previousOrder.newForkedOrders(e), allowClosedPlan = true)
 
-        case 11 => // OrderJoined
+        case TagOrderJoined =>
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
@@ -402,7 +402,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
                 Left(Problem:
                   s"For event $event, $orderId must be in Forked state, not: $state")
 
-        case 56 =>
+        case TagOrderLocksQueued =>
           val OrderLocksQueued(demands) = event.asInstanceOf[OrderLocksQueued]
           foreachLockDemand(demands):
             _.enqueue(orderId, _)
@@ -411,7 +411,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
               updateOrders = updatedOrder :: Nil,
               addItemStates = lockStates)
 
-        case 57 =>
+        case TagOrderLocksAcquired =>
           val OrderLocksAcquired(demands) = event.asInstanceOf[OrderLocksAcquired]
           foreachLockDemand(demands):
             _.acquire(orderId, _)
@@ -420,7 +420,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
               updateOrders = updatedOrder :: Nil,
               addItemStates = lockStates)
 
-        case 58 =>
+        case TagOrderLocksReleased =>
           val OrderLocksReleased(lockPaths) = event.asInstanceOf[OrderLocksReleased]
           foreachLock(lockPaths):
             _.release(orderId)
@@ -429,7 +429,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
               updateOrders = updatedOrder :: Nil,
               addItemStates = lockStates)
 
-        case 41 => // OrderStateReset
+        case TagOrderStateReset =>
           previousOrder.ifState[WaitingForLock].map: order =>
             val instr = instruction_[LockInstruction](order.workflowPosition).orThrow
             foreachLock(instr.lockPaths): lockState =>
@@ -449,7 +449,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
             update(
               updateOrders = updatedOrder :: Nil)
 
-        case 42 => // OrderCancelled
+        case TagOrderCancelled =>
           previousOrder
             // COMPATIBLE Since v2.7.2 an OrderStateReset is emitted and the
             // following code is superfluous (but still needed for old journals)
@@ -460,22 +460,22 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
                   updateOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
 
-        case 36 => // OrderExternalVanished
+        case TagOrderExternalVanished =>
           if updatedOrder.externalOrder.isEmpty then
             Left(Problem(s"OrderExternalVanished but $orderId is not linked to an external order"))
           else
             update(externalVanishedOrders = updatedOrder :: Nil)
 
-        case 37 => // OrderDeletionMarked
+        case TagOrderDeletionMarked =>
           update(updateOrders = updatedOrder :: Nil)
 
-        case 38 => // OrderDeleted
+        case TagOrderDeleted =>
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
             update(removeOrders = orderId :: Nil)
 
-        case 2 => // OrderOrderAdded
+        case TagOrderOrderAdded =>
           // ControllerState handles this event
           Left(EventNotHandledHereProblem(event, companion))
 
