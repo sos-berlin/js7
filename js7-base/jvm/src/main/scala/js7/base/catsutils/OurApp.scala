@@ -29,4 +29,4 @@ trait OurApp extends IOApp:
     Log4j.earlyInitializeForProduction()
     Logger.initialize(productName)
     if !isTest && !sys.props.contains("cats.effect.tracing.mode") then
-      sys.props += "cats.effect.tracing.mode" -> "none"
+      sys.props.put("cats.effect.tracing.mode", "none")

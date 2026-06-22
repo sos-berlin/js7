@@ -584,12 +584,14 @@ object ScalaUtils:
 
     extension [K, V](mapOps: MapOps[K, V, ?, ?])
       def checked(key: K)(using K: Tag[K], loc: ScalaSourceLocation): Checked[V] =
-        rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
+        val option = mapOps.get(key)
+        if option ne None then
+          Right(option.get)
+        else
+          Left(UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
-        mapOps.get(key) match
-          case None => Left(notFound)
-          case Some(a) => Right(a)
+        mapOps.get(key).toRight(notFound)
 
     implicit final class RichMapView[K, V](private val mapView: MapView[K, V])
     extends AnyVal:

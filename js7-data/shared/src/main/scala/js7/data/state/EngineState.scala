@@ -392,15 +392,10 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
-            previousOrder.state match
-              case forked: Order.Forked =>
-                update(
-                  updateOrders = updatedOrder :: Nil,
-                  removeOrders = forked.childOrderIds)
-
-              case state =>
-                Left(Problem:
-                  s"For event $event, $orderId must be in Forked state, not: $state")
+            previousOrder.checkedState[Order.Forked].flatMap: order =>
+              update(
+                updateOrders = updatedOrder :: Nil,
+                removeOrders = order.state.childOrderIds)
 
         case TagOrderLocksQueued =>
           val OrderLocksQueued(demands) = event.asInstanceOf[OrderLocksQueued]

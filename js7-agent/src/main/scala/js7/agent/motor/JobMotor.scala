@@ -94,9 +94,9 @@ extends Service.StoppableByRequest:
         if chunk.isEmpty then logger.trace:
           s"""🪱 pipeline: No Order is processable despite signal "${signalReason()}""""
         chunk
-    .unchunks
-    .evalMap: o =>
-      startOrderProcess(o).startAndForget // TODO How to cancel this?
+    .evalMap: chunk =>
+      chunk.asSeq.foldMap: o =>
+        startOrderProcess(o).startAndForget // TODO How to cancel this?
     .interruptWhenF(untilStopRequested)
 
   private val dequeueChunk: IO[Chunk[OrderWithEndOfAdmission]] =
@@ -183,7 +183,6 @@ extends Service.StoppableByRequest:
               logger.warn(msg, problem.throwableIfStackTrace)
               decrementProcessCount(order.id, "⚠️  processOrder failed")
             else
-              // decrementProcessCount ???
               IO.defer:
                 if !(problem is ServiceStoppedProblem) then
                   // Maybe not worth this warning?
