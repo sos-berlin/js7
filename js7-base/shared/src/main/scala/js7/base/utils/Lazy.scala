@@ -15,6 +15,7 @@ sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
   private val lock = new ReentrantLock()
   @volatile
   private var state: State = NotEvaluated
+  private var eval_ = () => eval // Variable allows garbage collection
 
   def apply(): A =
     value
@@ -37,7 +38,8 @@ sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
               case Evaluating => None
               case NotEvaluated =>
                 state = Evaluating
-                val a = eval
+                val a = eval_()
+                eval_ = null.asInstanceOf[() => A] // allow garbage collection
                 state = Evaluated(a)
                 Some(a)
 
