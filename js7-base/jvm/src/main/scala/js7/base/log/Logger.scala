@@ -132,6 +132,9 @@ object Logger extends AdHocLogger:
       inline def isEnabled(level: LogLevel, marker: Marker): Boolean =
         logger.underlying.isEnabled(level, marker)
 
+      def warnIfStrict(message: String, cause: Throwable): Unit =
+        log(LogLevel.WarnIfStrict, message, cause)
+
       def infoCall[A](body: => A)(using src: sourcecode.Name): A =
         infoCall[A](src.value)(body)
 

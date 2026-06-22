@@ -3,6 +3,7 @@ package js7.base.log
 import java.util.Locale
 import js7.base.convert.As
 import js7.base.utils.Ordinal
+import js7.base.utils.Tests.isStrict
 
 /**
   * @author Joacim Zschimmer
@@ -21,6 +22,9 @@ object LogLevel:
 
   val MinValue = Trace
   val MaxValue = None
+
+  lazy val WarnIfStrict: LogLevel =
+    if isStrict then Warn else Debug
 
   /** The usual Ordinal invariants are not valid here:
    * <ul>
