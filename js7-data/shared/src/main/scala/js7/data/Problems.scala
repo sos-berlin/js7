@@ -160,8 +160,9 @@ object Problems:
   final case class GoOrderInapplicableProblem(orderId: OrderId) extends Problem.Coded:
     def arguments: Map[String, String] = Map1("orderId", orderId.toString)
 
-  type ClusterNodeHasBeenSwitchedOverProblem = ClusterNodeHasBeenSwitchedOverProblem.type
-  case object ClusterNodeHasBeenSwitchedOverProblem extends Problem.ArgumentlessCoded
+  final case class ClusterNodeHasBeenSwitchedOverProblem(event: String) extends Problem.Coded:
+    def arguments = Map1("event", event)
+  case object ClusterNodeHasBeenSwitchedOverProblem extends Problem.Coded.Companion
 
   final case class NoActiveClusterNodeProblem(clusterStates: Seq[String]) extends Problem.Coded:
     def arguments: Map[String, String] =

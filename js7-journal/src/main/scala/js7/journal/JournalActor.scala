@@ -49,7 +49,7 @@ extends Actor, Stash:
         // (so AgentDriver with AgentReady event)
         reply(sender, replyTo,
           Output.Stored(
-            Left(ClusterNodeHasBeenSwitchedOverProblem/*???*/),
+            Left(ClusterNodeHasBeenSwitchedOverProblem("JournalActor.Input.Store")/*???*/),
             callersItem))
       else
         journal.enqueue:

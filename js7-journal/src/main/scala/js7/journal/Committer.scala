@@ -227,32 +227,35 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           val ctx = TimeCtx(clock.now(), StartUp.elapsed)
           chunk.asSeq.view.scanLeft(state -> new VectorBuilder[Checked[Applied]]):
             case ((state, results), queuedPersist) =>
-              if _isSwitchedOver then
-                state -> (results += Left(ClusterNodeHasBeenSwitchedOverProblem))
-              else if isBeingKilled then
-                state -> (results += Left(JournalKilledProblem))
-              else
-                applyEventCalc2(state, queuedPersist, ctx) match
-                  case Left(problem) => state -> (results += Left(problem))
-                  case Right(applied) =>
-                    state.copy(
-                      uncommitted = applied.aggregate,
-                      totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
-                    ) -> (results += Right(applied))
+              applyEventCalc2(state, queuedPersist, ctx) match
+                case Left(problem) => state -> (results += Left(problem))
+                case Right(applied) =>
+                  state.copy(
+                    uncommitted = applied.aggregate,
+                    totalEventCount = state.totalEventCount + applied.stampedKeyedEvents.size
+                  ) -> (results += Right(applied))
           .last
       .map: results =>
         chunk.zip(Chunk.from(results.result()))
       .flatMap:
         _.flatTraverse:
           case (queuedPersist, Left(problem)) =>
-            queuedPersist.completePersistedWithProblem(problem).as(Chunk.empty)
-
+            queuedPersist.completePersistedWithProblem(problem)
+              .as(Chunk.empty)
           case (queuedPersist, Right(applied)) =>
             if applied.stampedKeyedEvents.isEmpty then
               bean.persistTotal += 1
               bean.persistNanos += queuedPersist.persist.since.time.toNanos - System.nanoTime
               // When no events, exit early //
               (applied.completeApplied *> applied.completePersistOperation)
+                .as(Chunk.empty)
+            else if _isSwitchedOver then
+              val eventName = applied.stampedKeyedEvents.head.value.event.getClass.shortClassName
+              queuedPersist.completePersistedWithProblem:
+                ClusterNodeHasBeenSwitchedOverProblem(eventName)
+              .as(Chunk.empty)
+            else if isBeingKilled then
+              queuedPersist.completePersistedWithProblem(JournalKilledProblem)
                 .as(Chunk.empty)
             else
               applied.stampedKeyedEvents.lastOption.map(_.value.event).match
