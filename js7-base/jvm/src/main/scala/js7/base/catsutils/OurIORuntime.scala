@@ -18,7 +18,7 @@ import js7.base.utils.Missing.getOrElse
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SystemPropertiesExtensions.asSwitch
-import js7.base.utils.Tests.isTestParallel
+import js7.base.utils.Tests.{isStrict, isTestParallel}
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
@@ -167,8 +167,7 @@ object OurIORuntime:
     reportFailure(throwable, currentThread)
 
   private def reportFailure(throwable: Throwable, thread: Thread): Unit =
-    def msg = s"Uncaught exception in thread '${thread.getName}': ${
-      throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception in thread '${thread.getName}': ${throwable.toStringWithCauses}"
 
     throwable match
       case throwable: OutOfMemoryError =>
@@ -184,9 +183,16 @@ object OurIORuntime:
       //  // Maybe, letting the thread die is normal Pekko behaviour, and the original Pekko thread pool does not log this ???
       //  logger.warn(msg, throwable.nullIfNoStackTrace)
 
+      case throwable: NullPointerException =>
+        logger.error(msg, throwable.nullIfNoStackTrace)
+        throwable.printStackTrace(System.err)
+
       case NonFatal(_) | _: InterruptedException =>
         // Different to Monix, Cats Effect seems to call reportFailure for some irrelevant exceptions ???
-        logger.debug(s"WARN 💥 $msg", throwable.nullIfNoStackTrace)
+        if isStrict then
+          logger.warn(msg, throwable.nullIfNoStackTrace)
+        else
+          logger.debug(s"WARN 💥 $msg", throwable.nullIfNoStackTrace)
 
       case throwable =>
         logger.error(msg, throwable.nullIfNoStackTrace)

@@ -5,6 +5,7 @@ import java.util.Locale
 import js7.base.annotation.javaApi
 import js7.base.convert.As
 import js7.base.utils.Ordinal
+import js7.base.utils.Tests.isStrict
 
 /**
   * @author Joacim Zschimmer
@@ -23,6 +24,9 @@ object LogLevel:
 
   val MinValue = Trace
   val MaxValue = None
+
+  lazy val WarnIfStrict: LogLevel =
+    if isStrict then Warn else Debug
 
   @javaApi def debug: LogLevel = Debug
   @javaApi def info: LogLevel = Info
