@@ -141,7 +141,7 @@ object CloseableIterator:
 
   private class Concatenated[A, B >: A](a: CloseableIterator[A], lazyB: => CloseableIterator[B])
   extends CloseableIterator[B]:
-    private val b = Lazy(lazyB)
+    private val b = Lazy.blocking(lazyB)
     private val concatenated = (a: Iterator[A]) ++ b.value
 
     def close(): Unit =

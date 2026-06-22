@@ -134,7 +134,7 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
       itemOperations ++ itemsToOperations
 
     private def itemsToOperations: Seq[ItemOperation] =
-      val versionId = Lazy(VersionId(Timestamp.now.toIsoString))
+      val versionId = Lazy.fast(VersionId(Timestamp.now.toIsoString))
       val operations: Seq[AddOrChangeOperation] =
         // Execute this eagerly to fill versionId
         items

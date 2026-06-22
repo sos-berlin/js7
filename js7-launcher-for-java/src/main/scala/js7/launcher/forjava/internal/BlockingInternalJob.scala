@@ -66,8 +66,8 @@ object BlockingInternalJob:
 
   final case class Step(asScala: InternalJob.Step, outWriter: Writer, errWriter: Writer)
   extends JavaJobStep:
-    private val outLazy = Lazy(new PrintWriter(outWriter, true))
-    private val errLazy = Lazy(new PrintWriter(errWriter, true))
+    private val outLazy = Lazy.fast(new PrintWriter(outWriter, true))
+    private val errLazy = Lazy.fast(new PrintWriter(errWriter, true))
 
     /** Unbuffered PrinterWriter for stdout.
      *

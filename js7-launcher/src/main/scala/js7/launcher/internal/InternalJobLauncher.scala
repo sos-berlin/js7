@@ -32,9 +32,10 @@ final class InternalJobLauncher(
   (implicit ioRuntime: IORuntime, iox: IOExecutor)
 extends JobLauncher:
 
-  private val internalJobLazy = Lazy[Checked[InternalJob]](
-    toInstantiator(executable.className)
-      .flatMap(_()))
+  private val internalJobLazy =
+    Lazy.blocking[Checked[InternalJob]]:
+      toInstantiator(executable.className)
+        .flatMap(_())
 
   val start: IO[Checked[Unit]] =
     IO { internalJobLazy() }

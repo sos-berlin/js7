@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.use
   *
   * @author Joacim Zschimmer
   */
-sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
+sealed class Lazy[A] private(eval: => A, blockingCode: => Option[A] => Option[A]):
 
   private val lock = new ReentrantLock()
   @volatile
@@ -31,7 +31,7 @@ sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
     state match
       case Evaluated(a) => Some(a)
       case _ =>
-        block:
+        blockingCode:
           lock.use:
             state match
               case Evaluated(a) => Some(a)
@@ -79,12 +79,15 @@ sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
 object Lazy:
 
   def apply[A](eval: => A): Lazy[A] =
-    nonBlocking(eval)
+    blocking(eval)
 
   def blocking[A](eval: => A): Lazy[A] =
-    new Lazy(eval, scala.concurrent.blocking(_))
+    new Lazy(eval, scala.concurrent.blocking)
 
   /** For very fast evaluations.
-   * During evaluation other threads accessing the value are blocked. */
-  def nonBlocking[A](eval: => A): Lazy[A] =
-    new Lazy(eval, o => o)
+    * During evaluation other threads accessing the value are blocked.
+    *
+    * `eval` is not wrapped in `scala.concurrent.blocking`.
+    */
+  def fast[A](eval: => A): Lazy[A] =
+    new Lazy(eval, identity)

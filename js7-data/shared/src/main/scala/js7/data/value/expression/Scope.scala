@@ -107,7 +107,7 @@ object Scope extends Monoid[Scope]:
     lazy val myScope = scope
     nameToExpr
       .map: (name, expr) =>
-        name -> Lazy(expr.eval(using myScope))
+        name -> Lazy.fast(expr.eval(using myScope))
       .toMap // memoize Lazy
       .view
       // Evaluate lazily (Lazy evaluates only once)

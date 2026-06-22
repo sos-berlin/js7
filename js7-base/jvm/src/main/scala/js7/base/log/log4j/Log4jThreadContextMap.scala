@@ -73,7 +73,7 @@ object Log4jThreadContextMap:
     put("js7.version", BuildInfo.longVersion)
     put("js7.longVersion", BuildInfo.longVersion)
     put("js7.prettyVersion", BuildInfo.prettyVersion)
-    put("js7.system", Lazy(StartUp.startUpLine))
+    put("js7.system", Lazy.fast(StartUp.startUpLine))
 
   //private val dummyNullCorrelId = CorrelId("__NULL__")
 

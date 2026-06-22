@@ -10,7 +10,7 @@ final case class LabeledRunnable(label: Lazy[String], runnable: Runnable) extend
 object LabeledRunnable:
 
   def apply(label: => String)(callback: => Unit): LabeledRunnable =
-    LabeledRunnable(Lazy(label), () => callback)
+    LabeledRunnable(Lazy.fast(label), () => callback)
 
 
 // ⭐️ This can rename the thread, maybe for testing:
