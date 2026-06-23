@@ -402,15 +402,14 @@ extends Service.StoppableByRequest:
         case Some(bundleId) => counters.bundleSubagentProcessCountLiveScope(bundleId, _)
     Stream.repeatEval:
       selectSubagentMutex.lock.surround:
-        stateVar.value.flatMap: directorState =>
-          IO:
-            val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
-            result match
-              case Right(Some(driver)) =>
-                counters.increment(orderId, maybeBundleId, driver.subagentId)
-              case _ =>
-            result
-            //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
+        stateVar.value.map: directorState =>
+          val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
+          result match
+            case Right(Some(driver)) =>
+              counters.increment(orderId, maybeBundleId, driver.subagentId)
+            case _ =>
+          //logger.trace(s"selectSubagentDriver($maybeBundleId) => $result $directorState") // FIXME TEST
+          result
     .evalTap:
       case Right(None) =>
         // TODO Do not poll for each Order
@@ -725,7 +724,7 @@ object SubagentKeeper:
       DeterminedSubagentBundle(Some(SubagentBundleId.fromSubagentId(stuckSubagentId)))
 
 
-  /** Preliminary process counters used by Subagent priorisation. */
+  /** Preliminary process counters used by Subagent priorisation to limit processes. */
   private final class SubagentProcessCounters:
     private var subagentToCounter = Map[SubagentId, Int]()
     private var bundleAndSubagentToCounter = Map[(SubagentBundleId, SubagentId), Int]()
@@ -768,13 +767,18 @@ object SubagentKeeper:
     : Unit =
       add(-1, orderId, bundleId, subagentId)
 
-    private def add(plusMinus: 1 | -1, orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
+    private def add(
+      plusMinus: 1 | -1,
+      orderId: OrderId,
+      bundleId: Option[SubagentBundleId],
+      subagentId: SubagentId)
     : Unit =
       subagentToCounter = subagentToCounter.updatedWith(subagentId): maybe =>
         maybe.fold(Some(plusMinus)): o =>
           assertIfStrict(o + plusMinus >= 0)
           val r = o + plusMinus
-          logger.trace(s"SubagentProcessCounters.add($plusMinus, $orderId, ${bundleId getOrElse "(no bundle)"}, $subagentId) => $r" )
+          logger.trace(s"SubagentProcessCounters.add($plusMinus, $orderId, ${
+            bundleId getOrElse "(no bundle)"}, $subagentId) => $r" )
           Some(r)
       assertIfStrict(subagentToCounter(subagentId) >= 0)
 

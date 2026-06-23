@@ -189,7 +189,7 @@ private object DirectorState:
           // subagentBundle.allPrioritiesArePure implies isEquivalentTo
           case cached: Prioritized[SubagentId] if cached.isEquivalentTo(prioritized) =>
             // Keep MutableRoundRobin index in Prioritized
-            logger.trace(s"cachedPrioritized: $bundleId reuse $cached")
+            logger.trace(s"cachedPrioritized: $bundleId reuse $cached (equivalent to $prioritized)")
             cached
           case cached =>
             if _cachedPrioritized.compareAndSet(cached, prioritized) then
@@ -208,7 +208,7 @@ private object DirectorState:
                 logger.error(s"$bundleId: $subagentId priority expression failed with $problem")
                 None // Subagent is not selected
               case Right(MissingValue) =>
-                logger.trace(s"$bundleId $subagentId priority expression returns MissingValue")
+                //logger.trace(s"$bundleId $subagentId priority expression returns MissingValue")
                 None
               case Right(o: NumberValue) =>
                 Some(subagentId -> o)
