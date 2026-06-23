@@ -5,6 +5,7 @@ import js7.base.time.ScalaTime.{DurationRichInt, RichFiniteDuration}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderOutcome
+import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.NumericConstant
 import js7.data.workflow.instructions.Execute
 import js7.launcher.OrderProcess
@@ -27,10 +28,17 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
 
 object SleepJob extends InternalJob.Companion[SleepJob]:
 
-  def sleep(agentPath: AgentPath, duration: FiniteDuration, isNotRestartable: Boolean = false)
+  def sleep(
+    agentPath: AgentPath,
+    duration: FiniteDuration,
+    subagentBundleId: Option[Expression] = None,
+    isNotRestartable: Boolean = false,
+    processLimit: Int = 1)
   : Execute =
     execute(
       agentPath,
       arguments = Map(
         "sleep" -> NumericConstant(duration.toBigDecimalSeconds)),
-      isNotRestartable = isNotRestartable)
+      subagentBundleId = subagentBundleId,
+      isNotRestartable = isNotRestartable,
+      processLimit = processLimit)

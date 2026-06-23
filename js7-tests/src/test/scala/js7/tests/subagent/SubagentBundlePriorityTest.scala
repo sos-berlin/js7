@@ -223,30 +223,31 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
           val unfinished = orderIds.to(mutable.Set)
           var processCount = 0
           val orderToSubagentId = mutable.Map[OrderId, SubagentId]()
-          controller.api.eventStream[OrderEvent]:
+          controller.eventWatch.stream[OrderEvent]:
             EventRequest.singleClass(after = controller.lastAddedEventId, timeout = None)
-          .map(_.value.tuple)
-          .map: (orderId, event) =>
-            event match
-              case event: OrderProcessingStarted =>
-                subagentToProcessCount(event.subagentId.get).increment()
+          .map(_.value)
+          .map:
+            case KeyedEvent(orderId, event) =>
+              event match
+                case event: OrderProcessingStarted =>
+                  subagentToProcessCount(event.subagentId.get).increment()
 
-                processCount += 1
-                processCountMax = processCountMax max processCount
-                assert(processCount <= bundleLimit)
+                  processCount += 1
+                  processCountMax = processCountMax max processCount
+                  assert(processCount <= bundleLimit)
 
-                Logger.info(s"$orderId processCount=$processCount max=$processCountMax")
-                orderToSubagentId.put(orderId, event.subagentId.get)
-              case _: OrderProcessed =>
-                processCount -= 1
-                assert(processCount >= 0)
+                  Logger.info(s"$orderId processCount=$processCount max=$processCountMax")
+                  orderToSubagentId.put(orderId, event.subagentId.get)
+                case _: OrderProcessed =>
+                  processCount -= 1
+                  assert(processCount >= 0)
 
-                val subagentId = orderToSubagentId.remove(orderId).get
-                subagentToProcessCount(subagentId).count -= 1
-                assert(subagentToProcessCount(subagentId).count >= 0)
-              case _: OrderFinished =>
-                unfinished -= orderId
-              case _ =>
+                  val subagentId = orderToSubagentId.remove(orderId).get
+                  subagentToProcessCount(subagentId).count -= 1
+                  assert(subagentToProcessCount(subagentId).count >= 0)
+                case _: OrderFinished =>
+                  unfinished -= orderId
+                case _ =>
           .takeWhile(_ => unfinished.nonEmpty)
         .compile.drain
       .await(99.s)
