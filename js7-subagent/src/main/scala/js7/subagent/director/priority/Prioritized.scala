@@ -18,7 +18,7 @@ private[director] final class Prioritized[A] private(
       locally:
         var i = 0
         while i < orderedGroups.length do
-          if !other.orderedGroups(i).forall(orderedSets(i)) then
+          if orderedSets != other.orderedSets then
             return false
           i += 1
         true
