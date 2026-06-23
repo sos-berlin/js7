@@ -74,6 +74,20 @@ final class PrioritizedTest extends OurTestSuite:
         A(20) -> NumberValue(222),
         A(31) -> NumberValue(333))))
 
+    assert(!prioritized.isEquivalentTo:
+      Prioritized(Vector(
+        A(10) -> NumberValue(1),
+        A(11) -> NumberValue(1),
+        A(20) -> NumberValue(2),
+        A(31) -> NumberValue(3),
+        A(40) -> NumberValue(4))))
+
+    assert(!prioritized.isEquivalentTo:
+      Prioritized(Vector(
+        A(10) -> NumberValue(1),
+        A(20) -> NumberValue(2),
+        A(31) -> NumberValue(3))))
+
 
 private object PrioritizedTest:
   private final case class A(int: Int)
