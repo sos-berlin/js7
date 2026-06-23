@@ -131,9 +131,11 @@ object Expression:
 
   final case class IfThenElse(condition: Expression, thenExpr: Expression, elseExpr: Expression)
   extends BooleanExpr, IsPureIfSubexpressionsArePure:
-    def precedence: Int = Precedence.IfThenElse
+    def precedence: Int =
+      Precedence.IfThenElse
+
     def subexpressions: Iterable[Expression] =
-      condition :: thenExpr :: elseExpr :: Nil
+      View(condition, thenExpr, elseExpr)
 
     protected def evalRaw(using scope: Scope) =
       for
