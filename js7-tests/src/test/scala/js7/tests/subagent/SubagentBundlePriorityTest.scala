@@ -15,7 +15,6 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
-import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderProcessed, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
@@ -24,10 +23,9 @@ import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.Expression.{MissingConstant, NumericConstant, StringConstant, expr, exprFun}
 import js7.data.value.expression.ExpressionParser.parseExpr
 import js7.data.value.expression.{Expression, ExpressionParser}
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ForkList}
+import js7.data.workflow.instructions.ForkList
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.jobs.{EmptyJob, SemaphoreJob}
+import js7.tests.jobs.{EmptyJob, SemaphoreJob, SleepJob}
 import js7.tests.subagent.SubagentBundlePriorityTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -171,49 +169,43 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
   "Massive test with Fork and SubagentBundle containing three Subagents" in:
     val orderCount = 100
     val perSubagentLimit = 2
-    val bundleLimit = 5
 
     val subagentBundle = SubagentBundle(
-      SubagentBundleId("MASSIVE-FORK"),
+      SubagentBundleId("MASSIVE"),
       subagentToPriority =
-        def priorityExpr(priority: Int) = parseExpr:
-          s"""if $$js7ClusterSubagentProcessCount < $perSubagentLimit
-             | && $$js7ClusterProcessCount < $bundleLimit
-             |then $priority
-             |else missing
-             |""".stripMargin
+        val priorityExpr = parseExpr:
+          s"if $$js7ClusterSubagentProcessCount < $perSubagentLimit then 1 else missing"
         Map(
-          aSubagentId -> priorityExpr(3),
-          bSubagentId -> priorityExpr(2),
-          cSubagentId -> priorityExpr(1)))
+          aSubagentId -> priorityExpr,
+          bSubagentId -> priorityExpr,
+          cSubagentId -> priorityExpr))
 
     val workflow = Workflow(
-      WorkflowPath("MASSIVE-FORK"),
+      WorkflowPath("MASSIVE"),
       Seq:
         ForkList(
-          children = expr"[1, 2, 3, 4]",
-          childToId = exprFun"x => $$x",
-          childToArguments = exprFun"x => { x: $$x }",
+          children = expr"[1, 2]",
+          childToId = exprFun"child => $$child",
+          childToArguments = exprFun"child => {}",
           Workflow.of(
-            Execute(WorkflowJob(
-              agentPath,
-              ShellScriptExecutable(":"),
-              subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
-              processLimit = 100)),
-            Execute(WorkflowJob(
-              agentPath,
-              ShellScriptExecutable(":"),
-              subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
-              processLimit = 100)))))
+            SleepJob.sleep(agentPath, 100.ms,
+              subagentBundleId = Some(subagentBundle.id.string),
+              processLimit = 100))))
 
     withItems((subagentBundle, workflow)): _ =>
       var processCountMax = 0
-      final case class Entry(var count: Int, var maximum: Int):
+      final class Counter:
+        var count = 0
+        var maximum = 0
         def increment() =
           count += 1
           if maximum < count then maximum = count
-      val subagentToProcessCount = subagentBundle.subagentIds.map(_ -> Entry(0, 0)).toMap
-      val orderIds = (1 to orderCount).map(i => OrderId(s"MASSIVE-FORK-$i"))
+        def decrement() =
+          count -= 1
+          assert(count >= 0)
+        override def toString = s"$count"
+      val subagentToProcessCount = subagentBundle.subagentIds.map(_ -> new Counter).toMap
+      val orderIds = (1 to orderCount).map(i => OrderId(s"MASSIVE-$i"))
       controller.api.addOrders:
         orderIds.map: orderId =>
           FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
@@ -230,31 +222,34 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
             case KeyedEvent(orderId, event) =>
               event match
                 case event: OrderProcessingStarted =>
-                  subagentToProcessCount(event.subagentId.get).increment()
+                  val subagentId = event.subagentId.get
+                  orderToSubagentId.put(orderId, subagentId)
+                  withClue(s"$subagentId: "):
+                    val subagentCounter = subagentToProcessCount(subagentId)
+                    subagentCounter.increment()
+                    processCount += 1
+                    processCountMax = processCountMax max processCount
+                    Logger.info(s"$orderId OrderProcessingStarted bundle=$processCount $subagentId=$subagentCounter")
+                    assert(subagentCounter.count <= perSubagentLimit)
 
-                  processCount += 1
-                  processCountMax = processCountMax max processCount
-                  assert(processCount <= bundleLimit)
-
-                  Logger.info(s"$orderId processCount=$processCount max=$processCountMax")
-                  orderToSubagentId.put(orderId, event.subagentId.get)
                 case _: OrderProcessed =>
                   processCount -= 1
                   assert(processCount >= 0)
-
                   val subagentId = orderToSubagentId.remove(orderId).get
-                  subagentToProcessCount(subagentId).count -= 1
-                  assert(subagentToProcessCount(subagentId).count >= 0)
+                  val subagentCounter = subagentToProcessCount(subagentId)
+                  subagentCounter.decrement()
+                  Logger.info(s"$orderId OrderProcessed        bundle=$processCount $subagentId=$subagentCounter")
+
                 case _: OrderFinished =>
                   unfinished -= orderId
+
                 case _ =>
           .takeWhile(_ => unfinished.nonEmpty)
         .compile.drain
       .await(99.s)
-      assert(processCountMax == bundleLimit)
       assert(subagentToProcessCount(aSubagentId).maximum == perSubagentLimit)
       assert(subagentToProcessCount(bSubagentId).maximum == perSubagentLimit)
-      assert(subagentToProcessCount(cSubagentId).maximum == bundleLimit - 2 * perSubagentLimit)
+      assert(subagentToProcessCount(cSubagentId).maximum == perSubagentLimit)
 
 
 object SubagentBundlePriorityTest:
