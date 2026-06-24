@@ -397,7 +397,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .void
 
   @javaApi
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: Confirmer)
   : CompletableFuture[VEither[Problem, Void]] =
     runIO:
       clusterWatchService.value
@@ -405,7 +405,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
           case None =>
             IO.left(Problem("No ClusterWatchService"))
           case Some(allo) =>
-            allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
+            allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
         .map(_.toVoidVavr)
 
   private def runIO[A](io: IO[A]): CompletableFuture[A] =

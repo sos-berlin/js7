@@ -9,6 +9,7 @@ import js7.cluster.watch.ClusterWatchService;
 import js7.data.cluster.ClusterEvent;
 import js7.data.cluster.ClusterWatchId;
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem;
+import js7.data.cluster.Confirmer;
 import js7.data.node.NodeId;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
@@ -66,7 +67,8 @@ final class JProxyWithClusterWatchTester
                 // Don't do this automatically! The user must be sure that the node is down.
                 // Otherwise, both cluster nodes may get active, with destroying consequences.
 
-                Either<Problem,?> checked = controllerApi.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").get();
+                Either<Problem,?> checked = controllerApi
+                    .manuallyConfirmNodeLoss(primaryId, Confirmer.of("CONFIRMER")).get();
             }
 
             // Stop is effective only after startClusterWatch has completed!

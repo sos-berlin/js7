@@ -43,7 +43,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
 
   "ClusterWatch" - {
     def newClusterWatch(initialState: Option[HasNodes] = None): IO[ClusterWatch] =
-      implicit val watch = new ClusterWatch
+      given watch: ClusterWatch = new ClusterWatch
       for
         _ <- initialState.fold(IO.unit): clusterState =>
           heartbeat(clusterState.activeId, clusterState).map(_.orThrow)
@@ -290,14 +290,14 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
       from: NodeId,
       event: ClusterEvent,
       expectedClusterState: HasNodes)
-      (implicit watch: ClusterWatch)
+      (using watch: ClusterWatch)
     : IO[Checked[Confirmed]] =
       assert(expectedClusterState == clusterState.applyEvent(event).orThrow)
       watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState))
         .<*(IO(
           assert(watch.clusterState() == Right(expectedClusterState))))
 
-    def heartbeat(from: NodeId, clusterState: HasNodes)(implicit watch: ClusterWatch)
+    def heartbeat(from: NodeId, clusterState: HasNodes)(using watch: ClusterWatch)
     : IO[Checked[Confirmed]] =
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, from, clusterState))
   }
@@ -417,8 +417,8 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
       import event.lostNodeId
 
       TestControl.executeEmbed:
-        implicit val watch = new ClusterWatch(
-          requireManualNodeLossConfirmation = true,
+        given watch: ClusterWatch = new ClusterWatch(
+          alwaysRequireFailoverConfirmation = true,
           onUndecidableClusterNodeLoss = _ => IO.unit)
 
         for

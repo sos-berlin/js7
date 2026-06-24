@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 
 final case class Confirmer(string: String) extends GenericString:
@@ -8,3 +9,7 @@ final case class Confirmer(string: String) extends GenericString:
 
 object Confirmer extends GenericString.Checked_[Confirmer]:
   protected def unchecked(string: String) = new Confirmer(string)
+
+  @javaApi
+  def of(string: String): Confirmer =
+    Confirmer(string)
