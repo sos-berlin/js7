@@ -9,6 +9,7 @@ import js7.cluster.watch.ClusterWatchService;
 import js7.data.cluster.ClusterEvent;
 import js7.data.cluster.ClusterWatchId;
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem;
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem;
 import js7.data.cluster.Confirmer;
 import js7.data.node.NodeId;
 import js7.data_for_java.auth.JAdmission;
@@ -18,7 +19,6 @@ import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -34,10 +34,10 @@ final class JProxyWithClusterWatchTester
             JControllerApi controllerApi = context
                 .newControllerApi(admissions, httpsConfig);
 
-            JStandardEventBus<ClusterNodeLossNotConfirmedProblem> eventBus =
-                new JStandardEventBus<>(new StandardEventBus<>(ClusterNodeLossNotConfirmedProblem.class));
+            var eventBus =
+                new JStandardEventBus<>(new StandardEventBus<>(ClusterNodeLostEventNotConfirmedProblem.class));
             eventBus.subscribe(
-                asList(ClusterNodeLossNotConfirmedProblem.class),
+                List.of(ClusterNodeLossNotConfirmedProblem.class),
                 problem -> logger.info("Event received: " + problem));
             ClusterWatchService clusterWatchService =
                 controllerApi

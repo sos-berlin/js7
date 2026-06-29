@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
-import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent}
 import js7.data.node.NodeId
 import scala.collection.immutable.Map.{Map2, Map3}
 import scala.concurrent.duration.FiniteDuration
@@ -54,18 +54,46 @@ object ClusterWatchProblems:
     ClusterPassiveLostWhileFailedOverTestingProblem.type
   case object ClusterPassiveLostWhileFailedOverTestingProblem extends Problem.ArgumentlessCoded
 
-  /** User's confirmation a lost Cluster node is missing. */
+
+  /** Problem is issued when an external "manual" confirmation of a ClusterNodeLostEvent
+    * is required. */
+  sealed trait ClusterNodeLostEventNotConfirmedProblem extends Problem.Coded:
+    def fromNodeId: NodeId
+    def event: ClusterNodeLostEvent
+
+
+  object ClusterNodeLostEventNotConfirmedProblem:
+    implicit val jsonCodec: Codec.AsObject[ClusterNodeLostEventNotConfirmedProblem] =
+      TypedJsonCodec[ClusterNodeLostEventNotConfirmedProblem](
+        Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]),
+        Subtype(deriveCodec[ClusterFailoverNotConfirmedProblem]))
+
+
+  /** User's confirmation that the Cluster node is lost and dead, is missing. */
   final case class ClusterNodeLossNotConfirmedProblem(
     fromNodeId: NodeId,
     event: ClusterNodeLostEvent)
-  extends Problem.Coded:
+  extends Problem.Coded, ClusterNodeLostEventNotConfirmedProblem:
     def arguments: Map[String, String] = Map2(
       "fromNodeId", fromNodeId.toString,
       "event", event.toString)
+
   object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion:
     implicit val jsonCodec: Codec.AsObject[ClusterNodeLossNotConfirmedProblem] =
       TypedJsonCodec[ClusterNodeLossNotConfirmedProblem](
         Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]))
+
+
+  /** External (user's) confirmation of a ClusterFailedOver event is missing. */
+  final case class ClusterFailoverNotConfirmedProblem(
+    fromNodeId: NodeId,
+    event: ClusterFailedOver)
+  extends Problem.Coded, ClusterNodeLostEventNotConfirmedProblem:
+    def arguments: Map[String, String] = Map2(
+      "fromNodeId", fromNodeId.toString,
+      "event", event.toString)
+
+  case object ClusterFailoverNotConfirmedProblem extends Problem.Coded.Companion
 
 
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId, info: String)

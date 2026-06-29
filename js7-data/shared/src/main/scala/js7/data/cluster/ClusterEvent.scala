@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
@@ -51,6 +52,9 @@ object ClusterEvent:
     override def toString =
       s"ClusterFailedOver(${failedActiveId.string} --> ${activatedId.string}, $failedAt)"
 
+  object ClusterFailedOver:
+    given Codec.AsObject[ClusterFailedOver] = deriveCodec
+
 
   final case class ClusterPassiveLost(id: Id)
   extends ClusterNodeLostEvent:
@@ -83,7 +87,7 @@ object ClusterEvent:
     Subtype(deriveCodec[ClusterCouplingPrepared]),
     Subtype(deriveCodec[ClusterCoupled]),
     Subtype(deriveCodec[ClusterSwitchedOver]),
-    Subtype(deriveCodec[ClusterFailedOver]),
+    Subtype[ClusterFailedOver],
     Subtype(deriveCodec[ClusterPassiveLost]),
     Subtype(ClusterActiveNodeShutDown),
     Subtype(ClusterActiveNodeRestarted),

@@ -29,7 +29,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.InventoryItem
@@ -201,7 +201,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       if suppressClusterWatch then
         body(primary, backup, setting)
       else
-        withOptionalClusterWatchService():
+        withClusterWatchService(clusterWatchId): (_, _) =>
           body(primary, backup, setting.copy(
             clusterWatchId = Some(clusterWatchId)))
     }
@@ -215,15 +215,9 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
         backupController.eventWatch.await[ClusterCoupled]()
         body(primaryController, backupController)
 
-  protected final def withOptionalClusterWatchService[A](
-    clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
-    (body: => A)
-  : A =
-    withClusterWatchService(clusterWatchId)((_, _) => body)
-
   protected final def withClusterWatchService[A](
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
-    (body: (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem]) => A)
+    (body: (ClusterWatchService, StandardEventBus[ClusterNodeLostEventNotConfirmedProblem]) => A)
   : A =
     OurIORuntime
       .resource[SyncIO](
@@ -237,16 +231,16 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
-  : ResourceIO[(ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
+  : ResourceIO[(ClusterWatchService, StandardEventBus[ClusterNodeLostEventNotConfirmedProblem])] =
     for
       eventbus <- Resource.fromAutoCloseable(IO:
-        new StandardEventBus[ClusterNodeLossNotConfirmedProblem])
+        new StandardEventBus[ClusterNodeLostEventNotConfirmedProblem])
       clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
         clusterWatchId,
         controllerAdmissions,
         HttpsConfig.empty,
         clusterWatchConfig,
-        onUndecidableClusterNodeLoss =
+        onNodeLossEventConfirmRequired =
           case Some(prblm) => IO(eventbus.publish(prblm))
           case None => IO.unit)
     yield (clusterWatch, eventbus)

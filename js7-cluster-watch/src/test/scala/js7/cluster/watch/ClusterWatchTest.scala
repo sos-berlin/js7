@@ -3,6 +3,7 @@ package js7.cluster.watch
 import cats.effect.IO
 import cats.effect.testkit.TestControl
 import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.CatsEffectExtensions.orThrow
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
@@ -12,9 +13,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.Confirmed
 import js7.common.message.ProblemCodeMessages
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
-import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterFailoverNotConfirmedProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, Confirmer}
 import js7.data.event.{EventId, JournalPosition}
@@ -42,8 +43,12 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
   private val failedAt = JournalPosition(EventId(0), 0)
 
   "ClusterWatch" - {
-    def newClusterWatch(initialState: Option[HasNodes] = None): IO[ClusterWatch] =
-      given watch: ClusterWatch = new ClusterWatch
+    def newClusterWatch(
+      initialState: Option[HasNodes] = None,
+      requireFailoverConfirmation: Boolean = false)
+    : IO[ClusterWatch] =
+      given watch: ClusterWatch =
+        ClusterWatch(requireFailoverConfirmation = requireFailoverConfirmation)
       for
         _ <- initialState.fold(IO.unit): clusterState =>
           heartbeat(clusterState.activeId, clusterState).map(_.orThrow)
@@ -200,15 +205,39 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     "FailedOver after heartbeat loss" in:
       val clusterState = Coupled(setting)
       TestControl.executeEmbed:
+        val event = ClusterFailedOver(aId, bId, failedAt)
         newClusterWatch(Some(clusterState)).flatMap { implicit watch =>
           for
             _ <- IO.sleep(timing.clusterWatchHeartbeatValidDuration)
-            event = ClusterFailedOver(aId, bId, failedAt)
             clusterWatch2 = clusterState.applyEvent(event).orThrow.asInstanceOf[FailedOver]
             confirmed <- watch.processRequest(
               ClusterWatchCheckEvent(RequestId(123), correlId, bId, event, clusterWatch2))
           yield
             assert(confirmed == Right(Confirmed()))
+            assert(watch.isActive(bId).orThrow)
+        }
+
+    "FailedOver while external confirmation is required" in:
+      val clusterState = Coupled(setting)
+      TestControl.executeEmbed:
+        newClusterWatch(
+          Some(clusterState),
+          requireFailoverConfirmation = true
+        ).flatMap { implicit watch =>
+          val event = ClusterFailedOver(aId, bId, failedAt)
+          for
+            _ <- IO.sleep(timing.clusterWatchHeartbeatValidDuration)
+            clusterWatch2 = clusterState.applyEvent(event).orThrow.asInstanceOf[FailedOver]
+            confirmed <- watch.processRequest(
+              ClusterWatchCheckEvent(RequestId(123), correlId, bId, event, clusterWatch2))
+            _ = assert(confirmed == Left(ClusterFailoverNotConfirmedProblem(fromNodeId = bId, event)))
+            _ <- IO.sleep(timing.clusterWatchHeartbeatValidDuration * 1000) // no timeout here
+            _ <- watch.manuallyConfirmNodeLoss(lostNodeId = aId, confirmer = Confirmer("CONFIRMER"))
+              .orThrow
+            confirmed <- watch.processRequest(
+              ClusterWatchCheckEvent(RequestId(124), correlId, bId, event, clusterWatch2))
+          yield
+            assert(confirmed == Right(Confirmed(Some(Confirmer("CONFIRMER")))))
             assert(watch.isActive(bId).orThrow)
         }
 
@@ -305,7 +334,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
   "ClusterPassiveLost when ClusterWatch is still untaught requires manual confirmation" in:
     val eventBus = new ClusterWatchEventBus
     val watch = new ClusterWatch(
-      onUndecidableClusterNodeLoss =
+      onNodeLossEventConfirmRequired =
         case Some(problem) => IO(eventBus.publish(problem))
         case None => IO.unit)
     val passiveLost = PassiveLost(setting)
@@ -398,28 +427,22 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
     assert(watch.clusterState() == Right(failedOver))
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == None)
 
-  "requireManualNodeLossConfirmation" - {
-    "ClusterPassiveLost" in:
-      import setting.{activeId, passiveId}
-      checkRequireNodeLossConfirm(
-        from = activeId,
-        ClusterPassiveLost(passiveId))
-
+  "requireFailoverConfirmation" - {
     "ClusterFailedOver" in:
       import setting.{activeId, passiveId}
-      checkRequireNodeLossConfirm(
+      checkRequireFailoverConfirmation(
         from = passiveId,
         ClusterFailedOver(activeId, activatedId = passiveId, failedAt))
 
-    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterNodeLostEvent): IO[Assertion] =
+    def checkRequireFailoverConfirmation(from: NodeId, event: ClusterFailedOver): IO[Assertion] =
       val coupled = Coupled(setting)
       import coupled.{activeId, passiveId}
       import event.lostNodeId
 
       TestControl.executeEmbed:
         given watch: ClusterWatch = new ClusterWatch(
-          alwaysRequireFailoverConfirmation = true,
-          onUndecidableClusterNodeLoss = _ => IO.unit)
+          requireFailoverConfirmation = true,
+          onNodeLossEventConfirmRequired = _ => IO.unit)
 
         for
           // Initialize ClusterWatch
@@ -450,7 +473,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
           // Event is rejected because Node loss has not yet been confirmed
           response <- watch.processRequest:
             ClusterWatchAskNodeLoss(RequestId(123), correlId, from, event, expectedClusterState, 1.s)
-          _ = assert(response == Left(ClusterNodeLossNotConfirmedProblem(from, event)))
+          _ = assert(response == Left(ClusterFailoverNotConfirmedProblem(from, event)))
           _ = assert(watch.clusterState() == Right(coupled))
 
           // Try to confirm a loss of the not lost Node

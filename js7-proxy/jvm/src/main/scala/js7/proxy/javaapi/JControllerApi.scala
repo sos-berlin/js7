@@ -21,7 +21,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
@@ -364,14 +364,14 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
+    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     runIO:
-      startClusterWatch_(clusterWatchId, onUndecidableClusterNodeLoss)
+      startClusterWatch_(clusterWatchId, onNodeLossEventConfirmRequired)
 
   private def startClusterWatch_(
     clusterWatchId: ClusterWatchId,
-    onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
+    onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
   : IO[ClusterWatchService] =
     clusterWatchService
       .update:
@@ -379,9 +379,9 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
         case None =>
           ClusterWatchService
             .service(clusterWatchId, asScala.apisResource, config,
-              onUndecidableClusterNodeLoss =
+              onNodeLossEventConfirmRequired =
                 _.foldMap: problem =>
-                  IO(onUndecidableClusterNodeLoss.accept(problem)))
+                  IO(onNodeLossEventConfirmRequired.accept(problem)))
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)

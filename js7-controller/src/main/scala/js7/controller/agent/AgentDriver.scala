@@ -43,7 +43,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired,
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
@@ -437,7 +437,7 @@ extends Service.StoppableByRequest:
         controllerConfiguration.config,
         label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged,
-        onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
+        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired)
     yield
       clusterWatchService
 
@@ -450,14 +450,14 @@ extends Service.StoppableByRequest:
         startAndForgetDirectorDriver
           .unsafeRunAndForget() // ???
 
-  private def onUndecidableClusterNodeLoss(maybeProblem: Option[ClusterNodeLossNotConfirmedProblem])
+  private def onNodeLossEventConfirmRequired(maybeProblem: Option[ClusterNodeLostEventNotConfirmedProblem])
   : IO[Unit] =
     journal.persist:
       _.keyTo(AgentRefState).checked(agentPath)
         .map(_.nodeToLossNotConfirmedProblem)
         .map: nodeToLossNotConfirmedProblem =>
           maybeProblem match
-            case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
+            case Some(problem: ClusterNodeLostEventNotConfirmedProblem) =>
               (!nodeToLossNotConfirmedProblem.get(problem.fromNodeId).contains(problem))
                 .thenList:
                   agentPath <-: AgentClusterWatchConfirmationRequired(problem)
@@ -466,7 +466,7 @@ extends Service.StoppableByRequest:
                 agentPath <-: AgentClusterWatchManuallyConfirmed
     .rightAs(())
     .handleProblem: problem =>
-      logger.error(s"onUndecidableClusterNodeLoss: $problem")
+      logger.error(s"onNodeLossEventConfirmRequired: $problem")
 
   private def activeClientResource: ResourceIO[AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi(

@@ -10,13 +10,13 @@ import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{HasNodes, PassiveLost}
-import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterFailoverNotConfirmedProblem, ClusterWatchActiveStillAliveProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, ClusterWatchNotAskingProblem}
 import js7.data.cluster.{ClusterState, ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchNonCommitRequest, Confirmer}
 
 /** Provide the State type hierarchy: Untaught, Normal, AskingNodeLoss. */
 private transparent trait ClusterWatchStateMixin:
 
-  protected val requireManualNodeLossConfirmation: Boolean
+  protected val requireFailoverConfirmation: Boolean
   protected val label: String
 
   private val logger = Logger.withPrefix[this.type](label)
@@ -46,7 +46,7 @@ private transparent trait ClusterWatchStateMixin:
   protected final case class Normal(
     clusterState: HasNodes,
     lastHeartbeat: SyncDeadline,
-    requireManualNodeLossConfirmation: Boolean)
+    requireFailoverConfirmation: Boolean)
   extends NormalOrUntaught, NormalOrAsking:
 
     def savedNormal: Normal = this
@@ -104,13 +104,12 @@ private transparent trait ClusterWatchStateMixin:
                 case Some(event: ClusterNodeLostEvent) => ifManuallyConfirmed(event)
                 case _ => None
               request.maybeEvent match
-                case Some(event: ClusterNodeLostEvent)
-                  if requireManualNodeLossConfirmation && !confirmer.isDefined =>
-                  Left(ClusterNodeLossNotConfirmedProblem(request.from, event))
+                case Some(event: ClusterFailedOver)
+                  if requireFailoverConfirmation && !confirmer.isDefined =>
+                  Left(ClusterFailoverNotConfirmedProblem(request.from, event))
                 case _ =>
                   if updatedClusterState == request.clusterState then
                     logger.info(s"${request.from} changes ClusterState to ${request.clusterState}")
-                    Right(confirmer)
                   else
                     // The node may have died just between sending the event to
                     // ClusterWatch and persisting it. Then we have a different state.
@@ -118,22 +117,20 @@ private transparent trait ClusterWatchStateMixin:
                     logger.warn(s"${request.from} forced ClusterState to ${request.clusterState} " +
                       s"maybe because the last heartbeat of the sofar active $previouslyActive " +
                       s"is too long ago (${lastHeartbeat.elapsed.pretty})")
-                    Right(confirmer)
-        .onProblem: problem =>
-          logger.warn(s"${request.from}: $problem")
+                  Right(confirmer)
 
     override def toString =
       functionCallToString("Normal",
         clusterState.toShortString.some,
         s"lastHeartbeat=$lastHeartbeat".some,
-        requireManualNodeLossConfirmation ? "requireManualNodeLossConfirmation")
+        requireFailoverConfirmation ? "requireFailoverConfirmation")
 
 
   /** A Cluster node is asking the ClusterWatch about a node loss. */
   protected final case class AskingNodeLoss(
     clusterState: ClusterState.HasNodes,
     lastHeartbeat: SyncDeadline,
-    requireManualNodeLossConfirmation: Boolean,
+    requireFailoverConfirmation: Boolean,
     request: ClusterWatchAskNodeLoss,
     askedClusterState: ClusterState.IsNodeLost,
     holdUntil: SyncDeadline,
@@ -150,11 +147,13 @@ private transparent trait ClusterWatchStateMixin:
     : Checked[Option[Confirmer]] =
       matches(commit).flatMap: _ =>
         logger.info(s"${commit.from} ${commit.event}")
-        if requireManualNodeLossConfirmation && !confirmer.isDefined then
-          Left(ClusterNodeLossNotConfirmedProblem(commit.from, commit.event))
-        else
-          logger.info(s"${request.from} changes ClusterState to ${request.clusterState}")
-          Right(confirmer)
+        commit.event match
+          case event: ClusterFailedOver
+            if requireFailoverConfirmation && !confirmer.isDefined =>
+            Left(ClusterFailoverNotConfirmedProblem(commit.from, event))
+          case _ =>
+            logger.info(s"${request.from} changes ClusterState to ${request.clusterState}")
+            Right(confirmer)
       .onProblem: problem =>
         logger.warn(s"${request.from}: $problem")
 
@@ -172,7 +171,7 @@ private transparent trait ClusterWatchStateMixin:
       functionCallToString("AskingNodeLoss",
         clusterState.toShortString.some,
         s"lastHeartbeat=$lastHeartbeat".some,
-        requireManualNodeLossConfirmation ? "requireManualNodeLossConfirmation",
+        requireFailoverConfirmation ? "requireFailoverConfirmation",
         request.some,
         s"askedClusterState=${askedClusterState.toShortString}".some,
         s"holdUntil=$holdUntil".some,

@@ -32,7 +32,7 @@ import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, HasCloser}
 import js7.base.web.Uri
-import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
+import js7.cluster.watch.ClusterWatch.OnNodeLossEventConfirmRequired
 import js7.cluster.watch.ClusterWatchService
 import js7.common.pekkoutils.Pekkos
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -527,7 +527,7 @@ object DirectoryProvider:
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
-    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
+    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit)
   : ResourceIO[ClusterWatchService] =
     Pekkos
       .actorSystemResource(clusterWatchId.string)
@@ -536,4 +536,4 @@ object DirectoryProvider:
           clusterWatchId,
           admissions.traverse(PekkoHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Config.defaultConfig),
-          onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss))
+          onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired))
