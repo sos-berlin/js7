@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.{Coupled, HasNodes}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchNotAskingProblem, UntaughtClusterWatchProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterNodeLostEventNotConfirmedProblem, ClusterWatchNotAskingProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterWatchAskNodeLoss, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchCommitNodeLoss, ClusterWatchNonCommitRequest, ClusterWatchRequest, Confirmer}
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
@@ -23,8 +23,8 @@ import scala.collection.{View, mutable}
 final class ClusterWatch(
   protected val label: String = "",
   onClusterStateChanged: HasNodes => Unit = _ => (),
-  protected val requireManualNodeLossConfirmation: Boolean = false,
-  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
+  protected val requireFailoverConfirmation: Boolean = false,
+  onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit)
 extends ClusterWatchStateMixin:
 
   private val logger = Logger.withPrefix[this.type](label)
@@ -39,8 +39,8 @@ extends ClusterWatchStateMixin:
       lock.lock:
         IO.pure(request.checked).flatMapT: _ =>
           processRequest2(request)
-            .onProblem: problem =>
-              IO(logger.warn(problem.toString))
+      .onProblem: problem =>
+        IO(logger.warn(problem.toString))
 
   private def processRequest2(request: ClusterWatchRequest): IO[Checked[Confirmed]] =
     import request.{from, clusterState as reportedClusterState}
@@ -74,7 +74,7 @@ extends ClusterWatchStateMixin:
             // checkAndMaybeResetState has handled timeout
             state.processRequest(request, ifManuallyConfirmed(request.event), opString)
     .onProblem:
-      case problem: ClusterNodeLossNotConfirmedProblem =>
+      case problem: ClusterNodeLostEventNotConfirmedProblem =>
         SyncDeadline.usingNow: now ?=>
           _nodeToLossRejected(problem.event.lostNodeId) = LossRejected(problem.event)
           _state match
@@ -83,7 +83,7 @@ extends ClusterWatchStateMixin:
                 _state = state.copy(lastHeartbeat = now)
             case _ =>
         .flatMap: _ =>
-          onUndecidableClusterNodeLoss(Some(problem))
+          onNodeLossEventConfirmRequired(Some(problem))
       case _ => IO.unit
     .flatMapT: maybeManualConfirmer =>
       (request, _state) match
@@ -137,13 +137,13 @@ extends ClusterWatchStateMixin:
       setState(Normal(
         request.clusterState,
         lastHeartbeat = now,
-        requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
+        requireFailoverConfirmation = requireFailoverConfirmation))
       if changed then
         logger.debug(s"_state = $stateString")
         onClusterStateChanged(request.clusterState)
 
       maybeManualConfirmer.foldMap: _ =>
-        onUndecidableClusterNodeLoss(None)
+        onNodeLossEventConfirmRequired(None)
       .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
 
   private def processWatchAskNodeLoss(
@@ -154,7 +154,7 @@ extends ClusterWatchStateMixin:
     SyncDeadline.now.map: now =>
       setState(AskingNodeLoss(
         clusterState = request.clusterState,
-        requireManualNodeLossConfirmation = requireManualNodeLossConfirmation,
+        requireFailoverConfirmation = requireFailoverConfirmation,
         request = request,
         askedClusterState = request.clusterState,
         lastHeartbeat = now,
@@ -186,13 +186,13 @@ extends ClusterWatchStateMixin:
         setState(Normal(
           request.clusterState,
           lastHeartbeat = now,
-          requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
+          requireFailoverConfirmation = requireFailoverConfirmation))
 
         if changed then
           onClusterStateChanged(request.clusterState)
 
         maybeManualConfirmer.foldMap: _ =>
-          onUndecidableClusterNodeLoss(None)
+          onNodeLossEventConfirmRequired(None)
         .as(Right(Confirmed(maybeManualConfirmer)))
 
   private def setState(newState: State): Unit =
@@ -240,7 +240,7 @@ extends ClusterWatchStateMixin:
           matchConfirmationWithRejection(lostNodeId).map: lossRejected =>
             _nodeToLossRejected.clear()
             _nodeToLossRejected(lostNodeId) = lossRejected.copy(
-              manualConfirmer = Some(confirmer))
+              confirmer = Some(confirmer))
 
   private def matchConfirmationWithRejection(lostNodeId: NodeId): Checked[LossRejected] =
     (_nodeToLossRejected.get(lostNodeId), _state.ifNormal.map(_.clusterState)) match
@@ -260,9 +260,7 @@ extends ClusterWatchStateMixin:
   @TestOnly
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     // Not guarded by lock
-    _nodeToLossRejected.get(lostNodeId)
-      //?.filterNot(_.manualConfirmer.isDefined)
-      .map(_.event)
+    _nodeToLossRejected.get(lostNodeId).map(_.event)
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Checked[Boolean] =
@@ -291,18 +289,16 @@ end ClusterWatch
 
 
 object ClusterWatch:
-  type OnUndecidableClusterNodeLoss = Option[ClusterNodeLossNotConfirmedProblem] => IO[Unit]
+  type OnNodeLossEventConfirmRequired = Option[ClusterNodeLostEventNotConfirmedProblem] => IO[Unit]
 
   /** ClusterNodeLossEvent has been rejected, but the user may confirm it later. */
-  private case class LossRejected(
-    event: ClusterNodeLostEvent,
-    manualConfirmer: Option[Confirmer] = None):
+  private case class LossRejected(event: ClusterNodeLostEvent, confirmer: Option[Confirmer] = None):
 
     def manuallyConfirmed(event: ClusterNodeLostEvent): Option[Confirmer] =
-      manualConfirmer.filter(_ => event == this.event)
+      confirmer.filter(_ => event == this.event)
 
     override def toString =
-      s"LossRejected(${event.toShortString}, confirmer=${manualConfirmer.getOrElse("none")})"
+      s"LossRejected(${event.toShortString}, confirmer=${confirmer.getOrElse("none")})"
 
 
   private[watch] final case class Confirmed(manualConfirmer: Option[Confirmer] = None)

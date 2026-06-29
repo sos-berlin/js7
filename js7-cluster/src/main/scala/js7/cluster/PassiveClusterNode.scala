@@ -47,7 +47,7 @@ import js7.data.Problems.PassiveClusterNodeResetProblem
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
-import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterFailoverNotConfirmedProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatFs2Chunk}
 import js7.data.event.JournalSeparators.EndOfJournalFileMarkerJson
@@ -502,7 +502,10 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
                     case Left(problem) =>
                       if problem.is(ClusterFailOverWhilePassiveLostProblem)
                         || problem.is(UntaughtClusterWatchProblem)
-                        || problem.is(NoClusterWatchProblem) then
+                        || problem.is(NoClusterWatchProblem)
+                        //why not? || problem.is(ClusterNodeLossNotConfirmedProblem)
+                        || problem.is(ClusterFailoverNotConfirmedProblem)
+                      then
                         logger.info(s"No failover because ClusterWatch responded: $problem")
                         Stream.empty   // Ignore
                       else

@@ -1,5 +1,6 @@
 package js7.base.time
 
+import cats.syntax.show.*
 import io.circe.generic.semiauto.deriveCodec
 import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneOffset}
 import js7.base.circeutils.CirceUtils.*
@@ -7,6 +8,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AdmissionPeriod.*
+import js7.base.time.Problems.PeriodCrossesProductionDayBoundaryProblem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.ordinalToString
@@ -18,12 +20,23 @@ import scala.concurrent.duration.*
 sealed trait AdmissionPeriod:
   def pretty: String
 
-  override def toString = s"${getClass.simpleScalaName}($pretty)"
+  protected def prettyRaw: String =
+    pretty
+
+  protected def checked: Checked[this.type]
+
+  final def check(dateOffset: FiniteDuration): Seq[PeriodCrossesProductionDayBoundaryProblem] =
+    checked.fold(_.toOption.toList, _ => checkAgainstDateOffset(dateOffset))
+
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem]
+
+  override def toString = s"${getClass.simpleScalaName}($prettyRaw)"
 
 
 final case class DailyPeriod private(secondOfDay: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
-  def checked: Checked[DailyPeriod] =
+  def checked: Checked[this.type] =
     if secondOfDay < 0 || secondOfDay >= DaySeconds then
       Left(Problem(s"Invalid daytime number: $toString"))
     else if !duration.isPositive then
@@ -31,8 +44,21 @@ extends AdmissionPeriod:
     else
       Right(this)
 
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    val begin = secondOfDay.s
+    if begin < dateOffset && begin + duration > dateOffset
+      || begin + duration > OneDay && begin + duration - OneDay > dateOffset
+    then
+      PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
+    else
+      Nil
+
   def pretty: String =
-    "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
+    "daily at " + prettyRaw
+
+  override protected def prettyRaw: String =
+    secondsOfDayToString(secondOfDay) + ", " + duration.show
 
 object DailyPeriod:
   val always: DailyPeriod = new DailyPeriod(0, 24.h).checked.orThrow
@@ -63,8 +89,18 @@ extends AdmissionPeriod:
     else
       Right(this)
 
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    val begin = secondOfWeek.s
+    if begin < dateOffset && begin + duration > dateOffset
+      || begin + duration > OneWeek && begin + duration - OneWeek > dateOffset
+    then
+      PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
+    else
+      Nil
+
   private[time] def dayName: String =
-    WeekdaysNames.checked(dayOfWeek) getOrElse "?"
+    WeekdaysNames.getOrElse(dayOfWeek)("?")
 
   def dayOfWeek: Int =
     secondOfWeek / DaySeconds
@@ -73,7 +109,10 @@ extends AdmissionPeriod:
     secondOfWeek % DaySeconds
 
   def pretty: String =
-    "weekly at " + dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
+    "weekly at " + prettyRaw
+
+  override protected def prettyRaw: String =
+    dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 
 object WeekdayPeriod:
   @TestOnly
@@ -89,6 +128,8 @@ object WeekdayPeriod:
 
 final case class MonthlyDatePeriod private(secondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
+  import MonthlyDatePeriod.*
+
   def checked: Checked[this.type] =
     if secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds then
       Left(Problem(s"Invalid time in a month: $toString"))
@@ -96,6 +137,16 @@ extends AdmissionPeriod:
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
+
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    val begin = secondOfMonth.s
+    if begin < dateOffset && begin + duration > dateOffset
+      || begin + duration > MonthMax && begin + duration - MonthMax > dateOffset
+    then
+      PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
+    else
+      Nil
 
   private def dayOfMonth = secondOfMonth / DaySeconds + 1
 
@@ -108,6 +159,8 @@ extends AdmissionPeriod:
       duration.pretty
 
 object MonthlyDatePeriod:
+  private val MonthMax = 31 * OneDay
+
   @TestOnly
   def apply(secondOfMonth: Int, duration: FiniteDuration): MonthlyDatePeriod =
     new MonthlyDatePeriod(secondOfMonth, duration)
@@ -123,13 +176,32 @@ object MonthlyDatePeriod:
  * @param lastSecondOfMonth for example, -3600 for the last day at 23:00. */
 final case class MonthlyLastDatePeriod private(lastSecondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
+  import MonthlyLastDatePeriod.*
+
   def checked: Checked[this.type] =
-    if lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0 then
+    if lastSecondOfMonth < LowestSeconds || lastSecondOfMonth >= 0 then
       Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
     else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
+
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    val begin = lastSecondOfMonth.s
+    if begin < dateOffset && begin + duration > dateOffset
+      || begin + duration > ZeroDuration && begin + duration > dateOffset
+    then
+      PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
+    else
+      Nil
+    //val begin = lastSecondOfMonth.s - OneDay - Lowest
+    //if begin < dateOffset && begin + duration > dateOffset
+    //  || begin + duration > ZeroDuration && begin + duration > dateOffset
+    //then
+    //  PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
+    //else
+    //  Nil
 
   private def lastDayOfMonth = -lastSecondOfMonth / DaySeconds + 1
 
@@ -145,6 +217,8 @@ extends AdmissionPeriod:
       duration.pretty
 
 object MonthlyLastDatePeriod:
+  private[time] val LowestSeconds = -28 * DaySeconds
+  private[time] val Lowest = LowestSeconds.seconds.toCoarsest
   @TestOnly
   def apply(lastSecondOfMonth: Int, duration: FiniteDuration): MonthlyLastDatePeriod =
     new MonthlyLastDatePeriod(lastSecondOfMonth, duration)
@@ -158,7 +232,7 @@ object MonthlyLastDatePeriod:
 
 
 /** Monthly admission at specific weekdays.
- * @param secondOfWeeks may be > 7*24*3600. */
+ * @param secondOfWeeks may be > 7 * 24 * 3600. */
 final case class MonthlyWeekdayPeriod private(secondOfWeeks: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
@@ -168,6 +242,10 @@ extends AdmissionPeriod:
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
+
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    Nil // TODO
 
   def shiftWeeks: Int =
     secondOfWeeks / WeekSeconds
@@ -180,7 +258,7 @@ extends AdmissionPeriod:
 
   def pretty: String =
     ordinalToString(shiftWeeks + 1) + " " +
-      WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
+      WeekdaysNames.getOrElse(dayOfWeek)("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
 
@@ -200,7 +278,7 @@ object MonthlyWeekdayPeriod:
 
 
 /** Monthly admission at specific last weekdays.
- * @param secondOfWeeks may be > 7*24*3600. */
+  * @param secondOfWeeks may be > 7 * 24 * 3600. */
 final case class MonthlyLastWeekdayPeriod private(secondOfWeeks: Int, duration: FiniteDuration)
 extends AdmissionPeriod:
   def checked: Checked[this.type] =
@@ -210,6 +288,10 @@ extends AdmissionPeriod:
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
+
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    Nil // No check possible?
 
   /** 0: last week. */
   private[time] def shiftWeeks = (secondOfWeeks + 1) / WeekSeconds
@@ -227,7 +309,7 @@ extends AdmissionPeriod:
       case 0 => "last "
       case n => ordinalToString(-n+1) + " last "
     ) +
-      WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
+      WeekdaysNames.getOrElse(dayOfWeek)("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
 
@@ -261,6 +343,10 @@ extends AdmissionPeriod:
     else
       Right(this)
 
+  protected def checkAgainstDateOffset(dateOffset: FiniteDuration)
+  : List[PeriodCrossesProductionDayBoundaryProblem] =
+    Nil // No check possible?
+
   override def pretty: String =
     val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
     s"$ts, ${duration.pretty}"
@@ -281,9 +367,11 @@ object SpecificDatePeriod:
 
 
 object AdmissionPeriod:
-  private[time] val DaySeconds = 24 * 3600
+  private[time] inline val DaySeconds = 24 * 3600
+  private[time] val OneDay = 1.day
   private[time] val DayDuration = Duration(1, DAYS)
-  private[time] val WeekSeconds = 7 * DaySeconds
+  private[time] inline val WeekSeconds = 7 * DaySeconds
+  private[time] val OneWeek = 7.days
   private[time] val WeekDuration = Duration(7, DAYS)
   private[time] val WeekdaysNames =
     Vector("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")

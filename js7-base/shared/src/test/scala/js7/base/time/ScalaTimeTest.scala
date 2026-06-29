@@ -90,6 +90,13 @@ final class ScalaTimeTest extends OurTestSuite:
       (10.s / BigDecimal("2.5")).toMillis shouldEqual 4000
       (10.s / 2.5).toMillis shouldEqual 4000
 
+    "FiniteDuration % FiniteDuration" in:
+      (0.s % 2500.ms) shouldEqual 0.s
+      (2500.ms % 2500.ms) shouldEqual 0.s
+      (7.s % 2500.ms) shouldEqual 2.s
+      (7345.ms % 2500.ms) shouldEqual 2345.ms
+      (-7345.ms % 2500.ms) shouldEqual -2345.ms //?
+
     "Int * Duration" in:
       (3 * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
 

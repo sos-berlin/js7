@@ -21,8 +21,8 @@ import js7.base.utils.CatsUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
-import js7.data.cluster.ClusterWatchId
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
+import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -414,10 +414,15 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
+    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     runIO:
-      asScala.startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss.accept, config)
+      asScala.startClusterWatch(
+        clusterWatchId,
+        onNodeLossEventConfirmRequired =
+          problem =>
+            IO(onNodeLossEventConfirmRequired.accept(problem)),
+        config)
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
@@ -425,7 +430,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       asScala.stopClusterWatch.as(Void)
 
   @javaApi
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: Confirmer)
   : CompletableFuture[VEither[Problem, Void]] =
     runIO:
       asScala.manuallyConfirmNodeLoss(lostNodeId, confirmer)

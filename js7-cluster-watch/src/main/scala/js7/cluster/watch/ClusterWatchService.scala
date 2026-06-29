@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichThrowable}
 import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
-import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
+import js7.cluster.watch.ClusterWatch.{Confirmed, OnNodeLossEventConfirmRequired}
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.PekkoHttpClient
@@ -39,7 +39,8 @@ final class ClusterWatchService private(
   keepAlive: FiniteDuration,
   retryDelays: NonEmptyList[FiniteDuration],
   onClusterStateChanged: HasNodes => Unit,
-  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
+  requireFailoverConfirmation: Boolean,
+  onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired)
 extends
   MainService, Service.StoppableByCancel:
 
@@ -49,7 +50,8 @@ extends
   val clusterWatch = ClusterWatch(
     label = label,
     onClusterStateChanged = onClusterStateChanged,
-    onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
+    requireFailoverConfirmation = requireFailoverConfirmation,
+    onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired)
   val clusterWatchRunId: ClusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
@@ -154,7 +156,7 @@ object ClusterWatchService:
     config: Config,
     label: String = "",
     onClusterStateChanged: HasNodes => Unit = _ => (),
-    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
+    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit)
   : ResourceIO[ClusterWatchService] =
     for
       nodeApis <- apisResource
@@ -169,6 +171,8 @@ object ClusterWatchService:
             retryDelays =
               config_.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
             onClusterStateChanged,
-            onUndecidableClusterNodeLoss)
+            requireFailoverConfirmation =
+              config.getBoolean("js7.journal.cluster.watch.always-require-failover-confirmation"),
+            onNodeLossEventConfirmRequired)
     yield
       service

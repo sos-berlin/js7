@@ -200,7 +200,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite:
         assert(calculator.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-10-01")))
 
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 0.s) ==
-          Left(Problem("Duration must be positive: DailyPeriod(daily at 12:00, 0s)")))
+          Left(Problem("Duration must be positive: DailyPeriod(12:00, 0s)")))
 
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 1.ms).isRight)
         assert(DailyPeriod.checked(LocalTime.parse("12:00"), 24.h).isRight)
@@ -416,6 +416,14 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite:
           assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-28")))
           assert(calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-29")))
           assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-30")))
+
+        "28th day before end of month" in:
+          val calc = AdmissionPeriodCalculator(
+            MonthlyLastDatePeriod(-28, LocalTime.parse("10:00:00"), 1.h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-03"))) // -29th
+          assert(calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-04")))  // -28th
+          assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2021-03-05"))) // -27th
       }
   }
 

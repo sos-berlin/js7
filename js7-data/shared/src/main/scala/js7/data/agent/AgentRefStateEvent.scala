@@ -6,7 +6,7 @@ import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.data.cluster.ClusterEvent
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventsObservedEvent, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.platform.PlatformInfo
@@ -72,7 +72,7 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
 
   /** Untaught ClusterWatch was unable to confirm a ClusterNodeLostEvent. */
   final case class AgentClusterWatchConfirmationRequired(
-    problem: ClusterNodeLossNotConfirmedProblem)
+    problem: ClusterNodeLostEventNotConfirmedProblem)
   extends AgentRefStateEvent
 
   type AgentClusterWatchManuallyConfirmed = AgentClusterWatchManuallyConfirmed.type

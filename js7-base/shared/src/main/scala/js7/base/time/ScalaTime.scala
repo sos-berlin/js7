@@ -295,6 +295,9 @@ object ScalaTime:
     def *(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds * o)
     def /(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds / o)
 
+    def %(o: FiniteDuration): FiniteDuration =
+      (duration.toNanos % o.toNanos).ns.toCoarsest
+
     def isZero: Boolean = duration.length == 0
 
     def isPositive: Boolean = duration.length > 0

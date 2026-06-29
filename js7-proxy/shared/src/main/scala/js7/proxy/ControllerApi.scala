@@ -29,7 +29,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.controller.client.HttpControllerApi
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterState, ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ClusterAppointNodes, ReleaseEvents}
@@ -197,16 +197,16 @@ extends ControllerApiWithHttp:
 
   def clusterWatchResource(
     clusterWatchId: ClusterWatchId,
-    onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
+    onNodeLossEventConfirmRequired: ClusterNodeLostEventNotConfirmedProblem => Unit = _ => (),
     config: Config)
   : ResourceIO[ClusterWatchService] =
     Resource.make(
-      acquire = startClusterWatch(clusterWatchId, onUndecidableClusterNodeLoss, config))(
+      acquire = startClusterWatch(clusterWatchId, onNodeLossEventConfirmRequired, config))(
       release = _ => stopClusterWatch)
 
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
-    onUndecidableClusterNodeLoss: ClusterNodeLossNotConfirmedProblem => Unit = _ => (),
+    onNodeLossEventConfirmRequired: ClusterNodeLostEventNotConfirmedProblem => Unit = _ => (),
     config: Config)
   : IO[ClusterWatchService] =
     clusterWatchService
@@ -215,9 +215,9 @@ extends ControllerApiWithHttp:
         case None =>
           ClusterWatchService
             .service(clusterWatchId, apisResource, config,
-              onUndecidableClusterNodeLoss =
+              onNodeLossEventConfirmRequired =
                 _.foldMap: problem =>
-                  IO(onUndecidableClusterNodeLoss(problem)))
+                  IO(onNodeLossEventConfirmRequired(problem)))
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)
@@ -227,13 +227,13 @@ extends ControllerApiWithHttp:
       .update(_.fold(IO.none)(_.release.as(None)))
       .void
 
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: Confirmer): IO[Checked[Unit]] =
     clusterWatchService.value
       .flatMap:
         case None =>
           IO.left(Problem("No ClusterWatchService"))
         case Some(allo) =>
-          allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer))
+          allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
 
   /** When active, the Engine's Prometheus metrics will be queried.
     *

@@ -10,7 +10,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown, AgentStarted}
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
-import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
@@ -29,7 +29,7 @@ final case class AgentRefState(
   eventId: EventId,
   problem: Option[Problem],
   clusterState: ClusterState,
-  nodeToLossNotConfirmedProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
+  nodeToLossNotConfirmedProblem: Map[NodeId, ClusterNodeLostEventNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
 extends
   UnsignedSimpleItemState with EventDriven[AgentRefState, AgentRefStateEvent]:
@@ -183,7 +183,7 @@ with EventDriven.Companion[AgentRefState, AgentRefStateEvent]:
       problem <- c.get[Option[Problem]]("problem")
       clusterState <- c.getOrElse[ClusterState]("clusterState")(ClusterState.Empty)
       clusterNodeProblems <-
-        c.getOrElse[Seq[ClusterNodeLossNotConfirmedProblem]]("clusterNodeProblems")(Nil)
+        c.getOrElse[Seq[ClusterNodeLostEventNotConfirmedProblem]]("clusterNodeProblems")(Nil)
           .map(_.toKeyedMap(_.fromNodeId))
       platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
     yield

@@ -7,9 +7,13 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.data.execution.workflow.instructions.ScheduleCalculator
 import js7.data_for_java.vavr.Standards.VEither
 import js7.data_for_java.vavr.VavrConverters.RichVavrOption
+import scala.jdk.CollectionConverters.*
 
 final case class JScheduleCalculator(asScala: ScheduleCalculator)
-extends JScheduleSimulator
+extends JScheduleSimulator:
+
+  def check: java.util.List[Problem] =
+    asScala.check.asJava
 
 
 object JScheduleCalculator:

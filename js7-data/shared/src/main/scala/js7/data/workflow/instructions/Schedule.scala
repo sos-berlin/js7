@@ -7,6 +7,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AdmissionTimeScheme
+import js7.base.time.Problems.PeriodCrossesProductionDayBoundaryProblem
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -14,8 +15,14 @@ import js7.data.workflow.instructions.Schedule.Scheme
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final case class Schedule(schemes: Seq[Scheme])
+final case class Schedule(schemes: Seq[Scheme]):
 
+  def check(dateOffset: FiniteDuration): Seq[PeriodCrossesProductionDayBoundaryProblem] =
+    for
+      scheme <- schemes
+      problems <- scheme.admissionTimeScheme.check(dateOffset = dateOffset)
+    yield
+      problems
 
 object Schedule:
 
@@ -32,7 +39,9 @@ object Schedule:
       Ticking(interval))))
 
 
-  final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat)
+  final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat):
+    def check(dateOffset: FiniteDuration): Seq[PeriodCrossesProductionDayBoundaryProblem] =
+      admissionTimeScheme.check(dateOffset = dateOffset)
 
   object Scheme:
     given Codec.AsObject[Scheme] = deriveCodec[Scheme]

@@ -222,7 +222,7 @@ extends Service.Trivial:
         val confirmation = toConfirmation(confirm)
         (requested.request.maybeEvent, confirmation).match
           case (Some(_: ClusterPassiveLost), Left(problem))
-            if problem is ClusterNodeLossNotConfirmedProblem =>
+            if problem.is(ClusterNodeLossNotConfirmedProblem) =>
             IO:
               // Ignore this, because ActiveClusterNode cannot handle this.
               // Continue to wait until user has confirmed the ClusterPassiveLost via ClusterWatch.

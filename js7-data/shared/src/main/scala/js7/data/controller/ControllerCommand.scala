@@ -343,6 +343,15 @@ object ControllerCommand extends CommonCommand.Companion:
   extends ControllerCommand:
     type Response = Response.Accepted
 
+  /** Confirm that a ClusterNodeLostEvent is okay.
+    *
+    * Dependend on the ClusterNodeLostEventNotConfirmedProblem:
+    * <ul>
+    * <li>ClusterNodeLossNotConfirmedProblem: Confirms that the named node is really lost and dead.
+    * <li>ClusterFailoverNotConfirmedProblem: Confirms a failover if
+    *       requireFailoverConfirmation is set.
+    * </ul>
+    * ClusterNodeLostEventNotConfirmedProblem */
   final case class ConfirmClusterNodeLoss(
     agentPath: AgentPath,
     lostNodeId: NodeId,
