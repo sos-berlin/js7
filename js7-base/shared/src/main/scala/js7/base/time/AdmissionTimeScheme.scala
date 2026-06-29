@@ -4,11 +4,19 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.time.LocalTime
+import js7.base.time.Problems.PeriodCrossesProductionDayBoundaryProblem
 import js7.base.time.SchemeRestriction.Unrestricted
 import scala.annotation.targetName
 import scala.concurrent.duration.FiniteDuration
 
-final case class AdmissionTimeScheme(restrictedSchemes: Seq[RestrictedScheme])
+final case class AdmissionTimeScheme(restrictedSchemes: Seq[RestrictedScheme]):
+
+  def check(dateOffset: FiniteDuration): Seq[PeriodCrossesProductionDayBoundaryProblem] =
+    for
+      restrictedScheme <- restrictedSchemes
+      problems <- restrictedScheme.check(dateOffset = dateOffset)
+    yield
+      problems
 
 
 object AdmissionTimeScheme:

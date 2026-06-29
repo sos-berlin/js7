@@ -10,15 +10,25 @@ import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.ScalaJsonCodecs.BitSetCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Problems.PeriodCrossesProductionDayBoundaryProblem
 import js7.base.time.ScalaTime.*
 import js7.base.time.SchemeRestriction.MonthRestriction.MonthNames
 import js7.base.time.SchemeRestriction.Unrestricted
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.immutable.BitSet
+import scala.concurrent.duration.FiniteDuration
 
 final case class RestrictedScheme(
   periods: Seq[AdmissionPeriod],
-  restriction: SchemeRestriction = Unrestricted)
+  restriction: SchemeRestriction = Unrestricted):
+
+  def check(dateOffset: FiniteDuration): Seq[PeriodCrossesProductionDayBoundaryProblem] =
+    for
+      period <- periods
+      problems <- period.check(dateOffset = dateOffset)
+    yield
+      problems
+
 
 object RestrictedScheme:
   given Encoder.AsObject[RestrictedScheme] =

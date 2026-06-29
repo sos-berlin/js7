@@ -25,6 +25,8 @@ final class JScheduleSimulatorTester
                 ZoneId.of("UTC"),
                 Duration.ZERO/*dateOffset, the shift of the businessday*/));
 
+        assert calculator.check().isEmpty();
+
         Stream<JScheduleSimulator.Scheduled> result = calculator.simulate(
             JTimeInterval.of(
                 Instant.parse("2021-10-04T00:00:00Z"),

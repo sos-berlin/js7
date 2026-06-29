@@ -5,6 +5,7 @@ import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
+import js7.base.time.Problems.PeriodCrossesProductionDayBoundaryProblem
 import js7.base.time.ScalaTime.*
 import js7.base.time.{JavaTimestamp, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -20,6 +21,9 @@ final class ScheduleCalculator private(
 extends ScheduleSimulator:
 
   private given ZoneId = zone
+
+  def check: Seq[PeriodCrossesProductionDayBoundaryProblem] =
+    schedule.check(dateOffset)
 
   /** Call this when cycling starts and after a cycle has finished.
     * @return The next CycleState or None when cycling ends

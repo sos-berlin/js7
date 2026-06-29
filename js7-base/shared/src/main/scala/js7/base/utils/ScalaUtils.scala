@@ -566,6 +566,12 @@ object ScalaUtils:
         catch case _: IndexOutOfBoundsException =>
           None
 
+      def getOrElse[B](i: Int)(default: => B): A | B =
+        try
+          seq(i)
+        catch case _: IndexOutOfBoundsException =>
+          default
+
       def checked(i: Int)(using loc: ScalaSourceLocation): Checked[A] =
         try
           Right(seq(i))
