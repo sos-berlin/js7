@@ -179,7 +179,7 @@ extends AdmissionPeriod:
   import MonthlyLastDatePeriod.*
 
   def checked: Checked[this.type] =
-    if lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0 then
+    if lastSecondOfMonth < LowestSeconds || lastSecondOfMonth >= 0 then
       Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
     else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
