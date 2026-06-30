@@ -27,7 +27,7 @@ import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
@@ -83,7 +83,9 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   sys.props(testAckLossPropertyKey) = "false"
   sys.props(testSimulateInhibitActivationPropertyKey) = "false"
 
-  final def runControllerAndBackup[R](suppressClusterWatch: Boolean = false)
+  final def runControllerAndBackup[R](
+    suppressClusterWatch: Boolean = false,
+    requireFailoverConfirmation: Boolean = false)
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
             DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => R)
   : R =
@@ -96,16 +98,23 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             clusterSetting)
         }
 
-  final def withControllerAndBackup[R](suppressClusterWatch: Boolean = false)
+  final def withControllerAndBackup[R](
+    suppressClusterWatch: Boolean = false,
+    requireFailoverConfirmation: Boolean = false)
     (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => R)
   : R =
-    withControllerAndBackupWithoutAgents(suppressClusterWatch):
+    withControllerAndBackupWithoutAgents(
+      suppressClusterWatch,
+      requireFailoverConfirmation = requireFailoverConfirmation
+    ):
       (primary, backup, setting) =>
         backup.runAgents(): backupAgents =>
           primary.runAgents(): primaryAgents =>
             body(primary, primaryAgents, backup, backupAgents, setting)
 
-  final def withControllerAndBackupWithoutAgents[R](suppressClusterWatch: Boolean = false)
+  final def withControllerAndBackupWithoutAgents[R](
+    suppressClusterWatch: Boolean = false,
+    requireFailoverConfirmation: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => R)
   : R =
     withCloser { implicit closer =>
@@ -113,9 +122,16 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       val (agentPorts, backupAgentPorts) = findFreeTcpPorts(2 * agentPaths.size)
         .grouped(2).map(seq => (seq(0), seq(1))).toVector.unzip
 
+      def directorEnvToAgentRef(env: DirectorEnv) =
+        AgentRef(
+          env.agentPath,
+          Vector(env.localSubagentId),
+          requireFailoverConfirmation = requireFailoverConfirmation)
+
       val primary = new DirectoryProvider(
         controllerPort = primaryControllerPort,
         agentPaths, items = items,
+        directorEnvToAgentRef = directorEnvToAgentRef,
         testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
@@ -224,7 +240,8 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
         body(primaryController, backupController)
 
   protected final def withClusterWatchService[A](
-    clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
+    clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId,
+    requireFailoverConfirmation: Boolean = false)
     (body: (ClusterWatchService, StandardEventBus[ClusterNodeLostEventNotConfirmedProblem]) => A)
   : A =
     OurIORuntime
@@ -234,11 +251,13 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       .use: ioRuntime =>
         given IORuntime = ioRuntime
         SyncIO:
-          clusterWatchServiceResource(clusterWatchId)
-            .blockingUse(99.s)(body.tupled)
+          clusterWatchServiceResource(
+            clusterWatchId,
+            requireFailoverConfirmation = requireFailoverConfirmation
+          ).blockingUse(99.s)(body.tupled)
       .unsafeRunSync()
 
-  protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
+  protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId, requireFailoverConfirmation: Boolean = false)
   : ResourceIO[(ClusterWatchService, StandardEventBus[ClusterNodeLostEventNotConfirmedProblem])] =
     for
       eventbus <- Resource.fromAutoCloseable(IO:
@@ -250,7 +269,8 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
         clusterWatchConfig,
         onNodeLossEventConfirmRequired =
           case Some(prblm) => IO(eventbus.publish(prblm))
-          case None => IO.unit)
+          case None => IO.unit,
+        requireFailoverConfirmation = requireFailoverConfirmation)
     yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */

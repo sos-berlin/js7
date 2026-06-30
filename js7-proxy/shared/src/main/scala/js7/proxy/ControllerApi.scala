@@ -198,15 +198,21 @@ extends ControllerApiWithHttp:
   def clusterWatchResource(
     clusterWatchId: ClusterWatchId,
     onNodeLossEventConfirmRequired: ClusterNodeLostEventNotConfirmedProblem => Unit = _ => (),
+    requireFailoverConfirmation: Boolean,
     config: Config)
   : ResourceIO[ClusterWatchService] =
     Resource.make(
-      acquire = startClusterWatch(clusterWatchId, onNodeLossEventConfirmRequired, config))(
+      acquire = startClusterWatch(
+        clusterWatchId,
+        onNodeLossEventConfirmRequired,
+        requireFailoverConfirmation = requireFailoverConfirmation,
+        config))(
       release = _ => stopClusterWatch)
 
   def startClusterWatch(
     clusterWatchId: ClusterWatchId,
     onNodeLossEventConfirmRequired: ClusterNodeLostEventNotConfirmedProblem => Unit = _ => (),
+    requireFailoverConfirmation: Boolean,
     config: Config)
   : IO[ClusterWatchService] =
     clusterWatchService
@@ -217,7 +223,8 @@ extends ControllerApiWithHttp:
             .service(clusterWatchId, apisResource, config,
               onNodeLossEventConfirmRequired =
                 _.foldMap: problem =>
-                  IO(onNodeLossEventConfirmRequired(problem)))
+                  IO(onNodeLossEventConfirmRequired(problem)),
+              requireFailoverConfirmation = requireFailoverConfirmation)
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)

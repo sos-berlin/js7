@@ -18,6 +18,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
+import js7.data.cluster.Confirmer
 import js7.data.command.{CancellationMode, CommonCommand, IsEventEmittingCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -355,7 +356,7 @@ object ControllerCommand extends CommonCommand.Companion:
   final case class ConfirmClusterNodeLoss(
     agentPath: AgentPath,
     lostNodeId: NodeId,
-    confirmer: String)
+    confirmer: Confirmer)
   extends ControllerCommand:
     type Response = Response.Accepted
 

@@ -9,6 +9,7 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, NoticeKey, PlannableBoard}
+import js7.data.cluster.Confirmer
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -572,7 +573,8 @@ final class ControllerCommandTest extends OurTestSuite:
       }""")
 
   "ConfirmClusterNodeLoss" in:
-    testJson[ControllerCommand](ConfirmClusterNodeLoss(AgentPath("AGENT"), NodeId.primary, "me"),
+    testJson[ControllerCommand](
+      ConfirmClusterNodeLoss(AgentPath("AGENT"), NodeId.primary, Confirmer("me")),
       json"""{
         "TYPE": "ConfirmClusterNodeLoss",
         "agentPath": "AGENT",

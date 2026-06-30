@@ -16,19 +16,22 @@ final class AgentRefTest extends OurTestSuite:
       AgentPath("AGENT"),
       directors = Seq(SubagentId("SUBAGENT-1")),
       processLimit = Some(10),
+      requireFailoverConfirmation = true,
       itemRevision = Some(ItemRevision(7))),
       json"""{
         "path": "AGENT",
         "directors": [ "SUBAGENT-1" ] ,
         "itemRevision": 7,
+        "requireFailoverConfirmation": true,
         "processLimit": 10
       }""")
 
     // Compatible with v2.1
-    testJson(AgentRef(
+    testJsonDecoder(AgentRef(
       AgentPath("AGENT"),
       directors = Nil,
       uri = Some(Uri("http://127.0.0.1")),
+      requireFailoverConfirmation = false,
       itemRevision = Some(ItemRevision(7))),
       json"""{
         "path": "AGENT",

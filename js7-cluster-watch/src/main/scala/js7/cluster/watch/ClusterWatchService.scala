@@ -146,7 +146,8 @@ object ClusterWatchService:
           conf.clusterWatchId,
           apisResource = clusterNodeAdmissions.traverse: admission =>
             HttpClusterNodeApi.resource(admission, httpsConfig, uriPrefix = "controller"),
-          config)
+          config,
+          requireFailoverConfirmation = conf.requireFailoverConfirmation)
     yield
       service
 
@@ -156,7 +157,8 @@ object ClusterWatchService:
     config: Config,
     label: String = "",
     onClusterStateChanged: HasNodes => Unit = _ => (),
-    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit)
+    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit,
+    requireFailoverConfirmation: Boolean)
   : ResourceIO[ClusterWatchService] =
     for
       nodeApis <- apisResource
@@ -171,8 +173,7 @@ object ClusterWatchService:
             retryDelays =
               config_.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
             onClusterStateChanged,
-            requireFailoverConfirmation =
-              config.getBoolean("js7.journal.cluster.watch.always-require-failover-confirmation"),
+            requireFailoverConfirmation = requireFailoverConfirmation,
             onNodeLossEventConfirmRequired)
     yield
       service

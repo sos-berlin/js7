@@ -1,6 +1,5 @@
 package js7.base.time
 
-import cats.syntax.show.*
 import io.circe.generic.semiauto.deriveCodec
 import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneOffset}
 import js7.base.circeutils.CirceUtils.*

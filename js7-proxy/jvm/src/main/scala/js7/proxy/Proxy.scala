@@ -63,7 +63,10 @@ object Proxy extends ServiceApp:
         Some(controllerApiRegister),
         conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
-        controllerApi.clusterWatchResource(clusterWatchId, config = conf.config)
+        controllerApi.clusterWatchResource(
+          clusterWatchId,
+          requireFailoverConfirmation = false,
+          config = conf.config)
       _ <- EngineStateMXBean.register
       controllerProxy <- controllerApi.controllerProxy()
       _ <-

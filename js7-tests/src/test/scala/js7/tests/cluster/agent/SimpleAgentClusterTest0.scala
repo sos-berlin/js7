@@ -13,16 +13,19 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterState, Confirmer}
+import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.cluster.agent.SimpleAgentClusterTest.*
+import js7.tester.ScalaTestUtils.awaitAndAssert
+import js7.tests.cluster.agent.SimpleAgentClusterTest0.*
 import js7.tests.cluster.controller.ControllerClusterTester
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
@@ -30,7 +33,7 @@ import js7.tests.testenv.DirectorEnv
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import scala.util.control.NonFatal
 
-final class SimpleAgentClusterTest extends ControllerClusterTester:
+abstract sealed class SimpleAgentClusterTest0 extends ControllerClusterTester:
 
   protected override val agentPaths = Nil
 
@@ -41,7 +44,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
   override protected def items =
     Seq(TestWorkflow, workflow, agentRef, subagentBundle) ++ subagentItems
 
-  "Cluster replicates journal files properly" in:
+  protected final def runMyTest(requireFailoverConfirmation: Boolean): Unit =
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
 
       def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId,
@@ -81,6 +84,13 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
                 subagentIds(0) -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
                 subagentIds(1) -> Map(agentPath -> Attached(Some(ItemRevision(0))))))
 
+              if requireFailoverConfirmation then
+                val agentRef = primaryController.controllerState().keyToItem(AgentRef)(agentPath)
+                primaryController.api.updateUnsignedSimpleItems:
+                  Seq:
+                    agentRef.copy(requireFailoverConfirmation = true, itemRevision = None)
+                .await(99.s).orThrow
+
               val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
               assert(stampedSeq.last.value == OrderFinished())
 
@@ -99,6 +109,14 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
               assert(forceOrderProcessingStarted.subagentId contains subagentIds(0))
 
               primaryDirector.kill.await(99.s)
+
+              if requireFailoverConfirmation then
+                val clusterWatch = primaryController.clusterWatchFor(agentPath).orThrow
+                awaitAndAssert:
+                  clusterWatch.clusterNodeLossEventToBeConfirmed(primaryId)
+                    .exists(_.isInstanceOf[ClusterFailedOver])
+                primaryController.execCmd:
+                  ConfirmClusterNodeLoss(agentPath, NodeId.primary, Confirmer("SimpleAgentClusterTest0"))
 
               val eventId = primaryController.eventWatch
                 .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
@@ -127,9 +145,10 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
         }
       }
     }
+  end runMyTest
 
 
-object SimpleAgentClusterTest:
+object SimpleAgentClusterTest0:
   private val logger = Logger[this.type]
 
   private val subagentIds = Seq(
@@ -153,3 +172,15 @@ object SimpleAgentClusterTest:
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
+
+
+final class SimpleAgentClusterTest extends SimpleAgentClusterTest0:
+
+  "Cluster replicates journal files properly" in:
+    runMyTest(requireFailoverConfirmation = false)
+
+
+final class ExternallyConfirmingFailoverAgentClusterTest extends SimpleAgentClusterTest0:
+
+  "Cluster replicates journal files properly" in:
+    runMyTest(requireFailoverConfirmation = true)

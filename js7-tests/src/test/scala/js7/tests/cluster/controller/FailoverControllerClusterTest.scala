@@ -1,6 +1,5 @@
 package js7.tests.cluster.controller
 
-import com.typesafe.config.Config
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.size
 import js7.base.circeutils.CirceUtils.RichJson
@@ -42,11 +41,16 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
   protected final def test(
     addNonReplicatedEvents: Boolean = false,
-    confirmRequired: Boolean = false)
+    requireFailoverConfirmation: Boolean = false)
   : Unit =
     sys.props(testHeartbeatLossPropertyKey) = "false"
-    withClusterWatchService(): (clusterWatchService, _) =>
-      withControllerAndBackup(suppressClusterWatch = true): (primary, _, backup, _, clusterSetting_) =>
+    withClusterWatchService(
+      requireFailoverConfirmation = requireFailoverConfirmation
+    ): (clusterWatchService, _) =>
+      withControllerAndBackup(
+        suppressClusterWatch = true,
+        requireFailoverConfirmation = requireFailoverConfirmation
+      ): (primary, _, backup, _, clusterSetting_) =>
         val clusterSetting = clusterSetting_.copy(
           clusterWatchId = Some(clusterWatchService.clusterWatchId))
         var primaryController = primary.newController()
@@ -74,7 +78,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
         /// Fail over ///
 
-        if confirmRequired then
+        if requireFailoverConfirmation then
           awaitAndAssert:
             clusterWatchService.clusterWatch.clusterNodeLossEventToBeConfirmed(primaryId)
               .exists(_.isInstanceOf[ClusterFailedOver])
@@ -174,9 +178,5 @@ final class TruncatingFailoverControllerClusterTest extends FailoverControllerCl
     test(addNonReplicatedEvents = true)
 
 final class FailoverConfirmRequiredControllerClusterTest extends FailoverControllerClusterTest:
-  override protected def clusterWatchConfig = config"""
-    js7.journal.cluster.watch.always-require-failover-confirmation = yes
-    """
-
   "Failover and recouple while external failover confirmation is required" in:
-    test(confirmRequired = true)
+    test(requireFailoverConfirmation = true)

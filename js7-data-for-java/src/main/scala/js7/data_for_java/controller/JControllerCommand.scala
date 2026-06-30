@@ -12,6 +12,7 @@ import js7.base.time.JavaTimestamp
 import js7.base.time.ScalaTime.DurationRichLong
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
+import js7.data.cluster.Confirmer
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangeOrder, ChangePlan, ChangePlanSchema, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
@@ -123,7 +124,7 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   def confirmClusterNodeLoss(
     @Nonnull agentPath: AgentPath,
     @Nonnull lostNodeId: NodeId,
-    @Nonnull confirmer: String)
+    @Nonnull confirmer: Confirmer)
   : JControllerCommand =
     JControllerCommand(
       ConfirmClusterNodeLoss(agentPath, lostNodeId, confirmer))

@@ -405,16 +405,24 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     asScala.allowEngineMetrics(isActive)
 
   @Nonnull
-  def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
+  def runClusterWatch(
+    @Nonnull clusterWatchId: ClusterWatchId,
+    @Nonnull requireFailoverConfirmation: Boolean)
+  : CompletableFuture[Void] =
     runIO:
-      asScala.startClusterWatch(clusterWatchId, _ => (), config)
+      asScala.startClusterWatch(
+          clusterWatchId,
+          _ => (),
+          requireFailoverConfirmation = requireFailoverConfirmation,
+          config)
         .flatTap(_.untilStopped)
         .as(Void)
 
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
+    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem],
+    requireFailoverConfirmation: Boolean)
   : CompletableFuture[ClusterWatchService] =
     runIO:
       asScala.startClusterWatch(
@@ -422,6 +430,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
         onNodeLossEventConfirmRequired =
           problem =>
             IO(onNodeLossEventConfirmRequired.accept(problem)),
+        requireFailoverConfirmation = requireFailoverConfirmation,
         config)
 
   @Nonnull

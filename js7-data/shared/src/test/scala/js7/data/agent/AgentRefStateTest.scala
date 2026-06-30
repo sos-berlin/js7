@@ -38,6 +38,7 @@ final class AgentRefStateTest extends OurTestSuite:
         "agentRef": {
           "path": "AGENT",
           "directors": [ "SUBAGENT-1" ],
+          "requireFailoverConfirmation": false,
           "itemRevision": 0
         },
         "couplingState": {
@@ -54,6 +55,7 @@ final class AgentRefStateTest extends OurTestSuite:
         "agentRef": {
           "path": "AGENT",
           "directors": [ "SUBAGENT-1" ],
+          "requireFailoverConfirmation": false,
           "itemRevision": 0
         },
         "couplingState": {
@@ -70,6 +72,7 @@ final class AgentRefStateTest extends OurTestSuite:
         AgentRef(
           AgentPath("AGENT"),
           directors = Seq(SubagentId("SUBAGENT-1")),
+          requireFailoverConfirmation = true,
           itemRevision = Some(ItemRevision(0))),
         Some(agentRunId),
         Some("UTC"),
@@ -92,6 +95,7 @@ final class AgentRefStateTest extends OurTestSuite:
         "agentRef": {
           "path": "AGENT",
           "directors": [ "SUBAGENT-1" ],
+          "requireFailoverConfirmation": true,
           "itemRevision": 0
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",

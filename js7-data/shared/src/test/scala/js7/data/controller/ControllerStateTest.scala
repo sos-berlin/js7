@@ -211,6 +211,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         "agentRef": {
           "path": "AGENT",
           "directors": [ "SUBAGENT" ],
+          "requireFailoverConfirmation": false,
           "itemRevision": 0
         },
         "couplingState": {

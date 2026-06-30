@@ -392,9 +392,9 @@ extends Service.StoppableByRequest:
   def clusterWatchService: IO[Checked[ClusterWatchService]] =
     clusterWatchAllocated.checked
 
-  def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
+  def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: Confirmer): IO[Checked[Unit]] =
     clusterWatchAllocated.checked
-      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer)))
+      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): IO[Unit] =
     startDirectorDriverFiber
@@ -429,6 +429,8 @@ extends Service.StoppableByRequest:
 
   private def clusterWatchResource: ResourceIO[ClusterWatchService] =
     for
+      requireFailoverConfirmation <- Resource.eval:
+        journal.aggregate.map(_.keyToItem(AgentRef)(agentPath).requireFailoverConfirmation)
       clients <- clientsResource
       clusterWatchService <- ClusterWatchService.service(
         clusterWatchId,
@@ -436,7 +438,8 @@ extends Service.StoppableByRequest:
         controllerConfiguration.config,
         label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged,
-        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired)
+        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired,
+        requireFailoverConfirmation = requireFailoverConfirmation)
     yield
       clusterWatchService
 
