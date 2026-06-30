@@ -47,7 +47,8 @@ object Proxy extends ServiceApp:
       apisResource = admissionsToApiResource(conf.admissions, conf.httpsConfig)
       controllerApi <- ControllerApi.resource(apisResource, conf.proxyConf)
       clusterWatch <- conf.clusterWatchId.fold(Resource.unit[IO]): clusterWatchId =>
-        ClusterWatchService.service(clusterWatchId, apisResource, conf.config)
+        ClusterWatchService.service(
+          clusterWatchId, apisResource, conf.config, requireFailoverConfirmation = false)
       _ <- EngineStateMXBean.register
       service <- Service(Proxy(controllerApi))
     yield

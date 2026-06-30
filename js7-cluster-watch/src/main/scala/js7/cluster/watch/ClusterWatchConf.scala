@@ -23,6 +23,7 @@ final case class ClusterWatchConf(
   clusterWatchId: ClusterWatchId,
   clusterNodeAdmissions: Nel[Admission],
   webServerPorts: Seq[WebServerPort],
+  requireFailoverConfirmation: Boolean,
   config: Config)
 extends CommonConfiguration:
   val name = "ClusterWatch"
@@ -55,8 +56,7 @@ object ClusterWatchConf:
         Nel.fromListUnsafe(uris.map(Admission(_)).toList)
       else
         Nel.fromList:
-          config.getConfigList("js7.journal.cluster.watch.cluster-nodes")
-            .asInstanceOf[java.util.List[Config]] // Due to Scala 3.5.2 -Yexplicit-nulls
+          config.getConfigList("js7.journal.cluster.watch.cluster-nodes").nn
             .asScala.toList
             .map: cnf =>
               Admission(
@@ -75,4 +75,5 @@ object ClusterWatchConf:
       clusterWatchId,
       admissions,
       common.webServerPorts,
+      requireFailoverConfirmation = args.boolean("--require-failover-confirmation", false),
       config = config)

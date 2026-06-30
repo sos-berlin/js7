@@ -355,23 +355,33 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .map(JEventAndControllerState.apply))
 
   @Nonnull
-  def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
+  def runClusterWatch(
+    @Nonnull clusterWatchId: ClusterWatchId,
+    @Nonnull requireFailoverConfirmation: Boolean)
+  : CompletableFuture[Void] =
     runIO:
-      startClusterWatch_(clusterWatchId, _ => ())
-        .flatTap(_.untilStopped)
+      startClusterWatch_(
+        clusterWatchId, _ => (),
+        requireFailoverConfirmation = requireFailoverConfirmation
+      ).flatTap(_.untilStopped)
         .as(Void)
 
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
+    @Nonnull onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem],
+    requireFailoverConfirmation: Boolean)
   : CompletableFuture[ClusterWatchService] =
     runIO:
-      startClusterWatch_(clusterWatchId, onNodeLossEventConfirmRequired)
+      startClusterWatch_(
+        clusterWatchId,
+        onNodeLossEventConfirmRequired,
+        requireFailoverConfirmation = requireFailoverConfirmation)
 
   private def startClusterWatch_(
     clusterWatchId: ClusterWatchId,
-    onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem])
+    onNodeLossEventConfirmRequired: Consumer[ClusterNodeLostEventNotConfirmedProblem],
+    requireFailoverConfirmation: Boolean)
   : IO[ClusterWatchService] =
     clusterWatchService
       .update:
@@ -381,7 +391,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
             .service(clusterWatchId, asScala.apisResource, config,
               onNodeLossEventConfirmRequired =
                 _.foldMap: problem =>
-                  IO(onNodeLossEventConfirmRequired.accept(problem)))
+                  IO(onNodeLossEventConfirmRequired.accept(problem)),
+              requireFailoverConfirmation = requireFailoverConfirmation)
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)

@@ -430,6 +430,8 @@ extends Service.StoppableByRequest:
 
   private def clusterWatchResource: ResourceIO[ClusterWatchService] =
     for
+      requireFailoverConfirmation <- Resource.eval:
+        journal.aggregate.map(_.keyToItem(AgentRef)(agentPath).requireFailoverConfirmation)
       clients <- clientsResource
       clusterWatchService <- ClusterWatchService.service(
         clusterWatchId,
@@ -437,7 +439,8 @@ extends Service.StoppableByRequest:
         controllerConfiguration.config,
         label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged,
-        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired)
+        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired,
+        requireFailoverConfirmation = requireFailoverConfirmation)
     yield
       clusterWatchService
 

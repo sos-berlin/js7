@@ -42,19 +42,21 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]:
   def of(
     @Nonnull path: AgentPath,
     @Nonnull directors: java.lang.Iterable[SubagentId],
-    @Nonnull processLimit: OptionalInt)
+    @Nonnull processLimit: OptionalInt,
+    @Nonnull requireFailoverConfirmation: Boolean)
   : JAgentRef =
     JAgentRef(AgentRef(
       path,
       directors = directors.asScala.toVector,
-      processLimit = processLimit.toScala))
+      processLimit = processLimit.toScala,
+      requireFailoverConfirmation = requireFailoverConfirmation))
 
   @Nonnull
   def of(
     @Nonnull path: AgentPath,
     @Nonnull director: SubagentId)
   : JAgentRef =
-    JAgentRef(AgentRef(path, directors = director :: Nil))
+    JAgentRef(AgentRef(path, directors = director :: Nil, requireFailoverConfirmation = false))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =

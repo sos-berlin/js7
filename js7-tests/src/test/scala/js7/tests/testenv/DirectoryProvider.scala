@@ -527,7 +527,8 @@ object DirectoryProvider:
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
-    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit)
+    onNodeLossEventConfirmRequired: OnNodeLossEventConfirmRequired = _ => IO.unit,
+    requireFailoverConfirmation: Boolean = false)
   : ResourceIO[ClusterWatchService] =
     Pekkos
       .actorSystemResource(clusterWatchId.string)
@@ -536,4 +537,5 @@ object DirectoryProvider:
           clusterWatchId,
           admissions.traverse(PekkoHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Config.defaultConfig),
-          onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired))
+          onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired,
+          requireFailoverConfirmation = requireFailoverConfirmation))

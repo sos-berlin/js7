@@ -14,6 +14,7 @@ final case class AgentRef(
   directors: Seq[SubagentId]/*TODO NonEmptyList since v2.2*/,
   uri: Option/*COMPATIBLE with v2.1*/[Uri] = None,
   processLimit: Option[Int] = None,
+  requireFailoverConfirmation: Boolean = false,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
 
@@ -53,7 +54,7 @@ extends UnsignedSimpleItem:
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
     this match
-      case AgentRef(agentPath, directors, Some(uri), None, itemRevision) =>
+      case AgentRef(agentPath, directors, Some(uri), None, false, itemRevision) =>
         if directors.nonEmpty then
           Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
         else
@@ -90,9 +91,14 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]:
         directors <- c.getOrElse[Vector[SubagentId]]("directors")(Vector.empty)
         uri <- c.get[Option[Uri]]("uri")
         processLimit <- c.get[Option[Int]]("processLimit")
+        requireFailoverConfirmation <- c.getOrElse[Boolean]("requireFailoverConfirmation")(false)
         rev <- c.get[Option[ItemRevision]]("itemRevision")
-        agentRef <- AgentRef(path, directors, uri, processLimit, rev)
-          .checked.toDecoderResult(c.history)
+        agentRef <-
+          AgentRef(
+            path, directors, uri, processLimit,
+            requireFailoverConfirmation = requireFailoverConfirmation,
+            rev
+          ).checked.toDecoderResult(c.history)
       yield agentRef
 
     Codec.AsObject.from(jsonDecoder, deriveEncoder[AgentRef])

@@ -43,7 +43,8 @@ final class JProxyWithClusterWatchTester
                 controllerApi
                     .startClusterWatch(
                         ClusterWatchId.of("JOC-A"),
-                        problem -> eventBus.publish(problem))
+                        problem -> eventBus.publish(problem),
+                        /*requireFailoverConfirmation = */false)
                     .get();
 
             // ClusterWatchService provides some methods
@@ -76,7 +77,10 @@ final class JProxyWithClusterWatchTester
 
             // Run again
             CompletableFuture<Void> clusterWatchStopped =
-                controllerApi.runClusterWatch(ClusterWatchId.of("JOC-A"))
+                controllerApi
+                    .runClusterWatch(
+                        ClusterWatchId.of("JOC-A"),
+                        /*requireFailoverConfirmation =*/false)
                     .thenRun(() -> logger.info("clusterWatchStopped COMPLETED"));
 
             Thread.sleep(1000);
