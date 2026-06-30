@@ -393,9 +393,9 @@ extends Service.StoppableByRequest:
   def clusterWatchService: IO[Checked[ClusterWatchService]] =
     clusterWatchAllocated.checked
 
-  def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
+  def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: Confirmer): IO[Checked[Unit]] =
     clusterWatchAllocated.checked
-      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, Confirmer(confirmer)))
+      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): IO[Unit] =
     startDirectorDriverFiber
