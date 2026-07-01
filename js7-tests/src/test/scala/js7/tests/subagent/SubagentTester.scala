@@ -13,7 +13,7 @@ trait SubagentTester extends ControllerAgentForScalaTest:
 
   protected val agentPath = SubagentTester.agentPath
 
-  override protected val controllerConfig = config"""
+  override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
