@@ -11,6 +11,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -39,7 +40,7 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.C-SUBAGENT = "$localSubagentId's PASSWORD"
-    js7.subagent-driver.reconnect-delays = [10ms] // TODO Change SubagentKeeper polling wait routine
+    js7.subagent-driver.reconnect-delays = [5ms] // TODO Change SubagentKeeper polling wait routine
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
@@ -167,14 +168,18 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       controller.awaitNextKey[OrderFinished](orderId)
 
   "Massive test with Fork and SubagentBundle containing three Subagents" in:
-    val orderCount = 100
+    val orderCount = if isIntelliJIdea then 2000 else 100
     val perSubagentLimit = 2
 
     val subagentBundle = SubagentBundle(
       SubagentBundleId("MASSIVE"),
       subagentToPriority =
         val priorityExpr = parseExpr:
-          s"if $$js7ClusterSubagentProcessCount < $perSubagentLimit then 1 else missing"
+          s"""if $$js7ClusterSubagentProcessCount < $perSubagentLimit then
+             |  -$$js7ClusterSubagentProcessCount
+             |else
+             |  missing
+             |""".stripMargin
         Map(
           aSubagentId -> priorityExpr,
           bSubagentId -> priorityExpr,
@@ -188,7 +193,7 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
           childToId = exprFun"child => $$child",
           childToArguments = exprFun"child => {}",
           Workflow.of(
-            SleepJob.sleep(agentPath, 100.ms,
+            SleepJob.sleep(agentPath, 10.ms,
               subagentBundleId = Some(subagentBundle.id.string),
               processLimit = 100))))
 
