@@ -8,20 +8,13 @@ import scala.math.Ordered.orderingToOrdered
 private[director] final class Prioritized[A] private(
   private val orderedGroups: Vector[Vector[A]]):
 
-  private lazy val orderedSets: Seq[Set[A]] = orderedGroups.map(_.toSet)
+  private lazy val orderedSets: Vector[Set[A]] = orderedGroups.map(_.toSet)
   private var _lastFilteredGroup = Vector.empty[A]
   private val roundRobin = MutableRoundRobin()
 
   /** Compares As and priority changes. */
   def isEquivalentTo(other: Prioritized[A]): Boolean =
-    orderedGroups.length == other.orderedGroups.length &&
-      locally:
-        var i = 0
-        while i < orderedGroups.length do
-          if orderedSets != other.orderedSets then
-            return false
-          i += 1
-        true
+    orderedSets == other.orderedSets
 
   def selectNext(filter: A => Boolean): Option[A] =
     orderedGroups.iterator
@@ -45,20 +38,20 @@ private[director] object Prioritized:
   def empty[A]: Prioritized[A] =
     new Prioritized[A](Vector.empty)
 
-  def apply[A](as: Vector[(A, NumberValue)]): Prioritized[A] =
-    new Prioritized[A](groupByPriority(as))
-
   def roundRobin[A](as: Vector[A]): Prioritized[A] =
     new Prioritized[A](Vector(as))
 
-  private[subagent] def groupByPriority[A](as: Vector[(A, NumberValue)]): Vector[Vector[A]] =
-    val ordered = as.sortWith: (x, y) =>
-      x._2 > y._2
+  def apply[A](as: Vector[(A, NumberValue)]): Prioritized[A] =
+    new Prioritized[A](groupByPriority(as))
 
-    if ordered.isEmpty then
+  private[subagent] def groupByPriority[A](as: Vector[(A, NumberValue)]): Vector[Vector[A]] =
+    if as.isEmpty then
       Vector.empty
     else
-      val groups = Vector.newBuilder[Vector[A]]
+      val ordered = as.sortWith: (x, y) =>
+        x._2 > y._2
+
+      val groups = VectorBuilder[Vector[A]]
       val group = VectorBuilder[A]()
       var i = 0
       var lastPrio = ordered.head._2: NumberValue
