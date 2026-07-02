@@ -82,13 +82,14 @@ extends Service.StoppableByCancel:
       chunk
     .evalMap:
       case FileAdded(file) =>
-        IO.uncancelable: _ =>
-          toLogFile(file).flatMap:
-            case None => IO.unit
-            case Some(logFile) =>
-              fileToInstant.put(logFile.filename, logFile.fileInstant)
-              instantToLogFile.put(logFile.fileInstant, logFile)
-              fileAddedSignal.set(logFile.fileEpochNano)
+        toLogFile(file).flatMap:
+          case None => IO.unit
+          case Some(logFile) =>
+            IO.uncancelable: _ =>
+              IO.defer:
+                fileToInstant.put(logFile.filename, logFile.fileInstant)
+                instantToLogFile.put(logFile.fileInstant, logFile)
+                fileAddedSignal.set(logFile.fileEpochNano)
 
       case FileDeleted(file) =>
         IO.uncancelable: _ =>
@@ -104,7 +105,7 @@ extends Service.StoppableByCancel:
         logFile.release
 
   def byteLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
-  : Stream[IO, fs2.Chunk[Byte]] =
+  : Stream[IO, Chunk[Byte]] =
     keyedByteLogLineStream(begin, logSelection).map:
       _.byteLine
 
@@ -184,7 +185,7 @@ extends Service.StoppableByCancel:
               poll = pollGrowing,
               position = position)
           else
-            ByteSeqFileReader.streamFromPosition[fs2.Chunk[Byte]](
+            ByteSeqFileReader.streamFromPosition[Chunk[Byte]](
               deferredIndex.file,
               position = position,
               byteChunkSize = forReader.byteChunkSize)
@@ -393,7 +394,7 @@ object LogDirectoryIndex:
     */
   private def toLogFiles(files: Iterable[Path])(using ZoneId): IO[Vector[LogFile]] =
     fs2.Stream.iterable(files)
-      .parEvalMapUnordered(sys.runtime.availableProcessors max 2):
+      .parEvalMapUnordered(sys.runtime.availableProcessors):
         toLogFile
       .compile.toVector
       .map(_.flatten)
@@ -403,7 +404,7 @@ object LogDirectoryIndex:
   private def toLogFile(file: Path)(using ZoneId): IO[Option[LogFile]] =
     AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).flatMap: cell =>
       if file.getFileName.toString.endsWith(".gz") then
-        readLogFileInstant(GZIPInputStream(FileInputStream(file.toFile), 8192))
+        readLogFileInstant(GZIPInputStream(FileInputStream(file.toFile), 1024))
           .map(_.map: instant =>
             LogFile(instant, file, cell, isGzipped = true))
       else
@@ -417,14 +418,16 @@ object LogDirectoryIndex:
         logger.debug(s"$logFile size=${Try(toKBGB(Files.size(file))).fold(identity, identity)}")
       o
     .handleError: throwable =>
-      logger.warn(s"toLogFile $file: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+      // FIXME .log.gz oder .log wird noch geschrieben!
+      logger.error(s"toLogFile $file: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
       None
 
   private def readLogFileInstant(inputStream: => InputStream)(using ZoneId): IO[Option[Instant]] =
     Resource.fromAutoCloseable(IO(inputStream)).use: in =>
       // TODO Retry when java.io.EOFException: Unexpected end of ZLIB input stream
       IO.blocking:
-        ByteArray.unsafeWrap(in.readNBytes(FirstChunkSize))
+        ByteArray.unsafeWrap:
+          in.readNBytes(FirstChunkSize)
       .map: chunk =>
         chunk.indexOf('\n') match
           case -1 => None
@@ -491,7 +494,6 @@ object LogDirectoryIndex:
     val filename: Path =
       originalFile.getFileName
 
-    // TODO Prefer fileEpochNano over fileInstant
     val fileEpochNano: EpochNano =
       fileInstant.toEpochNano
 
