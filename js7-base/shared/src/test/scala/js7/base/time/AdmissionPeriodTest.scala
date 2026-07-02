@@ -196,13 +196,13 @@ final class AdmissionPeriodTest extends OurTestSuite:
 
     "MonthlyLastDatePeriod" in:
       // 28-day month is always assumed: a period start -28.days through 0.days before end of month.
-      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00"), 2.h).lastSecondOfMonth == -28 * 24 * 3600)
+      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00:01"), 2.h).lastSecondOfMonth == -28 * 24 * 3600 + 1)
       assert(MonthlyLastDatePeriod(-28, LocalTime.parse("01:00"), 2.h).lastSecondOfMonth == (-28 * 24 + 1) * 3600)
 
       // Near the calendar day before
-      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00"), 2.h).check(dateOffset = 0.s) == Nil)
-      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00"), 2.h).check(dateOffset = 2.h) == Nil)
-      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00"), 3.h).check(dateOffset = 2.h) == Nil)
+      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00:01"), 2.h).check(dateOffset = 0.s) == Nil)
+      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00:01"), 2.h).check(dateOffset = 2.h) == Nil)
+      assert(MonthlyLastDatePeriod(-28, LocalTime.parse("00:00:01"), 3.h).check(dateOffset = 2.h) == Nil)
 
       // Production day = calendar day
       assert(MonthlyLastDatePeriod(-28, LocalTime.parse("03:00"), 3.h).check(dateOffset = 2.h) == Nil)
