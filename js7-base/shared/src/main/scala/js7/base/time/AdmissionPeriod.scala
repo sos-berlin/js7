@@ -178,7 +178,8 @@ extends AdmissionPeriod:
   import MonthlyLastDatePeriod.*
 
   def checked: Checked[this.type] =
-    if lastSecondOfMonth < LowestSeconds || lastSecondOfMonth >= 0 then
+    if lastSecondOfMonth <= LowestSeconds || lastSecondOfMonth >= 0 then
+      // lastSecondOfMonth should stay within the month, which may be february
       Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
     else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
@@ -194,13 +195,6 @@ extends AdmissionPeriod:
       PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
     else
       Nil
-    //val begin = lastSecondOfMonth.s - OneDay - Lowest
-    //if begin < dateOffset && begin + duration > dateOffset
-    //  || begin + duration > ZeroDuration && begin + duration > dateOffset
-    //then
-    //  PeriodCrossesProductionDayBoundaryProblem(this, dateOffset) :: Nil
-    //else
-    //  Nil
 
   private def lastDayOfMonth = -lastSecondOfMonth / DaySeconds + 1
 
@@ -216,7 +210,7 @@ extends AdmissionPeriod:
       duration.pretty
 
 object MonthlyLastDatePeriod:
-  private[time] val LowestSeconds = -28 * DaySeconds
+  private[time] val LowestSeconds = -28 * DaySeconds // Shortest month has 28 days
   private[time] val Lowest = LowestSeconds.seconds.toCoarsest
   @TestOnly
   def apply(lastSecondOfMonth: Int, duration: FiniteDuration): MonthlyLastDatePeriod =
