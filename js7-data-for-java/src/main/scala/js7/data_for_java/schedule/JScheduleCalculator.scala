@@ -2,6 +2,7 @@ package js7.data_for_java.schedule
 
 import java.time.{Duration, ZoneId}
 import javax.annotation.Nonnull
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.data.execution.workflow.instructions.ScheduleCalculator
@@ -17,6 +18,8 @@ extends JScheduleSimulator:
 
 
 object JScheduleCalculator:
+
+  Logger.dontInitialize()
 
   @Nonnull
   def checked(
