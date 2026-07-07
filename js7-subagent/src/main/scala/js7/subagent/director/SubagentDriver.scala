@@ -63,14 +63,6 @@ trait SubagentDriver:
   protected final val orderToDeferred =
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
-  // Live Scope!
-  final val subagentProcessCountScope: Scope =
-    new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
-          case "js7SubagentProcessCount" => Some(Right(NumberValue(processCount)))
-          case _ => None
-
   final def subagentId: SubagentId =
     subagentItem.id
 

@@ -4,8 +4,8 @@ import cats.effect.std.Mutex
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.instances.option.*
-import cats.syntax.foldable.*
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
@@ -28,7 +28,7 @@ import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.{assertIfStrict, assertThat}
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, LockKeeper, SetOnce}
+import js7.base.utils.{Allocated, CatsUtils, LockKeeper, SetOnce}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -394,8 +394,9 @@ extends Service.StoppableByRequest:
         selectSubagentMutex.lock.surround:
           IO:
             def subagentIdToScope(subagentId: SubagentId) =
-              maybeBundleId.fold(Scope.empty): bundleId =>
-                bundleSubagentProcessCountScope(bundleId, subagentId)
+              subagentProcessCountLiveScope(subagentId) |+|
+                maybeBundleId.fold(Scope.empty): bundleId =>
+                  bundleSubagentProcessCountLiveScope(bundleId, subagentId)
             val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
             result match
               case Right(Some(driver)) =>
@@ -420,7 +421,16 @@ extends Service.StoppableByRequest:
               counters.processCount(bundleId)))
           case _ => None
 
-  private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId, subagentId: SubagentId)
+  private def subagentProcessCountLiveScope(subagentId: SubagentId): Scope =
+    new Scope:
+      override def namedValue(name: String): Option[Checked[Value]] =
+        name match
+          case "js7SubagentProcessCount" =>
+            Some(Right(NumberValue:
+              counters.processCount(subagentId)))
+          case _ => None
+
+  private def bundleSubagentProcessCountLiveScope(bundleId: SubagentBundleId, subagentId: SubagentId)
   : Scope =
     new Scope:
       override def namedValue(name: String): Option[Checked[Value]] =
@@ -750,6 +760,9 @@ object SubagentKeeper:
       */
     def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
       bundleAndSubagentToCounter.getOrElse(bundleId -> subagentId, 0)
+
+    def processCount(subagentId: SubagentId): Int =
+      subagentToCounter.getOrElse(subagentId, 0)
 
     def increment(bundleId: Option[SubagentBundleId], subagentId: SubagentId): Unit =
       add(1, bundleId, subagentId)
