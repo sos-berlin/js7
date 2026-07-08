@@ -167,16 +167,17 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       assert(started == OrderProcessingStarted(Some(bSubagentId), Some(subagentBundle.id)))
       controller.awaitNextKey[OrderFinished](orderId)
 
-  "Massive test with Fork and SubagentBundle containing three Subagents" in:
+  "Massive test with Fork and SubagentBundle containing three Subagents, process limiting" in:
     val orderCount = if isIntelliJIdea then 2000 else 100
     val perSubagentLimit = 2
+    val sleep = 10.ms
 
     val subagentBundle = SubagentBundle(
       SubagentBundleId("MASSIVE"),
       subagentToPriority =
         val priorityExpr = parseExpr:
-          s"""if $$js7ClusterSubagentProcessCount < $perSubagentLimit then
-             |  -$$js7ClusterSubagentProcessCount
+          s"""if $$js7SubagentProcessCount < $perSubagentLimit then
+             |  1
              |else
              |  missing
              |""".stripMargin
@@ -189,13 +190,13 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       WorkflowPath("MASSIVE"),
       Seq:
         ForkList(
-          children = expr"[1, 2]",
+          children = expr"[1, 2, 3, 4]",
           childToId = exprFun"child => $$child",
           childToArguments = exprFun"child => {}",
-          Workflow.of(
-            SleepJob.sleep(agentPath, 10.ms,
+          Workflow.of:
+            SleepJob.sleep(agentPath, sleep,
               subagentBundleId = Some(subagentBundle.id.string),
-              processLimit = 100))))
+              processLimit = 100)))
 
     withItems((subagentBundle, workflow)): _ =>
       var processCountMax = 0

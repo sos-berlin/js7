@@ -17,7 +17,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -62,14 +61,6 @@ trait SubagentDriver:
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   protected final val orderToDeferred =
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
-
-  // Live Scope!
-  final val subagentProcessCountScope: Scope =
-    new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
-          case "js7SubagentProcessCount" => Some(Right(NumberValue(processCount)))
-          case _ => None
 
   final def subagentId: SubagentId =
     subagentItem.id
