@@ -3,7 +3,6 @@ package js7.subagent.director
 import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic}
@@ -95,10 +94,7 @@ private final case class DirectorState private(
       subagentToEntry = Map.empty,
       bundleToEntry = Map.empty)
 
-  def selectNext(
-    maybeBundleId: Option[SubagentBundleId],
-    scope: Scope,
-    subagentToScope: SubagentId => Scope)
+  def selectNext(maybeBundleId: Option[SubagentBundleId], subagentToScope: SubagentId => Scope)
   : Checked[Option[SubagentDriver]] =
     maybeBundleId match
       case Some(bundleId) if !bundleToEntry.contains(bundleId) =>
@@ -115,12 +111,12 @@ private final case class DirectorState private(
             case Some(bundleId) =>
               bundleToEntry.get(bundleId).map: entry => // May be non-existent when stopping
                 if entry.subagentBundle.allPrioritiesArePure then
-                  entry.cachedStaticPrioritized(scope)
+                  entry.cachedStaticPrioritized
                 else
                   entry.cachedDynamicPrioritized: subagentId =>
                     idToDriver.get(subagentId).flatMap: driver =>
                       driver.serverMeteringScope().map: meteringScope =>
-                        combine(meteringScope, scope, subagentToScope(subagentId))
+                        meteringScope |+| subagentToScope(subagentId)
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
@@ -161,11 +157,11 @@ private object DirectorState:
     private val _cachedPrioritized = Atomic[Prioritized[SubagentId] | Null](null)
 
     // Cache may be updated in parallel
-    def cachedStaticPrioritized(scope: Scope): Prioritized[SubagentId] =
+    def cachedStaticPrioritized: Prioritized[SubagentId] =
       // Because priorities does not depend on a Scope, we evaluate Prioritized only once
       _cachedPrioritized.get() match
         case null =>
-          val prioritized = mkPrioritized(_ => Some(scope))
+          val prioritized = mkPrioritized(_ => Some(Scope.empty))
           _cachedPrioritized.compareAndExchange(null, prioritized) match
             case null =>
               logger.trace(s"cachedPrioritized: $bundleId new $prioritized")

@@ -52,6 +52,7 @@ import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
+import scala.util.chaining.scalaUtilChainingOps
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   localSubagentId: SubagentId,
@@ -395,20 +396,16 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(orderId: OrderId, maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    val scope = maybeBundleId.foldMap(counters.bundleProcessCountLiveScope)
-    def subagentIdToScope(subagentId: SubagentId): Scope =
-      counters.subagentProcessCountLiveScope(subagentId) |+|
-        maybeBundleId.fold(Scope.empty): bundleId =>
-          counters.bundleSubagentProcessCountLiveScope(bundleId, subagentId)
     Stream.repeatEval:
       selectSubagentMutex.lock.surround:
-        stateVar.value.map: directorState =>
-          val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
-          result match
-            case Right(Some(driver)) =>
-              counters.increment(orderId, maybeBundleId, driver.subagentId)
-            case _ =>
-          result
+        stateVar.value.flatMap: directorState =>
+          IO:
+            directorState.selectNext(maybeBundleId, counters.subagentCounterScope(_, maybeBundleId))
+              .tap:
+                case Right(Some(driver)) =>
+                  counters.increment(orderId, maybeBundleId, driver.subagentId)
+                case _ =>
+            //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
     .evalTap:
       case Right(None) =>
         // TODO Do not poll for each Order
@@ -728,33 +725,35 @@ object SubagentKeeper:
     private var subagentToCounter = Map[SubagentId, Int]()
     private var bundleAndSubagentToCounter = Map[(SubagentBundleId, SubagentId), Int]()
 
-    def subagentProcessCountLiveScope(subagentId: SubagentId): Scope =
+    def subagentCounterScope(subagentId: SubagentId, bundleId: Option[SubagentBundleId])
+    : Scope =
       new Scope:
+        private def withBundle(body: SubagentBundleId => Value): Some[Checked[Value]] =
+          Some:
+            bundleId match
+              case None => Left(Problem("$js7ClusterProcessCount but no SubagentBundle"))
+              case Some(bundleId) => Right(body(bundleId))
+
         override def namedValue(name: String): Option[Checked[Value]] =
           name match
             case "js7SubagentProcessCount" =>
               Some(Right(NumberValue:
                 processCount(subagentId)))
-            case _ => None
 
-    def bundleProcessCountLiveScope(bundleId: SubagentBundleId): Scope =
-      new Scope:
-        override def namedValue(name: String): Option[Checked[Value]] =
-          name match
             case "js7ClusterProcessCount" =>
-              Some(Right(NumberValue:
-                processCount(bundleId)))
-            case _ => None
+              withBundle: bundleId =>
+                NumberValue:
+                  processCount(bundleId)
 
-    def bundleSubagentProcessCountLiveScope(bundleId: SubagentBundleId, subagentId: SubagentId)
-    : Scope =
-      new Scope:
-        override def namedValue(name: String): Option[Checked[Value]] =
-          name match
             case "js7ClusterSubagentProcessCount" =>
-              Some(Right(NumberValue:
-                processCount(bundleId, subagentId)))
+              withBundle: bundleId =>
+                NumberValue:
+                  processCount(bundleId, subagentId)
+
             case _ => None
+    
+    private def processCount(subagentId: SubagentId): Int =
+      subagentToCounter.getOrElse(subagentId, 0)
 
     /** Number of processes started via the specified SubagentBundleId.
       */
@@ -766,9 +765,6 @@ object SubagentKeeper:
       */
     private def processCount(bundleId: SubagentBundleId, subagentId: SubagentId): Int =
       bundleAndSubagentToCounter.getOrElse(bundleId -> subagentId, 0)
-
-    def processCount(subagentId: SubagentId): Int =
-      subagentToCounter.getOrElse(subagentId, 0)
 
     def increment(orderId: OrderId, bundleId: Option[SubagentBundleId], subagentId: SubagentId)
     : Unit =
