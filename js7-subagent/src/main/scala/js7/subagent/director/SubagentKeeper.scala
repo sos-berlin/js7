@@ -28,7 +28,7 @@ import js7.base.time.{DelayIterator, DelayIterators, Timestamp}
 import js7.base.utils.Assertions.{assertIfStrict, assertThat}
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, CatsUtils, LockKeeper, SetOnce}
+import js7.base.utils.{Allocated, LockKeeper, SetOnce}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -52,6 +52,7 @@ import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
+import scala.util.chaining.scalaUtilChainingOps
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]] private(
   localSubagentId: SubagentId,
@@ -388,21 +389,15 @@ extends Service.StoppableByRequest:
 
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
-    val scope = maybeBundleId.foldMap(bundleProcessCountScope)
     Stream.repeatEval:
-      stateVar.value.flatMap: directorState =>
-        selectSubagentMutex.lock.surround:
+      selectSubagentMutex.lock.surround:
+        stateVar.value.flatMap: directorState =>
           IO:
-            def subagentIdToScope(subagentId: SubagentId) =
-              subagentProcessCountLiveScope(subagentId) |+|
-                maybeBundleId.fold(Scope.empty): bundleId =>
-                  bundleSubagentProcessCountLiveScope(bundleId, subagentId)
-            val result = directorState.selectNext(maybeBundleId, scope, subagentIdToScope)
-            result match
-              case Right(Some(driver)) =>
-                counters.increment(maybeBundleId, driver.subagentId)
-              case _ =>
-            result
+            directorState.selectNext(maybeBundleId, subagentCounterScope(_, maybeBundleId))
+              .tap:
+                case Right(Some(driver)) =>
+                  counters.increment(maybeBundleId, driver.subagentId)
+                case _ =>
             //.tap(o => logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
     .evalTap:
       // TODO Do not poll (for each Order)
@@ -412,32 +407,31 @@ extends Service.StoppableByRequest:
     .flatMap(Stream.fromOption(_))
     .headL
 
-  private def bundleProcessCountScope(bundleId: SubagentBundleId): Scope =
+  private def subagentCounterScope(subagentId: SubagentId, bundleId: Option[SubagentBundleId])
+  : Scope =
     new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
-          case "js7ClusterProcessCount" =>
-            Some(Right(NumberValue:
-              counters.processCount(bundleId)))
-          case _ => None
+      private def withBundle(body: SubagentBundleId => Value): Some[Checked[Value]] =
+        Some:
+          bundleId match
+            case None => Left(Problem("$js7ClusterProcessCount but no SubagentBundle"))
+            case Some(bundleId) => Right(body(bundleId))
 
-  private def subagentProcessCountLiveScope(subagentId: SubagentId): Scope =
-    new Scope:
       override def namedValue(name: String): Option[Checked[Value]] =
         name match
           case "js7SubagentProcessCount" =>
             Some(Right(NumberValue:
               counters.processCount(subagentId)))
-          case _ => None
 
-  private def bundleSubagentProcessCountLiveScope(bundleId: SubagentBundleId, subagentId: SubagentId)
-  : Scope =
-    new Scope:
-      override def namedValue(name: String): Option[Checked[Value]] =
-        name match
+          case "js7ClusterProcessCount" =>
+            withBundle: bundleId =>
+              NumberValue:
+                counters.processCount(bundleId)
+
           case "js7ClusterSubagentProcessCount" =>
-            Some(Right(NumberValue:
-              counters.processCount(bundleId, subagentId)))
+            withBundle: bundleId =>
+              NumberValue:
+                counters.processCount(bundleId, subagentId)
+
           case _ => None
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
@@ -732,7 +726,6 @@ object SubagentKeeper:
     subagentDriver: SubagentDriver,
     stick: Boolean):
     export subagentDriver.subagentId
-
 
 
   private[director] final case class DeterminedSubagentBundle(

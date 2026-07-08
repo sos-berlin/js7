@@ -168,7 +168,7 @@ final class SubagentBundlePriorityTest extends OurTestSuite, SubagentTester:
       controller.awaitNextKey[OrderFinished](orderId)
 
   "Massive test with Fork and SubagentBundle containing three Subagents, process limiting" in:
-    val orderCount = if isIntelliJIdea then 2000 else 100
+    val orderCount = if isIntelliJIdea then 1000 else 100
     val perSubagentLimit = 2
     val sleep = 10.ms
 

@@ -17,7 +17,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
