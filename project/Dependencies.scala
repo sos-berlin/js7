@@ -16,7 +16,7 @@ object Dependencies
   val izumiReflectVersion = "3.0.1"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.1.0"
-  val circeVersion = "0.14.15"
+  val circeVersion = "0.14.16"
   val circeYamlVersion = "0.16.0"
   val circeGenericExtrasVersion = "0.14.4"
   val scalaTestVersion = "3.2.20"
@@ -32,7 +32,7 @@ object Dependencies
   val softwaremillTaggingVersion = "2.3.5"
   val reactorVersion = "3.8.5"
   val vavrVersion = "1.0.1"
-  val jnaVersion = "5.18.1"
+  val jnaVersion = "5.19.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
@@ -56,7 +56,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.8"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.9"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
@@ -82,7 +82,7 @@ object Dependencies
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
-  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.4.3"  ::
-                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.4.3" ::
-                            "io.prometheus.jmx" % "collector" % "1.5.0" :: Nil
+  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.8.0"  ::
+                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.8.0" ::
+                            "io.prometheus.jmx" % "collector" % "1.6.0" :: Nil
 }
