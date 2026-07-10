@@ -427,9 +427,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     runIO:
       asScala.startClusterWatch(
         clusterWatchId,
-        onNodeLossEventConfirmRequired =
-          problem =>
-            IO(onNodeLossEventConfirmRequired.accept(problem)),
+        onNodeLossEventConfirmRequired = onNodeLossEventConfirmRequired.accept,
         requireFailoverConfirmation = requireFailoverConfirmation,
         config)
 
