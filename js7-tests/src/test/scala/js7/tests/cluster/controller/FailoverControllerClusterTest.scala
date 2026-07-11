@@ -3,7 +3,9 @@ package js7.tests.cluster.controller
 import com.typesafe.config.Config
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.size
+import java.util.concurrent.TimeUnit.SECONDS
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.config.Js7Config
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
@@ -11,11 +13,14 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AutoClosing.autoClosing
 import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
+import js7.cluster.watch.ClusterWatchService
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
-import js7.data.cluster.Confirmer
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
+import js7.data.cluster.{ClusterWatchId, Confirmer}
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.controller.ControllerEvent
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -25,13 +30,17 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.extensions.*
+import js7.proxy.javaapi.{JControllerApi, JProxyContext}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.FailoverControllerClusterTest.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
+import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
+import scala.jdk.CollectionConverters.*
 
 abstract class FailoverControllerClusterTest protected extends ControllerClusterTester:
 
@@ -45,9 +54,24 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
     requireFailoverConfirmation: Boolean = false)
   : Unit =
     sys.props(testHeartbeatLossPropertyKey) = "false"
-    withClusterWatchService(
-      requireFailoverConfirmation = requireFailoverConfirmation
-    ): (clusterWatchService, _) =>
+
+    val jProxyContext = JProxyContext(Js7Config.defaultConfig, null)
+    var jControllerApi: JControllerApi = null.asInstanceOf[JControllerApi]
+    val whenFailedOverNotConfirmed = Promise[ClusterNodeLostEventNotConfirmedProblem]
+
+    try
+      jControllerApi = jProxyContext.newControllerApi(
+        controllerAdmissions.map(JAdmission(_)).toList.asJava,
+        JHttpsConfig.empty)
+      val clusterWatchService =
+        jControllerApi.startClusterWatch(
+          clusterWatchId = ClusterWatchId("CLUSTER-WATCH"),
+          onNodeLossEventConfirmRequired = problem =>
+            Logger.info(s"⚡️ EventBus: $problem")
+            whenFailedOverNotConfirmed.success(problem),
+          requireFailoverConfirmation = requireFailoverConfirmation
+        ).get(99, SECONDS)
+
       withControllerAndBackup(
         suppressClusterWatch = true,
         requireFailoverConfirmation = requireFailoverConfirmation
@@ -80,9 +104,15 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
         /// Fail over ///
 
         if requireFailoverConfirmation then
-          awaitAndAssert:
-            clusterWatchService.clusterWatch.clusterNodeLossEventToBeConfirmed(primaryId)
-              .exists(_.isInstanceOf[ClusterFailedOver])
+          assert:
+            !whenFailedOverNotConfirmed.isCompleted &&
+              clusterWatchService.clusterWatch.clusterNodeLossEventToBeConfirmed(primaryId) == None
+          whenFailedOverNotConfirmed.future.await(99.s)
+          assert:
+            whenFailedOverNotConfirmed.isCompleted &&
+              clusterWatchService.clusterWatch.clusterNodeLossEventToBeConfirmed(primaryId)
+                .exists(_.isInstanceOf[ClusterFailedOver])
+
           clusterWatchService.manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
             .await(99.s).orThrow
 
@@ -165,6 +195,9 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
         primaryController.stop.await(99.s)
         backupController.stop.await(99.s)
+    finally
+      if jControllerApi != null then jControllerApi.stop.get(99, SECONDS)
+      jProxyContext.close()
 
 
 object FailoverControllerClusterTest:
