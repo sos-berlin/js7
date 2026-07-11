@@ -257,7 +257,9 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
           ).blockingUse(99.s)(body.tupled)
       .unsafeRunSync()
 
-  protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId, requireFailoverConfirmation: Boolean = false)
+  protected final def clusterWatchServiceResource(
+    clusterWatchId: ClusterWatchId,
+    requireFailoverConfirmation: Boolean = false)
   : ResourceIO[(ClusterWatchService, StandardEventBus[ClusterNodeLostEventNotConfirmedProblem])] =
     for
       eventbus <- Resource.fromAutoCloseable(IO:

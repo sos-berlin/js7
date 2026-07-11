@@ -216,8 +216,7 @@ extends ClusterWatchStateMixin:
         ifManuallyConfirmed(event) match
           case None =>
             val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)
-            logger.warn:
-              s"ClusterWatch is untaught, therefore unable to confirm a node loss: $problem"
+            logger.warn(s"ClusterWatch is untaught, unable to confirm a node loss: $problem")
             Left(problem)
 
           case Some(confirmer) =>
