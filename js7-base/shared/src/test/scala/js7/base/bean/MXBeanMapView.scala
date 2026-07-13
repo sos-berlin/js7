@@ -1,4 +1,4 @@
-package js7.base.system
+package js7.base.bean
 
 import java.lang.management.ManagementFactory.getPlatformMXBean
 import java.lang.management.PlatformManagedObject

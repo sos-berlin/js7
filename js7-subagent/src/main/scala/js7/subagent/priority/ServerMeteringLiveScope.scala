@@ -2,8 +2,8 @@ package js7.subagent.priority
 
 import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory.getPlatformMXBean
+import js7.base.bean.LiveBeanMapView
 import js7.base.problem.Checked
-import js7.base.system.LiveBeanMapView
 import js7.data.value.Value
 import js7.data.value.expression.Scope
 

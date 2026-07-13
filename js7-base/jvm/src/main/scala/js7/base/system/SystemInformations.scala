@@ -1,6 +1,7 @@
 package js7.base.system
 
 import java.lang.management.ManagementFactory
+import js7.base.bean.LiveBeanMapView
 import js7.base.system.ServerOperatingSystem.operatingSystem
 
 object SystemInformations:

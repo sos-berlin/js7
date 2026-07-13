@@ -2,6 +2,7 @@ package js7.base.metering
 
 import cats.effect.{IO, Ref, ResourceIO}
 import com.typesafe.config.Config
+import js7.base.bean.MBeanUtils
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
@@ -9,7 +10,6 @@ import js7.base.metering.ResponsivenessMeter.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.service.Service
-import js7.base.system.MBeanUtils
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.threadUnsafe

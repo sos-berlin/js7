@@ -7,6 +7,7 @@ import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
 import java.lang.System.currentTimeMillis
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.generic.Completed
@@ -14,7 +15,6 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
-import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*

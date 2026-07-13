@@ -11,6 +11,7 @@ import fs2.concurrent.SignallingRef
 import izumi.reflect.Tag
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.Path
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.Environment
 import js7.base.log.Logger
@@ -20,7 +21,6 @@ import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.Assertions.assertThat

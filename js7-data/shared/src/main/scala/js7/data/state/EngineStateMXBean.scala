@@ -3,7 +3,7 @@ package js7.data.state
 import cats.effect.{IO, Resource, ResourceIO}
 import java.lang.management.ManagementFactory
 import java.util.Map as JMap
-import js7.base.system.MBeanUtils.registerStaticMBean
+import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.utils.MoreJavaConverters.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 

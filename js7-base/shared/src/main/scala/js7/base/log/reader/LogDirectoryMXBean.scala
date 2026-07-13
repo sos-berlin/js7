@@ -5,11 +5,11 @@ import cats.effect.kernel.{Resource, Sync}
 import cats.syntax.functor.*
 import java.io.IOException
 import java.nio.file.{Files, Path}
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.reader.LogDirectoryMXBean.*
 import js7.base.metering.CallMeter
-import js7.base.system.MBeanUtils.registerMBean
 
 sealed trait LogDirectoryMXBean:
   this: Bean =>

@@ -3,9 +3,9 @@ package js7.common.system.startup
 import cats.effect.ResourceIO
 import cats.syntax.applicative.*
 import com.typesafe.config.Config
+import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
 import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.system.ThreadsMXBean
 import js7.base.utils.AsyncLock
 import js7.common.http.HttpMXBean

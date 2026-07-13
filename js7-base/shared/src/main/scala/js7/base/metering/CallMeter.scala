@@ -2,12 +2,12 @@ package js7.base.metering
 
 import cats.effect.{IO, SyncIO}
 import java.util.concurrent.atomic.{AtomicBoolean, LongAdder}
+import js7.base.bean.MBeanUtils
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.metering.CallMeter.*
-import js7.base.system.MBeanUtils
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*

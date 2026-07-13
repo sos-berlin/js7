@@ -10,6 +10,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.motor.OrderMotor.*
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.log.Logger
@@ -18,7 +19,6 @@ import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*

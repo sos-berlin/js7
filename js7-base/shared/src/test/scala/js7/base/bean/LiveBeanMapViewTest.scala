@@ -1,4 +1,4 @@
-package js7.base.system
+package js7.base.bean
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite

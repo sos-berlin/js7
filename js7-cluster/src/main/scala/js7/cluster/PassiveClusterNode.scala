@@ -17,6 +17,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
 import js7.base.catsutils.SyncDeadline
 import js7.base.circeutils.CirceUtils.*
@@ -29,7 +30,6 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat

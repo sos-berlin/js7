@@ -9,6 +9,7 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.Environment.{TaggedResource, environment}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
@@ -28,7 +29,6 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
 import js7.base.stream.Numbered
-import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.thread.IOExecutor
 import js7.base.time.{AlarmClock, Timestamp, WallClock}
 import js7.base.utils.CatsUtils.syntax.RichResource

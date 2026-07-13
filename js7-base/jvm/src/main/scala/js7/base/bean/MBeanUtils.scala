@@ -1,4 +1,4 @@
-package js7.base.system
+package js7.base.bean
 
 import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.flatMap.*

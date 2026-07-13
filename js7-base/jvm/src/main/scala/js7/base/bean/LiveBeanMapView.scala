@@ -1,4 +1,4 @@
-package js7.base.system
+package js7.base.bean
 
 import java.beans.PropertyDescriptor
 import java.lang.reflect.{InvocationTargetException, Method}

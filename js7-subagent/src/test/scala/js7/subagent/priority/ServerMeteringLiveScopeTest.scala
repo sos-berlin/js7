@@ -2,9 +2,9 @@ package js7.subagent.priority
 
 import io.circe.syntax.EncoderOps
 import java.lang.management.ManagementFactory.getPlatformMXBean
+import js7.base.bean.LiveBeanMapView
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
-import js7.base.system.LiveBeanMapView
 import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.measureTime

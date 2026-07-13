@@ -1,4 +1,4 @@
-package js7.base.system
+package js7.base.bean
 
 import js7.base.test.OurTestSuite
 import js7.base.utils.ByteUnits.toKiBGiB

@@ -10,6 +10,7 @@ import javax.annotation.Nullable
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.motor.JobMotorKeeper.*
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.False
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
@@ -17,7 +18,6 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.{AsyncMap, SimpleLock}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.system.MBeanUtils.registerMBean
 import js7.base.time.AlarmClock
 import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.Atomic.extensions.*

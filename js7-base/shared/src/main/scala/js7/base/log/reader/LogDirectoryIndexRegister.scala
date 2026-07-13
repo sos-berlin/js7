@@ -8,6 +8,7 @@ import com.typesafe.config.Config
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.ZoneId
+import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
@@ -16,7 +17,6 @@ import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogDirectoryIndexRegister.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
-import js7.base.system.MBeanUtils.registerStaticMBean
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*

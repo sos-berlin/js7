@@ -1,10 +1,10 @@
-package js7.base.system
+package js7.base.bean
 
 import cats.effect.IO
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-import js7.base.system.MBeanUtils.registerMBean
-import js7.base.system.MBeanUtilsTest.*
+import js7.base.bean.MBeanUtils.registerMBean
+import js7.base.bean.MBeanUtilsTest.*
 import js7.base.test.OurAsyncTestSuite
 
 final class MBeanUtilsTest extends OurAsyncTestSuite:
