@@ -13,10 +13,8 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AutoClosing.autoClosing
 import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
-import js7.cluster.watch.ClusterWatchService
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLostEventNotConfirmedProblem
