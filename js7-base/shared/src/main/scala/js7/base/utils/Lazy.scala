@@ -84,5 +84,10 @@ object Lazy:
 
   /** For very fast evaluations.
    * During evaluation other threads accessing the value are blocked. */
-  def nonBlocking[A](eval: => A): Lazy[A] =
+  def fast[A](eval: => A): Lazy[A] =
     new Lazy(eval, o => o)
+
+  /** For very fast evaluations.
+   * During evaluation other threads accessing the value are blocked. */
+  inline def nonBlocking[A](eval: => A): Lazy[A] =
+    fast(eval)
