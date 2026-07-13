@@ -293,15 +293,14 @@ object AsyncLock:
 
 
   sealed trait AsyncLockMXBean:
-    def getLockedCount: Int
-    def getQueuedCount: Int
-    def getUsedTotal: Long
+    this: Bean.type =>
+
+    final def getLockedCount: Int = locked.intValue
+    final def getQueuedCount: Int = queued.intValue // (queued.longValue - locked.longValue) max 0 // Not synchronized !!!
+    final def getUsedTotal: Long = usedTotal.longValue
 
   object Bean extends AsyncLockMXBean:
     // locked and queued may be inconsistent while updated
     private[AsyncLock] val locked = new LongAdder
     private[AsyncLock] val queued = new LongAdder
     private[AsyncLock] val usedTotal = new LongAdder
-    def getLockedCount: Int = locked.intValue
-    def getQueuedCount: Int = queued.intValue // (queued.longValue - locked.longValue) max 0 // Not synchronized !!!
-    def getUsedTotal: Long = usedTotal.longValue
