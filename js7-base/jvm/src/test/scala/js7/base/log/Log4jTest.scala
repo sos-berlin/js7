@@ -15,9 +15,9 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.duration.Deadline.now
 
-/* To speed-test Log4jThreadContextMap, insert %X{js7.version} into log4j2.xml patternLayout !!!
+/* To speed-test Log4jThreadContextMap, insert %X{js7.prettyVersion} into log4j2.xml patternLayout !!!
 
-2024-10-07 MacBook Pro M1 log output, with %X{js7.version}:
+2024-10-07 MacBook Pro M1 log output, with %X{js7.prettyVersion}:
   0.75s/1000000 lines (⌀0.75µs), ~1337127 lines/s
   0.75s/318 MB, ~425 MB/s
   2.3s/6000000 lines (⌀0.38µs), ~2623487 lines/s
@@ -25,11 +25,12 @@ import scala.concurrent.duration.Deadline.now
   0 CorrelIds generated, 0× string, 0× bindCorrelId, 0× CorrelId.current
   1 (0%) Log4jStringMap, 0× forEach, 0× getCopy, 0× get, 0× put (suppressed)
 
-2026-04-01 MacBook Pro M4 log output, with %X{js7.version}, fifth iteration, log4j 2.24.3, varying times:
-  ⏱️  0.37s/million lines (⌀0.37µs), ~2'720'563 lines/s
-  0.37s/318 MB, ~865 MB/s
+  2026-07-13 MacBook Pro M4 log output, with %X{js7.prettyVersion}, fifth iteration, log4j 2.26.1
+  — Times varies, could be half —
+  0.22s/million lines (⌀0.22µs), ~4'587'043 lines/s
+  0.22s/318 MB, ~1459 MB/s
   0 CorrelIds generated, 0× string, 0× bindCorrelId, 0× CorrelId.current
-  5000027× getImmutableMapOrNull, 1× (0%) new Log4jMap, 10000056× Map.get
+  5000027×getReadOnlyContextData
 */
 final class Log4jTest extends OurTestSuite:
 
