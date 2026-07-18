@@ -1,11 +1,20 @@
 package js7.base.log.reader
 
-import java.time.Instant
-import java.util.regex.Pattern
+
+import cats.effect.IO
+import fs2.Chunk
+import java.time.{Instant, ZoneId}
+import java.util.regex.{Matcher, Pattern}
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogSelection.*
+import js7.base.log.{AnsiEscapeCodes, reader}
+import js7.base.time.EpochNano
+import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.ScalaUtils.flatten
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.math.Ordered.orderingToOrdered
 
 final case class LogSelection(
   end: Option[Instant] = None,
@@ -33,3 +42,68 @@ object LogSelection:
     default
 
   final case class ForReader(growing: Boolean = false, byteChunkSize: Int)
+
+
+  private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]
+
+  extension (logSelection: LogSelection)
+    def pipe[A <: LogLine](using ZoneId): fs2.Pipe[IO, A, A] =
+      applyLogSelection(logSelection)
+
+  private def applyLogSelection[A <: LogLine](logSelection: LogSelection)(using ZoneId)
+  : fs2.Pipe[IO, A, A] =
+    _.through:
+      takeUntilInstant(logSelection.end)
+    .through: stream =>
+      logSelection.pattern match
+        case None => stream.prefetch
+        case Some(pattern) => stream.through(filterPattern(pattern))
+    .pipeMaybe(logSelection.lineLimit): (stream, n) =>
+      stream.take(n)
+
+  private def takeUntilInstant[A <: LogLine](instant: Option[Instant])(using ZoneId): fs2.Pipe[IO, A, A] =
+    stream =>
+      instant.fold(stream): instant =>
+        val timestampParser = FastTimestampParser()
+        val endEpochNano = instant.toEpochNano
+        stream.takeWhile: logLine =>
+          val byteLine = logLine match
+            case o: KeyedByteLogLine => o.byteLine
+            case o: PosAndLine => o.byteLine
+            case o: Chunk[Byte @unchecked] => o
+          val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
+          epochNano < endEpochNano
+
+  private def filterPattern[A <: LogLine](pattern: Pattern): fs2.Pipe[IO, A, A] =
+    stream =>
+      // Requires some heap!!! heap =~ availableProcessors * logSelection.byteChunkSize
+      stream.chunks.parEvalMap(sys.runtime.availableProcessors): chunk =>
+        IO:
+          chunk.filter: element =>
+            val line = /*slow: removeHighlights*/ element match
+              case o: KeyedByteLogLine => o.lineAsString
+              case o: PosAndLine => o.lineAsString
+              case chunk: Chunk[Byte @unchecked] => (chunk: Chunk[Byte @unchecked]).utf8String
+            val matcher = pattern.matcher(line)
+            tailorRegion(line, matcher)
+            matcher.lookingAt() // SLOW
+      .unchunks
+
+  private def tailorRegion(line: String, matcher: Matcher): Unit =
+    // It's faster if we truncate \n at end of line. And we can use $ anchor for end-of-line.
+    // Also, skip ANSI highlighting at begin and end of line. It's fast.
+    var b = 0
+    var e = line.length
+    if e >= 1 then
+      if line(e - 1) == '\n' then e -= 1
+      if e >= 1 && line(e - 1) == '\r' then e -= 1
+      // Remove highlightíng at begin and end of line
+      import AnsiEscapeCodes.resetColor
+      if line.startsWith(resetColor, e - resetColor.length) then
+        e -= resetColor.length
+      if e >= 4 && line(0) == '\u001b' && line(1) == '[' then
+        val i = line.indexOf('m', 2)
+        if i > 0 then
+          b = i + 1
+      matcher.region(b, e max b)
+    end if

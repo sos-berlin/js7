@@ -28,7 +28,6 @@ import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch, D
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.reader.recompressors.Recompressor
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
@@ -140,7 +139,7 @@ extends Service.StoppableByCancel:
       stream ++
         nextFilesToKeyedLines(logFile.fileInstant, forReader)
     .through:
-      applyLogSelection(logSelection)
+      logSelection.pipe
 
   /** @return None if instantToLogFile is empty. */
   private def instantToLogFile(instant: Instant): Option[LogFile] =

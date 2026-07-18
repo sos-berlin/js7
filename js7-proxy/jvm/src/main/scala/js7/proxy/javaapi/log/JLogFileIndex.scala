@@ -7,7 +7,6 @@ import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import js7.base.log.AnsiEscapeCodes.removeHighlights
 import js7.base.log.reader.LogFileIndex
-import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.JProxyContext
 import reactor.core.publisher.Flux
@@ -19,7 +18,7 @@ final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
   def lineFlux(begin: Instant, logSelection: JLogSelection): Flux[String] =
     logFileIndex.streamPosAndLine(begin = begin, logSelection.asScala.forReader)
       .through:
-        applyLogSelection(logSelection.asScala)(using logFileIndex.zoneId)
+        logSelection.asScala.pipe(using logFileIndex.zoneId)
       .map: posAndLine =>
         removeHighlights(posAndLine.lineAsString)
     .asFlux

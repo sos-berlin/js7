@@ -15,7 +15,6 @@ import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndex.*
 import js7.base.log.reader.LogFileReader.streamGrowingLogFile
-import js7.base.log.reader.LogFileUtils.applyLogSelection
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
@@ -65,7 +64,7 @@ final class LogFileIndex private(
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
     streamPosAndLine(instant, logSelection.forReader)
       .through:
-        applyLogSelection(logSelection)
+        logSelection.pipe
       .head
       .compile.last
       .map(_.map(_._1))
@@ -74,7 +73,7 @@ final class LogFileIndex private(
   def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
     streamPosAndLine(begin, logSelection.forReader)
       .through:
-        applyLogSelection(logSelection)
+        logSelection.pipe
       .map(_.byteLine)
 
   def streamPosAndLine(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
