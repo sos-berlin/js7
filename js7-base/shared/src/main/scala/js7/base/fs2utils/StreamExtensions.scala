@@ -542,4 +542,10 @@ object StreamExtensions:
   //        .onFinalizeCase(exitCase => IO:
   //          onComplete(startedAt_.elapsed, counter, exitCase.toOutcome))))
 
+
+  extension [F[_] , A](fa: F[A])
+    inline def toStream: Stream[F, A] =
+      Stream.eval(fa)
+
+
   private def simpleCount[A](a: A) = 1L

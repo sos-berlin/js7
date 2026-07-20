@@ -1,7 +1,8 @@
 package js7.base.utils
 
 import java.util.concurrent.ConcurrentHashMap as JConcurrentHashMap
-import scala.collection.{MapFactory, MapFactoryDefaults, StrictOptimizedIterableOps, StrictOptimizedMapOps, mutable}
+import scala.annotation.unchecked.uncheckedVariance
+import scala.collection.{IterableOnce, MapFactory, MapFactoryDefaults, StrictOptimizedIterableOps, StrictOptimizedMapOps, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.util.NotGiven
 
@@ -77,11 +78,19 @@ extends
   override def update(key: K, value: V): Unit =
     jmap.put(key, value)
 
-  def addOne(element: (K, V)): ConcurrentHashMap.this.type =
+  def addOne(element: (K, V)): this.type =
     jmap.put(element._1, element._2)
     this
 
-  def subtractOne(element: K): ConcurrentHashMap.this.type =
+  override def addAll(elems: IterableOnce[(K, V)]): this.type =
+    elems match
+      case elems: collection.Map[K @unchecked, V @unchecked] =>
+        jmap.putAll(elems.asJava)
+      case _ =>
+        super.addAll(elems)
+    this
+
+  def subtractOne(element: K): this.type =
     jmap.remove(element)
     this
 
@@ -119,7 +128,8 @@ object ConcurrentHashMap extends MapFactory[ConcurrentHashMap]:
       case -1 => new JConcurrentHashMap[K, V]
       case n => new JConcurrentHashMap[K, V](n)
     it match
-      case map: collection.Map[K @unchecked, V @unchecked] => jmap.putAll(map.asJava)
+      case map: collection.Map[K @unchecked, V @unchecked] =>
+        jmap.putAll(map.asJava)
       case _ =>
         it.iterator.foreach: (k, v) =>
           jmap.put(k, v)
