@@ -166,6 +166,25 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
           case Left(t: FiberCanceledException) => assert(t.toString ==
             "js7.base.catsutils.CatsEffectUtils$FiberCanceledException: Fiber has been canceled")
           case _ => fail("Unexpected result vom .joinStd")
+
+    "joinMaybeCancelled" in:
+      val exception = Exception("TEST")
+      for
+        fiber <- IO(7).start
+        joined <- fiber.joinMaybeCancelled
+        _ = assert(joined == Some(7))
+
+        fiber <- IO.raiseError(exception).start
+        joined <- fiber.joinMaybeCancelled.attempt
+        _ = assert(joined == Left(exception))
+
+        fiber <- IO.never.start
+        _ <- fiber.cancel
+        joined <- fiber.joinMaybeCancelled
+      yield
+        joined match
+          case None => succeed
+          case _ => fail("Unexpected result vom .joinMaybeCancelled")
   }
 
   "Resource" - {

@@ -242,6 +242,13 @@ object CatsEffectExtensions:
     def joinStd(using F: MonadCancel[F, Throwable] & Defer[F]): F[A] =
       fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
 
+    /** Like joinWithUnit but a canceled Fiber results in None. */
+    def joinMaybeCancelled(using F: MonadCancel[F, Throwable]): F[Option[A]] =
+      fiber.join.flatMap:
+        case Outcome.Succeeded(f) => f.map(Some(_))
+        case Outcome.Errored(e) => F.raiseError(e)
+        case Outcome.Canceled() => F.pure(None)
+
     def joinCatchError(label: => String)(using F: MonadCancel[F, Throwable] & Sync[F]): F[Unit] =
       fiber.join.flatMap:
         case Outcome.Succeeded(result) =>

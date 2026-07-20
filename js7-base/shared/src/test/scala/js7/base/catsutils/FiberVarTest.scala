@@ -4,6 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
+import js7.base.catsutils.CatsEffectExtensions.joinMaybeCancelled
 import js7.base.test.OurAsyncTestSuite
 import org.scalatest.Assertion
 
@@ -56,3 +57,17 @@ final class FiberVarTest extends OurAsyncTestSuite:
         _ = assert(canceled4)
       yield
         succeed
+
+
+  "joinMaybeCancelled" in:
+    for
+      _ <- IO.pure(1).start.flatMap(_.joinMaybeCancelled).map: a =>
+        assert(a == Some(1))
+      _ <- IO.canceled.start.flatMap(_.joinMaybeCancelled).map: a =>
+        assert(a == None)
+      t = IllegalArgumentException()
+      _ <- IO.raiseError(t).start.flatMap(_.joinMaybeCancelled).attempt.map:
+        case Left(`t`) => succeed
+        case _ => fail()
+    yield
+      succeed
