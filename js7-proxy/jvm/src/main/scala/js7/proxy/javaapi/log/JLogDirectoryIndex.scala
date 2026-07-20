@@ -2,14 +2,15 @@ package js7.proxy.javaapi.log
 
 import cats.effect.ResourceIO
 import cats.effect.unsafe.IORuntime
-import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.function.Predicate
 import js7.base.log.LogLevel
+import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogDirectoryIndex, LogLineKey}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.{JProxyContext, JResource}
 import reactor.core.publisher.Flux
@@ -77,12 +78,14 @@ object JLogDirectoryIndex:
     ctx: JProxyContext)
   : JResource[JLogDirectoryIndex] =
     import ctx.ioRuntime
-    given Config = ctx.config
     given ZoneId = zoneId
     resource_(logLevel):
-      LogDirectoryIndex.directory(directory, logLevel,
-        watchGrowth = watchGrowth,
-        isRelevantFile.asScala)
+      for
+        given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
+        result <- LogDirectoryIndex.directory(directory, logLevel,
+          watchGrowth = watchGrowth,
+          isRelevantFile.asScala)
+      yield result
 
   def files(
     files: java.lang.Iterable[Path],
@@ -92,9 +95,11 @@ object JLogDirectoryIndex:
   : JResource[JLogDirectoryIndex] =
     import ctx.ioRuntime
     given ZoneId = zoneId
-    given Config = ctx.config
     resource_(logLevel):
-      LogDirectoryIndex.files(files.asScala, logLevel)
+      for
+        given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
+        result <- LogDirectoryIndex.files(files.asScala, logLevel)
+      yield result
 
   private def resource_(logLevel: LogLevel)
     (to: => ResourceIO[LogDirectoryIndex])

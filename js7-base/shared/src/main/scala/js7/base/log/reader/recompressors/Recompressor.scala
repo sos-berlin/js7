@@ -7,7 +7,6 @@ import java.nio.file.Path
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogWriter
-import js7.base.log.reader.recompressors.Recompressor.unknownRecompressors
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.JavaServiceProviders
 

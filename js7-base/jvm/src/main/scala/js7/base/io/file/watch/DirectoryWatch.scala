@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.syntax.flatMap.*
 import fs2.{Chunk, Stream}
 import java.nio.file.{Path, WatchEvent}
-import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatch.*
@@ -28,20 +27,22 @@ private final class DirectoryWatch(
         readDirectoryThenStream(state)
           .tapEach((_, state) => lastState = state)
           .map(Right(_))
-          .append(Stream.eval:
-            IO.left(lastState)
-              .delayBy((since + hotLoopBrake).timeLeftOrZero))
+          .append:
+            Stream.sleep_[IO]((since + hotLoopBrake).timeLeftOrZero)
+          .append:
+            Stream.emit(Left(lastState))
 
   private[watch] def readDirectoryThenStream(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
     Stream
       .eval(readDirectory map state.diffTo)
       .filter(_.nonEmpty)
-      .++(directoryEventStream
-        // BasicDirectoryWatch yields Nil when poll() timed out.
-        // Then we end, allowing the caller to restart and
-        // to handle an exchanged directory.
-        .takeWhile(_.nonEmpty))
+      .append:
+        directoryEventStream
+          // BasicDirectoryWatch yields Nil when poll() timed out.
+          // Then we end, allowing the caller to restart and
+          // to handle an exchanged directory.
+          .takeWhile(_.nonEmpty)
       .scan(state -> Seq.empty[DirectoryEvent]): (pair, events) =>
         pair._1.applyAndReduceEvents(events).swap
       .drop(1) // Drop initial value

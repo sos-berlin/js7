@@ -15,6 +15,7 @@ import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogDirectoryIndexRegister.*
+import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
 import js7.base.utils.Allocated
@@ -25,7 +26,8 @@ import js7.base.utils.ScalaUtils.syntax.*
   *
   * LogDirectoryIndexes including directory watching are started only when used.
   */
-final class LogDirectoryIndexRegister private(directory: Path)(using zoneId: ZoneId, config: Config)
+final class LogDirectoryIndexRegister private(directory: Path, logFilePrefix: String)
+  (using zoneId: ZoneId, conf: LogFileIndexConf)
 extends Service.TrivialReleasable:
 
   // TODO Make lazy for each LogLevel separately?
@@ -33,7 +35,6 @@ extends Service.TrivialReleasable:
     memoize:
       watching.toAllocated
 
-  private val logFilePrefix = config.getString("js7.log.prefix")
   private val currentErrorLogFilePrefix = logFilePrefix + "-error."
   private val currentInfoLogFilePrefix = logFilePrefix + "."
   private val currentDebugLogFilePrefix = logFilePrefix + "-debug."
@@ -140,10 +141,13 @@ object LogDirectoryIndexRegister:
 
   def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndexRegister] =
     for
+      given LogFileIndexConf = LogFileIndexConf.fromConfig(config).orThrow
       _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
       service <-
         Service:
-          new LogDirectoryIndexRegister(directory)
+          LogDirectoryIndexRegister(
+            directory,
+            logFilePrefix = config.getString("js7.log.prefix"))
     yield
       service
 

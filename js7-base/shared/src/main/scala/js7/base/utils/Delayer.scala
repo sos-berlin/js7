@@ -16,11 +16,14 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 // Stateful
-final class Delayer[F[_]] private(using F: Async[F])(val since: CatsDeadline, conf: DelayConf):
+final class Delayer[F[_]] private(using F: Async[F])(
+  val since: CatsDeadline,
+  conf: DelayConf,
+  finite: Boolean):
 
   import conf.{delays, resetWhen}
 
-  private val _state = Atomic(State(since, conf.lazyList))
+  private val _state = Atomic(State(since, conf.lazyList(finite = finite)))
   private val sym = BlockingSymbol()
 
   export sym.{logLevel, symbol, relievedLogLevel, used as escalated}
@@ -86,10 +89,10 @@ object Delayer:
   def start[F[_]](delay: FiniteDuration, moreDelays: FiniteDuration*)(using F: Async[F]): F[Delayer[F]] =
     start(DelayConf(delay, moreDelays*))
 
-  def start[F[_]](conf: DelayConf)(using F: Async[F]): F[Delayer[F]] =
+  def start[F[_]](conf: DelayConf, finite: Boolean = false)(using F: Async[F]): F[Delayer[F]] =
     F.monotonic
       .map(CatsDeadline.fromMonotonic)
-      .map(now => new Delayer(now, conf))
+      .map(now => new Delayer(now, conf, finite = finite))
 
   def continually[F[_]](conf: DelayConf = DelayConf.default)(body: F[Unit])
     (using Async[F], sourcecode.Enclosing)
@@ -98,10 +101,11 @@ object Delayer:
       body
     .compile.drain
 
-  def stream[F[_]](conf: DelayConf = DelayConf.default)(using Async[F], sourcecode.Enclosing)
+  def stream[F[_]](conf: DelayConf = DelayConf.default, finite: Boolean = false)
+    (using Async[F], sourcecode.Enclosing)
   : Stream[F, Unit] =
     Stream
-      .eval(start(conf))
+      .eval(start(conf, finite = finite))
       .flatMap: delayer =>
         Stream.constant((), chunkSize = 1).evalMap: _ =>
           delayer.sleep

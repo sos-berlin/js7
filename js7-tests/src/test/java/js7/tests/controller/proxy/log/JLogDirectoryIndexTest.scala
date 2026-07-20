@@ -26,7 +26,7 @@ final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
           val midnight = startInstant + 24.h * d
           (0 until 3).foreach: h =>
             val hour = midnight + h.h
-            val gzFile = dir / s"js7-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
+            val gzFile = dir / s"TEST-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
             autoClosing(
               new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(gzFile.toFile)))
             ): out =>

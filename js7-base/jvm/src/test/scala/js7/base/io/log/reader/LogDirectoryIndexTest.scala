@@ -1,9 +1,9 @@
 package js7.base.io.log.reader
 
 import cats.effect.IO
-import com.typesafe.config.Config
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
@@ -13,10 +13,12 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.io.file.watch.BasicDirectoryWatch
 import js7.base.io.log.reader.LogDirectoryIndexTest.*
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
+import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest, LogSelection}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
@@ -48,9 +50,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           val midnight = startInstant + 24.h * d
           (0 until 3).foreach: h =>
             val hour = midnight + h.h
-            val gzFile = dir / s"js7-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
+            val gzFile = dir / s"test-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
             autoClosing(
-              new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(gzFile.toFile)))
+              GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
             ): out =>
               out.write:
                 (headerTimestampFormatter.format(hour.atZone(zoneId)) + " HEADER\n").getBytes(UTF_8)
@@ -60,7 +62,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $i\n"
                     .getBytes(UTF_8)
       .productR:
-        given Config = Js7Config.defaultConfig
+        given LogFileIndexConf = LogFileIndexConf.forTest
         LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
           .use: logDirectoryIndex =>
             /// Read *all* log files as text lines ///
@@ -207,30 +209,38 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
     temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
       val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
       def instantToFile(instant: Instant) =
-        dir / s"js7-${instant.atZone(zoneId).toLocalDate}.log.gz"
+        dir / s"test-${instant.atZone(zoneId).toLocalDate}.log.gz"
 
-      def writeFile(instant: Instant) =
-        val gzFile = instantToFile(instant)
-        new GZIPOutputStream(
-          new BufferedOutputStream(new FileOutputStream(gzFile.toFile))
-        ).use: out =>
+      def writeFile(instant: Instant): Unit =
+        val file = dir / "test.log"
+        BufferedOutputStream(FileOutputStream(file.toFile)).use: out =>
           out.write:
             (headerTimestampFormatter.format(instant.atZone(zoneId)) + " HEADER\n").getBytes(UTF_8)
           out.write:
             s"${timestampFormatter.format(instant.atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE\n"
               .getBytes(UTF_8)
 
+        sleep(BasicDirectoryWatch.systemWatchDelay + 200.ms) // For macOS: delay before FileDeleted
+        val gzFile = instantToFile(instant)
+        GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile))).use: out =>
+          Files.copy(file, out)
+
+        // Trigger FileDeleted / LogFileDeleted,
+        // telling LogDirectoryIndex that the .log.gz is complete and readable now
+        Files.delete(file)
+      end writeFile
+
       val aFile = instantToFile(startInstant)
       val bFile = instantToFile(startInstant + 24.h)
       writeFile(startInstant)
       writeFile(startInstant + 24.h)
-      given Config = Js7Config.defaultConfig
+
+      given LogFileIndexConf = LogFileIndexConf.forTest
       LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
         .use: logDirectoryIndex =>
           IO:
-            assert:
-              logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h)
-                .map(instantToFile)
+            assert(logDirectoryIndex.files ==
+              Seq(startInstant, startInstant + 24.h).map(instantToFile))
           *>
             logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
@@ -242,9 +252,8 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           *>
             IO:
               writeFile(startInstant + 48.h)
-              awaitAndAssert:
-                logDirectoryIndex.files == Seq(startInstant, startInstant + 24.h, startInstant + 48.h)
-                  .map(instantToFile)
+              awaitAndAssert(logDirectoryIndex.files ==
+                Seq(startInstant, startInstant + 24.h, startInstant + 48.h).map(instantToFile))
           *>
             logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
@@ -274,7 +283,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
         (1 to 5).foldMap: i =>
           val date = s"2026-05-1$i"
-          val gzFile = dir / s"js7-debug-$date-1.log.gz"
+          val gzFile = dir / s"test-debug-$date-1.log.gz"
           LogFileIndexTest.writeFile(
             gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true,
             startTime = s"${date}T00:00:00.000+02")
@@ -282,18 +291,18 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           (1 to 10).foldMap: _ =>
             IO.defer:
               val t = Deadline.now
-                given Config = Js7Config.defaultConfig
-                LogDirectoryIndex.directory(
-                  dir, Debug, watchGrowth = false, isRelevantFile = _ => true
-                ).use: logDirectoryIndex =>
-                  logDirectoryIndex.byteLineStream(
-                    Instant.parse("2026-02-12T00:01:00Z"),
-                    LogSelection()
-                  ).compile.drain.map: _ =>
-                    val elapsed = t.elapsed
-                    val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                    info_(s"$logDirectoryIndex ${
-                      bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+              given LogFileIndexConf = LogFileIndexConf.forTest
+              LogDirectoryIndex.directory(
+                dir, Debug, watchGrowth = false, isRelevantFile = _ => true
+              ).use: logDirectoryIndex =>
+                logDirectoryIndex.byteLineStream(
+                  Instant.parse("2026-02-12T00:01:00Z"),
+                  LogSelection()
+                ).compile.drain.map: _ =>
+                  val elapsed = t.elapsed
+                  val used = sys.runtime.totalMemory - sys.runtime.freeMemory
+                  info_(s"$logDirectoryIndex ${
+                    bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }
 

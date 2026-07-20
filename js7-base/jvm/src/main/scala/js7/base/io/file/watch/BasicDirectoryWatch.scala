@@ -83,7 +83,6 @@ extends Service.StoppableByRequest:
           logger.trace(s"WatchService.poll() $directory => ${result.mkString(" ")}")
           result
 
-
   private def retrieveEvents(watchKey: WatchKey): Seq[DirectoryWatchEvent] =
     try watchKey.pollEvents().asScala.view
       .collect:

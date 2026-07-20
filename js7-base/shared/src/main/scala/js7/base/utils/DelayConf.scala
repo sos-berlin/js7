@@ -25,7 +25,14 @@ final case class DelayConf(
     delays.iterator ++ Iterator.continually(delays.last)
 
   def lazyList: LazyList[FiniteDuration] =
-    delays.iterator.repeatLast
+    lazyList()
+
+  def lazyList(finite: Boolean = false): LazyList[FiniteDuration] =
+    val iterator = delays.iterator
+    if finite then
+      iterator.to(LazyList)
+    else
+      iterator.repeatLast
 
   def tailRecM[F[_]: Async, A](body: Delayer[F] => F[Either[Unit, A]]): F[A] =
     run[F].apply: delayer =>
@@ -67,7 +74,11 @@ object DelayConf:
   def maybe(delays: Seq[FiniteDuration]): Option[DelayConf] =
     NonEmptyList.fromSeq(delays).map(DelayConf(_))
 
+  def fromConfig(config: Config, configPath: String) =
+    config.nonEmptyFiniteDurations(configPath).map: nonEmptyList =>
+      DelayConf(nonEmptyList)
+
   extension (config: Config)
+    //@deprecated
     def delayConf(path: String): Checked[DelayConf] =
-      config.nonEmptyFiniteDurations(path).map: nonEmptyList =>
-        DelayConf(nonEmptyList)
+      fromConfig(config, path)
