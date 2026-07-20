@@ -5,8 +5,10 @@ import com.typesafe.config.Config
 import java.io.{FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Path
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogWriter
+import js7.base.log.reader.recompressors.Recompressor.unknownRecompressors
+import js7.base.log.{LogLevel, Logger}
 import js7.base.system.JavaServiceProviders
 
 trait Recompressor:
@@ -28,6 +30,7 @@ trait Recompressor:
 private[reader] object Recompressor:
   private val logger = Logger[this.type]
   private val default = DeflateRecompressor // Faster than GzipRecompressor
+  private var unknownRecompressors = Set.empty[String]
 
   private val knownRecompressors: Seq[Recompressor] =
     Seq(PlainRecompressor, GzipRecompressor, DeflateRecompressor)
@@ -42,5 +45,7 @@ private[reader] object Recompressor:
       .flatMap: recompressor =>
         recompressor.findRecompressor(name)
       .take(1).toList.headOption.getOrElse:
-        logger.error(s"Unknown Recompressor $keyName=$name, falling back to $default")
+        val logLevel = if unknownRecompressors(name) then LogLevel.Debug else LogLevel.Error
+        unknownRecompressors += name
+        logger.log(logLevel, s"Unknown Recompressor $keyName=$name, falling back to $default")
         default
