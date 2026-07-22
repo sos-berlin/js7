@@ -137,7 +137,7 @@ extends
     DirectoryStateJvm.readDirectory(directory, isRelevantFile).catchAsChecked
 
   private def isRelevantFile(file: Path) =
-    !file.getFileName.startsWith(".")
+    !file.getFileName.toString.startsWith(".")
 
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     state.genericVerifier.verify(document, signature)
