@@ -4,6 +4,7 @@ import cats.effect.{IO, ResourceIO}
 import cats.syntax.all.*
 import java.nio.file.Path
 import js7.base.fs2utils.StreamExtensions.*
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorTap
@@ -29,7 +30,7 @@ extends Service.StoppableByRequest:
 
   private def directoryToFilenames: Seq[(Path, Set[Path])] =
     files
-      .map(path => path.getParent -> path.getFileName)
+      .map(path => path.getParent -> path.filename)
       .filter: (directory, filename) =>
         directory != null && filename != null
       .groupMap(_._1)(_._2)

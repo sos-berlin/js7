@@ -7,6 +7,7 @@ import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -167,7 +168,7 @@ object JournalHeader:
 
   final case class JournalTypeMismatchProblem(file: Path, expected: String, typeName: String) extends Problem.Coded:
     def arguments: Map[String, String] = Map(
-      "file" -> file.getFileName.toString,
+      "file" -> file.filenameOrEmpty.toString,
       "typeName" -> typeName,
       "expected" -> expected)
   object JournalTypeMismatchProblem extends Problem.Coded.Companion
@@ -179,7 +180,7 @@ object JournalHeader:
     foundJournalId: JournalId)
   extends Problem.Coded:
     def arguments: Map[String, String] = Map(
-      "file" -> file.getFileName.toString,
+      "file" -> file.filenameOrEmpty.toString,
       "expectedJournalId" -> expectedJournalId.string,
       "foundJournalId" -> foundJournalId.string)
   object JournalIdMismatchProblem extends Problem.Coded.Companion

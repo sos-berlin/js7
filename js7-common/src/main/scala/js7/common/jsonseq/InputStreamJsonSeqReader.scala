@@ -141,7 +141,9 @@ object InputStreamJsonSeqReader:
     Resource.fromAutoCloseable(IO(InputStreamJsonSeqReader.open(file)))
 
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
-    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
+    new InputStreamJsonSeqReader(
+      SeekableInputStream.openFile(file),
+      name = file.getFileName.toString, blockSize)
 
   private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) =
     val where = if lineNumber >= 0 then s"line $lineNumber" else s"file position $position"

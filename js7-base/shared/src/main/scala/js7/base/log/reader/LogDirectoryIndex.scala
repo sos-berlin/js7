@@ -367,7 +367,7 @@ object LogDirectoryIndex:
         files ->
           DirectoryWatch.stream(
             directory,
-            DirectoryState(files.map(_.getFileName)),
+            DirectoryState(files.map(_.filename)),
             conf.directoryWatchSettings.copy(watchDelay = 0.s),
             isRelevant,
             Set(ENTRY_CREATE, ENTRY_DELETE))
@@ -429,9 +429,10 @@ object LogDirectoryIndex:
           .run()
 
   private[reader] def fileToLogLevel(file: Path): LogLevel =
-    if file.getFileName.toString.contains("-error") then
+    val name = file.getFileName.toString
+    if name.contains("-error") then
       LogLevel.Error
-    else if file.getFileName.toString.contains("-debug") then
+    else if name.contains("-debug") then
       LogLevel.Debug
     else
       LogLevel.Info
@@ -475,7 +476,7 @@ object LogDirectoryIndex:
     (using zoneId: ZoneId):
 
     val filename: Path =
-      originalFile.getFileName
+      originalFile.filename
 
     val fileEpochNano: EpochNano =
       fileInstant.toEpochNano

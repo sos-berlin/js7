@@ -12,6 +12,7 @@ import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, F
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops.*
 import js7.base.data.{ByteArray, ByteSequence, Writable}
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -55,7 +56,7 @@ object FileUtils:
     if !exists(to) then createDirectory(to)
     autoClosing(Files.list(from)): stream =>
       for file <- stream.asScala do
-        val destination = to.resolve(file.getFileName)
+        val destination = to.resolve(file.filename)
         if isDirectory(file) then
           copyDirectoryContent(file, destination)
         else
@@ -75,6 +76,18 @@ object FileUtils:
       /** Must be a relative path without backslashes or single or double dot directories. */
       def /(relative: String): Path =
         delegate.resolve(checkRelativePath(relative).orThrow)
+
+      @throws[IllegalArgumentException]
+      def filename: Path =
+        delegate.getFileName match
+          case null => throw new IllegalArgumentException("Empty file path")
+          case o => o
+
+      @throws[IllegalArgumentException]
+      def filenameOrEmpty: Path =
+        delegate.getFileName match
+          case null => EmptyPath
+          case o => o
 
       /** Writes `string` encoded with UTF-8 to file. */
       def :=(string: String): Unit =
@@ -119,7 +132,7 @@ object FileUtils:
 
       def labeledByteArray: Labeled[ByteArray] =
         // Do not publish the complete path. We use only the filename.
-        Labeled(readAs[ByteArray], delegate.getFileName.toString)
+        Labeled(readAs[ByteArray], delegate.filenameOrEmpty.toString)
 
       def byteArray: ByteArray =
         readAs[ByteArray]
@@ -161,7 +174,7 @@ object FileUtils:
         .flatMap: javaStream =>
           fs2.Stream.fromIterator(javaStream.iterator.asScala, chunkSize = 1024)
             .filterNot: file =>
-              isPointFilename(file.getFileName)
+              isPointFilename(file.filename)
 
       /**
         * Returns the content of the directory denoted by `this`.
@@ -177,8 +190,6 @@ object FileUtils:
 
       //def toFs2Path: fs2.io.file.Path =
       //  fs2.io.file.Path.fromNioPath(delegate)
-
-  import syntax.*
 
   @tailrec
   def createShortNamedDirectory(directory: Path, prefix: String): Path =

@@ -13,7 +13,7 @@ object DirectoryStateJvm:
   def readDirectory(directory: Path, matches: Path => Boolean = _ => true): IO[DirectoryState] =
     meterReadDirectory:
       directory.directoryStream[IO]
-        .map(_.getFileName)
+        .map(_.filename)
         .filter(matches)
         .compile.to(Set)
         .map(DirectoryState(_))

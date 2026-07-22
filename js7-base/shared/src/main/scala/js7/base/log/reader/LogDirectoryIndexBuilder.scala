@@ -13,6 +13,7 @@ import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.{CatsDeadline, FiberVar}
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.log.Logger
@@ -138,7 +139,7 @@ private final class LogDirectoryIndexBuilder private(
 
 
   private final class DelayedLogFile(val file: Path, onCompleted: LogFile => IO[Unit]):
-    val filename: Path = file.getFileName
+    val filename: Path = file.filename
     private val completed = Deferred.unsafe[IO, Unit]
     private val fiberVar = FiberVar[Unit]
 
