@@ -13,7 +13,7 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
+import js7.base.log.reader.LogDirectoryIndex.{LogDirectoryIndexMXBean, isGzipped}
 import js7.base.log.reader.LogDirectoryIndexRegister.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}

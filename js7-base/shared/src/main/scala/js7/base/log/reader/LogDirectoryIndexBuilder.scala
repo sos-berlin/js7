@@ -2,31 +2,24 @@ package js7.base.log.reader
 
 import cats.effect.std.{AtomicCell, Queue, QueueSink, Semaphore, Supervisor}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
-import cats.syntax.option.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import java.io.{EOFException, FileInputStream, FileNotFoundException}
 import java.nio.file.Path
-import java.time.{Instant, ZoneId}
-import java.util.zip.GZIPInputStream
+import java.time.ZoneId
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.{CatsDeadline, FiberVar}
-import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogDirectoryIndex.*
+import js7.base.log.reader.LogDirectoryIndex.{LogFile, isGzipped}
 import js7.base.log.reader.LogDirectoryIndexBuilder.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
-import js7.base.problem.{Checked, Problem}
-import js7.base.time.EpochNano
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Delayer}
 
 private final class LogDirectoryIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
@@ -50,7 +43,7 @@ private final class LogDirectoryIndexBuilder private(
   : IO[(Vector[LogFile], Vector[DelayedLogFile])] =
     Stream.iterable(files)
       .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
-        toLogFile(file).flatMap:
+        LogFile.read(file).flatMap:
           case Left(problem) =>
             logger.debug(s"Delaying ${file.getFileName} due to: $problem")
             val a = DelayedLogFile(file, onCompleted = queue.offer)
@@ -113,7 +106,6 @@ private final class LogDirectoryIndexBuilder private(
           sys.error(s"LogDirectoryIndex: unexpected $o")
       .flatMap:
         Stream.iterable
-  end toLogFileEvents2
 
   /** Try to read a log file's timestamp with logFileTimestampTries duration
     *
@@ -126,7 +118,7 @@ private final class LogDirectoryIndexBuilder private(
       Delayer.stream[IO](conf.logFileTimestampTries, finite = true)
         .evalMap: _ =>
           logFileTimestampSempahore.permit.surround:
-            toLogFile(file)
+            LogFile.read(file)
         .flatMap:
           case Left(problem) =>
             logger.debug(s"toLogFileUntilFinished ⟲ $file: $problem")
@@ -185,20 +177,9 @@ private final class LogDirectoryIndexBuilder private(
 private object LogDirectoryIndexBuilder:
 
   private val logger = Logger[this.type]
-  /** First chunk of log file must include the timestamp of the second line
-    * (the line after the header) */
-  private val FirstChunkSize = 1024
 
-  /** Convert a stream of DirectoryEvent to a stream of LogFile (containing their timestamps).
-    *
-    * log4j is expected to archive log files in this order (assuming log4j is already running):
-    * * Write footer line and close .log-file
-    * * LogFileAdded(.log.gz) —  _.log is completed, be prepared for a new .log.gz_
-    * * Write .log.gz
-    * * LogFileDeleted(.log) —  _.log.gz is completely written, it is readable now_
-    * * LogFileAdded(.log), same filename —  _expect the first log line with a timestamp_
-    * * Write first log line (containing the first timestamp)
-    */
+  /** Return the initial LogFiles and a FS2 Pipe converting a stream of DirectoryEvent
+    * to a stream of LogFile (containing their timestamps). */
   def toLogFileEvents(directory: Path, initialFiles: Seq[Path])
     (using zoneId: ZoneId, conf: LogFileIndexConf)
   : ResourceIO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
@@ -216,52 +197,10 @@ private object LogDirectoryIndexBuilder:
     yield
       result
 
-  /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
-    */
-  private[reader] def toLogFile(file: Path)(using ZoneId): IO[Checked[LogFile]] =
-    val gzip = isGzipped(file)
-    readLogFileInstant(file, gzip).flatMapT: instant =>
-      AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).map: cell =>
-        Right:
-          LogFile(file, instant, cell, isGzipped = gzip)
-
-  private def readLogFileInstant(file: Path, gzip: Boolean)(using ZoneId): IO[Checked[Instant]] =
-    Resource.fromAutoCloseable:
-      IO.blocking:
-        if gzip then
-          GZIPInputStream(FileInputStream(file.toFile), 1024)
-        else
-          FileInputStream(file.toFile)
-    .use: in =>
-      IO.blocking:
-        ByteArray.unsafeWrap:
-          in.readNBytes(FirstChunkSize)
-    .map: chunk =>
-      def eofProblem = Problem.pure("LogFileRegister readLogFileInstant: EOF")
-      chunk.indexOf('\n') match
-        case lf if lf > 15 /*minimum length of headline*/ =>
-          val lineEnd = chunk.indexOf('\n', lf + 1)
-          if lineEnd == -1 then
-            Left(eofProblem)
-          else
-            // Timestamp of first log line after the header line
-            FastTimestampParser().parseTimestampInLogLine(chunk.slice(lf + 1, lineEnd))
-              .toOption.toRight(Problem("Invalid timestamp"))
-              .map(_.toInstant)
-        case _ =>
-          Left(eofProblem)
-    .recover: throwable =>
-      if throwable.getStackTrace != null then
-        throwable match
-          case _: (FileNotFoundException | EOFException) =>
-          case _ =>
-            logger.debug(s"❓readLogFileInstant $file: ${throwable.toStringWithCauses}", throwable)
-      Left(Problem.fromThrowable(throwable))
 
 
   private[reader] sealed trait LogFileEvent
 
-  private[reader] final case class LogFileAdded(logFile: LogFile) extends LogFileEvent:
-    def filename = logFile.filename
+  private[reader] final case class LogFileAdded(logFile: LogFile) extends LogFileEvent
 
   private[reader] final case class LogFileDeleted(filename: Path) extends LogFileEvent

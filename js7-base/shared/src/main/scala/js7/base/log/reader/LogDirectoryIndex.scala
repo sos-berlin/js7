@@ -2,10 +2,11 @@ package js7.base.log.reader
 
 import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
+import cats.syntax.option.*
 import cats.syntax.parallel.*
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Stream}
-import java.io.FileInputStream
+import java.io.{EOFException, FileInputStream, FileNotFoundException}
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
@@ -14,6 +15,8 @@ import java.util.zip.GZIPInputStream
 import js7.base.catsutils.CatsEffectExtensions.{orThrow, run}
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.{inputStreamToStream, toPosAndLines}
 import js7.base.io.OpaquePos
@@ -22,10 +25,11 @@ import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, toLogFile}
+import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent}
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
@@ -316,6 +320,9 @@ object LogDirectoryIndex:
   private val TmpSuffix = "-indexed.tmp"
   private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
   val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
+  /** First chunk of log file must include the timestamp of the second line
+    * (the line after the header) */
+  private val FirstChunkSize = 1024
 
   /** LogDirectoryIndex, watching a directory. */
   def directory(
@@ -378,7 +385,7 @@ object LogDirectoryIndex:
     for
       logFiles <- Resource.eval:
         Stream.iterable(files).parEvalMap(sys.runtime.availableProcessors): file =>
-          toLogFile(file).orThrow
+          LogFile.read(file).orThrow
         .compile.toVector.map: logFiles =>
           logFiles.view.map(_.toStringWithSize).foreachWithBracket(): (line,br) =>
             logger.trace(s"$br$line")
@@ -415,31 +422,6 @@ object LogDirectoryIndex:
     yield
       logFileIndex
 
-  private[reader] def isGzipped(file: Path): Boolean =
-    val name = file.getFileName.toString
-    name.endsWith(".log.gz") || name.endsWith(LogGzTmpSuffix)
-
-  private def deleteTmpFiles(directory: Path, logLevel: LogLevel): IO[Unit] =
-    IO.blocking:
-      FileDeleter.tryDeleteFiles:
-        directory.directoryStream[SyncIO]
-          .filter: file =>
-            isOurTmpFile(file) && fileToLogLevel(file) == logLevel
-          .compile.toVector
-          .run()
-
-  private[reader] def fileToLogLevel(file: Path): LogLevel =
-    val name = file.getFileName.toString
-    if name.contains("-error") then
-      LogLevel.Error
-    else if name.contains("-debug") then
-      LogLevel.Debug
-    else
-      LogLevel.Info
-
-  private[reader] def isOurTmpFile(file: Path): Boolean =
-    file.toString.endsWith(LogGzTmpSuffix)
-
   private def toGzipDecompressingStream(gzFile: Path, bufferSize: Int): Stream[IO, Chunk[Byte]] =
     Stream.resource:
       Resource.fromAutoCloseable:
@@ -467,12 +449,72 @@ object LogDirectoryIndex:
     .flatMap: in =>
       inputStreamToStream(in, bufferSize)
 
-  /** Description of a log file with it's timestamp and a deferred `LogFileIndex`. */
-  private[reader] final class LogFile(
+  private def deleteTmpFiles(directory: Path, logLevel: LogLevel): IO[Unit] =
+    IO.blocking:
+      FileDeleter.tryDeleteFiles:
+        directory.directoryStream[SyncIO]
+          .filter: file =>
+            isOurTmpFile(file) && fileToLogLevel(file) == logLevel
+          .compile.toVector
+          .run()
+
+  private[reader] def fileToLogLevel(file: Path): LogLevel =
+    val name = file.getFileName.toString
+    if name.contains("-error") then
+      LogLevel.Error
+    else if name.contains("-debug") then
+      LogLevel.Debug
+    else
+      LogLevel.Info
+
+  private[reader] def isGzipped(file: Path): Boolean =
+    val name = file.getFileName.toString
+    name.endsWith(".log.gz") || name.endsWith(LogGzTmpSuffix)
+
+  private[reader] def isOurTmpFile(file: Path): Boolean =
+    file.toString.endsWith(LogGzTmpSuffix)
+
+  private def readLogFileInstant(file: Path, gzip: Boolean)(using ZoneId): IO[Checked[Instant]] =
+    Resource.fromAutoCloseable:
+      IO.blocking:
+        if gzip then
+          GZIPInputStream(FileInputStream(file.toFile), 1024)
+        else
+          FileInputStream(file.toFile)
+    .use: in =>
+      IO.blocking:
+        ByteArray.unsafeWrap:
+          in.readNBytes(FirstChunkSize)
+    .map: chunk =>
+      def eofProblem = Problem.pure("LogFileRegister readLogFileInstant: EOF")
+      chunk.indexOf('\n') match
+        case lf if lf > 15 /*minimum length of headline*/ =>
+          val lineEnd = chunk.indexOf('\n', lf + 1)
+          if lineEnd == -1 then
+            Left(eofProblem)
+          else
+            // Timestamp of first log line after the header line
+            FastTimestampParser().parseTimestampInLogLine(chunk.slice(lf + 1, lineEnd))
+              .toOption.toRight(Problem("Invalid timestamp"))
+              .map(_.toInstant)
+        case _ =>
+          Left(eofProblem)
+    .recover: throwable =>
+      if throwable.getStackTrace != null then
+        throwable match
+          case _: (FileNotFoundException | EOFException) =>
+          case _ =>
+            logger.debug(s"❓readLogFileInstant $file: ${throwable.toStringWithCauses}", throwable)
+      Left(Problem.fromThrowable(throwable))
+
+
+  /** Description of a log file with its timestamp and a deferred `LogFileIndex`. */
+  private[reader] final class LogFile private(
     val originalFile: Path,
     val fileInstant: Instant,
-    val deferredIndexCell: AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]],
-    val isGzipped: Boolean = false)
+    val isGzipped: Boolean,
+    private[LogDirectoryIndex] val deferredIndexCell:
+      AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]])
     (using zoneId: ZoneId):
 
     val filename: Path =
@@ -499,8 +541,18 @@ object LogDirectoryIndex:
   private[reader] object LogFile:
     given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
+    /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
+      */
+    def read(file: Path)(using ZoneId): IO[Checked[LogFile]] =
+      val gzip = isGzipped(file)
+      readLogFileInstant(file, gzip).flatMapT: instant =>
+        AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).map: cell =>
+          Right:
+            new LogFile(file, instant, isGzipped = gzip, cell)
+
+
   /** The deferred LogFileIndex and optionally the temporary decompressed file. */
-  private[reader] final case class DeferredIndex(
+  private final case class DeferredIndex(
     logFileIndex: LogFileIndex,
     file: Path,
     fileSize: Option[(original: Long, decompressed: Long)] = None)
