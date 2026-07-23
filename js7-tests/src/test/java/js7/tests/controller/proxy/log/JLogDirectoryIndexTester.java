@@ -20,7 +20,7 @@ final class JLogDirectoryIndexTester {
         LogLevel logLevel = LogLevel.info(); // Some LogLevel we think is appropriate
         return
             JLogDirectoryIndex.directory(
-                directory, path -> true, LogLevel.info(), false, zoneId, jProxyContext
+                directory, "TEST", LogLevel.info(), false, zoneId, jProxyContext
             ).use(logDirectoryIndex ->
                 logDirectoryIndex
                     // 🟢 instantToLogLineKey

@@ -6,7 +6,6 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
-import java.util.function.Predicate
 import js7.base.log.LogLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogDirectoryIndex, LogLineKey}
@@ -15,7 +14,6 @@ import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.{JProxyContext, JResource}
 import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
-import scala.jdk.FunctionConverters.*
 import scala.jdk.OptionConverters.*
 
 final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(using IORuntime):
@@ -61,17 +59,18 @@ final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(usi
 
 object JLogDirectoryIndex:
 
-  /**
+  /** Provides the log files of a living log directory.
+    *
     * @param directory Watched directory containing the log files
-    * @param isRelevantFile Which files should be considered
+    * @param filenamePrefix Log file name prefix, for example "joc" (as in joc.log)
     * @param logLevel Error, Info or Debug
     * @param watchGrowth if growing log files number and size should be watched and indexed
-    * @param zoneId
+    * @param zoneId normally ZoneId.systemDefault
     * @param ctx The runtime
     */
   def directory(
     directory: Path,
-    isRelevantFile: Predicate[Path],
+    filenamePrefix: String,
     logLevel: LogLevel,
     watchGrowth: Boolean,
     zoneId: ZoneId,
@@ -82,9 +81,8 @@ object JLogDirectoryIndex:
     resource_(logLevel):
       for
         given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
-        result <- LogDirectoryIndex.directory(directory, logLevel,
-          watchGrowth = watchGrowth,
-          isRelevantFile.asScala)
+        result <- LogDirectoryIndex.directory(
+          directory, filenamePrefix, logLevel, watchGrowth = watchGrowth)
       yield result
 
   def files(

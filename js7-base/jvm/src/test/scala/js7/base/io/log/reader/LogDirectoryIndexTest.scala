@@ -50,7 +50,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           val midnight = startInstant + 24.h * d
           (0 until 3).foreach: h =>
             val hour = midnight + h.h
-            val gzFile = dir / s"test-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
+            val gzFile = dir / s"TEST-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
             autoClosing(
               GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
             ): out =>
@@ -63,7 +63,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     .getBytes(UTF_8)
       .productR:
         given LogFileIndexConf = LogFileIndexConf.forTest
-        LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
+        LogDirectoryIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
           .use: logDirectoryIndex =>
             /// Read *all* log files as text lines ///
             logDirectoryIndex.byteLineStream(startInstant, LogSelection())
@@ -209,10 +209,10 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
     temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
       val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
       def instantToFile(instant: Instant) =
-        dir / s"test-${instant.atZone(zoneId).toLocalDate}.log.gz"
+        dir / s"TEST-${instant.atZone(zoneId).toLocalDate}.log.gz"
 
       def writeFile(instant: Instant): Unit =
-        val file = dir / "test.log"
+        val file = dir / "TEST.log"
         BufferedOutputStream(FileOutputStream(file.toFile)).use: out =>
           out.write:
             (headerTimestampFormatter.format(instant.atZone(zoneId)) + " HEADER\n").getBytes(UTF_8)
@@ -236,7 +236,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       writeFile(startInstant + 24.h)
 
       given LogFileIndexConf = LogFileIndexConf.forTest
-      LogDirectoryIndex.directory(dir, Info, watchGrowth = false, _ => true)
+      LogDirectoryIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
         .use: logDirectoryIndex =>
           IO:
             assert(logDirectoryIndex.files ==
@@ -283,7 +283,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
         (1 to 5).foldMap: i =>
           val date = s"2026-05-1$i"
-          val gzFile = dir / s"test-debug-$date-1.log.gz"
+          val gzFile = dir / s"TEST-debug-$date-1.log.gz"
           LogFileIndexTest.writeFile(
             gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true,
             startTime = s"${date}T00:00:00.000+02")
@@ -293,7 +293,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               val t = Deadline.now
               given LogFileIndexConf = LogFileIndexConf.forTest
               LogDirectoryIndex.directory(
-                dir, Debug, watchGrowth = false, isRelevantFile = _ => true
+                dir, filenamePrefix = "TEST", Debug, watchGrowth = false,
               ).use: logDirectoryIndex =>
                 logDirectoryIndex.byteLineStream(
                   Instant.parse("2026-02-12T00:01:00Z"),

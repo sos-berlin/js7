@@ -13,8 +13,9 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.reader.LogDirectoryIndex.{LogDirectoryIndexMXBean, isGzipped}
+import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogDirectoryIndexRegister.*
+import js7.base.log.reader.LogUtils.isOurFilenameAnyLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
@@ -113,23 +114,7 @@ extends Service.TrivialReleasable:
 
   /** Return the initial files and a Stream of DirectoryEvents. */
   private def watchDirectory: IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
-    def isCurrentFile(filename: String) =
-      filename.endsWith(".log") && (
-        filename.startsWith(currentErrorLogFilePrefix) ||
-        filename.startsWith(currentInfoLogFilePrefix) ||
-        filename.startsWith(currentDebugLogFilePrefix))
-
-    def isCompressedFile(filename: String): Boolean =
-      filename.endsWith(".log.gz") && (
-        filename.startsWith(compressedErrorLogFilePrefix) ||
-        filename.startsWith(compressedInfoLogFilePrefix) ||
-        filename.startsWith(compressedDebugLogFilePrefix))
-
-    def isRelevantFile(file: Path) =
-      val name = file.getFileName.toString
-      isCurrentFile(name) || isCompressedFile(name)
-
-    LogDirectoryIndex.watchDirectory(directory, isRelevantFile)
+    LogDirectoryIndex.watchDirectory(directory, isOurFilenameAnyLevel(logFilePrefix))
 
 
   override def toString = "LogDirectoryIndexRegister"
