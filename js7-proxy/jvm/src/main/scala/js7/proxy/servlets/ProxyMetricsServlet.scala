@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.convert.As.StringAsBoolean
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
@@ -53,7 +52,7 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
   @throws[IOException]
   override protected def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit =
     // Jakarta and Jetty both don't seem to offer a content-type negotiation via API ?
-    val deep = request.getParameterValues("deep").forall(StringAsBoolean)
+    val deep = Option(request.getParameterValues("deep")).toArray.flatten.forall(StringAsBoolean)
     HttpMXBeanUtils.clientRequestResource[SyncIO].surround:
       isInUse.whenInUse:
         SyncIO:
@@ -90,8 +89,7 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
         .map(_.toChunk).unchunks[Byte].chunkLimit(httpChunkSize)
         .foreach: chunk =>
           IO.blocking:
-            // Java EE 11: out.write(chunk.toByteBuffer)
-            out.write(chunk.unsafeArray)
+            out.write(chunk.toByteBuffer)
             HttpMXBean.Bean.serverSentChunksTotal += 1
             HttpMXBean.Bean.serverSentByteTotal += chunk.size
         .compile.drain
