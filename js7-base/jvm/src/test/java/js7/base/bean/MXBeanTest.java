@@ -3,7 +3,6 @@ package js7.base.bean;
 import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -12,31 +11,53 @@ final class MXBeanTest {
     private static final MBeanServer beanServer = ManagementFactory.getPlatformMBeanServer();
 
     static void main(String[] args) throws Exception {
-        var objectName = new ObjectName("joc:type=MyMXBean");
-        var myBean = new MyMXBeanImpl();
+        testSimple();
+        test2();
+    }
+
+    private static void testSimple() throws Exception {
+        // Register the bean once
+        var objectName = new ObjectName("joc:type=SimpleMXBean");
+        var myBean = new SimpleBean();
         beanServer.registerMBean(myBean, objectName);
         try {
-            myBean.count = 7;
-            myBean.cpuTime = new BigDecimal("1.23");
-            myBean.threadSafeCounter.incrementAndGet();
-            myBean.veryOftenUsedThreadSafeCounter.increment();
-            test(objectName);
+            // Read the value like the /metrics web service would see it (test only)
+            var count = (Integer)beanServer.getAttribute(objectName, "Count");
+            if (count != 7) throw new AssertionError("Count is not 7");
+            System.out.println("testSimple succeeded");
         } finally {
+            // When your application is done with the bean, unregister it
             beanServer.unregisterMBean(objectName);
         }
     }
 
-    private static void test(ObjectName objectName) throws Exception {
+    private static void test2() throws Exception {
+        // Register the bean once
+        var objectName = new ObjectName("joc:type=TestMXBean");
+        var myBean = new TestBean();
+        beanServer.registerMBean(myBean, objectName);
+        try {
+            // Your application updates the values
+            myBean.count = 7;
+            myBean.cpuTime = new BigDecimal("1.23");
+            myBean.counter.incrementAndGet();
+
+            // Check the values like the /metrics web service would see them (test only)
+            test2check(objectName);
+        } finally {
+            // When your application is done with the bean, unregister it
+            beanServer.unregisterMBean(objectName);
+        }
+    }
+
+    private static void test2check(ObjectName objectName) throws Exception {
         var count = (Integer)beanServer.getAttribute(objectName, "Count");
         var cpuTime = (BigDecimal)beanServer.getAttribute(objectName, "CpuTime");
-        var threadSafeCounter = (Long)beanServer.getAttribute(objectName, "ThreadSafeCounter");
-        var veryOftenUsedThreadSafeCounter =
-            (Long)beanServer.getAttribute(objectName, "VeryOftenUsedThreadSafeCounter");
+        var counter = (Long)beanServer.getAttribute(objectName, "Counter");
         if (count == 7
             && cpuTime.equals(new BigDecimal("1.23"))
-            && threadSafeCounter == 1
-            && veryOftenUsedThreadSafeCounter == 1)
-            System.out.println("Test succeeded");
+            && counter == 1)
+            System.out.println("test1 succeeded");
         else
             throw new AssertionError("Test failed");
     }
@@ -45,28 +66,43 @@ final class MXBeanTest {
     /** An MXBean requires an interface with get-methods.
       * Prometheus accepts numeric values and will not accept Strings.
       */
-    public interface MyMXBean {
+    public interface SimpleMXBean {
         int getCount();
-        long getThreadSafeCounter();
-        long getVeryOftenUsedThreadSafeCounter();
+    }
+
+    /** An MXBean requires an implememtation which implements the corresponding MXBean interface.
+      * The getters should be fast.
+      */
+    private static final class SimpleBean implements SimpleMXBean {
+        @Override
+        public int getCount() {
+            return 7;
+        }
+    }
+
+    /** An MXBean requires an interface with get-methods.
+      * Prometheus accepts numeric values and will not accept Strings.
+      */
+    public interface TestMXBean {
+        int getCount();
+        long getCounter();
 
         /** CPU time in seconds (not milliseconds), as Prometheus requires. */
         BigDecimal getCpuTime();
     }
 
 
-    /** An MXBean requires an implememtation which implements the MXBean interface.
+    /** An MXBean requires an implememtation which implements the corresponding MXBean interface.
       * The getters should be fast.
       */
-    private static final class MyMXBeanImpl implements MyMXBean {
+    public static final class TestBean implements TestMXBean {
         /** This examples leaves the variables public.
          * One may prefer encapsulating setter methods.
          * The application fills in the current values.
          * The values will be read in the background via its getters
          * (this is what the /metrics web service does). */
         int count = 0;
-        AtomicLong threadSafeCounter = new AtomicLong();
-        LongAdder veryOftenUsedThreadSafeCounter = new LongAdder();
+        AtomicLong counter = new AtomicLong();
         BigDecimal cpuTime = new BigDecimal(0);
 
         @Override
@@ -75,13 +111,8 @@ final class MXBeanTest {
         }
 
         @Override
-        public long getThreadSafeCounter() {
-            return threadSafeCounter.longValue();
-        }
-
-        @Override
-        public long getVeryOftenUsedThreadSafeCounter() {
-            return veryOftenUsedThreadSafeCounter.longValue();
+        public long getCounter() {
+            return counter.longValue();
         }
 
         @Override
