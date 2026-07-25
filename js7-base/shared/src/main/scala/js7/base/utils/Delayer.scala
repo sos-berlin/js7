@@ -16,14 +16,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 // Stateful
-final class Delayer[F[_]] private(using F: Async[F])(
-  val since: CatsDeadline,
-  conf: DelayConf,
-  finite: Boolean):
+final class Delayer[F[_]] private(using F: Async[F])(val since: CatsDeadline, conf: DelayConf):
 
   import conf.{delays, resetWhen}
 
-  private val _state = Atomic(State(since, conf.lazyList(finite = finite)))
+  private val _state = Atomic(State(since, conf.lazyList))
   private val sym = BlockingSymbol()
 
   export sym.{logLevel, symbol, relievedLogLevel, used as escalated}
@@ -89,10 +86,10 @@ object Delayer:
   def start[F[_]](delay: FiniteDuration, moreDelays: FiniteDuration*)(using F: Async[F]): F[Delayer[F]] =
     start(DelayConf(delay, moreDelays*))
 
-  def start[F[_]](conf: DelayConf, finite: Boolean = false)(using F: Async[F]): F[Delayer[F]] =
+  def start[F[_]](conf: DelayConf)(using F: Async[F]): F[Delayer[F]] =
     F.monotonic
       .map(CatsDeadline.fromMonotonic)
-      .map(now => new Delayer(now, conf, finite = finite))
+      .map(now => new Delayer(now, conf))
 
   def continually[F[_]](conf: DelayConf = DelayConf.default)(body: F[Unit])
     (using Async[F], sourcecode.Enclosing)
@@ -104,12 +101,19 @@ object Delayer:
   def stream[F[_]](conf: DelayConf = DelayConf.default, finite: Boolean = false)
     (using Async[F], sourcecode.Enclosing)
   : Stream[F, Unit] =
-    Stream
-      .eval(start(conf, finite = finite))
-      .flatMap: delayer =>
-        Stream.constant((), chunkSize = 1).evalMap: _ =>
+    Stream.eval:
+      start(conf)
+    .flatMap: delayer =>
+      Stream.constant((), chunkSize = 1)
+        .zip:
+          if finite then
+            // Stop when conf.delays ends (its values are discarded)
+            Stream.iterable(conf.delays.toList)
+          else
+            Stream.constant(())
+        .evalMap: (_, _) =>
           delayer.sleep
-      .prependOne(())
+    .prependOne(())
 
   object extensions:
     extension[A](io: IO[A])

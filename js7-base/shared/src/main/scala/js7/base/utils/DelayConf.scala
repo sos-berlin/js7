@@ -25,9 +25,9 @@ final case class DelayConf(
     delays.iterator ++ Iterator.continually(delays.last)
 
   def lazyList: LazyList[FiniteDuration] =
-    lazyList()
+    lazyList(finite = false)
 
-  def lazyList(finite: Boolean = false): LazyList[FiniteDuration] =
+  def lazyList(finite: Boolean): LazyList[FiniteDuration] =
     val iterator = delays.iterator
     if finite then
       iterator.to(LazyList)

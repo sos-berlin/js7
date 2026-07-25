@@ -57,12 +57,21 @@ final class DelayerTest extends OurAsyncTestSuite:
 
   "stream" in:
     TestControl.executeEmbed:
-      CatsDeadline.now.flatMap(start =>
+      CatsDeadline.now.flatMap: start =>
         Delayer
           .stream[IO](conf)
           .evalMap(_ => start.elapsed)
           .take(6)
-          .compile
-          .toVector
-          .map(times =>
-            assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s, 9.s, 12.s))))
+          .compile.toVector
+          .map: times =>
+            assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s, 9.s, 12.s))
+
+  "stream finite" in:
+    TestControl.executeEmbed:
+      CatsDeadline.now.flatMap: start =>
+        Delayer
+          .stream[IO](conf, finite = true)
+          .evalMap(_ => start.elapsed)
+          .compile.toVector
+          .map: times =>
+            assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s))
