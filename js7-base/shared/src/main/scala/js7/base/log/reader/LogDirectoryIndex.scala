@@ -29,6 +29,7 @@ import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDelete
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
+import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.EpochNano
@@ -476,39 +477,6 @@ object LogDirectoryIndex:
   private[reader] def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
-  private def readLogFileInstant(file: Path, gzip: Boolean)(using ZoneId): IO[Checked[Instant]] =
-    Resource.fromAutoCloseable:
-      IO.blocking:
-        if gzip then
-          GZIPInputStream(FileInputStream(file.toFile), 1024)
-        else
-          FileInputStream(file.toFile)
-    .use: in =>
-      IO.blocking:
-        ByteArray.unsafeWrap:
-          in.readNBytes(FirstChunkSize)
-    .map: chunk =>
-      def eofProblem = Problem.pure("LogFileRegister readLogFileInstant: EOF")
-      chunk.indexOf('\n') match
-        case lf if lf > 15 /*minimum length of headline*/ =>
-          val lineEnd = chunk.indexOf('\n', lf + 1)
-          if lineEnd == -1 then
-            Left(eofProblem)
-          else
-            // Timestamp of first log line after the header line
-            FastTimestampParser().parseTimestampInLogLine(chunk.slice(lf + 1, lineEnd))
-              .toOption.toRight(Problem("Invalid timestamp"))
-              .map(_.toInstant)
-        case _ =>
-          Left(eofProblem)
-    .recover: throwable =>
-      if throwable.getStackTrace != null then
-        throwable match
-          case _: (FileNotFoundException | EOFException) =>
-          case _ =>
-            logger.debug(s"❓readLogFileInstant $file: ${throwable.toStringWithCauses}", throwable)
-      Left(Problem.fromThrowable(throwable))
-
 
   /** Description of a log file with its timestamp and a deferred `LogFileIndex`. */
   private[reader] final class LogFile private(
@@ -551,6 +519,47 @@ object LogDirectoryIndex:
         AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).map: cell =>
           Right:
             new LogFile(file, instant, isGzipped = gzip, cell)
+
+    private def readLogFileInstant(file: Path, gzip: Boolean)(using ZoneId)
+    : IO[Checked[Instant]] =
+      Resource.fromAutoCloseable:
+        IO.blocking:
+          if gzip then
+            GZIPInputStream(FileInputStream(file.toFile), FirstChunkSize)
+          else
+            FileInputStream(file.toFile)
+      .use: in =>
+        IO.blocking:
+          ByteArray.unsafeWrap:
+            in.readNBytes(FirstChunkSize)
+      .map: chunk =>
+        chunk.indexOf('\n') match
+          case firstLineEnd if firstLineEnd >= 30 /*minimum length of headline*/ =>
+            locally:
+              if FastTimestampParser.isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
+                chunk.indexOf('\n', firstLineEnd + 1) match
+                  case -1 => Left(IncompleteLogFileProblem(file))
+                  case secondLineEnd => Right(chunk.slice(firstLineEnd + 1, secondLineEnd))
+              else
+                logger.error(s"Missing header line in ${file.getFileName}, check your log4j2.xml!")
+                Right(chunk.slice(0, firstLineEnd))
+            .flatMap: logLine =>
+              // Timestamp of first log line after the header line
+              FastTimestampParser()
+                .parseTimestampInLogLine(logLine)
+                .toOption.toRight:
+                  InvalidTimestampInLogFileProblem(file, logLine.utf8StringTruncateAt(30))
+                .map(_.toInstant)
+          case _ =>
+            Left(IncompleteLogFileProblem(file))
+      .recover:
+        case _: EOFException => Left(IncompleteLogFileProblem(file))
+        case _: FileNotFoundException => Left(IncompleteLogFileProblem(file))
+        case t =>
+          if t.getStackTrace != null then
+            logger.debug(s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}", t)
+          Left(Problem.fromThrowable(t))
+  end LogFile
 
 
   /** The deferred LogFileIndex and optionally the temporary decompressed file. */

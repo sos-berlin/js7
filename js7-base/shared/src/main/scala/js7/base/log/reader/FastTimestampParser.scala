@@ -33,8 +33,7 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
   assert(lastSecond.length == SecondLength)
 
-  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq)
-  : EpochNano =
+  def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq): EpochNano =
     matchTimestamp(byteLine) match
       case null => EpochNano.Nix
       case ts => parse(ts)
@@ -167,6 +166,9 @@ object FastTimestampParser:
   private val DateTimeRegex: Regex =
     """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r
 
+  private val LogHeaderPattern: Pattern =
+    Pattern.compile(s"""($DateTimeRegex) Begin """)
+
   private val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
     //val threadInBrackets = """\[[^]]+]""".r  // Very slow!
@@ -174,7 +176,7 @@ object FastTimestampParser:
     //val message = """(?:.*)""".r
     // threadInBrackets is slow. Also, a thread name may contain a ']'.
     //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
-    Pattern.compile(s"""^$HighlightRegex?($DateTimeRegex) $level """)
+    Pattern.compile(s"""$HighlightRegex?($DateTimeRegex) $level """)
 
   // Faster than ISO_LOCAL_DATE_TIME
   private val dateTimeFormatter: DateTimeFormatter =
@@ -184,6 +186,9 @@ object FastTimestampParser:
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HHMM", "Z").toFormatter)
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HH:mm", "Z").toFormatter)
       .toFormatter
+
+  private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq): Boolean =
+    LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()
 
   private[reader] def matchTimestamp[ByteSeq: ByteSequence](line: ByteSeq): ByteSeq | Null =
     meterRegex:

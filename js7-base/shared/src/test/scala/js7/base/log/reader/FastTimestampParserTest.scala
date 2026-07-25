@@ -24,7 +24,7 @@ final class FastTimestampParserTest extends OurTestSuite:
     // Java 17 does not accept "+02" and "+0200". It must be"+02:00"
     Instant.parse(string).toEpochNano
 
-  "FastTimestampParser" in :
+  "parse" in:
     val timestampParser = FastTimestampParser()
     assert(timestampParser.parse("1970-01-01 00:00:00.000Z") == EpochNano.Zero)
     assert(timestampParser.parse("1970-01-01 00:00:00.000123Z") == EpochNano(123_000))
@@ -178,6 +178,16 @@ final class FastTimestampParserTest extends OurTestSuite:
       assert:
         testParseTimestampInLogLine(line) ==
           ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNano
+
+    locally:
+      val line = "X2026-02-24 08:05:55.244272+02:00 info "
+      assert:
+        testParseTimestampInLogLine(line) == EpochNano.Nix
+
+  "isHeaderLine" in:
+    assert(FastTimestampParser.isHeaderLine(ByteArray("2026-02-24 08:05:55.244272+02:00 Begin bla\n")))
+    assert(!FastTimestampParser.isHeaderLine(ByteArray("2026-02-24 08:05:55.244272+02:00 info bla\n")))
+
 
   "Speed" in:
     if isIntelliJIdea then

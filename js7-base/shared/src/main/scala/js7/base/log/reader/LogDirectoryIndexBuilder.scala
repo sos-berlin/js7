@@ -1,6 +1,6 @@
 package js7.base.log.reader
 
-import cats.effect.std.{AtomicCell, Queue, QueueSink, Semaphore, Supervisor}
+import cats.effect.std.{AtomicCell, Queue, Semaphore, Supervisor}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
@@ -20,6 +20,8 @@ import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
+import scala.concurrent.TimeoutException
 
 private final class LogDirectoryIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
@@ -31,7 +33,7 @@ private final class LogDirectoryIndexBuilder private(
   : IO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
     for
       queue <- Queue.unsafeUnbounded[IO, LogFile]
-      (logFiles, delayedLogFiles) <- toLogDelayedFiles(initialFiles, queue)
+      (logFiles, delayedLogFiles) <- toLogDelayedFiles(initialFiles, queue.offer)
       filenameToDelayedLogFile <- AtomicCell[IO].of:
         delayedLogFiles.toKeyedMap(_.filename)
     yield
@@ -39,16 +41,16 @@ private final class LogDirectoryIndexBuilder private(
         (stream => toLogFileEvents2(directory, stream, filenameToDelayedLogFile, queue))
 
   /** Try to extract the timestamp of the first line of each file. */
-  private def toLogDelayedFiles(files: Iterable[Path], queue: QueueSink[IO, LogFile])
+  private def toLogDelayedFiles(files: Iterable[Path], onCompleted: LogFile => IO[Unit])
   : IO[(Vector[LogFile], Vector[DelayedLogFile])] =
     Stream.iterable(files)
       .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
         LogFile.read(file).flatMap:
           case Left(problem) =>
-            logger.debug(s"Delaying ${file.getFileName} due to: $problem")
-            val a = DelayedLogFile(file, onCompleted = queue.offer)
-            // Read the timestamp of the first line of the plain log file in the background.
-            a.start().as(Right(a))
+            logger.debug(s"💥 Delaying ${file.getFileName} due to: $problem")
+            val a = DelayedLogFile(file)
+            // Read the timestamp of the first line of the log file in the background.
+            a.start(onCompleted).as(Right(a))
           case Right(logFile) =>
             IO.left(logFile)
       .compile.toVector
@@ -71,7 +73,7 @@ private final class LogDirectoryIndexBuilder private(
           val file = directory.resolve(filename)
           // Try to read the timestamp of .log-file forever (or until cancelled) in background.
           // When the timestamp has been read, enqueue a LogFileAdded event.
-          val delayedLogFile = DelayedLogFile(file, onCompleted = queue.offer)
+          val delayedLogFile = DelayedLogFile(file)
           filenameToDelayedLogFile.modify: map =>
             map.updated(filename, delayedLogFile) -> map.get(filename)
           .flatMap:
@@ -80,7 +82,7 @@ private final class LogDirectoryIndexBuilder private(
             case _ => IO.unit
           .flatMap: _ =>
             // Read log file's timestamp in background
-            delayedLogFile.start(delay = true)
+            delayedLogFile.start(queue.offer, delay = true)
           .as(Nil)
 
         case event @ FileDeleted(filename) =>
@@ -109,7 +111,7 @@ private final class LogDirectoryIndexBuilder private(
 
   /** Try to read a log file's timestamp with logFileTimestampTries duration
     *
-    * The second line (the first line log line after the head line) contains the timestamp.
+    * The second line (the first line log line after the header line) contains the timestamp.
     *
     * Because log4j may still writing this file, it may take some milliseconds.
     */
@@ -130,13 +132,17 @@ private final class LogDirectoryIndexBuilder private(
         .compile.last
 
 
-  private final class DelayedLogFile(val file: Path, onCompleted: LogFile => IO[Unit]):
+  private[reader] final class DelayedLogFile(val file: Path):
     val filename: Path = file.filename
     private val completed = Deferred.unsafe[IO, Unit]
     private val fiberVar = FiberVar[Unit]
 
     /** Try to read the timestamp of a log-file forever (or until cancelled) in background. */
-    def start(delay: Boolean = false): IO[Unit] =
+    def start(
+      onCompleted: LogFile => IO[Unit],
+      onFailed: Throwable => IO[Unit] = _ => IO.unit,
+      delay: Boolean = false)
+    : IO[Unit] =
       logger.trace(s"DelayedLogFile($filename).start")
       val gzip = isGzipped(file)
       // Read log file's timestamp in background
@@ -152,16 +158,18 @@ private final class LogDirectoryIndexBuilder private(
             .logWhenItTakesLonger(filename.toString)
             .flatMap:
               case None =>
-                IO(logger.error(s"$filename is not readable, giving up"))
+                logger.error(s"$filename is not readable, giving up")
+                onFailed(new TimeoutException(s"LogFile $filename read timed out after $delay"))
               case Some(logFile) =>
                 completed.complete(()).flatMap:
-                  IO.whenA(_):
+                  IO.whenA(_): // not cancelled
                     IO.whenA(gzip):
                       CatsDeadline.now.flatMap:
                         gzLogFileReady.set
                     *> onCompleted(logFile)
-            .handleError: t =>
+            .handleErrorWith: t =>
               logger.error(s"$filename: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+              onFailed(t)
       .flatMap:
         fiberVar.set
 
@@ -197,7 +205,20 @@ private object LogDirectoryIndexBuilder:
     yield
       result
 
-
+  @TestOnly
+  private[reader] def forTest(directory: Path)(using zoneId: ZoneId, conf: LogFileIndexConf)
+  : ResourceIO[LogDirectoryIndexBuilder] =
+    for
+      supervisor <- Supervisor[IO]
+      result <- Resource.eval:
+        for
+          semaphore <- Semaphore[IO](conf.timestampReaderConcurrency)
+          now <- CatsDeadline.now
+          signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
+        yield
+          LogDirectoryIndexBuilder(semaphore, supervisor, signal)
+    yield
+      result
 
   private[reader] sealed trait LogFileEvent
 

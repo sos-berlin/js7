@@ -47,7 +47,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       IO.defer:
         val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
         val lines = Vector(
-          s"2026-02-12 14:00:00.000+02 HEADER ...\n",
+          s"2026-02-12 14:00:00.000+02 Begin ... ...\n",
           s"2026-02-12 14:00:01.000+02 info [thread] class - $message 1\n",
           s"2026-02-12 14:00:02.000+02 info [thread] class - $message 2\n",
           s"2026-02-12 14:00:03.000+02 info [thread] class - $message 3\n",
@@ -103,7 +103,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       IO.defer:
         val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
         val firstLine = s"2026-02-12 14:00:01.000+02 info [thread] class - $message\n"
-        file := "2026-02-12 14:00:00.000+02 HEADER ...\n" + firstLine
+        file := "2026-02-12 14:00:00.000+02 Begin ... ...\n" + firstLine
 
         LogFileIndex.buildGrowing(file, poll = 100.ms).use: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =

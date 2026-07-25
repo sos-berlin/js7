@@ -1,4 +1,4 @@
-package js7.base.io.log.reader
+package js7.base.log.reader
 
 import cats.effect.IO
 import java.io.{BufferedOutputStream, FileOutputStream}
@@ -7,19 +7,20 @@ import java.nio.file.Files
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
+import js7.base.catsutils.CatsEffectExtensions.orThrow
 import js7.base.config.{Js7Conf, Js7Config}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.io.file.FileUtils.{temporaryDirectoryResource, temporaryFileResource}
 import js7.base.io.file.watch.BasicDirectoryWatch
-import js7.base.io.log.reader.LogDirectoryIndexTest.*
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.{Debug, Info}
 import js7.base.log.Logger
+import js7.base.log.reader.LogDirectoryIndexTest.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
-import js7.base.log.reader.{LogDirectoryIndex, LogFileIndexTest, LogSelection}
+import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
@@ -41,6 +42,64 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
+  "LogFile" - {
+    "File is (still) to short" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111 Begin JS7 ...
+            |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...""".stripMargin.getBytes(UTF_8)
+        for
+          checked <- LogDirectoryIndex.LogFile.read(file)
+        yield
+          assert(checked == Left(IncompleteLogFileProblem(file)))
+
+    "Missing header line" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+03 info  js7.test.Test - MISSING HEADER LINE
+            |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
+            |""".stripMargin
+        for
+          logFile <- LogDirectoryIndex.LogFile.read(file).orThrow
+        yield
+          assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.111+03:00"))
+
+    "Invalid timestamp in header line" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+?? Begin JS7 ...
+            |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
+            |""".stripMargin
+        for
+          checked <- LogDirectoryIndex.LogFile.read(file)
+        yield
+          assert(checked ==
+            Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? ...")))
+
+    "Invalid timestamp in first log line" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+03 Begin JS7 ...
+            |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...
+            |""".stripMargin
+        for
+          checked <- LogDirectoryIndex.LogFile.read(file)
+        yield
+          assert(checked ==
+            Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,999+?? ...")))
+
+    "Proper log file" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+03 Begin JS7 ...
+            |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...
+            |""".stripMargin
+        for
+          logFile <- LogDirectoryIndex.LogFile.read(file).orThrow
+        yield
+          assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
+  }
+
   "A continuous stream of log lines in all files" in:
     temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
       val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
@@ -55,7 +114,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
             ): out =>
               out.write:
-                (headerTimestampFormatter.format(hour.atZone(zoneId)) + " HEADER\n").getBytes(UTF_8)
+                (headerTimestampFormatter.format(hour.atZone(zoneId)) + " Begin ...\n").getBytes(UTF_8)
               (1 to 3).foreach: s =>
                 i += 1
                 out.write:
@@ -72,48 +131,48 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                 assert(lines == List(
                   // Because we read from the very first log file, NO INDEXING OCCURS and
                   // we read from the start of the file, including the header line.
-                  "2026-03-01 00:00:00.000+02 HEADER\n",
+                  "2026-03-01 00:00:00.000+02 Begin ...\n",
                   "2026-03-01 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 1\n",
                   "2026-03-01 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 2\n",
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
 
                   // Header lines included due to sequential reading without LogFileIndex
-                  "2026-03-01 01:00:00.000+02 HEADER\n",
+                  "2026-03-01 01:00:00.000+02 Begin ...\n",
                   "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                   "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n",
                   "2026-03-01 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 6\n",
 
-                  "2026-03-01 02:00:00.000+02 HEADER\n",
+                  "2026-03-01 02:00:00.000+02 Begin ...\n",
                   "2026-03-01 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 7\n",
                   "2026-03-01 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 8\n",
                   "2026-03-01 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 9\n",
 
-                  "2026-03-02 00:00:00.000+02 HEADER\n",
+                  "2026-03-02 00:00:00.000+02 Begin ...\n",
                   "2026-03-02 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 10\n",
                   "2026-03-02 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 11\n",
                   "2026-03-02 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 12\n",
 
-                  "2026-03-02 01:00:00.000+02 HEADER\n",
+                  "2026-03-02 01:00:00.000+02 Begin ...\n",
                   "2026-03-02 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 13\n",
                   "2026-03-02 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 14\n",
                   "2026-03-02 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 15\n",
 
-                  "2026-03-02 02:00:00.000+02 HEADER\n",
+                  "2026-03-02 02:00:00.000+02 Begin ...\n",
                   "2026-03-02 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 16\n",
                   "2026-03-02 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 17\n",
                   "2026-03-02 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 18\n",
 
-                  "2026-03-03 00:00:00.000+02 HEADER\n",
+                  "2026-03-03 00:00:00.000+02 Begin ...\n",
                   "2026-03-03 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 19\n",
                   "2026-03-03 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 20\n",
                   "2026-03-03 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 21\n",
 
-                  "2026-03-03 01:00:00.000+02 HEADER\n",
+                  "2026-03-03 01:00:00.000+02 Begin ...\n",
                   "2026-03-03 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 22\n",
                   "2026-03-03 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 23\n",
                   "2026-03-03 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 24\n",
 
-                  "2026-03-03 02:00:00.000+02 HEADER\n",
+                  "2026-03-03 02:00:00.000+02 Begin ...\n",
                   "2026-03-03 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 25\n",
                   "2026-03-03 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 26\n",
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
@@ -129,7 +188,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
 
                       // Header lines included due to sequential reading without LogFileIndex
-                      "2026-03-01 01:00:00.000+02 HEADER\n",
+                      "2026-03-01 01:00:00.000+02 Begin ...\n",
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n"))
               .productR:
                 /// Read all log files as KeyedByteLogLine ///
@@ -137,47 +196,47 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   .compile.toList
               .flatMap: keyedByteLogLines =>
                 assert(keyedByteLogLines.map(_.lineAsString) == List(
-                  "2026-03-01 00:00:00.000+02 HEADER\n",
+                  "2026-03-01 00:00:00.000+02 Begin ...\n",
                   "2026-03-01 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 1\n",
                   "2026-03-01 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 2\n",
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
 
-                  "2026-03-01 01:00:00.000+02 HEADER\n",
+                  "2026-03-01 01:00:00.000+02 Begin ...\n",
                   "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                   "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n",
                   "2026-03-01 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 6\n",
 
-                  "2026-03-01 02:00:00.000+02 HEADER\n",
+                  "2026-03-01 02:00:00.000+02 Begin ...\n",
                   "2026-03-01 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 7\n",
                   "2026-03-01 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 8\n",
                   "2026-03-01 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 9\n",
 
-                  "2026-03-02 00:00:00.000+02 HEADER\n",
+                  "2026-03-02 00:00:00.000+02 Begin ...\n",
                   "2026-03-02 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 10\n",
                   "2026-03-02 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 11\n",
                   "2026-03-02 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 12\n",
 
-                  "2026-03-02 01:00:00.000+02 HEADER\n",
+                  "2026-03-02 01:00:00.000+02 Begin ...\n",
                   "2026-03-02 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 13\n",
                   "2026-03-02 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 14\n",
                   "2026-03-02 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 15\n",
 
-                  "2026-03-02 02:00:00.000+02 HEADER\n",
+                  "2026-03-02 02:00:00.000+02 Begin ...\n",
                   "2026-03-02 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 16\n",
                   "2026-03-02 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 17\n",
                   "2026-03-02 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 18\n",
 
-                  "2026-03-03 00:00:00.000+02 HEADER\n",
+                  "2026-03-03 00:00:00.000+02 Begin ...\n",
                   "2026-03-03 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 19\n",
                   "2026-03-03 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 20\n",
                   "2026-03-03 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 21\n",
 
-                  "2026-03-03 01:00:00.000+02 HEADER\n",
+                  "2026-03-03 01:00:00.000+02 Begin ...\n",
                   "2026-03-03 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 22\n",
                   "2026-03-03 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 23\n",
                   "2026-03-03 01:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 24\n",
 
-                  "2026-03-03 02:00:00.000+02 HEADER\n",
+                  "2026-03-03 02:00:00.000+02 Begin ...\n",
                   "2026-03-03 02:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 25\n",
                   "2026-03-03 02:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 26\n",
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
@@ -191,7 +250,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     assert(keyedByteLogLines.map(_.lineAsString) == List(
                       // Same line again (user may want to skip it)
                       "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n",
-                      "2026-03-01 01:00:00.000+02 HEADER\n",
+                      "2026-03-01 01:00:00.000+02 Begin ...\n",
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                       "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n"))
                 .productR:
@@ -200,7 +259,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     .compile.toList
                     .map: keyedByteLogLines =>
                       assert(keyedByteLogLines.map(_.lineAsString) == List(
-                        "2026-03-02 00:00:00.000+02 HEADER\n",
+                        "2026-03-02 00:00:00.000+02 Begin ...\n",
                         "2026-03-02 00:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 10\n",
                         "2026-03-02 00:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 11\n",
                         "2026-03-02 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 12\n"))
@@ -215,7 +274,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         val file = dir / "TEST.log"
         BufferedOutputStream(FileOutputStream(file.toFile)).use: out =>
           out.write:
-            (headerTimestampFormatter.format(instant.atZone(zoneId)) + " HEADER\n").getBytes(UTF_8)
+            (headerTimestampFormatter.format(instant.atZone(zoneId)) + " Begin ...\n").getBytes(UTF_8)
           out.write:
             s"${timestampFormatter.format(instant.atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE\n"
               .getBytes(UTF_8)
@@ -247,7 +306,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               .compile.toList.map: lines =>
                 assert(lines == List(
                   "2026-03-01 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
-                  "2026-03-02 00:00:00.000+02 HEADER\n",
+                  "2026-03-02 00:00:00.000+02 Begin ...\n",
                   "2026-03-02 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n"))
           *>
             IO:
@@ -260,9 +319,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               .compile.toList.map: lines =>
                 assert(lines == List(
                   "2026-03-01 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
-                  "2026-03-02 00:00:00.000+02 HEADER\n",
+                  "2026-03-02 00:00:00.000+02 Begin ...\n",
                   "2026-03-02 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n",
-                  "2026-03-03 00:00:00.000+02 HEADER\n",
+                  "2026-03-03 00:00:00.000+02 Begin ...\n",
                   "2026-03-03 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n"))
 
   "Five 100MB debug-log files" in {

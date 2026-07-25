@@ -1,9 +1,10 @@
 package js7.base.problem
 
+import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.problem
 import js7.base.scalasource.ScalaSourceLocation
-import scala.collection.immutable.Map.Map2
+import scala.collection.immutable.Map.{Map1, Map2}
 
 object Problems:
 
@@ -50,3 +51,14 @@ object Problems:
 
   case object WebServiceStillNotAvailableProblem extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503 // Service Unavailable
+
+
+  final case class IncompleteLogFileProblem(file: Path) extends Problem.Coded:
+    def arguments = Map1("file", file.getFileName.toString)
+
+
+  final case class InvalidTimestampInLogFileProblem(file: Path, line: String)
+  extends Problem.Coded:
+    def arguments = Map2(
+      "file", file.getFileName.toString,
+      "line", line)
