@@ -22,7 +22,7 @@ object LogUtils:
           name == currentDebugFilename
 
       def isCompressedFile: Boolean =
-        name.endsWith(".log.gz") && (
+        (name.endsWith(".log.gz") || name.endsWith(LogDirectoryIndex.LogGzTmpSuffix)) && (
           name.startsWith(compressedErrorPrefix) ||
             name.startsWith(compressedInfoPrefix) ||
             name.startsWith(compressedDebugPrefix))

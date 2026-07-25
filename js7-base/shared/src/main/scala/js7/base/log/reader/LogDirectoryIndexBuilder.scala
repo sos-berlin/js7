@@ -87,7 +87,9 @@ private final class LogDirectoryIndexBuilder private(
 
         case event @ FileDeleted(filename) =>
           logger.debug(s"-->$event")
-          if isGzipped(filename) then
+          if filename.toString.endsWith(LogDirectoryIndex.TmpSuffix) then
+            IO.pure(LogFileIndexDeleted(filename) :: Nil)
+          else if isGzipped(filename) then
             IO.pure(LogFileDeleted(filename) :: Nil)
           else
             // If filename is .log-file which timestamp has not been read until it has
@@ -225,3 +227,5 @@ private object LogDirectoryIndexBuilder:
   private[reader] final case class LogFileAdded(logFile: LogFile) extends LogFileEvent
 
   private[reader] final case class LogFileDeleted(filename: Path) extends LogFileEvent
+
+  private[reader] final case class LogFileIndexDeleted(filename: Path) extends LogFileEvent

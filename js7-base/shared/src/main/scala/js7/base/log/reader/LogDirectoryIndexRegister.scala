@@ -94,9 +94,7 @@ extends Service.TrivialReleasable:
       // TODO Erst lesen, wenn LogDirectoryIndexRegister gebraucht wird ?
       (files, directoryEvents) <- Resource.eval(watchDirectory)
       _ <-
-        directoryEvents.filter: o =>
-          !LogDirectoryIndex.isOurTmpFile(o.relativePath) // to be sure
-        .chunks.evalMap: events =>
+        directoryEvents.chunks.evalMap: events =>
           events.asSeq.groupBy: event =>
             LogDirectoryIndex.fileToLogLevel(event.relativePath)
           .toSeq.traverse: (logLevel, events) =>

@@ -4,6 +4,7 @@ import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import cats.syntax.option.*
 import cats.syntax.parallel.*
+import cats.syntax.traverse.*
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Stream}
 import java.io.{EOFException, FileInputStream, FileNotFoundException}
@@ -25,7 +26,7 @@ import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent}
+import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
@@ -89,7 +90,7 @@ extends Service.StoppableByCancel:
                 IO.whenA(replacedLogFile.filename != logFile.filename):
                   logLine = s"$event, replace ${replacedLogFile.filename}"
                   fileToInstant.remove(replacedLogFile.filename)
-                  replacedLogFile.release
+                  replacedLogFile.releaseIndex
               *> IO.defer:
                 logLines += logLine
                 fileAddedSignal.set(logFile.fileEpochNano)
@@ -101,9 +102,19 @@ extends Service.StoppableByCancel:
               IO.whenA(Option(instantToLogFile.get(instant)).exists(_.filename == filename)):
                 Option(instantToLogFile.remove(instant)).foldMap: logFile =>
                   logLine = s"$event, remove $logFile"
-                  logFile.release
+                  logFile.releaseIndex
             .map: _ =>
               logLines += event.toString
+
+        case event @ LogFileIndexDeleted(filename) =>
+          // TODO Test is missing
+          logLines += event.toString
+          val originalFilename = Paths.get(filename.toString.stripSuffix(TmpSuffix))
+          fileToInstant.get(originalFilename)
+            .flatMap(instant => Option(instantToLogFile.get(instant)))
+            .traverse: logFile =>
+              IO.uncancelable: _ =>
+                logFile.releaseIndex(deleteFile = false)
       *> IO:
         logLines.foreachWithBracket()((line, br) => logger.info(s"$br$line"))
     .compile.drain
@@ -111,7 +122,7 @@ extends Service.StoppableByCancel:
   private def release =
     IO.defer:
       instantToLogFile.values.asScala.toVector.parFoldMapA: logFile =>
-        logFile.release
+        logFile.releaseIndex
 
   def byteLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, Chunk[Byte]] =
@@ -318,8 +329,8 @@ extends Service.StoppableByCancel:
 
 object LogDirectoryIndex:
   private val logger = Logger[LogDirectoryIndex]
-  private val TmpSuffix = "-indexed.tmp"
-  private val LogGzTmpSuffix = ".log.gz" + TmpSuffix
+  private[reader] val LogGzTmpSuffix = ".log.gz" + TmpSuffix
+  private[reader] val TmpSuffix = "-indexed.tmp"
   val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
@@ -493,12 +504,15 @@ object LogDirectoryIndex:
     val fileEpochNano: EpochNano =
       fileInstant.toEpochNano
 
-    def release: IO[Unit] =
+    def releaseIndex: IO[Unit] =
+      releaseIndex(deleteFile = true)
+
+    def releaseIndex(deleteFile: Boolean): IO[Unit] =
       deferredIndexCell.getAndSet(None).flatMap:
         _.foldMap: allo =>
           allo.allocatedThing.fileSize.foreach: o =>
             Bean.tmpFilesSize -= o.decompressed
-          if allo.allocatedThing.file != originalFile then
+          if deleteFile && allo.allocatedThing.file != originalFile then
             FileDeleter.tryDeleteFile(allo.allocatedThing.file)
           allo.release
 
