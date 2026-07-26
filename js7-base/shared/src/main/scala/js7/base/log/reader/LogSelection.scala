@@ -21,7 +21,8 @@ final case class LogSelection(
   lineLimit: Option[Long] = None,
   pattern: Option[Pattern] = None,
   byteChunkSize: Int = ByteSeqFileReader.BufferSize,
-  growing: Boolean = false):
+  growing: Boolean = false)
+extends ForReader:
 
   def toKeyValues: Seq[(String, String)] =
     flatten(
@@ -30,8 +31,8 @@ final case class LogSelection(
       pattern.map(o => "pattern" -> o.pattern),
       growing ? ("growing" -> "true"))
 
-  def forReader: ForReader =
-    ForReader(growing, byteChunkSize)
+  inline def forReader: ForReader =
+    this
 
 
 object LogSelection:
@@ -41,7 +42,10 @@ object LogSelection:
   def apply(): LogSelection =
     default
 
-  final case class ForReader(growing: Boolean = false, byteChunkSize: Int)
+
+  sealed trait ForReader:
+    def growing: Boolean
+    def byteChunkSize: Int
 
 
   private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]
