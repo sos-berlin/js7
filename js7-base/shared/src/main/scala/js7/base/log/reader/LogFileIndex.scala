@@ -78,45 +78,39 @@ final class LogFileIndex private(
 
   def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     Stream.suspend:
-      val t = Deadline.now
-      var droppedLines, droppedBytes = 0L
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
-      val opaquePos = nanoToPos.toOpaquePos(beginEpochNano)
-      toPositionedStream(opaquePos, forReader)
-        .through:
-          toPosAndLines(
-            firstPosition = opaquePos.toLong,
-            breakLinesLongerThan = breakLinesLongerThan)
-        .dropWhile: (pos, byteLine) =>
-          val drop = timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano
-          if drop then
-            droppedLines += 1
-            droppedBytes += byteLine.size
-          else
-            val elapsed = t.elapsed
-            logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
-              } skipped after indexed position · ${elapsed.pretty}")
-            val skipped = pos - opaquePos.toLong
-            if skipped >= NoEntryWarnThreshold then
-              logger.warn(s"Slow direct log file access due to missing index entry for ${
-                toKiBGiB(skipped)}, found position=$opaquePos")
-          drop
-      .map: (pos, line) =>
-        PosAndLine(pos, line)
+      val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
+      toLines(chunkPos, opaquePos, forReader,
+        shouldBeDropped = (_, byteLine) =>
+          timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
 
   def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     Stream.suspend:
       // Convert the byte position of the desired line into the byte position of the corresponding
-      // (compressed) chunk and the OpaquePos (the position in the compressed file) of this chunk.
+      // decompressed chunk and the OpaquePos (the position in the compressed file) of this chunk.
       val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
+      toLines(chunkPos, opaquePos, forReader,
+        shouldBeDropped = (pos, _) => pos < position)
+
+  /**
+    * @param chunkPos position of the uncompressed log chunk
+    * @param opaquePos position of the (maybe compressed) chunk in file
+    */
+  private def toLines(
+    chunkPos: Long,
+    opaquePos: OpaquePos,
+    forReader: LogSelection.ForReader,
+    shouldBeDropped: (Long, Chunk[Byte]) => Boolean)
+  : Stream[IO, PosAndLine] =
+    Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
       toPositionedStream(opaquePos, forReader)
         .through:
           toPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
-          val drop = pos < position
+          val drop = shouldBeDropped(pos, byteLine)
           if drop then
             droppedLines += 1
             droppedBytes += byteLine.size
@@ -124,9 +118,10 @@ final class LogFileIndex private(
             val elapsed = t.elapsed
             logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
               } skipped after indexed position · ${elapsed.pretty}")
-            if pos - position >= NoEntryWarnThreshold then
+            val skipped = pos - chunkPos
+            if skipped >= NoEntryWarnThreshold then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
-                toKiBGiB(pos - position)}, found position=$position")
+                toKiBGiB(skipped)}, found position=$chunkPos")
           drop
         .map: (pos, line) =>
           PosAndLine(pos, line)

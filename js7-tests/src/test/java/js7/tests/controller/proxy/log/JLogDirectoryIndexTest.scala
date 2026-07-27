@@ -28,7 +28,7 @@ final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
             val hour = midnight + h.h
             val gzFile = dir / s"TEST-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
             autoClosing(
-              GZIPOutputStream(BufferedOutputStream(new FileOutputStream(gzFile.toFile)))
+              GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
             ): out =>
               out.write:
                 (headerTimestampFormatter.format(hour.atZone(zoneId)) + " Begin ...\n").getBytes(UTF_8)

@@ -56,7 +56,7 @@ private final class EpochNanoToPos(initialSize: Int = 32):
     EpochNano(epochNanos(i)) -> opaquePositions(i)
 
   def posToChunkPosAndOpaquePos(position: Long): (Long, OpaquePos) =
-    toPosAndOpaque(posToEpochNano(position))
+    epochNanoToChunkPosAndOpaquePos(posToEpochNano(position))
 
   private def posToEpochNano(position: Long): EpochNano =
     // No synchronization needed
@@ -70,9 +70,13 @@ private final class EpochNanoToPos(initialSize: Int = 32):
     * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
     */
   def toOpaquePos(epochNano: EpochNano): OpaquePos =
-    toPosAndOpaque(epochNano)._2
+    epochNanoToChunkPosAndOpaquePos(epochNano)._2
 
-  private def toPosAndOpaque(epochNano: EpochNano): (Long, OpaquePos) =
+  /** Return the position corresponding to the greatest [[EpochNano]]
+    * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
+    * @return (uncompressed position, opaque (compressed) position)
+    */
+  def epochNanoToChunkPosAndOpaquePos(epochNano: EpochNano): (Long, OpaquePos) =
     // No synchronization needed
     var i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
     if i < 0 then i = -i - 2 // not exact? then return next position
