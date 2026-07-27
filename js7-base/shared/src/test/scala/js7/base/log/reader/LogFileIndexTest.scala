@@ -218,7 +218,7 @@ object LogFileIndexTest:
           if gzip then new GZIPOutputStream(out) else out,
           UTF_8)
     .use: writer =>
-      writer.write(s"$startTime ...\n")
+      writer.write(s"$startTime Begin ...\n")
       IO.blocking:
         val t = Deadline.now
         meterWrite:
