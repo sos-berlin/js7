@@ -62,7 +62,7 @@ final class LogFileIndex private(
     nanoToPos.byteCount
 
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
-    streamPosAndLine(instant, logSelection.forReader)
+    instantToLines(instant, logSelection.forReader)
       .through:
         logSelection.pipe
       .head
@@ -71,12 +71,12 @@ final class LogFileIndex private(
 
   @TestOnly
   def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
-    streamPosAndLine(begin, logSelection.forReader)
+    instantToLines(begin, logSelection.forReader)
       .through:
         logSelection.pipe
       .map(_.byteLine)
 
-  def streamPosAndLine(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
+  def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L

@@ -181,7 +181,7 @@ extends Service.StoppableByCancel:
         .map:
           _.logFileIndex
         .flatMap: logFileIndex =>
-          logFileIndex.streamPosAndLine(begin, forReader)
+          logFileIndex.instantToLines(begin, forReader)
         .map: posAndLine =>
           toKeyedByteLogLine(logFile.fileInstant, posAndLine)
 

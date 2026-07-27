@@ -16,7 +16,7 @@ import scala.jdk.OptionShape.*
 final class JLogFileIndex(logFileIndex: LogFileIndex)(using IORuntime):
 
   def lineFlux(begin: Instant, logSelection: JLogSelection): Flux[String] =
-    logFileIndex.streamPosAndLine(begin = begin, logSelection.asScala.forReader)
+    logFileIndex.instantToLines(begin = begin, logSelection.asScala.forReader)
       .through:
         logSelection.asScala.pipe(using logFileIndex.zoneId)
       .map: posAndLine =>
