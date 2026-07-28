@@ -2,8 +2,8 @@ package js7.base.monixutils
 
 import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
-import js7.base.utils.Atomic.extensions.{+=, -=}
-import js7.base.utils.{AsyncLock, Atomic}
+import js7.base.utils.AsyncLock
+import js7.base.utils.ScalaUtils.syntax.foldMap
 
 final class RefCountedResource[A: Tag] private(
   base: ResourceIO[A],
@@ -48,7 +48,7 @@ final class RefCountedResource[A: Tag] private(
       IO.defer:
         maybeCached.fold(IO.unit): cached =>
           maybeCached = None
-          if cached.refCount.get() == 0 then
+          if cached.refCount == 0 then
             cached.release
           else
             cached.releaseOnZero = true
@@ -58,18 +58,16 @@ final class RefCountedResource[A: Tag] private(
   def release(using src: sourcecode.Enclosing): IO[Unit] =
     lock.lock(src.value + "->release"):
       IO.defer:
-        maybeCached match
-          case None => IO.unit
-          case Some(cached) =>
-            maybeCached = None
-            cached.release
+        maybeCached.foldMap: cached =>
+          maybeCached = None
+          cached.release
 
   def cachedValue: Option[A] =
     maybeCached.map(_.a)
 
   private class Cached(val a: A, val release: IO[Unit]):
-    val refCount = Atomic(1)
-    @volatile var releaseOnZero = false
+    var refCount = 1
+    var releaseOnZero = false
 
 
 object RefCountedResource:
