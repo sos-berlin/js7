@@ -13,15 +13,16 @@ import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
-import js7.data.node.{Js7ServerId, NodeId}
+import js7.data.node.Js7ServerId
 import js7.data_for_java.reactor.ReactorConverters.*
 import js7.proxy.javaapi.JEngineLog.*
 import js7.proxy.javaapi.log.JLogSelection
 import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
 
-final class JEngineLog(
+final class JEngineLog private(
   jProxy: JControllerProxy,
+  activeApi: ResourceIO[HttpControllerApi],
   controllerApis: Nel[HttpControllerApi],
   serverId: Js7ServerId)
   (using IORuntime):
@@ -40,7 +41,8 @@ final class JEngineLog(
         case Js7ServerId.Controller.Backup =>
           backupControllerApi.getNewLogLines(logLevel)
         case Js7ServerId.Subagent(subagentId) =>
-          activeControllerApi.getNewLogLines(logLevel, subagentId = Some(subagentId))
+          activeApi.use:
+            _.getNewLogLines(logLevel, subagentId = Some(subagentId))
         case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
     .map(_.toArray) // Copy, or has Java an immutable array?
     .asFlux
@@ -77,8 +79,9 @@ final class JEngineLog(
           case Js7ServerId.Controller.Backup =>
             backupControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala,
-              subagentId = Some(subagentId))
+            activeApi.use:
+              _.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala,
+                subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
     .chunks.map(_.asSeq.asJava)
 
@@ -136,18 +139,13 @@ final class JEngineLog(
           case Js7ServerId.Controller.Backup =>
             backupControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala,
-              subagentId = Some(subagentId))
+            activeApi.use:
+              _.getLogLines(logLevel, begin = begin, logSelection.asScala,
+                subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
       .map(convert)
       .chunks
       .map(_.asJava)
-
-  private def activeControllerApi: HttpControllerApi =
-    if jProxy.clusterState.isEmptyOrActive(NodeId.primary) then
-      primaryControllerApi
-    else
-      backupControllerApi
 
 
 object JEngineLog:
@@ -157,4 +155,4 @@ object JEngineLog:
   : ResourceIO[JEngineLog] =
     logger.traceResource("JEngineLog.resource"):
       jProxy.api.asScala.apisResource.map: apis =>
-        JEngineLog(jProxy, apis, serverId)
+        JEngineLog(jProxy, jProxy.api.asScala.apiResource, apis, serverId)
