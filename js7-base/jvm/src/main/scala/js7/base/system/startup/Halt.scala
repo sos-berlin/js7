@@ -1,7 +1,6 @@
 package js7.base.system.startup
 
 import js7.base.log.Logger
-import js7.base.log.log4j.Log4j
 import js7.base.system.startup.StartUp.printlnWithClockIgnoringException
 
 /**
@@ -27,7 +26,7 @@ object Halt:
     try if warnOnly then logger.warn(msg) else logger.error(msg)
     catch case _: Throwable => {}
 
-    try Log4j.shutdown(fast = true)
+    try Logger.shutdown(fast = true)
     catch case _: Throwable => {}
 
     sys.runtime.halt(exitCode)

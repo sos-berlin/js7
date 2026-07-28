@@ -53,11 +53,18 @@ object StartUp:
         logger.debug("Correlation IDs are enabled")
 
   def logStartUpLine(name: String): Unit =
-    Logger[this.type].info(startUpLine(name))
+    // Should be the very first log line after program start
+    // The String "js7.base.system.startup - START " is expected
+    Logger[this.type].info(s"START ${startUpLine(name)}")
 
   def startUpLine(name: String): String =
     s"""$name ${BuildInfo.prettyVersion} · $startUpLine
        |${"━" * 80}""".stripMargin // Log a bar, in case we append to an existing log file
+
+  def logStopLine(): Unit =
+    // Should be the very last log line before program exit
+    // The String "js7.base.system.startup - STOP" is expected
+    Logger[this.type].info("STOP")
 
   /** Log Java version, config and data directory, and classpath. */
   lazy val startUpLine: String =

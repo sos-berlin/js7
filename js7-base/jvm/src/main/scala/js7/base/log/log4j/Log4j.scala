@@ -1,7 +1,7 @@
 package js7.base.log.log4j
 
 import java.lang.reflect.Method
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.ifFailed
 import js7.base.utils.{Atomic, Once}
 import scala.util.{Failure, Success, Try}
@@ -20,11 +20,11 @@ object Log4j:
 
   private lazy val shutdownMethod: Try[Method] =
     Try(Class.forName("org.apache.logging.log4j.LogManager"))
-      .flatMap(_
-        .getMethod("shutdown", classOf[Boolean], classOf[Boolean]) match {
-          case null => Failure(new RuntimeException("Missing method org.apache.logging.log4j.LogManager(Boolean, Boolean)"))
+      .flatMap:
+        _.getMethod("shutdown", classOf[Boolean], classOf[Boolean]) match
+          case null => Failure(RuntimeException:
+            "Missing method org.apache.logging.log4j.LogManager(Boolean, Boolean)")
           case o => Success(o)
-        })
 
   private def isInitialized: Boolean =
     ifNotInitialized.isInitialized
@@ -53,12 +53,9 @@ object Log4j:
     * Call in case the shutdown hook is disabled in log4j2.xml: &lt;configuration shutdownHook="disable">.
     */
   def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
+    // Don't log here, because Logger.shutdown as already written the terminating "STOP" line
     if !isShutdown.getAndSet(true) then
-      if !fast then
-        CorrelId.logStatisticsIfEnabled()
-        Log4jThreadContextMap.logStatistics()
       for shutdown <- shutdownMethod do
-        if !suppressLogging then logger.info("Shutdown")
         shutdown.invoke(null, false, false)
 
   /** Set variable accessible in the log4j2 configuration via %X{key}. */

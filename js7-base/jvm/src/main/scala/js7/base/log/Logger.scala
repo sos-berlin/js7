@@ -10,7 +10,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Slf4jUtils.syntax.*
-import js7.base.log.log4j.Log4j
+import js7.base.log.log4j.{Log4j, Log4jThreadContextMap}
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}
@@ -46,18 +46,22 @@ object Logger extends AdHocLogger:
         F.delay:
           shutdown())
 
-  def initialize(name: String, suppressInfo: Boolean = false): Boolean =
+  def initialize(name: String): Boolean =
     var initialized = false
     ifNotInitialized:
       Log4j.initialize(name)
       initialized = true
     if !initLogged.getAndSet(true) then
-      if !suppressInfo then
-        StartUp.logStartUpLine(name)
+      StartUp.logStartUpLine(name)
       Tests.log()
     initialized
 
   def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
+    if !fast then
+      CorrelId.logStatisticsIfEnabled()
+      Log4jThreadContextMap.logStatistics()
+    if !suppressLogging then
+      StartUp.logStopLine()
     Log4j.shutdown(fast = fast, suppressLogging = suppressLogging)
 
   /** Don't initialize but mark as initialized.
