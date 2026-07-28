@@ -555,7 +555,7 @@ object LogDirectoryIndex:
                   case -1 => Left(IncompleteLogFileProblem(file))
                   case secondLineEnd => Right(chunk.slice(firstLineEnd + 1, secondLineEnd))
               else
-                logger.error(s"Missing header line in ${file.getFileName}, check your log4j2.xml!")
+                logger.debug(s"No header line in ${file.getFileName}")
                 Right(chunk.slice(0, firstLineEnd))
             .flatMap: logLine =>
               // Timestamp of first log line after the header line
