@@ -190,7 +190,8 @@ object JProxyContext:
               CompletableFuture.failedFuture(throwable)
 
   @TestOnly
-  def apply(groupAndProxyId: Option[GroupAndProxyId] = None, config: Config = ConfigFactory.empty)(using IORuntime)
+  def apply(groupAndProxyId: Option[GroupAndProxyId] = None, config: Config = ConfigFactory.empty)
+    (using IORuntime)
   : JProxyContext =
     resource(groupAndProxyId, config = config)
       .allocated.map: (jCtx, release) =>

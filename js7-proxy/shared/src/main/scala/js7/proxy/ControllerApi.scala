@@ -71,7 +71,7 @@ extends ControllerApiWithHttp:
   override def equals(o: Any) = this eq o.asInstanceOf[AnyRef]
   override def hashCode() = System.identityHashCode(this)
 
-  protected def apiResource(implicit src: sourcecode.Enclosing) =
+  def apiResource(using sourcecode.Enclosing) =
     apiCache.resource
 
   def stop: IO[Unit] =
