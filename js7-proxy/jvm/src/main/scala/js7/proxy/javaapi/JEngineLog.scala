@@ -2,7 +2,6 @@ package js7.proxy.javaapi
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
-import cats.syntax.foldable.*
 import java.time.Instant
 import javax.annotation.Nonnull
 import js7.base.data.ByteSequence
@@ -11,7 +10,6 @@ import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
-import js7.base.utils.CatsUtils.Nel
 import js7.controller.client.HttpControllerApi
 import js7.data.node.Js7ServerId
 import js7.data_for_java.reactor.ReactorConverters.*
@@ -22,26 +20,23 @@ import scala.jdk.CollectionConverters.*
 
 final class JEngineLog private(
   jProxy: JControllerProxy,
-  activeApi: ResourceIO[HttpControllerApi],
-  controllerApis: Nel[HttpControllerApi],
+  primaryHttpControllerApi: HttpControllerApi,
   serverId: Js7ServerId)
   (using IORuntime):
 
-  private val primaryControllerApi: HttpControllerApi =
-    controllerApis.head
-
-  private val backupControllerApi: HttpControllerApi =
-    controllerApis.get(1).getOrElse(primaryControllerApi)
+  private val activeHttpControllerApiResource = jProxy.api.asScala.activeHttpControllerApiResource
+  private val backupHttpControllerApiResource = jProxy.api.asScala.backupHttpControllerApiResource
 
   def currentLog(logLevel: LogLevel): Flux[Array[Byte]] =
     fs2.Stream.force:
       serverId match
         case Js7ServerId.Controller.Primary =>
-          primaryControllerApi.getNewLogLines(logLevel)
+          primaryHttpControllerApi.getNewLogLines(logLevel)
         case Js7ServerId.Controller.Backup =>
-          backupControllerApi.getNewLogLines(logLevel)
+          backupHttpControllerApiResource.use:
+            _.getNewLogLines(logLevel)
         case Js7ServerId.Subagent(subagentId) =>
-          activeApi.use:
+          activeHttpControllerApiResource.use:
             _.getNewLogLines(logLevel, subagentId = Some(subagentId))
         case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
     .map(_.toArray) // Copy, or has Java an immutable array?
@@ -75,11 +70,12 @@ final class JEngineLog private(
       fs2.Stream.force:
         serverId match
           case Js7ServerId.Controller.Primary =>
-            primaryControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
+            primaryHttpControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Controller.Backup =>
-            backupControllerApi.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
+            backupHttpControllerApiResource.use:
+              _.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeApi.use:
+            activeHttpControllerApiResource.use:
               _.getKeyedLogLines(logLevel, begin = begin, logSelection.asScala,
                 subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
@@ -135,11 +131,12 @@ final class JEngineLog private(
       fs2.Stream.force:
         serverId match
           case Js7ServerId.Controller.Primary =>
-            primaryControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
+            primaryHttpControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Controller.Backup =>
-            backupControllerApi.getLogLines(logLevel, begin = begin, logSelection.asScala)
+            backupHttpControllerApiResource.use:
+              _.getLogLines(logLevel, begin = begin, logSelection.asScala)
           case Js7ServerId.Subagent(subagentId) =>
-            activeApi.use:
+            activeHttpControllerApiResource.use:
               _.getLogLines(logLevel, begin = begin, logSelection.asScala,
                 subagentId = Some(subagentId))
           case _: (Js7ServerId.Proxy | Js7ServerId.Provider) => IO.pure(fs2.Stream.empty)
@@ -154,5 +151,7 @@ object JEngineLog:
   def resource(jProxy: JControllerProxy, serverId: Js7ServerId)(using IORuntime)
   : ResourceIO[JEngineLog] =
     logger.traceResource("JEngineLog.resource"):
-      jProxy.api.asScala.apisResource.map: apis =>
-        JEngineLog(jProxy, jProxy.api.asScala.apiResource, apis, serverId)
+      for
+        primaryApi <- jProxy.api.asScala.primaryHttpControllerApiResource
+      yield
+        JEngineLog(jProxy, primaryApi, serverId)

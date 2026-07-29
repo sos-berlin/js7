@@ -12,14 +12,14 @@ import org.jetbrains.annotations.TestOnly
 
 trait ControllerApiWithHttp:
 
-  protected def apiResource(using sourcecode.Enclosing)
+  protected def activeHttpControllerApiResource(using sourcecode.Enclosing)
   : ResourceIO[HttpControllerApi]
 
   def httpPostJson(uriTail: String, jsonString: String): IO[Checked[String]] =
     (for
       requestJson <- EitherT(IO(io.circe.parser.parse(jsonString).toChecked))
       responseJson <- EitherT:
-        apiResource.use: api =>
+        activeHttpControllerApiResource.use: api =>
           HttpClient.liftProblem:
             api.post[Json, Json](uriTail, requestJson)
     yield responseJson).value
@@ -30,14 +30,14 @@ trait ControllerApiWithHttp:
     * @return `Either.Left(Problem)` or `Either.Right(json: String)`
     */
   def httpGetJson(uriTail: String): IO[Checked[String]] =
-    apiResource.use: api =>
+    activeHttpControllerApiResource.use: api =>
       HttpClient.liftProblem:
         api.get[Json](uriTail)
       .mapmap(_.compactPrint)
 
   @TestOnly
   def httpGetRawLinesStream(uriTail: String): IO[Checked[fs2.Stream[IO, fs2.Chunk[Byte]]]] =
-    apiResource.use: api =>
+    activeHttpControllerApiResource.use: api =>
       //loginAndRetryIfSessionLost <-- NOT AVAILABLE HERE
         HttpClient.liftProblem:
           api.getRawLinesStream(uriTail)

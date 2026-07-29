@@ -2,6 +2,7 @@ package js7.proxy
 
 import cats.effect.kernel.Resource
 import cats.effect.{IO, ResourceIO}
+import cats.syntax.foldable.*
 import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.{Decoder, Json, JsonObject}
@@ -57,10 +58,21 @@ final class ControllerApi(
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
 
-  private val apiCache = RefCountedResource(
-    ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
-      apisResource,
-      proxyConf.recouplingStreamReaderConf.delayConf))
+  private val primaryControllerApiCache: RefCountedResource[HttpControllerApi] =
+    RefCountedResource:
+      apisResource.map: apis =>
+        apis.head
+
+  private val backupControllerApiCache: RefCountedResource[HttpControllerApi] =
+    RefCountedResource:
+      apisResource.map: apis =>
+        apis.get(1).getOrElse(throw IllegalStateException("No backup Controller configured"))
+
+  private val activeControllerApiCache: RefCountedResource[HttpControllerApi] =
+    RefCountedResource:
+      ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
+        apisResource,
+        proxyConf.recouplingStreamReaderConf.delayConf)
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
   private var _engineMetricsAllowed = false
@@ -71,8 +83,14 @@ extends ControllerApiWithHttp:
   override def equals(o: Any) = this eq o.asInstanceOf[AnyRef]
   override def hashCode() = System.identityHashCode(this)
 
-  def apiResource(using sourcecode.Enclosing) =
-    apiCache.resource
+  def primaryHttpControllerApiResource(using sourcecode.Enclosing) =
+    primaryControllerApiCache.resource
+
+  def backupHttpControllerApiResource(using sourcecode.Enclosing) =
+    backupControllerApiCache.resource
+
+  def activeHttpControllerApiResource(using sourcecode.Enclosing) =
+    activeControllerApiCache.resource
 
   def stop: IO[Unit] =
     IO.defer:
@@ -85,11 +103,11 @@ extends ControllerApiWithHttp:
         allowEngineMetrics(false)
         register.foreach(_.remove(this))
         IO.whenA(dontLogout):
-          apiCache.cachedValue
+          activeControllerApiCache.cachedValue
             .fold(IO.unit): api =>
               IO(api.clearSession())
         .productR:
-          apiCache.release
+          activeControllerApiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
@@ -105,7 +123,7 @@ extends ControllerApiWithHttp:
   : Stream[IO, Stamped[KeyedEvent[E]]] =
     logger.debugStream:
       Stream.force:
-        apiResource.use: api =>
+        activeHttpControllerApiResource.use: api =>
           api.loginAndRetryIfSessionLost:
             IO:
               api.eventStream(eventRequest, heartbeat = Some(1.s/*TODO*/))
@@ -287,7 +305,7 @@ extends ControllerApiWithHttp:
 
   private def useApi[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
     liftProblem:
-      apiResource.use: api =>
+      activeHttpControllerApiResource.use: api =>
         api.loginAndRetryIfSessionLost:
           body(api)
 
@@ -296,7 +314,7 @@ extends ControllerApiWithHttp:
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
-      apiResource.use: api =>
+      activeHttpControllerApiResource.use: api =>
         api.loginAndRetryIfSessionLost:
           body(api)
         .tryIt.map:
@@ -311,7 +329,7 @@ extends ControllerApiWithHttp:
             warned = now
           else
             logger.debug(t.toStringWithCauses)
-          apiCache.clear *>
+          activeControllerApiCache.clear *>
             IO.sleep(delays.next()) *>
             retry(())
 
