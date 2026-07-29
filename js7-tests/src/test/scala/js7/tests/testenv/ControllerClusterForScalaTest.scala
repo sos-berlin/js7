@@ -85,11 +85,12 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
 
   final def runControllerAndBackup[R](
     suppressClusterWatch: Boolean = false,
-    requireFailoverConfirmation: Boolean = false)
+    requireFailoverConfirmation: Boolean = false,
+    agentConfig: Config = ConfigFactory.empty)
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
             DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => R)
   : R =
-    withControllerAndBackup(suppressClusterWatch):
+    withControllerAndBackup(suppressClusterWatch, agentConfig = agentConfig):
       (primary, primaryAgents, backup, backupAgents, clusterSetting) =>
         runControllers(primary, backup) { (primaryController, backupController) =>
           body(
@@ -100,12 +101,14 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
 
   final def withControllerAndBackup[R](
     suppressClusterWatch: Boolean = false,
-    requireFailoverConfirmation: Boolean = false)
+    requireFailoverConfirmation: Boolean = false,
+    agentConfig: Config = ConfigFactory.empty)
     (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => R)
   : R =
     withControllerAndBackupWithoutAgents(
       suppressClusterWatch,
-      requireFailoverConfirmation = requireFailoverConfirmation
+      requireFailoverConfirmation = requireFailoverConfirmation,
+      agentConfig = agentConfig
     ):
       (primary, backup, setting) =>
         backup.runAgents(): backupAgents =>
@@ -114,7 +117,8 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
 
   final def withControllerAndBackupWithoutAgents[R](
     suppressClusterWatch: Boolean = false,
-    requireFailoverConfirmation: Boolean = false)
+    requireFailoverConfirmation: Boolean = false,
+    agentConfig: Config = ConfigFactory.empty)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => R)
   : R =
     withCloser { implicit closer =>
@@ -157,13 +161,15 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ UpdateItem, AgentDirectorForward ]"""),
         agentPorts = agentPorts,
-        agentConfig = config"""
-          js7.job.execution.signed-script-injection-allowed = on
-          js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
-          js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
-          js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
-          js7.journal.release-events-delay = 0s
-          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles"""
+        agentConfig = agentConfig.withFallback:
+          config"""
+            js7.job.execution.signed-script-injection-allowed = on
+            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
+            js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
+            js7.journal.release-events-delay = 0s
+            js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+            """
       ).closeWithCloser
 
       val backup = new DirectoryProvider(
@@ -190,19 +196,20 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = backupAgentPorts,
-        agentConfig = config"""
-          js7.job.execution.signed-script-injection-allowed = on
-          js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
-          js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
-          js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
-          js7.journal.cluster.node.is-backup = yes
-          js7.journal.release-events-delay = 0s
-          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          js7.auth.users.Controller {
-            password = "plain:AGENT-PASSWORD"
-            permissions = [ ReadMetrics ]
-          }
-          """
+        agentConfig = agentConfig.withFallback:
+          config"""
+            js7.job.execution.signed-script-injection-allowed = on
+            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
+            js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
+            js7.journal.cluster.node.is-backup = yes
+            js7.journal.release-events-delay = 0s
+            js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+            js7.auth.users.Controller {
+              password = "plain:AGENT-PASSWORD"
+              permissions = [ ReadMetrics ]
+            }
+            """
       ).closeWithCloser
 
       // Replicate credentials required for agents
