@@ -26,22 +26,25 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
   private given IORuntime = ioRuntime
 
   "Primary Controller log" in:
-    withControllerAndBackup(): (primary, _, backup, _, _) =>
-      primary.runController(): controller =>
-        val admission = primary.controllerAdmission(controller.runningController)
-        getLog(admission, Js7ServerId.primaryController).map: line =>
-          assert(line.contains("TEST ONLY: Controller/primary, "))
-        .await(99.s)
+    runControllerAndBackup(): (primary, primaryController, _, backup, backupController, _, _) =>
+      val admissions = List(
+        primary.controllerAdmission(primaryController.runningController),
+        backup.controllerAdmission(backupController.runningController))
+      getLog(admissions, Js7ServerId.primaryController).map: line =>
+        assert(line.contains("TEST ONLY: Controller/primary, "))
+      .await(99.s)
 
   "Backup Controller log" in :
     runControllerAndBackup(): (primary, primaryController, _, backup, backupController, _, _) =>
-      val admission = backup.controllerAdmission(backupController.runningController)
-      getLog(admission, Js7ServerId.primaryController).map: line =>
+      val admissions = List(
+        primary.controllerAdmission(primaryController.runningController),
+        backup.controllerAdmission(backupController.runningController))
+      getLog(admissions, Js7ServerId.backupController).map: line =>
         assert(line.contains("TEST ONLY: Controller/secondary, "))
       .await(99.s)
 
-  private def getLog(admission: Admission, serverId: Js7ServerId): IO[String] =
-    JControllerApi.run(admission :: Nil): jControllerApi =>
+  private def getLog(admissions: List[Admission], serverId: Js7ServerId): IO[String] =
+    JControllerApi.run(admissions): jControllerApi =>
       jControllerApi.runControllerProxy: jControllerProxy =>
         jControllerProxy
           .byteLogLineFlux(
