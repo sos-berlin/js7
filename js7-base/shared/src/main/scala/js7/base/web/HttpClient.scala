@@ -46,7 +46,7 @@ trait HttpClient:
   : IO[A]
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[B]
 
   def postStream[A: Encoder, B: Decoder](
@@ -54,12 +54,12 @@ trait HttpClient:
     data: Stream[IO, A],
     terminateStreamOnCancel: Boolean = false,
     dontLog: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[B]
 
   @TestOnly
   def postJsonStringStream(uri: Uri, data: Stream[IO, String])
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[Json]
 
   /** Returns the HTTP status code, discarding the response data. */

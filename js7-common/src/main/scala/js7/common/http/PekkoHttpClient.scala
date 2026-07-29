@@ -100,7 +100,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   protected def name: String
   protected def standardHeaders: List[HttpHeader] = Nil
 
-  private lazy val http = Http(actorSystem)
+  private lazy val http =
+    logger.trace(s"new PekkoHttpClient $baseUri $name")
+    Http(actorSystem)
   private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
@@ -228,7 +230,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     headers: List[HttpHeader] = Nil,
     dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[fs2.Stream[IO, ByteString]] =
     sendReceive(
       HttpRequest(GET, uri.asPekko, `Cache-Control`(`no-cache`, `no-store`) :: headers),
@@ -240,7 +242,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     headers: List[HttpHeader] = Nil,
     dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[A] =
     sendReceive(
       HttpRequest(GET, uri.asPekko, `Cache-Control`(`no-cache`, `no-store`) :: headers),
@@ -248,7 +250,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     ).flatMap(unmarshal[A](GET, uri))
 
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A, dontLog: Boolean = false)(
-    using IO[Option[SessionToken]])
+    using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[B] =
     post2[A, B](uri, data, Nil, dontLog = dontLog)
 
@@ -258,7 +260,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     //responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false,
     dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[B] =
     IO.defer:
       val stop = Deferred.unsafe[IO, Unit]
@@ -287,7 +289,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   @TestOnly
   final def postJsonStringStream(uri: Uri, data: Stream[IO, String])
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[Json] =
     data
       .mapAndRechunkToByteStringBuffered(chunkSize): string =>
@@ -318,7 +320,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     data: A,
     headers: List[HttpHeader],
     dontLog: Boolean)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[B] =
     post_[A](uri, data, AcceptJson ::: headers, dontLog = dontLog)
       .flatMap(unmarshal[B](POST, uri))
@@ -344,7 +346,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     data: A,
     headers: List[HttpHeader],
     dontLog: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[HttpResponse] =
     for
       // Maybe executeOn avoid blocking with a single thread Scheduler,
@@ -364,12 +366,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     headers: List[HttpHeader],
     entity: RequestEntity,
     dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[HttpResponse] =
     sendReceive(HttpRequest(POST, uri.asPekko, headers, entity), dontLog = dontLog)
 
   final def forward(request: HttpRequest, uri: PekkoUri, dontLog: Boolean = false)
-    (using IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]], sourcecode.Enclosing)
   : IO[HttpResponse] =
     sendReceive(
       HttpRequest(
@@ -383,99 +385,107 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         response.headers.filter(h => !isIgnoredResponseHeader(h.getClass))
 
   private def sendReceive(request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean)
-    (implicit sessionTokenIO: IO[Option[SessionToken]])
+    (using sessionTokenIO: IO[Option[SessionToken]], enc: sourcecode.Enclosing)
   : IO[HttpResponse] =
-   HttpMXBeanUtils.clientRequestResource.surround:
-    withCheckedAgentUri(request): request =>
-      sessionTokenIO.flatMap: sessionToken =>
-        if closed then
-          logger.debug(s"(WARN) PekkoHttpClient has actually been closed: ${requestToString(request, logData)}")
-        val number = requestCounter.incrementAndGet()
+    logger.traceIO("sendReceive", enc.value):
+      HttpMXBeanUtils.clientRequestResource.surround:
+        withCheckedAgentUri(request): request =>
+          sessionTokenIO.flatMap: sessionToken =>
+            sendReceive2(request, logData, dontLog, sessionToken)
 
-        val req =
-          logStream("#" + number, "->->  ", "|-->  ", "~~> 💥", dontLog = dontLog):
-            val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
-              `x-js7-request-id`(number) ::
-              CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
-              request.headers.toList :::
-              standardHeaders
-            request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
+  private def sendReceive2(
+    request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean,
+    sessionToken: Option[SessionToken])
+  : IO[HttpResponse] =
+    if closed then
+      logger.debug:
+        s"(WARN) PekkoHttpClient has actually been closed: ${requestToString(request, logData)}"
+    val number = requestCounter.incrementAndGet()
 
-        @volatile var canceled = false
-        //var responseFuture: Future[HttpResponse] = null
-        val since = now
-        lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
-        lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
-        def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        if !dontLog then
-          def arrow = if request.entity.isChunked then ">-->" else "|-->"
-          logger.trace(s"$arrow  $logPrefix ${requestToString(req, logData)}")
-        IO
-          .fromFutureCancelable:
-            IO:
-              val httpsCtx = req.uri.scheme match
-                case "https" => httpsConnectionContext
-                case _ => http.defaultClientHttpsContext
-              //————————————————————————————————————————————
-              val future = http.singleRequest(req, httpsCtx)
-              //————————————————————————————————————————————
-              val cancel = IO.executionContext.flatMap(implicit ec => IO:
-                logger.debug(s"🗑   ↘ $responseLogPrefix cancel ...")
-                // TODO Pekko's max-open-requests may be exceeded when new requests are opened
-                //  while many canceled requests are still not completed by Pekko
-                //  until the server has responded or some Pekko (idle connection) timed out.
-                //  Anyway, the caller's code should be fault-tolerant.
-                // TODO Maybe manage own connection pool? Or switch to http4s?
-                future
-                  .flatMap(_
-                    .discardEntityBytes().future)
-                  .andThen: tried =>
-                    logger.debug(s"🗑   ↙ $responseLogPrefix canceled with discardEntityBytes => " +
-                      tried.fold(_.toStringWithCauses, _ => "OK"))
-                  .map((_: Done) => ())
-                  .handleError(_ => ())
-                ()) // Forget the started Future, discard the remaining entities in background
+    val req =
+      logStream("#" + number, "->->  ", "|-->  ", "~~> 💥", dontLog = dontLog):
+        val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
+          `x-js7-request-id`(number) ::
+          CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
+          request.headers.toList :::
+          standardHeaders
+        request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
 
-              future -> cancel
-          .recoverWith:
-            case t if canceled => IO:
-              logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
-              // IO guarantee below may report a failure after cancel
-              // via thread pools's reportFailure. To avoid this, we convert the failure
-              // to a dummy successful response, which will get lost immediately.
-              HttpResponse(GatewayTimeout, entity = "CANCELED")
-            case t: pekko.stream.StreamTcpException => IO.raiseError(simplifyPekkoException(t))
-            case t: Throwable => IO.raiseError(toPrettyThrowable(t))
-          .map(decompressResponse)
-          .pipe: responseIO =>
-            if !dontLog && logger.isDebugEnabled then
-              logResponding(request, responseIO, responseLogPrefix)
-                .map: response =>
-                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = false):
-                    response
-            else
-              // Statistics only, no logging:
-              responseIO.map: response =>
-                logStream("#", "<-<-  ", "<--|  ", "<~~ 💥", dontLog = true):
-                  response
-          .guaranteeCaseLazy:
-            case Outcome.Canceled() => IO:
-              canceled = true
-              logger.debug(s"<~~ ◼️ $responseLogPrefix => canceled")
+    @volatile var canceled = false
+    //var responseFuture: Future[HttpResponse] = null
+    val since = now
+    lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
+    lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
+    def responseLogPrefix = responseLog0 + since.elapsed.pretty
+    if !dontLog then
+      def arrow = if request.entity.isChunked then ">-->" else "|-->"
+      logger.trace(s"$arrow  $logPrefix ${requestToString(req, logData)}")
+    IO
+      .fromFutureCancelable:
+        IO:
+          val httpsCtx = req.uri.scheme match
+            case "https" => httpsConnectionContext
+            case _ => http.defaultClientHttpsContext
+          //————————————————————————————————————————————
+          val future = http.singleRequest(req, httpsCtx)
+          //————————————————————————————————————————————
+          val cancel = IO.executionContext.flatMap(implicit ec => IO:
+            logger.debug(s"🗑   ↘ $responseLogPrefix cancel ...")
+            // TODO Pekko's max-open-requests may be exceeded when new requests are opened
+            //  while many canceled requests are still not completed by Pekko
+            //  until the server has responded or some Pekko (idle connection) timed out.
+            //  Anyway, the caller's code should be fault-tolerant.
+            // TODO Maybe manage own connection pool? Or switch to http4s?
+            future
+              .flatMap(_
+                .discardEntityBytes().future)
+              .andThen: tried =>
+                logger.debug(s"🗑   ↙ $responseLogPrefix canceled with discardEntityBytes => " +
+                  tried.fold(_.toStringWithCauses, _ => "OK"))
+              .map((_: Done) => ())
+              .handleError(_ => ())
+            ()) // Forget the started Future, discard the remaining entities in background
 
-            case Outcome.Errored(throwable) => IO.defer:
-              val sym = throwable match
-                case _: java.net.ConnectException => "⭕ "
-                case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥 "
-                case t: pekko.stream.StreamTcpException
-                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
-                case t: SimplifiedPekkoHttpException
-                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
-                case _ => "💥 "
-              IO(logger.debug:
-                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+          future -> cancel
+      .recoverWith:
+        case t if canceled => IO:
+          logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
+          // IO guarantee below may report a failure after cancel
+          // via thread pools's reportFailure. To avoid this, we convert the failure
+          // to a dummy successful response, which will get lost immediately.
+          HttpResponse(GatewayTimeout, entity = "CANCELED")
+        case t: pekko.stream.StreamTcpException => IO.raiseError(simplifyPekkoException(t))
+        case t: Throwable => IO.raiseError(toPrettyThrowable(t))
+      .map(decompressResponse)
+      .pipe: responseIO =>
+        if !dontLog && logger.isDebugEnabled then
+          logResponding(request, responseIO, responseLogPrefix)
+            .map: response =>
+              logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥", dontLog = false):
+                response
+        else
+          // Statistics only, no logging:
+          responseIO.map: response =>
+            logStream("#", "<-<-  ", "<--|  ", "<~~ 💥", dontLog = true):
+              response
+      .guaranteeCaseLazy:
+        case Outcome.Canceled() => IO:
+          canceled = true
+          logger.debug(s"<~~ ◼️ $responseLogPrefix => canceled")
 
-            case Outcome.Succeeded(_) => IO.unit
+        case Outcome.Errored(throwable) => IO.defer:
+          val sym = throwable match
+            case _: java.net.ConnectException => "⭕ "
+            case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥 "
+            case t: pekko.stream.StreamTcpException
+              if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
+            case t: SimplifiedPekkoHttpException
+              if t.getMessage.contains("java.net.ConnectException: ") => "⭕ "
+            case _ => "💥 "
+          IO(logger.debug:
+            s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+
+        case Outcome.Succeeded(_) => IO.unit
 
   private def logResponding(
     request: HttpRequest,
