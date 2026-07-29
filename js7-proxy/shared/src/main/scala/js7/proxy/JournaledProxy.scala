@@ -66,7 +66,8 @@ object JournaledProxy:
     (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     Stream.resource:
-      if beanName.isEmpty then
+      // Doesn't work for multiple Enignes. Also, no one looks at the bean.
+      if true && beanName.isEmpty then
         Resource.pure(new Bean)
       else
         JournaledProxy.registerMXBean(name = beanName)
