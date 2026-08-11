@@ -74,7 +74,7 @@ final class ProxyPrometheusMetricsTest extends OurAsyncTestSuite, ControllerClus
 
             proxy.metricsForTest.compile.foldMonoid.map(_.utf8String).await(99.s)
       .map: string =>
-        assert(string.contains("""js7_JournaledProxy_EventCount{js7ServerId="Proxy:MY-CLUSTER-WATCH",js7ServerGroupId="Proxy",name="Proxy""""))
+        //assert(string.contains("""js7_JournaledProxy_EventCount{js7ServerId="Proxy:MY-CLUSTER-WATCH",js7ServerGroupId="Proxy",name="Proxy""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/primary",js7ServerGroupId="Engine:Controller""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Controller/secondary",js7ServerGroupId="Engine:Controller""""))
         assert(string.contains("""js7_LogDirectory_Size{js7ServerId="Subagent:AGENT-0",js7ServerGroupId="Engine:Controller""""))
