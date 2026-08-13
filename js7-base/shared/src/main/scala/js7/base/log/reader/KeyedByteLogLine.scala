@@ -9,6 +9,10 @@ import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.EpochNano.toEpochNano
 
+/** An efficient representation of a log line with a LogLineKey.
+  *
+  * The line is a `Chunk[Byte]`, which may be converted to a String via `lineAsString`.
+  * Then, a KeyedByteLogLine contains both the byte and the String representation of the line. */
 final case class KeyedByteLogLine(logLevel: LogLevel, fileInstant: Instant, posAndLine: PosAndLine):
 
   def logLineKey: LogLineKey =
@@ -22,6 +26,9 @@ final case class KeyedByteLogLine(logLevel: LogLevel, fileInstant: Instant, posA
 
   def toKeyedLogLine: KeyedLogLine =
     KeyedLogLine(logLineKey, posAndLine.lineAsString)
+
+  //def removeHighlights: KeyedByteLogLine =
+  //  copy(posAndLine = posAndLine.removeHighlights)
 
   def asByteSeq: Chunk[Byte] =
     fs2.Chunk.array:

@@ -10,6 +10,7 @@ import js7.base.log.reader.LogLineKey;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogDirectoryIndex;
 import js7.proxy.javaapi.log.JLogSelection;
+import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -85,6 +86,7 @@ final class JLogDirectoryIndexTester {
                         logDirectoryIndex.keyedLogLineFlux(
                                 ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(),
                                 JLogSelection.empty())
+                            .flatMap(Flux::fromIterable)
                             .map(keyedLogLine -> keyedLogLine.line())
                             .collectList().toFuture())
                     .thenAccept(lines ->

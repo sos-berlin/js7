@@ -33,7 +33,7 @@ import js7.proxy.data.GroupAndProxyId
 import js7.proxy.javaapi.JControllerProxy.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
-import js7.proxy.javaapi.log.JLogSelection
+import js7.proxy.javaapi.log.{JEngineLog, JLogSelection}
 import reactor.core.publisher.Flux
 import scala.reflect.ClassTag
 
@@ -82,8 +82,8 @@ final class JControllerProxy private[proxy](
     asScala.currentState.clusterState
 
   /** @see [[keyedLogLineFlux]] for a simplified call. */
-  def engineLog(serverId: Js7ServerId): JResource[JEngineLog] =
-    JResource(JEngineLog.resource(this, serverId))
+  def engineLog(serverId: Js7ServerId, logLevel: LogLevel): JResource[JEngineLog] =
+    JResource(JEngineLog.resource(this, serverId, logLevel))
 
   /** Read log lines from `begin`. */
   @Nonnull
@@ -93,8 +93,8 @@ final class JControllerProxy private[proxy](
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    toJEngineLogFlux(serverId):
-      _.keyedLogLineStream(logLevel, begin, logSelection)
+    toJEngineLogFlux(serverId, logLevel):
+      _.keyedLogLineStream(begin, logSelection)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
@@ -104,8 +104,8 @@ final class JControllerProxy private[proxy](
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    toJEngineLogFlux(serverId):
-      _.keyedLogLineStream(logLevel, key, logSelection)
+    toJEngineLogFlux(serverId, logLevel):
+      _.keyedLogLineStream(key, logSelection)
 
   /** Read log lines as Array[Byte] beginning with `begin`. */
   @Nonnull
@@ -115,8 +115,8 @@ final class JControllerProxy private[proxy](
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    toJEngineLogFlux(serverId):
-      _.logLineStream(logLevel, begin, logSelection, _.unsafeArray)
+    toJEngineLogFlux(serverId, logLevel):
+      _.logLineStream(begin, logSelection, _.unsafeArray)
 
   /** Read log lines as Array[Byte] beginning after the line denoted by `key`. */
   @Nonnull
@@ -126,8 +126,8 @@ final class JControllerProxy private[proxy](
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    toJEngineLogFlux(serverId):
-      _.logLineStream(logLevel, key, logSelection, _.unsafeArray)
+    toJEngineLogFlux(serverId, logLevel):
+      _.logLineStream(key, logSelection, _.unsafeArray)
 
   /** Read log lines from `begin`. */
   @Nonnull
@@ -137,8 +137,8 @@ final class JControllerProxy private[proxy](
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[String]] =
-    toJEngineLogFlux(serverId):
-      _.logLineStream(logLevel, begin, logSelection, _.utf8String)
+    toJEngineLogFlux(serverId, logLevel):
+      _.logLineStream(begin, logSelection, _.utf8String)
 
   /** Read log lines beginning after the line denoted by `key`. */
   @Nonnull
@@ -148,14 +148,14 @@ final class JControllerProxy private[proxy](
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[String]] =
-    toJEngineLogFlux(serverId):
-      _.logLineStream(logLevel, key, logSelection, _.utf8String)
+    toJEngineLogFlux(serverId, logLevel):
+      _.logLineStream(key, logSelection, _.utf8String)
 
-  private def toJEngineLogFlux[R <: AnyRef: ClassTag](js7ServerId: Js7ServerId)
+  private def toJEngineLogFlux[R <: AnyRef: ClassTag](js7ServerId: Js7ServerId, logLevel: LogLevel)
     (f: JEngineLog => fs2.Stream[IO, R])
   : Flux[R] =
     fs2.Stream.resource:
-      JEngineLog.resource(this, js7ServerId)
+      JEngineLog.resource(this, js7ServerId, logLevel)
     .flatMap(f)
     .asFlux
 

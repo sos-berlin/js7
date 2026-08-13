@@ -129,6 +129,11 @@ extends Service.StoppableByCancel:
     keyedByteLogLineStream(begin, logSelection).map:
       _.byteLine
 
+  def stringLineStream(begin: Instant | LogLineKey, logSelection: LogSelection)
+  : Stream[IO, String] =
+    keyedByteLogLineStream(begin, logSelection).map:
+      _.lineAsString
+
   /** Returns the LogLineKey corresponding to the given instant.
     *
     * @return None if no log file exists.

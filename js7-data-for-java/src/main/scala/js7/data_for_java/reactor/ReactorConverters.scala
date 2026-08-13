@@ -4,6 +4,8 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
+import java.util.Arrays.asList
+import java.util.List as JList
 import java.util.function.Function.identity as jIdentity
 import org.reactivestreams.Publisher
 import reactor.core.publisher.{Flux, Mono}
@@ -14,16 +16,22 @@ object ReactorConverters:
   extension [A <: AnyRef](stream: Stream[IO, A])
     /** Convert this FS2 Stream chunk-wise to a Reactor Flux.
       *
-      * This may give a small performance gain, if the stream is already chunked
-      * .*/
+      * This may give a small performance gain if the stream is already chunked
+      */
     def asFlux(using IORuntime)(using ClassTag[A]): Flux[A] =
       stream
         .chunks.map(_.toArray)
         .asFluxSingleElements
         .flatMap(Flux.fromArray)
 
-  extension[A] (stream: Stream[IO, A] )
+    /** Convert this FS2 Stream to a Reactor Flux of List-based chunks. */
+    def asFluxChunks(using IORuntime)(using ClassTag[A]): Flux[JList[A]] =
+      stream
+        .chunks.map(_.toArray)
+        .asFluxSingleElements
+        .map(asList(_*))
 
+  extension[A] (stream: Stream[IO, A] )
     /** Convert this FS2 Stream element-wise to a Reactor Flux. */
     def asFluxSingleElements(using IORuntime): Flux[A] =
       Mono.fromFuture:

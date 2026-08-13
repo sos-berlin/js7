@@ -9,6 +9,9 @@ final case class PosAndLine(position: Long, byteLine: Chunk[Byte]):
   lazy val lineAsString: String =
     byteLine.utf8String
 
+  //def removeHighlights: PosAndLine =
+  //  copy(byteLine = AnsiEscapeCodes.removeHighlights(byteLine))
+
 
 object PosAndLine:
 
