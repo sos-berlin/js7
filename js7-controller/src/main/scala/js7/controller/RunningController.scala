@@ -5,6 +5,7 @@ import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
 import fs2.Stream
+import java.time.ZoneId
 import js7.base.auth.SimpleUser
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.memoize
@@ -333,6 +334,7 @@ object RunningController:
 
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
       : ResourceIO[ControllerWebServer] =
+        given ZoneId = ZoneId.systemDefault
         for
           logDirectoryIndex <- LogDirectoryIndex.resource(conf.logDirectory)
           webServer <- ControllerWebServer.resource(
@@ -341,10 +343,11 @@ object RunningController:
             recoveredExtract.eventWatch,
             conf, sessionRegister, logDirectoryIndex)
           _ <- webServer.restartWhenHttpsChanges
-          _ <- Resource.eval(IO(
+          _ <- Resource.eval(IO.blocking:
             conf.workDirectory / "http-uri" :=
-              webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
-        yield webServer
+              webServer.localHttpUri.fold(_ => "", o => s"$o/controller"))
+        yield
+          webServer
 
       def clusterWatchServiceFor(agentPath: AgentPath): IO[Checked[ClusterWatchService]] =
         currentOrderKeeperActor

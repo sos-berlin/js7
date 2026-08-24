@@ -3,6 +3,7 @@ package js7.tests.controller.proxy.log
 import cats.effect.IO
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
@@ -17,32 +18,33 @@ import js7.tests.controller.proxy.log.JLogDirectoryIndexTest.*
 
 final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
 
-  "Test" in :
-    temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
-      val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
-      IO:
-        var i = 0
-        (0 until 3).foreach: d =>
-          val midnight = startInstant + 24.h * d
-          (0 until 3).foreach: h =>
-            val hour = midnight + h.h
-            val gzFile = dir / s"TEST-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
-            autoClosing(
-              GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
-            ): out =>
-              out.write:
-                (headerTimestampFormatter.format(hour.atZone(zoneId)) + " Begin ...\n").getBytes(UTF_8)
-              (1 to 3).foreach: s =>
-                i += 1
-                out.write:
-                  s"${timestampFormatter.format((hour + s.s).atZone(zoneId))
-                  } info LogDirectoryIndexTest - MESSAGE $i\n".getBytes(UTF_8)
-      .productR:
+  "Test" in:
+    temporaryDirectoryResource[IO]("JLogDirectoryIndexTest-").use: dir =>
+      writeLogFiles(dir) *>
         JProxyContext.resource().use: jProxy =>
           IO.fromCompletableFuture:
             IO:
               JLogDirectoryIndexTester.test(jProxy, zoneId, dir)
           .as(succeed)
+
+  private def writeLogFiles(dir: Path) =
+    val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
+    IO:
+      var i = 0
+      (0 until 3).foreach: d =>
+        val midnight = startInstant + 24.h * d
+        (0 until 3).foreach: h =>
+          val hour = midnight + h.h
+          val gzFile = dir / s"PREFIX-${hour.atZone(zoneId).toLocalDate}-$h.log.gz"
+          autoClosing(
+            GZIPOutputStream(BufferedOutputStream(FileOutputStream(gzFile.toFile)))
+          ): out =>
+            out.write:
+              (headerTimestampFormatter.format(hour.atZone(zoneId)) + " Begin ...\n").getBytes(UTF_8)
+            (1 to 3).foreach: s =>
+              i += 1
+              out.write(s"${timestampFormatter.format((hour + s.s).atZone(zoneId))
+                } info JLogDirectoryIndexTest - MESSAGE $i\n".getBytes(UTF_8))
 
 
 object JLogDirectoryIndexTest:

@@ -32,6 +32,7 @@ private final class LogStreamIndexBuilder private(
   private def toLogFileEvents(directory: Path, initialFiles: Seq[Path])
   : IO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
     for
+      // TODO Prefer Channel over Queue?
       queue <- Queue.unsafeUnbounded[IO, LogFile]
       (logFiles, delayedLogFiles) <- toLogDelayedFiles(initialFiles, queue.offer)
       filenameToDelayedLogFile <- AtomicCell[IO].of:
@@ -70,24 +71,27 @@ private final class LogStreamIndexBuilder private(
       stream.evalMap:
         case event @ FileAdded(filename) =>
           logger.debug(s"-->$event")
-          val file = directory.resolve(filename)
-          // Try to read the timestamp of .log-file forever (or until cancelled) in background.
-          // When the timestamp has been read, enqueue a LogFileAdded event.
-          val delayedLogFile = DelayedLogFile(file)
-          filenameToDelayedLogFile.modify: map =>
-            map.updated(filename, delayedLogFile) -> map.get(filename)
-          .flatMap:
-            case Some(forgotten: DelayedLogFile) =>
-              forgotten.cancel/*Should not happen*/
-            case _ => IO.unit
-          .flatMap: _ =>
-            // Read log file's timestamp in background
-            delayedLogFile.start(queue.offer, delay = true)
-          .as(Nil)
+          if filename.toString.endsWith(LogUtils.TmpSuffix) then
+            IO.pure(Nil) // We added this file, nothing to do
+          else
+            val file = directory.resolve(filename)
+            // Try to read the timestamp of .log-file forever (or until cancelled) in background.
+            // When the timestamp has been read, enqueue a LogFileAdded event.
+            val delayedLogFile = DelayedLogFile(file)
+            filenameToDelayedLogFile.modify: map =>
+              map.updated(filename, delayedLogFile) -> map.get(filename)
+            .flatMap:
+              case Some(forgotten: DelayedLogFile) =>
+                forgotten.cancel/*Should not happen*/
+              case _ => IO.unit
+            .flatMap: _ =>
+              // Read log file's timestamp in background
+              delayedLogFile.start(queue.offer, delay = true)
+            .as(Nil)
 
         case event @ FileDeleted(filename) =>
           logger.debug(s"-->$event")
-          if filename.toString.endsWith(LogStreamIndex.TmpSuffix) then
+          if filename.toString.endsWith(LogUtils.TmpSuffix) then
             IO.pure(LogFileIndexDeleted(filename) :: Nil)
           else if isGzipped(filename) then
             IO.pure(LogFileDeleted(filename) :: Nil)

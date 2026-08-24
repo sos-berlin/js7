@@ -1,141 +1,187 @@
 package js7.base.log.reader
 
-import cats.effect.std.Queue
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
+import fs2.concurrent.Channel
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import java.time.ZoneId
+import java.util.NoSuchElementException
 import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.reader.LogStreamIndex.LogDirectoryIndexMXBean
+import js7.base.config.Js7Config
+import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
+import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogUtils.isOurFilenameAnyLevel
+import js7.base.log.reader.LogStreamIndex.LogDirectoryIndexMXBean
+import js7.base.log.reader.LogUtils.{deleteTmpFiles, isOurLogFilename}
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 
-/** Contains LogDirectoryIndexes for Error, Info and Debug.
+/** Provides a LogStreamIndex for each pair of logFilePrefix and LogLevel (Error, Info and Debug).
   *
-  * LogDirectoryIndexes including directory watching are started only when used.
+  * LogDirectoryIndex is not itself an index but provides LogStreamIndexes.
+  *
+  * Directory watching is started when the first LogStreamIndex is provided.
   */
-final class LogDirectoryIndex private(directory: Path, logFilePrefix: String)
+final class LogDirectoryIndex private(directory: Path, logFilePrefixes: Set[String])
   (using zoneId: ZoneId, conf: LogFileIndexConf)
-extends Service.TrivialReleasable:
+extends Service.StoppableByRequest:
 
-  // TODO Make lazy for each LogLevel separately?
-  private val lazyLevelToIndex: IO[Allocated[IO, Map[LogLevel, Allocated[IO, LogStreamIndex]]]] =
+  private val lazyPrefixAndLevelToIndex
+  : IO[Allocated[IO, Map[(String, LogLevel), Allocated[IO, LogStreamIndex]]]] =
     memoize:
       watching.toAllocated
 
-  private val currentErrorLogFilePrefix = logFilePrefix + "-error."
-  private val currentInfoLogFilePrefix = logFilePrefix + "."
-  private val currentDebugLogFilePrefix = logFilePrefix + "-debug."
-  private val compressedErrorLogFilePrefix = logFilePrefix + "-error-"
-  private val compressedInfoLogFilePrefix = logFilePrefix + "-"
-  private val compressedDebugLogFilePrefix = logFilePrefix + "-debug-"
+  protected def start =
+    startService:
+      deleteTmpFiles(directory, logFilePrefixes) *>
+        untilStopRequested.guarantee:
+          release
 
-  protected def release =
+  private def release =
     // When startWatching has not been called yet, it will be called now with isStopping = true,
     // and return an empty Map.
-    lazyLevelToIndex.flatMap: allo =>
-      allo.allocatedThing.values.foldMap:
-        _.release
-      *> allo.release
+    logger.traceIO("release"):
+      lazyPrefixAndLevelToIndex.flatMap:
+        _.release /*stop watching*/
 
-  def forLogLevel(logLevel: LogLevel): IO[LogStreamIndex] =
-    lazyLevelToIndex.flatMap: levelToIndex =>
-      levelToIndex.allocatedThing.get(logLevel) match
+  def logStreamIndex(logFilePrefix: String, logLevel: LogLevel): IO[LogStreamIndex] =
+    lazyPrefixAndLevelToIndex.flatMap: levelToIndex =>
+      levelToIndex.allocatedThing.get((logFilePrefix, logLevel)) match
         case None =>
-          IO.raiseError(new IllegalArgumentException(
-            s"Unsupported logLevel=$logLevel or $this has been stopped"))
-
+          if !logFilePrefixes(logFilePrefix) then
+            IO.raiseError(NoSuchElementException(s"Unknown logLinePrefix=$logFilePrefix"))
+          else if !LogUtils.LogLevels(logLevel) then
+            IO.raiseError(NoSuchElementException(s"Unsupported $logLevel LogLevel"))
+          else
+            IO.raiseError(NoSuchElementException(s"$this has been stopped"))
         case Some(index) =>
           IO.pure(index.allocatedThing)
 
   /** Run a LogStreamIndex for each LogLevel. */
-  private def watching: ResourceIO[Map[LogLevel, Allocated[IO, LogStreamIndex]]] =
+  private def watching: ResourceIO[Map[(String, LogLevel), Allocated[IO, LogStreamIndex]]] =
     Resource.defer:
       if isStopping then
         Resource.pure(Map.empty)
       else
-        for
-          levelToFilesAndQueue <- watchDirectoryAndDispatchEvents
-          levelToIndex <-
-            Resource.make(
-              acquire =
-                LogStreamIndex.LogLevels.toSeq.parTraverse: logLevel =>
-                  val (files, queue) = levelToFilesAndQueue(logLevel)
-                  LogStreamIndex.directory(
-                      directory, logLevel, files,
-                      Stream.fromQueueNoneTerminatedChunk(queue),
-                      watchGrowth = true
-                    ).toAllocated
-                    .map(logLevel -> _)
-                .map(_.toMap))(
-              release =
-                _.values.toSeq.parTraverseVoid(_.release))
-        yield
-          levelToIndex
+        logger.traceResource:
+          for
+            prefixAndLevelToFilesAndChannel <- watchDirectoryAndDispatchEvents
+            levelToIndex <-
+              Resource.make(
+                acquire =
+                  IO.parSequence:
+                    for
+                      logFilePrefix <- logFilePrefixes.toSeq
+                      logLevel <- LogUtils.LogLevels
+                    yield
+                      val (initialFiles, channel) =
+                        prefixAndLevelToFilesAndChannel((logFilePrefix, logLevel))
+                      LogStreamIndex.directory(
+                        directory, logLevel, initialFiles,
+                        channel.stream.unchunks,
+                        label = s"$logFilePrefix/$logLevel",
+                        watchGrowth = true
+                      ).toAllocated.map: allocated =>
+                        (logFilePrefix, logLevel) -> allocated
+                  .map(_.toMap))(
+                release =
+                  _.values.toSeq.parTraverseVoid:
+                    _.release /*LogStreamIndex*/)
+          yield
+            levelToIndex
 
-  /** Return for each LogLevel the initial files and a Queue of DirectoryEvents. */
+  /** Return for each LogLevel the initial files and a Channel of DirectoryEvents. */
   private def watchDirectoryAndDispatchEvents
-  : Resource[IO, Map[LogLevel, (Seq[Path], Queue[IO, Option[Chunk[DirectoryEvent]]])]] =
-    for
-      levelToQueue <- Resource.eval(makeLevelToQueue)
-      // TODO Erst lesen, wenn LogDirectoryIndex gebraucht wird ?
-      (files, directoryEvents) <- Resource.eval(watchDirectory)
-      _ <-
-        directoryEvents.chunks.evalMap: events =>
-          events.asSeq.groupBy: event =>
-            LogStreamIndex.fileToLogLevel(event.relativePath)
-          .toSeq.traverse: (logLevel, events) =>
-            levelToQueue(logLevel)
-              .offer(Some(Chunk.from(events)))
-        .compile.drain
-        .guarantee:
-          levelToQueue.values.toSeq.foldMap: queue =>
-            queue.offer(None)
-        .background
-    yield
-      levelToQueue.view.map: (logLevel, queue) =>
-        logLevel -> (files.filter(LogStreamIndex.fileToLogLevel(_) ==  logLevel), queue)
-      .toMap
+  : Resource[IO, Map[(String, LogLevel), (Seq[Path], Channel[IO, Chunk[DirectoryEvent]])]] =
+    logger.traceResource:
+      for
+        prefixAndLevelToChannel <- makePrefixAndLevelToChannel
+        (initialFiles, directoryEvents) <- Resource.eval:
+          watchDirectory(directory, isOurLogFilename(logFilePrefixes, _))
+        result <-
+          directoryEvents.chunks.evalMap: events =>
+            events.asSeq.groupBy: event =>
+              LogUtils.fileToPrefixAndLogLevel(event.relativePath)
+            .toSeq.traverse:
+              case (None, events) => IO:
+                for event <- events do logger.trace(s"Does not match: $event")
+              case (Some((prefix, logLevel)), events) =>
+                prefixAndLevelToChannel((prefix, logLevel))
+                  .send(Chunk.from(events))
+          .compile.drain
+          .background
+          .as:
+            prefixAndLevelToChannel.view.map: (prefixAndLevel, channel) =>
+              val ourInitialFiles = initialFiles.filter:
+                LogUtils.fileToPrefixAndLogLevel(_).contains(prefixAndLevel)
+              prefixAndLevel -> (ourInitialFiles, channel)
+            .toMap
+      yield result
 
-  /** Return the initial files and a Stream of DirectoryEvents. */
-  private def watchDirectory: IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
-    LogStreamIndex.watchDirectory(directory, isOurFilenameAnyLevel(logFilePrefix))
-
+  private def makePrefixAndLevelToChannel
+  : ResourceIO[Map[(String, LogLevel), Channel[IO, Chunk[DirectoryEvent]]]] =
+    // We use Channel instead of a Queue, because Queue#offer(None) would block when
+    // the reader has terminated while a Channel can be closed anytime without blocking.
+    Resource.make(
+      acquire =
+        locally:
+          for
+            prefix <- logFilePrefixes.toSeq
+            logLevel <- LogUtils.LogLevels
+          yield
+            Channel.bounded[IO, Chunk[DirectoryEvent]](1).map: channel =>
+              (prefix, logLevel) -> channel
+        .sequence.map(_.toMap))(
+      release =
+        _.values.foldMap: channel =>
+          channel.close.void)
 
   override def toString = "LogDirectoryIndex"
 
 
 object LogDirectoryIndex:
   private val logger = Logger[this.type]
-  private given ZoneId = ZoneId.systemDefault
 
-  def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndex] =
+  def resource(directory: Path)(using zoneId: ZoneId, config: Config)
+  : ResourceIO[LogDirectoryIndex] =
+    resource(directory, Set(config.getString("js7.log.prefix")))
+
+  def resource(directory: Path, logFilePrefixes: Set[String])(using zoneId: ZoneId, config: Config)
+  : ResourceIO[LogDirectoryIndex] =
+    given LogFileIndexConf =
+      LogFileIndexConf.fromConfig(config.withFallback(Js7Config.defaultConfig)).orThrow
     for
-      given LogFileIndexConf = LogFileIndexConf.fromConfig(config).orThrow
-      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogStreamIndex", LogStreamIndex.Bean)
+      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogStreamIndex.Bean)
       service <-
         Service:
-          LogDirectoryIndex(
-            directory,
-            logFilePrefix = config.getString("js7.log.prefix"))
+          LogDirectoryIndex(directory, logFilePrefixes)
     yield
       service
 
-  private def makeLevelToQueue: IO[Map[LogLevel, Queue[IO, Option[Chunk[DirectoryEvent]]]]] =
-    LogStreamIndex.LogLevels.toSeq.traverse: logLevel =>
-      Queue.bounded[IO, Option[Chunk[DirectoryEvent]]](1).map: queue =>
-        logLevel -> queue
-    .map(_.toMap)
+  private def watchDirectory(directory: Path, isRelevantFile: Path => Boolean)
+    (using conf: LogFileIndexConf)
+  : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
+    directory.directoryStream[IO]
+      .filter:
+        isRelevantFile
+      .compile.toVector.map: files =>
+        files ->
+          DirectoryWatch.stream(
+            directory,
+            DirectoryState(files.map(_.filename)),
+            conf.directoryWatchSettings.copy(watchDelay = 0.s),
+            isRelevantFile,
+            Set(ENTRY_CREATE, ENTRY_DELETE))

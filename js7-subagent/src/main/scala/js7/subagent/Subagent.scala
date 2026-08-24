@@ -7,6 +7,7 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Path
+import java.time.ZoneId
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.bean.MBeanUtils.registerStaticMBean
@@ -244,7 +245,7 @@ object Subagent:
     (using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     given config: Config = conf.config
-
+    given ZoneId = ZoneId.systemDefault
     given Scheduler = ioRuntime.scheduler
 
     val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")

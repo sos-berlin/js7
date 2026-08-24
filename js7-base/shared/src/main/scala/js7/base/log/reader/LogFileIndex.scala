@@ -146,7 +146,7 @@ object LogFileIndex:
   private val logger = Logger[LogFileIndex]
 
   logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, requiring 1/${
-    LogBytesPerEntry / EpochNanoToPos.EntrySize} of log file's size as heap space")
+    LogBytesPerEntry / EpochNanoToPos.EntrySize} of a log file's size as heap space")
 
   /** Builds a concurrently updated [[LogFileIndex]] from a growing log file. */
   def buildGrowing(

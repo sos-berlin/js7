@@ -1,6 +1,7 @@
 package js7.base.log.reader
 
 import cats.effect.IO
+import com.typesafe.config.{Config, ConfigFactory}
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
@@ -16,7 +17,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{temporaryDirectoryResource, temporaryFileResource}
 import js7.base.io.file.watch.BasicDirectoryWatch
 import js7.base.log.AnsiEscapeCodes.bold
-import js7.base.log.LogLevel.{Debug, Info}
+import js7.base.log.LogLevel.{Debug, Error, Info}
 import js7.base.log.Logger
 import js7.base.log.reader.LogDirectoryIndexTest.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
@@ -33,7 +34,7 @@ import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.duration.Deadline
 
-// See JLogDirectoryIndexTester, LogFileTest, LogFileClusterTest for more tests
+// For more tests, see JLogDirectoryIndexTester, LogFileTest and LogFileClusterTest.
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
   override def resourceForIORuntime =
@@ -41,6 +42,45 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       Js7Conf.registerInEnvironment(Js7Config.defaultConfig)
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
+
+  "LogDirectoryIndex provides a LogStreamIndex for each logFilePrefix and LogLevel" in:
+    temporaryDirectoryResource[IO]("LogDirectoryIndex-").use: dir =>
+      dir / "A.log" := "2026-08-14T12:00:00,000+03 info  js7.test.Test - ...\n"
+      autoClosing(GZIPOutputStream(FileOutputStream((dir / "A-2026-08-14-1.log.gz").toFile))):
+        _.write("2026-08-14T10:00:00,000+03 info  js7.test.Test - ...\n".getBytes(UTF_8))
+      dir / "A-error.log" := "2026-08-14T12:00:00,000+03 info  js7.test.Test - ...\n"
+      dir / "A-debug.log" := "2026-08-14T12:00:00,000+03 debug  js7.test.Test - ...\n"
+      dir / "B.log" := "2026-08-14T12:00:00,000+03 info  js7.test.Test - ...\n"
+      dir / "X.log" := "2026-08-14T13:00:00,000+03 info  js7.test.Test - ...\n"
+
+      given Config = ConfigFactory.empty
+      LogDirectoryIndex.resource(dir, Set("A", "B")).use: logDirectoryIndex =>
+        logDirectoryIndex.logStreamIndex("A", Info).map: logStreamIndex =>
+          assert(logStreamIndex.files.map(_.getFileName.toString).toSet ==
+            Set("A.log", "A-2026-08-14-1.log.gz"))
+        .productR:
+          logDirectoryIndex.logStreamIndex("A", Error).map: logStreamIndex =>
+            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("A-error.log"))
+        .productR:
+          logDirectoryIndex.logStreamIndex("A", Debug).map: logStreamIndex =>
+            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("A-debug.log"))
+        .productR:
+          logDirectoryIndex.logStreamIndex("B", Info).map: logStreamIndex =>
+            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("B.log"))
+        .productR:
+          logDirectoryIndex.logStreamIndex("X", Info).attempt.map:
+            case Left(t: NoSuchElementException) => succeed // logFilePrefix X is not watched
+            case x => fail(s"Unexpected: $x")
+        .productR:
+          IO.defer:
+            // Archive a log file according to the usual log4j2 protocol
+            autoClosing(GZIPOutputStream(FileOutputStream((dir / "A-2026-08-14-1.log.gz").toFile))):
+              _.write("2026-08-14T12:00:00,000+03 ERROR  js7.test.Test - ...\n".getBytes(UTF_8))
+            dir / "A.log" := "2026-08-14T13:00:00,000+03 info  js7.test.Test - ...\n"
+            logDirectoryIndex.logStreamIndex("A", Info).map: logStreamIndex =>
+              awaitAndAssert(logStreamIndex.files.map(_.getFileName.toString).toSet == Set(
+                "A.log",
+                "A-2026-08-14-1.log.gz"))
 
   "LogFile" - {
     "File is (still) to short" in:
@@ -122,8 +162,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     .getBytes(UTF_8)
       .productR:
         given LogFileIndexConf = LogFileIndexConf.forTest
-        LogStreamIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
-          .use: logStreamIndex =>
+        given Config = ConfigFactory.empty()
+        LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
+          logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
             /// Read *all* log files as text lines ///
             logStreamIndex.byteLineStream(startInstant, LogSelection())
               .map(_.utf8String)
@@ -295,11 +336,12 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       writeFile(startInstant + 24.h)
 
       given LogFileIndexConf = LogFileIndexConf.forTest
-      LogStreamIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
-        .use: logStreamIndex =>
+      given Config = ConfigFactory.empty()
+      LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
+        logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
           IO:
-            assert(logStreamIndex.files ==
-              Seq(startInstant, startInstant + 24.h).map(instantToFile))
+            assert(logStreamIndex.files.toSet ==
+              Set(startInstant, startInstant + 24.h).map(instantToFile))
           *>
             logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
@@ -351,17 +393,17 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             IO.defer:
               val t = Deadline.now
               given LogFileIndexConf = LogFileIndexConf.forTest
-              LogStreamIndex.directory(
-                dir, filenamePrefix = "TEST", Debug, watchGrowth = false,
-              ).use: logStreamIndex =>
-                logStreamIndex.byteLineStream(
-                  Instant.parse("2026-02-12T00:01:00Z"),
-                  LogSelection()
-                ).compile.drain.map: _ =>
-                  val elapsed = t.elapsed
-                  val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                  info_(s"$logStreamIndex ${
-                    bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+              given Config = ConfigFactory.empty()
+              LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
+                logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
+                  logStreamIndex.byteLineStream(
+                    Instant.parse("2026-02-12T00:01:00Z"),
+                    LogSelection()
+                  ).compile.drain.map: _ =>
+                    val elapsed = t.elapsed
+                    val used = sys.runtime.totalMemory - sys.runtime.freeMemory
+                    info_(s"$logStreamIndex ${
+                      bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }
 

@@ -1,8 +1,8 @@
 package js7.subagent.web
 
-import cats.syntax.semigroupal.*
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.semigroupal.*
 import java.nio.file.Path
 import js7.base.BuildInfo
 import js7.base.auth.SimpleUser
