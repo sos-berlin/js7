@@ -17,6 +17,7 @@ object StdObserversForTest:
       chunkSize: Int = 8192,
       delay: FiniteDuration = 100.ms,
       useErrorLineLengthMax: Option[Int] = None,
+      maxWaitForStdouterr: Option[FiniteDuration] = None,
       name: String)
     : ResourceIO[TestSink] =
       for
@@ -27,6 +28,7 @@ object StdObserversForTest:
           Stderr -> (_.foldMonoid.evalMap(err.complete).drain))
         stdObservers <- resource(outErrToSink, charBufferSize, chunkSize, delay,
           useErrorLineLengthMax = useErrorLineLengthMax,
+          maxWaitForStdouterr = maxWaitForStdouterr,
           name = name)
       yield
         TestSink(

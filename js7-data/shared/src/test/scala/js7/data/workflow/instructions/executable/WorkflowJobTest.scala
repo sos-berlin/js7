@@ -71,7 +71,8 @@ final class WorkflowJobTest extends OurTestSuite:
           Some(AdmissionTimeScheme(Seq(
             WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
             WeekdayPeriod(TUESDAY, LocalTime.of(9, 0), 8.h)))),
-          skipIfNoAdmissionStartForOrderDay = true),
+          skipIfNoAdmissionStartForOrderDay = true,
+          maxWaitForStdouterr = Some(7.s)),
         json"""{
           "agentPath": "AGENT",
           "executable": {
@@ -107,7 +108,8 @@ final class WorkflowJobTest extends OurTestSuite:
               }
             ]
           },
-          "skipIfNoAdmissionStartForOrderDay": true
+          "skipIfNoAdmissionStartForOrderDay": true,
+          "maxWaitForStdouterr": 7
         }""")
 
     "Compatible with v2.4" in:

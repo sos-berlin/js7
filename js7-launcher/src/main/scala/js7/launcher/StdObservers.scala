@@ -30,6 +30,7 @@ final class StdObservers private(
   chunkSize: Int,
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
+  val maxWaitForStdouterr: Option[FiniteDuration],
   name: String):
 
   private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
@@ -127,6 +128,7 @@ object StdObservers:
     chunkSize: Int,
     delay: FiniteDuration,
     queueSize: Int = 0,
+    maxWaitForStdouterr: Option[FiniteDuration],
     useErrorLineLengthMax: Option[Int] = None,
     name: String)
   : ResourceIO[StdObservers] =
@@ -139,7 +141,9 @@ object StdObservers:
           StdObservers(outErrToSink, outChannel, errChannel,
             byteBufferSize = byteBufferSize,
             chunkSize = chunkSize, delay,
-            useErrorLineLengthMax, name)
+            useErrorLineLengthMax,
+            maxWaitForStdouterr = maxWaitForStdouterr,
+            name)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield
       stdObservers
