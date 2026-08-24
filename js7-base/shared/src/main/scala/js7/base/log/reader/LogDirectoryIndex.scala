@@ -19,7 +19,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogStreamIndex.LogDirectoryIndexMXBean
+import js7.base.log.reader.LogIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogUtils.{deleteTmpFiles, isOurLogFilename}
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
@@ -29,18 +29,18 @@ import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 
-/** Provides a LogStreamIndex for each pair of logFilePrefix and LogLevel (Error, Info and Debug).
+/** Provides a LogIndex for each pair of logFilePrefix and LogLevel (Error, Info and Debug).
   *
   * LogDirectoryIndex is not itself an index but provides LogStreamIndexes.
   *
-  * Directory watching is started when the first LogStreamIndex is provided.
+  * Directory watching is started when the first LogIndex is provided.
   */
 final class LogDirectoryIndex private(directory: Path, logFilePrefixes: Set[String])
   (using zoneId: ZoneId, conf: LogFileIndexConf)
 extends Service.StoppableByRequest:
 
   private val lazyPrefixAndLevelToIndex
-  : IO[Allocated[IO, Map[(String, LogLevel), Allocated[IO, LogStreamIndex]]]] =
+  : IO[Allocated[IO, Map[(String, LogLevel), Allocated[IO, LogIndex]]]] =
     memoize:
       watching.toAllocated
 
@@ -57,7 +57,7 @@ extends Service.StoppableByRequest:
       lazyPrefixAndLevelToIndex.flatMap:
         _.release /*stop watching*/
 
-  def logStreamIndex(logFilePrefix: String, logLevel: LogLevel): IO[LogStreamIndex] =
+  def logIndex(logFilePrefix: String, logLevel: LogLevel): IO[LogIndex] =
     lazyPrefixAndLevelToIndex.flatMap: levelToIndex =>
       levelToIndex.allocatedThing.get((logFilePrefix, logLevel)) match
         case None =>
@@ -70,8 +70,8 @@ extends Service.StoppableByRequest:
         case Some(index) =>
           IO.pure(index.allocatedThing)
 
-  /** Run a LogStreamIndex for each LogLevel. */
-  private def watching: ResourceIO[Map[(String, LogLevel), Allocated[IO, LogStreamIndex]]] =
+  /** Run a LogIndex for each LogLevel. */
+  private def watching: ResourceIO[Map[(String, LogLevel), Allocated[IO, LogIndex]]] =
     Resource.defer:
       if isStopping then
         Resource.pure(Map.empty)
@@ -89,7 +89,7 @@ extends Service.StoppableByRequest:
                     yield
                       val (initialFiles, channel) =
                         prefixAndLevelToFilesAndChannel((logFilePrefix, logLevel))
-                      LogStreamIndex.directory(
+                      LogIndex.directory(
                         directory,
                         initialFiles,
                         channel.stream.unchunks,
@@ -165,7 +165,7 @@ object LogDirectoryIndex:
     given LogFileIndexConf =
       LogFileIndexConf.fromConfig(config.withFallback(Js7Config.defaultConfig)).orThrow
     for
-      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogStreamIndex.Bean)
+      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogIndex.Bean)
       service <-
         Service:
           LogDirectoryIndex(directory, logFilePrefixes)

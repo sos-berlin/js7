@@ -43,7 +43,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
-  "LogDirectoryIndex provides a LogStreamIndex for each logFilePrefix and LogLevel" in:
+  "LogDirectoryIndex provides a LogIndex for each logFilePrefix and LogLevel" in:
     temporaryDirectoryResource[IO]("LogDirectoryIndex-").use: dir =>
       dir / "A.log" := "2026-08-14T12:00:00,000+03 info  js7.test.Test - ...\n"
       autoClosing(GZIPOutputStream(FileOutputStream((dir / "A-2026-08-14-1.log.gz").toFile))):
@@ -55,20 +55,20 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
       given Config = ConfigFactory.empty
       LogDirectoryIndex.resource(dir, Set("A", "B")).use: logDirectoryIndex =>
-        logDirectoryIndex.logStreamIndex("A", Info).map: logStreamIndex =>
-          assert(logStreamIndex.files.map(_.getFileName.toString).toSet ==
+        logDirectoryIndex.logIndex("A", Info).map: logIndex =>
+          assert(logIndex.files.map(_.getFileName.toString).toSet ==
             Set("A.log", "A-2026-08-14-1.log.gz"))
         .productR:
-          logDirectoryIndex.logStreamIndex("A", Error).map: logStreamIndex =>
-            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("A-error.log"))
+          logDirectoryIndex.logIndex("A", Error).map: logIndex =>
+            assert(logIndex.files.map(_.getFileName.toString) == Seq("A-error.log"))
         .productR:
-          logDirectoryIndex.logStreamIndex("A", Debug).map: logStreamIndex =>
-            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("A-debug.log"))
+          logDirectoryIndex.logIndex("A", Debug).map: logIndex =>
+            assert(logIndex.files.map(_.getFileName.toString) == Seq("A-debug.log"))
         .productR:
-          logDirectoryIndex.logStreamIndex("B", Info).map: logStreamIndex =>
-            assert(logStreamIndex.files.map(_.getFileName.toString) == Seq("B.log"))
+          logDirectoryIndex.logIndex("B", Info).map: logIndex =>
+            assert(logIndex.files.map(_.getFileName.toString) == Seq("B.log"))
         .productR:
-          logDirectoryIndex.logStreamIndex("X", Info).attempt.map:
+          logDirectoryIndex.logIndex("X", Info).attempt.map:
             case Left(t: NoSuchElementException) => succeed // logFilePrefix X is not watched
             case x => fail(s"Unexpected: $x")
         .productR:
@@ -77,8 +77,8 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             autoClosing(GZIPOutputStream(FileOutputStream((dir / "A-2026-08-14-1.log.gz").toFile))):
               _.write("2026-08-14T12:00:00,000+03 ERROR  js7.test.Test - ...\n".getBytes(UTF_8))
             dir / "A.log" := "2026-08-14T13:00:00,000+03 info  js7.test.Test - ...\n"
-            logDirectoryIndex.logStreamIndex("A", Info).map: logStreamIndex =>
-              awaitAndAssert(logStreamIndex.files.map(_.getFileName.toString).toSet == Set(
+            logDirectoryIndex.logIndex("A", Info).map: logIndex =>
+              awaitAndAssert(logIndex.files.map(_.getFileName.toString).toSet == Set(
                 "A.log",
                 "A-2026-08-14-1.log.gz"))
 
@@ -89,7 +89,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           """2026-06-25T00:00:00,111 Begin JS7 ...
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...""".stripMargin.getBytes(UTF_8)
         for
-          checked <- LogStreamIndex.LogFile.read(file)
+          checked <- LogIndex.LogFile.read(file)
         yield
           assert(checked == Left(IncompleteLogFileProblem(file)))
 
@@ -100,7 +100,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          logFile <- LogStreamIndex.LogFile.read(file).orThrow
+          logFile <- LogIndex.LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.111+03:00"))
 
@@ -111,7 +111,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogStreamIndex.LogFile.read(file)
+          checked <- LogIndex.LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? ...")))
@@ -123,7 +123,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogStreamIndex.LogFile.read(file)
+          checked <- LogIndex.LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,999+?? ...")))
@@ -135,7 +135,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...
             |""".stripMargin
         for
-          logFile <- LogStreamIndex.LogFile.read(file).orThrow
+          logFile <- LogIndex.LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
   }
@@ -164,9 +164,9 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         given LogFileIndexConf = LogFileIndexConf.forTest
         given Config = ConfigFactory.empty()
         LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
-          logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
+          logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
             /// Read *all* log files as text lines ///
-            logStreamIndex.byteLineStream(startInstant, LogSelection())
+            logIndex.byteLineStream(startInstant, LogSelection())
               .map(_.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -219,7 +219,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
               .productR:
                 val instant = ZonedDateTime.parse("2026-03-01T00:00:01.000+02").toInstant
-                logStreamIndex.byteLineStream(instant, LogSelection())
+                logIndex.byteLineStream(instant, LogSelection())
                   .take(5)
                   .map(_.utf8String)
                   .compile.toList.map: lines =>
@@ -233,7 +233,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n"))
               .productR:
                 /// Read all log files as KeyedByteLogLine ///
-                logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
+                logIndex.keyedByteLogLineStream(startInstant, LogSelection())
                   .compile.toList
               .flatMap: keyedByteLogLines =>
                 assert(keyedByteLogLines.map(_.lineAsString) == List(
@@ -284,7 +284,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
                 assert(keyedByteLogLines(3).posAndLine.lineAsString ==
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n")
-                logStreamIndex.keyedByteLogLineStream(keyedByteLogLines(3).logLineKey, LogSelection())
+                logIndex.keyedByteLogLineStream(keyedByteLogLines(3).logLineKey, LogSelection())
                   .take(4)
                   .compile.toList
                   .map: keyedByteLogLines =>
@@ -295,7 +295,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                       "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n"))
                 .productR:
-                  logStreamIndex.keyedByteLogLineStream(keyedByteLogLines(12).logLineKey, LogSelection())
+                  logIndex.keyedByteLogLineStream(keyedByteLogLines(12).logLineKey, LogSelection())
                     .take(4)
                     .compile.toList
                     .map: keyedByteLogLines =>
@@ -326,7 +326,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           Files.copy(file, out)
 
         // Trigger FileDeleted / LogFileDeleted,
-        // telling LogStreamIndex that the .log.gz is complete and readable now
+        // telling LogIndex that the .log.gz is complete and readable now
         Files.delete(file)
       end writeFile
 
@@ -338,12 +338,12 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       given LogFileIndexConf = LogFileIndexConf.forTest
       given Config = ConfigFactory.empty()
       LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
-        logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
+        logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
           IO:
-            assert(logStreamIndex.files.toSet ==
+            assert(logIndex.files.toSet ==
               Set(startInstant, startInstant + 24.h).map(instantToFile))
           *>
-            logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
+            logIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -353,10 +353,10 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           *>
             IO:
               writeFile(startInstant + 48.h)
-              awaitAndAssert(logStreamIndex.files ==
+              awaitAndAssert(logIndex.files ==
                 Seq(startInstant, startInstant + 24.h, startInstant + 48.h).map(instantToFile))
           *>
-            logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
+            logIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -395,14 +395,14 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               given LogFileIndexConf = LogFileIndexConf.forTest
               given Config = ConfigFactory.empty()
               LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
-                logDirectoryIndex.logStreamIndex(logFilePrefix = "TEST", Info).flatMap: logStreamIndex =>
-                  logStreamIndex.byteLineStream(
+                logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
+                  logIndex.byteLineStream(
                     Instant.parse("2026-02-12T00:01:00Z"),
                     LogSelection()
                   ).compile.drain.map: _ =>
                     val elapsed = t.elapsed
                     val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                    info_(s"$logStreamIndex ${
+                    info_(s"$logIndex ${
                       bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }

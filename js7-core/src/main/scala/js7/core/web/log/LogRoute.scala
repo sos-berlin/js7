@@ -96,7 +96,7 @@ trait LogRoute extends RouteProvider:
               end = end, lineLimit = lineLimit, pattern = pattern, growing = growing,
               byteChunkSize = httpChunkSize)
             Stream.eval:
-              logDirectoryIndex.logStreamIndex(logFilePrefix, logLevel)
+              logDirectoryIndex.logIndex(logFilePrefix, logLevel)
             .through: stream =>
               if withKey then
                 stream.flatMap:
@@ -120,7 +120,7 @@ trait LogRoute extends RouteProvider:
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
-      logDirectoryIndex.logStreamIndex(logFilePrefix, logLevel)
+      logDirectoryIndex.logIndex(logFilePrefix, logLevel)
     .flatMap:
       _.keyedByteLogLineStream(begin, logSelection)
 

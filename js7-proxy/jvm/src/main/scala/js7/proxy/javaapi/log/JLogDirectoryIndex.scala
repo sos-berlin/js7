@@ -13,9 +13,9 @@ import scala.jdk.CollectionConverters.*
 
 final class JLogDirectoryIndex private(asScala: LogDirectoryIndex)(using IORuntime):
 
-  def logStreamIndex(logFilePrefix: String, logLevel: LogLevel): CompletableFuture[JLogStreamIndex] =
-    asScala.logStreamIndex(logFilePrefix, logLevel)
-      .map(JLogStreamIndex(_))
+  def logIndex(logFilePrefix: String, logLevel: LogLevel): CompletableFuture[JLocalLogIndex] =
+    asScala.logIndex(logFilePrefix, logLevel)
+      .map(JLocalLogIndex(_))
       .unsafeToCompletableFuture()
 
 

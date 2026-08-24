@@ -70,14 +70,14 @@ final class JLogDirectoryIndexTester {
         var logFilePrefix = "PREFIX";
         return
             // Allocate one a JLogDirectoryIndex for the log directory
-            // The JLogDirectoryIndex provides a LogStreamIndex for each log file prefix and LogLevel.
-            // LogStreamIndex cannot be closed, because it's managed by JLogDirectoryIndex
+            // The JLogDirectoryIndex provides a LogIndex for each log file prefix and LogLevel.
+            // LogIndex cannot be closed, because it's managed by JLogDirectoryIndex
             // Instead of the .use method, one can use the .allocated method and then release manually
             JLogDirectoryIndex.directory(
                 directory, Set.of(logFilePrefix), zoneId, jProxyContext
             ).use(logDirectoryIndex -> // Keep logDirectoryIndex and use it for all log file accesses
-                logDirectoryIndex.logStreamIndex(logFilePrefix, logLevel).thenCompose(logStreamIndex ->
-                    logStreamIndex
+                logDirectoryIndex.logIndex(logFilePrefix, logLevel).thenCompose(logIndex ->
+                    logIndex
                         // 🟢 instantToLogLineKey
                         .instantToLogLineKey(
                             ZonedDateTime.parse("2026-03-01T02:00:02+02").toInstant(),
@@ -88,7 +88,7 @@ final class JLogDirectoryIndexTester {
                                 expectedLines.get(0).length() + expectedLines.get(1).length()))))
                         .thenCompose(unused ->
                             // 🟢 keyedLogLineFlux
-                            logStreamIndex.keyedLogLineFlux(
+                            logIndex.keyedLogLineFlux(
                                     ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(),
                                     JLogSelection.all())
                                 .flatMap(Flux::fromIterable)

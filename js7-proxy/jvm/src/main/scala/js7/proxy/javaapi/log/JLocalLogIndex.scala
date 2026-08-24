@@ -6,7 +6,7 @@ import java.time.{Instant, ZoneId}
 import java.util.concurrent.CompletableFuture
 import java.util.{Optional, List as JList}
 import js7.base.log.reader.recompressors.LogFileIndexConf
-import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogLineKey, LogStreamIndex}
+import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogIndex, LogLineKey}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data_for_java.reactor.ReactorConverters.asFluxChunks
 import js7.proxy.javaapi.{JProxyContext, JResource}
@@ -14,7 +14,7 @@ import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final class JLogStreamIndex private[log](asScala: LogStreamIndex)(using IORuntime)
+final class JLocalLogIndex private[log](asScala: LogIndex)(using IORuntime)
 extends JLogIndex:
 
   def byteLogLineFlux(begin: Instant, logSelection: JLogSelection)
@@ -68,9 +68,9 @@ extends JLogIndex:
       .unsafeToCompletableFuture()
 
 
-object JLogStreamIndex:
+object JLocalLogIndex:
 
-  /** Make a JLogStreamIndex for specific files containing a continuous stream of log files.
+  /** Make a JLocalLogIndex for specific files containing a continuous stream of log files.
     * @param files
     * @param zoneId ZoneId for timestamps without timezone
     * @param label a short label for logging
@@ -81,12 +81,12 @@ object JLogStreamIndex:
     zoneId: ZoneId,
     label: String,
     ctx: JProxyContext)
-  : JResource[JLogStreamIndex] =
+  : JResource[JLocalLogIndex] =
     import ctx.ioRuntime
     given ZoneId = zoneId
     JResource:
       for
         given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
-        result <- LogStreamIndex.files(files.asScala, label = label)
+        logIndex <- LogIndex.files(files.asScala, label = label)
       yield
-        JLogStreamIndex(result)
+        JLocalLogIndex(logIndex)

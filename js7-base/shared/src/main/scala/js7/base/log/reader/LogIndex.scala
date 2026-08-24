@@ -25,8 +25,8 @@ import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogStreamIndex.*
-import js7.base.log.reader.LogStreamIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
+import js7.base.log.reader.LogIndex.*
+import js7.base.log.reader.LogIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
@@ -49,7 +49,7 @@ import scala.util.Try
 
 /** Provides a continuous stream of log lines from a stream of log files.
   *
-  * LogStreamIndex handles growing log files and compressed (archived) log files.
+  * LogIndex handles growing log files and compressed (archived) log files.
   *
   * See LogDirectoryIndex, which watches a directory and provides streams of files of
   * each pair of logFilePrefix and LogLevel.
@@ -57,7 +57,7 @@ import scala.util.Try
   * @param logFileEvents updates the file list, must emit events only from `directory`
   * @param watchGrowth when growing log files should be respected (uncompressed only)
   */
-final class LogStreamIndex private(
+final class LogIndex private(
   initialFiles: Iterable[LogFile],
   logFileEvents: Stream[IO, LogFileEvent],
   recompressor: Recompressor,
@@ -330,16 +330,16 @@ extends Service.StoppableByCancel:
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
 
   override def toString =
-    s"LogStreamIndex($label, ${instantToLogFile.size} files)"
+    s"LogIndex($label, ${instantToLogFile.size} files)"
 
 
-object LogStreamIndex:
-  private val logger = Logger[LogStreamIndex]
+object LogIndex:
+  private val logger = Logger[LogIndex]
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
   private val FirstChunkSize = 1024
 
-  /** LogStreamIndex, for initial files and a Stream of DirectoryEvent. */
+  /** LogIndex, for initial files and a Stream of DirectoryEvent. */
   private[reader] def directory(
     directory: Path,
     files: Seq[Path],
@@ -347,10 +347,10 @@ object LogStreamIndex:
     watchGrowth: Boolean,
     label: String)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogStreamIndex] =
-    logger.debugResource("LogStreamIndex", s"$directory $label"):
+  : ResourceIO[LogIndex] =
+    logger.debugResource("LogIndex", s"$directory $label"):
       for
-        (logFiles, pipe) <- LogStreamIndexBuilder.toLogFileEvents(directory, files)
+        (logFiles, pipe) <- LogIndexBuilder.toLogFileEvents(directory, files)
         logFileIndex <- resource(
           logFiles,
           directoryEvents.through(pipe),
@@ -365,7 +365,7 @@ object LogStreamIndex:
 
   def files(files: Iterable[Path], watchGrowth: Boolean = false, label: String)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogStreamIndex] =
+  : ResourceIO[LogIndex] =
     for
       logFiles <- Resource.eval:
         Stream.iterable(files).parEvalMap(sys.runtime.availableProcessors): file =>
@@ -374,12 +374,12 @@ object LogStreamIndex:
           logFiles.view.map(_.toStringWithSize).foreachWithBracket(): (line,br) =>
             logger.trace(s"$br$line")
           logFiles
-      logStreamIndex <- resource(logFiles, Stream.empty,
+      logIndex <- resource(logFiles, Stream.empty,
         watchGrowth = watchGrowth,
         label = label,
         conf.recompressor)
     yield
-      logStreamIndex
+      logIndex
 
   private def resource(
     initialLogFiles: Iterable[LogFile],
@@ -388,7 +388,7 @@ object LogStreamIndex:
     watchGrowth: Boolean,
     recompressor: Recompressor)
     (using ZoneId, LogFileIndexConf)
-  : ResourceIO[LogStreamIndex] =
+  : ResourceIO[LogIndex] =
     logger.traceResource("resource", label):
       for
         given Supervisor[IO] <- Supervisor[IO]
@@ -399,7 +399,7 @@ object LogStreamIndex:
               initialLogFiles.map(_.fileEpochNano).maxOption getOrElse EpochNano.MinValue
           yield
             Service:
-              LogStreamIndex(
+              LogIndex(
                 initialLogFiles,
                 logFileEvents,
                 recompressor,
@@ -447,7 +447,7 @@ object LogStreamIndex:
     val originalFile: Path,
     val fileInstant: Instant,
     val isGzipped: Boolean,
-    private[LogStreamIndex] val deferredIndexCell:
+    private[LogIndex] val deferredIndexCell:
       AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]])
     (using zoneId: ZoneId):
 
@@ -546,4 +546,4 @@ object LogStreamIndex:
 
 
   object Bean extends LogDirectoryIndexMXBean:
-    protected[LogStreamIndex] var tmpFilesSize: Long = 0
+    protected[LogIndex] var tmpFilesSize: Long = 0

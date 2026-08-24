@@ -13,8 +13,8 @@ import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogStreamIndex.{LogFile, isGzipped}
-import js7.base.log.reader.LogStreamIndexBuilder.*
+import js7.base.log.reader.LogIndex.{LogFile, isGzipped}
+import js7.base.log.reader.LogIndexBuilder.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.RichIterable
@@ -23,7 +23,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.TimeoutException
 
-private final class LogStreamIndexBuilder private(
+private final class LogIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
   supervisor: Supervisor[IO],
   gzLogFileReady: SignallingRef[IO, CatsDeadline])
@@ -111,7 +111,7 @@ private final class LogStreamIndexBuilder private(
                   LogFileDeleted(filename) :: Nil
 
         case o: FileModified =>
-          sys.error(s"LogStreamIndex: unexpected $o")
+          sys.error(s"LogIndex: unexpected $o")
       .flatMap:
         Stream.iterable
 
@@ -188,7 +188,7 @@ private final class LogStreamIndexBuilder private(
     override def toString = s"DelayedLogFile($filename)"
 
 
-private object LogStreamIndexBuilder:
+private object LogIndexBuilder:
 
   private val logger = Logger[this.type]
 
@@ -204,7 +204,7 @@ private object LogStreamIndexBuilder:
           semaphore <- Semaphore[IO](conf.timestampReaderConcurrency)
           now <- CatsDeadline.now
           signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
-          result <- LogStreamIndexBuilder(semaphore, supervisor, signal)
+          result <- LogIndexBuilder(semaphore, supervisor, signal)
             .toLogFileEvents(directory, initialFiles)
         yield
           result
@@ -213,7 +213,7 @@ private object LogStreamIndexBuilder:
 
   @TestOnly
   private[reader] def forTest(directory: Path)(using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogStreamIndexBuilder] =
+  : ResourceIO[LogIndexBuilder] =
     for
       supervisor <- Supervisor[IO]
       result <- Resource.eval:
@@ -222,7 +222,7 @@ private object LogStreamIndexBuilder:
           now <- CatsDeadline.now
           signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
         yield
-          LogStreamIndexBuilder(semaphore, supervisor, signal)
+          LogIndexBuilder(semaphore, supervisor, signal)
     yield
       result
 
