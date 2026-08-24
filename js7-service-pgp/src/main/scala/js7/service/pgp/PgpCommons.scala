@@ -19,7 +19,6 @@ import js7.base.utils.Labeled
 import js7.base.utils.SyncResource.syntax.*
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.openpgp.examples.PubringDump
 import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPUtil}
@@ -133,14 +132,20 @@ object PgpCommons:
   private def publicKeyAlgorithmToString(n: Int) =
     n match
       case PublicKeyAlgorithmTags.RSA_GENERAL => "'RSA general'"
-      case PublicKeyAlgorithmTags.RSA_ENCRYPT => "'RSA encrypt'"
-      case PublicKeyAlgorithmTags.RSA_SIGN => "'RSA sign'"
+      case PublicKeyAlgorithmTags.RSA_ENCRYPT => "'RSA encrypt (deprecated)'"
+      case PublicKeyAlgorithmTags.RSA_SIGN => "'RSA sign (deprecated)'"
       case PublicKeyAlgorithmTags.ELGAMAL_ENCRYPT => "'El Gamal encrypt'"
-      case PublicKeyAlgorithmTags.ELGAMAL_GENERAL => "'El Gamal general'"
+      case PublicKeyAlgorithmTags.DSA => "DSA"
+      case PublicKeyAlgorithmTags.ECDH => "'Elliptic Curve Diffie-Hellman'"
+      case PublicKeyAlgorithmTags.ECDSA => "'Elliptic Curve Digital Signing'"
+      case PublicKeyAlgorithmTags.ELGAMAL_GENERAL => "'El Gamal general (deprecated)'"
       case PublicKeyAlgorithmTags.DIFFIE_HELLMAN => "Diffie-Hellman"
-      case _ =>
-        try PubringDump.getAlgorithm(n)
-        catch case NonFatal(_) => n.toString
+      case PublicKeyAlgorithmTags.X448 => "X448"
+      case PublicKeyAlgorithmTags.X25519 => "X25519"
+      case PublicKeyAlgorithmTags.Ed25519 => "Ed25519"
+      case PublicKeyAlgorithmTags.Ed448 => "Ed448"
+      case PublicKeyAlgorithmTags.AEDH => "AEDH"
+      case _ => n.toString
 
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)
