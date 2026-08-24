@@ -5,7 +5,6 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.CompletableFuture
 import java.util.{Optional, List as JList}
-import js7.base.log.LogLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogLineKey, LogStreamIndex}
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -71,10 +70,16 @@ extends JLogIndex:
 
 object JLogStreamIndex:
 
+  /** Make a JLogStreamIndex for specific files containing a continuous stream of log files.
+    * @param files
+    * @param zoneId ZoneId for timestamps without timezone
+    * @param label a short label for logging
+    * @param ctx
+    */
   def files(
     files: java.lang.Iterable[Path],
-    logLevel: LogLevel,
     zoneId: ZoneId,
+    label: String,
     ctx: JProxyContext)
   : JResource[JLogStreamIndex] =
     import ctx.ioRuntime
@@ -82,6 +87,6 @@ object JLogStreamIndex:
     JResource:
       for
         given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
-        result <- LogStreamIndex.files(files.asScala, logLevel)
+        result <- LogStreamIndex.files(files.asScala, label = label)
       yield
         JLogStreamIndex(result)

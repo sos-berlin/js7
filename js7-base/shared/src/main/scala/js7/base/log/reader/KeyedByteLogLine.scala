@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.log.LogLevel
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.EpochNano.toEpochNano
 
@@ -13,10 +12,10 @@ import js7.base.time.EpochNano.toEpochNano
   *
   * The line is a `Chunk[Byte]`, which may be converted to a String via `lineAsString`.
   * Then, a KeyedByteLogLine contains both the byte and the String representation of the line. */
-final case class KeyedByteLogLine(logLevel: LogLevel, fileInstant: Instant, posAndLine: PosAndLine):
+final case class KeyedByteLogLine(fileInstant: Instant, posAndLine: PosAndLine):
 
   def logLineKey: LogLineKey =
-    LogLineKey(logLevel, fileInstant, posAndLine.position)
+    LogLineKey(fileInstant, posAndLine.position)
 
   def byteLine: Chunk[Byte] =
     posAndLine.byteLine
@@ -32,15 +31,14 @@ final case class KeyedByteLogLine(logLevel: LogLevel, fileInstant: Instant, posA
 
   def asByteSeq: Chunk[Byte] =
     fs2.Chunk.array:
-      s"$logLevel/${fileInstant.toEpochNano.toDecimalString}/${posAndLine.position} "
-        .getBytes(UTF_8)
+      s"${fileInstant.toEpochNano.toDecimalString}/${posAndLine.position} ".getBytes(UTF_8)
     ++ posAndLine.byteLine
 
 
 object KeyedByteLogLine:
 
   def apply(key: LogLineKey, line: fs2.Chunk[Byte]): KeyedByteLogLine =
-    new KeyedByteLogLine(key.logLevel, key.fileInstant, PosAndLine(key.position, line))
+    new KeyedByteLogLine(key.fileInstant, PosAndLine(key.position, line))
 
   def parse(chunk: fs2.Chunk[Byte]): Checked[KeyedByteLogLine] =
     chunk.vectorIndexOf(' ') match

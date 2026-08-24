@@ -65,9 +65,9 @@ final class JLogDirectoryIndexTester {
         "2026-03-03 02:00:02.000+02 info JLogDirectoryIndexTest - MESSAGE 26\n",
         "2026-03-03 02:00:03.000+02 info JLogDirectoryIndexTest - MESSAGE 27\n");
 
-    static CompletableFuture<Void> test(JProxyContext jProxyContext, ZoneId zoneId, Path directory) {
+    static CompletableFuture<Void> test(JProxyContext jProxyContext, ZoneId zoneId, Path directory,
+                                        LogLevel logLevel) {
         var logFilePrefix = "PREFIX";
-        var logLevel = LogLevel.info(); // Some LogLevel we think is appropriate
         return
             // Allocate one a JLogDirectoryIndex for the log directory
             // The JLogDirectoryIndex provides a LogStreamIndex for each log file prefix and LogLevel.
@@ -84,7 +84,6 @@ final class JLogDirectoryIndexTester {
                             JLogSelection.all())
                         .thenAccept(logLineKey ->
                             assertThat(logLineKey.get(), equalTo(LogLineKey.apply(
-                                logLevel,
                                 ZonedDateTime.parse("2026-03-01T02:00:01+02").toInstant(),
                                 expectedLines.get(0).length() + expectedLines.get(1).length()))))
                         .thenCompose(unused ->

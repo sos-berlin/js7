@@ -90,10 +90,11 @@ extends Service.StoppableByRequest:
                       val (initialFiles, channel) =
                         prefixAndLevelToFilesAndChannel((logFilePrefix, logLevel))
                       LogStreamIndex.directory(
-                        directory, logLevel, initialFiles,
+                        directory,
+                        initialFiles,
                         channel.stream.unchunks,
-                        label = s"$logFilePrefix/$logLevel",
-                        watchGrowth = true
+                        watchGrowth = true,
+                        label = s"$logFilePrefix/$logLevel"
                       ).toAllocated.map: allocated =>
                         (logFilePrefix, logLevel) -> allocated
                   .map(_.toMap))(

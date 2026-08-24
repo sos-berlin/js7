@@ -9,6 +9,7 @@ import java.time.{ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.log.LogLevel
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
 import js7.base.time.ScalaTime.*
@@ -24,7 +25,7 @@ final class JLogDirectoryIndexTest extends OurAsyncTestSuite:
         JProxyContext.resource().use: jProxy =>
           IO.fromCompletableFuture:
             IO:
-              JLogDirectoryIndexTester.test(jProxy, zoneId, dir)
+              JLogDirectoryIndexTester.test(jProxy, zoneId, dir, LogLevel.Info)
           .as(succeed)
 
   private def writeLogFiles(dir: Path) =

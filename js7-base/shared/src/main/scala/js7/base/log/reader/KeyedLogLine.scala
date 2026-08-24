@@ -5,7 +5,7 @@ import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json}
 import java.time.Instant
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.JavaDataJsonCodecs.instant.NumericInstantJsonCodec
-import js7.base.log.{AnsiEscapeCodes, LogLevel}
+import js7.base.log.AnsiEscapeCodes
 import js7.base.problem.{Checked, Problem}
 
 final case class KeyedLogLine(key: LogLineKey, line: String):
@@ -19,8 +19,8 @@ final case class KeyedLogLine(key: LogLineKey, line: String):
 
 
 object KeyedLogLine:
-  def apply(logLevel: LogLevel, fileInstant: Instant, position: Long, line: String): KeyedLogLine =
-    KeyedLogLine(LogLineKey(logLevel, fileInstant, position), line)
+  def apply(fileInstant: Instant, position: Long, line: String): KeyedLogLine =
+    KeyedLogLine(LogLineKey(fileInstant, position), line)
 
   def parse(string: String): Checked[KeyedLogLine] =
     string.split(" ", 2) match

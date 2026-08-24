@@ -2,27 +2,36 @@ package js7.base.log.reader
 
 import java.time.Instant
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.log.LogLevel.Info
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class KeyedLogLineTest extends OurTestSuite:
 
   private val keyedLogLine = KeyedLogLine(
-    logLevel = Info,
     fileInstant = Instant.parse("2026-04-30T00:00:00Z"),
     position = 1112223334445556667L,
     line = "LINE\n")
 
   "asString, parse" in :
-    val string = "Info/1777507200/1112223334445556667 LINE\n"
+    val string = "1777507200/1112223334445556667 LINE\n"
     assert(keyedLogLine.asString == string)
     assert(KeyedLogLine.parse(string) == Right(keyedLogLine))
-    assert(KeyedLogLine.parse("Info/1/2") == Left(Problem("Invalid KeyedLogLine format")))
+    assert(KeyedLogLine.parse("1/2") == Left(Problem("Invalid KeyedLogLine format")))
+
+    val legacy = "Info/1777507200/1112223334445556667 LINE\n"
+    assert(KeyedLogLine.parse(legacy) == Right(keyedLogLine))
 
   "JSON" in:
     testJson(
+      keyedLogLine,
+      json"""[
+        "1777507200/1112223334445556667",
+        "LINE\n"
+      ]""")
+
+    // COMPATIBLE with v2.9.0
+    testJsonDecoder(
       keyedLogLine,
       json"""[
         "Info/1777507200/1112223334445556667",

@@ -23,12 +23,12 @@ import js7.base.io.OpaquePos
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogStreamIndex.*
 import js7.base.log.reader.LogStreamIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
-import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
@@ -36,7 +36,6 @@ import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.*
@@ -61,11 +60,10 @@ import scala.util.Try
 final class LogStreamIndex private(
   initialFiles: Iterable[LogFile],
   logFileEvents: Stream[IO, LogFileEvent],
-  logLevel: LogLevel,
-  label: String,
   recompressor: Recompressor,
   breakLinesLongerThan: Option[Int],
   watchGrowth: Boolean,
+  label: String,
   fileAddedSignal: SignallingRef[IO, EpochNano])
   (using zoneId: ZoneId, conf: LogFileIndexConf)
 extends Service.StoppableByCancel:
@@ -159,14 +157,11 @@ extends Service.StoppableByCancel:
             Stream.emit:
               logFile -> fileToKeyedByteLogLines(logFile, instant, forReader)
 
-      case LogLineKey(logLevel, fileInstant, position) =>
+      case LogLineKey(fileInstant, position) =>
         Stream.suspend:
-          if logLevel != this.logLevel then
-            Stream.raiseError[IO](IllegalArgumentException("Wrong LogLevel"))
-          else
-            instantToLogFile(fileInstant).fold(Stream.empty): logFile =>
-              Stream.emit:
-                logFile -> fileToKeyedByteLogLines(logFile, position, forReader)
+          instantToLogFile(fileInstant).fold(Stream.empty): logFile =>
+            Stream.emit:
+              logFile -> fileToKeyedByteLogLines(logFile, position, forReader)
     .flatMap: (logFile, stream) =>
       stream ++
         nextFilesToKeyedLines(logFile.fileInstant, forReader)
@@ -329,7 +324,7 @@ extends Service.StoppableByCancel:
           DeferredIndex(logFileIndex, file)
 
   private def toKeyedByteLogLine(fileInstant: Instant, posAndLine: PosAndLine): KeyedByteLogLine =
-    KeyedByteLogLine(logLevel, fileInstant, posAndLine)
+    KeyedByteLogLine(fileInstant, posAndLine)
 
   def files: Seq[Path] =
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
@@ -347,21 +342,18 @@ object LogStreamIndex:
   /** LogStreamIndex, for initial files and a Stream of DirectoryEvent. */
   private[reader] def directory(
     directory: Path,
-    logLevel: LogLevel,
     files: Seq[Path],
     directoryEvents: Stream[IO, DirectoryEvent],
-    label: String,
-    watchGrowth: Boolean)
+    watchGrowth: Boolean,
+    label: String)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
   : ResourceIO[LogStreamIndex] =
-    assertThat(LogUtils.LogLevels(logLevel))
     logger.debugResource("LogStreamIndex", s"$directory $label"):
       for
         (logFiles, pipe) <- LogStreamIndexBuilder.toLogFileEvents(directory, files)
         logFileIndex <- resource(
           logFiles,
           directoryEvents.through(pipe),
-          logLevel,
           label = label,
           watchGrowth = watchGrowth,
           conf.recompressor)
@@ -371,7 +363,7 @@ object LogStreamIndex:
             logger.debug(s"$br$line")
         logFileIndex
 
-  def files(files: Iterable[Path], logLevel: LogLevel, watchGrowth: Boolean = false)
+  def files(files: Iterable[Path], watchGrowth: Boolean = false, label: String)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
   : ResourceIO[LogStreamIndex] =
     for
@@ -382,15 +374,16 @@ object LogStreamIndex:
           logFiles.view.map(_.toStringWithSize).foreachWithBracket(): (line,br) =>
             logger.trace(s"$br$line")
           logFiles
-      logStreamIndex <- resource(logFiles, Stream.empty, logLevel, label = logLevel.toString,
-        watchGrowth = watchGrowth, conf.recompressor)
+      logStreamIndex <- resource(logFiles, Stream.empty,
+        watchGrowth = watchGrowth,
+        label = label,
+        conf.recompressor)
     yield
       logStreamIndex
 
   private def resource(
     initialLogFiles: Iterable[LogFile],
     logFileEvents: Stream[IO, LogFileEvent],
-    logLevel: LogLevel,
     label: String,
     watchGrowth: Boolean,
     recompressor: Recompressor)
@@ -409,10 +402,10 @@ object LogStreamIndex:
               LogStreamIndex(
                 initialLogFiles,
                 logFileEvents,
-                logLevel, label = label,
                 recompressor,
                 breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength),
                 watchGrowth = watchGrowth,
+                label = label,
                 signal)
       yield
         logFileIndex
