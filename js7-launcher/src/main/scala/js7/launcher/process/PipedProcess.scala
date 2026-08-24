@@ -31,7 +31,7 @@ import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import js7.launcher.processkiller.SubagentProcessKiller
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
 final class PipedProcess private(
@@ -73,6 +73,7 @@ final class PipedProcess private(
       awaitProcessTermination.raceBoth:
         sigkilled.get.andWait(killStdoutAndStderrDelay).raceBoth:
           pumpStdoutAndStderrToSink
+            .timeoutTo(stdObservers.maxWaitForStdouterr getOrElse Duration.Inf, IO.unit)
         .flatMap:
           case Left((), stdouterrFiber) =>
             IO.defer:
@@ -96,21 +97,20 @@ final class PipedProcess private(
             .delayBy(conf.worryAboutStdoutAfterTermination)
             .background.surround:
               val what = s"$orderId stdout or stderr"
-              stdouterrFiber.joinStd
-                .logWhenItTakesLonger(StdouterrWorry):
-                  case (None, elapsed, _, sym) =>
-                    IO.pure(s"$sym Still waiting for $what for ${elapsed.pretty}")
-                  case (Some(Outcome.Succeeded(ended)), elapsed, _, _) =>
-                    ended.map: ended =>
-                      if ended then
-                        s"🔵 $what ended after ${elapsed.pretty}"
-                      else
-                        s"🟣 $what are still ignored after ${elapsed.pretty}"
-                  case (Some(Outcome.Canceled()), elapsed, _, sym) =>
-                    IO.pure(s"$sym $what canceled after ${elapsed.pretty}")
-                  case (Some(Outcome.Errored(t)), elapsed, _, sym) =>
-                    IO.pure:
-                      s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
+              stdouterrFiber.joinStd.logWhenItTakesLonger(StdouterrWorry):
+                case (None, elapsed, _, sym) =>
+                  IO.pure(s"$sym Still waiting for $what for ${elapsed.pretty}")
+                case (Some(Outcome.Succeeded(ended)), elapsed, _, _) =>
+                  ended.map: ended =>
+                    if ended then
+                      s"🔵 $what ended after ${elapsed.pretty}"
+                    else
+                      s"🟣 $what are still ignored after ${elapsed.pretty}"
+                case (Some(Outcome.Canceled()), elapsed, _, sym) =>
+                  IO.pure(s"$sym $what canceled after ${elapsed.pretty}")
+                case (Some(Outcome.Errored(t)), elapsed, _, sym) =>
+                  IO.pure:
+                    s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
           .as(returnCode)
 
         case Right((terminationFiber, _)) =>

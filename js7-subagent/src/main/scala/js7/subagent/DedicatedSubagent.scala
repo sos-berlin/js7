@@ -45,7 +45,7 @@ import js7.subagent.OutErrStatistics
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -332,8 +332,10 @@ extends Service.StoppableByRequest:
         orderIdToJobDriver
           .put(order.id, jobDriver)
           .productR:
-            stdObserversResource(order, keepLastErrLine = workflowJob.failOnErrWritten)
-              .allocated
+            stdObserversResource(order,
+              keepLastErrLine = workflowJob.failOnErrWritten,
+              maxWaitForStdouterr = workflowJob.maxWaitForStdouterr
+            ).allocated
           .flatMap: (stdObservers, releaseStdObservers) =>
             jobDriver
               .runOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod, stdObservers)
@@ -347,7 +349,10 @@ extends Service.StoppableByRequest:
               val processLost = OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
               IO.pure(processLost: OrderOutcome).start
 
-  private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
+  private def stdObserversResource(
+    order: Order[Order.Processing],
+    keepLastErrLine: Boolean,
+    maxWaitForStdouterr: Option[FiniteDuration])
   : ResourceIO[StdObservers] =
     import subagentConf.{outerrByteBufferSize, outerrQueueSize, stdouterr}
     for
@@ -359,6 +364,7 @@ extends Service.StoppableByRequest:
         delay = stdouterr.delay,
         queueSize = outerrQueueSize,
         useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
+        maxWaitForStdouterr = maxWaitForStdouterr,
         name = s"${order.id} ${order.workflowPosition}")
     yield
       stdObservers
