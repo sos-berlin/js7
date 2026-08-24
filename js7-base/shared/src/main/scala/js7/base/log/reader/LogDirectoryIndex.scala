@@ -14,7 +14,7 @@ import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.log.reader.LogStreamIndex.LogDirectoryIndexMXBean
-import js7.base.log.reader.LogDirectoryIndexRegister.*
+import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogUtils.isOurFilenameAnyLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
@@ -27,7 +27,7 @@ import js7.base.utils.ScalaUtils.syntax.*
   *
   * LogDirectoryIndexes including directory watching are started only when used.
   */
-final class LogDirectoryIndexRegister private(directory: Path, logFilePrefix: String)
+final class LogDirectoryIndex private(directory: Path, logFilePrefix: String)
   (using zoneId: ZoneId, conf: LogFileIndexConf)
 extends Service.TrivialReleasable:
 
@@ -91,7 +91,7 @@ extends Service.TrivialReleasable:
   : Resource[IO, Map[LogLevel, (Seq[Path], Queue[IO, Option[Chunk[DirectoryEvent]]])]] =
     for
       levelToQueue <- Resource.eval(makeLevelToQueue)
-      // TODO Erst lesen, wenn LogDirectoryIndexRegister gebraucht wird ?
+      // TODO Erst lesen, wenn LogDirectoryIndex gebraucht wird ?
       (files, directoryEvents) <- Resource.eval(watchDirectory)
       _ <-
         directoryEvents.chunks.evalMap: events =>
@@ -115,20 +115,20 @@ extends Service.TrivialReleasable:
     LogStreamIndex.watchDirectory(directory, isOurFilenameAnyLevel(logFilePrefix))
 
 
-  override def toString = "LogDirectoryIndexRegister"
+  override def toString = "LogDirectoryIndex"
 
 
-object LogDirectoryIndexRegister:
+object LogDirectoryIndex:
   private val logger = Logger[this.type]
   private given ZoneId = ZoneId.systemDefault
 
-  def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndexRegister] =
+  def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndex] =
     for
       given LogFileIndexConf = LogFileIndexConf.fromConfig(config).orThrow
       _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogStreamIndex", LogStreamIndex.Bean)
       service <-
         Service:
-          LogDirectoryIndexRegister(
+          LogDirectoryIndex(
             directory,
             logFilePrefix = config.getString("js7.log.prefix"))
     yield

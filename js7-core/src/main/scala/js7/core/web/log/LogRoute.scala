@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter.ISO_INSTANT
 import java.util.regex.Pattern
 import js7.base.auth.ValidUserPermission
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndexRegister, LogLineKey, LogReaders, LogSelection}
+import js7.base.log.reader.{KeyedByteLogLine, LogDirectoryIndex, LogLineKey, LogReaders, LogSelection}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
@@ -41,7 +41,7 @@ trait LogRoute extends RouteProvider:
   protected def config: Config
   protected def groupAndServerId: Option[GroupAndServerId]
   protected def logDirectory: Path
-  protected def logDirectoryIndexRegister: LogDirectoryIndexRegister
+  protected def logDirectoryIndex: LogDirectoryIndex
 
   private given IORuntime = ioRuntime
   private given Config = config
@@ -94,7 +94,7 @@ trait LogRoute extends RouteProvider:
               end = end, lineLimit = lineLimit, pattern = pattern, growing = growing,
               byteChunkSize = httpChunkSize)
             Stream.eval:
-              logDirectoryIndexRegister.forLogLevel(logLevel)
+              logDirectoryIndex.forLogLevel(logLevel)
             .through: stream =>
               if withKey then
                 stream.flatMap:
@@ -118,7 +118,7 @@ trait LogRoute extends RouteProvider:
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
-      logDirectoryIndexRegister.forLogLevel(logLevel)
+      logDirectoryIndex.forLogLevel(logLevel)
     .flatMap:
       _.keyedByteLogLineStream(begin, logSelection)
 

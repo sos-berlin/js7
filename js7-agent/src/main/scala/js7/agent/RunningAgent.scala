@@ -333,7 +333,7 @@ object RunningAgent:
               // See SubagentWebServer.
               Set(AgentDirectorPermission)),
             forDirector.sessionRegister,
-            forDirector.subagent.logDirectoryIndexRegister
+            forDirector.subagent.logDirectoryIndex
           ).directorRoutes
       agent <- Service.resource(runningAgent)
     yield

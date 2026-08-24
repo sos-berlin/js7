@@ -39,7 +39,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected val logDirectory = logFile.getParent
   protected val groupAndServerId = Some:
     Js7ServerGroupId.engine(ControllerId("Controller")) -> Js7ServerId.primaryController
-  protected def logDirectoryIndexRegister = throw new AssertionError("logDirectoryIndexRegister")
+  protected def logDirectoryIndex = throw new AssertionError("logDirectoryIndex")
 
   override protected def config = config"""
     js7.log.prefix = "${if isIntelliJIdea then "test" else "build"}"

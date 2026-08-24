@@ -60,7 +60,7 @@ extends
   protected def groupAndServerId = subagent.controllerId.map(Js7ServerGroupId.Engine(_)).product:
     subagent.subagentId.map(Js7ServerId.Subagent(_))
   protected val logDirectory: Path = subagent.conf.logDirectory
-  protected val logDirectoryIndexRegister = subagent.logDirectoryIndexRegister
+  protected val logDirectoryIndex = subagent.logDirectoryIndex
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)

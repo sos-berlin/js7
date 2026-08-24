@@ -24,7 +24,7 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
-import js7.base.log.reader.{LogDirectoryIndexRegister, LogDirectoryMXBean}
+import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -65,7 +65,7 @@ final class Subagent private(
   toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],
   signatureVerifier: DirectoryWatchingSignatureVerifier,
-  val logDirectoryIndexRegister: LogDirectoryIndexRegister,
+  val logDirectoryIndex: LogDirectoryIndex,
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any],
@@ -284,7 +284,7 @@ object Subagent:
           .prepare.orThrow
           .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
         _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
-        logDirectoryIndexRegister <- LogDirectoryIndexRegister.resource(conf.logDirectory)
+        logDirectoryIndex <- LogDirectoryIndex.resource(conf.logDirectory)
         journal <- MemoryJournal.service(
           SubagentState.empty,
           size = config.getInt("js7.journal.memory.event-count"),
@@ -297,7 +297,7 @@ object Subagent:
             webServer, directorRouteVariable,
             ForDirector(
               _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
-            journal, signatureVerifier, logDirectoryIndexRegister,
+            journal, signatureVerifier, logDirectoryIndex,
             conf, jobLauncherConf, testEventBus,
             shuttingDownAtomic, supervisor)
         _ <- subagentDeferred.complete(subagent).toResource
