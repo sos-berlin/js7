@@ -102,7 +102,7 @@ trait LogRoute extends RouteProvider:
                 stream.flatMap:
                   _.keyedByteLogLineStream(begin, logSelection)
                 .mapAndRechunkToByteStringSporadic(httpChunkSize):
-                  _.asByteSeq.toByteString
+                  _.asByteSeq[ByteString]
               else
                 stream.flatMap:
                   _.byteLineStream(begin, logSelection)

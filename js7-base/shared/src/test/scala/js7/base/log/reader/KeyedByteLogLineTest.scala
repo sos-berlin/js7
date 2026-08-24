@@ -2,6 +2,7 @@ package js7.base.log.reader
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 
@@ -15,7 +16,7 @@ final class KeyedByteLogLineTest extends OurTestSuite:
 
   "asByteSeq, parse" in:
     val chunk = toChunk("1777507200.12345/1112223334445556667 LINE\n")
-    assert(keyedByteLogLine.asByteSeq == chunk)
+    assert(keyedByteLogLine.asByteSeq[fs2.Chunk[Byte]] == chunk)
     assert(KeyedByteLogLine.parse(chunk) == Right(keyedByteLogLine))
     assert(KeyedByteLogLine.parse(toChunk("Info/1/2")) == Left(Problem:
       "Invalid KeyedByteLogLine format"))

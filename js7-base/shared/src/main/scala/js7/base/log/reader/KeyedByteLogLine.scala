@@ -3,6 +3,7 @@ package js7.base.log.reader
 import fs2.Chunk
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Instant
+import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.problem.{Checked, Problem}
@@ -29,10 +30,10 @@ final case class KeyedByteLogLine(fileInstant: Instant, posAndLine: PosAndLine):
   //def removeHighlights: KeyedByteLogLine =
   //  copy(posAndLine = posAndLine.removeHighlights)
 
-  def asByteSeq: Chunk[Byte] =
-    fs2.Chunk.array:
+  def asByteSeq[ByteSeq: ByteSequence as ByteSeq]: ByteSeq =
+    ByteSeq.fromArray:
       s"${fileInstant.toEpochNano.toDecimalString}/${posAndLine.position} ".getBytes(UTF_8)
-    ++ posAndLine.byteLine
+    ++ posAndLine.byteLine.toByteSequence[ByteSeq]
 
 
 object KeyedByteLogLine:
