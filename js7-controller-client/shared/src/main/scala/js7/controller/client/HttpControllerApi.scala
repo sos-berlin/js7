@@ -74,7 +74,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    logSelection: LogSelection = LogSelection.default,
+    logSelection: LogSelection = LogSelection.all,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     getLogLines_(subagentId, logLevel,
@@ -92,7 +92,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getKeyedLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    logSelection: LogSelection = LogSelection.default,
+    logSelection: LogSelection = LogSelection.all,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedLogLine]] =
     getKeyedByteLogLines(logLevel, begin, logSelection, subagentId)
@@ -101,7 +101,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def getKeyedByteLogLines(
     logLevel: LogLevel,
     begin: Instant | LogLineKey,
-    logSelection: LogSelection = LogSelection.default,
+    logSelection: LogSelection = LogSelection.all,
     subagentId: Option[SubagentId] = None)
   : IO[Stream[IO, KeyedByteLogLine]] =
     getKeyedByteLogLines_(subagentId, logLevel,

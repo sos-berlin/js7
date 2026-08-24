@@ -6,7 +6,7 @@ import java.util.{Optional, OptionalLong}
 import js7.base.log.reader.LogSelection
 import scala.jdk.OptionConverters.*
 
-final case class JLogSelection(asScala: LogSelection = LogSelection.default):
+final case class JLogSelection(asScala: LogSelection = LogSelection.all):
 
   def end: Optional[Instant] =
     asScala.end.toJava
@@ -17,23 +17,37 @@ final case class JLogSelection(asScala: LogSelection = LogSelection.default):
   def pattern: Optional[Pattern] =
     asScala.pattern.toJava
 
+  /** Select only lines until before the given end timestamp. */
   def withEnd(end: Instant): JLogSelection =
     copy(asScala.copy(
       end = Some(end)))
 
+  /** Select only lines until before the given end timestamp.
+    *
+    * Optional.empty() means no end timestamp. */
   def withEnd(end: Optional[Instant]): JLogSelection =
     copy(asScala.copy(
       end = end.toScala))
 
+  /** Limit the number of lines. */
   def withLineLimit(lineLimit: Long): JLogSelection =
     copy(asScala.copy(
       lineLimit = Some(lineLimit)))
 
+  /** Limit the number of lines.
+    *
+    * OptionalLong.empty means no line limit. */
   def withLineLimit(lineLimit: OptionalLong): JLogSelection =
     copy(asScala.copy(
       lineLimit = lineLimit.toScala))
 
-  def withPattern(pattern: Pattern): JLogSelection =
+  /** Select only lines which match the given pattern.
+    *
+    * - Lines don't terminate with '\n'. Use $ for end of line
+    * - Some ANSI escape sequences at start and end of line are removed before matching.
+    * - See [[LogSelection.tailorRegion]]
+    */
+  def withPattern(pattern: Pattern) =
     copy(asScala.copy(
       pattern = Some(pattern)))
 
@@ -41,14 +55,27 @@ final case class JLogSelection(asScala: LogSelection = LogSelection.default):
     copy(asScala.copy(
       pattern = pattern.toScala))
 
-  def withByteChunkSize(byteChunkSize: Int): JLogSelection =
-    copy(asScala.copy(
-      byteChunkSize = byteChunkSize))
-
+  /** The result stream should grow endlessly as the log files grow.
+    *
+    * The caller has to cancel the stream, when no other limit has been set. */
   def withGrowing(on: Boolean): JLogSelection =
     copy(asScala.copy(
       growing = on))
 
+  /** Use only if you know what you are doing.
+    *
+    * Does not survive HTTP transfer (i.e, JS7 Engine log files). */
+  def withByteChunkSize(byteChunkSize: Int): JLogSelection =
+    copy(asScala.copy(
+      byteChunkSize = byteChunkSize))
+
 
 object JLogSelection:
-  val empty: JLogSelection = new JLogSelection()
+  /** Select all lines (but no future lines — don't grow endlessly).
+    *
+    * The selection may be restricted by JSelection's with-methods.
+    */
+  val all: JLogSelection = new JLogSelection()
+
+  @deprecated("use all!") @Deprecated
+  val empty: JLogSelection = all

@@ -34,7 +34,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3),
-                JLogSelection.empty()/*special case for test*/)
+                JLogSelection.all()/*special case for test*/)
             //.doOnNext(chunk ->
             //    assertIsProxyThread())                                                                                                                                               0
             .flatMapIterable(identity())
@@ -48,7 +48,7 @@ final class JLogFileTester {
                         Js7ServerId.primaryController,
                         LogLevel.info(),
                         lastKey,
-                        JLogSelection.empty().withLineLimit(2))
+                        JLogSelection.all().withLineLimit(2))
                     .flatMapIterable(identity())
                     .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
@@ -76,7 +76,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                JLogSelection.empty()/*beware: no lineLimit here*/)
+                JLogSelection.all()/*beware: no lineLimit here*/)
             //.doOnNext(ignore ->
             //    assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())
@@ -102,7 +102,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                JLogSelection.empty()/*special case for test*/)
+                JLogSelection.all()/*special case for test*/)
             // Switch to a blocking thread pool. Apparently not slower.
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
@@ -121,7 +121,7 @@ final class JLogFileTester {
                     Js7ServerId.primaryController,
                     LogLevel.info(),
                     Instant.now().minusSeconds(3600),
-                    JLogSelection.empty().withLineLimit(3))
+                    JLogSelection.all().withLineLimit(3))
                 .publishOn(Schedulers.boundedElastic())
                 .flatMapIterable(identity())
                 .last()
@@ -132,7 +132,7 @@ final class JLogFileTester {
                             Js7ServerId.primaryController,
                             LogLevel.info(),
                             last.key(),
-                            JLogSelection.empty().withLineLimit(1))
+                            JLogSelection.all().withLineLimit(1))
                         .flatMapIterable(identity())
                         .last()
                         .map(next -> {
@@ -149,7 +149,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                JLogSelection.empty()/*special case, otherwise set lineLimit!*/)
+                JLogSelection.all()/*special case, otherwise set lineLimit!*/)
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
                 assertIsNotProxyThread())
@@ -168,7 +168,7 @@ final class JLogFileTester {
                 Js7ServerId.primaryController,
                 LogLevel.info(),
                 Instant.now().minusSeconds(3600),
-                JLogSelection.empty()/*special case, otherwise set lineLimit!*/)
+                JLogSelection.all()/*special case, otherwise set lineLimit!*/)
             //.doOnNext(ignore ->
             //    assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {

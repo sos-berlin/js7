@@ -36,11 +36,11 @@ extends ForReader:
 
 
 object LogSelection:
-  val default: LogSelection =
+  val all: LogSelection =
     new LogSelection()
 
   def apply(): LogSelection =
-    default
+    all
 
 
   sealed trait ForReader:

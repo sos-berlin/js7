@@ -36,7 +36,7 @@ public final class JLogFileIndexTester {
             JLogFileIndex.build(file, zoneId, proxyContext).thenCompose(logFileIndex ->
                 logFileIndex.instantToFilePosition(
                         Instant.parse("2026-02-12T14:00:01+02:00"),
-                        JLogSelection.empty())
+                        JLogSelection.all())
                     .thenAccept(position ->
                         assertThat(position.getAsLong(), equalTo((long) writtenLines.get(0).length()/*pure ASCII*/))));
     }
@@ -47,7 +47,7 @@ public final class JLogFileIndexTester {
                 logFileIndex
                     .lineFlux(
                         Instant.parse("2026-02-12T14:00:01+02:00"),
-                        JLogSelection.empty().withEnd(/*excluding*/
+                        JLogSelection.all().withEnd(/*excluding*/
                             Instant.parse("2026-02-12T14:00:04+02:00"))
                     ).take(100) // Guard against too many lines
                     .collectList()
