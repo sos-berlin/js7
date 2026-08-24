@@ -49,7 +49,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           """2026-06-25T00:00:00,111 Begin JS7 ...
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...""".stripMargin.getBytes(UTF_8)
         for
-          checked <- LogDirectoryIndex.LogFile.read(file)
+          checked <- LogStreamIndex.LogFile.read(file)
         yield
           assert(checked == Left(IncompleteLogFileProblem(file)))
 
@@ -60,7 +60,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          logFile <- LogDirectoryIndex.LogFile.read(file).orThrow
+          logFile <- LogStreamIndex.LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.111+03:00"))
 
@@ -71,7 +71,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogDirectoryIndex.LogFile.read(file)
+          checked <- LogStreamIndex.LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? ...")))
@@ -83,7 +83,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogDirectoryIndex.LogFile.read(file)
+          checked <- LogStreamIndex.LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,999+?? ...")))
@@ -95,7 +95,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...
             |""".stripMargin
         for
-          logFile <- LogDirectoryIndex.LogFile.read(file).orThrow
+          logFile <- LogStreamIndex.LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
   }
@@ -122,10 +122,10 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                     .getBytes(UTF_8)
       .productR:
         given LogFileIndexConf = LogFileIndexConf.forTest
-        LogDirectoryIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
-          .use: logDirectoryIndex =>
+        LogStreamIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
+          .use: logStreamIndex =>
             /// Read *all* log files as text lines ///
-            logDirectoryIndex.byteLineStream(startInstant, LogSelection())
+            logStreamIndex.byteLineStream(startInstant, LogSelection())
               .map(_.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -178,7 +178,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-03 02:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 27\n"))
               .productR:
                 val instant = ZonedDateTime.parse("2026-03-01T00:00:01.000+02").toInstant
-                logDirectoryIndex.byteLineStream(instant, LogSelection())
+                logStreamIndex.byteLineStream(instant, LogSelection())
                   .take(5)
                   .map(_.utf8String)
                   .compile.toList.map: lines =>
@@ -192,7 +192,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n"))
               .productR:
                 /// Read all log files as KeyedByteLogLine ///
-                logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
+                logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
                   .compile.toList
               .flatMap: keyedByteLogLines =>
                 assert(keyedByteLogLines.map(_.lineAsString) == List(
@@ -243,7 +243,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
                 assert(keyedByteLogLines(3).posAndLine.lineAsString ==
                   "2026-03-01 00:00:03.000+02 info LogDirectoryIndexTest - MESSAGE 3\n")
-                logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(3).logLineKey, LogSelection())
+                logStreamIndex.keyedByteLogLineStream(keyedByteLogLines(3).logLineKey, LogSelection())
                   .take(4)
                   .compile.toList
                   .map: keyedByteLogLines =>
@@ -254,7 +254,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                       "2026-03-01 01:00:01.000+02 info LogDirectoryIndexTest - MESSAGE 4\n",
                       "2026-03-01 01:00:02.000+02 info LogDirectoryIndexTest - MESSAGE 5\n"))
                 .productR:
-                  logDirectoryIndex.keyedByteLogLineStream(keyedByteLogLines(12).logLineKey, LogSelection())
+                  logStreamIndex.keyedByteLogLineStream(keyedByteLogLines(12).logLineKey, LogSelection())
                     .take(4)
                     .compile.toList
                     .map: keyedByteLogLines =>
@@ -285,7 +285,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           Files.copy(file, out)
 
         // Trigger FileDeleted / LogFileDeleted,
-        // telling LogDirectoryIndex that the .log.gz is complete and readable now
+        // telling LogStreamIndex that the .log.gz is complete and readable now
         Files.delete(file)
       end writeFile
 
@@ -295,13 +295,13 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       writeFile(startInstant + 24.h)
 
       given LogFileIndexConf = LogFileIndexConf.forTest
-      LogDirectoryIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
-        .use: logDirectoryIndex =>
+      LogStreamIndex.directory(dir, filenamePrefix = "TEST", Info, watchGrowth = false)
+        .use: logStreamIndex =>
           IO:
-            assert(logDirectoryIndex.files ==
+            assert(logStreamIndex.files ==
               Seq(startInstant, startInstant + 24.h).map(instantToFile))
           *>
-            logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
+            logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -311,10 +311,10 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           *>
             IO:
               writeFile(startInstant + 48.h)
-              awaitAndAssert(logDirectoryIndex.files ==
+              awaitAndAssert(logStreamIndex.files ==
                 Seq(startInstant, startInstant + 24.h, startInstant + 48.h).map(instantToFile))
           *>
-            logDirectoryIndex.keyedByteLogLineStream(startInstant, LogSelection())
+            logStreamIndex.keyedByteLogLineStream(startInstant, LogSelection())
               .map(_.byteLine.utf8String)
               .compile.toList.map: lines =>
                 assert(lines == List(
@@ -351,16 +351,16 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             IO.defer:
               val t = Deadline.now
               given LogFileIndexConf = LogFileIndexConf.forTest
-              LogDirectoryIndex.directory(
+              LogStreamIndex.directory(
                 dir, filenamePrefix = "TEST", Debug, watchGrowth = false,
-              ).use: logDirectoryIndex =>
-                logDirectoryIndex.byteLineStream(
+              ).use: logStreamIndex =>
+                logStreamIndex.byteLineStream(
                   Instant.parse("2026-02-12T00:01:00Z"),
                   LogSelection()
                 ).compile.drain.map: _ =>
                   val elapsed = t.elapsed
                   val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                  info_(s"$logDirectoryIndex ${
+                  info_(s"$logStreamIndex ${
                     bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }

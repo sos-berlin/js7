@@ -13,7 +13,7 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.reader.LogDirectoryIndex.LogDirectoryIndexMXBean
+import js7.base.log.reader.LogStreamIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogDirectoryIndexRegister.*
 import js7.base.log.reader.LogUtils.isOurFilenameAnyLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
@@ -32,7 +32,7 @@ final class LogDirectoryIndexRegister private(directory: Path, logFilePrefix: St
 extends Service.TrivialReleasable:
 
   // TODO Make lazy for each LogLevel separately?
-  private val lazyLevelToIndex: IO[Allocated[IO, Map[LogLevel, Allocated[IO, LogDirectoryIndex]]]] =
+  private val lazyLevelToIndex: IO[Allocated[IO, Map[LogLevel, Allocated[IO, LogStreamIndex]]]] =
     memoize:
       watching.toAllocated
 
@@ -51,7 +51,7 @@ extends Service.TrivialReleasable:
         _.release
       *> allo.release
 
-  def forLogLevel(logLevel: LogLevel): IO[LogDirectoryIndex] =
+  def forLogLevel(logLevel: LogLevel): IO[LogStreamIndex] =
     lazyLevelToIndex.flatMap: levelToIndex =>
       levelToIndex.allocatedThing.get(logLevel) match
         case None =>
@@ -61,8 +61,8 @@ extends Service.TrivialReleasable:
         case Some(index) =>
           IO.pure(index.allocatedThing)
 
-  /** Run a LogDirectoryIndex for each LogLevel. */
-  private def watching: ResourceIO[Map[LogLevel, Allocated[IO, LogDirectoryIndex]]] =
+  /** Run a LogStreamIndex for each LogLevel. */
+  private def watching: ResourceIO[Map[LogLevel, Allocated[IO, LogStreamIndex]]] =
     Resource.defer:
       if isStopping then
         Resource.pure(Map.empty)
@@ -72,9 +72,9 @@ extends Service.TrivialReleasable:
           levelToIndex <-
             Resource.make(
               acquire =
-                LogDirectoryIndex.LogLevels.toSeq.parTraverse: logLevel =>
+                LogStreamIndex.LogLevels.toSeq.parTraverse: logLevel =>
                   val (files, queue) = levelToFilesAndQueue(logLevel)
-                  LogDirectoryIndex.directory(
+                  LogStreamIndex.directory(
                       directory, logLevel, files,
                       Stream.fromQueueNoneTerminatedChunk(queue),
                       watchGrowth = true
@@ -96,7 +96,7 @@ extends Service.TrivialReleasable:
       _ <-
         directoryEvents.chunks.evalMap: events =>
           events.asSeq.groupBy: event =>
-            LogDirectoryIndex.fileToLogLevel(event.relativePath)
+            LogStreamIndex.fileToLogLevel(event.relativePath)
           .toSeq.traverse: (logLevel, events) =>
             levelToQueue(logLevel)
               .offer(Some(Chunk.from(events)))
@@ -107,12 +107,12 @@ extends Service.TrivialReleasable:
         .background
     yield
       levelToQueue.view.map: (logLevel, queue) =>
-        logLevel -> (files.filter(LogDirectoryIndex.fileToLogLevel(_) ==  logLevel), queue)
+        logLevel -> (files.filter(LogStreamIndex.fileToLogLevel(_) ==  logLevel), queue)
       .toMap
 
   /** Return the initial files and a Stream of DirectoryEvents. */
   private def watchDirectory: IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
-    LogDirectoryIndex.watchDirectory(directory, isOurFilenameAnyLevel(logFilePrefix))
+    LogStreamIndex.watchDirectory(directory, isOurFilenameAnyLevel(logFilePrefix))
 
 
   override def toString = "LogDirectoryIndexRegister"
@@ -125,7 +125,7 @@ object LogDirectoryIndexRegister:
   def resource(directory: Path)(using config: Config): ResourceIO[LogDirectoryIndexRegister] =
     for
       given LogFileIndexConf = LogFileIndexConf.fromConfig(config).orThrow
-      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogDirectoryIndex.Bean)
+      _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogStreamIndex", LogStreamIndex.Bean)
       service <-
         Service:
           LogDirectoryIndexRegister(
@@ -135,7 +135,7 @@ object LogDirectoryIndexRegister:
       service
 
   private def makeLevelToQueue: IO[Map[LogLevel, Queue[IO, Option[Chunk[DirectoryEvent]]]]] =
-    LogDirectoryIndex.LogLevels.toSeq.traverse: logLevel =>
+    LogStreamIndex.LogLevels.toSeq.traverse: logLevel =>
       Queue.bounded[IO, Option[Chunk[DirectoryEvent]]](1).map: queue =>
         logLevel -> queue
     .map(_.toMap)

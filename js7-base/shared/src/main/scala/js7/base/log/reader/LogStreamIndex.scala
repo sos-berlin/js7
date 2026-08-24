@@ -25,8 +25,8 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
 import js7.base.io.file.{ByteSeqFileReader, FileDeleter}
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogDirectoryIndex.*
-import js7.base.log.reader.LogDirectoryIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
+import js7.base.log.reader.LogStreamIndex.*
+import js7.base.log.reader.LogStreamIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
 import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
 import js7.base.log.reader.{LogFileIndex, LogLineKey}
 import js7.base.log.{LogLevel, Logger}
@@ -53,7 +53,7 @@ import scala.util.Try
   * @param logFileEvents updates the file list, must emit events only from `directory`
   * @param watchGrowth when growing log files should be respected (uncompressed only)
   */
-final class LogDirectoryIndex private(
+final class LogStreamIndex private(
   initialFiles: Iterable[LogFile],
   logFileEvents: Stream[IO, LogFileEvent],
   logLevel: LogLevel,
@@ -329,11 +329,11 @@ extends Service.StoppableByCancel:
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
 
   override def toString =
-    s"LogDirectoryIndex($logLevel, ${instantToLogFile.size} files)"
+    s"LogStreamIndex($logLevel, ${instantToLogFile.size} files)"
 
 
-object LogDirectoryIndex:
-  private val logger = Logger[LogDirectoryIndex]
+object LogStreamIndex:
+  private val logger = Logger[LogStreamIndex]
   private[reader] val LogGzTmpSuffix = ".log.gz" + TmpSuffix
   private[reader] val TmpSuffix = "-indexed.tmp"
   val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
@@ -341,14 +341,14 @@ object LogDirectoryIndex:
     * (the line after the header) */
   private val FirstChunkSize = 1024
 
-  /** LogDirectoryIndex, watching a directory. */
+  /** LogStreamIndex, watching a directory. */
   def directory(
     directory: Path,
     filenamePrefix: String,
     logLevel: LogLevel,
     watchGrowth: Boolean)
     (using ZoneId, LogFileIndexConf)
-  : ResourceIO[LogDirectoryIndex] =
+  : ResourceIO[LogStreamIndex] =
     assertThat(LogLevels(logLevel))
     Resource.suspend:
       watchDirectory(
@@ -357,7 +357,7 @@ object LogDirectoryIndex:
       ).map: (files, directoryEvents) =>
         this.directory(directory, logLevel, files, directoryEvents, watchGrowth = watchGrowth)
 
-  /** LogDirectoryIndex, watching a directory. */
+  /** LogStreamIndex, watching a directory. */
   private[reader] def directory(
     directory: Path,
     logLevel: LogLevel,
@@ -365,12 +365,12 @@ object LogDirectoryIndex:
     directoryEvents: Stream[IO, DirectoryEvent],
     watchGrowth: Boolean)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogDirectoryIndex] =
+  : ResourceIO[LogStreamIndex] =
     assertThat(LogLevels(logLevel))
     logger.traceResource("directory", (directory, logLevel)):
       for
         _ <- Resource.eval(deleteTmpFiles(directory, logLevel))
-        (logFiles, pipe) <- LogDirectoryIndexBuilder.toLogFileEvents(directory, files)
+        (logFiles, pipe) <- LogStreamIndexBuilder.toLogFileEvents(directory, files)
         logFileIndex <- resource(
           logFiles,
           directoryEvents.through(pipe),
@@ -400,7 +400,7 @@ object LogDirectoryIndex:
 
   def files(files: Iterable[Path], logLevel: LogLevel, watchGrowth: Boolean = false)
     (using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogDirectoryIndex] =
+  : ResourceIO[LogStreamIndex] =
     for
       logFiles <- Resource.eval:
         Stream.iterable(files).parEvalMap(sys.runtime.availableProcessors): file =>
@@ -409,10 +409,10 @@ object LogDirectoryIndex:
           logFiles.view.map(_.toStringWithSize).foreachWithBracket(): (line,br) =>
             logger.trace(s"$br$line")
           logFiles
-      logDirectoryIndex <- resource(logFiles, Stream.empty, logLevel, watchGrowth = watchGrowth,
+      logStreamIndex <- resource(logFiles, Stream.empty, logLevel, watchGrowth = watchGrowth,
         conf.recompressor)
     yield
-      logDirectoryIndex
+      logStreamIndex
 
   private def resource(
     initialLogFiles: Iterable[LogFile],
@@ -421,7 +421,7 @@ object LogDirectoryIndex:
     watchGrowth: Boolean,
     recompressor: Recompressor)
     (using ZoneId, LogFileIndexConf)
-  : ResourceIO[LogDirectoryIndex] =
+  : ResourceIO[LogStreamIndex] =
     for
       given Supervisor[IO] <- Supervisor[IO]
       logFileIndex <- Resource.suspend:
@@ -431,7 +431,7 @@ object LogDirectoryIndex:
             initialLogFiles.map(_.fileEpochNano).maxOption getOrElse EpochNano.MinValue
         yield
           Service:
-            LogDirectoryIndex(
+            LogStreamIndex(
               initialLogFiles,
               logFileEvents,
               logLevel, recompressor,
@@ -499,7 +499,7 @@ object LogDirectoryIndex:
     val originalFile: Path,
     val fileInstant: Instant,
     val isGzipped: Boolean,
-    private[LogDirectoryIndex] val deferredIndexCell:
+    private[LogStreamIndex] val deferredIndexCell:
       AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]])
     (using zoneId: ZoneId):
 
@@ -596,4 +596,4 @@ object LogDirectoryIndex:
 
 
   object Bean extends LogDirectoryIndexMXBean:
-    protected[LogDirectoryIndex] var tmpFilesSize: Long = 0
+    protected[LogStreamIndex] var tmpFilesSize: Long = 0

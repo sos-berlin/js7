@@ -69,8 +69,8 @@ final class JLogDirectoryIndexTester {
         return
             JLogDirectoryIndex.directory(
                 directory, "TEST", LogLevel.info(), false, zoneId, jProxyContext
-            ).use(logDirectoryIndex ->
-                logDirectoryIndex
+            ).use(logStreamIndex ->
+                logStreamIndex
                     // 🟢 instantToLogLineKey
                     .instantToLogLineKey(
                         ZonedDateTime.parse("2026-03-01T02:00:02+02").toInstant(),
@@ -83,7 +83,7 @@ final class JLogDirectoryIndexTester {
 
                     // 🟢 keyedLogLineFlux
                     .thenCompose(unused ->
-                        logDirectoryIndex.keyedLogLineFlux(
+                        logStreamIndex.keyedLogLineFlux(
                                 ZonedDateTime.parse("2026-01-01T00:00:00+02").toInstant(),
                                 JLogSelection.empty())
                             .flatMap(Flux::fromIterable)

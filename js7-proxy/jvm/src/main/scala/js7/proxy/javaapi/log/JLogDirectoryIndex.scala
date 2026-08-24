@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.{Optional, List as JList}
 import js7.base.log.LogLevel
 import js7.base.log.reader.recompressors.LogFileIndexConf
-import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogDirectoryIndex, LogLineKey}
+import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogStreamIndex, LogLineKey}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data_for_java.reactor.ReactorConverters.asFluxChunks
 import js7.proxy.javaapi.{JProxyContext, JResource}
@@ -16,24 +16,24 @@ import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final class JLogDirectoryIndex private(logDirectoryIndex: LogDirectoryIndex)(using IORuntime)
+final class JLogDirectoryIndex private(logStreamIndex: LogStreamIndex)(using IORuntime)
 extends JLogIndex:
 
   def byteLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[JList[Array[Byte]]] =
-    logDirectoryIndex.byteLineStream(begin, logSelection.asScala)
+    logStreamIndex.byteLineStream(begin, logSelection.asScala)
       .map(_.toArray)
       .asFluxChunks
 
   def byteLogLineFlux(key: LogLineKey, logSelection: JLogSelection)
   : Flux[JList[Array[Byte]]] =
-    logDirectoryIndex.byteLineStream(key, logSelection.asScala)
+    logStreamIndex.byteLineStream(key, logSelection.asScala)
       .map(_.toArray)
       .asFluxChunks
 
   def stringLogLineFlux(begin: Instant, logSelection: JLogSelection)
   : Flux[JList[String]] =
-    logDirectoryIndex.stringLineStream(begin, logSelection.asScala)
+    logStreamIndex.stringLineStream(begin, logSelection.asScala)
       .asFluxChunks
 
   def keyedByteLogLineFlux(begin: Instant, logSelection: JLogSelection)
@@ -54,18 +54,18 @@ extends JLogIndex:
 
   private def keyedByteLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
   : Flux[JList[KeyedByteLogLine]] =
-    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.asScala)
+    logStreamIndex.keyedByteLogLineStream(begin, logSelection.asScala)
       .asFluxChunks
 
   private def keyedLogLineFlux_(begin: Instant | LogLineKey, logSelection: JLogSelection)
   : Flux[JList[KeyedLogLine]] =
-    logDirectoryIndex.keyedByteLogLineStream(begin, logSelection.asScala)
+    logStreamIndex.keyedByteLogLineStream(begin, logSelection.asScala)
       .map(_.toKeyedLogLine)
       .asFluxChunks
 
   def instantToLogLineKey(instant: Instant, logSelection: JLogSelection)
   : CompletableFuture[Optional[LogLineKey]] =
-    logDirectoryIndex.instantToLogLineKey(instant, logSelection.asScala)
+    logStreamIndex.instantToLogLineKey(instant, logSelection.asScala)
       .map(_.toJava)
       .unsafeToCompletableFuture()
 
@@ -94,7 +94,7 @@ object JLogDirectoryIndex:
     resource_(logLevel):
       for
         given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
-        result <- LogDirectoryIndex.directory(
+        result <- LogStreamIndex.directory(
           directory, filenamePrefix, logLevel, watchGrowth = watchGrowth)
       yield result
 
@@ -109,10 +109,10 @@ object JLogDirectoryIndex:
     resource_(logLevel):
       for
         given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
-        result <- LogDirectoryIndex.files(files.asScala, logLevel)
+        result <- LogStreamIndex.files(files.asScala, logLevel)
       yield result
 
-  private def resource_(logLevel: LogLevel)(to: => ResourceIO[LogDirectoryIndex])
+  private def resource_(logLevel: LogLevel)(to: => ResourceIO[LogStreamIndex])
     (using IORuntime)
   : JResource[JLogDirectoryIndex] =
     JResource:

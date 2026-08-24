@@ -7,14 +7,14 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.reader.LogDirectoryIndex.LogFile
+import js7.base.log.reader.LogStreamIndex.LogFile
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.TimeoutException
 
-final class LogDirectoryIndexBuilderTest extends OurAsyncTestSuite:
+final class LogStreamIndexBuilderTest extends OurAsyncTestSuite:
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
@@ -26,14 +26,14 @@ final class LogDirectoryIndexBuilderTest extends OurAsyncTestSuite:
       .orThrow
 
     ".log-file is slowly written" in:
-      temporaryDirectoryResource[IO]("LogDirectoryIndexBuilderTest-").use: dir =>
+      temporaryDirectoryResource[IO]("LogStreamIndexBuilderTest-").use: dir =>
         val file = dir / "test.log"
         file :=
           """2026-06-25T00:00:00,111+03 Begin JS7 ...
             |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...""".stripMargin
         sleep(10.ms)
         file ++= "\n"
-        LogDirectoryIndexBuilder.forTest(dir).use: builder =>
+        LogStreamIndexBuilder.forTest(dir).use: builder =>
           val deferred = Deferred.unsafe[IO, LogFile | Throwable]
           builder.DelayedLogFile(file)
             .start(
@@ -47,12 +47,12 @@ final class LogDirectoryIndexBuilderTest extends OurAsyncTestSuite:
                 case t: Throwable => throw t
 
     ".log-file is not written in time" in:
-      temporaryDirectoryResource[IO]("LogDirectoryIndexBuilderTest-").use: dir =>
+      temporaryDirectoryResource[IO]("LogStreamIndexBuilderTest-").use: dir =>
         val file = dir / "test.log"
         file :=
           """2026-06-25T00:00:00,111+03 Begin JS7 ...
             |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...""".stripMargin
-        LogDirectoryIndexBuilder.forTest(dir).use: builder =>
+        LogStreamIndexBuilder.forTest(dir).use: builder =>
           val deferred = Deferred.unsafe[IO, LogFile | Throwable]
           builder.DelayedLogFile(file)
             .start(

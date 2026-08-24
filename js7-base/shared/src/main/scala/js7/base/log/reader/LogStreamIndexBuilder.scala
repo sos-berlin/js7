@@ -13,8 +13,8 @@ import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogDirectoryIndex.{LogFile, isGzipped}
-import js7.base.log.reader.LogDirectoryIndexBuilder.*
+import js7.base.log.reader.LogStreamIndex.{LogFile, isGzipped}
+import js7.base.log.reader.LogStreamIndexBuilder.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.RichIterable
@@ -23,7 +23,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.TimeoutException
 
-private final class LogDirectoryIndexBuilder private(
+private final class LogStreamIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
   supervisor: Supervisor[IO],
   gzLogFileReady: SignallingRef[IO, CatsDeadline])
@@ -87,7 +87,7 @@ private final class LogDirectoryIndexBuilder private(
 
         case event @ FileDeleted(filename) =>
           logger.debug(s"-->$event")
-          if filename.toString.endsWith(LogDirectoryIndex.TmpSuffix) then
+          if filename.toString.endsWith(LogStreamIndex.TmpSuffix) then
             IO.pure(LogFileIndexDeleted(filename) :: Nil)
           else if isGzipped(filename) then
             IO.pure(LogFileDeleted(filename) :: Nil)
@@ -107,7 +107,7 @@ private final class LogDirectoryIndexBuilder private(
                   LogFileDeleted(filename) :: Nil
 
         case o: FileModified =>
-          sys.error(s"LogDirectoryIndex: unexpected $o")
+          sys.error(s"LogStreamIndex: unexpected $o")
       .flatMap:
         Stream.iterable
 
@@ -184,7 +184,7 @@ private final class LogDirectoryIndexBuilder private(
     override def toString = s"DelayedLogFile($filename)"
 
 
-private object LogDirectoryIndexBuilder:
+private object LogStreamIndexBuilder:
 
   private val logger = Logger[this.type]
 
@@ -200,7 +200,7 @@ private object LogDirectoryIndexBuilder:
           semaphore <- Semaphore[IO](conf.timestampReaderConcurrency)
           now <- CatsDeadline.now
           signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
-          result <- LogDirectoryIndexBuilder(semaphore, supervisor, signal)
+          result <- LogStreamIndexBuilder(semaphore, supervisor, signal)
             .toLogFileEvents(directory, initialFiles)
         yield
           result
@@ -209,7 +209,7 @@ private object LogDirectoryIndexBuilder:
 
   @TestOnly
   private[reader] def forTest(directory: Path)(using zoneId: ZoneId, conf: LogFileIndexConf)
-  : ResourceIO[LogDirectoryIndexBuilder] =
+  : ResourceIO[LogStreamIndexBuilder] =
     for
       supervisor <- Supervisor[IO]
       result <- Resource.eval:
@@ -218,7 +218,7 @@ private object LogDirectoryIndexBuilder:
           now <- CatsDeadline.now
           signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
         yield
-          LogDirectoryIndexBuilder(semaphore, supervisor, signal)
+          LogStreamIndexBuilder(semaphore, supervisor, signal)
     yield
       result
 
