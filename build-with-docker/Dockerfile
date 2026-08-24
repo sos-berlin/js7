@@ -22,10 +22,10 @@ END
 RUN <<END
   # Install sbt
   set -euo pipefail
-  sbtVersion=1.12.8
+  sbtVersion=1.12.15
   # Get a changed version's hash code with this command:
-  # curl --silent --show-error --location https://github.com/sbt/sbt/releases/download/v1.12.8/sbt-1.12.8.tgz | sha256sum
-  sbtSHA256=3c655b217a4c925372cf1975e8beff81995589a2d07efae870e8cc32573de1a6
+  # curl --silent --show-error --location https://github.com/sbt/sbt/releases/download/v1.12.15/sbt-1.12.15.tgz | sha256sum
+  sbtSHA256=d8c215f47b879002a030f930410d83e9d138015362411f62e294c145b9f8a931
   mkdir --parents /opt/lib/sbt-$sbtVersion
   cd /root
   curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz \
