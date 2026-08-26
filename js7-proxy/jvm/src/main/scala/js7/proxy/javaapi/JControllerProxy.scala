@@ -10,8 +10,6 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.catsutils.Environment.environment
-import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.{KeyedLogLine, LogLineKey}
@@ -81,83 +79,91 @@ final class JControllerProxy private[proxy](
   def clusterState: ClusterState =
     asScala.currentState.clusterState
 
-  /** @see [[keyedLogLineFlux]] for a simplified call. */
-  def engineLog(serverId: Js7ServerId, logLevel: LogLevel): JResource[JEngineLog] =
-    JResource(JEngineLog.resource(this, serverId, logLevel))
+  /** A JEngineLog JResource.
+    *
+    * If Js7ServerId denotes a Subagent, then `engineLog` selects the active Controller
+    * to reach the Subagent. In this case, one should use the returned engineLog only once,
+    * to be sure to use the currently active Controller.
+    *
+    * Usage examples:
+    * ```
+    * // Use only once to go via the currently active Controller
+    * var flux = jControllerProxy
+    *   .engineLog(Js7ServerId.subagent(subagentId), LogLevel.info())
+    *   .flatMap(engineLog ->
+    *     engineLog.byteLogLineFlux(...))
+    * ```
+    *
+    * Resuable only for primaryController and backupController
+    * ```
+    * // Reusable, because independent of currently active Controller
+    * // But it isn't faster
+    * var primaryControllerInfoLog = jControllerProxy
+    *   .engineLog(Js7ServerId.primaryController, LogLevel.info());
+    * var flux = primaryControllerEngineLog.byteLogLineFlux(...))
+    * ```
+    *
+    * @return A Flux with a single JEngineLog
+    */
+  def engineLog(serverId: Js7ServerId, logLevel: LogLevel): Flux[JEngineLog] =
+    JResource:
+      JEngineLog.resource(this, serverId, logLevel)
+    .asFlux
 
   /** Read log lines from `begin`. */
-  @Nonnull
+  @Nonnull @Deprecated @deprecated("Use engineLog")
   def keyedLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.keyedLogLineStream(begin, logSelection)
+    engineLog(serverId, logLevel).flatMap:
+      _.keyedLogLineFlux(begin, logSelection)
 
   /** Read log lines beginning after the line denoted by `key`. */
-  @Nonnull
+  @Nonnull @Deprecated @deprecated("Use engineLog")
   def keyedLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[KeyedLogLine]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.keyedLogLineStream(key, logSelection)
+    engineLog(serverId, logLevel).flatMap:
+      _.keyedLogLineFlux(key, logSelection)
 
   /** Read log lines as Array[Byte] beginning with `begin`. */
-  @Nonnull
+  @Nonnull @Deprecated @deprecated("Use engineLog")
   def byteLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.logLineStream(begin, logSelection, _.unsafeArray)
+    engineLog(serverId, logLevel).flatMap:
+      _.byteLogLineFlux(begin, logSelection)
 
   /** Read log lines as Array[Byte] beginning after the line denoted by `key`. */
-  @Nonnull
+  @Nonnull @Deprecated @deprecated("Use engineLog")
   def byteLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     key: LogLineKey,
     logSelection: JLogSelection)
   : Flux[java.util.List[Array[Byte]]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.logLineStream(key, logSelection, _.unsafeArray)
+    engineLog(serverId, logLevel).flatMap:
+      _.byteLogLineFlux(key, logSelection)
 
   /** Read log lines from `begin`. */
-  @Nonnull
+  @Nonnull @Deprecated @deprecated("Use engineLog")
   def stringLogLineFlux(
     serverId: Js7ServerId,
     logLevel: LogLevel,
     begin: Instant,
     logSelection: JLogSelection)
   : Flux[java.util.List[String]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.logLineStream(begin, logSelection, _.utf8String)
-
-  /** Read log lines beginning after the line denoted by `key`. */
-  @Nonnull
-  def stringLogLineFlux(
-    serverId: Js7ServerId,
-    logLevel: LogLevel,
-    key: LogLineKey,
-    logSelection: JLogSelection)
-  : Flux[java.util.List[String]] =
-    toJEngineLogFlux(serverId, logLevel):
-      _.logLineStream(key, logSelection, _.utf8String)
-
-  private def toJEngineLogFlux[R <: AnyRef: ClassTag](js7ServerId: Js7ServerId, logLevel: LogLevel)
-    (f: JEngineLog => fs2.Stream[IO, R])
-  : Flux[R] =
-    fs2.Stream.resource:
-      JEngineLog.resource(this, js7ServerId, logLevel)
-    .flatMap(f)
-    .asFlux
+    engineLog(serverId, logLevel).flatMap:
+      _.stringLogLineFlux(begin, logSelection)
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull

@@ -25,16 +25,13 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 final class JLogFileTester {
 
-    private final static Logger logger = getLogger(JLogFileTester.class);
-
     static CompletableFuture<Result> test(JControllerProxy proxy, String expectedLogText) {
         //assertIsProxyThread(); // Due to JLogFileTest
-        return proxy
-            .keyedLogLineFlux(
-                Js7ServerId.primaryController,
-                LogLevel.info(),
-                Instant.now().minusSeconds(3),
-                JLogSelection.all()/*special case for test*/)
+        return proxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+            .flatMap(engineLog ->
+                engineLog.keyedLogLineFlux(
+                    Instant.now().minusSeconds(3),
+                    JLogSelection.all()/*special case for test*/))
             //.doOnNext(chunk ->
             //    assertIsProxyThread())                                                                                                                                               0
             .flatMapIterable(identity())
@@ -44,11 +41,11 @@ final class JLogFileTester {
             .thenCompose(keyedLogLines -> {
                 //Java 21: var lastKey = keyedLogLines.getLast().key();
                 var lastKey = keyedLogLines.get(keyedLogLines.size() - 1).key();
-                return proxy.keyedLogLineFlux(
-                        Js7ServerId.primaryController,
-                        LogLevel.info(),
-                        lastKey,
-                        JLogSelection.all().withLineLimit(2))
+                return proxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+                    .flatMap(engineLog ->
+                        engineLog.keyedLogLineFlux(
+                            lastKey,
+                            JLogSelection.all().withLineLimit(2)))
                     .flatMapIterable(identity())
                     .map(KeyedLogLine::removeHighlights) // Slow
                     .collectList()
@@ -71,12 +68,11 @@ final class JLogFileTester {
 
     // Same as test as above, but without assertions or logging
     static CompletableFuture<Long> prettyTestNonBlocking(JControllerProxy controllerProxy) {
-        return controllerProxy
-            .keyedLogLineFlux(
-                Js7ServerId.primaryController,
-                LogLevel.info(),
-                Instant.now().minusSeconds(3600),
-                JLogSelection.all()/*beware: no lineLimit here*/)
+        return controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+            .flatMap(engineLog ->
+                engineLog.keyedLogLineFlux(
+                    Instant.now().minusSeconds(3600),
+                    JLogSelection.all()/*beware: no lineLimit here*/))
             //.doOnNext(ignore ->
             //    assertIsProxyThread()) // Do not block here!
             // 8% slower: .flatMapIterable(identity())
@@ -97,12 +93,11 @@ final class JLogFileTester {
     }
 
     static CompletableFuture<Long> prettyTestBlocking(JControllerProxy controllerProxy) {
-        return controllerProxy
-            .keyedLogLineFlux(
-                Js7ServerId.primaryController,
-                LogLevel.info(),
-                Instant.now().minusSeconds(3600),
-                JLogSelection.all()/*special case for test*/)
+        return controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+            .flatMap(engineLog ->
+                engineLog.keyedLogLineFlux(
+                    Instant.now().minusSeconds(3600),
+                    JLogSelection.all()/*special case for test*/))
             // Switch to a blocking thread pool. Apparently not slower.
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
@@ -115,24 +110,21 @@ final class JLogFileTester {
 
     static CompletableFuture<String> testScrolling(List<JAdmission> admissions) {
         return runWithProxy(admissions, controllerProxy ->
-            controllerProxy
-                // Read the lines
-                .keyedLogLineFlux(
-                    Js7ServerId.primaryController,
-                    LogLevel.info(),
-                    Instant.now().minusSeconds(3600),
-                    JLogSelection.all().withLineLimit(3))
+            controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+                .flatMap(engineLog ->
+                    engineLog.keyedLogLineFlux(
+                        Instant.now().minusSeconds(3600),
+                        JLogSelection.all().withLineLimit(3)))
                 .publishOn(Schedulers.boundedElastic())
                 .flatMapIterable(identity())
                 .last()
                 .flatMap(last ->
                     // Continue reading with the last of the three read log lines
-                    controllerProxy
-                        .keyedLogLineFlux(
-                            Js7ServerId.primaryController,
-                            LogLevel.info(),
-                            last.key(),
-                            JLogSelection.all().withLineLimit(1))
+                    controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+                        .flatMap(engineLog ->
+                            engineLog.keyedLogLineFlux(
+                                last.key(),
+                                JLogSelection.all().withLineLimit(1)))
                         .flatMapIterable(identity())
                         .last()
                         .map(next -> {
@@ -144,12 +136,11 @@ final class JLogFileTester {
     }
 
     static CompletableFuture<Long> testRawBlocking(JControllerProxy controllerProxy) {
-        return controllerProxy
-            .byteLogLineFlux(
-                Js7ServerId.primaryController,
-                LogLevel.info(),
-                Instant.now().minusSeconds(3600),
-                JLogSelection.all()/*special case, otherwise set lineLimit!*/)
+        return controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+            .flatMap(engineLog ->
+                engineLog.byteLogLineFlux(
+                    Instant.now().minusSeconds(3600),
+                    JLogSelection.all()/*special case, otherwise set lineLimit!*/))
             .publishOn(Schedulers.boundedElastic()/*<--READ THE DOC !!!*/)
             .doOnNext(ignore ->
                 assertIsNotProxyThread())
@@ -163,12 +154,11 @@ final class JLogFileTester {
     }
 
     static CompletableFuture<Long> testRawNonBlocking(JControllerProxy controllerProxy) {
-        return controllerProxy
-            .byteLogLineFlux(
-                Js7ServerId.primaryController,
-                LogLevel.info(),
-                Instant.now().minusSeconds(3600),
-                JLogSelection.all()/*special case, otherwise set lineLimit!*/)
+        return controllerProxy.engineLog(Js7ServerId.primaryController, LogLevel.info())
+            .flatMap(engineLog ->
+                engineLog.byteLogLineFlux(
+                    Instant.now().minusSeconds(3600),
+                    JLogSelection.all()/*special case, otherwise set lineLimit!*/))
             //.doOnNext(ignore ->
             //    assertIsProxyThread()) // Do not block here!
             .doOnNext(lines -> {

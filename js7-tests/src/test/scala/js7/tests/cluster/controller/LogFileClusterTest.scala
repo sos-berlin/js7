@@ -66,7 +66,6 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
                 assert(line.contains(s"TEST ONLY: $bareSubagentId, "))
         .await(99.s)
 
-
   private def getLog(jControllerProxy: JControllerProxy, serverId: Js7ServerId)
   : CompletableFuture[String] =
     // Get twice to let you count logins. Should be only one login.
@@ -77,18 +76,18 @@ final class LogFileClusterTest extends OurTestSuite, ControllerClusterForScalaTe
 
   private def getLogSingle(jControllerProxy: JControllerProxy, serverId: Js7ServerId)
   : CompletableFuture[String] =
-    jControllerProxy
-      .byteLogLineFlux(
-        serverId, LogLevel.None /*test*/ , begin = Instant.now,
-        JLogSelection(LogSelection(lineLimit = Some(1))))
-      .flatMapIterable(identity)
-      .map(new String(_, UTF_8))
-      .collectList()
-      .map(_.asScala)
-      .map: lines =>
-        assert(lines.size == 1)
-        lines.head
-      .toFuture
+    jControllerProxy.engineLog(serverId, LogLevel.None /*test*/).flatMap:
+      _.byteLogLineFlux(
+          begin = Instant.now,
+          JLogSelection(LogSelection(lineLimit = Some(1))))
+        .flatMapIterable(identity)
+    .map(String(_, UTF_8))
+    .collectList()
+    .map(_.asScala)
+    .map: lines =>
+      assert(lines.size == 1)
+      lines.head
+    .toFuture
 
 
 object LogFileClusterTest:
