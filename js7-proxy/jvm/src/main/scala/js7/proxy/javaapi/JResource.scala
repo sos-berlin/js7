@@ -6,9 +6,11 @@ import izumi.reflect.Tag
 import java.util.concurrent.CompletableFuture
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.data_for_java.common.JavaUtils.-->
 import js7.proxy.javaapi.JResource.*
+import reactor.core.publisher.{Flux, Mono}
 
 final class JResource[A: Tag as aTag](asScala: ResourceIO[A])(using IORuntime):
 
@@ -27,10 +29,21 @@ final class JResource[A: Tag as aTag](asScala: ResourceIO[A])(using IORuntime):
     *
     * ⚠️ The caller must call the release function after use.
     *
-    * Prefer [[use]] which automatically releases the resource!
+    * Prefer [[use]] or [[asFlux]] which automatically release the resource!
     */
   def allocate: CompletableFuture[JAllocated[A]] =
     asScala.toAllocated.map(JAllocated(_)).unsafeToCompletableFuture()
+
+  def asFlux: Flux[A] =
+    Flux.usingWhen[A, Allocated[IO, A]](
+      Mono.fromCompletionStage:
+        asScala.toAllocated.unsafeToCompletableFuture(),
+      allocated =>
+        Mono.just(allocated.allocatedThing),
+      allocated =>
+        Mono.fromCompletionStage:
+          allocated.release
+            .unsafeToCompletableFuture())
 
 
 object JResource:

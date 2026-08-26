@@ -6,6 +6,8 @@ import java.util.concurrent.CompletableFuture
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
+import reactor.core.publisher.Flux
+import scala.jdk.CollectionConverters.*
 
 final class JResourceTest extends OurAsyncTestSuite:
 
@@ -85,3 +87,21 @@ final class JResourceTest extends OurAsyncTestSuite:
         jAllocated.release)
     yield
       assert(acquired.get && released.get)
+
+  "asFlux" in:
+    val acquired = Atomic(false)
+    val released = Atomic(false)
+    val jResource = JResource(Resource.make(
+      acquire = IO:
+        assert(!acquired.getAndSet(true))
+        "TEST")(
+      release = a => IO:
+        assert(a == "TEST" && acquired.get && !released.getAndSet(true))))
+
+    assert(!acquired.get && !released.get)
+    val result =
+      jResource.asFlux.flatMap: resource =>
+        assert(acquired.get && !released.get)
+        Flux.just(1, 2, 3)
+      .toIterable.asScala.toList
+    assert(acquired.get && released.get && result == List(1, 2, 3))
