@@ -114,8 +114,7 @@ trait LogRoute extends RouteProvider:
             .keepAlive(
               if userAgent.exists(_.value.contains("JS7")) then EngineHeartbeatPeriod
               else OtherHeartbeatPeriod,
-              LogHeartbeat)
-        )
+              LogHeartbeat))
 
   private def toStream(logLevel: LogLevel, begin: Instant | LogLineKey, logSelection: LogSelection)
   : Stream[IO, KeyedByteLogLine] =

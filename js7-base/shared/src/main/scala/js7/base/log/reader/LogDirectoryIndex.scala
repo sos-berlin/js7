@@ -31,7 +31,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 
 /** Provides a LogIndex for each pair of logFilePrefix and LogLevel (Error, Info and Debug).
   *
-  * LogDirectoryIndex is not itself an index but provides LogStreamIndexes.
+  * LogDirectoryIndex is not itself an index but provides LogIndexes.
   *
   * Directory watching is started when the first LogIndex is provided.
   */
@@ -51,7 +51,7 @@ extends Service.StoppableByRequest:
           release
 
   private def release =
-    // When startWatching has not been called yet, it will be called now with isStopping = true,
+    // When `watching` has not been called yet, it will be called now while isStopping = true,
     // and return an empty Map.
     logger.traceIO("release"):
       lazyPrefixAndLevelToIndex.flatMap:
@@ -100,7 +100,7 @@ extends Service.StoppableByRequest:
                   .map(_.toMap))(
                 release =
                   _.values.toSeq.parTraverseVoid:
-                    _.release /*LogStreamIndex*/)
+                    _.release /*LogIndex*/)
           yield
             levelToIndex
 

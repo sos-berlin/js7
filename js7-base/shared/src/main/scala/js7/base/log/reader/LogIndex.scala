@@ -47,11 +47,13 @@ import scala.jdk.CollectionConverters.*
 import scala.math.Ordered.orderingToOrdered
 import scala.util.Try
 
-/** Provides a continuous stream of log lines from a stream of log files.
+/** Provides continuous streams of log lines from a stream of log files.
   *
   * LogIndex handles growing log files and compressed (archived) log files.
   *
-  * See LogDirectoryIndex, which watches a directory and provides streams of files of
+  * Streaming may start at an Instant or a LogLineKey.
+  *
+  * See LogDirectoryIndex, which watches a directory and provides a LogIndex for
   * each pair of logFilePrefix and LogLevel.
   *
   * @param logFileEvents updates the file list, must emit events only from `directory`
@@ -68,7 +70,7 @@ final class LogIndex private(
   (using zoneId: ZoneId, conf: LogFileIndexConf)
 extends Service.StoppableByCancel:
 
-  private val instantToLogFile =
+  private val instantToLogFile: ConcurrentSkipListMap[Instant, LogFile] =
     ConcurrentSkipListMap(initialFiles.toKeyedMap(_.fileInstant).asJava)
   private val fileToInstant: ConcurrentHashMap[Path, Instant] =
     ConcurrentHashMap.from:
@@ -87,15 +89,15 @@ extends Service.StoppableByCancel:
         case event @ LogFileAdded(logFile) =>
           IO.uncancelable: _ =>
             IO.defer:
-              fileToInstant.put(logFile.filename, logFile.fileInstant)
-              val replaced = instantToLogFile.put(logFile.fileInstant, logFile)
               var logLine = event.toString
+              val replaced = instantToLogFile.put(logFile.fileInstant, logFile)
               Option(replaced).foldMap: replacedLogFile =>
-                IO.whenA(replacedLogFile.filename != logFile.filename):
-                  logLine = s"$event, replace ${replacedLogFile.filename}"
+                //?IO.whenA(replacedLogFile.filename != logFile.filename):
+                  logLine += s", replace ${replacedLogFile.filename}"
                   fileToInstant.remove(replacedLogFile.filename)
                   replacedLogFile.releaseIndex
               *> IO.defer:
+                fileToInstant.put(logFile.filename, logFile.fileInstant)
                 logLines += logLine
                 fileAddedSignal.set(logFile.fileEpochNano)
 
@@ -105,7 +107,7 @@ extends Service.StoppableByCancel:
             fileToInstant.remove(filename).foldMap: instant =>
               IO.whenA(Option(instantToLogFile.get(instant)).exists(_.filename == filename)):
                 Option(instantToLogFile.remove(instant)).foldMap: logFile =>
-                  logLine = s"$event, remove $logFile"
+                  logLine += s", remove $logFile"
                   logFile.releaseIndex
             .map: _ =>
               logLines += event.toString
@@ -189,7 +191,7 @@ extends Service.StoppableByCancel:
         .flatMap: logFileIndex =>
           logFileIndex.instantToLines(begin, forReader)
         .map: posAndLine =>
-          toKeyedByteLogLine(logFile.fileInstant, posAndLine)
+          KeyedByteLogLine(logFile.fileInstant, posAndLine)
 
   private def fileToKeyedByteLogLines(
     logFile: LogFile, position: Long, forReader: LogSelection.ForReader)
@@ -201,7 +203,7 @@ extends Service.StoppableByCancel:
       if logFile.isGzipped then
         // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
         deferredIndex.logFileIndex.positionToLines(position, forReader).map:
-          toKeyedByteLogLine(logFile.fileInstant, _)
+          KeyedByteLogLine(logFile.fileInstant, _)
       else
         locally:
           if forReader.growing then
@@ -218,7 +220,7 @@ extends Service.StoppableByCancel:
         .through:
           toPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
         .map: posAndLine =>
-          toKeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
+          KeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
 
   private def nextFilesToKeyedLines(lastFileInstant: Instant, forReader: LogSelection.ForReader)
   : Stream[IO, KeyedByteLogLine] =
@@ -254,7 +256,7 @@ extends Service.StoppableByCancel:
     .through:
       toPosAndLines(firstPosition = 0, breakLinesLongerThan = breakLinesLongerThan)
     .map: posAndLine =>
-      toKeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
+      KeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
 
   private def toDeferredIndex(logFile: LogFile): IO[DeferredIndex] =
     logFile.deferredIndexCell.evalUpdateAndGet: maybe =>
@@ -322,9 +324,6 @@ extends Service.StoppableByCancel:
       Resource.eval:
         LogFileIndex.fromFile(file).map: logFileIndex =>
           DeferredIndex(logFileIndex, file)
-
-  private def toKeyedByteLogLine(fileInstant: Instant, posAndLine: PosAndLine): KeyedByteLogLine =
-    KeyedByteLogLine(fileInstant, posAndLine)
 
   def files: Seq[Path] =
     instantToLogFile.values.asScala.toVector.map(_.originalFile)
