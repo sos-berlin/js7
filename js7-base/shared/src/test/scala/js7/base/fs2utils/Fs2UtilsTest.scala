@@ -6,17 +6,17 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, toPosAndLines, unfoldEvalWeighted}
+import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, bytesToPosAndLines, unfoldEvalWeighted}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
 final class Fs2UtilsTest extends OurAsyncTestSuite:
 
-  "toPosAndLines" in:
+  "bytesToPosAndLines" in:
     val result = Stream("ett\ntvå\ntre", "\nfyra\nfem").map: string =>
       fs2.Chunk.from(string.getBytes(UTF_8))
     .through:
-      toPosAndLines(firstPosition = 100, breakLinesLongerThan = None)
+      bytesToPosAndLines(firstPosition = 100, breakLinesLongerThan = None)
     .map: (pos, line) =>
       pos -> line.utf8String
     .toList

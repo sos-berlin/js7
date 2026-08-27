@@ -89,7 +89,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           """2026-06-25T00:00:00,111 Begin JS7 ...
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...""".stripMargin.getBytes(UTF_8)
         for
-          checked <- LogIndex.LogFile.read(file)
+          checked <- LogFile.read(file)
         yield
           assert(checked == Left(IncompleteLogFileProblem(file)))
 
@@ -100,7 +100,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          logFile <- LogIndex.LogFile.read(file).orThrow
+          logFile <- LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.111+03:00"))
 
@@ -111,7 +111,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogIndex.LogFile.read(file)
+          checked <- LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? ...")))
@@ -123,7 +123,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...
             |""".stripMargin
         for
-          checked <- LogIndex.LogFile.read(file)
+          checked <- LogFile.read(file)
         yield
           assert(checked ==
             Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,999+?? ...")))
@@ -135,7 +135,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...
             |""".stripMargin
         for
-          logFile <- LogIndex.LogFile.read(file).orThrow
+          logFile <- LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
   }

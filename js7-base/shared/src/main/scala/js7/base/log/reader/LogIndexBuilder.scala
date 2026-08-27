@@ -13,7 +13,7 @@ import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogIndex.{LogFile, isGzipped}
+import js7.base.log.reader.LogIndex.isGzipped
 import js7.base.log.reader.LogIndexBuilder.*
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.utils.CatsUtils.syntax.*

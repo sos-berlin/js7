@@ -58,7 +58,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(begin, LogSelection())
+            logFileIndex.streamByteLines(begin, LogSelection())
               .map(_.utf8String)
               .head.compile.last
 
@@ -89,7 +89,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           "2026-02-12 14:00:02.000+02 info [thread] class - ORANGE\n")
         file := lines.mkString
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
-          logFileIndex.streamLines(
+          logFileIndex.streamByteLines(
               Instant.parse("2026-02-12T14:00:00+02:00"),
               LogSelection(pattern = Some(Pattern.compile("20.* - ORANGE$"))))
             .map(_.utf8String)
@@ -107,7 +107,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
         LogFileIndex.buildGrowing(file, poll = 100.ms).use: logFileIndex =>
           def readOne(begin: Instant): IO[Option[String]] =
-            logFileIndex.streamLines(begin, LogSelection())
+            logFileIndex.streamByteLines(begin, LogSelection())
               .map(_.utf8String)
               .head.compile.last
 
@@ -133,7 +133,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
     LogFileIndex.fromFile(logFile).flatMap: logFileIndex =>
       IO.defer:
-        logFileIndex.streamLines(begin = begin.toInstant, LogSelection())
+        logFileIndex.streamByteLines(begin = begin.toInstant, LogSelection())
           .through:
             byteChunksToLines(breakLinesLongerThan = None)
           .filter: byteLine =>

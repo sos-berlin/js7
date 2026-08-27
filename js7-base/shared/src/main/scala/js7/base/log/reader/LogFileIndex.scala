@@ -8,7 +8,7 @@ import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.Fs2Utils.toPosAndLines
+import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
 import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
@@ -70,7 +70,7 @@ final class LogFileIndex private(
       .map(_.map(_._1))
 
   @TestOnly
-  def streamLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
+  def streamByteLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
     instantToLines(begin, logSelection.forReader)
       .through:
         logSelection.pipe
@@ -108,7 +108,7 @@ final class LogFileIndex private(
       var droppedLines, droppedBytes = 0L
       toPositionedStream(opaquePos, forReader)
         .through:
-          toPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
+          bytesToPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = shouldBeDropped(pos, byteLine)
           if drop then
@@ -138,7 +138,7 @@ object LogFileIndex:
     * Due to three `prefetch` operations, four times as much memory is used.
     */
   private val BuildBufferSize = 1024 * 1024
-  /** One index entry per 32KiB-block or a half MiB per GiB log file. */
+  /** One index entry (24 bytes) per 32KiB-block or a 1,4MiB per GiB log file. */
   val LogBytesPerEntry: Int = 32 * 1024
   private val NoEntryWarnThreshold = 128 * 1024
   private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
@@ -288,7 +288,7 @@ object LogFileIndex:
 
 
     private final class WriteOpsBuffer(logWriter: LogWriter):
-      val writeOps = mutable.ArrayBuffer[Chunk[Byte] | EpochNano]()
+      private val writeOps = mutable.ArrayBuffer[Chunk[Byte] | EpochNano]()
 
       def +=(epochNano: EpochNano): Unit =
         writeOps += epochNano

@@ -19,7 +19,7 @@ object Fs2Utils:
   type StreamPure[A] = Stream[fs2.Pure, A]
 
   /** Convert to pairs of byte position and ByteSeq. */
-  def toPosAndLines[F[_], ByteSeq: ByteSequence](
+  def bytesToPosAndLines[F[_], ByteSeq: ByteSequence](
     firstPosition: Long,
     breakLinesLongerThan: Option[Int])
   : fs2.Pipe[F, ByteSeq, (Long, ByteSeq)] =

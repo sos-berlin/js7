@@ -7,7 +7,6 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.reader.LogIndex.LogFile
 import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*

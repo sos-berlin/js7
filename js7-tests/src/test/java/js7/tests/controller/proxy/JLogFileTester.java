@@ -14,14 +14,12 @@ import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.log.JLogSelection;
-import org.slf4j.Logger;
 import reactor.core.scheduler.Schedulers;
 import static java.lang.Thread.currentThread;
 import static java.util.function.Function.identity;
 import static js7.proxy.javaapi.JProxyContext.assertIsNotProxyThread;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.startsWith;
-import static org.slf4j.LoggerFactory.getLogger;
 
 final class JLogFileTester {
 
