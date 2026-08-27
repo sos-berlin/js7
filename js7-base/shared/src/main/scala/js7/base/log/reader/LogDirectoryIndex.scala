@@ -53,9 +53,8 @@ extends Service.StoppableByRequest:
   private def release =
     // When `watching` has not been called yet, it will be called now while isStopping = true,
     // and return an empty Map.
-    logger.traceIO("release"):
-      lazyPrefixAndLevelToIndex.flatMap:
-        _.release /*stop watching*/
+    lazyPrefixAndLevelToIndex.flatMap:
+      _.release /*stop watching*/
 
   def logIndex(logFilePrefix: String, logLevel: LogLevel): IO[LogIndex] =
     lazyPrefixAndLevelToIndex.flatMap: levelToIndex =>
