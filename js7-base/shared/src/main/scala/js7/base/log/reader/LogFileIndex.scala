@@ -6,26 +6,19 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import js7.base.catsutils.Environment.environment
 import js7.base.config.Js7Conf
-import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
-import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
-import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndex.*
-import js7.base.log.reader.LogFileReader.streamGrowingLogFile
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertIfStrict
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
-import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.math.Ordered.orderingToOrdered
 
@@ -46,7 +39,7 @@ import scala.math.Ordered.orderingToOrdered
   *
   * @param nanoToPos may grow concurrently
   */
-final class LogFileIndex private(
+final class LogFileIndex private[reader](
   toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos,
   breakLinesLongerThan: Option[Int])
@@ -137,9 +130,9 @@ object LogFileIndex:
     *
     * Due to three `prefetch` operations, four times as much memory is used.
     */
-  private val BuildBufferSize = 1024 * 1024
+  private[reader] val BuildBufferSize = 1024 * 1024
   /** One index entry (24 bytes) per 32KiB-block or a 1,4MiB per GiB log file. */
-  val LogBytesPerEntry: Int = 32 * 1024
+  private[reader] val LogBytesPerEntry: Int = 32 * 1024
   private val NoEntryWarnThreshold = 128 * 1024
   private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
   private val PollDuration = 100.ms
@@ -157,8 +150,10 @@ object LogFileIndex:
   : ResourceIO[LogFileIndex] =
     Resource.suspend:
       environment[Js7Conf].map: js7Conf =>
-        Builder(resolveLabel(logFile, label), breakLinesLongerThan = js7Conf.logFileIndexLineLength)
-          .buildGrowing(logFile, poll)
+        LogFileIndexBuilder(
+          resolveLabel(logFile, label),
+          breakLinesLongerThan = js7Conf.logFileIndexLineLength
+        ).buildGrowing(logFile, poll)
 
   /** Builds a snapshot [[LogFileIndex]] from a log file. */
   def fromFile(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
@@ -177,149 +172,13 @@ object LogFileIndex:
     (using ZoneId)
   : IO[LogFileIndex] =
     environment[Js7Conf].flatMap: js7Conf =>
-      Builder(label, breakLinesLongerThan = js7Conf.logFileIndexLineLength)
+      LogFileIndexBuilder(label, breakLinesLongerThan = js7Conf.logFileIndexLineLength)
         .fromStream(toBuilderStream, toPositionedStream, logWriter)
 
   private def resolveLabel(logFile: Path, label: String | Missing): String =
     label getOrElse logFile.getFileName.toString
 
-
-  private final class Builder(label: String, breakLinesLongerThan: Int)(using ZoneId):
-    private val nanoToPos = new EpochNanoToPos
-
-    def buildGrowing(logFile: Path, poll: FiniteDuration): ResourceIO[LogFileIndex] =
-      logger.traceResource("buildGrowing", logFile):
-        ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
-          Resource.make(
-            acquire =
-              meterIndexing:
-                buildIndex(startPosition = 0):
-                  reader.streamUntilEnd
-              .flatMap: _ =>
-                buildIndex(reader.position):
-                  streamGrowingLogFile(reader, logFile, byteChunkSize = BuildBufferSize, poll)
-                .start
-                .map: fiber =>
-                  fiber -> nanoToPos)(
-            release = (fiber, _) => fiber.cancel)
-        .map: (_, nanoToPos) =>
-          new LogFileIndex(
-            toPositionedStream = (opaquePos, forReader) =>
-              positionedStream(
-                logFile, opaquePos, forReader.byteChunkSize, forReader.growing ? poll),
-            nanoToPos,
-            breakLinesLongerThan = Some(breakLinesLongerThan))
-
-    def fromStream(
-      toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
-      toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
-      logWriter: ResourceIO[LogWriter])
-    : IO[LogFileIndex] =
-      meterIndexing:
-        buildIndex(startPosition = 0, toBuilderStream(BuildBufferSize), logWriter)
-      .map: _ =>
-        if nanoToPos.isEmpty then
-          logger.debug(s"❓ No timestamped line in $label")
-        nanoToPos.shrink()
-        new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan))
-
-    /** Build the index in `nanoToPos`.
-      *
-      * @return read byte count */
-    private def buildIndex(startPosition: Long)(stream: Stream[IO, Chunk[Byte]])
-    : IO[Unit] =
-      buildIndex(startPosition, stream, LogWriter.Void.resource(startPosition))
-
-    /** Build the index in `nanoToPos`.
-      *
-      * @return read byte count */
-    private def buildIndex(
-      startPosition: Long,
-      stream: Stream[IO, Chunk[Byte]],
-      logWriter: ResourceIO[LogWriter])
-    : IO[Unit] =
-      case class PosAndNext(pos: Long, nextBlock: Long)
-      environment[Js7Conf].flatMap: js7Conf =>
-        logWriter.use: logWriter =>
-          val timestampParser = FastTimestampParser()
-          var lastEpochNano = nanoToPos.lastEpochNano
-          var reverseTimeWarned = false
-          stream.prefetch
-            .through:
-              byteChunksToLines(breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength))
-            .prefetch
-            .scanChunks(PosAndNext(startPosition, startPosition)): (posAndNext, lines) =>
-              // Compute one NanoAndPos pair for each first position in a block of LogBytesPerEntry
-              // bytes. For each computed NanoAndPos, nextBlock is incremented by LogBytesPerEntry.
-              var pos = posAndNext.pos
-              var nextBlock = posAndNext.nextBlock
-              val writeOps = WriteOpsBuffer(logWriter)
-              lines.iterator.foreach: byteLine =>
-                val lineLen = byteLine.size
-                nanoToPos.byteCount += lineLen
-                if pos >= nextBlock then
-                  val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
-                  if !epochNano.isNix then
-                    if epochNano < lastEpochNano && !reverseTimeWarned then
-                      reverseTimeWarned = true
-                      logger.warn(s"$label contains a timestamp in reverse order: ${
-                        lastEpochNano.show} followed by ${epochNano.show}")
-                    if epochNano > lastEpochNano then
-                      lastEpochNano = epochNano
-                      writeOps += epochNano
-                    nextBlock = (nextBlock + LogBytesPerEntry max pos + lineLen)
-                      / LogBytesPerEntry * LogBytesPerEntry
-                end if
-                pos += lineLen
-                writeOps += byteLine
-              PosAndNext(pos, nextBlock) -> Chunk.singleton(writeOps)
-            .cedePeriodically
-            .prefetch
-            .evalMapChunk:
-              _.flush
-            .compile.drain
-
-    private def meterIndexing(body: IO[Unit]): IO[Unit] =
-      IO.defer:
-        val t = Deadline.now
-        body.map: _ =>
-          val elapsed = t.elapsed
-          logger.debug(s"$label: ${bytesPerSecondString(elapsed, nanoToPos.byteCount)} indexed")
-
-
-    private final class WriteOpsBuffer(logWriter: LogWriter):
-      private val writeOps = mutable.ArrayBuffer[Chunk[Byte] | EpochNano]()
-
-      def +=(epochNano: EpochNano): Unit =
-        writeOps += epochNano
-
-      def +=(chunk: Chunk[Byte]): Unit =
-        val length = writeOps.length
-        if length == 0 then
-          writeOps += chunk
-        else
-          writeOps(length - 1) match
-            case last: Chunk[Byte @unchecked] =>
-              // Combine chunks for faster writing, especially when compressing with gzip
-              writeOps(length - 1) = last ++ chunk
-            case _ =>
-              writeOps += chunk
-
-      def flush: IO[Unit] =
-        IO.blocking:
-          writeOps.foreach:
-            case chunk: Chunk[Byte @unchecked] =>
-              logWriter.write(chunk)
-            case epochNano: EpochNano @unchecked =>
-              val pos = logWriter.position
-              val opaquePos = logWriter.markOpaquePos()
-              nanoToPos.add(epochNano, opaquePos, pos)
-
-    end WriteOpsBuffer
-  end Builder
-
-
-  private def positionedStream(
+  private[reader] def positionedStream(
     file: Path,
     position: OpaquePos,
     bufferSize: Int,
