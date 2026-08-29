@@ -43,3 +43,18 @@ final class EpochNanoToPosTest extends OurTestSuite:
     nanoToPos.shrink()
     assert(nanoToPos.length == 3)
     assert(nanoToPos.internalSize == 1 + 3)
+
+  "EpochNanoToPos uses less memory for uncompressed log" in:
+    val nanoToPos = new EpochNanoToPos(initialSize = 1)
+    assert(nanoToPos.internalSize == 1)
+    nanoToPos.add(EpochNano(1), OpaquePos(1000), 1000)
+    nanoToPos.add(EpochNano(2), OpaquePos(2000), 2000)
+    nanoToPos.add(EpochNano(3), OpaquePos(3000), 3000)
+    assert(nanoToPos.internalSize == 16)
+    assert(nanoToPos.isUsingNoMemoryForOpaquePos)
+    assert(nanoToPos.posToChunkPosAndOpaquePos(1000) == 1000 -> OpaquePos(1000))
+
+    nanoToPos.add(EpochNano(4), OpaquePos(4000), 4444)
+    assert(!nanoToPos.isUsingNoMemoryForOpaquePos)
+    assert(nanoToPos.posToChunkPosAndOpaquePos(4444) == 4444 -> OpaquePos(4000))
+    assert(nanoToPos.posToChunkPosAndOpaquePos(9999) == 4444 -> OpaquePos(4000))

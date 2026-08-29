@@ -24,8 +24,10 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   private var _length = 1
   private var _byteCount = 0L
   private var epochNanos: Array[Long] = Array.fill(initialSize)(0L)
-  private var opaquePositions: Array[Long] = Array.fill(initialSize)(0L)
   private var bytePositions: Array[Long] = Array.fill(initialSize)(0L)
+  // Will be allocated only if contents differs from bytePositions (opaquePos != position)
+  // That means less memorry for uncompressed logs
+  private var _opaquePositions: Array[Long] | Null = null
 
   epochNanos(0) = Long.MinValue
 
@@ -71,7 +73,10 @@ private final class EpochNanoToPos(initialSize: Int = 32):
     if i < 0 then i = -i - 2 // not exact? then return next position
     bytePositions(i) -> OpaquePos(opaquePositions(i))
 
-  /** `epochNano` must be greater than the last added [[EpochNano]].*/
+  /** @param epochNano Timestamp of the line, must be greater than the last added epochNano
+    * @param opaquePos Position in the (maybe compressed) file
+    * @param position position in the uncompressed byte stream
+    */
   def add(epochNano: EpochNano, opaquePos: OpaquePos, position: Long): Unit =
     // Update in a way that toOpaquePos works without synchronization
     synchronized:
@@ -80,12 +85,25 @@ private final class EpochNanoToPos(initialSize: Int = 32):
           epochNano.show}) <= ${lastEpochNano.show}"
         logger.warn(msg)
         if isStrict then throw IllegalArgumentException(msg)
+
       if _length == epochNanos.length then
         resize(2 * _length max 16)
+
+      _opaquePositions match
+        case null => if opaquePos.toLong != position then
+          val a = bytePositions.clone()
+          a(_length) = opaquePos.toLong
+          _opaquePositions = a
+        case a => a(_length) = opaquePos.toLong
+
       bytePositions(_length) = position
-      opaquePositions(_length) = opaquePos.toLong
       epochNanos(_length) = epochNano.toLong
       _length += 1 // Last operation to allow concurrent access
+
+  private def opaquePositions(i: Int): Long =
+    _opaquePositions match
+      case null => bytePositions(i)
+      case a => a(i)
 
   def shrink(): Unit =
     synchronized:
@@ -94,13 +112,19 @@ private final class EpochNanoToPos(initialSize: Int = 32):
 
   private def resize(newSize: Int): Unit =
     bytePositions = resizeArray(bytePositions, newSize)
-    opaquePositions = resizeArray(opaquePositions, newSize)
+    _opaquePositions match
+      case a: Array[Long] => _opaquePositions = resizeArray(a, newSize)
+      case null =>
     epochNanos = resizeArray(epochNanos, newSize)
 
   private def resizeArray(array: Array[Long], newSize: Int): Array[Long] =
     val a = new Array[Long](newSize)
     System.arraycopy(array, 0, a, 0, _length)
     a
+
+  @TestOnly
+  private[reader] inline def isUsingNoMemoryForOpaquePos =
+    _opaquePositions eq null
 
   override def toString = s"EpochNanoToPos($length entries})"
 
