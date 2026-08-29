@@ -50,27 +50,16 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   def lastEpochNano: EpochNano =
     EpochNano(epochNanos(_length - 1))
 
-  /** The last entry, or (`EpochNano.MinValue, 0)` if empty.*/
-  def lastEntry: (EpochNano, Long) =
-    val i = _length - 1
-    EpochNano(epochNanos(i)) -> opaquePositions(i)
+  ///** The last entry, or (`EpochNano.MinValue, 0)` if empty.*/
+  //def lastEntry: (EpochNano, Long) =
+  //  val i = _length - 1
+  //  EpochNano(epochNanos(i)) -> opaquePositions(i)
 
   def posToChunkPosAndOpaquePos(position: Long): (Long, OpaquePos) =
-    epochNanoToChunkPosAndOpaquePos(posToEpochNano(position))
-
-  private def posToEpochNano(position: Long): EpochNano =
     // No synchronization needed
-    val i = binarySearch(bytePositions, 0, _length, position)
-    if i < 0 then
-      EpochNano(epochNanos(-i - 2))
-    else
-      EpochNano(epochNanos(i))
-
-  /** Return the position corresponding to the greatest [[EpochNano]]
-    * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
-    */
-  def toOpaquePos(epochNano: EpochNano): OpaquePos =
-    epochNanoToChunkPosAndOpaquePos(epochNano)._2
+    var i = binarySearch(bytePositions, 0, _length, position)
+    if i < 0 then i = -i - 2 // not exact? then return next position
+    bytePositions(i) -> OpaquePos(opaquePositions(i))
 
   /** Return the position corresponding to the greatest [[EpochNano]]
     * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
@@ -99,10 +88,9 @@ private final class EpochNanoToPos(initialSize: Int = 32):
       _length += 1 // Last operation to allow concurrent access
 
   def shrink(): Unit =
-    if _length < epochNanos.length then
-      synchronized:
-        if _length < epochNanos.length then
-          resize(_length)
+    synchronized:
+      if _length < epochNanos.length then
+        resize(_length)
 
   private def resize(newSize: Int): Unit =
     bytePositions = resizeArray(bytePositions, newSize)
@@ -119,4 +107,4 @@ private final class EpochNanoToPos(initialSize: Int = 32):
 
 object EpochNanoToPos:
   private val logger = Logger[this.type]
-  val EntrySize: Int = 3 * 8 // Three Array[Long]
+  val EntrySize: Int = 3 * 8 // EpochNanoToPos has three Array[Long]

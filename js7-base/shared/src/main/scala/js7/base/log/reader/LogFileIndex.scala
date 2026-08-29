@@ -45,9 +45,6 @@ final class LogFileIndex private[reader](
   breakLinesLongerThan: Option[Int])
   (using val zoneId: ZoneId):
 
-  def indexSize: Int =
-    nanoToPos.length
-
   def lastEpochNano: EpochNano =
     nanoToPos.lastEpochNano
 
