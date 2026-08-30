@@ -5,8 +5,7 @@ import java.nio.file.Path
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.CompletableFuture
 import java.util.{Optional, List as JList}
-import js7.base.log.reader.recompressors.LogFileIndexConf
-import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogIndex, LogLineKey}
+import js7.base.log.reader.{KeyedByteLogLine, KeyedLogLine, LogIndex, LogIndexConf, LogLineKey}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data_for_java.reactor.ReactorConverters.asFluxChunks
 import js7.proxy.javaapi.{JProxyContext, JResource}
@@ -86,7 +85,7 @@ object JLocalLogIndex:
     given ZoneId = zoneId
     JResource:
       for
-        given LogFileIndexConf = LogFileIndexConf.fromConfig(ctx.config).orThrow
+        given LogIndexConf = LogIndexConf.fromConfig(ctx.config).orThrow
         logIndex <- LogIndex.files(files.asScala, label = label)
       yield
         JLocalLogIndex(logIndex)

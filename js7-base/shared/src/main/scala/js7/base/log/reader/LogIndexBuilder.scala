@@ -15,7 +15,6 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogIndex.isGzipped
 import js7.base.log.reader.LogIndexBuilder.*
-import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.Delayer
@@ -27,7 +26,7 @@ private final class LogIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
   supervisor: Supervisor[IO],
   gzLogFileReady: SignallingRef[IO, CatsDeadline])
-  (using zoneId: ZoneId, conf: LogFileIndexConf):
+  (using zoneId: ZoneId, conf: LogIndexConf):
 
   private def toLogFileEvents(directory: Path, initialFiles: Seq[Path])
   : IO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
@@ -195,7 +194,7 @@ private object LogIndexBuilder:
   /** Return the initial LogFiles and a FS2 Pipe converting a stream of DirectoryEvent
     * to a stream of LogFile (containing their timestamps). */
   def toLogFileEvents(directory: Path, initialFiles: Seq[Path])
-    (using zoneId: ZoneId, conf: LogFileIndexConf)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
     for
       supervisor <- Supervisor[IO]
@@ -212,7 +211,7 @@ private object LogIndexBuilder:
       result
 
   @TestOnly
-  private[reader] def forTest(directory: Path)(using zoneId: ZoneId, conf: LogFileIndexConf)
+  private[reader] def forTest(directory: Path)(using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogIndexBuilder] =
     for
       supervisor <- Supervisor[IO]

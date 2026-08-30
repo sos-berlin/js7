@@ -4,8 +4,6 @@ import cats.effect.{IO, Resource, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.ZoneId
-import js7.base.catsutils.Environment.environment
-import js7.base.config.Js7Conf
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.cedePeriodically
@@ -24,7 +22,8 @@ import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.math.Ordered.orderingToOrdered
 
-private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int)(using ZoneId):
+private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int)
+  (using ZoneId, LogIndexConf):
   private val nanoToPos = new EpochNanoToPos
 
   def buildGrowing(logFile: Path, poll: FiniteDuration): ResourceIO[LogFileIndex] =
@@ -55,6 +54,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
     toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
     toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
     logWriter: ResourceIO[LogWriter])
+    (using LogIndexConf)
   : IO[LogFileIndex] =
     meterIndexing:
       buildIndex(startPosition = 0, toBuilderStream(BuildBufferSize), logWriter)
@@ -68,6 +68,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
     *
     * @return read byte count */
   private def buildIndex(startPosition: Long)(stream: Stream[IO, Chunk[Byte]])
+    (using LogIndexConf)
   : IO[Unit] =
     buildIndex(startPosition, stream, LogWriter.Void.resource(startPosition))
 
@@ -78,48 +79,48 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
     startPosition: Long,
     stream: Stream[IO, Chunk[Byte]],
     logWriter: ResourceIO[LogWriter])
+    (using conf: LogIndexConf)
   : IO[Unit] =
     case class PosAndNext(pos: Long, nextBlock: Long)
-    environment[Js7Conf].flatMap: js7Conf =>
-      logWriter.use: logWriter =>
-        val timestampParser = FastTimestampParser()
-        var lastEpochNano = nanoToPos.lastEpochNano
-        var reverseTimeWarned = false
-        stream.prefetch
-          .through:
-            byteChunksToLines(breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength))
-          .prefetch
-          .scanChunks(PosAndNext(startPosition, startPosition)): (posAndNext, lines) =>
-            // Compute one NanoAndPos pair for each first position in a block of LogBytesPerEntry
-            // bytes. For each computed NanoAndPos, nextBlock is incremented by LogBytesPerEntry.
-            var pos = posAndNext.pos
-            var nextBlock = posAndNext.nextBlock
-            val writeOps = WriteOpsBuffer(logWriter)
-            lines.iterator.foreach: byteLine =>
-              val lineLen = byteLine.size
-              nanoToPos.byteCount += lineLen
-              if pos >= nextBlock then
-                val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
-                if !epochNano.isNix then
-                  if epochNano < lastEpochNano && !reverseTimeWarned then
-                    reverseTimeWarned = true
-                    logger.warn(s"$label contains a timestamp in reverse order: ${
-                      lastEpochNano.show
-                    } followed by ${epochNano.show}")
-                  if epochNano > lastEpochNano then
-                    lastEpochNano = epochNano
-                    writeOps += epochNano
-                  nextBlock = (nextBlock + LogBytesPerEntry max pos + lineLen)
-                    / LogBytesPerEntry * LogBytesPerEntry
-              end if
-              pos += lineLen
-              writeOps += byteLine
-            PosAndNext(pos, nextBlock) -> Chunk.singleton(writeOps)
-          .cedePeriodically
-          .prefetch
-          .evalMapChunk:
-            _.flush
-          .compile.drain
+    logWriter.use: logWriter =>
+      val timestampParser = FastTimestampParser()
+      var lastEpochNano = nanoToPos.lastEpochNano
+      var reverseTimeWarned = false
+      stream.prefetch
+        .through:
+          byteChunksToLines(breakLinesLongerThan = Some(conf.logFileIndexLineLength))
+        .prefetch
+        .scanChunks(PosAndNext(startPosition, startPosition)): (posAndNext, lines) =>
+          // Compute one NanoAndPos pair for each first position in a block of LogBytesPerEntry
+          // bytes. For each computed NanoAndPos, nextBlock is incremented by LogBytesPerEntry.
+          var pos = posAndNext.pos
+          var nextBlock = posAndNext.nextBlock
+          val writeOps = WriteOpsBuffer(logWriter)
+          lines.iterator.foreach: byteLine =>
+            val lineLen = byteLine.size
+            nanoToPos.byteCount += lineLen
+            if pos >= nextBlock then
+              val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
+              if !epochNano.isNix then
+                if epochNano < lastEpochNano && !reverseTimeWarned then
+                  reverseTimeWarned = true
+                  logger.warn(s"$label contains a timestamp in reverse order: ${
+                    lastEpochNano.show
+                  } followed by ${epochNano.show}")
+                if epochNano > lastEpochNano then
+                  lastEpochNano = epochNano
+                  writeOps += epochNano
+                nextBlock = (nextBlock + LogBytesPerEntry max pos + lineLen)
+                  / LogBytesPerEntry * LogBytesPerEntry
+            end if
+            pos += lineLen
+            writeOps += byteLine
+          PosAndNext(pos, nextBlock) -> Chunk.singleton(writeOps)
+        .cedePeriodically
+        .prefetch
+        .evalMapChunk:
+          _.flush
+        .compile.drain
 
   private def meterIndexing(body: IO[Unit]): IO[Unit] =
     IO.defer:

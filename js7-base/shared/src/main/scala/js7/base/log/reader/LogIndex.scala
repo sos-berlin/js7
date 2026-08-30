@@ -10,18 +10,16 @@ import java.nio.file.{Path, Paths}
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
 import js7.base.catsutils.CatsEffectExtensions.orThrow
-import js7.base.catsutils.Environment.environment
-import js7.base.config.Js7Conf
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.file.watch.DirectoryEvent
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogIndex.*
 import js7.base.log.reader.LogIndexBuilder.{LogFileAdded, LogFileDeleted, LogFileEvent, LogFileIndexDeleted}
 import js7.base.log.reader.LogLineKey
-import js7.base.log.reader.recompressors.{LogFileIndexConf, Recompressor}
+import js7.base.log.reader.recompressors.Recompressor
+import js7.base.log.{Logger, reader}
 import js7.base.service.Service
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
@@ -55,7 +53,7 @@ final class LogIndex private(
   (using
     zoneId: ZoneId,
     recompressor: Recompressor,
-    conf: LogFileIndexConf)
+    conf: LogIndexConf)
 extends Service.StoppableByCancel:
 
   private val instantToLogFile: ConcurrentSkipListMap[Instant, LogFile] =
@@ -261,7 +259,7 @@ object LogIndex:
     directoryEvents: Stream[IO, DirectoryEvent],
     watchGrowth: Boolean,
     label: String)
-    (using zoneId: ZoneId, conf: LogFileIndexConf)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogIndex] =
     logger.debugResource("LogIndex", s"$directory $label"):
       given Recompressor = conf.recompressor
@@ -279,7 +277,7 @@ object LogIndex:
         logFileIndex
 
   def files(files: Iterable[Path], watchGrowth: Boolean = false, label: String)
-    (using zoneId: ZoneId, conf: LogFileIndexConf)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogIndex] =
     given Recompressor = conf.recompressor
     for
@@ -299,14 +297,13 @@ object LogIndex:
     logFileEvents: Stream[IO, LogFileEvent],
     label: String,
     watchGrowth: Boolean)
-    (using ZoneId, Recompressor, LogFileIndexConf)
+    (using ZoneId, Recompressor, LogIndexConf)
   : ResourceIO[LogIndex] =
     logger.traceResource("resource", label):
       for
         given Supervisor[IO] <- Supervisor[IO]
         logFileIndex <- Resource.suspend:
           for
-            js7Conf <- environment[Js7Conf]
             signal <- SignallingRef[IO, EpochNano]:
               initialLogFiles.map(_.fileEpochNano).maxOption getOrElse EpochNano.MinValue
           yield
@@ -314,7 +311,7 @@ object LogIndex:
               LogIndex(
                 initialLogFiles,
                 logFileEvents,
-                breakLinesLongerThan = Some(js7Conf.logFileIndexLineLength),
+                breakLinesLongerThan = Some(summon[LogIndexConf].logFileIndexLineLength),
                 watchGrowth = watchGrowth,
                 label = label,
                 signal)

@@ -37,9 +37,11 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
   override protected def testTimeout: FiniteDuration = 1.h
 
-  override def resourceForIORuntime =
-    super.resourceForIORuntime.flatMap: _ =>
-      Js7Conf.registerInEnvironment(Js7Config.defaultConfig)
+  given LogIndexConf = LogIndexConf.fromConfig:
+    config"""
+      js7.log.index.max-bytes-per-line = ${LogFileIndex.LogBytesPerEntry}  # Don't split long lines
+      """.withFallback(Js7Config.defaultConfig)
+  .orThrow
 
   "Test" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")

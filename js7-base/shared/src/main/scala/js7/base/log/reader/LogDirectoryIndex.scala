@@ -14,14 +14,12 @@ import js7.base.bean.MBeanUtils.registerStaticMBean
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.config.Js7Config
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryState, DirectoryWatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogDirectoryIndex.*
 import js7.base.log.reader.LogIndex.LogDirectoryIndexMXBean
 import js7.base.log.reader.LogUtils.{deleteTmpFiles, isOurLogFilename}
-import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.log.{LogLevel, Logger}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
@@ -36,7 +34,7 @@ import js7.base.utils.ScalaUtils.syntax.*
   * Directory watching is started when the first LogIndex is provided.
   */
 final class LogDirectoryIndex private(directory: Path, logFilePrefixes: Set[String])
-  (using zoneId: ZoneId, conf: LogFileIndexConf)
+  (using zoneId: ZoneId, conf: LogIndexConf)
 extends Service.StoppableByRequest:
 
   private val lazyPrefixAndLevelToIndex
@@ -161,8 +159,8 @@ object LogDirectoryIndex:
 
   def resource(directory: Path, logFilePrefixes: Set[String])(using zoneId: ZoneId, config: Config)
   : ResourceIO[LogDirectoryIndex] =
-    given LogFileIndexConf =
-      LogFileIndexConf.fromConfig(config.withFallback(Js7Config.defaultConfig)).orThrow
+    given LogIndexConf =
+      LogIndexConf.fromConfig(config).orThrow
     for
       _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogIndex.Bean)
       service <-
@@ -172,7 +170,7 @@ object LogDirectoryIndex:
       service
 
   private def watchDirectory(directory: Path, isRelevantFile: Path => Boolean)
-    (using conf: LogFileIndexConf)
+    (using conf: LogIndexConf)
   : IO[(Vector[Path], Stream[IO, DirectoryEvent])] =
     directory.directoryStream[IO]
       .filter:

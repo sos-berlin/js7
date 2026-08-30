@@ -7,7 +7,6 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -18,8 +17,8 @@ final class LogIndexBuilderTest extends OurAsyncTestSuite:
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
   "DelayedLogFile" - {
-    given LogFileIndexConf =
-      LogFileIndexConf.fromConfig:
+    given LogIndexConf =
+      LogIndexConf.fromConfig:
         config"""js7.log.read-timestamp-tries = [10ms, 30ms, 60ms]"""
           .withFallback(Js7Config.defaultConfig)
       .orThrow

@@ -4,8 +4,6 @@ import cats.effect.{IO, Resource, ResourceIO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import java.time.{Instant, ZoneId}
-import js7.base.catsutils.Environment.environment
-import js7.base.config.Js7Conf
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
 import js7.base.io.OpaquePos
@@ -143,17 +141,16 @@ object LogFileIndex:
     logFile: Path,
     label: String | Missing = Missing,
     poll: FiniteDuration = PollDuration)
-    (using ZoneId)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogFileIndex] =
-    Resource.suspend:
-      environment[Js7Conf].map: js7Conf =>
-        LogFileIndexBuilder(
-          resolveLabel(logFile, label),
-          breakLinesLongerThan = js7Conf.logFileIndexLineLength
-        ).buildGrowing(logFile, poll)
+    LogFileIndexBuilder(
+      resolveLabel(logFile, label),
+      breakLinesLongerThan = conf.logFileIndexLineLength
+    ).buildGrowing(logFile, poll)
 
   /** Builds a snapshot [[LogFileIndex]] from a log file. */
-  def fromFile(logFile: Path, label: String | Missing = Missing)(using ZoneId): IO[LogFileIndex] =
+  def fromFile(logFile: Path, label: String | Missing = Missing)(using ZoneId, LogIndexConf)
+  : IO[LogFileIndex] =
     fromStream(
       resolveLabel(logFile, label),
       toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
@@ -166,11 +163,10 @@ object LogFileIndex:
     toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
     toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
     logWriter: ResourceIO[LogWriter] = Resource.eval(IO(LogWriter.Void())))
-    (using ZoneId)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : IO[LogFileIndex] =
-    environment[Js7Conf].flatMap: js7Conf =>
-      LogFileIndexBuilder(label, breakLinesLongerThan = js7Conf.logFileIndexLineLength)
-        .fromStream(toBuilderStream, toPositionedStream, logWriter)
+    LogFileIndexBuilder(label, breakLinesLongerThan = conf.logFileIndexLineLength)
+      .fromStream(toBuilderStream, toPositionedStream, logWriter)
 
   private def resolveLabel(logFile: Path, label: String | Missing): String =
     label getOrElse logFile.getFileName.toString

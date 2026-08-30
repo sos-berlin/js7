@@ -6,7 +6,7 @@ import java.time.{Instant, ZoneId}
 import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import js7.base.log.AnsiEscapeCodes.removeHighlights
-import js7.base.log.reader.LogFileIndex
+import js7.base.log.reader.{LogFileIndex, LogIndexConf}
 import js7.data_for_java.reactor.ReactorConverters.asFlux
 import js7.proxy.javaapi.JProxyContext
 import reactor.core.publisher.Flux
@@ -37,6 +37,7 @@ object JLogFileIndex:
 
   def build(file: Path, label: String, zoneId: ZoneId, context: JProxyContext)
   : CompletableFuture[JLogFileIndex] =
+    given LogIndexConf = LogIndexConf.default
     import context.ioRuntime
     LogFileIndex.fromFile(file, label)(using zoneId)
       .map(JLogFileIndex(_))

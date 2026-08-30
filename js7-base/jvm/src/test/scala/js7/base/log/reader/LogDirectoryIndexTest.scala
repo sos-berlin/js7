@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util.zip.GZIPOutputStream
 import js7.base.catsutils.CatsEffectExtensions.orThrow
-import js7.base.config.{Js7Conf, Js7Config}
+import js7.base.config.Js7Config
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils
@@ -20,7 +20,6 @@ import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.LogLevel.{Debug, Error, Info}
 import js7.base.log.Logger
 import js7.base.log.reader.LogDirectoryIndexTest.*
-import js7.base.log.reader.recompressors.LogFileIndexConf
 import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.JavaTime.extensions.+
@@ -28,7 +27,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.AutoClosing.syntax.use
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
@@ -37,11 +36,8 @@ import scala.concurrent.duration.Deadline
 // For more tests, see JLogDirectoryIndexTester, LogFileTest and LogFileClusterTest.
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
-  override def resourceForIORuntime =
-    super.resourceForIORuntime.flatMap: _ =>
-      Js7Conf.registerInEnvironment(Js7Config.defaultConfig)
-
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
+  private given LogIndexConf = LogIndexConf.forTest
 
   "LogDirectoryIndex provides a LogIndex for each logFilePrefix and LogLevel" in:
     temporaryDirectoryResource[IO]("LogDirectoryIndex-").use: dir =>
@@ -53,7 +49,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       dir / "B.log" := "2026-08-14T12:00:00,000+03 info  js7.test.Test - ...\n"
       dir / "X.log" := "2026-08-14T13:00:00,000+03 info  js7.test.Test - ...\n"
 
-      given Config = ConfigFactory.empty
+      given Config = Js7Config.defaultConfig
       LogDirectoryIndex.resource(dir, Set("A", "B")).use: logDirectoryIndex =>
         logDirectoryIndex.logIndex("A", Info).map: logIndex =>
           assert(logIndex.files.map(_.getFileName.toString).toSet ==
@@ -161,8 +157,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   s"${timestampFormatter.format((hour + s.s).atZone(zoneId))} info LogDirectoryIndexTest - MESSAGE $i\n"
                     .getBytes(UTF_8)
       .productR:
-        given LogFileIndexConf = LogFileIndexConf.forTest
-        given Config = ConfigFactory.empty()
+        given Config = Js7Config.defaultConfig
         LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
           logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
             /// Read *all* log files as text lines ///
@@ -335,8 +330,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       writeFile(startInstant)
       writeFile(startInstant + 24.h)
 
-      given LogFileIndexConf = LogFileIndexConf.forTest
-      given Config = ConfigFactory.empty()
+      given Config = Js7Config.defaultConfig
       LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
         logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
           IO:
@@ -392,8 +386,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           (1 to 10).foldMap: _ =>
             IO.defer:
               val t = Deadline.now
-              given LogFileIndexConf = LogFileIndexConf.forTest
-              given Config = ConfigFactory.empty()
+              given Config = Js7Config.defaultConfig
               LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
                 logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
                   logIndex.byteLineStream(

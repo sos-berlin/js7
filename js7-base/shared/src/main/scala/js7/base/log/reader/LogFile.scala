@@ -41,7 +41,7 @@ private final class LogFile private(
   val fileInstant: Instant,
   val isGzipped: Boolean,
   val deferredIndexCell: AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]])
-  (using zoneId: ZoneId):
+  (using zoneId: ZoneId, conf: LogIndexConf):
 
   val filename: Path =
     originalFile.filename
@@ -162,7 +162,7 @@ private object LogFile:
 
   /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
     */
-  def read(file: Path)(using ZoneId): IO[Checked[LogFile]] =
+  def read(file: Path)(using ZoneId, LogIndexConf): IO[Checked[LogFile]] =
     val gzip = isGzipped(file)
     readLogFileInstant(file, gzip).flatMapT: instant =>
       AtomicCell[IO].of(none[Allocated[IO, DeferredIndex]]).map: cell =>
