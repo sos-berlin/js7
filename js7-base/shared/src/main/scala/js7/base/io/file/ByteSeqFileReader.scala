@@ -128,18 +128,14 @@ object ByteSeqFileReader:
     readerResource.flatMap:
       _.stream(pollGrowing = pollGrowing)
 
-  def streamFromPosition[ByteSeq: ByteSequence](
-    file: Path,
-    position: Long,
-    byteChunkSize: Int,
-    pollGrowing: Option[FiniteDuration] = None)
+  def streamFromPosition[ByteSeq: ByteSequence](file: Path, position: Long, byteChunkSize: Int)
   : Stream[IO, ByteSeq] =
     Stream.resource:
       resource(file, bufferSize = byteChunkSize)
         .evalTap:
           _.setPosition(position)
     .flatMap:
-      _.stream(pollGrowing = pollGrowing)
+      _.stream(pollGrowing = None)
 
 
   private val growingCounter = Atomic(0)

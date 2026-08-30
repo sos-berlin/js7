@@ -184,6 +184,6 @@ object LogFileIndex:
     pollGrowing match
       case None =>
         ByteSeqFileReader.streamFromPosition(
-          file, position = position.toLong, byteChunkSize = bufferSize, pollGrowing)
+          file, position = position.toLong, byteChunkSize = bufferSize)
       case Some(poll) =>
         LogFileReader.streamGrowingLogFile[Chunk[Byte]](file, byteChunkSize = bufferSize, poll, position = position.toLong)

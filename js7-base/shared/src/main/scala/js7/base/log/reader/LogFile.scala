@@ -157,7 +157,7 @@ private object LogFile:
   private val logger = Logger[LogFile]
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
-  private val FirstChunkSize = 1024
+  private val HeaderChunkSize = 1024
   given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
   /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
@@ -174,13 +174,13 @@ private object LogFile:
     Resource.fromAutoCloseable:
       IO.blocking:
         if gzip then
-          GZIPInputStream(FileInputStream(file.toFile), FirstChunkSize)
+          GZIPInputStream(FileInputStream(file.toFile), HeaderChunkSize)
         else
           FileInputStream(file.toFile)
     .use: in =>
       IO.blocking:
         ByteArray.unsafeWrap:
-          in.readNBytes(FirstChunkSize)
+          in.readNBytes(HeaderChunkSize)
     .map: chunk =>
       chunk.indexOf('\n') match
         case firstLineEnd if firstLineEnd >= 30 /*minimum length of headline*/ =>
