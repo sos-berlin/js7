@@ -10,7 +10,7 @@ import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogFileIndex.{BuildBufferSize, LogBytesPerEntry}
+import js7.base.log.reader.LogFileIndex.LogBytesPerEntry
 import js7.base.log.reader.LogFileIndexBuilder.*
 import js7.base.log.reader.LogFileReader.streamGrowingLogFile
 import js7.base.log.{Logger, reader}
@@ -161,3 +161,11 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
 
 object LogFileIndexBuilder:
   private val logger = Logger[this.type]
+
+  /** Number of bytes to read at once from the file.
+    *
+    * 1 MB gives good performance for index building.
+    *
+    * Due to three `prefetch` operations, four times as much memory is used.
+    */
+  private val BuildBufferSize = 1024 * 1024

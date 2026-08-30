@@ -13,8 +13,8 @@ import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Assertions.assertIfStrict
-import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.Missing
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -58,28 +58,85 @@ final class LogFileIndex private[reader](
       .map(_.map(_._1))
 
   @TestOnly
-  def streamByteLines(begin: Instant, logSelection: LogSelection): Stream[IO, Chunk[Byte]] =
-    instantToLines(begin, logSelection.forReader)
-      .through:
-        logSelection.pipe
-      .map(_.byteLine)
+  def streamByteLines(begin: Instant | Long, logSelection: LogSelection = LogSelection.all)
+  : Stream[IO, Chunk[Byte]] =
+    streamLines(begin, logSelection).map(_.byteLine)
 
-  def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
-    Stream.suspend:
-      val timestampParser = FastTimestampParser()
-      val beginEpochNano = begin.toEpochNano
-      val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
-      toLines(chunkPos, opaquePos, forReader,
-        shouldBeDropped = (_, byteLine) =>
-          timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
+  @TestOnly
+  def streamLines(begin: Instant | Long, logSelection: LogSelection = LogSelection.all)
+  : Stream[IO, PosAndLine] =
+    begin.match
+      case begin: Instant =>
+        instantToLines(begin, logSelection.forReader)
+      case begin: Long =>
+        positionToLines(begin, logSelection.forReader)
+    .through:
+      logSelection.pipe
+
+  def instantToLines(begin: Instant, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
+    if forReader.backwards then
+      Stream.raiseError(IllegalArgumentException:
+        "Reading backwards is not possible when starting from an Instant")
+    else
+      Stream.suspend:
+        val timestampParser = FastTimestampParser()
+        val beginEpochNano = begin.toEpochNano
+        val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
+        toLines(chunkPos, opaquePos, forReader,
+          shouldBeDropped = (_, byteLine) =>
+            timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
 
   def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
+    // Convert the byte position of the desired line into the byte position of the corresponding
+    // decompressed chunk and the OpaquePos (the position in the compressed file) of this chunk.
+    if forReader.backwards then
+      positionToLinesBackwards(position, forReader)
+    else
+      Stream.suspend:
+        val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
+        toLines(chunkPos, opaquePos, forReader, shouldBeDropped = (pos, _) => pos < position)
+
+  private def positionToLinesBackwards(position: Long, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
     Stream.suspend:
-      // Convert the byte position of the desired line into the byte position of the corresponding
-      // decompressed chunk and the OpaquePos (the position in the compressed file) of this chunk.
-      val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
-      toLines(chunkPos, opaquePos, forReader,
-        shouldBeDropped = (pos, _) => pos < position)
+      // Read the indexed chunk forward, then reverse it and continue with the previous chunk.
+      // For good speed, LogBytesPerEntry should be >= 1MB (MacBook Pro M4)
+      val (chunkPos, opaquePos) =
+        nanoToPos.posToNextChunkPos(position) match
+          case Some(chunkPos) =>
+            nanoToPos.posToChunkPosAndOpaquePos(chunkPos - 1)
+          case None =>
+            nanoToPos.lastChunkPosAndOpaquePos
+      positionToLinesBackwardsChunk(position, chunkPos, opaquePos, forReader)
+
+  /** @param skipBackwards Start with 1, then double for each iteration.
+    *   This way, it gets faster and the buffers get bigger the more lines are read. */
+  private def positionToLinesBackwardsChunk(
+    position: Long,
+    firstChunkPos: Long, firstOpaquePos: OpaquePos,
+    forReader: LogSelection.ForReader,
+    skipBackwards: Int = 1)
+  : Stream[IO, PosAndLine] =
+    Stream.suspend:
+      Stream.eval:
+        toLines(firstChunkPos, firstOpaquePos,
+          forReader.copyForReader(
+            byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry),
+          shouldBeDropped = (_, _) => false
+        ).takeWhile(_.position < position)
+          .compile.toVector
+      .flatMap: vector =>
+        Stream.iterable(vector.view.reverse)
+      .append:
+        if firstChunkPos == 0 then
+          Stream.empty
+        else
+          val (chunkPos, opaquePos) =
+            nanoToPos.posToChunkPosAndOpaquePos(firstChunkPos, skipBackwards = skipBackwards)
+          assertThat(chunkPos < firstChunkPos)
+          positionToLinesBackwardsChunk(firstChunkPos, chunkPos, opaquePos, forReader,
+            2 * skipBackwards min SkipBackwards)
 
   /**
     * @param chunkPos position of the uncompressed log chunk
@@ -104,8 +161,9 @@ final class LogFileIndex private[reader](
             droppedBytes += byteLine.size
           else
             val elapsed = t.elapsed
-            logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
-              } skipped after indexed position · ${elapsed.pretty}")
+            if droppedLines > 0 then
+              logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
+                } skipped after indexed position · ${elapsed.pretty}")
             val skipped = pos - chunkPos
             if skipped >= NoEntryWarnThreshold then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
@@ -119,22 +177,19 @@ final class LogFileIndex private[reader](
 
 
 object LogFileIndex:
-  /** Number of bytes to read at once from the file.
-    *
-    * 1 MB gives good performance for index building.
-    *
-    * Due to three `prefetch` operations, four times as much memory is used.
-    */
-  private[reader] val BuildBufferSize = 1024 * 1024
   /** One index entry (24 bytes) per 32KiB-block or a 1,4MiB per GiB log file. */
   private[reader] val LogBytesPerEntry: Int = 32 * 1024
   private val NoEntryWarnThreshold = 128 * 1024
-  private val PositionsPerChunk = BuildBufferSize / LogBytesPerEntry
+  private val BackwardsFileChunkSize = 1024 * 1024 // Backwards read chunks of 1MiB from file
+  // Read backwards chunks of up to 4MiB + 1*LogBytesPerEntry
+  private val SkipBackwardsSize = 4 * BackwardsFileChunkSize
+  private val SkipBackwards = SkipBackwardsSize / LogBytesPerEntry max 1
   private val PollDuration = 100.ms
   private val logger = Logger[LogFileIndex]
 
-  logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, requiring 1/${
-    LogBytesPerEntry / EpochNanoToPos.EntrySize} of a log file's size as heap space")
+  logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, requiring ${
+    toKBGB(1_000_000_000L * EpochNanoToPos.EntrySize / LogBytesPerEntry)
+  } memory per gigabyte log file")
 
   /** Builds a concurrently updated [[LogFileIndex]] from a growing log file. */
   def buildGrowing(
@@ -155,7 +210,7 @@ object LogFileIndex:
       resolveLabel(logFile, label),
       toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
       toPositionedStream = (pos, forReader) =>
-        assertIfStrict(!forReader.growing)
+        assertThat(!forReader.growing || !forReader.backwards)
         positionedStream(logFile, pos, forReader.byteChunkSize))
 
   def fromStream(
@@ -182,4 +237,5 @@ object LogFileIndex:
         ByteSeqFileReader.streamFromPosition(
           file, position = position.toLong, byteChunkSize = bufferSize)
       case Some(poll) =>
-        LogFileReader.streamGrowingLogFile[Chunk[Byte]](file, byteChunkSize = bufferSize, poll, position = position.toLong)
+        LogFileReader.streamGrowingLogFile[Chunk[Byte]](
+          file, byteChunkSize = bufferSize, poll, position = position.toLong)

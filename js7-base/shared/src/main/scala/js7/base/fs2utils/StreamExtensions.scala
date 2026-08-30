@@ -544,8 +544,11 @@ object StreamExtensions:
 
 
   extension [F[_] , A](fa: F[A])
-    inline def toStream: Stream[F, A] =
+    inline def toFs2Stream: Stream[F, A] =
       Stream.eval(fa)
 
+  extension [A](iterable: Iterable[A])
+    inline def toFs2Stream: Stream[fs2.Pure, A] =
+      Stream.iterable(iterable)
 
   private def simpleCount[A](a: A) = 1L

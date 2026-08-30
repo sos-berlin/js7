@@ -1,6 +1,7 @@
 package js7.base.log.reader
 
 import cats.effect.{IO, Resource}
+import fs2.Chunk
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
@@ -8,17 +9,20 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import java.util.regex.Pattern
 import java.util.zip.GZIPOutputStream
-import js7.base.config.{Js7Conf, Js7Config}
+import js7.base.config.Js7Config
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.stringAsUtf8
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryFileResource
 import js7.base.log.AnsiEscapeCodes.{bold, removeHighlights}
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndexTest.*
+import js7.base.log.{Logger, reader}
 import js7.base.metering.CallMeter
+import js7.base.problem.Checked.Ops
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
@@ -31,17 +35,15 @@ import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.Deadline
 
 final class LogFileIndexTest extends OurAsyncTestSuite:
 
-  override protected def testTimeout: FiniteDuration = 1.h
-
-  given LogIndexConf = LogIndexConf.fromConfig:
-    config"""
+  private given LogIndexConf =
+    LogIndexConf.fromConfig(config"""
       js7.log.index.max-bytes-per-line = ${LogFileIndex.LogBytesPerEntry}  # Don't split long lines
       """.withFallback(Js7Config.defaultConfig)
-  .orThrow
+    ).orThrow
 
   "Test" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
@@ -125,7 +127,42 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
               assert(line contains anotherLine)
           yield succeed
 
-  "Test with test.log" in :
+  "Backwards" in:
+    given ZoneId = ZoneId.of("Europe/Mariehamn")
+    val logFileSize = 5 * LogFileIndex.LogBytesPerEntry
+    val lineLength = 130
+    val lineCount = logFileSize / lineLength
+    temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
+      val startTime = "2026-08-28T00:00:00.000+03"
+      writeFile(file, lineLength = lineLength, lineCount = lineCount, startTime = startTime) *>
+        LogFileIndex.fromFile(file).flatMap: logFileIndex =>
+          logFileIndex.streamLines(parseInstant(startTime))
+            .compile.toVector
+            .flatMap: allLines =>
+              assert(allLines.length == lineCount)
+              logFileIndex.streamLines(allLines(7).position, LogSelection.lineLimit(-3))
+                .compile.toVector.map: reverseLines =>
+                  assert(reverseLines == allLines.slice(7 - 3, 7).reverse)
+                .productR:
+                  // Read a part backwards
+                  val n = lineCount / 2
+                  logFileIndex.streamLines(
+                      begin = Long.MaxValue,
+                      LogSelection.lineLimit(-n))
+                    .compile.toVector.map: reverseLines =>
+                      assert(reverseLines.length == n)
+                      assert(reverseLines == allLines.reverse.take(n))
+                .productR:
+                  // Read all backwards
+                  logFileIndex.streamLines(
+                      begin = Long.MaxValue,
+                      LogSelection.lineLimit(Long.MinValue))
+                    .compile.toVector.map: reverseLines =>
+                      assert(reverseLines.length == allLines.length + 1)
+                      assert(reverseLines == allLines.reverse :+
+                        PosAndLine(0, Chunk.stringAsUtf8("2026-08-28T00:00:00.000+03 Begin ...\n")))
+
+  "Test with our test.log or build.log" in :
     given ZoneId = ZoneId.systemDefault
     val begin = Timestamp.now - 1.ms
     logger.info(s"Started $begin")
@@ -135,7 +172,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     val logFile = Path.of(if isIntelliJIdea then "logs/test.log" else "logs/build.log")
     LogFileIndex.fromFile(logFile).flatMap: logFileIndex =>
       IO.defer:
-        logFileIndex.streamByteLines(begin = begin.toInstant, LogSelection())
+        logFileIndex.streamByteLines(begin = begin.toInstant)
           .through:
             byteChunksToLines(breakLinesLongerThan = None)
           .filter: byteLine =>
@@ -150,6 +187,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
   "1 GiB debug-log file" - {
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     "Japanese" in:
+      // Same speed as for "Latin 1" expected
       testBigFile("こんにちは") // Code points below U+10000
 
     "Latin 1" in:
@@ -159,11 +197,6 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       if !isIntelliJIdea && !sys.props.contains("test.speed") then
         IO.pure(pending)
       else
-        def info_(line: String) =
-          logger.info(line)
-          if !isIntelliJIdea then
-            println(s"➤LogFileIndex: $line")
-
         logger.debugIO:
           val logFileSize = 1024 * 1024 * 1024
           val lineLength = 130
@@ -189,6 +222,45 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                       //logger.info(s"$logFileIndex ${
                       //  bold(itemsPerSecondString(elapsed, lineCount, "lines"))}")
             .as(succeed)
+
+    "Read forward" in:
+      testRead()
+
+    "Read backwards" in:
+      testRead(backwards = true)
+
+    def testRead(backwards: Boolean = false): IO[Assertion] =
+      if !isIntelliJIdea && !sys.props.contains("test.speed") then
+        IO.pure(pending)
+      else
+        logger.debugIO:
+          val logFileSize = 500 * 1024 * 1024
+          val lineLength = 130
+          val lineCount = logFileSize / lineLength
+          temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
+            writeFile(file, lineLength = lineLength, lineCount = lineCount) *>
+              LogFileIndex.fromFile(file).flatMap: logFileIndex =>
+                (1 to 20).foldMap: _ =>
+                  IO.defer:
+                    val t = Deadline.now
+                    logFileIndex
+                      .streamLines(
+                        begin = if backwards then Long.MaxValue else 0,
+                        if backwards then LogSelection.lineLimit(Long.MinValue) else LogSelection.all)
+                      .compile.count
+                      .map: n =>
+                        assert(n == lineCount +1/*header line*/)
+                        val elapsed = t.elapsed
+                        info_(s"$logFileIndex ${
+                          bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+              //logger.info(s"$logFileIndex ${
+              //  bold(itemsPerSecondString(elapsed, lineCount, "lines"))}")
+              .as(succeed)
+
+    def info_(line: String) =
+      logger.info(line)
+      if !isIntelliJIdea then
+        println(s"➤LogFileIndex: $line")
   }
 
 
@@ -212,7 +284,7 @@ object LogFileIndexTest:
       val middle = s" info  js7-7  js7.logger - message "
       middle + extra + "." * (lineLength - startTime.length - middle.length - extra.length - 1) + "\n"
     assert(lineRemainder.length == lineLength - startTime.length)
-    val epochMilli = Instant.parse(startTime).toEpochMilli
+    val epochMilli = parseInstant(startTime).toEpochMilli
     Resource.fromAutoCloseable:
       IO.blocking:
         val out = new BufferedOutputStream(new FileOutputStream(file.toFile), 256 * 1024)
@@ -230,3 +302,10 @@ object LogFileIndexTest:
             writer.write(ts)
             writer.write(lineRemainder)
         logger.info("File written: " + bytesPerSecondString(t.elapsed, Files.size(file)))
+
+  private def parseInstant(string: String): Instant =
+    Instant.parse:
+      if Runtime.version.feature >= 25 then
+        string
+      else
+        string + ":00"

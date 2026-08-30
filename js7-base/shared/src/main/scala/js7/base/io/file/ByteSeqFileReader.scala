@@ -70,15 +70,16 @@ final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
 
   def read: IO[ByteSeq] =
     IO.defer:
-      _next match
+      val pos = channel.position
+      _next.match
         case null =>
           readBuffer(buffer)
         case byteSeq: ByteSeq @unchecked =>
           _next = null
           IO.pure(byteSeq)
-    .map: byteSeq =>
-      _nextPosition = channel.position
-      byteSeq
+      .map: byteSeq =>
+        _nextPosition = channel.position
+        byteSeq
 
   private def readBuffer(buffer: ByteBuffer): IO[ByteSeq] =
     IO.blocking:
@@ -90,7 +91,7 @@ final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
 
 
 object ByteSeqFileReader:
-  val BufferSize = 64*1024
+  val BufferSize: Int = 64*1024
   private val logger = Logger[this.type]
 
   def resource[ByteSeq: ByteSequence](

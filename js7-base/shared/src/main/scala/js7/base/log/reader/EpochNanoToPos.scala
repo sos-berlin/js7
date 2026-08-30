@@ -5,6 +5,7 @@ import js7.base.io.OpaquePos
 import js7.base.log.Logger
 import js7.base.log.reader.EpochNanoToPos.*
 import js7.base.time.EpochNano
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import org.jetbrains.annotations.TestOnly
 
@@ -52,16 +53,28 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   def lastEpochNano: EpochNano =
     EpochNano(epochNanos(_length - 1))
 
-  ///** The last entry, or (`EpochNano.MinValue, 0)` if empty.*/
-  //def lastEntry: (EpochNano, Long) =
-  //  val i = _length - 1
-  //  EpochNano(epochNanos(i)) -> opaquePositions(i)
+  /** The last entry, or `(0, 0)` if empty. */
+  def lastChunkPosAndOpaquePos: (Long, OpaquePos) =
+    val i = _length - 1
+    bytePositions(i) -> OpaquePos(opaquePosition(i))
 
-  def posToChunkPosAndOpaquePos(position: Long): (Long, OpaquePos) =
+  def posToChunkPosAndOpaquePos(position: Long, skipBackwards: Int = 0): (Long, OpaquePos) =
+    // No synchronization needed
+    var i = posToIndex(position) - skipBackwards
+    if i < 0 then i = 0
+    bytePositions(i) -> OpaquePos(opaquePosition(i))
+
+  def posToNextChunkPos(position: Long): Option[Long] =
+    // No synchronization needed
+    val i = posToIndex(position, skip = 1)
+    (i < _length) ? bytePositions(i)
+
+  private def posToIndex(position: Long, skip: Int = 0): Int =
     // No synchronization needed
     var i = binarySearch(bytePositions, 0, _length, position)
-    if i < 0 then i = -i - 2 // not exact? then return next position
-    bytePositions(i) -> OpaquePos(opaquePositions(i))
+    if i < 0 then
+      i = -i - 2 + skip // not exact? then return next position
+    i
 
   /** Return the position corresponding to the greatest [[EpochNano]]
     * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
@@ -71,7 +84,7 @@ private final class EpochNanoToPos(initialSize: Int = 32):
     // No synchronization needed
     var i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
     if i < 0 then i = -i - 2 // not exact? then return next position
-    bytePositions(i) -> OpaquePos(opaquePositions(i))
+    bytePositions(i) -> OpaquePos(opaquePosition(i))
 
   /** @param epochNano Timestamp of the line, must be greater than the last added epochNano
     * @param opaquePos Position in the (maybe compressed) file
@@ -100,7 +113,7 @@ private final class EpochNanoToPos(initialSize: Int = 32):
       epochNanos(_length) = epochNano.toLong
       _length += 1 // Last operation to allow concurrent access
 
-  private def opaquePositions(i: Int): Long =
+  private def opaquePosition(i: Int): Long =
     _opaquePositions match
       case null => bytePositions(i)
       case a => a(i)

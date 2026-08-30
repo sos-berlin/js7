@@ -159,8 +159,7 @@ object LogDirectoryIndex:
 
   def resource(directory: Path, logFilePrefixes: Set[String])(using zoneId: ZoneId, config: Config)
   : ResourceIO[LogDirectoryIndex] =
-    given LogIndexConf =
-      LogIndexConf.fromConfig(config).orThrow
+    given LogIndexConf = LogIndexConf.fromConfig(config).orThrow
     for
       _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogIndex.Bean)
       service <-

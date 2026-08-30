@@ -15,6 +15,7 @@ import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.ScalaUtils.flatten
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.math.Ordered.orderingToOrdered
+import scala.math.abs
 
 final case class LogSelection(
   end: Option[Instant] = None,
@@ -34,6 +35,24 @@ extends ForReader:
   inline def forReader: ForReader =
     this
 
+  def backwards: Boolean =
+    !growing && lineLimit.exists(_ < 0)
+
+  def pipe[A <: LogLine](using ZoneId): fs2.Pipe[IO, A, A] =
+    _.through:
+      takeUntilInstant:
+        end.map(_.toEpochNano).map: end =>
+          if backwards
+          then t => t >= end
+          else t => t < end
+    .through: stream =>
+      pattern match
+        case None => stream.prefetch
+        case Some(pattern) => stream.through(filterPattern(pattern))
+    .pipeMaybe(lineLimit): (stream, lineLimit) =>
+      val n = if lineLimit == Long.MinValue then Long.MaxValue else abs(lineLimit)
+      stream.take(n)
+
 
 object LogSelection:
   val all: LogSelection =
@@ -42,41 +61,48 @@ object LogSelection:
   def apply(): LogSelection =
     all
 
+  def lineLimit(n: Long): LogSelection =
+    all.copy(lineLimit = Some(n))
 
   sealed trait ForReader:
     def growing: Boolean
+    def backwards: Boolean
     def byteChunkSize: Int
+
+    final def copyForReader(
+      growing: Boolean = growing,
+      readReverse: Boolean = backwards,
+      byteChunkSize: Int = byteChunkSize)
+    : ForReader =
+      ForReader(growing, readReverse, byteChunkSize)
+
+  object ForReader:
+    def apply(
+      growing: Boolean = false,
+      readReverse: Boolean = false,
+      byteChunkSize: Int = ByteSeqFileReader.BufferSize)
+    : ForReader =
+      ForReader_(growing, readReverse, byteChunkSize)
+
+    private final case class ForReader_(growing: Boolean, backwards: Boolean, byteChunkSize: Int)
+    extends ForReader
 
 
   private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]
 
-  extension (logSelection: LogSelection)
-    def pipe[A <: LogLine](using ZoneId): fs2.Pipe[IO, A, A] =
-      applyLogSelection(logSelection)
-
-  private def applyLogSelection[A <: LogLine](logSelection: LogSelection)(using ZoneId)
+  private def takeUntilInstant[A <: LogLine](endNotReached: Option[EpochNano => Boolean])
+    (using ZoneId)
   : fs2.Pipe[IO, A, A] =
-    _.through:
-      takeUntilInstant(logSelection.end)
-    .through: stream =>
-      logSelection.pattern match
-        case None => stream.prefetch
-        case Some(pattern) => stream.through(filterPattern(pattern))
-    .pipeMaybe(logSelection.lineLimit): (stream, n) =>
-      stream.take(n)
-
-  private def takeUntilInstant[A <: LogLine](instant: Option[Instant])(using ZoneId): fs2.Pipe[IO, A, A] =
     stream =>
-      instant.fold(stream): instant =>
+      endNotReached.fold(stream): endNotReached =>
         val timestampParser = FastTimestampParser()
-        val endEpochNano = instant.toEpochNano
         stream.takeWhile: logLine =>
           val byteLine = logLine match
             case o: KeyedByteLogLine => o.byteLine
             case o: PosAndLine => o.byteLine
             case o: Chunk[Byte @unchecked] => o
           val epochNano = timestampParser.parseTimestampInLogLine(byteLine)
-          epochNano < endEpochNano
+          endNotReached(epochNano)
 
   private def filterPattern[A <: LogLine](pattern: Pattern): fs2.Pipe[IO, A, A] =
     stream =>

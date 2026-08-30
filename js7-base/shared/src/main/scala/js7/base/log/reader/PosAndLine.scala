@@ -12,6 +12,8 @@ final case class PosAndLine(position: Long, byteLine: Chunk[Byte]):
   //def removeHighlights: PosAndLine =
   //  copy(byteLine = AnsiEscapeCodes.removeHighlights(byteLine))
 
+  override def toString = s"PosAndLine($position:${byteLine.utf8StringTruncateAt(100)})"
+
 
 object PosAndLine:
 
