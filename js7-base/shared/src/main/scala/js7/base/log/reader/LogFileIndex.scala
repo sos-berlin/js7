@@ -50,7 +50,7 @@ final class LogFileIndex private[reader](
     nanoToPos.byteCount
 
   def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
-    instantToLines(instant, logSelection.forReader)
+    instantToLinesForward(instant, logSelection.forReader)
       .through:
         logSelection.pipe
       .head
@@ -73,19 +73,26 @@ final class LogFileIndex private[reader](
     .through:
       logSelection.pipe
 
-  def instantToLines(begin: Instant, forReader: LogSelection.ForReader)
-  : Stream[IO, PosAndLine] =
+  def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     if forReader.backwards then
-      Stream.raiseError(IllegalArgumentException:
-        "Reading backwards is not possible when starting from an Instant")
+      instantToLinesBackwards(begin, forReader)
     else
-      Stream.suspend:
-        val timestampParser = FastTimestampParser()
-        val beginEpochNano = begin.toEpochNano
-        val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
-        toLines(chunkPos, opaquePos, forReader,
-          shouldBeDropped = (_, byteLine) =>
-            timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
+      instantToLinesForward(begin, forReader)
+
+  private def instantToLinesBackwards(begin: Instant, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
+    instantToLinesForward(begin, forReader).head.map(_.position).flatMap: pos =>
+      positionToLinesBackwards(pos, forReader)
+
+  private def instantToLinesForward(begin: Instant, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
+    Stream.suspend:
+      val timestampParser = FastTimestampParser()
+      val beginEpochNano = begin.toEpochNano
+      val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
+      toLines(chunkPos, opaquePos, forReader,
+        shouldBeDropped = (_, byteLine) =>
+          timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
 
   def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     // Convert the byte position of the desired line into the byte position of the corresponding
@@ -210,7 +217,6 @@ object LogFileIndex:
       resolveLabel(logFile, label),
       toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
       toPositionedStream = (pos, forReader) =>
-        assertThat(!forReader.growing || !forReader.backwards)
         positionedStream(logFile, pos, forReader.byteChunkSize))
 
   def fromStream(

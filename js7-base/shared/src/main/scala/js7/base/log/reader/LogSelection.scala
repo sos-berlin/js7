@@ -12,6 +12,7 @@ import js7.base.log.reader.LogSelection.*
 import js7.base.log.{AnsiEscapeCodes, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.flatten
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.math.Ordered.orderingToOrdered
@@ -85,7 +86,8 @@ object LogSelection:
       ForReader_(growing, readReverse, byteChunkSize)
 
     private final case class ForReader_(growing: Boolean, backwards: Boolean, byteChunkSize: Int)
-    extends ForReader
+    extends ForReader:
+      assertThat(!growing || !backwards)
 
 
   private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]

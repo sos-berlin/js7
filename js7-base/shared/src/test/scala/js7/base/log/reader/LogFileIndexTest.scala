@@ -6,7 +6,7 @@ import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
+import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util.regex.Pattern
 import java.util.zip.GZIPOutputStream
 import js7.base.config.Js7Config
@@ -156,7 +156,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                   // Read all backwards
                   logFileIndex.streamLines(
                       begin = Long.MaxValue,
-                      LogSelection.lineLimit(Long.MinValue))
+                      LogSelection.lineLimit(-Long.MaxValue))
                     .compile.toVector.map: reverseLines =>
                       assert(reverseLines.length == allLines.length + 1)
                       assert(reverseLines == allLines.reverse :+
@@ -246,7 +246,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                     logFileIndex
                       .streamLines(
                         begin = if backwards then Long.MaxValue else 0,
-                        if backwards then LogSelection.lineLimit(Long.MinValue) else LogSelection.all)
+                        if backwards then LogSelection.lineLimit(-Long.MaxValue) else LogSelection.all)
                       .compile.count
                       .map: n =>
                         assert(n == lineCount +1/*header line*/)
@@ -304,8 +304,7 @@ object LogFileIndexTest:
         logger.info("File written: " + bytesPerSecondString(t.elapsed, Files.size(file)))
 
   private def parseInstant(string: String): Instant =
-    Instant.parse:
-      if Runtime.version.feature >= 25 then
-        string
-      else
-        string + ":00"
+    if Runtime.version.feature >= 25 then
+      Instant.parse(string)
+    else
+      ZonedDateTime.parse(string).toInstant

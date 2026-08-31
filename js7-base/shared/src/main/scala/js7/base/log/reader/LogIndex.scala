@@ -166,12 +166,12 @@ extends Service.StoppableByCancel:
     logFile: LogFile, begin: Instant, forReader: LogSelection.ForReader)
   : Stream[IO, KeyedByteLogLine] =
     Stream.suspend:
-      if Option(instantToLogFile.firstKey).forall(begin < _) then
-        // No recompression and indexing needed. This includes the header line.
+      if !forReader.backwards && Option(instantToLogFile.firstKey).forall(begin < _) then
+        // No recompression and indexing needed. This returns also the header line.
         wholeFile(logFile, forReader)
       else
         Stream.eval:
-          logFile.toDeferredIndex(pollGrowing = watchGrowth ? conf.pollGrowing)
+          toDeferredIndex(logFile)
         .flatMap: deferredIndex =>
           deferredIndex.logFileIndex.instantToLines(begin, forReader)
         .map: posAndLine =>
@@ -182,12 +182,11 @@ extends Service.StoppableByCancel:
   : Stream[IO, KeyedByteLogLine] =
     Stream.eval:
       // We must recompress (but not necessarily index) to return positions of the recompressed file
-      logFile.toDeferredIndex(pollGrowing = watchGrowth ? conf.pollGrowing)
+      toDeferredIndex(logFile)
     .flatMap: deferredIndex =>
-      if logFile.isGzipped then
+      if forReader.backwards || logFile.isGzipped then
         // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
-        deferredIndex.logFileIndex.positionToLines(position, forReader).map:
-          KeyedByteLogLine(logFile.fileInstant, _)
+        deferredIndex.logFileIndex.positionToLines(position, forReader)
       else
         locally:
           if forReader.growing then
@@ -203,8 +202,9 @@ extends Service.StoppableByCancel:
               byteChunkSize = forReader.byteChunkSize)
         .through:
           bytesToPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
-        .map: posAndLine =>
-          KeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
+        .map(PosAndLine.fromPair)
+    .map: posAndLine =>
+      KeyedByteLogLine(logFile.fileInstant, posAndLine)
 
   private def nextFilesToKeyedLines(lastFileInstant: Instant, forReader: LogSelection.ForReader)
   : Stream[IO, KeyedByteLogLine] =
@@ -220,12 +220,25 @@ extends Service.StoppableByCancel:
       *>
         IO:
           Option:
-            instantToLogFile.higherEntry(lastFileInstant)
+            if forReader.backwards then
+              instantToLogFile.lowerEntry(lastFileInstant)
+            else
+              instantToLogFile.higherEntry(lastFileInstant)
           .map(_.getValue)
     .unNoneTerminate
 
   private def wholeFile(logFile: LogFile, forReader: LogSelection.ForReader)
   : Stream[IO, KeyedByteLogLine] =
+    locally:
+      if forReader.backwards then
+        wholeFileReverse(logFile, forReader)
+      else
+        wholeFileForward(logFile, forReader)
+    .map: posAndLine =>
+      KeyedByteLogLine(logFile.fileInstant, posAndLine)
+
+  private def wholeFileForward(logFile: LogFile, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
     locally:
       if logFile.isGzipped then
         // TODO Handle incomplete gzip file because it is still being written?
@@ -240,7 +253,29 @@ extends Service.StoppableByCancel:
     .through:
       bytesToPosAndLines(firstPosition = 0, breakLinesLongerThan = breakLinesLongerThan)
     .map: posAndLine =>
-      KeyedByteLogLine(logFile.fileInstant, PosAndLine.fromPair(posAndLine))
+      PosAndLine.fromPair(posAndLine)
+
+  private def wholeFileReverse(logFile: LogFile, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
+    Stream.eval:
+      toDeferredIndex(logFile)
+    .flatMap: deferredIndex =>
+      val veryLastPosition = Long.MaxValue
+      if logFile.isGzipped then
+        // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
+        deferredIndex.logFileIndex.positionToLines(veryLastPosition, forReader)
+      else
+        ByteSeqFileReader.streamFromPosition[Chunk[Byte]](
+            deferredIndex.file,
+            position = veryLastPosition,
+            byteChunkSize = forReader.byteChunkSize)
+          .through:
+            bytesToPosAndLines(firstPosition = veryLastPosition, breakLinesLongerThan = breakLinesLongerThan, backwards = true)
+          .map: (pos, line) =>
+            PosAndLine.fromPair(pos, line)
+
+  private def toDeferredIndex(logFile: LogFile): IO[LogFile.DeferredIndex] =
+    logFile.toDeferredIndex(pollGrowing = watchGrowth ? conf.pollGrowing)
 
   def files: Seq[Path] =
     instantToLogFile.values.asScala.toVector.map(_.originalFile)

@@ -48,7 +48,8 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
               logFile, opaquePos, forReader.byteChunkSize,
               forReader.growing ? poll),
           nanoToPos,
-          breakLinesLongerThan = Some(breakLinesLongerThan))
+          breakLinesLongerThan = Some(breakLinesLongerThan),
+          label = label)
 
   def fromStream(
     toBuilderStream: (bufferSize: Int) => Stream[IO, Chunk[Byte]],
@@ -62,7 +63,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
       if nanoToPos.isEmpty then
         logger.debug(s"❓ No timestamped line in $label")
       nanoToPos.shrink()
-      new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan))
+      new LogFileIndex(toPositionedStream, nanoToPos, Some(breakLinesLongerThan), label = label)
 
   /** Build the index in `nanoToPos`.
     *
