@@ -183,12 +183,7 @@ final class FastTimestampParserTest extends OurTestSuite:
       val line = "X2026-02-24 08:05:55.244272+02:00 info "
       assert:
         testParseTimestampInLogLine(line) == EpochNano.Nix
-
-  "isHeaderLine" in:
-    assert(FastTimestampParser.isHeaderLine(ByteArray("2026-02-24 08:05:55.244272+02:00 Begin bla\n")))
-    assert(!FastTimestampParser.isHeaderLine(ByteArray("2026-02-24 08:05:55.244272+02:00 info bla\n")))
-
-
+  
   "Speed" in:
     if isIntelliJIdea then
       val timestamp = "2026-02-12T12:00:00.123456+02" // Typical debug log line

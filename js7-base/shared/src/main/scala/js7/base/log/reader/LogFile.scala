@@ -7,9 +7,10 @@ import fs2.{Chunk, Stream}
 import java.io.{EOFException, FileInputStream, FileNotFoundException}
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
+import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
-import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2Utils.inputStreamToStream
 import js7.base.io.OpaquePos
 import js7.base.io.file.FileDeleter
@@ -158,6 +159,8 @@ private object LogFile:
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
   private val HeaderChunkSize = 1024
+  private val HeaderMinimumLength = 30
+  private val LogHeaderPattern = Pattern.compile(s"(${FastTimestampParser.DateTimeRegex}) Begin ")
   given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
   /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
@@ -183,9 +186,9 @@ private object LogFile:
           in.readNBytes(HeaderChunkSize)
     .map: chunk =>
       chunk.indexOf('\n') match
-        case firstLineEnd if firstLineEnd >= 30 /*minimum length of headline*/ =>
+        case firstLineEnd if firstLineEnd >= HeaderMinimumLength =>
           locally:
-            if FastTimestampParser.isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
+            if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
               chunk.indexOf('\n', firstLineEnd + 1) match
                 case -1 => Left(IncompleteLogFileProblem(file))
                 case secondLineEnd => Right(chunk.slice(firstLineEnd + 1, secondLineEnd))
@@ -209,6 +212,9 @@ private object LogFile:
           logger.debug(s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
 
+  private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq): Boolean =
+    LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()
+
   private def positionedTmpFileStream(file: Path, opaquePos: OpaquePos, bufferSize: Int)
     (using recompressor: Recompressor)
   : Stream[IO, Chunk[Byte]] =
@@ -222,7 +228,6 @@ private object LogFile:
         recompressor.decompressingInputStream(in)
     .flatMap: in =>
       inputStreamToStream(in, bufferSize)
-
 
   /** The deferred LogFileIndex and optionally the temporary decompressed file. */
   final case class DeferredIndex(

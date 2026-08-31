@@ -61,18 +61,18 @@ final class FastTimestampParser()(using zoneId: ZoneId):
       else if ts(end - 6) <= '-' then end - 6 // "+02:30"
       else end // No zone offset, local time
 
-    def isLastZone: Boolean =
+    def isSameAsLastZone: Boolean =
       var i = 0
       var j = zonePos
-      var end_ = end - zonePos
+      val end_ = end - zonePos
       while i < end_ do
-        if lastZone(i) != ts(j).toByte then return false
+        if lastZone(i) != ts(j) then return false
         i += 1
         j += 1
       i == ZoneSize || lastZone(i) == ' '
 
     if java.util.Arrays.equals(ts, 0, SecondLength, lastSecond, 0, SecondLength)
-      && isLastZone
+      && isSameAsLastZone
     then
       // Same second and zone
       val fraction: Int =
@@ -163,11 +163,8 @@ object FastTimestampParser:
   assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00".length)
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
-  private val DateTimeRegex: Regex =
+  private[reader] val DateTimeRegex: Regex =
     """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r
-
-  private val LogHeaderPattern: Pattern =
-    Pattern.compile(s"""($DateTimeRegex) Begin """)
 
   private val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
@@ -186,9 +183,6 @@ object FastTimestampParser:
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HHMM", "Z").toFormatter)
       .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HH:mm", "Z").toFormatter)
       .toFormatter
-
-  private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq): Boolean =
-    LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()
 
   private[reader] def matchTimestamp[ByteSeq: ByteSequence](line: ByteSeq): ByteSeq | Null =
     meterRegex:
