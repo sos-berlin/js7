@@ -40,7 +40,8 @@ import scala.math.Ordered.orderingToOrdered
 final class LogFileIndex private[reader](
   toPositionedStream: (pos: OpaquePos, forReader: LogSelection.ForReader) => Stream[IO, Chunk[Byte]],
   nanoToPos: EpochNanoToPos,
-  breakLinesLongerThan: Option[Int])
+  breakLinesLongerThan: Option[Int],
+  label: String)
   (using val zoneId: ZoneId):
 
   def lastEpochNano: EpochNano =
@@ -180,7 +181,7 @@ final class LogFileIndex private[reader](
           PosAndLine(pos, line)
 
   override def toString =
-    s"LogFileIndex(${nanoToPos.length}×${toKiBGiB(LogBytesPerEntry)})"
+    s"LogFileIndex($label ${toKiBGiB(nanoToPos.byteCount)} ${toKiBGiB(nanoToPos.memorySize)})"
 
 
 object LogFileIndex:

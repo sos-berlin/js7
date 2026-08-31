@@ -139,6 +139,9 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   private[reader] inline def isUsingNoMemoryForOpaquePos =
     _opaquePositions eq null
 
+  def memorySize: Long =
+    _length * (if _opaquePositions eq null then 2 * 8 else EntrySize)
+
   override def toString = s"EpochNanoToPos($length entries})"
 
 
