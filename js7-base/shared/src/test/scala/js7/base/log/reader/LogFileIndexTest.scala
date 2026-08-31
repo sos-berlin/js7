@@ -97,8 +97,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
               Instant.parse("2026-02-12T14:00:00+02:00"),
               LogSelection(pattern = Some(Pattern.compile("20.* - ORANGE$"))))
             .map(_.utf8String)
-            .compile.toList
-            .map: readLines =>
+            .compile.toList.map: readLines =>
               assert(readLines == Vector(lines(0), lines(2)))
 
   "Growing" in:
@@ -137,8 +136,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       writeFile(file, lineLength = lineLength, lineCount = lineCount, startTime = startTime) *>
         LogFileIndex.fromFile(file).flatMap: logFileIndex =>
           logFileIndex.streamLines(parseInstant(startTime))
-            .compile.toVector
-            .flatMap: allLines =>
+            .compile.toVector.flatMap: allLines =>
               assert(allLines.length == lineCount)
               logFileIndex.streamLines(allLines(7).position, LogSelection.lineLimit(-3))
                 .compile.toVector.map: reverseLines =>

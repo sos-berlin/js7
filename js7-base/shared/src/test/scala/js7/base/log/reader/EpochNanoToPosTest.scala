@@ -39,15 +39,6 @@ final class EpochNanoToPosTest extends OurTestSuite:
     assert(nanoToPos.posToChunkPosAndOpaquePos(3009) == 2222 -> OpaquePos(2000))
     assert(nanoToPos.posToChunkPosAndOpaquePos(4009) == 3333 -> OpaquePos(3000))
 
-    assert(nanoToPos.posToNextChunkPos(0) == Some(0))
-    assert(nanoToPos.posToNextChunkPos(1111) == Some(1111))
-    assert(nanoToPos.posToNextChunkPos(2222) == Some(2222))
-    assert(nanoToPos.posToNextChunkPos(3333) == Some(3333))
-    assert(nanoToPos.posToNextChunkPos(1009) == Some(1111))
-    assert(nanoToPos.posToNextChunkPos(2009) == Some(2222))
-    assert(nanoToPos.posToNextChunkPos(3009) == Some(3333))
-    assert(nanoToPos.posToNextChunkPos(4009) == None)
-
     nanoToPos.shrink()
     assert(nanoToPos.length == 3)
     assert(nanoToPos.internalSize == 1 + 3)

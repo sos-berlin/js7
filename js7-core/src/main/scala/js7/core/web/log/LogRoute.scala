@@ -15,6 +15,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.system.ServerOperatingSystem.operatingSystem
+import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
@@ -86,6 +87,8 @@ trait LogRoute extends RouteProvider:
         beginString.fold(Right(Instant.now)): beginString =>
           if beginString == "begin" then
             Right(Instant.EPOCH) // Inofficial for testing with curl
+          else if beginString == "end" then
+            Right(EpochNano.MaxInstant) // Inofficial for testing with curl
           else if beginString.contains("/") then
             LogLineKey.parse(beginString)
           else

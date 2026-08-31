@@ -18,7 +18,6 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFile.*
-import js7.base.log.reader.LogFileIndex
 import js7.base.log.reader.LogIndex.*
 import js7.base.log.reader.recompressors.Recompressor
 import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
@@ -115,8 +114,7 @@ private final class LogFile private(
                   logWriter = recompressor.toLogWriter(tmpFile)
                 ).map: logFileIndex =>
                   logger.info(s"Recompressed and indexed ${tmpFile.getFileName}: ${
-                    bytesPerSecondString(t.elapsed, logFileIndex.byteCount)
-                  }")
+                    bytesPerSecondString(t.elapsed, logFileIndex.byteCount)}")
                   logFileIndex)(
               release = _ =>
                 IO.blocking:
@@ -218,16 +216,18 @@ private object LogFile:
   private def positionedTmpFileStream(file: Path, opaquePos: OpaquePos, bufferSize: Int)
     (using recompressor: Recompressor)
   : Stream[IO, Chunk[Byte]] =
-    Stream.resource:
-      Resource.fromAutoCloseable:
+    //Logger.traceStream(s"### positionedTmpFileStream(${file.getFileName})"):
+      Stream.resource:
+        Resource.fromAutoCloseable:
+          IO.blocking:
+            FileInputStream(file.toFile)
+      .evalMap: (in: FileInputStream) =>
         IO.blocking:
-          FileInputStream(file.toFile)
-    .evalMap: (in: FileInputStream) =>
-      IO.blocking:
-        in.skip(opaquePos.toLong)
-        recompressor.decompressingInputStream(in)
-    .flatMap: in =>
-      inputStreamToStream(in, bufferSize)
+          //Logger.trace(s"### readLogFileInstant ${file.getFileName}: skip($opaquePos)")
+          in.skip(opaquePos.toLong)
+          recompressor.decompressingInputStream(in)
+      .flatMap: in =>
+        inputStreamToStream(in, bufferSize)
 
   /** The deferred LogFileIndex and optionally the temporary decompressed file. */
   final case class DeferredIndex(

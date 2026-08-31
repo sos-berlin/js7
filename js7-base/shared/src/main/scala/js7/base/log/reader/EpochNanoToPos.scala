@@ -5,7 +5,6 @@ import js7.base.io.OpaquePos
 import js7.base.log.Logger
 import js7.base.log.reader.EpochNanoToPos.*
 import js7.base.time.EpochNano
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import org.jetbrains.annotations.TestOnly
 
@@ -58,23 +57,25 @@ private final class EpochNanoToPos(initialSize: Int = 32):
     val i = _length - 1
     bytePositions(i) -> OpaquePos(opaquePosition(i))
 
-  def posToChunkPosAndOpaquePos(position: Long, skipBackwards: Int = 0): (Long, OpaquePos) =
-    // No synchronization needed
-    var i = posToIndex(position) - skipBackwards
-    if i < 0 then i = 0
-    bytePositions(i) -> OpaquePos(opaquePosition(i))
-
-  def posToNextChunkPos(position: Long): Option[Long] =
-    // No synchronization needed
-    val i = posToIndex(position, skip = 1)
-    (i < _length) ? bytePositions(i)
-
-  private def posToIndex(position: Long, skip: Int = 0): Int =
+  def posToChunkPosAndOpaquePos(position: Long): (Long, OpaquePos) =
     // No synchronization needed
     var i = binarySearch(bytePositions, 0, _length, position)
     if i < 0 then
-      i = -i - 2 + skip // not exact? then return next position
-    i
+      i = -i - 2 // not exact? then return next position
+    bytePositions(i) -> OpaquePos(opaquePosition(i))
+
+  def posToBackwardChunkPosAndOpaquePos(position: Long, skipBackwards: Int): (Long, OpaquePos) =
+    // No synchronization needed
+    assert(skipBackwards >= 1)
+    var i = binarySearch(bytePositions, 0, _length, position)
+    if i >= 0 then
+      i -= skipBackwards
+      if i < 0 then i = 0
+    else
+      i = -i - 2 // not exact? then return the previous entry
+      i -= skipBackwards - 1
+      if i < 0 then i = 0
+    bytePositions(i) -> OpaquePos(opaquePosition(i))
 
   /** Return the position corresponding to the greatest [[EpochNano]]
     * less than or equal to the given [[EpochNano]], or 0 if there is no such [[EpochNano]].
@@ -83,7 +84,7 @@ private final class EpochNanoToPos(initialSize: Int = 32):
   def epochNanoToChunkPosAndOpaquePos(epochNano: EpochNano): (Long, OpaquePos) =
     // No synchronization needed
     var i = binarySearch(epochNanos, 0, _length, epochNano.toLong)
-    if i < 0 then i = -i - 2 // not exact? then return next position
+    if i < 0 then i = -i - 2 // not exact? then return the previous position
     bytePositions(i) -> OpaquePos(opaquePosition(i))
 
   /** @param epochNano Timestamp of the line, must be greater than the last added epochNano

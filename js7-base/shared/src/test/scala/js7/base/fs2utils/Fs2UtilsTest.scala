@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.Fs2Utils.{combineByteSeqs, bytesToPosAndLines, unfoldEvalWeighted}
+import js7.base.fs2utils.Fs2Utils.{bytesToPosAndLines, combineByteSeqs, unfoldEvalWeighted}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
@@ -16,7 +16,7 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
     val result = Stream("ett\ntvå\ntre", "\nfyra\nfem").map: string =>
       fs2.Chunk.from(string.getBytes(UTF_8))
     .through:
-      bytesToPosAndLines(firstPosition = 100, breakLinesLongerThan = None)
+      bytesToPosAndLines(fromPosition = 100, breakLinesLongerThan = None)
     .map: (pos, line) =>
       pos -> line.utf8String
     .toList
@@ -27,6 +27,22 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
       109 -> "tre\n",
       113 -> "fyra\n",
       118 -> "fem"))
+
+  "bytesToPosAndLines backwards" in:
+    val result = Stream("fem\nfyra\ntre\n", "två\nett\n").map: string =>
+      fs2.Chunk.from(string.getBytes(UTF_8))
+    .through:
+      bytesToPosAndLines(fromPosition = 100, backwards = true, breakLinesLongerThan = None)
+    .map: (pos, line) =>
+      pos -> line.utf8String
+    .toList
+
+    assert(result == List(
+      100 -> "fem\n",
+      96 -> "fyra\n",
+      91 -> "tre\n",
+      87 -> "två\n",
+      82 -> "ett\n"))
 
   "combineByteSeqs" - {
     "empty" in:

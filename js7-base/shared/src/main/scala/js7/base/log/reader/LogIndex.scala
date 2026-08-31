@@ -180,29 +180,34 @@ extends Service.StoppableByCancel:
   private def streamFileFromPos(
     logFile: LogFile, position: Long, forReader: LogSelection.ForReader)
   : Stream[IO, KeyedByteLogLine] =
-    Stream.eval:
-      // We must recompress (but not necessarily index) to return positions of the recompressed file
-      toDeferredIndex(logFile)
-    .flatMap: deferredIndex =>
-      if forReader.backwards || logFile.isGzipped then
-        // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
-        deferredIndex.logFileIndex.positionToLines(position, forReader)
+    locally:
+      if !forReader.backwards && position == 0 then
+        wholeFileForward(logFile, forReader)
       else
-        locally:
-          if forReader.growing then
-            LogFileReader.streamGrowingLogFile(
-              deferredIndex.file,
-              byteChunkSize = forReader.byteChunkSize,
-              poll = conf.pollGrowing,
-              position = position)
+        Stream.eval:
+          // We must recompress (but not necessarily index) to return positions of the recompressed file
+          toDeferredIndex(logFile)
+        .flatMap: deferredIndex =>
+          if forReader.backwards || logFile.isGzipped then
+            // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
+            deferredIndex.logFileIndex.positionToLines(position, forReader)
           else
-            ByteSeqFileReader.streamFromPosition[Chunk[Byte]](
-              deferredIndex.file,
-              position = position,
-              byteChunkSize = forReader.byteChunkSize)
-        .through:
-          bytesToPosAndLines(firstPosition = position, breakLinesLongerThan = breakLinesLongerThan)
-        .map(PosAndLine.fromPair)
+            locally:
+              if forReader.growing then
+                LogFileReader.streamGrowingLogFile(
+                  deferredIndex.file,
+                  byteChunkSize = forReader.byteChunkSize,
+                  poll = conf.pollGrowing,
+                  position = position)
+              else
+                ByteSeqFileReader.streamFromPosition[Chunk[Byte]](
+                  deferredIndex.file,
+                  position = position,
+                  byteChunkSize = forReader.byteChunkSize)
+            .through:
+              bytesToPosAndLines(fromPosition = position, backwards = forReader.backwards,
+                breakLinesLongerThan = breakLinesLongerThan)
+          .map(PosAndLine.fromPair)
     .map: posAndLine =>
       KeyedByteLogLine(logFile.fileInstant, posAndLine)
 
@@ -251,7 +256,7 @@ extends Service.StoppableByCancel:
       else
         ByteSeqFileReader.stream(logFile.originalFile, byteChunkSize = forReader.byteChunkSize)
     .through:
-      bytesToPosAndLines(firstPosition = 0, breakLinesLongerThan = breakLinesLongerThan)
+      bytesToPosAndLines(fromPosition = 0, breakLinesLongerThan = breakLinesLongerThan)
     .map: posAndLine =>
       PosAndLine.fromPair(posAndLine)
 
@@ -260,19 +265,7 @@ extends Service.StoppableByCancel:
     Stream.eval:
       toDeferredIndex(logFile)
     .flatMap: deferredIndex =>
-      val veryLastPosition = Long.MaxValue
-      if logFile.isGzipped then
-        // LogLineIndex converts the (uncompressed) position into an OpaquePos in the compressed file
-        deferredIndex.logFileIndex.positionToLines(veryLastPosition, forReader)
-      else
-        ByteSeqFileReader.streamFromPosition[Chunk[Byte]](
-            deferredIndex.file,
-            position = veryLastPosition,
-            byteChunkSize = forReader.byteChunkSize)
-          .through:
-            bytesToPosAndLines(firstPosition = veryLastPosition, breakLinesLongerThan = breakLinesLongerThan, backwards = true)
-          .map: (pos, line) =>
-            PosAndLine.fromPair(pos, line)
+      deferredIndex.logFileIndex.positionToLines(position = Long.MaxValue, forReader)
 
   private def toDeferredIndex(logFile: LogFile): IO[LogFile.DeferredIndex] =
     logFile.toDeferredIndex(pollGrowing = watchGrowth ? conf.pollGrowing)

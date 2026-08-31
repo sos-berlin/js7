@@ -78,14 +78,16 @@ object EpochNano:
   end extension
 
 
-  private val MinNanoInstant = Instant.ofEpochMilli(Long.MinValue)
-  private val MaxNanoInstant = Instant.ofEpochMilli(Long.MaxValue)
+  private val MinInstant =
+    Instant.ofEpochSecond(Long.MinValue / 1_000_000_000, Long.MinValue % 1_000_000_000)
+  val MaxInstant: Instant =
+    Instant.ofEpochSecond(Long.MaxValue / 1_000_000_000, Long.MaxValue % 1_000_000_000)
   private inline val MinSecond = Long.MinValue / 1_000_000_000
   private inline val MaxSecond = Long.MaxValue / 1_000_000_000
 
   extension (instant: Instant)
     def toEpochNano: EpochNano =
-      if instant.isBefore(MinNanoInstant) || instant.isAfter(MaxNanoInstant) then
+      if instant.isBefore(MinInstant) || instant.isAfter(MaxInstant) then
         throw new IllegalArgumentException(s"Instant $instant is out of range for EpochNano")
       EpochNano(instant.getEpochSecond * 1_000_000_000L + instant.getNano)
 

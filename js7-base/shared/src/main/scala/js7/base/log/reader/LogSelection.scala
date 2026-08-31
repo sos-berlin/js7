@@ -72,10 +72,10 @@ object LogSelection:
 
     final def copyForReader(
       growing: Boolean = growing,
-      readReverse: Boolean = backwards,
+      backwards: Boolean = backwards,
       byteChunkSize: Int = byteChunkSize)
     : ForReader =
-      ForReader(growing, readReverse, byteChunkSize)
+      ForReader(growing, backwards, byteChunkSize)
 
   object ForReader:
     def apply(

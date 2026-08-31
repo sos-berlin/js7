@@ -36,6 +36,7 @@ import scala.concurrent.duration.Deadline
 // For more tests, see JLogDirectoryIndexTester, LogFileTest and LogFileClusterTest.
 final class LogDirectoryIndexTest extends OurAsyncTestSuite:
 
+  protected override def testTimeout = if isIntelliJIdea then 1.h else super.testTimeout
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
   private given LogIndexConf = LogIndexConf.forTest
 
@@ -315,6 +316,19 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
               LogSelection.lineLimit(-Long.MaxValue)
             ).compile.toVector.map: reverseLines =>
               assert(reverseLines == allLines.dropRight(2).reverse)
+
+  "Read backwards from future Instant" in:
+    val futureInstant = ZonedDateTime.parse("2099-12-31T00:00:00.000+02").toInstant
+    temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
+      val startInstant = ZonedDateTime.parse("2026-03-01T00:00:00.000+02").toInstant
+      multiFileLogIndex(startInstant).use: logIndex =>
+        logIndex.keyedByteLogLineStream(startInstant, LogSelection())
+          .compile.toVector.flatMap: allLines =>
+            logIndex.keyedByteLogLineStream(
+              begin = futureInstant,
+              LogSelection.lineLimit(-Long.MaxValue)
+            ).compile.toVector.map: reverseLines =>
+              assert(reverseLines == allLines.reverse)
 
   private def multiFileLogIndex(startInstant: Instant): ResourceIO[LogIndex] =
     temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").evalMap: dir =>

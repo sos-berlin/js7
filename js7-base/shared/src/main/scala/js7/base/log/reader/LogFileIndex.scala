@@ -50,14 +50,6 @@ final class LogFileIndex private[reader](
   def byteCount: Long =
     nanoToPos.byteCount
 
-  def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
-    instantToLinesForward(instant, logSelection.forReader)
-      .through:
-        logSelection.pipe
-      .head
-      .compile.last
-      .map(_.map(_._1))
-
   @TestOnly
   def streamByteLines(begin: Instant | Long, logSelection: LogSelection = LogSelection.all)
   : Stream[IO, Chunk[Byte]] =
@@ -74,26 +66,50 @@ final class LogFileIndex private[reader](
     .through:
       logSelection.pipe
 
+  def instantToFilePosition(instant: Instant, logSelection: LogSelection): IO[Option[Long]] =
+    instantToLinesForward(instant, logSelection.forReader)
+      .through:
+        logSelection.pipe
+      .head
+      .compile.last
+      .map(_.map(_._1))
+
   def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     if forReader.backwards then
       instantToLinesBackwards(begin, forReader)
     else
       instantToLinesForward(begin, forReader)
 
-  private def instantToLinesBackwards(begin: Instant, forReader: LogSelection.ForReader)
-  : Stream[IO, PosAndLine] =
-    instantToLinesForward(begin, forReader).head.map(_.position).flatMap: pos =>
-      positionToLinesBackwards(pos, forReader)
-
   private def instantToLinesForward(begin: Instant, forReader: LogSelection.ForReader)
   : Stream[IO, PosAndLine] =
-    Stream.suspend:
+    Stream.force:
+      instantToLinesForward0(begin, forReader)
+        .map(_._3)
+
+  private def instantToLinesBackwards(begin: Instant, forReader: LogSelection.ForReader)
+  : Stream[IO, PosAndLine] =
+    Stream.force:
+      // First, convert the instant to a position
+      instantToLinesForward0(begin, LogSelection.ForReader(byteChunkSize = LogBytesPerEntry))
+        .map: (chunkPos, opaquePos, instantStream) =>
+          instantStream.head
+            .map(_.position)
+            .ifEmpty(Stream.emit(Long.MaxValue))
+            .flatMap: position =>
+              // Then read backwards from that position
+              positionToLinesBackwardsChunk(position, chunkPos, opaquePos, forReader)
+
+  private def instantToLinesForward0(begin: Instant, forReader: LogSelection.ForReader)
+  : IO[(Long, OpaquePos, Stream[IO, PosAndLine])] =
+    IO:
       val timestampParser = FastTimestampParser()
       val beginEpochNano = begin.toEpochNano
       val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
-      toLines(chunkPos, opaquePos, forReader,
-        shouldBeDropped = (_, byteLine) =>
-          timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
+      val stream =
+        toLines(chunkPos, opaquePos, forReader,
+          shouldBeDropped = (_, byteLine) =>
+            timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
+      (chunkPos, opaquePos, stream)
 
   def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     // Convert the byte position of the desired line into the byte position of the corresponding
@@ -101,49 +117,47 @@ final class LogFileIndex private[reader](
     if forReader.backwards then
       positionToLinesBackwards(position, forReader)
     else
-      Stream.suspend:
-        val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
-        toLines(chunkPos, opaquePos, forReader, shouldBeDropped = (pos, _) => pos < position)
+      positionToLinesForward(position, forReader)
 
-  private def positionToLinesBackwards(position: Long, forReader: LogSelection.ForReader)
-  : Stream[IO, PosAndLine] =
+  private def positionToLinesForward(position: Long, forReader: LogSelection.ForReader) =
     Stream.suspend:
-      // Read the indexed chunk forward, then reverse it and continue with the previous chunk.
-      // For good speed, LogBytesPerEntry should be >= 1MB (MacBook Pro M4)
-      val (chunkPos, opaquePos) =
-        nanoToPos.posToNextChunkPos(position) match
-          case Some(chunkPos) =>
-            nanoToPos.posToChunkPosAndOpaquePos(chunkPos - 1)
-          case None =>
-            nanoToPos.lastChunkPosAndOpaquePos
+      val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
+      toLines(chunkPos, opaquePos, forReader, shouldBeDropped = (pos, _) => pos < position)
+
+  private def positionToLinesBackwards(position: Long, forReader: LogSelection.ForReader) =
+    Stream.suspend:
+      val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
       positionToLinesBackwardsChunk(position, chunkPos, opaquePos, forReader)
 
   /** @param skipBackwards Start with 1, then double for each iteration.
-    *   This way, it gets faster and the buffers get bigger the more lines are read. */
+    *   This way, it gets faster the more lines are read. But the buffers get bigger. */
   private def positionToLinesBackwardsChunk(
-    position: Long,
-    firstChunkPos: Long, firstOpaquePos: OpaquePos,
+    position: Long, chunkPos: Long, opaquePos: OpaquePos,
     forReader: LogSelection.ForReader,
     skipBackwards: Int = 1)
   : Stream[IO, PosAndLine] =
     Stream.suspend:
+      assertThat(chunkPos <= position)
       Stream.eval:
-        toLines(firstChunkPos, firstOpaquePos,
+        // Read the indexed chunk forward, then reverse it and continue with the previous chunk.
+        toLines(chunkPos, opaquePos,
+          // For good speed, BackwardsFileChunkSize should be 1MB (MacBook Pro M4)
           forReader.copyForReader(
-            byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry),
+            byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry,
+            backwards = false),
           shouldBeDropped = (_, _) => false
         ).takeWhile(_.position < position)
           .compile.toVector
       .flatMap: vector =>
         Stream.iterable(vector.view.reverse)
       .append:
-        if firstChunkPos == 0 then
+        if chunkPos == 0 then
           Stream.empty
         else
-          val (chunkPos, opaquePos) =
-            nanoToPos.posToChunkPosAndOpaquePos(firstChunkPos, skipBackwards = skipBackwards)
-          assertThat(chunkPos < firstChunkPos)
-          positionToLinesBackwardsChunk(firstChunkPos, chunkPos, opaquePos, forReader,
+          val (previousChunkPos, previousOpaquePos) =
+            nanoToPos.posToBackwardChunkPosAndOpaquePos(chunkPos, skipBackwards = skipBackwards)
+          assertThat(previousChunkPos < chunkPos)
+          positionToLinesBackwardsChunk(chunkPos, previousChunkPos, previousOpaquePos, forReader,
             2 * skipBackwards min SkipBackwards)
 
   /**
@@ -161,7 +175,8 @@ final class LogFileIndex private[reader](
       var droppedLines, droppedBytes = 0L
       toPositionedStream(opaquePos, forReader)
         .through:
-          bytesToPosAndLines(firstPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
+          bytesToPosAndLines(fromPosition = chunkPos, backwards = forReader.backwards,
+            breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = shouldBeDropped(pos, byteLine)
           if drop then
@@ -216,7 +231,8 @@ object LogFileIndex:
   : IO[LogFileIndex] =
     fromStream(
       resolveLabel(logFile, label),
-      toBuilderStream = positionedStream(logFile, OpaquePos(0), _),
+      toBuilderStream =
+        positionedStream(logFile, OpaquePos(0), _),
       toPositionedStream = (pos, forReader) =>
         positionedStream(logFile, pos, forReader.byteChunkSize))
 
