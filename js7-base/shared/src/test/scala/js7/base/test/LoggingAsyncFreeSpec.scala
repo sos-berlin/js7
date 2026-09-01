@@ -7,10 +7,11 @@ import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichThrowable}
+import js7.base.utils.Tests.isIntelliJIdea
 import org.scalactic.source.Position
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.{Assertion, PendingStatement, Tag}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, TimeoutException}
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -23,7 +24,9 @@ import scala.util.{Failure, Success, Try}
  **/
 trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
 
-  protected def testTimeout: FiniteDuration = 99.s
+  protected def testTimeout: Duration =
+    if isIntelliJIdea then Duration.Inf/*allow debugging*/ else 99.s
+
   protected implicit def ioRuntime: IORuntime
 
   private val suiteName = getClass.shortClassName
