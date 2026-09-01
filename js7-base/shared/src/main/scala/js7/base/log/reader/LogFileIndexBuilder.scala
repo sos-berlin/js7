@@ -44,6 +44,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
       .map: (_, nanoToPos) =>
         new LogFileIndex(
           toPositionedStream = (opaquePos, forReader) =>
+            assert(!forReader.backwards)
             LogFileIndex.positionedStream(
               logFile, opaquePos, forReader.byteChunkSize,
               forReader.growing ? poll),

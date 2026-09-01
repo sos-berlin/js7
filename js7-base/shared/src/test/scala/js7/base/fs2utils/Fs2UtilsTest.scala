@@ -28,22 +28,6 @@ final class Fs2UtilsTest extends OurAsyncTestSuite:
       113 -> "fyra\n",
       118 -> "fem"))
 
-  "bytesToPosAndLines backwards" in:
-    val result = Stream("fem\nfyra\ntre\n", "två\nett\n").map: string =>
-      fs2.Chunk.from(string.getBytes(UTF_8))
-    .through:
-      bytesToPosAndLines(fromPosition = 100, backwards = true, breakLinesLongerThan = None)
-    .map: (pos, line) =>
-      pos -> line.utf8String
-    .toList
-
-    assert(result == List(
-      100 -> "fem\n",
-      96 -> "fyra\n",
-      91 -> "tre\n",
-      87 -> "två\n",
-      82 -> "ett\n"))
-
   "combineByteSeqs" - {
     "empty" in:
       val stream: Stream[Pure, ByteArray] =

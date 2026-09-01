@@ -21,15 +21,13 @@ object Fs2Utils:
   /** Convert to pairs of byte position and ByteSeq. */
   def bytesToPosAndLines[F[_], ByteSeq: ByteSequence](
     fromPosition: Long,
-    backwards: Boolean = false,
     breakLinesLongerThan: Option[Int])
   : fs2.Pipe[F, ByteSeq, (Long, ByteSeq)] =
-    val sign = if backwards then -1 else +1
     _.through:
       byteChunksToLines(breakLinesLongerThan = breakLinesLongerThan)
     .scanChunks(fromPosition): (pos, lines) =>
       lines.mapAccumulate(pos): (pos, line) =>
-        (pos + line.length * sign) -> (pos -> line)
+        (pos + line.length) -> (pos -> line)
 
   private object End
   private val EndStream = Stream.emit(End)

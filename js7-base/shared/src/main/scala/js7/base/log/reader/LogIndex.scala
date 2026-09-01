@@ -205,8 +205,7 @@ extends Service.StoppableByCancel:
                   position = position,
                   byteChunkSize = forReader.byteChunkSize)
             .through:
-              bytesToPosAndLines(fromPosition = position, backwards = forReader.backwards,
-                breakLinesLongerThan = breakLinesLongerThan)
+              bytesToPosAndLines(fromPosition = position, breakLinesLongerThan = breakLinesLongerThan)
           .map(PosAndLine.fromPair)
     .map: posAndLine =>
       KeyedByteLogLine(logFile.fileInstant, posAndLine)

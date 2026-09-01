@@ -27,6 +27,7 @@ import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Allocated
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -110,6 +111,7 @@ private final class LogFile private(
                   label = tmpFile.getFileName.toString,
                   toBuilderStream = toGzipDecompressingStream,
                   toPositionedStream = (pos, forReader) =>
+                    assertThat(!forReader.backwards)
                     positionedTmpFileStream(tmpFile, pos, forReader.byteChunkSize),
                   logWriter = recompressor.toLogWriter(tmpFile)
                 ).map: logFileIndex =>

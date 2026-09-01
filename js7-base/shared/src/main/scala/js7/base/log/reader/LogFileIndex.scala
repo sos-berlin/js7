@@ -170,13 +170,13 @@ final class LogFileIndex private[reader](
     forReader: LogSelection.ForReader,
     shouldBeDropped: (Long, Chunk[Byte]) => Boolean)
   : Stream[IO, PosAndLine] =
+    assertThat(!forReader.backwards)
     Stream.suspend:
       val t = Deadline.now
       var droppedLines, droppedBytes = 0L
       toPositionedStream(opaquePos, forReader)
         .through:
-          bytesToPosAndLines(fromPosition = chunkPos, backwards = forReader.backwards,
-            breakLinesLongerThan = breakLinesLongerThan)
+          bytesToPosAndLines(fromPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
         .dropWhile: (pos, byteLine) =>
           val drop = shouldBeDropped(pos, byteLine)
           if drop then
@@ -234,6 +234,7 @@ object LogFileIndex:
       toBuilderStream =
         positionedStream(logFile, OpaquePos(0), _),
       toPositionedStream = (pos, forReader) =>
+        assertThat(!forReader.backwards)
         positionedStream(logFile, pos, forReader.byteChunkSize))
 
   def fromStream(

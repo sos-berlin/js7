@@ -251,8 +251,6 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
                         val elapsed = t.elapsed
                         info_(s"$logFileIndex ${
                           bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
-              //logger.info(s"$logFileIndex ${
-              //  bold(itemsPerSecondString(elapsed, lineCount, "lines"))}")
               .as(succeed)
 
     def info_(line: String) =
