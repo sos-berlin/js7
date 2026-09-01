@@ -43,6 +43,7 @@ object LogFileReader:
   private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
   private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
   private val meterReadHeader = CallMeter("LogFileReader.readHeader")
+  val BufferSize: Int = 1024*1024
 
   val FastPrefixPattern: Pattern =
     Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")

@@ -1,9 +1,9 @@
 package js7.service.lz4
 
 import java.io.{InputStream, OutputStream}
-import js7.base.io.file.ByteSeqFileReader
 import js7.base.io.{SeekableInputStream, SeekableOutputStream}
 import js7.base.log.Logger
+import js7.base.log.reader.LogFileReader
 import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor
 import js7.base.utils.Tests.isTest
 import js7.service.lz4.Lz4InputStream
@@ -22,7 +22,7 @@ extends
     () => LZ4Factory.fastestJavaInstance.fastDecompressor(),
     "lz4")
 
-  private val BufferSize = ByteSeqFileReader.BufferSize + 1024
+  private val BufferSize = LogFileReader.BufferSize + 1024
 
   def findRecompressor(name: String) =
     name match

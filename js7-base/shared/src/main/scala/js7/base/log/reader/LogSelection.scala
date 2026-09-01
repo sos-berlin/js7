@@ -7,7 +7,6 @@ import java.time.{Instant, ZoneId}
 import java.util.regex.{Matcher, Pattern}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogSelection.*
 import js7.base.log.{AnsiEscapeCodes, reader}
 import js7.base.time.EpochNano
@@ -22,7 +21,7 @@ final case class LogSelection(
   end: Option[Instant] = None,
   lineLimit: Option[Long] = None,
   pattern: Option[Pattern] = None,
-  byteChunkSize: Int = ByteSeqFileReader.BufferSize,
+  byteChunkSize: Int = LogFileReader.BufferSize,
   growing: Boolean = false)
 extends ForReader:
 
@@ -81,7 +80,7 @@ object LogSelection:
     def apply(
       growing: Boolean = false,
       readReverse: Boolean = false,
-      byteChunkSize: Int = ByteSeqFileReader.BufferSize)
+      byteChunkSize: Int = LogFileReader.BufferSize)
     : ForReader =
       ForReader_(growing, readReverse, byteChunkSize)
 
