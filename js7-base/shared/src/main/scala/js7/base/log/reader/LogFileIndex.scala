@@ -200,9 +200,11 @@ final class LogFileIndex private[reader](
 
 
 object LogFileIndex:
-  /** One index entry (24 bytes) per 32KiB-block or a 1,4MiB per GiB log file. */
-  private[reader] val LogBytesPerEntry: Int = 32 * 1024
-  private val NoEntryWarnThreshold = 128 * 1024
+  /** One index entry (EpochNanoToPos.EntrySize = 24 bytes) per 256KiB-block.
+    *
+    * That's 1MB memory per 10GB uncompressed log data. */
+  private[reader] val LogBytesPerEntry: Int = 256 * 1024
+  private val NoEntryWarnThreshold = 4 * LogBytesPerEntry
   private val BackwardsFileChunkSize = 1024 * 1024 // Backwards read chunks of 1MiB from file
   // Read backwards chunks of up to 4MiB + 1*LogBytesPerEntry
   private val SkipBackwardsSize = 4 * BackwardsFileChunkSize
