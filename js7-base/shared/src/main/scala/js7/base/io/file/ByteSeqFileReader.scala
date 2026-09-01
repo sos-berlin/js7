@@ -19,7 +19,7 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 /** Reads ByteSequences from a file. **/
 final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
-  channel: SeekableByteChannel, bufferSize: Int):
+  channel: SeekableByteChannel, bufferSize: Int, label: String):
 
   @threadUnsafe
   private lazy val buffer = ByteBuffer.allocate(bufferSize)
@@ -83,12 +83,17 @@ final class ByteSeqFileReader[ByteSeq: ByteSequence as ByteSeq] private(
 
   private def readBuffer(buffer: ByteBuffer): IO[ByteSeq] =
     IO.blocking:
+      //val pos = channel.position
       buffer.clear()
       channel.read(buffer)
-      buffer.flip()
-    .map:
-      ByteSeq.readByteBuffer
+      /*pos -> */buffer.flip()
+    .map: (/*pos, */byteBuffer) =>
+      val byteSeq = ByteSeq.readByteBuffer(byteBuffer)
+      //Logger.trace(s"### $label position=$pos read ${byteSeq.utf8String.truncateWithEllipsis(100, showLength = true, firstLineOnly = true, quote = true)}")
+      byteSeq
 
+  override def toString: String =
+    s"ByteSeqFileReader($label)"
 
 object ByteSeqFileReader:
   val BufferSize: Int = 64*1024
@@ -115,7 +120,8 @@ object ByteSeqFileReader:
                 retry(()).delayBy(delay)
             case (t, _, _) => IO.raiseError(t)
         .map: channel =>
-          new ByteSeqFileReader[ByteSeq](channel, bufferSize = bufferSize)
+          new ByteSeqFileReader[ByteSeq](channel, bufferSize = bufferSize,
+            label = file.getFileName.toString)
         .evalTap: reader =>
           IO.whenA(fromEnd):
             reader.seekToEnd
