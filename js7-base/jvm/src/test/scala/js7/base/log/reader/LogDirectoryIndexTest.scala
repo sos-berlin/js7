@@ -429,7 +429,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
                   "2026-03-03 00:00:00.000+02 Begin ...\n",
                   "2026-03-03 00:00:00.000+02 info LogDirectoryIndexTest - MESSAGE\n"))
 
-  "Five 100MB debug-log files" in {
+  "Reading five 100MB debug-log.gz files" in {
     if !isIntelliJIdea && !sys.props.contains("test.speed") then
       IO.pure(pending)
     else
@@ -445,27 +445,30 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       val lineLength = 130
       val lineCount = logFileSize / lineLength
       temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
-        (1 to 5).foldMap: i =>
+        val fileCount = 5
+        (1 to fileCount).foldMap: i =>
           val date = s"2026-05-1$i"
-          val gzFile = dir / s"TEST-debug-$date-1.log.gz"
+          val gzFile = dir / s"TEST-$date-1.log.gz"
           LogFileIndexTest.writeFile(
             gzFile, lineLength = lineLength, lineCount = lineCount, gzip = true,
             startTime = s"${date}T00:00:00.000+02")
         *>
-          (1 to 10).foldMap: _ =>
-            IO.defer:
-              val t = Deadline.now
-              given Config = Js7Config.defaultConfig
-              LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
-                logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
-                  logIndex.byteLineStream(
-                    Instant.parse("2026-02-12T00:01:00Z"),
-                    LogSelection()
-                  ).compile.drain.map: _ =>
-                    val elapsed = t.elapsed
-                    val used = sys.runtime.totalMemory - sys.runtime.freeMemory
-                    info_(s"$logIndex ${
-                      bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
+          IO.defer:
+            given Config = Js7Config.defaultConfig
+            LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
+              logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
+                (1 to 10).foldMap: _ =>
+                  IO.defer:
+                    val t = Deadline.now
+                    logIndex.byteLineStream(
+                      Instant.parse("2026-02-12T00:01:00Z"),
+                      LogSelection()
+                    ).compile.count.map: n =>
+                      assert(n == fileCount * (lineCount + 1/*header line*/))
+                      val elapsed = t.elapsed
+                      val used = sys.runtime.totalMemory - sys.runtime.freeMemory
+                      info_(s"$logIndex ${
+                        bold(bytesPerSecondString(elapsed, lineCount * lineLength))}")
             .as(succeed)
   }
 

@@ -72,7 +72,7 @@ final class LogFileIndex private[reader](
         logSelection.pipe
       .head
       .compile.last
-      .map(_.map(_._1))
+      .map(_.map(_.position))
 
   def instantToLines(begin: Instant, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
     if forReader.backwards then

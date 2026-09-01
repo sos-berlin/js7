@@ -129,7 +129,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
   "Backwards" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     val logFileSize = 5 * LogFileIndex.LogBytesPerEntry
-    val lineLength = 130
+    val lineLength = 200
     val lineCount = logFileSize / lineLength
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       val startTime = "2026-08-28T00:00:00.000+03"
@@ -197,7 +197,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       else
         logger.debugIO:
           val logFileSize = 1024 * 1024 * 1024
-          val lineLength = 130
+          val lineLength = 200
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount, extra = extra) *>
@@ -233,7 +233,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
       else
         logger.debugIO:
           val logFileSize = 500 * 1024 * 1024
-          val lineLength = 130
+          val lineLength = 200
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount) *>
