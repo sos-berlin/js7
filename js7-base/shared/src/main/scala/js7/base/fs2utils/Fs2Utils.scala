@@ -23,11 +23,18 @@ object Fs2Utils:
     fromPosition: Long,
     breakLinesLongerThan: Option[Int])
   : fs2.Pipe[F, ByteSeq, (Long, ByteSeq)] =
+    bytesToPosAndLines(fromPosition, breakLinesLongerThan, (pos, line) => (pos, line))
+
+  def bytesToPosAndLines[F[_], ByteSeq: ByteSequence, A](
+    fromPosition: Long,
+    breakLinesLongerThan: Option[Int],
+    toPosAndLine: (Long, ByteSeq) => A)
+  : fs2.Pipe[F, ByteSeq, A] =
     _.through:
       byteChunksToLines(breakLinesLongerThan = breakLinesLongerThan)
     .scanChunks(fromPosition): (pos, lines) =>
       lines.mapAccumulate(pos): (pos, line) =>
-        (pos + line.length) -> (pos -> line)
+        (pos + line.length) -> toPosAndLine(pos, line)
 
   private object End
   private val EndStream = Stream.emit(End)

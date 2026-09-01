@@ -107,8 +107,8 @@ final class LogFileIndex private[reader](
       val (chunkPos, opaquePos) = nanoToPos.epochNanoToChunkPosAndOpaquePos(beginEpochNano)
       val stream =
         toLines(chunkPos, opaquePos, forReader,
-          shouldBeDropped = (_, byteLine) =>
-            timestampParser.parseTimestampInLogLine(byteLine) < beginEpochNano)
+          shouldBeDropped = posAndLine =>
+            timestampParser.parseTimestampInLogLine(posAndLine.byteLine) < beginEpochNano)
       (chunkPos, opaquePos, stream)
 
   def positionToLines(position: Long, forReader: LogSelection.ForReader): Stream[IO, PosAndLine] =
@@ -122,7 +122,7 @@ final class LogFileIndex private[reader](
   private def positionToLinesForward(position: Long, forReader: LogSelection.ForReader) =
     Stream.suspend:
       val (chunkPos, opaquePos) = nanoToPos.posToChunkPosAndOpaquePos(position)
-      toLines(chunkPos, opaquePos, forReader, shouldBeDropped = (pos, _) => pos < position)
+      toLines(chunkPos, opaquePos, forReader, shouldBeDropped = o => o.position < position)
 
   private def positionToLinesBackwards(position: Long, forReader: LogSelection.ForReader) =
     Stream.suspend:
@@ -145,7 +145,7 @@ final class LogFileIndex private[reader](
           forReader.copyForReader(
             byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry,
             backwards = false),
-          shouldBeDropped = (_, _) => false
+          shouldBeDropped = _ => false
         ).takeWhile(_.position < position)
           .compile.toVector
       .flatMap: vector =>
@@ -168,7 +168,7 @@ final class LogFileIndex private[reader](
     chunkPos: Long,
     opaquePos: OpaquePos,
     forReader: LogSelection.ForReader,
-    shouldBeDropped: (Long, Chunk[Byte]) => Boolean)
+    shouldBeDropped: PosAndLine => Boolean)
   : Stream[IO, PosAndLine] =
     assertThat(!forReader.backwards)
     Stream.suspend:
@@ -176,18 +176,19 @@ final class LogFileIndex private[reader](
       var droppedLines, droppedBytes = 0L
       toPositionedStream(opaquePos, forReader)
         .through:
-          bytesToPosAndLines(fromPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan)
-        .dropWhile: (pos, byteLine) =>
-          val drop = shouldBeDropped(pos, byteLine)
+          bytesToPosAndLines(fromPosition = chunkPos, breakLinesLongerThan = breakLinesLongerThan,
+            PosAndLine(_, _))
+        .dropWhile: posAndLine =>
+          val drop = shouldBeDropped(posAndLine)
           if drop then
             droppedLines += 1
-            droppedBytes += byteLine.size
+            droppedBytes += posAndLine.byteLine.size
           else
             val elapsed = t.elapsed
             if droppedLines > 0 then
               logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
                 } skipped after indexed position · ${elapsed.pretty}")
-            val skipped = pos - chunkPos
+            val skipped = posAndLine.position - chunkPos
             if skipped >= NoEntryWarnThreshold then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
                 toKiBGiB(skipped)}, found position=$chunkPos")

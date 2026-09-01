@@ -64,6 +64,9 @@ private final class LogFile private(
             FileDeleter.tryDeleteFile(deferredIndex.file)
           deferredIndexAlloc.release
 
+  def maybeLogFileIndex: IO[Option[LogFileIndex]] =
+    deferredIndexCell.get.map(_.map(_.allocatedThing.logFileIndex))
+
   def toDeferredIndex(pollGrowing: Option[FiniteDuration])(using Recompressor)
   : IO[DeferredIndex] =
     deferredIndexCell.evalUpdateAndGet: maybe =>
