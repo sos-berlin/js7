@@ -77,5 +77,4 @@ object JLogSelection:
     */
   val all: JLogSelection = new JLogSelection()
 
-  @deprecated("use all!") @Deprecated
   val empty: JLogSelection = all
