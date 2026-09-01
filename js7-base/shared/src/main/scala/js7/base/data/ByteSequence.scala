@@ -78,9 +78,8 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def fromMimeBase64(string: String): Checked[ByteSeq] =
     try Right(fromArray(Base64.getMimeDecoder.decode(string)))
-    catch { case e: IllegalArgumentException =>
+    catch case e: IllegalArgumentException =>
       Left(Problem("Invalid MIME base64 encoding: " + e.getMessage))
-    }
 
   def fromFileUnlimited(file: Path): ByteSeq =
     autoClosing(new FileInputStream(file.toFile))(in =>
@@ -338,7 +337,9 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     new ByteSequenceInputStream(byteSeq)
 
   def toInputStreamResource(byteSeq: ByteSeq): Resource[SyncIO, InputStream] =
-    Resource.fromAutoCloseable(SyncIO { toInputStream(byteSeq) })
+    Resource.fromAutoCloseable:
+      SyncIO:
+        toInputStream(byteSeq)
 
   override def writeToStream(byteSeq: ByteSeq, out: OutputStream): Unit =
     toInputStream(byteSeq).transferTo(out)
@@ -522,20 +523,18 @@ object ByteSequence:
       typeClassInstance.parseJson(self)
 
   trait ToByteSequenceOps:
-    implicit def toByteSequenceOps[ByteSeq](target: ByteSeq)(implicit tc: ByteSequence[ByteSeq])
+    implicit def toByteSequenceOps[ByteSeq: ByteSequence as ByteSeq](target: ByteSeq)
     : Ops[ByteSeq] =
       new Ops[ByteSeq]:
         val self = target
-        val typeClassInstance = tc
-
-  object nonInheritedOps extends ToByteSequenceOps
+        val typeClassInstance = ByteSeq
 
   trait AllOps[ByteSeq] extends Ops[ByteSeq]:
     def typeClassInstance: ByteSequence[ByteSeq]
 
   object ops:
-    implicit def toAllByteSequenceOps[ByteSeq](target: ByteSeq)(implicit tc: ByteSequence[ByteSeq])
+    implicit def toAllByteSequenceOps[ByteSeq: ByteSequence as ByteSeq](target: ByteSeq)
     : AllOps[ByteSeq] =
       new AllOps[ByteSeq]:
         val self = target
-        val typeClassInstance = tc
+        val typeClassInstance = ByteSeq

@@ -4,7 +4,7 @@ import cats.effect.IO
 import fs2.{Chunk, Pure, Stream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.{bytesToPosAndLines, combineByteSeqs, unfoldEvalWeighted}
 import js7.base.test.OurAsyncTestSuite
