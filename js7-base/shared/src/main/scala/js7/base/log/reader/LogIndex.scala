@@ -10,6 +10,7 @@ import java.nio.file.{Path, Paths}
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.ConcurrentSkipListMap
 import js7.base.catsutils.CatsEffectExtensions.orThrow
+import js7.base.fs2utils.ByteChunksLineSplitter.byteChunksToLines
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
 import js7.base.io.file.ByteSeqFileReader
@@ -245,8 +246,13 @@ extends Service.StoppableByCancel:
   : Stream[IO, PosAndLine] =
     locally:
       if logFile.isGzipped then
-        // TODO Handle incomplete gzip file because it is still being written?
-        logFile.toGzipDecompressingStream(forReader.byteChunkSize)
+        Stream.force:
+          logFile.maybeLogFileIndex.map:
+            case Some(logFileIndex) if recompressor.isFast =>
+              logFileIndex.wholeFile(forReader)
+            case _ =>
+              // TODO Handle incomplete gzip file because it is still being written?
+              logFile.toGzipDecompressingStream(forReader.byteChunkSize)
       else if forReader.growing then
         LogFileReader.streamGrowingLogFile(
           logFile.originalFile,
@@ -254,10 +260,12 @@ extends Service.StoppableByCancel:
           poll = conf.pollGrowing)
       else
         ByteSeqFileReader.stream(logFile.originalFile, byteChunkSize = forReader.byteChunkSize)
+    .prefetch
     .through:
-      bytesToPosAndLines(fromPosition = 0, breakLinesLongerThan = breakLinesLongerThan)
-    .map: posAndLine =>
-      PosAndLine.fromPair(posAndLine)
+      byteChunksToLines(breakLinesLongerThan = breakLinesLongerThan)
+    .through:
+      bytesToPosAndLines(fromPosition = 0, breakLinesLongerThan = breakLinesLongerThan,
+        PosAndLine(_, _))
 
   private def wholeFileReverse(logFile: LogFile, forReader: LogSelection.ForReader)
   : Stream[IO, PosAndLine] =

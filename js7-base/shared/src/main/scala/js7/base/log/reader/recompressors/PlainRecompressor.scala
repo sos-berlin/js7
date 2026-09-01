@@ -9,6 +9,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 
 private[reader] case object PlainRecompressor extends Recompressor:
 
+  override def isFast = true
+
   def findRecompressor(name: String) =
     (name == "plain") ? this
 

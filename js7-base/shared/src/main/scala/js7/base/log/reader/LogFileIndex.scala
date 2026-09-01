@@ -192,8 +192,10 @@ final class LogFileIndex private[reader](
               logger.warn(s"Slow direct log file access due to missing index entry for ${
                 toKiBGiB(skipped)}, found position=$chunkPos")
           drop
-        .map: (pos, line) =>
-          PosAndLine(pos, line)
+
+  def wholeFile(forReader: LogSelection.ForReader): Stream[IO, Chunk[Byte]] =
+    assertThat(!forReader.backwards)
+    toPositionedStream(OpaquePos(0), forReader)
 
   override def toString =
     s"LogFileIndex($label ${toKiBGiB(nanoToPos.byteCount)} ${toKiBGiB(nanoToPos.memorySize)})"

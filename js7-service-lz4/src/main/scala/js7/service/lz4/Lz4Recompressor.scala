@@ -24,6 +24,8 @@ extends
 
   private val BufferSize = LogFileReader.BufferSize + 1024
 
+  override def isFast = true
+
   def findRecompressor(name: String) =
     name match
       case "lz4" => Some(if isTest then this else FastestLz4)

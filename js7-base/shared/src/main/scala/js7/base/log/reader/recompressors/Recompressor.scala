@@ -12,6 +12,9 @@ import js7.base.system.JavaServiceProviders
 
 trait Recompressor:
 
+  def isFast: Boolean =
+    false
+
   def findRecompressor(name: String): Option[Recompressor]
 
   def decompressingInputStream(in: InputStream): InputStream
