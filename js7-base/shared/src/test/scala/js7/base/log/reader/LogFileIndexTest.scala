@@ -41,7 +41,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
   private given conf: LogIndexConf =
     LogIndexConf.fromConfig(config"""
-      js7.log.index.max-bytes-per-line = $${js7.log.index.log-bytes-per-entry}  # Don't split long lines
+      js7.log.index.maximum-bytes-per-line = $${js7.log.index.log-bytes-per-entry}  # Don't split long lines
       """.withFallback(Js7Config.defaultConfig).resolve
     ).orThrow
 

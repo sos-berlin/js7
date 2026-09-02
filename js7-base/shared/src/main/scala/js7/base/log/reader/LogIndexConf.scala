@@ -19,7 +19,6 @@ final case class LogIndexConf(
   timestampReaderConcurrency: Int,
   recompressor: Recompressor,
   fileAddedDelay: FiniteDuration,
-  currentFileMaxDelay: FiniteDuration,
   logFileTimestampTries: DelayConf,
   headerMinimumLength: Int,
   pollGrowing: FiniteDuration,
@@ -35,6 +34,9 @@ final case class LogIndexConf(
 
   val uniqueHeaderSize: Int =
     UniqueHeaderSize
+
+  val currentFileMaxDelay: FiniteDuration =
+    logFileTimestampTries.delays.toList.reduce(_ + _).toCoarsest
 
 
 object LogIndexConf:
@@ -59,9 +61,8 @@ object LogIndexConf:
       concurrency <- catchNonFatal(config.getInt("js7.log.index.read-timestamp-concurrency"))
       recompressor = Recompressor.fromConfig(config)
       fileAddedDelay <- config.finiteDuration("js7.log.index.file-added-delay")
-      currentFileMaxDelay <- config.finiteDuration("js7.log.index.current-file-max-delay")
       logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
-      headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.headerMinimumLength"))
+      headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.header-minimum-length"))
       pollGrowing <- config.finiteDuration("js7.log.poll-growing")
       fileBufferSize <- catchNonFatal(config.getBytes("js7.log.index.file-buffer-size").toInt)
       buildBufferSize <- catchNonFatal(config.getBytes("js7.log.index.build-buffer-size").toInt)
@@ -69,10 +70,10 @@ object LogIndexConf:
       noEntryWarnThreshold <- catchNonFatal(config.getBytes("js7.log.index.no-entry-warn-threshold").toInt)
       logFileIndexLineLength <-
         catchNonFatal:
-          val n = config.getBytes("js7.log.index.max-bytes-per-line")
+          val n = config.getBytes("js7.log.index.maximum-bytes-per-line")
           if n <= MinimumLength || n > Int.MaxValue then
             throw new IllegalArgumentException(
-              s"js7.log.index.max-bytes-per-line must be > $MinimumLength and <= ${Int.MaxValue}")
+              s"js7.log.index.maximum-bytes-per-line must be > $MinimumLength and <= ${Int.MaxValue}")
           n.toInt
       checkLogFileChangePeriod <- config.finiteDuration("js7.log.index.check-log-file-change-period")
       skipBackwardsMinSize <- catchNonFatal(config.getBytes("js7.log.index.skip-backwards-minimum-size").toInt)
@@ -86,7 +87,7 @@ object LogIndexConf:
       LogIndexConf(
         concurrency,
         recompressor,
-        fileAddedDelay, currentFileMaxDelay, logFileTimestampTries, headerMinimumLength,
+        fileAddedDelay, logFileTimestampTries, headerMinimumLength,
         pollGrowing,
         fileBufferSize, buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
         logFileIndexLineLength,
