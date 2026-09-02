@@ -44,6 +44,8 @@ private final class LogFile private(
   val deferredIndexCell: AtomicCell[IO, Option[Allocated[IO, DeferredIndex]]])
   (using zoneId: ZoneId, conf: LogIndexConf):
 
+  private given Recompressor = conf.recompressor
+
   val filename: Path =
     originalFile.filename
 
@@ -67,7 +69,7 @@ private final class LogFile private(
   def maybeLogFileIndex: IO[Option[LogFileIndex]] =
     deferredIndexCell.get.map(_.map(_.allocatedThing.logFileIndex))
 
-  def toDeferredIndex(pollGrowing: Option[FiniteDuration])(using Recompressor)
+  def toDeferredIndex(pollGrowing: Option[FiniteDuration])
   : IO[DeferredIndex] =
     deferredIndexCell.evalUpdateAndGet: maybe =>
       maybe.match
@@ -90,7 +92,7 @@ private final class LogFile private(
       .map(Some(_))
     .map(_.get.allocatedThing)
 
-  private def buildIndex(pollGrowing: Option[FiniteDuration])(using Recompressor)
+  private def buildIndex(pollGrowing: Option[FiniteDuration])
   : ResourceIO[DeferredIndex] =
     if isGzipped then
       buildIndexFromCompressedFile
@@ -98,8 +100,7 @@ private final class LogFile private(
       buildIndexFromUncompressedFile(originalFile, pollGrowing)
 
   /** Recompresses and indexes the gzFile. */
-  private def buildIndexFromCompressedFile(using recompressor: Recompressor)
-  : ResourceIO[DeferredIndex] =
+  private def buildIndexFromCompressedFile: ResourceIO[DeferredIndex] =
     logger.traceResource("buildIndexFromCompressedFile", originalFile.getFileName):
       Resource.suspend:
         IO:
@@ -116,7 +117,7 @@ private final class LogFile private(
                   toPositionedStream = (pos, forReader) =>
                     assertThat(!forReader.backwards)
                     positionedTmpFileStream(tmpFile, pos, forReader.byteChunkSize),
-                  logWriter = recompressor.toLogWriter(tmpFile)
+                  logWriter = conf.recompressor.toLogWriter(tmpFile)
                 ).map: logFileIndex =>
                   logger.info(s"Recompressed and indexed ${tmpFile.getFileName}: ${
                     bytesPerSecondString(t.elapsed, logFileIndex.byteCount)}")

@@ -52,10 +52,10 @@ final class LogIndex private(
   label: String,
   fileAddedSignal: SignallingRef[IO, EpochNano])
   (using
-    zoneId: ZoneId,
-    recompressor: Recompressor,
-    conf: LogIndexConf)
+    zoneId: ZoneId, conf: LogIndexConf)
 extends Service.StoppableByCancel:
+
+  private given Recompressor = conf.recompressor
 
   private val instantToLogFile: ConcurrentSkipListMap[Instant, LogFile] =
     ConcurrentSkipListMap(initialFiles.toKeyedMap(_.fileInstant).asJava)
@@ -250,7 +250,7 @@ extends Service.StoppableByCancel:
       if logFile.isGzipped then
         Stream.force:
           logFile.maybeLogFileIndex.map:
-            case Some(logFileIndex) if recompressor.isFast =>
+            case Some(logFileIndex) if conf.recompressor.isFast =>
               logFileIndex.wholeFile(forReader)
             case _ =>
               // TODO Handle incomplete gzip file because it is still being written?
@@ -334,7 +334,7 @@ object LogIndex:
     logFileEvents: Stream[IO, LogFileEvent],
     label: String,
     watchGrowth: Boolean)
-    (using ZoneId, Recompressor, LogIndexConf)
+    (using ZoneId, LogIndexConf)
   : ResourceIO[LogIndex] =
     logger.traceResource("resource", label):
       for
