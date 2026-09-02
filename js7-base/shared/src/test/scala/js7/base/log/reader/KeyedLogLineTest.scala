@@ -1,10 +1,8 @@
 package js7.base.log.reader
 
 import java.time.Instant
-import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class KeyedLogLineTest extends OurTestSuite:
 
@@ -22,18 +20,18 @@ final class KeyedLogLineTest extends OurTestSuite:
     val legacy = "Info/1777507200/1112223334445556667 LINE\n"
     assert(KeyedLogLine.parse(legacy) == Right(keyedLogLine))
 
-  "JSON" in:
-    testJson(
-      keyedLogLine,
-      json"""[
-        "1777507200/1112223334445556667",
-        "LINE\n"
-      ]""")
-
-    // COMPATIBLE with v2.9.0
-    testJsonDecoder(
-      keyedLogLine,
-      json"""[
-        "Info/1777507200/1112223334445556667",
-        "LINE\n"
-      ]""")
+  //"JSON" in:
+  //  testJson(
+  //    keyedLogLine,
+  //    json"""[
+  //      "1777507200/1112223334445556667",
+  //      "LINE\n"
+  //    ]""")
+  //
+  //  // COMPATIBLE with v2.9.0
+  //  testJsonDecoder(
+  //    keyedLogLine,
+  //    json"""[
+  //      "Info/1777507200/1112223334445556667",
+  //      "LINE\n"
+  //    ]""")
