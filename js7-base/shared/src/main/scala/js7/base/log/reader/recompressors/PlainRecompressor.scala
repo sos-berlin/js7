@@ -1,13 +1,11 @@
 package js7.base.log.reader.recompressors
 
-import cats.effect.{IO, Resource}
-import fs2.Chunk
 import java.io.{BufferedInputStream, BufferedOutputStream, InputStream, OutputStream}
-import js7.base.io.OpaquePos
-import js7.base.log.reader.{LogIndexConf, LogWriter}
+import js7.base.io.{OpaquePos, SeekableInputStream, SeekableOutputStream}
+import js7.base.log.reader.LogIndexConf
 import js7.base.utils.ScalaUtils.syntax.*
 
-private[reader] case object PlainRecompressor extends Recompressor:
+private case object PlainRecompressor extends Recompressor:
 
   override def isFast = true
 
@@ -15,24 +13,20 @@ private[reader] case object PlainRecompressor extends Recompressor:
     (name == "plain") ? this
 
   def decompressingInputStream(in: InputStream)(using LogIndexConf) =
-    new BufferedInputStream(in, 32*1024/*guess*/)
+    SeekableInputStream(BufferedInputStream(in, 32 * 1024 /*guess*/))
 
-  def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
-    Resource.fromAutoCloseable:
-      IO:
-        new LogWriter with AutoCloseable:
-          private val _out = new BufferedOutputStream(out)
-          private var _position = 0L
+  override protected def newCompressiongOutputStream(output: OutputStream)
+    (using LogIndexConf)
+  : SeekableOutputStream =
+    new SeekableOutputStream(new BufferedOutputStream(output)):
+      private var _position = 0L
 
-          def write(chunk: Chunk[Byte]): Unit =
-            _out.write(chunk.toArray)
-            _position += chunk.size
+      override def write(array: Array[Byte]): Unit =
+        out.write(array)
+        _position += array.length
 
-          def position =
-            _position
+      def position =
+        _position
 
-          def markOpaquePos() =
-            OpaquePos(_position)
-
-          def close() =
-            _out.close()
+      def markOpaquePos() =
+        OpaquePos(_position)

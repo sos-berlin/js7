@@ -9,6 +9,7 @@ import js7.base.fs2utils.Fs2Utils.bytesToPosAndLines
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.reader.LogFileIndex.*
+import js7.base.log.reader.recompressors.LogWriter
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano

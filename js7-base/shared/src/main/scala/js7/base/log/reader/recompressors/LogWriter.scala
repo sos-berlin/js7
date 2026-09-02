@@ -1,4 +1,4 @@
-package js7.base.log.reader
+package js7.base.log.reader.recompressors
 
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Chunk

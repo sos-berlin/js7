@@ -12,6 +12,7 @@ import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogFileIndexBuilder.*
 import js7.base.log.reader.LogFileReader.streamGrowingLogFile
+import js7.base.log.reader.recompressors.LogWriter
 import js7.base.log.{Logger, reader}
 import js7.base.time.EpochNano
 import js7.base.time.ScalaTime.*

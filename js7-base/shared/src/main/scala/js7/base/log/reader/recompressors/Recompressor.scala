@@ -2,11 +2,13 @@ package js7.base.log.reader.recompressors
 
 import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
+import fs2.Chunk
 import java.io.{FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Path
 import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.io.{SeekableInputStream, SeekableOutputStream}
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.{LogIndexConf, LogWriter}
+import js7.base.log.reader.LogIndexConf
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.JavaServiceProviders
 
@@ -17,9 +19,10 @@ trait Recompressor:
 
   def findRecompressor(name: String): Option[Recompressor]
 
-  def decompressingInputStream(in: InputStream)(using LogIndexConf): InputStream
+  def decompressingInputStream(in: InputStream)(using LogIndexConf): SeekableInputStream
 
-  def toLogWriter(out: OutputStream)(using LogIndexConf): ResourceIO[LogWriter]
+  protected def newCompressiongOutputStream(out: OutputStream)(using LogIndexConf)
+  : SeekableOutputStream
 
   final def toLogWriter(file: Path)(using LogIndexConf): ResourceIO[LogWriter] =
     Resource.fromAutoCloseable:
@@ -28,14 +31,38 @@ trait Recompressor:
     .flatMap:
       toLogWriter
 
+  final def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
+    Resource.fromAutoCloseable:
+      IO.blocking:
+        newCompressiongOutputStream(out)
+    .flatMap: (out: SeekableOutputStream) =>
+      Resource.fromAutoCloseable:
+        IO:
+          new LogWriter with AutoCloseable:
+            private val buf = new Array[Byte](512)
+            private var _bytePosition = 0L
 
-private[reader] object Recompressor:
+            def write(chunk: Chunk[Byte]): Unit =
+              out.write(chunk.toArray)
+              _bytePosition += chunk.size
+
+            def position: Long =
+              _bytePosition
+
+            def markOpaquePos() =
+              out.markOpaquePos()
+
+            def close() =
+              out.close()
+
+
+object Recompressor:
   private val logger = Logger[this.type]
   val default = DeflateRecompressor // Faster than GzipRecompressor
   private var unknownRecompressors = Set.empty[String]
 
-  private val knownRecompressors: Seq[Recompressor] =
-    Seq(PlainRecompressor, GzipRecompressor, DeflateRecompressor)
+  val knownRecompressors: Seq[Recompressor] =
+    Seq(PlainRecompressor, /*GzipRecompressor test fails,*/ DeflateRecompressor)
 
   private lazy val javaServices: Seq[Recompressor] =
     JavaServiceProviders.findJavaServices[Recompressor]

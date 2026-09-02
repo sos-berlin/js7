@@ -4,7 +4,7 @@ import java.io.{InputStream, OutputStream}
 import js7.base.io.{SeekableInputStream, SeekableOutputStream}
 import js7.base.log.Logger
 import js7.base.log.reader.LogIndexConf
-import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor
+import js7.base.log.reader.recompressors.Recompressor
 import js7.base.utils.Tests.isTest
 import js7.service.lz4.Lz4InputStream
 import js7.service.lz4.Lz4Recompressor.*
@@ -15,7 +15,7 @@ final class Lz4Recompressor(
   makeDecompressor: () => LZ4FastDecompressor,
   name: String)
 extends
-  SeekableInputStreamRecompressor:
+  Recompressor:
 
   def this() = this(
     () => LZ4Factory.fastestJavaInstance.fastCompressor(),

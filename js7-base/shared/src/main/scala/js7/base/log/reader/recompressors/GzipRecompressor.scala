@@ -1,51 +1,50 @@
 package js7.base.log.reader.recompressors
 
-import cats.effect.{IO, Resource}
 import cats.syntax.option.none
-import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
-import js7.base.io.{CountingOutputStream, OpaquePos}
-import js7.base.log.reader.{LogIndexConf, LogWriter}
+import js7.base.io.{CountingOutputStream, OpaquePos, SeekableInputStream, SeekableOutputStream}
+import js7.base.log.reader.LogIndexConf
 import js7.base.utils.ScalaUtils.syntax.*
 
-// Slower than DeflateRecompressor
-private[reader] case object GzipRecompressor extends Recompressor:
+// Slower than DeflateRecompressor — old code, use DeflateRecompressor!
+@deprecated("DON'T USE, RecompressorTest FAILS")
+private case object GzipRecompressor extends Recompressor:
 
   def findRecompressor(name: String) =
     (name == "gzip") ? this
 
-  def decompressingInputStream(in: InputStream)(using LogIndexConf): InputStream =
-    new GZIPInputStream(in, 8192/*guess*/)
+  def decompressingInputStream(in: InputStream)(using conf: LogIndexConf) =
+    SeekableInputStream:
+      GZIPInputStream(in, conf.fileBufferSize / 8/*compression ratio*/)
 
-  def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
-    Resource.fromAutoCloseable:
-      IO:
-        new LogWriter with AutoCloseable:
-          private var _position = 0L
-          private var _compressesPosition = 0L
-          private var _gzip = none[MyGzipOutputStream]
+  protected def newCompressiongOutputStream(output: OutputStream)(using LogIndexConf) =
+    new SeekableOutputStream(output):
+      private var _position = 0L
+      private var _compressesPosition = 0L
+      private var _gzip = none[MyGzipOutputStream]
 
-          def write(chunk: Chunk[Byte]): Unit =
-            val gzip = _gzip.getOrElse:
-              val gzip = MyGzipOutputStream(out)
-              _gzip = Some(gzip)
-              gzip
-            gzip.write(chunk.toArray)
-            _position += chunk.size
+      override def write(array: Array[Byte]): Unit =
+        val gzip = _gzip.getOrElse:
+          val gzip = MyGzipOutputStream(out)
+          _gzip = Some(gzip)
+          gzip
+        gzip.write(array)
+        _position += array.length
 
-          def position =
-            _position
+      def position =
+        _position
 
-          def markOpaquePos() =
-            _gzip.foreach: gzip =>
-              _gzip = None
-              gzip.close()
-              _compressesPosition = _compressesPosition + gzip.byteCount
-            OpaquePos(_compressesPosition)
+      def markOpaquePos() =
+        _gzip.foreach: gzip =>
+          _gzip = None
+          gzip.close()
+          _compressesPosition = _compressesPosition + gzip.byteCount
+        OpaquePos(_compressesPosition)
 
-          def close() =
-            markOpaquePos()
+      override def close() =
+        markOpaquePos()
+        super.close()
 
 
   private final class MyGzipOutputStream private(out: CountingOutputStream)
