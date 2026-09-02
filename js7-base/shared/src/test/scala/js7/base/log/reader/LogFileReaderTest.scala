@@ -3,19 +3,23 @@ package js7.base.log.reader
 import cats.effect.IO
 import cats.effect.std.Queue
 import java.nio.file.Files.deleteIfExists
+import js7.base.config.Js7Config
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileReader.{UniqueHeaderSize, streamGrowingLogFile}
+import js7.base.log.reader.LogFileReader.streamGrowingLogFile
 import js7.base.log.reader.LogFileReaderTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.*
 import org.scalatest.compatible.Assertion
 import scala.util.Random
 
 final class LogFileReaderTest extends OurAsyncTestSuite:
+
+  private given conf: LogIndexConf = LogIndexConf.fromConfig(Js7Config.defaultConfig).orThrow
+  import conf.uniqueHeaderSize
 
   "streamGrowingLogFile" in :
     temporaryFileResource[IO]("LogFileReaderTest").use: file =>
@@ -31,11 +35,11 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
                   IO.defer:
                     val more = ByteArray:
                       key + " " +
-                        (s"loop=$i index=$j " + "." * UniqueHeaderSize).take(UniqueHeaderSize) +
+                        (s"loop=$i index=$j " + "." * uniqueHeaderSize).take(uniqueHeaderSize) +
                         (1 to Random.nextInt(10)).toVector.map(i => Random.nextPrintableChar()).mkString +
                         "\n"
                     logger.info(s"Write $more")
-                    assert(more.length >= UniqueHeaderSize)
+                    assert(more.length >= uniqueHeaderSize)
                     file ++= more
                     queue.take.timeout(9.s).map: chunk =>
                       assert(chunk == more)
@@ -49,7 +53,7 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
                     // Change log file - this terminates the Stream //
                     IO.blocking:
                       logger.info("Changing log file")
-                      file := "+" * UniqueHeaderSize
+                      file := "+" * uniqueHeaderSize
               .map(_._2)
 
 

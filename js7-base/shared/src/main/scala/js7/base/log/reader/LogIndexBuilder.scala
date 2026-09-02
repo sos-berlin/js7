@@ -188,7 +188,6 @@ private final class LogIndexBuilder private(
 
 
 private object LogIndexBuilder:
-
   private val logger = Logger[this.type]
 
   /** Return the initial LogFiles and a FS2 Pipe converting a stream of DirectoryEvent

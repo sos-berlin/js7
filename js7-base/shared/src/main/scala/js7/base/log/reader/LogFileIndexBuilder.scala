@@ -10,7 +10,6 @@ import js7.base.fs2utils.StreamExtensions.cedePeriodically
 import js7.base.io.OpaquePos
 import js7.base.io.file.ByteSeqFileReader
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogFileIndex.LogBytesPerEntry
 import js7.base.log.reader.LogFileIndexBuilder.*
 import js7.base.log.reader.LogFileReader.streamGrowingLogFile
 import js7.base.log.{Logger, reader}
@@ -23,12 +22,13 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.math.Ordered.orderingToOrdered
 
 private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int)
-  (using ZoneId, LogIndexConf):
+  (using zoneId: ZoneId, conf: LogIndexConf):
   private val nanoToPos = new EpochNanoToPos
+  import conf.buildBufferSize
 
   def buildGrowing(logFile: Path, poll: FiniteDuration): ResourceIO[LogFileIndex] =
     logger.traceResource("buildGrowing", logFile):
-      ByteSeqFileReader.resource[Chunk[Byte]](logFile, BuildBufferSize).flatMap: reader =>
+      ByteSeqFileReader.resource[Chunk[Byte]](logFile, buildBufferSize).flatMap: reader =>
         Resource.make(
           acquire =
             meterIndexing:
@@ -36,7 +36,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
                 reader.streamUntilEnd
             .flatMap: _ =>
               buildIndex(reader.position):
-                streamGrowingLogFile(reader, logFile, byteChunkSize = BuildBufferSize, poll)
+                streamGrowingLogFile(reader, logFile, byteChunkSize = buildBufferSize, poll)
               .start
               .map: fiber =>
                 fiber -> nanoToPos)(
@@ -59,7 +59,7 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
     (using LogIndexConf)
   : IO[LogFileIndex] =
     meterIndexing:
-      buildIndex(startPosition = 0, toBuilderStream(BuildBufferSize), logWriter)
+      buildIndex(startPosition = 0, toBuilderStream(buildBufferSize), logWriter)
     .map: _ =>
       if nanoToPos.isEmpty then
         logger.debug(s"❓ No timestamped line in $label")
@@ -112,8 +112,8 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
                 if epochNano > lastEpochNano then
                   lastEpochNano = epochNano
                   writeOps += epochNano
-                nextBlock = (nextBlock + LogBytesPerEntry max pos + lineLen)
-                  / LogBytesPerEntry * LogBytesPerEntry
+                val e = conf.logBytesPerEntry
+                nextBlock = (nextBlock + e max pos + lineLen) / e * e
             end if
             pos += lineLen
             writeOps += byteLine
@@ -163,11 +163,3 @@ private final class LogFileIndexBuilder(label: String, breakLinesLongerThan: Int
 
 object LogFileIndexBuilder:
   private val logger = Logger[this.type]
-
-  /** Number of bytes to read at once from the file.
-    *
-    * 1 MB gives good performance for index building.
-    *
-    * Due to three `prefetch` operations, four times as much memory is used.
-    */
-  private val BuildBufferSize = 1024 * 1024

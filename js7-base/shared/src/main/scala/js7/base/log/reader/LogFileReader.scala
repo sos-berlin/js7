@@ -21,27 +21,7 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 object LogFileReader:
   private val logger = Logger[this.type]
-  /** Duration until a change of current log file is detected.
-    *
-    * Don't check too often, don't let the user wait too long.
-    * Most installation will change the log file once a day or when the file has grown big.
-    * The user may wait then a short time.
-    */
-  private val CheckLogFileChangePeriod = 3.s
 
-  /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
-    *
-    * The first line of each log file starts with a timestamp including the timezone offset,
-    * to uniquely identify it.
-    * <p>
-    * See log4j2.xml header setting. Some recommended formats:
-    * <pre>
-    * %d{yyyy-MM-dd HH:mm:ss.SSSX} ...
-    * %d{yyyy-MM-dd'T'HH:mm:ss,SSSSSSX} ...
-    * </pre>
-    */
-  private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
-  private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
   private val meterReadHeader = CallMeter("LogFileReader.readHeader")
   val BufferSize: Int = 1024*1024
 
@@ -53,7 +33,7 @@ object LogFileReader:
     byteChunkSize: Int,
     poll: FiniteDuration,
     position: Long = 0)
-    (using sourcecode.FullName)
+    (using sourcecode.FullName, LogIndexConf)
   : Stream[IO, ByteSeq] =
     Stream.resource:
       ByteSeqFileReader.resource(file,
@@ -69,7 +49,7 @@ object LogFileReader:
     file: Path,
     byteChunkSize: Int,
     poll: FiniteDuration)
-    (using src: sourcecode.FullName)
+    (using src: sourcecode.FullName, conf: LogIndexConf)
   : Stream[IO, ByteSeq] =
     Stream.suspend:
       logger.debugStream(
@@ -80,9 +60,9 @@ object LogFileReader:
             val pos = reader.position
             ().tailRecM: _ =>
               reader.setPosition(0).productR:
-                reader.read(UniqueHeaderSize)
+                reader.read(conf.uniqueHeaderSize)
               .flatMap: header =>
-                if header.length < UniqueHeaderSize then
+                if header.length < conf.uniqueHeaderSize then
                   logger.debug(s"Log file header too short: ${header.show}")
                   IO.sleep(poll).as(Left(())) // repeat
                 else
@@ -100,7 +80,7 @@ object LogFileReader:
               Stream.force:
                 IO.sleep(poll).productR:
                   IO.defer:
-                    if lastTimeHeaderRead.elapsed < (CheckLogFileChangePeriod max poll) then
+                    if lastTimeHeaderRead.elapsed < (conf.checkLogFileChangePeriod max poll) then
                       IO.pure(Stream.empty) // Continue
                     else
                       // When the log file changed, its header file changed, too
@@ -118,9 +98,11 @@ object LogFileReader:
                           reader.streamUntilEnd ++ Stream.emit(null) // End the Stream
         .takeWhileNotNull
 
-  private def readHeader[ByteSeq: ByteSequence](file: Path, poll: FiniteDuration): IO[ByteSeq] =
+  private def readHeader[ByteSeq: ByteSequence](file: Path, poll: FiniteDuration)
+    (using conf: LogIndexConf)
+  : IO[ByteSeq] =
     meterReadHeader:
       ByteSeqFileReader.resource[ByteSeq](file).use: reader =>
-        reader.read(UniqueHeaderSize)
+        reader.read(conf.uniqueHeaderSize)
 
   private val growingCounter = Atomic(0)

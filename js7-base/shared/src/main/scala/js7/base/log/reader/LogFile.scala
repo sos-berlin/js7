@@ -162,7 +162,6 @@ private object LogFile:
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
   private val HeaderChunkSize = 1024
-  private val HeaderMinimumLength = 30
   private val LogHeaderPattern = Pattern.compile(s"(${FastTimestampParser.DateTimeRegex}) Begin ")
   given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
@@ -175,7 +174,8 @@ private object LogFile:
         Right:
           LogFile(file, instant, isGzipped = gzip, cell)
 
-  private def readLogFileInstant(file: Path, gzip: Boolean)(using ZoneId)
+  private def readLogFileInstant(file: Path, gzip: Boolean)
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : IO[Checked[Instant]] =
     Resource.fromAutoCloseable:
       IO.blocking:
@@ -189,7 +189,7 @@ private object LogFile:
           in.readNBytes(HeaderChunkSize)
     .map: chunk =>
       chunk.indexOf('\n') match
-        case firstLineEnd if firstLineEnd >= HeaderMinimumLength =>
+        case firstLineEnd if firstLineEnd >= conf.headerMinimumLength =>
           locally:
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
               chunk.indexOf('\n', firstLineEnd + 1) match

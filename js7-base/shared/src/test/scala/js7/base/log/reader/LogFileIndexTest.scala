@@ -39,17 +39,17 @@ import scala.concurrent.duration.Deadline
 
 final class LogFileIndexTest extends OurAsyncTestSuite:
 
-  private given LogIndexConf =
+  private given conf: LogIndexConf =
     LogIndexConf.fromConfig(config"""
-      js7.log.index.max-bytes-per-line = ${LogFileIndex.LogBytesPerEntry}  # Don't split long lines
-      """.withFallback(Js7Config.defaultConfig)
+      js7.log.index.max-bytes-per-line = $${js7.log.index.log-bytes-per-entry}  # Don't split long lines
+      """.withFallback(Js7Config.defaultConfig).resolve
     ).orThrow
 
   "Test" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
-        val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
+        val message = "+" * (conf.logBytesPerEntry / 2)
         val lines = Vector(
           s"2026-02-12 14:00:00.000+02 Begin ... ...\n",
           s"2026-02-12 14:00:01.000+02 info [thread] class - $message 1\n",
@@ -104,7 +104,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
       IO.defer:
-        val message = "+" * (LogFileIndex.LogBytesPerEntry / 2)
+        val message = "+" * (conf.logBytesPerEntry / 2)
         val firstLine = s"2026-02-12 14:00:01.000+02 info [thread] class - $message\n"
         file := "2026-02-12 14:00:00.000+02 Begin ... ...\n" + firstLine
 
@@ -128,7 +128,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
 
   "Backwards" in:
     given ZoneId = ZoneId.of("Europe/Mariehamn")
-    val logFileSize = 5 * LogFileIndex.LogBytesPerEntry
+    val logFileSize = 5 * conf.logBytesPerEntry
     val lineLength = 200
     val lineCount = logFileSize / lineLength
     temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>

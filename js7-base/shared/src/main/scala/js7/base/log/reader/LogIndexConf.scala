@@ -5,30 +5,68 @@ import js7.base.config.Js7Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.ByteChunksLineSplitter.MinimumLength
 import js7.base.io.file.watch.DirectoryWatchSettings
+import js7.base.log.Logger
+import js7.base.log.reader.LogIndexConf.*
 import js7.base.log.reader.recompressors.Recompressor
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
+import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 
 final case class LogIndexConf(
+  timestampReaderConcurrency: Int,
+  recompressor: Recompressor,
   fileAddedDelay: FiniteDuration,
   currentFileMaxDelay: FiniteDuration,
-  timestampReaderConcurrency: Int,
   logFileTimestampTries: DelayConf,
-  logFileIndexLineLength: Int,
+  headerMinimumLength: Int,
   pollGrowing: FiniteDuration,
-  directoryWatchSettings: DirectoryWatchSettings,
-  recompressor: Recompressor)
+  buildBufferSize: Int,
+  logBytesPerEntry: Int,
+  noEntryWarnThreshold: Int,
+  logFileIndexLineLength: Int,
+  checkLogFileChangePeriod: FiniteDuration,
+  backwardsFileBufferSize: Int,
+  skipBackwardsMinSize: Int,
+  skipBackwardsMaxSize: Int,
+  directoryWatchSettings: DirectoryWatchSettings):
+
+  val uniqueHeaderSize: Int =
+    UniqueHeaderSize
+
 
 object LogIndexConf:
+  private val logger = Logger[LogIndexConf]
+
+  /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
+    *
+    * The first line of each log file starts with a timestamp including the timezone offset,
+    * to uniquely identify it.
+    * <p>
+    * See log4j2.xml header setting. Some recommended formats:
+    * <pre>
+    * %d{yyyy-MM-dd HH:mm:ss.SSSX} ...
+    * %d{yyyy-MM-dd'T'HH:mm:ss,SSSSSSX} ...
+    * </pre>
+    */
+  private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
+  private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
+
+
   def fromConfig(config: Config): Checked[LogIndexConf] =
     for
-      fileAddedDelay <- config.finiteDuration("js7.log.file-added-delay")
-      currentFileMaxDelay <- config.finiteDuration("js7.log.current-file-max-delay")
-      concurrency <- catchNonFatal(config.getInt("js7-log.read-timestamp-concurrency"))
-      logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.read-timestamp-tries")
+      concurrency <- catchNonFatal(config.getInt("js7.log.index.read-timestamp-concurrency"))
+      recompressor = Recompressor.fromConfig(config)
+      fileAddedDelay <- config.finiteDuration("js7.log.index.file-added-delay")
+      currentFileMaxDelay <- config.finiteDuration("js7.log.index.current-file-max-delay")
+      logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
+      headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.headerMinimumLength"))
+      pollGrowing <- config.finiteDuration("js7.log.poll-growing")
+      buildBufferSize <- catchNonFatal(config.getBytes("js7.log.index.build-buffer-size").toInt)
+      logBytesPerEntry <- catchNonFatal(config.getBytes("js7.log.index.log-bytes-per-entry").toInt)
+      noEntryWarnThreshold <- catchNonFatal(config.getBytes("js7.log.index.no-entry-warn-threshold").toInt)
       logFileIndexLineLength <-
         catchNonFatal:
           val n = config.getBytes("js7.log.index.max-bytes-per-line")
@@ -36,13 +74,26 @@ object LogIndexConf:
             throw new IllegalArgumentException(
               s"js7.log.index.max-bytes-per-line must be > $MinimumLength and <= ${Int.MaxValue}")
           n.toInt
-      pollGrowing <- config.finiteDuration("js7.log.poll-growing")
+      checkLogFileChangePeriod <- config.finiteDuration("js7.log.index.check-log-file-change-period")
+      backwardsFileChunkSize <- catchNonFatal(config.getBytes("js7.log.index.backwards-file-buffer-size").toInt)
+      skipBackwardsMinSize <- catchNonFatal(config.getBytes("js7.log.index.skip-backwards-minimum-size").toInt)
+      skipBackwardsMaxSize <- catchNonFatal(config.getBytes("js7.log.index.skip-backwards-maximum-size").toInt)
       directoryWatchSettings <- DirectoryWatchSettings.fromConfig(config)
-      recompressor = Recompressor.fromConfig(config)
     yield
-      LogIndexConf(fileAddedDelay, currentFileMaxDelay,
-        concurrency, logFileTimestampTries, logFileIndexLineLength, pollGrowing,
-        directoryWatchSettings, recompressor)
+      logger.debug(s"Blocksize=${toKiBGiB(logBytesPerEntry)}, requiring ${
+        toKBGB(1_000_000_000L * EpochNanoToPos.EntrySize / logBytesPerEntry)
+      } memory per gigabyte log file")
+
+      LogIndexConf(
+        concurrency,
+        recompressor,
+        fileAddedDelay, currentFileMaxDelay, logFileTimestampTries, headerMinimumLength,
+        pollGrowing,
+        buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
+        logFileIndexLineLength,
+        checkLogFileChangePeriod,
+        backwardsFileChunkSize, skipBackwardsMinSize, skipBackwardsMaxSize,
+        directoryWatchSettings)
 
   val default: LogIndexConf =
     LogIndexConf.fromConfig(Js7Config.defaultConfig).orThrow

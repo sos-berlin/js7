@@ -14,7 +14,7 @@ import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
+import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -42,7 +42,9 @@ final class LogFileIndex private[reader](
   nanoToPos: EpochNanoToPos,
   breakLinesLongerThan: Option[Int],
   label: String)
-  (using val zoneId: ZoneId):
+  (using val zoneId: ZoneId, conf: LogIndexConf):
+
+  import conf.logBytesPerEntry
 
   def lastEpochNano: EpochNano =
     nanoToPos.lastEpochNano
@@ -90,7 +92,7 @@ final class LogFileIndex private[reader](
   : Stream[IO, PosAndLine] =
     Stream.force:
       // First, convert the instant to a position
-      instantToLinesForward0(begin, LogSelection.ForReader(byteChunkSize = LogBytesPerEntry))
+      instantToLinesForward0(begin, LogSelection.ForReader(byteChunkSize = logBytesPerEntry))
         .map: (chunkPos, opaquePos, instantStream) =>
           instantStream.head
             .map(_.position)
@@ -134,7 +136,7 @@ final class LogFileIndex private[reader](
   private def positionToLinesBackwardsChunk(
     position: Long, chunkPos: Long, opaquePos: OpaquePos,
     forReader: LogSelection.ForReader,
-    skipBackwards: Int = 1)
+    skipBackwards: Int = conf.skipBackwardsMinSize / conf.logBytesPerEntry max 1)
   : Stream[IO, PosAndLine] =
     Stream.suspend:
       assertThat(chunkPos <= position)
@@ -143,8 +145,8 @@ final class LogFileIndex private[reader](
         toLines(chunkPos, opaquePos,
           // For good speed, BackwardsFileChunkSize should be 1MB (MacBook Pro M4)
           forReader.copy(
-            byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry,
-            backwards = false),
+            backwards = false,
+            byteChunkSize = conf.backwardsFileBufferSize min skipBackwards * logBytesPerEntry),
           shouldBeDropped = _ => false
         ).takeWhile(_.position < position)
           .compile.toVector
@@ -158,7 +160,7 @@ final class LogFileIndex private[reader](
             nanoToPos.posToBackwardChunkPosAndOpaquePos(chunkPos, skipBackwards = skipBackwards)
           assertThat(previousChunkPos < chunkPos)
           positionToLinesBackwardsChunk(chunkPos, previousChunkPos, previousOpaquePos, forReader,
-            2 * skipBackwards min SkipBackwards)
+            2 * skipBackwards min conf.skipBackwardsMaxSize / conf.logBytesPerEntry max 1)
 
   /**
     * @param chunkPos position of the uncompressed log chunk
@@ -189,7 +191,7 @@ final class LogFileIndex private[reader](
               logger.trace(s"$droppedLines lines, ${toKiBGiB(droppedBytes)
                 } skipped after indexed position · ${elapsed.pretty}")
             val skipped = posAndLine.position - chunkPos
-            if skipped >= NoEntryWarnThreshold then
+            if skipped >= conf.noEntryWarnThreshold * logBytesPerEntry then
               logger.warn(s"Slow direct log file access due to missing index entry for ${
                 toKiBGiB(skipped)}, found position=$chunkPos")
           drop
@@ -203,27 +205,13 @@ final class LogFileIndex private[reader](
 
 
 object LogFileIndex:
-  /** One index entry (EpochNanoToPos.EntrySize = 24 bytes) per 256KiB-block.
-    *
-    * That's 1MB memory per 10GB uncompressed log data. */
-  private[reader] val LogBytesPerEntry: Int = 256 * 1024
-  private val NoEntryWarnThreshold = 4 * LogBytesPerEntry
-  private val BackwardsFileChunkSize = 1024 * 1024 // Backwards read chunks of 1MiB from file
-  // Read backwards chunks of up to 4MiB + 1*LogBytesPerEntry
-  private val SkipBackwardsSize = 4 * BackwardsFileChunkSize
-  private val SkipBackwards = SkipBackwardsSize / LogBytesPerEntry max 1
-  private val PollDuration = 100.ms
   private val logger = Logger[LogFileIndex]
-
-  logger.debug(s"Blocksize=${toKiBGiB(LogBytesPerEntry)}, requiring ${
-    toKBGB(1_000_000_000L * EpochNanoToPos.EntrySize / LogBytesPerEntry)
-  } memory per gigabyte log file")
 
   /** Builds a concurrently updated [[LogFileIndex]] from a growing log file. */
   def buildGrowing(
     logFile: Path,
-    label: String | Missing = Missing,
-    poll: FiniteDuration = PollDuration)
+    poll: FiniteDuration,
+    label: String | Missing = Missing)
     (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogFileIndex] =
     LogFileIndexBuilder(
@@ -260,6 +248,7 @@ object LogFileIndex:
     position: OpaquePos,
     bufferSize: Int,
     pollGrowing: Option[FiniteDuration] = None)
+    (using LogIndexConf)
   : Stream[IO, Chunk[Byte]] =
     pollGrowing match
       case None =>
