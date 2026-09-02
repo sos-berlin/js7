@@ -21,7 +21,7 @@ final case class LogSelection(
   end: Option[Instant] = None,
   lineLimit: Option[Long] = None,
   pattern: Option[Pattern] = None,
-  byteChunkSize: Int = LogFileReader.BufferSize,
+  maybeByteChunkSize: Option[Int] = None,
   growing: Boolean = false):
 
   def toKeyValues: Seq[(String, String)] =
@@ -32,7 +32,7 @@ final case class LogSelection(
       growing ? ("growing" -> "true"))
 
   def forReader: ForReader =
-    ForReader(growing, backwards, byteChunkSize)
+    ForReader(growing, backwards, maybeByteChunkSize)
 
   def backwards: Boolean =
     !growing && lineLimit.exists(_ < 0)
@@ -66,8 +66,13 @@ object LogSelection:
   final case class ForReader(
     growing: Boolean = false,
     backwards: Boolean = false,
-    byteChunkSize: Int = LogFileReader.BufferSize):
+    maybeByteChunkSize: Option[Int] = None):
+
     assertThat(!growing || !backwards)
+
+    def byteChunkSize(using conf: LogIndexConf): Int =
+      maybeByteChunkSize getOrElse conf.fileBufferSize
+
 
   private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]
 

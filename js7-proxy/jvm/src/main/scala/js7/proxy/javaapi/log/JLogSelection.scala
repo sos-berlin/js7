@@ -2,7 +2,7 @@ package js7.proxy.javaapi.log
 
 import java.time.Instant
 import java.util.regex.Pattern
-import java.util.{Optional, OptionalLong}
+import java.util.{Optional, OptionalInt, OptionalLong}
 import js7.base.log.reader.LogSelection
 import scala.jdk.OptionConverters.*
 
@@ -65,9 +65,9 @@ final case class JLogSelection(asScala: LogSelection = LogSelection.all):
   /** Use only if you know what you are doing.
     *
     * Does not survive HTTP transfer (i.e, JS7 Engine log files). */
-  def withByteChunkSize(byteChunkSize: Int): JLogSelection =
+  def withByteChunkSize(byteChunkSize: OptionalInt): JLogSelection =
     copy(asScala.copy(
-      byteChunkSize = byteChunkSize))
+      maybeByteChunkSize = byteChunkSize.toScala))
 
 
 object JLogSelection:

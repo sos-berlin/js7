@@ -5,18 +5,20 @@ import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.io.{SeekableInputStream, SeekableOutputStream}
-import js7.base.log.reader.LogWriter
+import js7.base.log.reader.{LogIndexConf, LogWriter}
 import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor.*
 
 trait SeekableInputStreamRecompressor extends Recompressor:
 
   private val dictionary = Dictionary
 
-  protected def newCompressiongOutputStream(out: OutputStream): SeekableOutputStream
+  protected def newCompressiongOutputStream(out: OutputStream)(using LogIndexConf)
+  : SeekableOutputStream
 
-  def decompressingInputStream(in: InputStream): SeekableInputStream
+  def decompressingInputStream(in: InputStream)(using LogIndexConf)
+  : SeekableInputStream
 
-  def toLogWriter(out: OutputStream): Resource[IO, LogWriter] =
+  def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
     Resource.fromAutoCloseable:
       IO.blocking:
         newCompressiongOutputStream(out)

@@ -6,7 +6,7 @@ import java.io.{FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Path
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogWriter
+import js7.base.log.reader.{LogIndexConf, LogWriter}
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.JavaServiceProviders
 
@@ -17,11 +17,11 @@ trait Recompressor:
 
   def findRecompressor(name: String): Option[Recompressor]
 
-  def decompressingInputStream(in: InputStream): InputStream
+  def decompressingInputStream(in: InputStream)(using LogIndexConf): InputStream
 
-  def toLogWriter(out: OutputStream): ResourceIO[LogWriter]
+  def toLogWriter(out: OutputStream)(using LogIndexConf): ResourceIO[LogWriter]
 
-  final def toLogWriter(file: Path): ResourceIO[LogWriter] =
+  final def toLogWriter(file: Path)(using LogIndexConf): ResourceIO[LogWriter] =
     Resource.fromAutoCloseable:
       IO.blocking:
         new FileOutputStream(file.toFile)
@@ -31,7 +31,7 @@ trait Recompressor:
 
 private[reader] object Recompressor:
   private val logger = Logger[this.type]
-  private val default = DeflateRecompressor // Faster than GzipRecompressor
+  val default = DeflateRecompressor // Faster than GzipRecompressor
   private var unknownRecompressors = Set.empty[String]
 
   private val knownRecompressors: Seq[Recompressor] =

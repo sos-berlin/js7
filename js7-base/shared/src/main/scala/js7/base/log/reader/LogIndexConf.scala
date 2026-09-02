@@ -23,12 +23,12 @@ final case class LogIndexConf(
   logFileTimestampTries: DelayConf,
   headerMinimumLength: Int,
   pollGrowing: FiniteDuration,
+  fileBufferSize: Int,
   buildBufferSize: Int,
   logBytesPerEntry: Int,
   noEntryWarnThreshold: Int,
   logFileIndexLineLength: Int,
   checkLogFileChangePeriod: FiniteDuration,
-  backwardsFileBufferSize: Int,
   skipBackwardsMinSize: Int,
   skipBackwardsMaxSize: Int,
   directoryWatchSettings: DirectoryWatchSettings):
@@ -54,7 +54,6 @@ object LogIndexConf:
   private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
   private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
 
-
   def fromConfig(config: Config): Checked[LogIndexConf] =
     for
       concurrency <- catchNonFatal(config.getInt("js7.log.index.read-timestamp-concurrency"))
@@ -64,6 +63,7 @@ object LogIndexConf:
       logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
       headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.headerMinimumLength"))
       pollGrowing <- config.finiteDuration("js7.log.poll-growing")
+      fileBufferSize <- catchNonFatal(config.getBytes("js7.log.index.file-buffer-size").toInt)
       buildBufferSize <- catchNonFatal(config.getBytes("js7.log.index.build-buffer-size").toInt)
       logBytesPerEntry <- catchNonFatal(config.getBytes("js7.log.index.log-bytes-per-entry").toInt)
       noEntryWarnThreshold <- catchNonFatal(config.getBytes("js7.log.index.no-entry-warn-threshold").toInt)
@@ -75,7 +75,6 @@ object LogIndexConf:
               s"js7.log.index.max-bytes-per-line must be > $MinimumLength and <= ${Int.MaxValue}")
           n.toInt
       checkLogFileChangePeriod <- config.finiteDuration("js7.log.index.check-log-file-change-period")
-      backwardsFileChunkSize <- catchNonFatal(config.getBytes("js7.log.index.backwards-file-buffer-size").toInt)
       skipBackwardsMinSize <- catchNonFatal(config.getBytes("js7.log.index.skip-backwards-minimum-size").toInt)
       skipBackwardsMaxSize <- catchNonFatal(config.getBytes("js7.log.index.skip-backwards-maximum-size").toInt)
       directoryWatchSettings <- DirectoryWatchSettings.fromConfig(config)
@@ -89,10 +88,10 @@ object LogIndexConf:
         recompressor,
         fileAddedDelay, currentFileMaxDelay, logFileTimestampTries, headerMinimumLength,
         pollGrowing,
-        buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
+        fileBufferSize, buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
         logFileIndexLineLength,
         checkLogFileChangePeriod,
-        backwardsFileChunkSize, skipBackwardsMinSize, skipBackwardsMaxSize,
+        skipBackwardsMinSize, skipBackwardsMaxSize,
         directoryWatchSettings)
 
   val default: LogIndexConf =

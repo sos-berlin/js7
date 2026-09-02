@@ -97,7 +97,7 @@ trait LogRoute extends RouteProvider:
           completeWithStream(`text/plain(UTF-8)`):
             val logSelection = LogSelection(
               end = end, lineLimit = lineLimit, pattern = pattern, growing = growing,
-              byteChunkSize = httpChunkSize)
+              maybeByteChunkSize = Some(httpChunkSize))
             Stream.eval:
               logDirectoryIndex.logIndex(logFilePrefix, logLevel)
             .through: stream =>

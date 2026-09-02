@@ -219,7 +219,7 @@ private object LogFile:
     LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()
 
   private def positionedTmpFileStream(file: Path, opaquePos: OpaquePos, bufferSize: Int)
-    (using recompressor: Recompressor)
+    (using conf: LogIndexConf)
   : Stream[IO, Chunk[Byte]] =
     //Logger.traceStream(s"### positionedTmpFileStream(${file.getFileName})"):
       Stream.resource:
@@ -230,7 +230,7 @@ private object LogFile:
         IO.blocking:
           //Logger.trace(s"### readLogFileInstant ${file.getFileName}: skip($opaquePos)")
           in.skip(opaquePos.toLong)
-          recompressor.decompressingInputStream(in)
+          conf.recompressor.decompressingInputStream(in)
       .flatMap: in =>
         inputStreamToStream(in, bufferSize)
 

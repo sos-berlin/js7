@@ -6,7 +6,7 @@ import fs2.Chunk
 import java.io.{InputStream, OutputStream}
 import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
 import js7.base.io.{CountingOutputStream, OpaquePos}
-import js7.base.log.reader.LogWriter
+import js7.base.log.reader.{LogIndexConf, LogWriter}
 import js7.base.utils.ScalaUtils.syntax.*
 
 // Slower than DeflateRecompressor
@@ -15,10 +15,10 @@ private[reader] case object GzipRecompressor extends Recompressor:
   def findRecompressor(name: String) =
     (name == "gzip") ? this
 
-  def decompressingInputStream(in: InputStream): InputStream =
+  def decompressingInputStream(in: InputStream)(using LogIndexConf): InputStream =
     new GZIPInputStream(in, 8192/*guess*/)
 
-  def toLogWriter(out: OutputStream): Resource[IO, LogWriter] =
+  def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
     Resource.fromAutoCloseable:
       IO:
         new LogWriter with AutoCloseable:

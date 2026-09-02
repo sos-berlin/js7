@@ -4,7 +4,7 @@ import cats.effect.{IO, Resource}
 import fs2.Chunk
 import java.io.{BufferedInputStream, BufferedOutputStream, InputStream, OutputStream}
 import js7.base.io.OpaquePos
-import js7.base.log.reader.LogWriter
+import js7.base.log.reader.{LogIndexConf, LogWriter}
 import js7.base.utils.ScalaUtils.syntax.*
 
 private[reader] case object PlainRecompressor extends Recompressor:
@@ -14,10 +14,10 @@ private[reader] case object PlainRecompressor extends Recompressor:
   def findRecompressor(name: String) =
     (name == "plain") ? this
 
-  def decompressingInputStream(in: InputStream) =
+  def decompressingInputStream(in: InputStream)(using LogIndexConf) =
     new BufferedInputStream(in, 32*1024/*guess*/)
 
-  def toLogWriter(out: OutputStream): Resource[IO, LogWriter] =
+  def toLogWriter(out: OutputStream)(using LogIndexConf): Resource[IO, LogWriter] =
     Resource.fromAutoCloseable:
       IO:
         new LogWriter with AutoCloseable:

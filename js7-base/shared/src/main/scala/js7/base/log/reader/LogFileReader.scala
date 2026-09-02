@@ -23,7 +23,6 @@ object LogFileReader:
   private val logger = Logger[this.type]
 
   private val meterReadHeader = CallMeter("LogFileReader.readHeader")
-  val BufferSize: Int = 1024*1024
 
   val FastPrefixPattern: Pattern =
     Pattern.compile(s"^$HighlightRegex?20..-..-.....:..:.+ - ")

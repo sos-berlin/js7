@@ -3,7 +3,7 @@ package js7.service.lz4
 import java.io.{InputStream, OutputStream}
 import js7.base.io.{SeekableInputStream, SeekableOutputStream}
 import js7.base.log.Logger
-import js7.base.log.reader.LogFileReader
+import js7.base.log.reader.LogIndexConf
 import js7.base.log.reader.recompressors.SeekableInputStreamRecompressor
 import js7.base.utils.Tests.isTest
 import js7.service.lz4.Lz4InputStream
@@ -22,8 +22,6 @@ extends
     () => LZ4Factory.fastestJavaInstance.fastDecompressor(),
     "lz4")
 
-  private val BufferSize = LogFileReader.BufferSize + 1024
-
   override def isFast = true
 
   def findRecompressor(name: String) =
@@ -33,11 +31,13 @@ extends
       case "lz4/fastest" => Some(FastestLz4)
       case _ => None
 
-  protected def newCompressiongOutputStream(out: OutputStream): SeekableOutputStream =
-    Lz4OutputStream(out, makeCompressor, bufferSize = BufferSize)
+  protected def newCompressiongOutputStream(out: OutputStream)(using conf: LogIndexConf)
+  : SeekableOutputStream =
+    Lz4OutputStream(out, makeCompressor, bufferSize = conf.fileBufferSize)
 
-  def decompressingInputStream(in: InputStream): SeekableInputStream =
-    Lz4InputStream(in, makeDecompressor, bufferSize = BufferSize)
+  def decompressingInputStream(in: InputStream)(using conf: LogIndexConf)
+  : SeekableInputStream =
+    Lz4InputStream(in, makeDecompressor, bufferSize = conf.fileBufferSize)
 
   override def toString = "Lz4Recompressor"
 

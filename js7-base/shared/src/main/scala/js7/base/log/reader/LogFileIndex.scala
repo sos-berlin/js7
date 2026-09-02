@@ -92,14 +92,16 @@ final class LogFileIndex private[reader](
   : Stream[IO, PosAndLine] =
     Stream.force:
       // First, convert the instant to a position
-      instantToLinesForward0(begin, LogSelection.ForReader(byteChunkSize = logBytesPerEntry))
-        .map: (chunkPos, opaquePos, instantStream) =>
-          instantStream.head
-            .map(_.position)
-            .ifEmpty(Stream.emit(Long.MaxValue))
-            .flatMap: position =>
-              // Then read backwards from that position
-              positionToLinesBackwardsChunk(position, chunkPos, opaquePos, forReader)
+      instantToLinesForward0(
+        begin,
+        LogSelection.ForReader(maybeByteChunkSize = Some(conf.logBytesPerEntry))
+      ).map: (chunkPos, opaquePos, instantStream) =>
+        instantStream.head
+          .map(_.position)
+          .ifEmpty(Stream.emit(Long.MaxValue))
+          .flatMap: position =>
+            // Then read backwards from that position
+            positionToLinesBackwardsChunk(position, chunkPos, opaquePos, forReader)
 
   private def instantToLinesForward0(begin: Instant, forReader: LogSelection.ForReader)
   : IO[(Long, OpaquePos, Stream[IO, PosAndLine])] =
@@ -146,7 +148,7 @@ final class LogFileIndex private[reader](
           // For good speed, BackwardsFileChunkSize should be 1MB (MacBook Pro M4)
           forReader.copy(
             backwards = false,
-            byteChunkSize = conf.backwardsFileBufferSize min skipBackwards * logBytesPerEntry),
+            maybeByteChunkSize = Some(conf.fileBufferSize min skipBackwards * logBytesPerEntry)),
           shouldBeDropped = _ => false
         ).takeWhile(_.position < position)
           .compile.toVector
