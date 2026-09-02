@@ -142,7 +142,7 @@ final class LogFileIndex private[reader](
         // Read the indexed chunk forward, then reverse it and continue with the previous chunk.
         toLines(chunkPos, opaquePos,
           // For good speed, BackwardsFileChunkSize should be 1MB (MacBook Pro M4)
-          forReader.copyForReader(
+          forReader.copy(
             byteChunkSize = BackwardsFileChunkSize min skipBackwards * LogBytesPerEntry,
             backwards = false),
           shouldBeDropped = _ => false

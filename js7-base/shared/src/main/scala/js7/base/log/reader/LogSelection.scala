@@ -22,8 +22,7 @@ final case class LogSelection(
   lineLimit: Option[Long] = None,
   pattern: Option[Pattern] = None,
   byteChunkSize: Int = LogFileReader.BufferSize,
-  growing: Boolean = false)
-extends ForReader:
+  growing: Boolean = false):
 
   def toKeyValues: Seq[(String, String)] =
     flatten(
@@ -32,8 +31,8 @@ extends ForReader:
       pattern.map(o => "pattern" -> o.pattern),
       growing ? ("growing" -> "true"))
 
-  inline def forReader: ForReader =
-    this
+  def forReader: ForReader =
+    ForReader(growing, backwards, byteChunkSize)
 
   def backwards: Boolean =
     !growing && lineLimit.exists(_ < 0)
@@ -64,30 +63,11 @@ object LogSelection:
   def lineLimit(n: Long): LogSelection =
     all.copy(lineLimit = Some(n))
 
-  sealed trait ForReader:
-    def growing: Boolean
-    def backwards: Boolean
-    def byteChunkSize: Int
-
-    final def copyForReader(
-      growing: Boolean = growing,
-      backwards: Boolean = backwards,
-      byteChunkSize: Int = byteChunkSize)
-    : ForReader =
-      ForReader(growing, backwards, byteChunkSize)
-
-  object ForReader:
-    def apply(
-      growing: Boolean = false,
-      readReverse: Boolean = false,
-      byteChunkSize: Int = LogFileReader.BufferSize)
-    : ForReader =
-      ForReader_(growing, readReverse, byteChunkSize)
-
-    private final case class ForReader_(growing: Boolean, backwards: Boolean, byteChunkSize: Int)
-    extends ForReader:
-      assertThat(!growing || !backwards)
-
+  final case class ForReader(
+    growing: Boolean = false,
+    backwards: Boolean = false,
+    byteChunkSize: Int = LogFileReader.BufferSize):
+    assertThat(!growing || !backwards)
 
   private type LogLine = KeyedByteLogLine | PosAndLine | Chunk[Byte]
 
