@@ -146,7 +146,7 @@ private final class LogFile private(
         IO.blocking:
           GZIPInputStream(
             FileInputStream(originalFile.toFile),
-            byteChunkSize / 4 /*compression ratio*/)
+            byteChunkSize / 8 /*compression ratio*/)
     .flatMap: in =>
       inputStreamToStream(in, bufferSize = byteChunkSize)
 
