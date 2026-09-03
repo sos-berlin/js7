@@ -59,13 +59,13 @@ object StreamExtensions:
       chunk match
         case Chunk.ArraySlice(array, off, len) =>
           if i >= 0 && i < len then
-            array(off + i) // Don't boxes Int
+            array(off + i) // Doesn't box Int
           else
             chunk(i)
 
         case Chunk.ByteBuffer(buf, off, len) =>
           if i >= 0 && i < len then
-            buf.get(off + i) // Don't boxes Int
+            buf.get(off + i) // Doesn't box Int
           else
             chunk(i)
 
