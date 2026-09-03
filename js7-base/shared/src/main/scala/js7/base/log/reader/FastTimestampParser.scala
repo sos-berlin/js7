@@ -155,13 +155,13 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
 object FastTimestampParser:
   private val logger = Logger[FastTimestampParser]
-  private inline val LongestLength = 35
+  private inline val LongestLength = 41
   private inline val SecondLength = 19
   private inline val MinimumLength = SecondLength
   private inline val ZoneSize = 6 // "+01:00"
   private val meterRegex = CallMeter("LogFileReader.LogFileRegEx")
 
-  assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00".length)
+  assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00+12:30".length)
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
   val TimestampPattern: Pattern =
