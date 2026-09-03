@@ -53,16 +53,16 @@ private final class LogFile private(
     fileInstant.toEpochNano
 
   def releaseIndex: IO[Unit] =
-    releaseIndex(deleteFile = true)
+    releaseIndex(deleteTmpFile = true)
 
-  def releaseIndex(deleteFile: Boolean): IO[Unit] =
+  def releaseIndex(deleteTmpFile: Boolean): IO[Unit] =
     deferredIndexCell.getAndSet(None).flatMap:
       _.foldMap: deferredIndexAlloc =>
         logger.traceIO("releaseIndex", deferredIndexAlloc.allocatedThing.file.getFileName):
           val deferredIndex = deferredIndexAlloc.allocatedThing
           deferredIndex.fileSize.foreach: o =>
             Bean.tmpFilesSize -= o.decompressed
-          if deleteFile && deferredIndex.file != originalFile then
+          if deleteTmpFile && deferredIndex.file != originalFile then
             FileDeleter.tryDeleteFile(deferredIndex.file)
           deferredIndexAlloc.release
 

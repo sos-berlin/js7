@@ -109,7 +109,7 @@ extends Service.StoppableByCancel:
             .flatMap(instant => Option(instantToLogFile.get(instant)))
             .traverse: logFile =>
               IO.uncancelable: _ =>
-                logFile.releaseIndex(deleteFile = false)
+                logFile.releaseIndex(deleteTmpFile = false)
       *> IO:
         logLines.foreachWithBracket()((line, br) => logger.info(s"$br$line"))
     .compile.drain
