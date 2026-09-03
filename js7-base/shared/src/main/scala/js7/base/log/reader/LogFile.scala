@@ -7,7 +7,6 @@ import fs2.{Chunk, Stream}
 import java.io.{EOFException, FileInputStream, FileNotFoundException}
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, ZoneId}
-import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
@@ -163,7 +162,6 @@ private object LogFile:
   /** First chunk of log file must include the timestamp of the second line
     * (the line after the header) */
   private val HeaderChunkSize = 1024
-  private val LogHeaderPattern = Pattern.compile(s"(${FastTimestampParser.DateTimeRegex}) Begin ")
   given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
   /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
@@ -189,22 +187,20 @@ private object LogFile:
           in.readNBytes(HeaderChunkSize)
     .map: chunk =>
       chunk.indexOf('\n') match
-        case firstLineEnd if firstLineEnd >= conf.headerMinimumLength =>
-          locally:
+        case -1 => Left(IncompleteLogFileProblem(file, "Incomplete header line"))
+        case firstLineEnd =>
+          val logLine =
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
-              chunk.indexOf('\n', firstLineEnd + 1) match
-                case -1 => Left(IncompleteLogFileProblem(file, "Incomplete header line"))
-                case secondLineEnd => Right(chunk.slice(firstLineEnd + 1, secondLineEnd))
+              chunk.drop(firstLineEnd + 1)
             else
               logger.debug(s"No header line in ${file.getFileName}")
-              Right(chunk.slice(0, firstLineEnd))
-          .flatMap: logLine =>
-            // Timestamp of first log line after the header line
-            FastTimestampParser()
-              .parseTimestampInLogLine(logLine)
-              .toOption.toRight:
-                InvalidTimestampInLogFileProblem(file, logLine.utf8StringTruncateAt(30))
-              .map(_.toInstant)
+              chunk.take(firstLineEnd)
+          // Timestamp of first log line after the header line
+          FastTimestampParser()
+            .parseTimestampInLogLine(logLine)
+            .toOption.toRight:
+              InvalidTimestampInLogFileProblem(file, logLine.utf8StringTruncateAt(30))
+            .map(_.toInstant)
     .handleError: t =>
       val msg = s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}"
       t match

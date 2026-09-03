@@ -82,9 +82,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
   "LogFile" - {
     "File is (still) to short" in:
       temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
-        file :=
-          """2026-06-25T00:00:00,111 Begin JS7 ...
-            |2026-06-25T00:00:00,999+03 info  js7.test.Test - ...""".stripMargin.getBytes(UTF_8)
+        file := "2026-06-25T00:00:00,111 Begin JS7 ...".getBytes(UTF_8) // No line end
         for
           checked <- LogFile.read(file)
         yield
