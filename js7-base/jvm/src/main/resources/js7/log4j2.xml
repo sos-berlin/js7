@@ -68,8 +68,6 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
       immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout
         pattern="${errorPattern}"
-        header="${fileHeader}"
-        footer="${fileFooter}"
         charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>

@@ -19,6 +19,7 @@ final case class LogIndexConf(
   timestampReaderConcurrency: Int,
   recompressor: Recompressor,
   fileAddedDelay: FiniteDuration,
+  logFileWaitsForPrevious: FiniteDuration,
   logFileTimestampTries: DelayConf,
   headerMinimumLength: Int,
   pollGrowing: FiniteDuration,
@@ -60,7 +61,8 @@ object LogIndexConf:
     for
       concurrency <- catchNonFatal(config.getInt("js7.log.index.read-timestamp-concurrency"))
       recompressor = Recompressor.fromConfig(config)
-      fileAddedDelay <- config.finiteDuration("js7.log.index.file-added-delay")
+      fileAddedDelay <- config.finiteDuration("js7.log.index.FileAdded-delay")
+      logFileWaitsForPrevious <- config.finiteDuration("js7.log.index.log-file-waits-for-previous")
       logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
       headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.header-minimum-length"))
       pollGrowing <- config.finiteDuration("js7.log.poll-growing")
@@ -87,7 +89,7 @@ object LogIndexConf:
       LogIndexConf(
         concurrency,
         recompressor,
-        fileAddedDelay, logFileTimestampTries, headerMinimumLength,
+        fileAddedDelay, logFileWaitsForPrevious, logFileTimestampTries, headerMinimumLength,
         pollGrowing,
         fileBufferSize, buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
         logFileIndexLineLength,

@@ -175,8 +175,7 @@ private object LogFile:
         Right:
           LogFile(file, instant, isGzipped = gzip, cell)
 
-  private def readLogFileInstant(file: Path, gzip: Boolean)
-    (using zoneId: ZoneId, conf: LogIndexConf)
+  private def readLogFileInstant(file: Path, gzip: Boolean)(using zoneId: ZoneId, conf: LogIndexConf)
   : IO[Checked[Instant]] =
     Resource.fromAutoCloseable:
       IO.blocking:
@@ -194,7 +193,7 @@ private object LogFile:
           locally:
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
               chunk.indexOf('\n', firstLineEnd + 1) match
-                case -1 => Left(IncompleteLogFileProblem(file))
+                case -1 => Left(IncompleteLogFileProblem(file, "Incomplete header line"))
                 case secondLineEnd => Right(chunk.slice(firstLineEnd + 1, secondLineEnd))
             else
               logger.debug(s"No header line in ${file.getFileName}")
@@ -206,15 +205,17 @@ private object LogFile:
               .toOption.toRight:
                 InvalidTimestampInLogFileProblem(file, logLine.utf8StringTruncateAt(30))
               .map(_.toInstant)
-        case _ =>
-          Left(IncompleteLogFileProblem(file))
-    .recover:
-      case _: EOFException => Left(IncompleteLogFileProblem(file))
-      case _: FileNotFoundException => Left(IncompleteLogFileProblem(file))
-      case t =>
-        if t.getStackTrace != null then
-          logger.debug(s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}", t)
-        Left(Problem.fromThrowable(t))
+    .handleError: t =>
+      val msg = s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}"
+      t match
+        case t: FileNotFoundException =>
+          Left(IncompleteLogFileProblem(file, IncompleteLogFileProblem.FileNotFound))
+        case t: EOFException =>
+          Left(IncompleteLogFileProblem(file, "EOF"))
+        case t =>
+          if t.getStackTrace != null then
+            logger.debug(msg, t)
+          Left(Problem.fromThrowable(t))
 
   private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq): Boolean =
     LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()

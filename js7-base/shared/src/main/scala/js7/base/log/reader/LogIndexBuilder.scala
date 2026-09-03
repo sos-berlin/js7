@@ -15,12 +15,14 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogIndex.isGzipped
 import js7.base.log.reader.LogIndexBuilder.*
-import js7.base.utils.CatsUtils.syntax.*
+import js7.base.problem.Problems.IncompleteLogFileProblem
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.TimeoutException
+import scala.concurrent.duration.Deadline
 
 private final class LogIndexBuilder private(
   logFileTimestampSempahore: Semaphore[IO],
@@ -85,7 +87,7 @@ private final class LogIndexBuilder private(
               case _ => IO.unit
             .flatMap: _ =>
               // Read log file's timestamp in background
-              delayedLogFile.start(queue.offer, delay = true)
+              delayedLogFile.start(onCompleted = queue.offer, awaitLastAddedGzFile = true)
             .as(Nil)
 
         case event @ FileDeleted(filename) =>
@@ -95,8 +97,8 @@ private final class LogIndexBuilder private(
           else if isGzipped(filename) then
             IO.pure(LogFileDeleted(filename) :: Nil)
           else
-            // If filename is .log-file which timestamp has not been read until it has
-            // been deleted, then we cancel the fiber.
+            // If filename is .log-file which timestamp has not been read until it has been deleted,
+            // then we cancel the fiber.
             filenameToDelayedLogFile.modify: map =>
               map.removed(filename) -> map.get(filename)
             .flatMap:
@@ -120,21 +122,26 @@ private final class LogIndexBuilder private(
     *
     * Because log4j may still writing this file, it may take some milliseconds.
     */
-  private def toLogFileUntilFinished(file: Path): IO[Option[LogFile]] =
+  private def toLogFileUntilFinished(file: Path, finite: Boolean): IO[Option[LogFile]] =
     logger.debugIOWithResult("toLogFileUntilFinished", file.getFileName):
-      Delayer.stream[IO](conf.logFileTimestampTries, finite = true)
-        .evalMap: _ =>
-          logFileTimestampSempahore.permit.surround:
-            LogFile.read(file)
-        .flatMap:
-          case Left(problem) =>
-            logger.debug(s"toLogFileUntilFinished ⟲ $file: $problem")
-            Stream.empty
-          case Right(logFile) =>
-            //logger.trace(s"${logFile.toStringWithSize}")
-            Stream.emit(logFile)
-        .head
-        .compile.last
+      IO.defer:
+        val t = Deadline.now
+        Delayer.stream[IO](conf.logFileTimestampTries, finite = finite)
+          .evalMap: _ =>
+            logFileTimestampSempahore.permit.surround:
+              LogFile.read(file)
+          .flatMap:
+            case Left(problem @ IncompleteLogFileProblem(_, IncompleteLogFileProblem.FileNotFound)) =>
+              logger.trace(s"toLogFileUntilFinished ⟲ $file after ${t.elapsed.pretty}: $problem")
+              Stream.empty
+            case Left(problem) =>
+              logger.debug(s"toLogFileUntilFinished ⟲ $file after ${t.elapsed.pretty}: $problem")
+              Stream.empty
+            case Right(logFile) =>
+              //logger.trace(s"${logFile.toStringWithSize}")
+              Stream.emit(logFile)
+          .head
+          .compile.last
 
 
   private[reader] final class DelayedLogFile(val file: Path):
@@ -146,25 +153,26 @@ private final class LogIndexBuilder private(
     def start(
       onCompleted: LogFile => IO[Unit],
       onFailed: Throwable => IO[Unit] = _ => IO.unit,
-      delay: Boolean = false)
+      awaitLastAddedGzFile: Boolean = false)
     : IO[Unit] =
       logger.trace(s"DelayedLogFile($filename).start")
       val gzip = isGzipped(file)
       // Read log file's timestamp in background
       supervisor.supervise:
-        IO.whenA(delay):
-          IO.whenA(!gzip):
-            CatsDeadline.now.flatMap: now =>
-              gzLogFileReady.waitUntil(_ >= now).timeoutTo(conf.currentFileMaxDelay, IO.unit)
+        IO.whenA(awaitLastAddedGzFile && !gzip):
+          CatsDeadline.now.flatMap: now =>
+            gzLogFileReady.waitUntil(_ >= now).timeoutTo(conf.logFileWaitsForPrevious, IO.unit)
           *>
-            IO.sleep(conf.fileAddedDelay)
+            IO.sleep(conf.fileAddedDelay) // Delay shortly to allow log4j to write first log line
         .productR:
-          toLogFileUntilFinished(file)
-            .logWhenItTakesLonger(filename.toString)
-            .flatMap:
+          IO.defer:
+            val t = Deadline.now
+            // Don't wait endlessly for .log.gz files to be finished (just in case)
+            toLogFileUntilFinished(file, finite = gzip).flatMap:
               case None =>
-                logger.error(s"$filename is not readable, giving up")
-                onFailed(new TimeoutException(s"LogFile $filename read timed out after $delay"))
+                val d = t.elapsed.pretty
+                logger.error(s"$filename contains no log timestamp, giving up after $d")
+                onFailed(new TimeoutException(s"LogFile $filename read timed out after $d"))
               case Some(logFile) =>
                 completed.complete(()).flatMap:
                   IO.whenA(_): // not cancelled
@@ -201,7 +209,7 @@ private object LogIndexBuilder:
         for
           semaphore <- Semaphore[IO](conf.timestampReaderConcurrency)
           now <- CatsDeadline.now
-          signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
+          signal <- SignallingRef[IO, CatsDeadline](now - conf.logFileWaitsForPrevious)
           result <- LogIndexBuilder(semaphore, supervisor, signal)
             .toLogFileEvents(directory, initialFiles)
         yield
@@ -218,7 +226,7 @@ private object LogIndexBuilder:
         for
           semaphore <- Semaphore[IO](conf.timestampReaderConcurrency)
           now <- CatsDeadline.now
-          signal <- SignallingRef[IO, CatsDeadline](now - conf.currentFileMaxDelay)
+          signal <- SignallingRef[IO, CatsDeadline](now - conf.logFileWaitsForPrevious)
         yield
           LogIndexBuilder(semaphore, supervisor, signal)
     yield

@@ -88,7 +88,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         for
           checked <- LogFile.read(file)
         yield
-          assert(checked == Left(IncompleteLogFileProblem(file)))
+          assert(checked == Left(IncompleteLogFileProblem(file, "Incomplete header line")))
 
     "Missing header line" in:
       temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
