@@ -16,13 +16,10 @@ import js7.base.time.EpochNano
 import js7.base.time.EpochNano.toEpochNano
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.annotation.switch
-import scala.util.matching.Regex
 
 /** Fast parser for reading a logging file's timestamps — no concurrent use!
   *
   * Optimized for consecutive calls with timestamps in the same second.
-  *
-  * Only local timestamps are parsed.
   */
 final class FastTimestampParser()(using zoneId: ZoneId):
 
@@ -51,10 +48,14 @@ final class FastTimestampParser()(using zoneId: ZoneId):
       return EpochNano.Nix
 
     timestampBytes.copyToArray(start, ts, 0, length)
+    parse_(start, end, length)
+
+  // It's faster if parse_ is separated from parse
+  private def parse_(start: Int, end: Int, length: Int): EpochNano =
     ts(10) = 'T' // Replace ' ' with 'T'
     ts(19) = '.' // Replace ',' with '.'
 
-    var zonePos =
+    val zonePos =
       if ts(end - 1) == 'Z' then end - 1
       else if ts(end - 3) <= '-' then end - 3 // "+02"
       else if ts(end - 5) <= '-' then end - 5 // "+0230"
@@ -136,7 +137,7 @@ final class FastTimestampParser()(using zoneId: ZoneId):
     else
       // Different second or zone
       try
-        val epochNano = parseTimestampAsNanos(new String(ts, 0, timestampBytes.length, StandardCharsets.US_ASCII))
+        val epochNano = parseTimestampAsNanos(new String(ts, 0, length, StandardCharsets.US_ASCII))
 
         // Safe lastSecond
         arraycopy(ts, 0, lastSecond, 0, lastSecond.length)
@@ -163,17 +164,12 @@ object FastTimestampParser:
   assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00".length)
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
-  private[reader] val DateTimeRegex: Regex =
-    """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r
+  val TimestampPattern: Pattern =
+    """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r.pattern
 
-  private val LogLineStartPattern: Pattern =
+  val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
-    //val threadInBrackets = """\[[^]]+]""".r  // Very slow!
-    //val logger = """[\p{Alnum}._$-]+""".r
-    //val message = """(?:.*)""".r
-    // threadInBrackets is slow. Also, a thread name may contain a ']'.
-    //Regex(s"""^$HighlightRegex?($datetime) $level +(?:$threadInBrackets +)?$logger +-""").pattern
-    Pattern.compile(s"""$HighlightRegex?($DateTimeRegex) $level """)
+    s"""$HighlightRegex?($TimestampPattern) $level """.r.pattern
 
   // Faster than ISO_LOCAL_DATE_TIME
   private val dateTimeFormatter: DateTimeFormatter =
