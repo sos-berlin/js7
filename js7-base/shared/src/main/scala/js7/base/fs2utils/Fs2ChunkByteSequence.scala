@@ -130,16 +130,20 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
   override def copyToArray(
     chunk: Chunk[Byte], srcStart: Int, array: Array[Byte], dstStart: Int, length: Int)
   : Int =
-    chunk match
-      case chunk: Chunk.ArraySlice[Byte] =>
-        if srcStart < 0 || length < 0 then
-          throw new IndexOutOfBoundsException(s"srcStart=$srcStart length=$length")
-        var len = chunk.length - srcStart
-        if length < len then len = length
-        System.arraycopy(chunk.values, chunk.offset + srcStart, array, dstStart, len)
-        len
-      case _ =>
-        super.copyToArray(chunk, srcStart, array, dstStart, length)
+    if srcStart == 0 && length >= chunk.size then
+      chunk.copyToArray(array, dstStart)
+      chunk.size
+    else
+      chunk match
+        case chunk: Chunk.ArraySlice[Byte] =>
+          if srcStart < 0 || length < 0 then
+            throw IndexOutOfBoundsException(s"srcStart=$srcStart length=$length")
+          var len = chunk.length - srcStart
+          if length < len then len = length
+          System.arraycopy(chunk.values, chunk.offset + srcStart, array, dstStart, len)
+          len
+        case _ =>
+          super.copyToArray(chunk, srcStart, array, dstStart, length)
 
   override def toByteBuffer(chunk: Chunk[Byte]): ByteBuffer =
     chunk.toByteBuffer.asReadOnlyBuffer

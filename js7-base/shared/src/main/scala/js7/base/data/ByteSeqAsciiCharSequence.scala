@@ -27,9 +27,8 @@ extends CharSequenceJava17:
   override def equals(other: Any): Boolean =
     other match
       case other: ByteSeqAsciiCharSequence[_] =>
-        byteSeq == other.byteSeq.asInstanceOf[ByteSeqAsciiCharSequence[ByteSeq]]
-          && begin == other.begin
-          && end == other.end
+        begin == other.begin && end == other.end
+          && byteSeq == other.byteSeq.asInstanceOf[ByteSeqAsciiCharSequence[ByteSeq]]
 
       case other: CharSequence =>
         var i = 0

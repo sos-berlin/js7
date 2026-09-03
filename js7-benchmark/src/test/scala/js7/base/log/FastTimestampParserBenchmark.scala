@@ -36,9 +36,9 @@ class FastTimestampParserBenchmark extends OurBenchmark:
 
   @Benchmark
   def millionParseTimestamps(): Unit =
-    assert(timestampParser.parse(logLines.head) != EpochNano.Nix)
+    assert(timestampParser.rawParse(logLines.head) != EpochNano.Nix)
     var i = 0
     val n = logLines.length
     while i < n do
-      timestampParser.parse(logLines(i))
+      timestampParser.rawParse(logLines(i))
       i += 1

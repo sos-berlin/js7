@@ -30,28 +30,44 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
   assert(lastSecond.length == SecondLength)
 
+  /** Detect timestamp at start of line and return it as `EpochNano`. */
   def parseTimestampInLogLine[ByteSeq: ByteSequence](byteLine: ByteSeq): EpochNano =
     matchTimestamp(byteLine) match
       case null => EpochNano.Nix
-      case ts => parse(ts)
+      case ts => rawParse(ts)
 
-  def parse(timestamp: String): EpochNano =
-    parse(ByteArray(timestamp))
+  /** Parses an already pattern-matched timestamp. */
+  def rawParse(timestamp: String): EpochNano =
+    rawParse(ByteArray(timestamp))
 
-  def parse[ByteSeq: ByteSequence](timestamp: ByteSeq): EpochNano =
-    parse(timestamp, 0, timestamp.length)
+  /** Parses an already pattern-matched timestamp. */
+  def rawParse[ByteSeq: ByteSequence](timestamp: ByteSeq): EpochNano =
+    rawParse(timestamp, 0, timestamp.length)
 
-  /** @return EpochNano.Nix if timestamp is invalid .*/
-  def parse[ByteSeq: ByteSequence](timestampBytes: ByteSeq, start: Int, end: Int): EpochNano =
+  /** Parses an already pattern-matched timestamp.
+    * @return EpochNano.Nix if timestamp is invalid. */
+  def rawParse[ByteSeq: ByteSequence](timestampBytes: ByteSeq, start: Int, end: Int): EpochNano =
     val length = end - start
     if length < MinimumLength || length > LongestLength then
       return EpochNano.Nix
-
     timestampBytes.copyToArray(start, ts, 0, length)
-    parse_(start, end, length)
+    rawParse_(start, end, length)
 
-  // It's faster if parse_ is separated from parse
-  private def parse_(start: Int, end: Int, length: Int): EpochNano =
+  /** Parses an already pattern-matched timestamp. */
+  def rawParse(timestamp: Array[Byte]): EpochNano =
+    rawParse(timestamp, 0, timestamp.length)
+
+  /** Parses an already pattern-matched timestamp.
+    * @return value < 0 iff timestamp is invalid. */
+  def rawParse(timestampBytes: Array[Byte], start: Int, end: Int): EpochNano =
+    val length = end - start
+    if length < MinimumLength || length > LongestLength then
+      return EpochNano.Nix
+    timestampBytes.copyToArray(ts, start, length)
+    rawParse_(start, end, length)
+
+  // It's faster if rawParse_ is separated from rawParse
+  private def rawParse_(start: Int, end: Int, length: Int): EpochNano =
     ts(10) = 'T' // Replace ' ' with 'T'
     ts(19) = '.' // Replace ',' with '.'
 
@@ -145,7 +161,7 @@ final class FastTimestampParser()(using zoneId: ZoneId):
 
         // Save lastZone
         arraycopy(ts, zonePos, lastZone, 0, end - zonePos)
-        java.util.Arrays.fill(lastZone, end - zonePos, 6, ' '.toByte)
+        java.util.Arrays.fill(lastZone, end - zonePos, ZoneSize, ' '.toByte)
 
         epochNano
       catch case e: DateTimeParseException =>
@@ -165,7 +181,8 @@ object FastTimestampParser:
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
   val TimestampPattern: Pattern =
-    """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r.pattern
+    """[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}[.,][0-9]{1,9}(Z|[+-][0-9:]{2,5})?"""
+      .r.pattern
 
   val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
