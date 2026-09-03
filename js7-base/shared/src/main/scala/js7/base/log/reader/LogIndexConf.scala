@@ -1,6 +1,7 @@
 package js7.base.log.reader
 
 import com.typesafe.config.Config
+import java.util.regex.Pattern
 import js7.base.config.Js7Config
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.ByteChunksLineSplitter.MinimumLength
@@ -14,6 +15,7 @@ import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
+import scala.util.matching.Regex
 
 final case class LogIndexConf(
   timestampReaderConcurrency: Int,
@@ -21,7 +23,7 @@ final case class LogIndexConf(
   fileAddedDelay: FiniteDuration,
   logFileWaitsForPrevious: FiniteDuration,
   logFileTimestampTries: DelayConf,
-  headerMinimumLength: Int,
+  headerLinePrefix: String,
   pollGrowing: FiniteDuration,
   fileBufferSize: Int,
   buildBufferSize: Int,
@@ -36,12 +38,15 @@ final case class LogIndexConf(
   val uniqueHeaderSize: Int =
     UniqueHeaderSize
 
-  val currentFileMaxDelay: FiniteDuration =
-    logFileTimestampTries.delays.toList.reduce(_ + _).toCoarsest
+  val headerLinePattern: Pattern =
+    Pattern.compile(s"(${LogIndexConf.LogLineTimestampRegex})$headerLinePrefix")
 
 
 object LogIndexConf:
   private val logger = Logger[LogIndexConf]
+
+  private[reader] val LogLineTimestampRegex: Regex =
+    """\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{1,9}(Z|[+-][0-9:]{2,5})?""".r
 
   /** Number of first bytes of a log file with a timestamp which should uniquely identify it.
     *
@@ -64,7 +69,7 @@ object LogIndexConf:
       fileAddedDelay <- config.finiteDuration("js7.log.index.FileAdded-delay")
       logFileWaitsForPrevious <- config.finiteDuration("js7.log.index.log-file-waits-for-previous")
       logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
-      headerMinimumLength <- catchNonFatal(config.getInt("js7.log.index.header-minimum-length"))
+      headerLinePrefix <- catchNonFatal(config.getString("js7.log.index.header-line-prefix"))
       pollGrowing <- config.finiteDuration("js7.log.poll-growing")
       fileBufferSize <- catchNonFatal(config.getBytes("js7.log.index.file-buffer-size").toInt)
       buildBufferSize <- catchNonFatal(config.getBytes("js7.log.index.build-buffer-size").toInt)
@@ -89,7 +94,7 @@ object LogIndexConf:
       LogIndexConf(
         concurrency,
         recompressor,
-        fileAddedDelay, logFileWaitsForPrevious, logFileTimestampTries, headerMinimumLength,
+        fileAddedDelay, logFileWaitsForPrevious, logFileTimestampTries, headerLinePrefix,
         pollGrowing,
         fileBufferSize, buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
         logFileIndexLineLength,

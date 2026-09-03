@@ -213,8 +213,9 @@ private object LogFile:
             logger.debug(msg, t)
           Left(Problem.fromThrowable(t))
 
-  private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq): Boolean =
-    LogHeaderPattern.matcher(line.asciiCharSequence).lookingAt()
+  private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq)(using conf: LogIndexConf)
+  : Boolean =
+    conf.headerLinePattern.matcher(line.asciiCharSequence).lookingAt()
 
   private def positionedTmpFileStream(file: Path, opaquePos: OpaquePos, bufferSize: Int)
     (using conf: LogIndexConf)
