@@ -157,7 +157,7 @@ extends Service.StoppableByRequest:
   /** @return the persisted Order. */
   def processOrder(
     order: Order[IsFreshOrReady],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[Checked[Option[Order[Order.State]]]] =
     assertIfStrict(order.isProcessable)
     selectSubagentDriverCancelable(order).flatMap:
@@ -169,7 +169,7 @@ extends Service.StoppableByRequest:
         IO.right(None)
 
       case Right(Some(selectedDriver)) =>
-        processOrderAndForwardEvents(order, endOfAdmissionPeriod, selectedDriver)
+        processOrderAndForwardEvents(order, timeoutAt, selectedDriver)
           .onProblem: _ =>
             // No OrderProcessingStarted: Reverse process incrementation!
             selectSubagentMutex.lock.surround:
@@ -201,7 +201,7 @@ extends Service.StoppableByRequest:
 
   private def processOrderAndForwardEvents(
     order: Order[IsFreshOrReady],
-    endOfAdmissionPeriod: Option[Timestamp],
+    timeoutAt: Option[Timestamp],
     selectedDriver: SelectedDriver)
   : IO[Checked[Option[Order[Order.State]]]] =
     // TODO Race with CancelOrders ?
@@ -233,7 +233,7 @@ extends Service.StoppableByRequest:
               Some(subagentDriver.subagentId),
               selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
               stick = stick,
-              endOfAdmissionPeriod = endOfAdmissionPeriod)
+              timeoutAt = timeoutAt)
     .flatTapT:
       onPersisted(orderId)
     .flatTapT: persisted =>
@@ -245,7 +245,7 @@ extends Service.StoppableByRequest:
             .flatMap(_.checkedState[Order.Processing])
         .flatMapT: order =>
           forProcessingOrder(order, subagentDriver):
-            subagentDriver.startOrderProcessing(order, endOfAdmissionPeriod)
+            subagentDriver.startOrderProcessing(order, timeoutAt)
         .handleError: t =>
           logger.error(s"processOrderAndForwardEvents $orderId => ${t.toStringWithCauses}",
             t.nullIfNoStackTrace)

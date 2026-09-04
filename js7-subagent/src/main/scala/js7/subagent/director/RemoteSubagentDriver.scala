@@ -298,17 +298,17 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     requireNotStopping.flatMapT: _ =>
-      startOrderProcessing(order, order.state.endOfAdmissionPeriod)
+      startOrderProcessing(order, order.state.timeoutAt)
 
-  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  def startOrderProcessing(order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping.flatMapT: _ =>
-        startProcessingOrder2(order, endOfAdmissionPeriod)
+        startProcessingOrder2(order, timeoutAt)
 
   private def startProcessingOrder2(
     order: Order[Order.Processing],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred.insert(order.id, Deferred.unsafe)
       // OrderProcessed event will fulfill and remove the Deferred
@@ -316,7 +316,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
         orderToExecuteDefaultArguments(order)
           .flatMapT: defaultArguments =>
             dispatcher.executeCommand:
-              StartOrderProcess(order, defaultArguments, endOfAdmissionPeriod)
+              StartOrderProcess(order, defaultArguments, timeoutAt)
           .catchIntoChecked
           .recoverFromProblemWith: problem =>
             logger.trace(s"💥 startProcessingOrder2: $problem")

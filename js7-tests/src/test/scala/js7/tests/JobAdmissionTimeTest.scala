@@ -296,7 +296,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controller.api.addOrder(FreshOrder(orderId, workflow.path))
           .await(99.s).orThrow
         val event = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
-        assert(event == OrderProcessingStarted(Some(subagentId), endOfAdmissionPeriod = None))
+        assert(event == OrderProcessingStarted(Some(subagentId), timeoutAt = None))
         execCmd:
           CancelOrders(orderId :: Nil, CancellationMode.kill())
         controller.awaitNextKey[OrderTerminated](orderId)
@@ -327,7 +327,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         val event = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
         assert(event == OrderProcessingStarted(Some(subagentId),
           // TODO TimeInterval ends last day of summertime. THIS IS NOT EXPECTED.
-          endOfAdmissionPeriod = Some(ts"2025-10-26T21:00:00Z")))
+          timeoutAt = Some(ts"2025-10-26T21:00:00Z")))
         execCmd:
           CancelOrders(orderId :: Nil, CancellationMode.kill())
         controller.awaitNextKey[OrderTerminated](orderId)
@@ -455,7 +455,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           clock := local("2025-11-04T23:30")
           controller.awaitNextKey[OrderProcessingStarted](orderId)
           assert(controllerState.idToOrder(orderId).state ==
-            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2025-11-04T22:15:00Z")))
+            Order.Processing(subagentId, timeoutAt = Some(ts"2025-11-04T22:15:00Z")))
           sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
           execCmd:
             CancelOrders(orderId :: Nil, CancellationMode.kill())
@@ -484,7 +484,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           clock := local("2026-04-01T00:00")
           controller.awaitNextKey[OrderProcessingStarted](orderId)
           assert(controllerState.idToOrder(orderId).state ==
-            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-03-31T21:15:00Z")))
+            Order.Processing(subagentId, timeoutAt = Some(ts"2026-03-31T21:15:00Z")))
           sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
           execCmd:
             CancelOrders(orderId :: Nil, CancellationMode.kill())
@@ -513,7 +513,7 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           clock := local("2026-06-30T23:30")
           controller.awaitNextKey[OrderProcessingStarted](orderId)
           assert(controllerState.idToOrder(orderId).state ==
-            Order.Processing(subagentId, endOfAdmissionPeriod = Some(ts"2026-06-30T21:00:00Z")))
+            Order.Processing(subagentId, timeoutAt = Some(ts"2026-06-30T21:00:00Z")))
 
           sleep(10.ms) // TODO Delay to avoid "⚠️ killProcess $orderId => no JobDriver for Order"
           execCmd:

@@ -189,10 +189,10 @@ extends MainService, Service.StoppableByRequest:
   def startOrderProcess(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO(checkedDedicatedSubagent)
-      .flatMapT(_.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod))
+      .flatMapT(_.startOrderProcess(order, executeDefaultArguments, timeoutAt))
 
   def killAllProcesses(signal: ProcessSignal): IO[Unit] =
     dedicatedAllocated.toOption.foldMap:

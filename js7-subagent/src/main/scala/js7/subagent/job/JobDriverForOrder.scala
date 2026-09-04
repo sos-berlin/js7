@@ -44,11 +44,11 @@ private final class JobDriverForOrder private(
   def processOrder(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp],
+    timeoutAt: Option[Timestamp],
     stdObservers: StdObservers,
     jobLauncher: JobLauncher)
   : IO[OrderOutcome] =
-    IO(processOrderResource(order, executeArguments, endOfAdmissionPeriod, stdObservers))
+    IO(processOrderResource(order, executeArguments, timeoutAt, stdObservers))
       .flatMapT(_.use: processOrder_ =>
         processOrder2(jobLauncher, processOrder_))
       .catchIntoChecked
@@ -59,7 +59,7 @@ private final class JobDriverForOrder private(
   private def processOrderResource(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp],
+    timeoutAt: Option[Timestamp],
     stdObservers: StdObservers)
   : Checked[ResourceIO[ProcessOrder]] =
     checkedJobLauncher
@@ -72,7 +72,7 @@ private final class JobDriverForOrder private(
           executeArguments,
           workflowJob.defaultArguments,
           jobConf.controllerId,
-          endOfAdmissionPeriod,
+          timeoutAt,
           stdObservers,
           fileValueState)
 
@@ -104,7 +104,7 @@ private final class JobDriverForOrder private(
               _ <- SyncDeadline.usingNow: now ?=>
                 runningSince = now
               timeoutFiber <- scheduleTimeoutCancellation
-              periodEndFiber <- processOrder.endOfAdmissionPeriod.fold(IO.unit.start):
+              periodEndFiber <- processOrder.timeoutAt.fold(IO.unit.start):
                 scheduleTimeoutCancellationAt
               orderOutcome <-
                 fiber.joinStd.map(modifyOutcome).mapOrKeep:

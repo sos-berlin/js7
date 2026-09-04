@@ -4,6 +4,7 @@ import io.circe
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.{deriveConfiguredCodec, deriveDecoderWithDefaults, deriveRenamingCodec}
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -131,11 +132,11 @@ extends
         check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(state = Ready()))
 
-      case OrderProcessingStarted(subagentId, subagentBundleId, stick, endOfAdmissionPeriod) =>
+      case OrderProcessingStarted(subagentId, subagentBundleId, stick, timeoutAt) =>
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
           && (!stick || stickySubagents.nonEmpty),
           copy(
-            state = Processing(subagentId, subagentBundleId, endOfAdmissionPeriod),
+            state = Processing(subagentId, subagentBundleId, timeoutAt),
             stickySubagents =
               if stick then
                 stickySubagents.head.copy(stuckSubagentId = subagentId) :: stickySubagents.tail
@@ -1149,7 +1150,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   object State:
     implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
       Subtype[IsFreshOrReady],
-      Subtype(deriveCodec[Processing]),
+      Subtype[Processing],
       Subtype(Processed),
       Subtype(ProcessingKilled),
       Subtype(deriveCodec[DelayingRetry]),
@@ -1330,7 +1331,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   final case class Processing(
     subagentId: Option[SubagentId],
     subagentBundleId: Option[SubagentBundleId],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   extends IsStarted, IsNotDetachable, IsTransferableOnlyIfInstructionUnchanged:
     override def toString = s"Processing(${subagentId getOrElse
         "legacy local Subagent"}${subagentBundleId.fold("")(o => s" $o")})"
@@ -1342,10 +1343,12 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     def apply(
       subagentId: SubagentId,
       bundleId: Option[SubagentBundleId] = None,
-      endOfAdmissionPeriod: Option[Timestamp] = None)
+      timeoutAt: Option[Timestamp] = None)
     : Processing =
-      new Processing(Some(subagentId), bundleId, endOfAdmissionPeriod)
+      new Processing(Some(subagentId), bundleId, timeoutAt)
 
+    given Codec.AsObject[Processing] = deriveRenamingCodec(Map(
+      "endOfAdmissionPeriod" -> "timeoutAt"))
 
   type Processed = Processed.type
   case object Processed extends IsStarted, IsDetachable, IsTransferable

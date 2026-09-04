@@ -77,7 +77,9 @@ object CirceUtils:
 
   inline def deriveRenamingDecoder[A](rename: Map[String, String])(using inline A: Mirror.Of[A])
   : Decoder[A] =
-    deriveRenamingDecoder2(ConfiguredDecoder.derived[A], rename)
+    deriveRenamingDecoder2(
+      ConfiguredCodec.derive[A](useDefaults = true),
+      rename)
 
   private def deriveRenamingDecoder2[A](decode: ConfiguredDecoder[A], rename: Map[String, String])
   : Decoder[A] =

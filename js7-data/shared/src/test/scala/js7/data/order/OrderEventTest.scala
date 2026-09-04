@@ -268,14 +268,26 @@ final class OrderEventTest extends OurTestSuite:
       OrderProcessingStarted(
         Some(SubagentId("SUBAGENT")),
         Some(SubagentBundleId("BUNDLE")),
-        stick = false,
-        endOfAdmissionPeriod = Some(ts"2025-07-03T12:00:00Z")),
+        timeoutAt = Some(ts"2025-07-03T12:00:00Z")),
       json"""
       {
         "TYPE": "OrderProcessingStarted",
         "subagentId": "SUBAGENT",
         "subagentBundleId": "BUNDLE",
         "stick": false,
+        "timeoutAt": 1751544000000
+      }""")
+
+    testJsonDecoder[OrderEvent]( // COMPATIBLE with v2.9.0
+      OrderProcessingStarted(
+        Some(SubagentId("SUBAGENT")),
+        Some(SubagentBundleId("BUNDLE")),
+        timeoutAt = Some(ts"2025-07-03T12:00:00Z")),
+      json"""
+      {
+        "TYPE": "OrderProcessingStarted",
+        "subagentId": "SUBAGENT",
+        "subagentBundleId": "BUNDLE",
         "endOfAdmissionPeriod": 1751544000000
       }""")
 
