@@ -5,7 +5,6 @@ import cats.effect.std.Semaphore
 import fs2.Stream
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.*
-import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -247,11 +246,12 @@ final class InternalJobTest
         .stream(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
         .filter(stamped => orderIds contains stamped.value.key)
         .map(_.value)
-        .tapEach:
-          case KeyedEvent(orderId: OrderId, _: OrderTerminated) =>
-            _runningOrderIds -= orderId
-          case _ =>
-        .takeThrough(_ => _runningOrderIds.nonEmpty)
+        .takeThrough: keyedEvent =>
+          keyedEvent match
+            case KeyedEvent(orderId: OrderId, _: OrderTerminated) =>
+              _runningOrderIds -= orderId
+            case _ =>
+          _runningOrderIds.nonEmpty
         .compile
         .toVector
         .await(99.s)

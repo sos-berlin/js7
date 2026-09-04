@@ -14,6 +14,7 @@ import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -220,10 +221,11 @@ object StreamExtensions:
           F.unlessA(used.getAndSet(true)):
             onFirst(o)
 
-    def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
-      stream.evalMap(a => F.delay:
+    @TestOnly
+    def tapEach(f: O => Unit): Stream[F, O] =
+      stream.map: a =>
         f(a)
-        a)
+        a
 
     def tapEachChunk(f: Chunk[O] => Unit)(using F: Sync[F]): Stream[F, O] =
       stream
