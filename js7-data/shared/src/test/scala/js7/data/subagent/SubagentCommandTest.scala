@@ -165,7 +165,7 @@ final class SubagentCommandTest extends OurTestSuite:
           "defaultArguments": {
             "expr": "'EXPR'"
           },
-          "endOfAdmissionPeriod": 1751389200000
+          "timeoutAt": 1751389200000
         }""")
 
       // COMPATIBLE WITH v2.3.0: no correlId

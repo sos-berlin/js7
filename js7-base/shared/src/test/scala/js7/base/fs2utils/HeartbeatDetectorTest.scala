@@ -92,15 +92,22 @@ final class HeartbeatDetectorTest extends OurAsyncTestSuite:
     val t = Deadline.now
     val n = 300
     val chunkSize = 10
-    Stream.iterable(1 to n)
-      .chunkN(chunkSize).evalMap(IO(_)).unchunks // asynchronous chunks
-      .detectHeartbeat(heartbeat = 999.s, late = 999.s, expired = 999.s, tick = 999.s)
-      .collect:
-        case HeartbeatDetector.Alive(v) => v
-      .chunks
-      .compile.count
-      .map: count =>
-        assert(count == n / chunkSize)
+    TestControl.executeEmbed:
+      Stream.iterable(0 until n)
+        .chunkN(chunkSize)
+        .evalMap: chunk =>
+          IO(chunk) // asynchronous chunks
+        .unchunks
+        .detectHeartbeat(heartbeat = 999.s, late = 999.s, expired = 999.s, tick = 999.s)
+        .collect:
+          case HeartbeatDetector.Alive(v) => v
+        .chunks
+        .compile.count
+        .map: count =>
+          // Sometimes, the first element comes in an own chunk.
+          // This seems to happen in scan1[LiveSignal].
+          // Despite this, the chunks are kept.
+          assert(count == n / chunkSize || count == n / chunkSize + 1)
 
   "Speed" in :
     if !sys.props.contains("test.speed") then

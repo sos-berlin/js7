@@ -188,14 +188,14 @@ extends SubagentDriver, Service.StoppableByRequest:
     if wasRemote /*&& false ???*/ then
       // The Order may have not yet been started (only OrderProcessingStarted emitted)
       // idempotent operation:
-      startOrderProcessing(order, endOfAdmissionPeriod = order.state.endOfAdmissionPeriod)
+      startOrderProcessing(order, timeoutAt = order.state.timeoutAt)
     else
       emitOrderProcessLostAfterRestart(order)
         .map(_.orThrow)
         .start
         .map(Right(_))
 
-  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  def startOrderProcessing(order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping.flatMap:
@@ -209,7 +209,7 @@ extends SubagentDriver, Service.StoppableByRequest:
               persistOrderProcessed(order.id, OrderOutcome.Disrupted(problem))
 
             case Right(()) =>
-              startProcessingOrder2(order, endOfAdmissionPeriod)
+              startProcessingOrder2(order, timeoutAt)
                 .recoverFromProblemWith:
                   case problem: SubagentIsShuttingDownProblem =>
                     persistOrderProcessed(order.id, OrderOutcome.processLostUnchecked(problem))
@@ -238,14 +238,14 @@ extends SubagentDriver, Service.StoppableByRequest:
           _.map(_.rightAs(())).combineAll
 
   private def startProcessingOrder2(
-    order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+    order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     orderToDeferred.insert(order.id, Deferred.unsafe)
       // OrderProcessed event will fulfill and remove the Deferred
       .flatMapT: deferred =>
         orderToExecuteDefaultArguments(order)
           .flatMapT: defaultArguments =>
-            subagent.startOrderProcess(order, defaultArguments, endOfAdmissionPeriod)
+            subagent.startOrderProcess(order, defaultArguments, timeoutAt)
           .catchIntoChecked
           .recoverFromProblemWith: problem =>
             logger.trace(s"💥 startProcessingOrder2: $problem")

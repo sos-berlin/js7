@@ -41,7 +41,7 @@ trait SubagentDriver:
 
   protected val journal: Journal[S]
 
-  def startOrderProcessing(order: Order[Order.Processing], endOfAdmissionPeriod: Option[Timestamp])
+  def startOrderProcessing(order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]]
 
   def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]

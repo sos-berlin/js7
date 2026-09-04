@@ -252,7 +252,7 @@ extends Service.StoppableByRequest:
   def startOrderProcess(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO.defer:
       if isStopping then
@@ -273,7 +273,7 @@ extends Service.StoppableByRequest:
               IO.right(processing)
 
           case None =>
-            startOrderProcess2(order, executeDefaultArguments, endOfAdmissionPeriod)
+            startOrderProcess2(order, executeDefaultArguments, timeoutAt)
               .flatTap: _ =>
                 stopParams.get.map(_.dontWaitForDirector).ifTrue:
                   logger.warn:
@@ -295,9 +295,9 @@ extends Service.StoppableByRequest:
   private def startOrderProcess2(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[FiberIO[OrderProcessed]] =
-    startOrderProcess3(order, executeDefaultArguments, endOfAdmissionPeriod)
+    startOrderProcess3(order, executeDefaultArguments, timeoutAt)
       .flatMap(_
         .joinStd
         .handleError(OrderOutcome.Failed.fromThrowable)
@@ -321,7 +321,7 @@ extends Service.StoppableByRequest:
   private def startOrderProcess3(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp])
+    timeoutAt: Option[Timestamp])
   : IO[FiberIO[OrderOutcome]] =
     jobDriver(order.workflowPosition).flatMap:
       case Left(problem) =>
@@ -338,7 +338,7 @@ extends Service.StoppableByRequest:
             ).allocated
           .flatMap: (stdObservers, releaseStdObservers) =>
             jobDriver
-              .runOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod, stdObservers)
+              .runOrderProcess(order, executeDefaultArguments, timeoutAt, stdObservers)
               .guarantee(releaseStdObservers)
               .guarantee(releaseAssignment)
               .start

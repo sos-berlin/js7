@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.syntax.flatMap.*
 import fs2.{Chunk, Stream}
 import java.nio.file.{Path, WatchEvent}
-import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatch.*
 import js7.base.log.Logger
@@ -25,7 +24,9 @@ private final class DirectoryWatch(
         val since = now
         @volatile var lastState = state
         readDirectoryThenStream(state)
-          .tapEach((_, state) => lastState = state)
+          .map: pair =>
+            lastState = pair._2
+            pair
           .map(Right(_))
           .append:
             Stream.sleep_[IO]((since + hotLoopBrake).timeLeftOrZero)

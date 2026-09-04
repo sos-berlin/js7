@@ -18,6 +18,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteProcessTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
+import scala.concurrent.duration.Deadline
 import scala.language.implicitConversions
 
 final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -41,7 +42,7 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
   private lazy val argScriptFile = createTempFile("ExecuteTest-arg-", ".cmd")
   private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")
 
-  "maxWaitForStdouterr = false (default)" in:
+  "No maxWaitForStdouterr" in:
     withItem(
       Workflow.of(WorkflowPath("WORKFLOW"),
         Execute(WorkflowJob(
@@ -49,13 +50,15 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(sleep 0.1 && echo "+++ CHILD FINISHED +++") &
-              |#echo FINISHED
+              |(trap "" SIGTERM; sleep 0.1; echo "+++ CHILD FINISHED +++") &
+              |sleep 0.05
               |""".stripMargin),
           maxWaitForStdouterr = None)))
     ): workflow =>
       val orderId = OrderId("ORDER-WAIT")
+      val t = Deadline.now
       runOrder(FreshOrder(orderId, workflow.path))
+      assert(t.elapsed >= 100.ms && t.elapsed <= 1.s)
       val events = controller.eventsByKey[OrderEvent](orderId)
       assert(events == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -63,7 +66,6 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        //OrderStdoutWritten("FINISHED\n+++ CHILD FINISHED +++\n"),
         OrderStdoutWritten("+++ CHILD FINISHED +++\n"),
         OrderProcessed(OrderOutcome.Succeeded(Map("returnCode" -> 0))),
         OrderMoved(Position(1), None),
@@ -72,7 +74,7 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         OrderFinished(),
         OrderDeleted))
 
-  "maxWaitForStdouterr = true" in:
+  "maxWaitForStdouterr" in:
     withItem(
       Workflow.of(WorkflowPath("WORKFLOW"),
         Execute(WorkflowJob(
@@ -80,13 +82,15 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(sleep 3 && echo "+++ CHILD FINISHED +++") &
-              |#echo FINISHED
+              |(trap "" SIGTERM; sleep 3; echo "+++ CHILD FINISHED +++") &
+              |sleep 0.1
               |""".stripMargin),
           maxWaitForStdouterr = Some(500.ms))))
     ): workflow =>
       val orderId = OrderId("ORDER-DONT-WAIT")
+      val t = Deadline.now
       runOrder(FreshOrder(orderId, workflow.path))
+      assert(t.elapsed >= 500.ms && t.elapsed <= 3.s)
       val events = controller.eventsByKey[OrderEvent](orderId)
       assert(events == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -94,7 +98,6 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        //OrderStdoutWritten("FINISHED\n"),
         OrderProcessed(OrderOutcome.Succeeded(Map("returnCode" -> 0))),
         OrderMoved(Position(1), None),
         OrderDetachable,

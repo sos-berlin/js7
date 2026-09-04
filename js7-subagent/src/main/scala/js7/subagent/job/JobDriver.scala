@@ -77,7 +77,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
   def runOrderProcess(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp],
+    timeoutAt: Option[Timestamp],
     stdObservers: StdObservers)
   : IO[OrderOutcome] =
     JobDriverForOrder.resource(order.id, params).toAllocated.flatMap: allocated =>
@@ -90,7 +90,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
         case Right(jobLauncher: JobLauncher) =>
           val forOrder = allocated.allocatedThing
           forOrder
-            .processOrder(order, executeArguments, endOfAdmissionPeriod, stdObservers, jobLauncher)
+            .processOrder(order, executeArguments, timeoutAt, stdObservers, jobLauncher)
             .guarantee:
               removeOrderEntry(order.id)
 

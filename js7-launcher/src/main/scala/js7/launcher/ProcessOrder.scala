@@ -26,7 +26,7 @@ final case class ProcessOrder(
   executeArguments: Map[String, Expression],
   jobArguments: Map[String, Expression],
   controllerId: ControllerId,
-  endOfAdmissionPeriod: Option[Timestamp],
+  timeoutAt: Option[Timestamp],
   stdObservers: StdObservers,
   fileValueScope: Scope)
 extends ProcessingOrderScopes:
@@ -68,7 +68,7 @@ object ProcessOrder:
     executeArguments: Map[String, Expression],
     jobArguments: Map[String, Expression],
     controllerId: ControllerId,
-    endOfAdmissionPeriod: Option[Timestamp],
+    timeoutAt: Option[Timestamp],
     stdObservers: StdObservers,
     fileValueState: FileValueState)
   : ResourceIO[ProcessOrder] =
@@ -76,7 +76,7 @@ object ProcessOrder:
       ProcessOrder(
         order, workflow, jobKey, workflowJob, jobResources,
         executeArguments, jobArguments, controllerId,
-        endOfAdmissionPeriod = endOfAdmissionPeriod,
+        timeoutAt = timeoutAt,
         stdObservers, fileValueScope)
 
   def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)

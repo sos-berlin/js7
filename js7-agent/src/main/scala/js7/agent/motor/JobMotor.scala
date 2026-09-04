@@ -99,30 +99,31 @@ extends Service.StoppableByRequest:
         startOrderProcess(o).startAndForget // TODO How to cancel this?
     .interruptWhenF(untilStopRequested)
 
-  private val dequeueChunk: IO[Chunk[OrderWithEndOfAdmission]] =
+  private val dequeueChunk: IO[Chunk[OrderWithTimeout]] =
     IO.defer:
       if queue.isEmptyUnsafe/*fast lane*/ then
         emptyChunk
       else
         dequeueChunk2
 
-  private lazy val dequeueChunk2: IO[Chunk[OrderWithEndOfAdmission]] =
+  private lazy val dequeueChunk2: IO[Chunk[OrderWithTimeout]] =
     queue.lockForRemoval:
       meterDequeue:
         currentAdmissionTimeInterval.flatMap: maybeTimeInterval =>
-          val endOfAdmission = maybeTimeInterval match
-            case Some(o: TimeInterval.Standard) => Some(o.end)
-            case _ => None
+          val timeoutAt =
+            workflowJob.killAtEndOfAdmissionPeriod thenMaybe maybeTimeInterval match
+              case Some(o: TimeInterval.Standard) => Some(o.end)
+              case _ => None
           val onlyForcedAdmission = maybeTimeInterval.isEmpty
 
-          Vector.newBuilder[OrderWithEndOfAdmission].tailRecM: builder =>
+          Vector.newBuilder[OrderWithTimeout].tailRecM: builder =>
             if queue.isEmpty(onlyForcedAdmission) then
               IO.right(builder)
             else
               tryIncrementProcessCount.map: ok =>
                 if ok then
                   val order = queue.dequeueNextOrder(onlyForcedAdmission)
-                  Left(builder += OrderWithEndOfAdmission(order, endOfAdmission))
+                  Left(builder += OrderWithTimeout(order, timeoutAt))
                 else
                   Right(builder)
           .map: builder =>
@@ -134,10 +135,10 @@ extends Service.StoppableByRequest:
     clock.nowIO.flatMap: now =>
       admissionSignal.get.map(_.filter(_.contains(now)))
 
-  private def startOrderProcess(orderWithEndOfAdmission: OrderWithEndOfAdmission): IO[Unit] =
-    import orderWithEndOfAdmission.{endOfAdmission, order}
+  private def startOrderProcess(orderWithTimeout: OrderWithTimeout): IO[Unit] =
+    import orderWithTimeout.{timeoutAt, order}
     // SubagentKeeper ignores the Order when it has been concurrently changed
-    subagentKeeper.processOrder(order, endOfAdmission)
+    subagentKeeper.processOrder(order, timeoutAt)
       .catchIntoChecked
       .flatMap:
         case Right(None) =>
@@ -256,10 +257,10 @@ object JobMotor:
       service
 
 
-  private final case class OrderWithEndOfAdmission(
+  private final case class OrderWithTimeout(
     order: Order[IsFreshOrReady],
-    endOfAdmission: Option[Timestamp]):
+    timeoutAt: Option[Timestamp]):
 
-    override def toString = s"OrderWithEndOfAdmission(${order.id}, $endOfAdmission)"
+    override def toString = s"OrderWithTimeout(${order.id}, $timeoutAt)"
 
   final case class TestOrderConcurrentlyChanged private[JobMotor](order: Order[Order.State])

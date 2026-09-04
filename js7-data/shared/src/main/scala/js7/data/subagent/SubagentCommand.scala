@@ -121,7 +121,7 @@ object SubagentCommand extends CommonCommand.Companion:
   final case class StartOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression],
-    endOfAdmissionPeriod: Option[Timestamp] = None)
+    timeoutAt: Option[Timestamp] = None)
   extends OrderCommand:
     type Response = Accepted
 

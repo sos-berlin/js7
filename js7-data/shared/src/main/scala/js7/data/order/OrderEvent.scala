@@ -271,7 +271,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     subagentId: Option[SubagentId],
     subagentBundleId: Option[SubagentBundleId] = None,
     stick: Boolean = false,
-    endOfAdmissionPeriod: Option[Timestamp] = None)
+    timeoutAt: Option[Timestamp] = None)
   extends OrderCoreEvent:
     private[data] def tag = TagOrderProcessingStarted
 
@@ -287,9 +287,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     // Since v2.3
     @TestOnly
-    def apply(subagentId: SubagentId, stick: Boolean, endOfAdmissionPeriod: Option[Timestamp])
+    def apply(subagentId: SubagentId, stick: Boolean, timeoutAt: Option[Timestamp])
     : OrderProcessingStarted =
-      new OrderProcessingStarted(Some(subagentId), None, stick, endOfAdmissionPeriod)
+      new OrderProcessingStarted(Some(subagentId), None, stick, timeoutAt)
+
+    given Codec.AsObject[OrderProcessingStarted] = deriveRenamingCodec(Map(
+      "endOfAdmissionPeriod" -> "timeoutAt"))
 
 
   sealed trait OrderStdWritten extends OrderEvent:
@@ -1080,7 +1083,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
-    Subtype(deriveConfiguredCodec[OrderProcessingStarted]),
+    Subtype[OrderProcessingStarted],
     Subtype[OrderStdoutWritten],
     Subtype[OrderStderrWritten],
     Subtype[OrderProcessed],

@@ -147,7 +147,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
                 executeArguments = Map.empty,
                 jobArguments = Map("ORDER_ARG" -> arg),
                 ControllerId("CONTROLLER"),
-                endOfAdmissionPeriod = None,
+                timeoutAt = None,
                 testSink.stdObservers,
                 fileValueScope))
             .map(_.orThrow)

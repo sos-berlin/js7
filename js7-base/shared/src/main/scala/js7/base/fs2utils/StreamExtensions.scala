@@ -18,6 +18,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import scala.annotation.tailrec
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -355,10 +356,11 @@ object StreamExtensions:
     def takeUntil(predicate: O => Boolean): Stream[F, O] =
       stream.takeThrough(o => !predicate(o))
 
-    def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
-      stream.evalMap(a => F.delay:
+    @TestOnly
+    def tapEach(f: O => Unit): Stream[F, O] =
+      stream.map: a =>
         f(a)
-        a)
+        a
 
     def tapEachChunk(f: Chunk[O] => Unit)(using F: Sync[F]): Stream[F, O] =
       stream

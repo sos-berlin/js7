@@ -33,8 +33,8 @@ private[subagent] final class SubagentCommandExecutor(
     logger.debugIO(s"executeCommand(#${numbered.number} ${command.toShortString})"):
       IO.defer:
         command.match
-          case StartOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod) =>
-            subagent.startOrderProcess(order, executeDefaultArguments, endOfAdmissionPeriod)
+          case StartOrderProcess(order, executeDefaultArguments, timeoutAt) =>
+            subagent.startOrderProcess(order, executeDefaultArguments, timeoutAt)
               .rightAs(SubagentCommand.Accepted)
 
           //case AttachItem(item) =>

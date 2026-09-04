@@ -201,7 +201,28 @@ final class OrderTest extends OurTestSuite:
           Order(
             OrderId("ID"),
             WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
-            Processing(subagentId, endOfAdmissionPeriod = Some(ts"2025-07-03T12:00:00Z"))),
+            Processing(subagentId, timeoutAt = Some(ts"2025-07-03T12:00:00Z"))),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Processing",
+              "subagentId": "SUBAGENT",
+              "timeoutAt": 1751544000000
+            }
+          }""")
+
+        testJsonDecoder[Order[Processing]]( // COMPATIBLE with v2.9.0
+          Order(
+            OrderId("ID"),
+            WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
+            Processing(subagentId, timeoutAt = Some(ts"2025-07-03T12:00:00Z"))),
           json"""{
             "id": "ID",
             "workflowPosition": {
