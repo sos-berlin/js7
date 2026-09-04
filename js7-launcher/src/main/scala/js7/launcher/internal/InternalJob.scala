@@ -113,6 +113,7 @@ object InternalJob:
       subagentBundleId: Option[Expression] = None,
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
+      killAtEndOfAdmissionPeriod: Boolean = false,
       jobResourcePaths: Seq[JobResourcePath] = Nil,
       admissionTimeScheme: Option[AdmissionTimeScheme] = None,
       isNotRestartable: Boolean = false)
@@ -121,6 +122,7 @@ object InternalJob:
         agentPath, arguments, subagentBundleId,
         processLimit = processLimit,
         timeout = timeout,
+        killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod,
         jobResourcePaths = jobResourcePaths,
         admissionTimeScheme = admissionTimeScheme,
         isNotRestartable = isNotRestartable))
@@ -131,6 +133,7 @@ object InternalJob:
       subagentBundleId: Option[Expression] = None,
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
+      killAtEndOfAdmissionPeriod: Boolean = false,
       jobResourcePaths: Seq[JobResourcePath] = Nil,
       admissionTimeScheme: Option[AdmissionTimeScheme] = None,
       isNotRestartable: Boolean = false)
@@ -141,6 +144,7 @@ object InternalJob:
         subagentBundleId = subagentBundleId,
         processLimit = processLimit,
         timeout = timeout,
+        killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod,
         jobResourcePaths = jobResourcePaths,
         admissionTimeScheme = admissionTimeScheme,
         isNotRestartable = isNotRestartable)

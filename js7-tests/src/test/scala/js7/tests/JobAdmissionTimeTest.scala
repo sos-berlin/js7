@@ -333,6 +333,22 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         controller.awaitNextKey[OrderTerminated](orderId)
 
     "single AdmissionPeriod" in:
+      val orderId = testSingleAdmissionPeriod(10.ms, killAtEndOfAdmissionPeriod = true)
+      assert(controllerState.idToOrder(orderId).isState[Order.Processing])
+      clock += 1.h
+      controller.awaitNextKey[OrderFailed](orderId)
+
+    "single AdmissionPeriod, killAtEndOfAdmissionPeriod = false" in:
+      val period = 50.ms
+      val orderId = testSingleAdmissionPeriod(period, killAtEndOfAdmissionPeriod = false)
+      assert(controllerState.idToOrder(orderId).isState[Order.Processing])
+      clock += 1.h
+      sleep(2 * period)
+      assert(controllerState.idToOrder(orderId).isState[Order.Processing])
+      execCmd:
+        CancelOrders(orderId :: Nil, CancellationMode.kill())
+
+    def testSingleAdmissionPeriod(period: FiniteDuration, killAtEndOfAdmissionPeriod: Boolean) =
       controller.resetLastWatchedEventId()
       val workflow = Workflow(
         WorkflowPath("killAtEndOfAdmissionPeriod"),
@@ -343,29 +359,24 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
                |set -euo pipefail
                |echo Hej!
                |while true; do :
-               |  sleep 0.1
+               |  sleep ${period.toDecimalString}
                |done
                |exit 1
                |""".stripMargin),
             admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
               WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h)))),
-            killAtEndOfAdmissionPeriod = true)),
+            killAtEndOfAdmissionPeriod = killAtEndOfAdmissionPeriod)),
         timeZone = Timezone(zoneId.getId))
       withItem(workflow): workflow =>
         clock := local("2025-06-30T00:00")
-        val orderId = OrderId("killAtEndOfAdmissionPeriod-1")
-        controller.api.addOrder(FreshOrder(orderId, workflow.path))
-          .await(99.s).orThrow
+        val orderId = addOrder(workflow.path)
         controller.awaitNextKey[OrderAttached](orderId)
         assert(orderToObstacles(orderId) == Right(Set(waitingForAdmission(local("2025-06-30T08:00")))))
 
         clock := local("2025-06-30T09:00")
         controller.awaitNextKey[OrderProcessingStarted](orderId)
         controller.awaitNextKey[OrderStdoutWritten](orderId)
-
-        clock := local("2025-06-30T10:00")
-        assert(controllerState.idToOrder(orderId).isState[Order.Processing])
-        controller.awaitNextKey[OrderFailed](orderId)
+        orderId
 
     "Two periods without a gap" in:
       val delay = 100.ms
@@ -418,7 +429,8 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
                   RestrictedScheme(
                     Seq:
                       WeekdayPeriod(TUESDAY, LocalTime.of(23, 30), 45.minutes),
-                    SchemeRestriction.months(Set(4, 6, 11)).orThrow)),
+                    SchemeRestriction.months(Set(4, 6, 11)).orThrow),
+            killAtEndOfAdmissionPeriod = true),
         timeZone = Timezone(zoneId.getId))
 
       "Standard" in:
