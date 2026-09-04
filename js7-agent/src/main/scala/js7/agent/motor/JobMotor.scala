@@ -112,9 +112,10 @@ extends Service.StoppableByRequest:
     queue.lockForRemoval:
       meterDequeue:
         currentAdmissionTimeInterval.flatMap: maybeTimeInterval =>
-          val endOfAdmission = maybeTimeInterval match
-            case Some(o: TimeInterval.Standard) => Some(o.end)
-            case _ => None
+          val endOfAdmission =
+            workflowJob.killAtEndOfAdmissionPeriod thenMaybe maybeTimeInterval match
+              case Some(o: TimeInterval.Standard) => Some(o.end)
+              case _ => None
           val onlyForcedAdmission = maybeTimeInterval.isEmpty
 
           Vector.newBuilder[OrderWithEndOfAdmission].tailRecM: builder =>
