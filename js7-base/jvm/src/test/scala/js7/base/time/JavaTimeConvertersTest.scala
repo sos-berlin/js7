@@ -11,7 +11,7 @@ import scala.concurrent.duration.*
 final class JavaTimeConvertersTest extends OurTestSuite:
   "toScala" in:
     assert(Duration.ofMillis(1234).toScala == 1234.millis)
-    assert(Duration.ofMillis(-1234).toScala == -1234.millis)
+    assert(Duration.ofMillis(-1234).toScala == (-1234).millis)
     assert(Duration.ofNanos(111222333444555666L).toScala == 111222333444555666L.nanos)
     assert(Duration.ofNanos(Long.MaxValue).toScala == Long.MaxValue.nanos)
     assert(Duration.ofNanos(Long.MaxValue).plus(Duration.ofNanos(1)).toScala == scala.concurrent.duration.Duration.Inf)   // Limit exceeded

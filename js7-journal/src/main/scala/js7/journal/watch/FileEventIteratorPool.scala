@@ -28,7 +28,7 @@ private[watch] final class FileEventIteratorPool(
   def close(): Unit =
     synchronized:
       if !closed.getAndSet(true) then
-        val (availables, lent): (Set[FileEventIterator], Set[FileEventIterator]) =
+        val (availables: Set[FileEventIterator], lent: Set[FileEventIterator]) =
           synchronized:
             (freeIterators.toSet, lentIterators.toSet)
         if lent.nonEmpty then

@@ -23,7 +23,7 @@ final class ScalaJsonCodecsTest extends OurTestSuite:
       testJson(1.nanosecond, json"0.000000001")
 
     "negative" in:
-      testJson(-1234.ms, json"-1.234")
+      testJson((-1234).ms, json"-1.234")
 
     "Long.MaxValue" in:
       testJson(Duration(Long.MaxValue, NANOSECONDS), json"9223372036.854775807")

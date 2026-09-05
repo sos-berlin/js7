@@ -129,7 +129,7 @@ extends Service.StoppableByRequest:
                 else
                   Right(builder)
           .map: builder =>
-            Chunk.from(builder.result)
+            Chunk.from(builder.result())
     .uncancelable
 
   private def currentAdmissionTimeInterval: IO[Option[TimeInterval]] =

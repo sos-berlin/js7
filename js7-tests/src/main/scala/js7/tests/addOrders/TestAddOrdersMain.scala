@@ -1,7 +1,6 @@
 package js7.tests.addOrders
 
 import cats.effect.{ExitCode, IO}
-import js7.base.service.SimpleMainService
 import js7.common.system.startup.ServiceApp
 
 object TestAddOrdersMain extends ServiceApp:

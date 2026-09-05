@@ -21,7 +21,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.extractRequest
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
-import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}

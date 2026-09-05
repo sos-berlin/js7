@@ -2,7 +2,7 @@ package js7.agent.main
 
 import cats.effect.{ExitCode, IO}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.{RestartableDirector, RunningAgent}
+import js7.agent.RunningAgent
 import js7.common.system.startup.ServiceApp
 
 object AgentMain extends ServiceApp:

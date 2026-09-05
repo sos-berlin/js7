@@ -7,7 +7,6 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
-import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -19,8 +18,8 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentMirroredEvent}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
-import js7.data.cluster.{ClusterTiming, Confirmer}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
+import js7.data.cluster.{ClusterTiming, Confirmer}
 import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}

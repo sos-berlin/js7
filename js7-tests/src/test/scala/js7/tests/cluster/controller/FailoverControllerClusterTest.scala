@@ -1,6 +1,5 @@
 package js7.tests.cluster.controller
 
-import com.typesafe.config.Config
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.size
 import java.util.concurrent.TimeUnit.SECONDS
@@ -55,7 +54,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
     val jProxyContext = JProxyContext(Js7Config.defaultConfig, null)
     var jControllerApi: JControllerApi = null.asInstanceOf[JControllerApi]
-    val whenFailedOverNotConfirmed = Promise[ClusterNodeLostEventNotConfirmedProblem]
+    val whenFailedOverNotConfirmed = Promise[ClusterNodeLostEventNotConfirmedProblem]()
 
     try
       jControllerApi = jProxyContext.newControllerApi(

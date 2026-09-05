@@ -4,7 +4,6 @@ import io.circe
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.{deriveConfiguredCodec, deriveDecoderWithDefaults, deriveRenamingCodec}
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
