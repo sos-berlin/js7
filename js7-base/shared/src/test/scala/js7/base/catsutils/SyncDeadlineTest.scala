@@ -67,7 +67,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
         val later = now + 1.h
 
         assert(early.elapsed == 1.h)
-        assert(later.elapsed == -1.h)
+        assert(later.elapsed == (-1).h)
 
   "compare" in:
     OurTestControl.executeEmbed:
