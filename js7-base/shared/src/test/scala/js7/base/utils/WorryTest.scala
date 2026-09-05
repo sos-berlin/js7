@@ -3,7 +3,9 @@ package js7.base.utils
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Worry.adaptDurationsToMinimum
+import scala.annotation.nowarn
 
+@nowarn("msg=Illegal literal")
 final class WorryTest extends OurAsyncTestSuite:
 
   "Default" in :
