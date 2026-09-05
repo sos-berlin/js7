@@ -8,8 +8,10 @@ import js7.base.time.JavaTime.{bigDecimalToDuration, given_Show_Date}
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.TimestampForTests.ts
 import org.scalatest.matchers.should.Matchers.*
+import scala.annotation.nowarn
 import scala.math.Ordering.Implicits.*
 
+@nowarn("msg=Illegal literal")
 final class JavaTimeTest extends OurTestSuite:
 
   import JavaTimeTest.ImplicitDurationInt

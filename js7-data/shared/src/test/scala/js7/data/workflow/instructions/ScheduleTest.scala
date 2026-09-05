@@ -7,7 +7,9 @@ import js7.base.time.ScalaTime.*
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 import js7.tester.CirceJsonTester.testJson
+import scala.annotation.nowarn
 
+@nowarn("msg=Illegal literal")
 final class ScheduleTest extends OurTestSuite:
   "JSON" in:
     testJson(ScheduleTester.schedule,

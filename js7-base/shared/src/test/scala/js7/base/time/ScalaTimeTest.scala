@@ -4,8 +4,10 @@ import js7.base.convert.As
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import org.scalatest.matchers.should.Matchers.*
+import scala.annotation.nowarn
 import scala.concurrent.duration.*
 
+@nowarn("msg=Illegal literal")
 final class ScalaTimeTest extends OurTestSuite:
 
   "ZeroDuration" in:

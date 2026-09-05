@@ -5,7 +5,9 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.tester.CirceJsonTester.*
+import scala.annotation.nowarn
 
+@nowarn("msg=Illegal literal")
 final class ClusterTimingTest extends OurTestSuite:
 
   "JSON" in:

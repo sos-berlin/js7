@@ -4,7 +4,9 @@ import cats.effect.IO
 import cats.effect.testkit.TestControl
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import scala.annotation.nowarn
 
+@nowarn("msg=Illegal literal")
 final class CatsDeadlineTest extends OurAsyncTestSuite:
 
   "now" in:
