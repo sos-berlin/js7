@@ -27,6 +27,10 @@ object EpochNano:
   def fromDecimalString(string: String): EpochNano =
     java.math.BigDecimal(string).movePointRight(9).longValue
 
+  @throws[IllegalArgumentException]
+  def now(): EpochNano =
+    Instant.now.toEpochNano
+
   given Ordering[EpochNano] = Ordering.Long
 
   given Show[EpochNano] = _.show

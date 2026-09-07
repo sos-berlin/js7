@@ -136,9 +136,9 @@ object AlarmClock:
         scheduler.sleep(delay max ZeroDuration, LabeledRunnable(label)(callback))
 
     def scheduleAt(timestamp: Timestamp, label: => String)(callback: => Unit) =
-      val delay = (timestamp - now()) max ZeroDuration
+      val delay = timestamp - now() max ZeroDuration
       SyncCancelable:
-        scheduler.sleep(delay max ZeroDuration, LabeledRunnable(label)(callback))
+        scheduler.sleep(delay, LabeledRunnable(label)(callback))
 
 
   private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
