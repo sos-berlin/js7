@@ -30,7 +30,9 @@ private object SleepExecutor extends EventInstructionExecutor_[Sleep]:
               if duration.isPositive then
                 coll:
                   order.id <-:
-                    OrderSleeping(coll.timestamp + duration, OrderSleeping.Cause.SleepInstruction)
+                    OrderSleeping(
+                      coll.timestamp + duration.roundUpToNext(Timestamp.Epsilon),
+                      OrderSleeping.Cause.SleepInstruction)
               else
                 coll:
                   moveOrderToNextInstruction(order)
