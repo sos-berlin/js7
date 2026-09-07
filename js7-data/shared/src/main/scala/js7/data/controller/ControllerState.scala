@@ -80,7 +80,7 @@ final case class ControllerState(
   idToOrder: Map[OrderId, Order[Order.State]],
   statistics: EngineStateStatistics,
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty),
-  volatile: ControllerVolatile)
+  transient: ControllerTransient)
   // ❗️ See also fields in equals, toStringStream, toSnapshotStream, estimatedSnapshotSize
 extends
   ControllerStateNoticeFunctions,
@@ -104,7 +104,7 @@ extends
         idToOrder == idToOrder &&
         statistics == statistics &&
         workflowToOrders == workflowToOrders
-        // volatile is not compared.
+        // transient is not compared.
       case _ => false
 
   override def toStringStream: Stream[fs2.Pure, String] =
@@ -148,7 +148,7 @@ extends
       .append:
         statistics.toStringStream
       .append:
-        Stream.emit(volatile.toString)
+        Stream.emit(transient.toString)
 
   def isAgent = false
 
@@ -502,9 +502,9 @@ extends
             case event: OrderOrderAdded =>
               event.speedRecord.fold(r): record =>
                 r.copy(
-                  volatile = r.volatile.copy(
+                  transient = r.transient.copy(
                     addOrderInstrThrottle =
-                      r.volatile.addOrderInstrThrottle.record(record)))
+                      r.transient.addOrderInstrThrottle.record(record)))
             case _ => r
 
       case OrderPlanAttached(planId) =>
@@ -1026,13 +1026,13 @@ extends
   ClusterableState.Companion[ControllerState],
   ItemContainer.Companion[ControllerState]:
 
-  type Volatile = ControllerVolatile
+  type Volatile = ControllerTransient
 
-  val EmptyVolatile: ControllerVolatile =
-    ControllerVolatile(Throttle.Unlimited)
+  val EmptyVolatile: ControllerTransient =
+    ControllerTransient(Throttle.Unlimited)
 
-  override def configToVolatile(config: Config): ControllerVolatile =
-    ControllerVolatile(Throttle.fromConfig(config).orThrow)
+  override def configToVolatile(config: Config): ControllerTransient =
+    ControllerTransient(Throttle.fromConfig(config).orThrow)
 
   private val logger = Logger[this.type]
 
@@ -1059,8 +1059,8 @@ extends
       WorkflowToOrders(Map.empty),
       volatile)
 
-  def newRecoverer(volatile: ControllerVolatile): ControllerStateRecoverer =
-    new ControllerStateRecoverer(volatile)
+  def newRecoverer(transient: ControllerTransient): ControllerStateRecoverer =
+    new ControllerStateRecoverer(transient)
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
     AgentRef, SubagentItem, SubagentBundle, Lock,

@@ -26,7 +26,7 @@ import js7.data.subagent.SubagentItemState
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
-private final class ControllerStateRecoverer(initialVolatile: ControllerVolatile)
+private final class ControllerStateRecoverer(initialTransient: ControllerTransient)
 extends
   SnapshotableStateRecoverer[ControllerState],
   StandardsRecoverer,
@@ -178,7 +178,7 @@ extends
       deletionMarkedItems.toSet,
       _idToOrder.toMap,
       statistics.result(),
-      volatile = initialVolatile
+      transient = initialTransient
     ).finish.orThrow
 
   // NoticeSnapshots can only be added after idToOrder has been filled.

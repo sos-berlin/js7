@@ -370,7 +370,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     testJson(jsonArray, expectedSnapshotJsonArray)
 
   "ControllerStateRecoverer.addSnapshotObject" in:
-    val recoverer = new ControllerStateRecoverer(ControllerVolatile.forTest)
+    val recoverer = new ControllerStateRecoverer(ControllerTransient.forTest)
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
       .foreach(recoverer.addSnapshotObject)
@@ -568,5 +568,5 @@ object ControllerStateTest:
           expectedNoticeId)))
     ).toKeyedMap(_.id),
     EngineStateStatistics.empty,
-    volatile = ControllerVolatile.forTest
+    transient = ControllerTransient.forTest
   ).finish.orThrow

@@ -7,12 +7,12 @@ import org.jetbrains.annotations.TestOnly
   *
   * No Events, no snapshot. Values vanish after Controller restart.
   */
-final case class ControllerVolatile(
+final case class ControllerTransient(
   addOrderInstrThrottle: Throttle)
 
 
-object ControllerVolatile:
+object ControllerTransient:
 
   @TestOnly
-  def forTest: ControllerVolatile =
-    new ControllerVolatile(Throttle.Unlimited)
+  def forTest: ControllerTransient =
+    new ControllerTransient(Throttle.Unlimited)
