@@ -50,6 +50,7 @@ import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.processkiller.ProcessKiller.TestChildProcessTerminated
 import js7.proxy.data.event.EventAndState
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -367,16 +368,36 @@ final class CancelOrdersTest
       Left(UnknownKeyProblem("OrderId", OrderId("UNKNOWN"))))
 
   "Cancel multiple orders with Batch" in:
+    var eventId = controller.lastAddedEventId
     val orders = for i <- 1 to 3 yield
       FreshOrder(
         OrderId(i.toString),
         singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
-    for o <- orders do controller.addOrderBlocking(o)
-    for o <- orders do eventWatch.await[OrderAttached](_.key == o.id)
+    controller.api.addOrders(orders).await(99.s).orThrow
+    for o <- orders do eventWatch.await[OrderAttached](_.key == o.id, after = eventId)
+
+    eventId = controller.lastAddedEventId
     val response = execCmd:
       CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)
     assert(response == Response.Accepted)
-    for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id)
+    for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id, after = eventId)
+
+  "Cancel multiple failed orders" in:
+    withItem(Workflow.of(Fail())): workflow =>
+      var eventId = controller.lastAddedEventId
+      val orderIds = for i <- 1 to 100 yield nextOrderId()
+
+      controller.api.addOrders:
+        orderIds.map(FreshOrder(_, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+      eventWatch.await[OrderFailed](_.key == orderIds.head, after = eventId)
+
+      eventId = controller.lastAddedEventId
+      val response = execCmd:
+        CancelOrders(orderIds, CancellationMode.FreshOrStarted())
+      assert(response == Response.Accepted)
+      awaitAndAssert:
+        !controller.controllerState().workflowToOrders.workflowIdToOrders.contains(workflow.id)
 
   if isUnix then "Cancel a script trapping SIGTERM and exiting with 0" in:
     val name = "TRAP-EXIT-0"
