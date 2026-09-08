@@ -365,6 +365,10 @@ object EventCollCtx:
     def timestamp: Timestamp =
       eventColl.context.timestamp
 
+    /** Monotonic time.
+      *
+      * ⚠️ Don't use `monotonic` to calculcate a `Timestamp`,
+      * because these two clocks cannot be queried at the same instant.*/
     def monotonic: FiniteDuration =
       eventColl.context.monotonic
 

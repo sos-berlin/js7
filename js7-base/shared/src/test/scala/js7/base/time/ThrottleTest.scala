@@ -31,6 +31,8 @@ final class ThrottleTest extends OurTestSuite:
     assert(throttle.tryRecord(61.s + 3.ms, 1) == Left(TooFast(Speed(10, 1.s, unit), 997.ms)))
     assert(throttle.tryRecord(61.s + 333.ms, 1) == Left(TooFast(Speed(10, 1.s, unit), 667.ms)))
     assert(throttle.tryRecord(61.s + 999.ms, 1) == Left(TooFast(Speed(10, 1.s, unit), 1.ms)))
+    assert(throttle.tryRecord(62.s - 1.ns, 1) == Left(TooFast(Speed(10, 1.s, unit), 1.ns)))
+    assert(throttle.tryRecord(62.s, 1).isRight)
 
     throttle = throttle.tryRecord(63.s, 7).toOption.get
     assert(throttle.tryRecord(63.s + 7.s, 3).isRight)

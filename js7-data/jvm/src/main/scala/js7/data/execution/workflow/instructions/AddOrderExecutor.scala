@@ -70,7 +70,7 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
   private def throttle(order: Order[Order.State], coll: EventColl[ControllerState, ?])
   : Either[OrderSleeping, Option[Throttle.Record]] =
     import coll.aggregate.transient.addOrderInstrThrottle
-    val speedRecord = Throttle.Record(coll.monotonic, 1)
+    val speedRecord = Throttle.Record(coll.timestamp - Timestamp.Epoch, 1)
     addOrderInstrThrottle.tryRecord(speedRecord) match
       case Left(tooFast) =>
         Left:
