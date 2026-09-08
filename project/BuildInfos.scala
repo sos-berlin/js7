@@ -7,12 +7,16 @@ import java.util.{Base64, UUID}
 import sbt.Def
 import sbt.Keys.{isSnapshot, version}
 import scala.collection.immutable.ListMap
+import scala.sys.process.Process
+import scala.util.control.NonFatal
+import scala.util.matching.compat.RegexOps
 
 object BuildInfos
 {
   private val CommitHashLength = 7
   private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
   private val now = Instant.now()
+  private val UntrackedFileGitStatus = """\?\?\s.*""".r
 
   val versionIsTagged = Def.setting {
     git.gitCurrentTags.value.contains("v" + version.value)
@@ -34,7 +38,18 @@ object BuildInfos
   }
 
   private val isUncommitted = Def.setting {
-    git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/
+    (git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty /*no Git?*/) && (
+      // gitUncommittedChanges may return true despite there is nothing uncommitted
+      // Therefore, we try to check with the git command:
+      try
+        Process("git status --porcelain")
+          .lineStream
+          .forall(UntrackedFileGitStatus.matches)
+      catch {
+        case NonFatal(t) =>
+          println(s"❓ Git failed: $t ❓")
+          true
+      })
   }
 
   /** Git commit date as Instant". */
@@ -47,19 +62,24 @@ object BuildInfos
   lazy val info: Def.Initialize[Info] = Def.setting {
     val versionIsTagged = git.gitCurrentTags.value.contains("v" + version.value)
     if (isUncommitted.value) {
+      //println(s"Uncommitted(${version.value}, branch=${branch.value})")
       val info = new Uncommitted(version.value, branch = branch.value,
         commitHash = git.gitHeadCommit.value.getOrElse(""))
       if (isUncommitted.value && !info.isSnapshot) println(
-        s"❓ Uncommitted files but version does not ends with -SNAPSHOT: ${version.value} ❓")
+        s"❓ Uncommitted files but version does not end with -SNAPSHOT: ${version.value} ❓")
       info
     } else if (!versionIsTagged || isSnapshot.value) {
+      val commit = git.gitHeadCommit.value.getOrElse("")
+      //println(s"Untagged(${version.value}, branch=${branch.value}, ${committedAt.value}, commit=$commit)")
       val info = new Untagged(version.value, branch = branch.value,
-        committedAt = committedAt.value, commitHash = git.gitHeadCommit.value.getOrElse(""))
+        committedAt = committedAt.value, commitHash = commit)
       if (!info.isSnapshot) println(s"❗ Commit is not tagged with v${version.value} ❗")
       info
-    } else
-      new Tagged(version.value, branch = branch.value,
-        commitHash = git.gitHeadCommit.value.getOrElse(""))
+    } else {
+      val commit = git.gitHeadCommit.value.getOrElse("")
+      //println(s"Tagged(${version.value}, branch=${branch.value}, commit=$commit)")
+      new Tagged(version.value, branch = branch.value, commitHash = commit)
+    }
   }
 
 
@@ -122,20 +142,19 @@ object BuildInfos
 
     def branch: String
 
-    private def branchSuffix =
-      if (isSnapshot && (branch == "main" || releaseBranch.contains(branch)))
-        ""
-      else
-        s" ($branch)"
-
-    private def releaseBranch: Option[String] =
-      version.indexOf('.', 2) match {
-        case -1 => None
-        case i => Some("release/" + version.take(i))
-      }
-
-    lazy final val prettyVersion =
+    lazy final val prettyVersion = {
+      val releaseBranch =
+        version.indexOf('.', 2) match {
+          case -1 => None
+          case i => Some("release/" + version.take(i))
+        }
+      val branchSuffix =
+        if (isSnapshot && (branch == "main" || branch == "HEAD" || releaseBranch.contains(branch)))
+          ""
+        else
+          s" ($branch)"
       longVersion + branchSuffix
+    }
   }
 
   /** Version is not properly tagged or it's a SNAPSHOT version. */
