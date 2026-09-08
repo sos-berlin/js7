@@ -18,22 +18,19 @@ import scala.concurrent.duration.FiniteDuration
   */
 final class StandardThrottle private(
   private val throttles: Seq[Speed],
-  private val histogram: TimeHistogram,
-  unit: SpeedUnit)
+  unit: SpeedUnit,
+  private val histogram: TimeHistogram)
 extends Throttle:
 
   protected type Self = StandardThrottle
 
   def setTime(time: FiniteDuration): StandardThrottle =
-    new StandardThrottle(
-      throttles,
-      histogram.setTime(time),
-      unit)
+    updateHistogram(histogram.setTime(time))
 
   /** Try to record a weight while checking the limit.
     *
-    * Or "Try to accelerate but check the speed limit"
-    * Or "Try to heat up but the temperature limit"
+    * Or "Try to accelerate but check the speed limit".<br>
+    * Or "Try to heat up but check the temperature limit".
     *
     * @return `Left[TooFast]` if the speed limit is exceeded.
     *         The weight may be added after the retured `delay` has passed.
@@ -41,27 +38,29 @@ extends Throttle:
     */
   def tryRecord(record: Record): Either[TooFast, StandardThrottle] =
     val updated = this.record(record)
-    updated.throttles.iterator.zipWithIndex.map:
-      case pair @ (throttle, i) => (pair, updated.histogram.recordedSpeed(i))
+    updated.checkSpeedLimit(histogram, record)
+
+  private def checkSpeedLimit(unbreachedHistogram: TimeHistogram, record: Record)
+  : Either[TooFast, StandardThrottle] =
+    throttles.iterator.zipWithIndex.map:
+      case pair @ (throttle, i) => (pair, histogram.recordedSpeed(i))
     .collect:
       case ((throttle, i), recordedSpeed) if recordedSpeed.speed.weight > throttle.weight =>
-        val end = histogram.recordedSpeed(i).end
-        TooFast(throttle, delay = end - record.time)
+        TooFast(throttle, delay = unbreachedHistogram.recordedSpeed(i).end - record.time)
     .maxByOption(_.delay)
-    .toLeft(updated)
+    .toLeft(this)
 
-  /** Like [[tryRecord]] but doesn't check speed limit. */
   def record(record: Record): StandardThrottle =
     if throttles.isEmpty then
       this
     else
-      new StandardThrottle(
-        throttles,
-        histogram = histogram.add(record.time, record.weight),
-        unit)
+      updateHistogram(histogram.add(record.time, record.weight))
 
   private def time: FiniteDuration =
     histogram.time
+
+  private def updateHistogram(histogram: TimeHistogram): StandardThrottle =
+    new StandardThrottle(throttles, unit, histogram)
 
   override def toString =
     s"StandardThrottle(${throttles.mkString("(", ", ", ")")}, $histogram)"
@@ -73,5 +72,5 @@ object StandardThrottle:
   : StandardThrottle =
     new StandardThrottle(
       speeds,
-      TimeHistogram(speeds.map(_.period), fractions, unit),
-      unit)
+      unit,
+      TimeHistogram(speeds.map(_.period), fractions, unit))

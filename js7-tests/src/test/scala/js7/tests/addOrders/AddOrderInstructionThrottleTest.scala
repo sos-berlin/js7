@@ -6,7 +6,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderOrderAdded, OrderSleeping, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.expr
@@ -18,13 +17,15 @@ import org.scalatest.matchers.should.Matchers.*
 
 final class AddOrderInstructionThrottleTest extends OurTestSuite, ControllerAgentForScalaTest:
 
+  private val limit = 1000
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.instruction.addOrder.throttle = [
       # First entry should be <= 10000 to keep generated event chunk small
       #{ limit: 3, period: 1ms }
       #{ limit: 10, period: 250ms }
-      { limit: 1000, period: 1s }
+      { limit: $limit, period: 1s }
     ]
     """
 
@@ -32,17 +33,19 @@ final class AddOrderInstructionThrottleTest extends OurTestSuite, ControllerAgen
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  protected val agentPaths = Seq(AgentPath("AGENT"))
+  protected val agentPaths = Nil
   protected val items = Seq(simpleWorkflow, explodingWorkflow)
 
   "Test" in:
+    var eventId = controller.lastAddedEventId
     val orderId = OrderId("FIRST")
     addOrder(orderId, simpleWorkflow.path)
     controller.awaitNextKey[OrderTerminated](orderId)
-    controller.awaitNext[OrderSleeping]()
-    controller.awaitNext[OrderSleeping]()
-    controller.awaitNext[OrderSleeping]()
-    controller.eventWatch.allKeyedEvents[OrderOrderAdded].size shouldBe 3000
+    val n = 3
+    for i <- 0 until n do
+      val eid = controller.awaitNext[OrderSleeping]().head.eventId
+      controller.eventWatch.keyedEvents[OrderOrderAdded](after = eventId).size shouldBe limit
+      eventId = eid
 
   "Explosing workflow" in:
     if !isIntelliJIdea then pending
