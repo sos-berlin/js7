@@ -16,19 +16,19 @@ import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerEventCalc
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent}
+import js7.data.event.{Event, EventCalc, EventCalcCtx, EventColl, KeyedEvent, NoKeyEvent}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.state.EngineStateExtensions.keyedEventToPendingOrderIds
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath}
 import js7.data.job.JobResource
-import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderAwoke, OrderDeleted, OrderDetached, OrderExternalVanished, OrderProcessed, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderAwoke, OrderDetached, OrderExternalVanished, OrderProcessed, TagOrderDeleted, TagOrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
 import js7.data.state.EngineEventColl.extensions.order
+import js7.data.state.EngineStateExtensions.keyedEventToPendingOrderIds
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -220,38 +220,41 @@ object ControllerStateExecutor:
         case Right(updated) =>
           controllerState = updated
           keyedEvent match
-            case KeyedEvent(_, event: VersionedItemEvent) =>
-              for previousItem <- previous.repo.pathToVersionedItem(event.path) do
-                touchedItemKeys += previousItem.id
-                previousItem match
-                  case previousItem: Workflow =>
-                    detachWorkflowCandidates += previousItem.id
-                  case _ =>
-
-            case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-              touchedItemKeys += event.key
-
-              event match
-                case ItemDetached(itemKey, agentPath: AgentPath) =>
-                  detachedItems += itemKey
-                  itemKey match
-                    case WorkflowId.as(workflowId: WorkflowId) =>
-                      detachedWorkflows += workflowId -> agentPath
-                    case _ =>
-
-                case ItemDeleted(WorkflowId.as(workflowId)) =>
-                  deletedWorkflows += workflowId
-
-                case _ =>
-
             case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
               touchedOrderIds += orderId
+              //touchedOrderIds -= orderId // TODO This would improve performance
               touchedOrderIds ++= controllerState.keyedEventToPendingOrderIds(orderId <-: event)
-              event match
-                case OrderDeleted | _: OrderTransferred =>
+              event.tag match
+                case TagOrderDeleted | TagOrderTransferred =>
                   detachWorkflowCandidates += previous.idToOrder(orderId).workflowId
                 case _ =>
 
+            case KeyedEvent(_: NoKey, event) =>
+              event match
+                case event: VersionedItemEvent =>
+                  for previousItem <- previous.repo.pathToVersionedItem(event.path) do
+                    touchedItemKeys += previousItem.id
+                    previousItem match
+                      case previousItem: Workflow =>
+                        detachWorkflowCandidates += previousItem.id
+                      case _ =>
+
+                case event: InventoryItemEvent =>
+                  touchedItemKeys += event.key
+
+                  event match
+                    case ItemDetached(itemKey, agentPath: AgentPath) =>
+                      detachedItems += itemKey
+                      itemKey match
+                        case WorkflowId.as(workflowId: WorkflowId) =>
+                          detachedWorkflows += workflowId -> agentPath
+                        case _ =>
+
+                    case ItemDeleted(WorkflowId.as(workflowId)) =>
+                      deletedWorkflows += workflowId
+
+                    case _ =>
+                case _ =>
             case _ =>
 
     for _ <- checked yield
