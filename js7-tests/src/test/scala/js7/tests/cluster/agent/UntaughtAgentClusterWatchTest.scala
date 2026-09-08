@@ -18,8 +18,8 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentMirroredEvent}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
-import js7.data.cluster.{ClusterTiming, Confirmer}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
+import js7.data.cluster.{ClusterTiming, Confirmer}
 import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}

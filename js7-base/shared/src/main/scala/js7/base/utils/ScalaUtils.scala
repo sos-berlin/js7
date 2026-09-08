@@ -473,13 +473,13 @@ object ScalaUtils:
        * <p>Use this method only once! */
       def toEagerSeq: Seq[A] =
         iterableOnce match
-          case o: immutable.ArraySeq[A] => o
+          case o: immutable.ArraySeq[A @unchecked] => o
           case o: IArray[A] @unchecked => o
           case o: Vector[A] => o
           case o: List[A] => o
-          case o: immutable.Queue[A] => o
+          case o: immutable.Queue[A @unchecked] => o
           case o: fs2.Chunk[A @unchecked] => o.asSeq
-          case o: mutable.ArraySeq[A] @unchecked =>
+          case o: mutable.ArraySeq[A @unchecked] =>
             immutable.ArraySeq.unsafeWrapArray:
               o.toArray(using o.elemTag.asInstanceOf[ClassTag[A]])
           case _ => Vector.from(iterableOnce)
@@ -1387,6 +1387,14 @@ object ScalaUtils:
         unreachable
       catch case NonFatal(e) =>
         Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
+
+  private def findUnique(exists: String => Boolean)(make: Int => String): String =
+    var i = 1
+    while true do
+      val s = make(i)
+      if !exists(s) then return s
+      i += 1
+    null.asInstanceOf[String] // unreachable code
 
   /** Like a `let a <- expr in body(a)`. */
   final inline def eval[A, B](inline expr: A)(inline body: A => B): B =

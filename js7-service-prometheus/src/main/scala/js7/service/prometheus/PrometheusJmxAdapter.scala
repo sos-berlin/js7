@@ -54,6 +54,12 @@ private[prometheus] final class PrometheusJmxAdapter(configDir: Option[Path] = N
 
         outputStream.unsafeByteSeq[ByteSeq]
 
+  //private def metricsByteString(request: HttpRequest = HttpRequest(HttpMethods.GET, "/metrics"))
+  //: ByteString =
+  //  val exchange = new PrometheusJmxAdapterForHttp.PekkoPromtheusExchange(request)
+  //  scrapeHandler.handleRequest(exchange)
+  //  exchange.metricsByteString
+
 
 private[prometheus] object PrometheusJmxAdapter:
   private val logger = Logger[this.type]
