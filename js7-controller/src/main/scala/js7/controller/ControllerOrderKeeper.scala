@@ -1262,7 +1262,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
 
-            // Special handling for OrderMark.Go: set agentOrderMark here, because when it's send
+            // Special handling for OrderMark.Go: set agentOrderMark here, because when it is sent
             // after AgentCommand.MarkOrder has been executed, then this may occur *after* the
             // OrderGoes event, too late, in the wrong order.
             mark match
