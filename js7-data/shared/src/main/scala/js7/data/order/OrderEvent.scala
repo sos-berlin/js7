@@ -1063,17 +1063,16 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   private[data] inline val TagOrderLocksQueued = 56
   private[data] inline val TagOrderLocksAcquired = 57
   private[data] inline val TagOrderLocksReleased = 58
-  //private[data] inline val Tag… = 59
-  private[data] inline val TagOrderPrompted = 60
-  private[data] inline val TagOrderPromptAnswered = 61
-  private[data] inline val TagOrderCyclingPrepared = 62
-  private[data] inline val TagOrderCycleStarted = 63
-  private[data] inline val TagOrderCycleFinished = 64
-  private[data] inline val TagOrderSleeping = 65
-  private[data] inline val TagOrderWaitingForAdmission = 66
-  private[data] inline val TagOrderTransferred = 67
-  private[data] inline val TagOrderPlanAttached = 68
-  private[data] inline val TagOrderSaid = 69
+  private[data] inline val TagOrderPrompted = 59
+  private[data] inline val TagOrderPromptAnswered = 60
+  private[data] inline val TagOrderCyclingPrepared = 61
+  private[data] inline val TagOrderCycleStarted = 62
+  private[data] inline val TagOrderCycleFinished = 63
+  private[data] inline val TagOrderSleeping = 64
+  private[data] inline val TagOrderWaitingForAdmission = 65
+  private[data] inline val TagOrderTransferred = 66
+  private[data] inline val TagOrderPlanAttached = 67
+  private[data] inline val TagOrderSaid = 68
 
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
