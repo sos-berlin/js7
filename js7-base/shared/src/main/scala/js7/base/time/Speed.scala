@@ -16,7 +16,10 @@ final case class Speed(weight: Double, period: FiniteDuration, unit: SpeedUnit =
       if unit.plural.nonEmpty then
         sb.append(' ').append(unit.plural)
     sb.append('/')
-    sb.append(period.show)
+    var p = period.show
+    if p.length >= 2 && p(0) == '1' && p(1) >= 'A'/*includes '.'*/then
+      p = p.drop(1)
+    sb.append(p)
     sb.toString()
 
 

@@ -148,6 +148,14 @@ object ScalaTime:
         else if nanos < 60_000_000_000L then
           sb ++= BigDecimal(nanos, 9).bigDecimal.stripTrailingZeros.toPlainString
           sb ++= "s"
+        else if nanos < 3600_000_000_000L && nanos % 60_000_000_000L == 0 then
+          val n = BigDecimal(nanos, 9) / 60
+          sb ++= n.bigDecimal.stripTrailingZeros.toPlainString
+          sb ++= (if n == 1 then "minute" else "minutes")
+        else if nanos < 24 * 3600_000_000_000L && nanos % 3600_000_000_000L == 0 then
+          val n = BigDecimal(nanos, 9) / 3600
+          sb ++= n.bigDecimal.stripTrailingZeros.toPlainString
+          sb += 'h'
         else
           val days = nanos / (24 * 3600 * 1_000_000_000L)
           if days > 0 then
@@ -155,18 +163,20 @@ object ScalaTime:
             sb += 'd'
 
           val hours = nanos / (3600 * 1_000_000_000L) % 24
-          if hours < 10 then sb += '0'
-          sb.append(hours)
-          sb += ':'
-
           val minutes = nanos / (60 * 1_000_000_000L) % 60
-          if minutes < 10 then sb += '0'
-          sb.append(minutes)
-          sb += ':'
+          val ns = nanos % 60_000_000_000L
+          if sb.isEmpty || hours != 0 || minutes != 0 || ns != 0 then
+            if hours < 10 then sb += '0'
+            sb.append(hours)
+            sb += ':'
 
-          val a = nanos % 60_000_000_000L
-          if a < 10_000_000_000L then sb += '0'
-          sb ++= f"${BigDecimal(a, 9).bigDecimal.stripTrailingZeros.toPlainString}"
+            if minutes < 10 then sb += '0'
+            sb.append(minutes)
+            sb += ':'
+
+            if ns < 10_000_000_000L then sb += '0'
+            sb ++= f"${BigDecimal(ns, 9).bigDecimal.stripTrailingZeros.toPlainString}"
+          end if
         sb.toString
     end show
 

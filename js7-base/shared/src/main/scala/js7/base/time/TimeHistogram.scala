@@ -35,7 +35,7 @@ final class TimeHistogram private(
   def add(time: FiniteDuration, weight: Double): TimeHistogram =
     val timeNanos = time.toNanos
     if timeNanos < entries.head.start then throw new IllegalArgumentException(
-      s"Time must be greater than current time: $time < ${entries.head.start.ns}")
+      s"Time must be >= current time: $timeNanos < ${entries.head.start.ns}")
     new TimeHistogram(time, entries.map(_.add(timeNanos, weight)), fractions)
 
   /** @throws IllegalArgumentException if `period` is not known.
