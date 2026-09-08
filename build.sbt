@@ -44,8 +44,6 @@ import java.nio.file.Files.{createDirectory, isDirectory}
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.{Def, file}
-import sbtrelease.ReleasePlugin.autoImport.releaseNextVersion
-import sbtrelease.{Version, versionFormatError}
 import scala.util.control.NonFatal
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
@@ -865,69 +863,3 @@ def isExcludedJar(path: String) =
   path.startsWith("org.typelevel.literally")
 
   //path.startsWith("com.intellij.annotations-") ||  <-- required by TypeTag[RichProcess]
-
-//--------------------------------------------------------------------------------------------------
-// RELEASE
-
-releaseTagComment        := s"Version ${version.value}"
-releaseCommitMessage     := s"Version ${version.value}"
-releaseNextCommitMessage := s"Version ${version.value}"
-val release = sys.props.contains("js7.release")
-
-releaseVersion := (v =>
-  Version(v).fold(versionFormatError(v)) { currentVersion =>
-    if (release) {
-      if (!currentVersion.unapply.endsWith("-SNAPSHOT")) {
-        sys.error(s"Current version must end with -SNAPSHOT: $currentVersion")
-      }
-      currentVersion.withoutQualifier.unapply
-    } else {
-      val prerelease = {
-        val commitDate = BuildInfos.committedAt.value
-          .map(_.toString)
-          .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
-          .take(10)/*yyyy-mm-dd*/
-        // Remove hyphens according to Semantic Versioning pre-release syntax
-        val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
-        "beta." + yyyymmdd
-      }
-      val version = currentVersion.withoutQualifier.unapply + "-" + prerelease
-      var v = version
-      var i = 0
-      val tags = runProcess("git", "tag").toSet
-      while (tags contains s"v$v") {
-        i += 1
-        v = s"$version.$i"
-      }
-      v
-    }
-  })
-
-val VersionPattern = """([0-9]+)\.([0-9]+)\.([0-9]+)(?:-.*)?""".r
-
-releaseNextVersion := {
-  case v if !release =>
-    Version(v).fold(versionFormatError(v))(_.withoutQualifier.unapply + "-SNAPSHOT")
-
-  case VersionPattern(major, minor, patch) =>
-    s"$major.$minor.${patch.toInt + 1}-SNAPSHOT"
-
-  case _ => sys.error(s"Current version does not match $VersionPattern: $version")
-}
-
-releaseProcess := {
-  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runTest, setNextVersion, setReleaseVersion, tagRelease}
-  // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
-  Seq[ReleaseStep](
-    checkSnapshotDependencies,
-    inquireVersions,
-    //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themselves!
-    runTest,
-    setReleaseVersion,
-    commitReleaseVersion,       // performs the initial git checks
-    tagRelease,
-  //publishArtifacts,           // checks whether `publishTo` is properly set up
-    setNextVersion,
-    commitNextVersion)
-    //pushChanges)                // also checks that an upstream branch is properly configured
-}
