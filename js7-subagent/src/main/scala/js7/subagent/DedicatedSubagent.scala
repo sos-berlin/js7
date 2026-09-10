@@ -399,19 +399,18 @@ extends Service.StoppableByRequest:
     outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
     (outErr: StdoutOrStderr)
   : Pipe[IO, String, Nothing] =
-    _.chunks
-      .map: chunk =>
-        chunk.toVector.map: string =>
-          orderId <-: OrderStdWritten(outErr)(string)
-      .foreach: events =>
-        val charCount = events.iterator.map(_.event.chunk.length).sum
-        outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-          persistedQueue.persisting:
-            journal.persist(stdoutCommitDelayOptions)(events)
-        .map:
-          _.onProblem: problem =>
-            logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        .void
+    _.map: string =>
+      orderId <-: OrderStdWritten(outErr)(string)
+    .chunks
+    .foreach: events =>
+      val charCount = events.iterator.map(_.event.chunk.length).sum
+      outErrStatistics(outErr).count(n = events.size, charCount = charCount):
+        persistedQueue.persisting:
+          journal.persist(stdoutCommitDelayOptions)(events.asSeq)
+      .map:
+        _.onProblem: problem =>
+          logger.error(s"Emission of OrderStdWritten event failed: $problem")
+      .void
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
