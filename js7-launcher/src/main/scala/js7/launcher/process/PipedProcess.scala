@@ -53,7 +53,11 @@ final class PipedProcess private(
   def pid: Pid =
     process.pid
 
-  def duration: FiniteDuration = runningSince.elapsed
+  def duration: FiniteDuration =
+    runningSince.elapsed
+
+  def release: IO[Unit] =
+    processKillerAlloc.release
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
@@ -134,9 +138,6 @@ final class PipedProcess private(
     joinStdouterr(stdouterrFiber, orderId, jobKey, stdoutAndStderrAbandonAfter)
       .startAndForget
       .as(false /*stdout ignored*/)
-
-  def release: IO[Unit] =
-    processKillerAlloc.release
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
     logger.traceIO(s"pumpStdoutAndStderrToSink"):
