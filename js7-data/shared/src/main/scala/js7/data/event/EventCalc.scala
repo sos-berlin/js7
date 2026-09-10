@@ -51,7 +51,8 @@ object EventCalcCtx:
   : EventCalcCtx[S, E, Ctx] =
     new EventCalcCtx(function)
 
-  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem): EventCalcCtx[S, E, Ctx] =
+  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem)
+  : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx(_ => Left(problem))
 
   inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
@@ -93,12 +94,14 @@ object EventCalcCtx:
         toKeyedEvent(coll.aggregate)(using coll)
 
   inline def maybe[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> Option[MaybeTimestampedKeyedEvent[E]])
+    inline toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=>
+      Option[MaybeTimestampedKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     multiple(toKeyedEvents)
 
   def checked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toCheckedKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> Checked[IterableOnce[KeyedEvent[E]]])
+    toCheckedKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=>
+      Checked[IterableOnce[KeyedEvent[E]]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx: coll =>
       coll.addChecked:
@@ -111,7 +114,8 @@ object EventCalcCtx:
     EventCalcCtx(_.addChecked(eagerlyComputedKeyedEvents))
 
   def multiple[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=> IterableOnce[MaybeTimestampedKeyedEvent[E]])
+    toKeyedEvents: S => OpaqueEventCollCtx[S, E, Ctx] ?=>
+      IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx: coll =>
       coll.addEvents:
@@ -121,7 +125,7 @@ object EventCalcCtx:
     EventCollCtx[S, E, Ctx]
 
   def context[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-                                                              using coll: OpaqueEventCollCtx[S, E, Ctx])
+    using coll: OpaqueEventCollCtx[S, E, Ctx])
   : Ctx =
     coll.context
 
@@ -161,7 +165,6 @@ object EventCalcCtx:
     eventCalcs: IterableOnce[EventCalcCtx[S, E, Ctx]])
   : EventCalcCtx[S, E, Ctx] =
     monoid.combineAll(eventCalcs)
-
 
 
 /** A `EventCalcCtx` with a `TimeCtx`.
@@ -258,3 +261,13 @@ object EventCalc:
     inline eventCalcs: IterableOnce[EventCalc[S, E]])
   : EventCalc[S, E] =
     EventCalcCtx.combineAll(eventCalcs)
+
+  inline given [
+    S <: EventDrivenState_[S, E], E <: Event
+  ] => Conversion[KeyedEvent[E], EventCalc[S, E]] =
+    EventCalc.pure
+
+  inline given [
+    S <: EventDrivenState_[S, E], E <: Event
+  ] => Conversion[IterableOnce[KeyedEvent[E]], EventCalc[S, E]] =
+    EventCalc.pure

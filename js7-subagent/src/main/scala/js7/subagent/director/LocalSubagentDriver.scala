@@ -19,6 +19,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
+import js7.data.event.EventCalc.given
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
@@ -116,7 +117,7 @@ extends SubagentDriver, Service.StoppableByRequest:
               val options = CommitOptions(
                 transaction = true,
                 alreadyDelayed = subagentConf.eventBufferDelay)
-              journal.persistKeyedEvents(options):
+              journal.persist(options):
                 stampedEvents.map(_.value)
                   :+ (subagentId <-: SubagentEventsObserved(lastEventId))
               .map(_.orThrow/*???*/)

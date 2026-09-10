@@ -18,6 +18,7 @@ import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
+import js7.data.event.EventCalc.given
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
@@ -97,7 +98,7 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
       appointNodesLock.lock:
         journal.clusterState.flatMap:
           case ClusterState.Empty =>
-            journal.persistKeyedEvents(Transaction):
+            journal.persist(Transaction):
               (extraEvent.toList :+ ClusterNodesAppointed(setting))
                 .map(NoKey <-: _)
             .flatMapT: persisted =>

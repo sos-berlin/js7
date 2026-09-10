@@ -23,6 +23,7 @@ import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
+import js7.data.event.EventCalc.given
 import js7.data.event.{Event, EventCalc, EventId}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
@@ -406,7 +407,7 @@ extends Service.StoppableByRequest:
         val charCount = events.iterator.map(_.event.chunk.length).sum
         outErrStatistics(outErr).count(n = events.size, charCount = charCount):
           persistedQueue.persisting:
-            journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
+            journal.persist(stdoutCommitDelayOptions)(events)
         .map:
           _.onProblem: problem =>
             logger.error(s"Emission of OrderStdWritten event failed: $problem")
