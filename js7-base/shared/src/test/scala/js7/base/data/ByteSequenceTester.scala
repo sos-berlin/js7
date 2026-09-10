@@ -326,6 +326,10 @@ extends OurTestSuite:
   "combine" in:
     assert(ByteSeq("ab").combine(ByteSeq("123")) == ByteSeq("ab123"))
 
+  "combineAll" in:
+    assert:
+      ByteSeq.combineAll(Seq(ByteSeq("ab"), ByteSeq(""), ByteSeq("123"))) == ByteSeq("ab123")
+
   "writeToStream" in:
     val byteArray = ByteArray(Random.nextString(10001))
     val out = new ByteArrayOutputStream
