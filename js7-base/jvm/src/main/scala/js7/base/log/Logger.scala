@@ -94,9 +94,19 @@ object Logger extends AdHocLogger:
       apply(c)
     else
       warnIfNotInitialized(c, prefix)
-      ScalaLogger(new ConvertingLogger.Prefixed(
+      ScalaLogger(ConvertingLogger.Prefixed(
         prefix,
         LoggerFactory.getLogger(normalizeClassName(c))))
+
+  def withLivePrefix[A: ClassTag](livePrefix: => String): ScalaLogger =
+    withLivePrefix(implicitClass[A], livePrefix)
+
+  def withLivePrefix(c: Class[?], livePrefix: => String): ScalaLogger =
+    warnIfNotInitialized(c, livePrefix)
+    ScalaLogger(ConvertingLogger.LivePrefixed(
+      livePrefix,
+      LoggerFactory.getLogger(normalizeClassName(c))))
+
 
   private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = ""): Unit =
     if !ifNotInitialized.isInitialized then
