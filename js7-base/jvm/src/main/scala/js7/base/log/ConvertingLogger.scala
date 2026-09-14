@@ -198,9 +198,9 @@ trait ConvertingLogger extends Slf4jLogger:
 
 
 object ConvertingLogger:
+
   final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger:
-    protected val fullPrefix = s"($prefix) "
-    //protected val fullPrefix = s"“$prefix” "
+    private val fullPrefix = s"($prefix) "
     private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
 
     def convertMessage(o: String): String =
@@ -208,3 +208,12 @@ object ConvertingLogger:
 
     def convertFormat(o: String): String =
       escapedPrefix + o
+
+
+  final class LivePrefixed(livePrefix: => String, protected val delegate: Slf4jLogger)
+  extends ConvertingLogger:
+    def convertMessage(o: String): String =
+      s"($livePrefix) $o"
+
+    def convertFormat(o: String): String =
+      s"(${livePrefix.replace("{}", "\\{}")}) $o"

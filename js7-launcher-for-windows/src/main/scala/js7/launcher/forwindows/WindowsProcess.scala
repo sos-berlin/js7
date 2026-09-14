@@ -21,6 +21,7 @@ import js7.base.io.process.{Js7Process, Pid, ReturnCode, Stderr, Stdout, StdoutO
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.launcher.forwindows.WindowsApi.{advapi32, call, handleCall, kernel32, myUserenv, openProcessToken, waitForSingleObject, windowsDirectory}
 import js7.launcher.forwindows.WindowsProcess.*
@@ -126,7 +127,7 @@ extends Js7Process:
   lazy val maybeHandle =
     ProcessHandle.of(pid.number).toScala
 
-  override def toString = s"WindowsProcess($pid)"
+  override def toString = s"WindowsProcess($pid${returnCodeOnce.isDefined ?? "†"})"
 
 
 private[launcher] object WindowsProcess:

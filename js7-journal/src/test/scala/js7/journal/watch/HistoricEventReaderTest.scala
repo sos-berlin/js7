@@ -7,11 +7,11 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.{JournalHeader, Stamped}
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
+import js7.journal.file.JournalFiles.extensions.*
+import js7.journal.file.write.EventJournalWriter
 import js7.journal.watch.HistoricEventReaderTest.*
 import js7.journal.watch.TestData.{AEvent, BEvent, TestState, journalId}
-import js7.journal.write.EventJournalWriter
 
 /**
   * @author Joacim Zschimmer

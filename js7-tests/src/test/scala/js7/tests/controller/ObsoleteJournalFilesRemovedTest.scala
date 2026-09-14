@@ -12,7 +12,7 @@ import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.tests.controller.ObsoleteJournalFilesRemovedTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest

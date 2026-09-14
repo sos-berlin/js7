@@ -49,8 +49,8 @@ import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentNotD
 import js7.data.subagent.SubagentCommand.{DedicateSubagent, ShutDown}
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
-import js7.journal.MemoryJournal
 import js7.journal.configuration.JournalConf
+import js7.journal.memory.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.crashpidfile.{CrashPidFile, CrashPidFileService}
 import js7.launcher.process.PipedProcess

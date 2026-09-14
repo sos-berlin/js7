@@ -13,8 +13,8 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
-import js7.journal.data.JournalLocation
-import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import js7.journal.file.JournalLocation
+import js7.journal.file.write.{EventJournalWriter, SnapshotJournalWriter}
 
 /**
   * @author Joacim Zschimmer

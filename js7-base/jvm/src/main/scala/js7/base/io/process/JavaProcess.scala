@@ -46,7 +46,7 @@ final case class JavaProcess(process: Process) extends Js7Process:
   def release = IO.unit
 
   override def toString: String =
-    pid.toString
+    pid.toString + (!process.isAlive ?? "†")
 
 
 object JavaProcess:

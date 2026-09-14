@@ -36,7 +36,7 @@ import js7.data.workflow.WorkflowParser
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext

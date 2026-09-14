@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
@@ -25,10 +25,10 @@ import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.FileJournalTest.*
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.file
+import js7.journal.file.FileJournalTest.*
+import js7.journal.file.JournalFiles.extensions.file
+import js7.journal.file.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.test.TestEvent.{Appended, SimpleAdded}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
@@ -46,7 +46,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  "persist" in :
+  "persist" in:
     testJournal(TestWallClock(ts"1970-01-01T00:00:00.001Z")): journal =>
       for
         persisted <-
@@ -105,7 +105,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
       yield
         assertion
 
-  "persist is cancelable" in :
+  "persist is cancelable" in:
     testJournal(
       TestWallClock(ts"1970-01-01T00:00:00.001Z"),
       config"js7.journal.sync = off"
@@ -141,7 +141,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
         .replicateA(1000)
       .map(_.combineAll)
 
-  "Big snapshot" in :
+  "Big snapshot" in:
     val objectSize = 10_000
     val bigEvent = TestEvent.Added("+" * objectSize)
 
@@ -178,13 +178,13 @@ final class FileJournalTest extends OurAsyncTestSuite:
         run(n)
 
   "Massive parallel" - {
-    "test empty EventCalc" in :
+    "test empty EventCalc" in:
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
         persistLimit = 512,
         _ => Nil)
 
-    "test" in :
+    "test" in:
       run(
         n = if isIntelliJIdea then 1_000_000 else 10_000,
         persistLimit = 512,

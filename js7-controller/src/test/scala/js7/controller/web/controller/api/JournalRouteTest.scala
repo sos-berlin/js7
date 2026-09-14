@@ -36,11 +36,11 @@ import js7.data.event.{EventId, JournalHeader, JournalId, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
+import js7.journal.file.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
-import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.collection.mutable

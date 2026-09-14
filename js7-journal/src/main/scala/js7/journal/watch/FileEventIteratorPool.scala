@@ -6,7 +6,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.watch.FileEventIteratorPool.*
 import scala.collection.mutable
 import scala.util.control.NonFatal

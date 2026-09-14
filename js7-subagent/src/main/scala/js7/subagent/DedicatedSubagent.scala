@@ -1,9 +1,9 @@
 package js7.subagent
 
+import cats.effect.std.AtomicCell
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.all.*
-import fs2.Pipe
 import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, right}
 import js7.base.catsutils.CatsExtensions.{flatMapSome, ifTrue}
@@ -23,6 +23,7 @@ import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
+import js7.data.event.EventCalc.given
 import js7.data.event.{Event, EventCalc, EventId}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
@@ -36,8 +37,10 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.{CommitOptions, MemoryJournal, Persisted}
+import js7.journal.memory.MemoryJournal
+import js7.journal.{CommitOptions, Persisted}
 import js7.launcher.StdObservers
+import js7.launcher.StdObservers.OutErrToSink
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
@@ -398,21 +401,30 @@ extends Service.StoppableByRequest:
   private def outErrToJournalSink(
     orderId: OrderId,
     outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
-    (outErr: StdoutOrStderr)
-  : Pipe[IO, String, Nothing] =
-    _.chunks
-      .map: chunk =>
-        chunk.toVector.map: string =>
-          orderId <-: OrderStdWritten(outErr)(string)
+  : OutErrToSink =
+    (outErr: StdoutOrStderr, stdouterrStopped: AtomicCell[IO, Boolean]) =>
+      _.map: string =>
+        orderId <-: OrderStdWritten(outErr)(string)
+      .chunks
       .foreach: events =>
-        val charCount = events.iterator.map(_.event.chunk.length).sum
-        outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-          persistedQueue.persisting:
-            journal.persist(stdoutCommitDelayOptions)(EventCalc.pure(events))
-        .map:
-          _.onProblem: problem =>
-            logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        .void
+        // Check stdouterrStopped and emit events atomically
+        stdouterrStopped.evalUpdate: stdouterrStopped =>
+          if stdouterrStopped then
+            IO:
+              logger.debug(s"outErrToJournalSink($outErr): no more events are accepted:")
+              events.asSeq.foreachWithBracket(): (event, br) =>
+                logger.debug(s"$br$event")
+              stdouterrStopped
+          else
+            // Emit events //
+            val charCount = events.iterator.map(_.event.chunk.length).sum
+            outErrStatistics(outErr).count(n = events.size, charCount = charCount):
+              persistedQueue.persisting:
+                journal.persist(stdoutCommitDelayOptions)(events.asSeq)
+            .map:
+              _.onProblem: problem =>
+                logger.error(s"Emission of OrderStdWritten event failed: $problem")
+            .as(stdouterrStopped)
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

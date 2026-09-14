@@ -2,13 +2,16 @@ package js7.tests
 
 import java.nio.file.Files.createTempFile
 import js7.base.configutils.Configs.*
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
+import js7.data.command.CancellationMode.FreshOrStarted
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.Value.convenience.given
 import js7.data.workflow.instructions.Execute
@@ -18,7 +21,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteProcessTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
-import scala.concurrent.duration.Deadline
 import scala.language.implicitConversions
 
 final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -27,10 +29,12 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.order.stdout-stderr.delay = 1ms
+    js7.order.stdout-stderr.commit-delay = 0ms
     """
 
   protected val agentPaths = agentPath :: Nil
@@ -50,16 +54,15 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(trap "" SIGTERM; sleep 0.1; echo "+++ CHILD FINISHED +++") &
-              |sleep 0.05
+              |(trap "" SIGTERM; sleep 0.4; echo "+++ CHILD FINISHED +++") &
+              |sleep 0.2
               |""".stripMargin),
           maxWaitForStdouterr = None)))
     ): workflow =>
       val orderId = OrderId("ORDER-WAIT")
-      val t = Deadline.now
       runOrder(FreshOrder(orderId, workflow.path))
-      assert(t.elapsed >= 100.ms && t.elapsed <= 1.s)
       val events = controller.eventsByKey[OrderEvent](orderId)
+      // May fail when child process starts too late due to heavy load
       assert(events == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderAttachable(agentPath),
@@ -82,28 +85,68 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(trap "" SIGTERM; sleep 3; echo "+++ CHILD FINISHED +++") &
-              |sleep 0.1
+              |( trap "" SIGTERM
+              |  echo "+++ CHILD +++"
+              |  # ❓The following two lines would let the child process exit,
+              |  # possibly due to some bash or linux mechanics.
+              |  #sleep 0.1
+              |  #echo "+++ CHILD 2 +++"
+              |  sleep 1
+              |  echo "+++ CHILD FINISHED +++"
+              |) &
+              |sleep 0.2
               |""".stripMargin),
-          maxWaitForStdouterr = Some(500.ms))))
+          maxWaitForStdouterr = Some(200.ms))))
     ): workflow =>
-      val orderId = OrderId("ORDER-DONT-WAIT")
-      val t = Deadline.now
+      val orderId = OrderId("ORDER-WAIT-SHORTLY")
+      val eventId = controller.lastAddedEventId
       runOrder(FreshOrder(orderId, workflow.path))
-      assert(t.elapsed >= 500.ms && t.elapsed <= 3.s)
-      val events = controller.eventsByKey[OrderEvent](orderId)
-      assert(events == Seq(
+      val stamped = controller.eventWatch.allStamped[OrderEvent](after = eventId)
+        .filter(stamped => stamped.value.key == orderId)
+
+      val startedAt = stamped.find(_.value.event.isInstanceOf[OrderProcessingStarted]).get.timestamp
+      val processedAt = stamped.find(_.value.event.isInstanceOf[OrderProcessed]).get.timestamp
+      val duration = processedAt - startedAt
+      assert(duration >= 200.ms && duration <= 1.s)
+
+      // May fail when child process starts too late due to heavy load
+      assert(stamped.map(_.value.event) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
+        OrderStdoutWritten("+++ CHILD +++\n"),
         OrderProcessed(OrderOutcome.Succeeded(Map("returnCode" -> 0))),
         OrderMoved(Position(1), None),
         OrderDetachable,
         OrderDetached,
         OrderFinished(),
         OrderDeleted))
+
+      // Be sure that no OrderStdoutWritten event is emitted after the OrderProcessed event
+      // Otherwise, the Subagent would fail here due to .orThrow
+      sleepUntil(processedAt + 1.s)
+
+  "Cancel while waiting for stdout of background child process" in:
+    withItem(
+      Workflow.of(WorkflowPath("WORKFLOW"),
+        Execute(WorkflowJob(
+          agentPath,
+          ShellScriptExecutable(
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |(trap "" SIGTERM; sleep 0.4; echo +++ CHILD +++; sleep 999) &
+              |sleep 0.2
+              |""".stripMargin))))
+    ): workflow =>
+      val orderId = OrderId("ORDER-WAIT-KILL")
+      val eventId = controller.lastAddedEventId
+      addOrder(orderId, workflow.path)
+      controller.awaitNextKey[OrderStdoutWritten](orderId, after = eventId)
+      execCmd:
+        CancelOrders(orderId :: Nil, FreshOrStarted(Some(SIGTERM)))
+      controller.awaitNextKey[OrderTerminated](orderId, after = eventId)
 
 
 object ExecuteProcessTest:

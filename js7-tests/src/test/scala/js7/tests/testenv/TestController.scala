@@ -38,7 +38,7 @@ import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.journal.JournalActor
+import js7.journal.actor.JournalActor
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.tests.testenv.TestController.*

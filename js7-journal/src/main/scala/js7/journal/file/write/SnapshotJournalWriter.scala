@@ -1,4 +1,4 @@
-package js7.journal.write
+package js7.journal.file.write
 
 import cats.effect.{IO, Resource}
 import io.circe.syntax.EncoderOps
@@ -15,9 +15,9 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.FileJournalMXBean
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.file
+import js7.journal.file.JournalLocation
+import js7.journal.file.FileJournalMXBean
+import js7.journal.file.JournalFiles.extensions.file
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 

@@ -38,7 +38,7 @@ import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, Cluster
 import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, JournalPosition, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
 import org.apache.pekko
 import org.apache.pekko.actor.ActorSystem

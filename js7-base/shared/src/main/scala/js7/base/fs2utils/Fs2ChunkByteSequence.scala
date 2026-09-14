@@ -3,6 +3,7 @@ package js7.base.fs2utils
 import cats.Eq
 import fs2.Chunk
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.StreamExtensions.byteAt
 import js7.base.utils.JavaVectors.vectorIndexOf
@@ -104,6 +105,14 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
 
   def iterator(chunk: Chunk[Byte]): Iterator[Byte] =
     chunk.iterator
+
+  override def utf8String(chunk: Chunk[Byte]): String =
+    chunk match
+      case Chunk.ArraySlice(array: Array[Byte], offset, length) =>
+        String(array, offset, length, UTF_8)
+      case _ =>
+        val a = chunk.toArray // One extra copy
+        String(a, UTF_8)
 
   def combine(a: Chunk[Byte], b: Chunk[Byte]): Chunk[Byte] =
     a ++ b

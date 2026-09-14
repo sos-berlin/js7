@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.IO
 import java.lang.management.ManagementFactory

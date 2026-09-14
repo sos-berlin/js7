@@ -1,4 +1,4 @@
-package js7.journal.watch
+package js7.journal.memory
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
@@ -18,9 +18,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{Event, EventCalc, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.journal.memory.MemoryJournal
+import js7.journal.memory.MemoryJournalTest.*
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
-import js7.journal.watch.MemoryJournalTest.*
-import js7.journal.{CommitOptions, EventIdGenerator, MemoryJournal}
+import js7.journal.watch.TornException
+import js7.journal.{CommitOptions, EventIdGenerator}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
 import scala.collection.mutable

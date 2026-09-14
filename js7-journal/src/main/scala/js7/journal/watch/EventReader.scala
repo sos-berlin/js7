@@ -22,7 +22,7 @@ import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.recover.JournalReader
 import scala.concurrent.duration.FiniteDuration
 

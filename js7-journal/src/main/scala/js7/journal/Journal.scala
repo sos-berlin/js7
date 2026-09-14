@@ -7,6 +7,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, NoKeyEvent, Stamped}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.watch.EventWatch
+import scala.Conversion.into
 import scala.annotation.targetName
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
@@ -47,7 +48,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   final def persist[E <: Event](
     options: CommitOptions = CommitOptions.default,
     since: Deadline = Deadline.now)
-    (eventCalc: EventCalc[S, E])
+    (eventCalc: into[EventCalc[S, E]])
   : IO[Checked[Persisted[S, E]]] =
     persist(Persist(options, since)(eventCalc))
 

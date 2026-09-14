@@ -1,4 +1,4 @@
-package js7.journal.files
+package js7.journal.file
 
 import java.io.FileOutputStream
 import java.nio.file.Path
@@ -7,7 +7,8 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, deletionMarkerFile}
+import js7.journal.file.JournalFiles.{deleteJournal, deleteJournalIfMarked, deletionMarkerFile}
+import js7.journal.file.{JournalFile, JournalFiles}
 
 /**
   * @author Joacim Zschimmer

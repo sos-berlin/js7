@@ -6,9 +6,9 @@ import js7.base.generic.Accepted
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventCalc
+import js7.journal.actor.{JournalActor, KeyedJournalingActor}
 import js7.journal.configuration.JournalConf
 import js7.journal.test.TestAggregateActor.*
-import js7.journal.{JournalActor, KeyedJournalingActor}
 import org.apache.pekko.Done
 import org.apache.pekko.actor.{ActorRef, Status}
 import scala.concurrent.ExecutionContext

@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.actor
 
 import cats.effect.IO
 import js7.base.generic.Accepted
@@ -6,6 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isStrict
 import js7.data.event.{Event, EventCalc, JournaledState, KeyedEvent, Stamped}
+import js7.journal.CommitOptions
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 

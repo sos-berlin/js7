@@ -12,7 +12,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.tests.testenv.DirectoryProvider.{AgentTrustStoreResource, defaultVerifier}
 import scala.collection.immutable.Iterable
 

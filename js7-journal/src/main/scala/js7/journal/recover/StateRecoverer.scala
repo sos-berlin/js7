@@ -11,8 +11,8 @@ import js7.base.utils.SetOnce
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{EventId, SnapshotableState}
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.recover.StateRecoverer.*
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now

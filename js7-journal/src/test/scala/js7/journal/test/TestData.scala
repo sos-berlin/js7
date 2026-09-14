@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.config.Js7Config
 import js7.base.configutils.Configs.*
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 
 /**
   * @author Joacim Zschimmer

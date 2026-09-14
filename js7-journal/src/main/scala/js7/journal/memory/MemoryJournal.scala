@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.memory
 
 import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource, ResourceIO}
@@ -18,9 +18,10 @@ import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, CloseableIterator}
 import js7.data.cluster.ClusterState
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
-import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
+import js7.journal.memory.MemoryJournal.*
 import js7.journal.watch.RealEventWatch
+import js7.journal.{EventIdGenerator, Journal, Persist, Persisted}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 
@@ -83,8 +84,7 @@ extends
   override protected def persistSingle[E <: Event](persist: Persist[S, E])
   : IO[Checked[Persisted[S, E]]] =
     aggregateLock.lock:
-      IO.defer:
-        val aggregate = _aggregate
+      IO(_aggregate).flatMap: aggregate =>
         locally:
           for
             coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now(), StartUp.elapsed))

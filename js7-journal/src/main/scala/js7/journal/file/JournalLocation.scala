@@ -1,4 +1,4 @@
-package js7.journal.data
+package js7.journal.file
 
 import java.nio.file.Path
 import js7.base.circeutils.typed.TypedJsonCodec

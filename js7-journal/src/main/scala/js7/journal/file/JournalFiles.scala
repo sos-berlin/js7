@@ -1,4 +1,4 @@
-package js7.journal.files
+package js7.journal.file
 
 import cats.effect.SyncIO
 import cats.effect.kernel.Sync
@@ -15,7 +15,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventId
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import scala.util.Try
 
 /**
@@ -52,7 +52,7 @@ object JournalFiles:
       .compile.toVector.run()
       .sorted
 
-  private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
+  private[file] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
     try
       val markerFile = deletionMarkerFile(fileBase)
       if exists(markerFile) then
@@ -63,7 +63,7 @@ object JournalFiles:
     catch case e: IOException =>
       Left(Problem.pure(e.toStringWithCauses))
 
-  private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
+  private[file] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
     val matches: String => Boolean = string =>
       JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(string).matches
     val markerFile = deletionMarkerFile(fileBase)
@@ -85,7 +85,7 @@ object JournalFiles:
     else
       delete(markerFile)
 
-  private[files] def deletionMarkerFile(fileBase: Path): Path =
+  private[file] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
 
   private def streamFiles[F[_] : Sync](journalFileBase: Path): fs2.Stream[F, Path] =

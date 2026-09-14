@@ -24,7 +24,7 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script

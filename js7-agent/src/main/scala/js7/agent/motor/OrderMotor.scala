@@ -34,7 +34,8 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.state.EngineStateExtensions.keyedEventToPendingOrderIds
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.WorkflowPathControl
-import js7.journal.{FileJournal, Persisted}
+import js7.journal.Persisted
+import js7.journal.file.FileJournal
 import js7.subagent.director.SubagentKeeper
 
 private final class OrderMotor private(

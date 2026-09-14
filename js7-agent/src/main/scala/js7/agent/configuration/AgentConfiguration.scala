@@ -17,7 +17,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import js7.subagent.director.RemoteSubagentDriver
 import org.jetbrains.annotations.TestOnly

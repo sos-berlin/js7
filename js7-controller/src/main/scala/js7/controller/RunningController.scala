@@ -63,9 +63,10 @@ import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.node.NodeNameToPassword
 import js7.data.order.FreshOrder
 import js7.data.state.EngineStateMXBean
-import js7.journal.JournalActor.Output
+import js7.journal.EventIdGenerator
+import js7.journal.actor.JournalActor
+import js7.journal.actor.JournalActor.Output
 import js7.journal.watch.StrictEventWatch
-import js7.journal.{EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.{AskTimeoutException, ask}

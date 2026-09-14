@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.SyncIO
 import java.nio.file.Files
@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.LongAdder
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.streamJournalFiles
+import js7.journal.file.JournalFiles.streamJournalFiles
+import js7.journal.file.JournalLocation
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.control.NonFatal
 

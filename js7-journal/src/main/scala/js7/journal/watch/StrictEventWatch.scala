@@ -202,7 +202,14 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   @TestOnly
   def allStamped[E <: Event: ClassTag](using ioRuntime: IORuntime, E: Tag[E])
   : Seq[Stamped[KeyedEvent[E]]] =
-    allAfter[E]().await(99.s)
+    allStamped[E]()
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
+  def allStamped[E <: Event: ClassTag](after: EventId = EventId.BeforeFirst)
+    (using ioRuntime: IORuntime, E: Tag[E])
+  : Seq[Stamped[KeyedEvent[E]]] =
+    allAfter[E](after = after).await(99.s)
 
   @TestOnly
   private def allAfter[E <: Event: ClassTag](after: EventId = EventId.BeforeFirst)

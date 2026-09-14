@@ -27,8 +27,8 @@ import js7.base.utils.{Atomic, CloseableIterator, SetOnce, UnsafeMutex}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.watch.JournalEventWatch.*
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec

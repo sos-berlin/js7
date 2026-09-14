@@ -44,11 +44,11 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
 
   private val config = config"""
     js7.thread-pools.long-blocking.keep-alive = 3s
-    js7.thread-pools.long-blocking.virtual = true
     js7.job.execution.kill-with-sigterm-command = [ "/bin/kill", "$$pid" ]
     js7.job.execution.kill-with-sigkill-command = [ "/bin/kill", "-KILL", "$$pid" ]
     js7.job.execution.kill-command-for-windows = [ "taskkill", "/pid", "$$pid" ]
     js7.job.execution.used-error-line-length = 4096
+    js7.job.execution.wait-for-stdout-stderr-after-sigkill = 500ms
     js7.job.execution.worry-about-stdout-after-termination = 100ms
     """.withFallback(Js7Config.defaultConfig)
 

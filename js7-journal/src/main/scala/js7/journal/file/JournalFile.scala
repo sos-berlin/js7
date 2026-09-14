@@ -1,4 +1,4 @@
-package js7.journal.files
+package js7.journal.file
 
 import java.io.RandomAccessFile
 import java.nio.file.Path
@@ -15,11 +15,11 @@ import scala.util.boundary
 /**
   * @param fileEventId EventId of the last Event before this journal file
   */
-private[journal] final case class JournalFile private[journal](fileEventId: EventId, file: Path):
+private final case class JournalFile private[journal](fileEventId: EventId, file: Path):
   override def toString = file.getFileName.toString
 
   @TestOnly // Not used
-  private[files] def properLength: Long =
+  private[file] def properLength: Long =
     boundary[Long]:
       autoClosing(new RandomAccessFile(file.toFile, "r")): f =>
         var truncated = f.length
@@ -35,13 +35,14 @@ object JournalFile:
   def toFile(fileBase: Path, fileEventId: EventId): Path =
     fileBase.resolveSibling(s"${fileBase.getFileName}--$fileEventId.journal")
 
-  private[files] def anyJournalFilePattern(fileBase: Path): Pattern =
+  private[file] def anyJournalFilePattern(fileBase: Path): Pattern =
     Pattern.compile:
       Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)"""
 
-  private[files] def garbagePattern(fileBase: Path): Pattern =
+  private[file] def garbagePattern(fileBase: Path): Pattern =
     Pattern.compile:
       Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal.tmp"""
+
 
   final class Matcher(fileBase: Path):
     private val pattern = Pattern.compile:

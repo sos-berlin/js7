@@ -1,6 +1,7 @@
 package js7.launcher
 
 import cats.effect.Resource.ExitCase
+import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
 import fs2.{Chunk, Pipe, Stream}
@@ -31,6 +32,7 @@ final class StdObservers private(
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
   val maxWaitForStdouterr: Option[FiniteDuration],
+  val stdouterrStopped: AtomicCell[IO, Boolean],
   name: String):
 
   private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
@@ -105,7 +107,7 @@ final class StdObservers private(
         fs2.text.decodeWithCharset(encoding)
 
   private def pumpToSink(outErr: StdoutOrStderr)(stream: Stream[IO, String]): IO[Unit] =
-    outErrToSink(outErr):
+    outErrToSink(outErr, stdouterrStopped):
       stream
         .pipeIf(outErr == Stderr):
           _.through(lastLineKeeper getOrElse identity)
@@ -119,7 +121,7 @@ final class StdObservers private(
 
 object StdObservers:
 
-  type OutErrToSink = StdoutOrStderr => Pipe[IO, String, Nothing]
+  type OutErrToSink = (StdoutOrStderr, AtomicCell[IO, Boolean]) => Pipe[IO, String, Nothing]
 
   private val logger = Logger[this.type]
 
@@ -134,6 +136,7 @@ object StdObservers:
     name: String)
   : ResourceIO[StdObservers] =
     for
+      stdouterrStopped <- Resource.eval(AtomicCell[IO].of(false))
       stdObservers <- Resource.eval:
         for
           outChannel <- Channel.bounded[IO, String](capacity = queueSize)
@@ -144,6 +147,7 @@ object StdObservers:
             chunkSize = chunkSize, delay,
             useErrorLineLengthMax,
             maxWaitForStdouterr = maxWaitForStdouterr,
+            stdouterrStopped,
             name)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield

@@ -1,10 +1,11 @@
-package js7.journal.files
+package js7.journal.file
 
 import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
-import js7.journal.files.JournalFile.{anyJournalFilePattern, garbagePattern}
+import js7.journal.file.JournalFile
+import js7.journal.file.JournalFile.{anyJournalFilePattern, garbagePattern}
 
 /**
   * @author Joacim Zschimmer

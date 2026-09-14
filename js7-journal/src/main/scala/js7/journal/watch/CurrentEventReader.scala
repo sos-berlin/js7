@@ -8,8 +8,8 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
-import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.watch.CurrentEventReader.*
 
 /**

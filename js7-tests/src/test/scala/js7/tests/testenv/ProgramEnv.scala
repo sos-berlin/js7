@@ -15,7 +15,7 @@ import js7.base.log.Logger
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.event.SnapshotableState
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.recover.StateRecoverer
 import js7.tests.testenv.ProgramEnv.*
 

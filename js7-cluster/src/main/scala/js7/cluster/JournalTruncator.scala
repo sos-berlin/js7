@@ -11,7 +11,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalPosition
-import js7.journal.files.JournalFiles
+import js7.journal.file.JournalFiles
 import scala.annotation.tailrec
 
 private object JournalTruncator:

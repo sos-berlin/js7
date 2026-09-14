@@ -97,7 +97,8 @@ object EventCalcCtx:
   : EventCalcCtx[S, E, Ctx] =
     new EventCalcCtx(function)
 
-  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem): EventCalcCtx[S, E, Ctx] =
+  def problem[S <: EventDrivenState_[S, E], E <: Event, Ctx](problem: Problem)
+  : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx(_ => Left(problem))
 
   inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
@@ -208,7 +209,6 @@ object EventCalcCtx:
     monoid.combineAll(eventCalcs)
 
 
-
 /** A `EventCalcCtx` with a `TimeCtx`.
   * <p>
   * This is the regulary used Ctx type-parameter.
@@ -290,3 +290,13 @@ object EventCalc:
     inline eventCalcs: IterableOnce[EventCalc[S, E]])
   : EventCalc[S, E] =
     EventCalcCtx.combineAll(eventCalcs)
+
+  inline given [
+    S <: EventDrivenState_[S, E], E <: Event
+  ] => Conversion[KeyedEvent[E], EventCalc[S, E]] =
+    EventCalc.pure
+
+  inline given [
+    S <: EventDrivenState_[S, E], E <: Event
+  ] => Conversion[IterableOnce[KeyedEvent[E]], EventCalc[S, E]] =
+    EventCalc.pure
