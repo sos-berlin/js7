@@ -66,7 +66,7 @@ final class ProcessDriver(
                       killedBeforeStart.traverse:
                         sendProcessSignal(process, _)
                   .flatMap: _ =>
-                    process.watchProcessAndStdouterr
+                    process.waitForEndOfProcessAndStdouterr
                       .attempt.flatMap: either =>
                         IO.defer:
                           // Don't log PID because the process may have terminated long before
@@ -95,6 +95,7 @@ final class ProcessDriver(
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
                   encoding = jobLauncherConf.systemEncoding,
+                  waitForStdouterrAfterSigkill = jobLauncherConf.waitForStdouterrAfterSigkill,
                   worryAboutStdoutAfterTermination = jobLauncherConf.worryAboutStdoutAfterTermination,
                   additionalEnvironment = env.updated(
                     returnValuesProvider.varName,

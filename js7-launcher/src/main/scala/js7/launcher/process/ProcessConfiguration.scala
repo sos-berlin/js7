@@ -13,6 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 final case class ProcessConfiguration(
   workingDirectory: Option[Path] = None,
   encoding: Charset,
+  waitForStdouterrAfterSigkill: FiniteDuration,
   worryAboutStdoutAfterTermination: FiniteDuration,
   additionalEnvironment: Map[String, Option[String]] = Map.empty,
   windowsLogon: Option[WindowsLogon] = None)
@@ -22,4 +23,5 @@ object ProcessConfiguration:
 
   def forTest: ProcessConfiguration = ProcessConfiguration(
     encoding = UTF_8/*Windows ???*/,
+    waitForStdouterrAfterSigkill = 500.ms,
     worryAboutStdoutAfterTermination = 100.ms)

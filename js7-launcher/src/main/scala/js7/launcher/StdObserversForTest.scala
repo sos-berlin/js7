@@ -23,12 +23,12 @@ object StdObserversForTest:
       for
         out <- Resource.eval(Deferred[IO, String])
         err <- Resource.eval(Deferred[IO, String])
-        outErrToSink: OutErrToSink = Map(
-          Stdout -> (_.foldMonoid.evalMap(out.complete).drain),
-          Stderr -> (_.foldMonoid.evalMap(err.complete).drain))
+        outErrToSink: OutErrToSink =
+          case (Stdout, _) => _.foldMonoid.evalMap(out.complete).drain
+          case (Stderr, _) => _.foldMonoid.evalMap(err.complete).drain
         stdObservers <- resource(outErrToSink, charBufferSize, chunkSize, delay,
-          useErrorLineLengthMax = useErrorLineLengthMax,
           maxWaitForStdouterr = maxWaitForStdouterr,
+          useErrorLineLengthMax = useErrorLineLengthMax,
           name = name)
       yield
         TestSink(

@@ -359,6 +359,9 @@ object ScalaTime:
     if nanos > 0 then
       sleepUntil2(nanos, until.time.toNanos)
 
+  def sleepUntil(until: Timestamp): Unit =
+    sleep(until - Timestamp.now)
+
   private def sleepUntil2(nanos: Long, until: Long): Unit =
     blocking:
       nanoSleep(nanos)

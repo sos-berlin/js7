@@ -51,7 +51,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
         _ <- runningShellScript(ProcessConfiguration.forTest, scriptFile)
           .use: (shellProcess, sink) =>
             for
-              rc <- shellProcess.watchProcessAndStdouterr
+              rc <- shellProcess.waitForEndOfProcessAndStdouterr
             yield
               assert(rc == ReturnCode(0) &&
                 sink.out.await(99.s) == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
@@ -95,7 +95,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
               sleep(1.s)
               assert(shellProcess.isAlive)
               shellProcess.sendProcessSignal(SIGTERM).await(99.s)
-              val rc = shellProcess.watchProcessAndStdouterr.await(99.s)
+              val rc = shellProcess.waitForEndOfProcessAndStdouterr.await(99.s)
               assert(rc == ReturnCode(7))
           .await(99.s)
 
@@ -105,7 +105,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
   : IO[(ReturnCode, StdObserversForTest.TestSink)] =
     runningShellScript(processConfiguration, executable)
       .use: (pipedProcess, sink) =>
-        pipedProcess.watchProcessAndStdouterr
+        pipedProcess.waitForEndOfProcessAndStdouterr
           .map(_ -> sink)
 
   private def runningShellScript(

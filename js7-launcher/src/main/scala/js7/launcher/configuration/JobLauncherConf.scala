@@ -21,6 +21,7 @@ final case class JobLauncherConf(
   systemEncoding: Charset,
   scriptInjectionAllowed: Boolean,
   errorLineLengthMax: Int,
+  waitForStdouterrAfterSigkill: FiniteDuration,
   worryAboutStdoutAfterTermination: FiniteDuration,
   iox: IOExecutor,
   blockingJobEC: ExecutionContext,
@@ -56,6 +57,8 @@ object JobLauncherConf:
           .getOrElse(systemEncoding),
         scriptInjectionAllowed = scriptInjectionAllowed,
         errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
+        waitForStdouterrAfterSigkill =
+          config.finiteDuration("js7.job.execution.wait-for-stdout-stderr-after-sigkill").orThrow,
         worryAboutStdoutAfterTermination =
           config.finiteDuration("js7.job.execution.worry-about-stdout-after-termination").orThrow,
         iox,

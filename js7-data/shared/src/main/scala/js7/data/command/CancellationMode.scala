@@ -4,9 +4,12 @@ import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.workflow.position.WorkflowPosition
+import scala.annotation.targetName
 
 /**
   * @author Joacim Zschimmer
@@ -21,6 +24,11 @@ object CancellationMode:
 
   final case class FreshOrStarted(kill: Option[Kill] = None) extends CancellationMode:
     override def toString =  functionCallToString("FreshOrStarted", kill)
+
+  object FreshOrStarted:
+    @targetName("applySignal")
+    def apply(signal: Option[ProcessSignal]): FreshOrStarted =
+      new FreshOrStarted(signal.map(signal => Kill(immediately = signal == SIGKILL)))
 
   def kill(immediately: Boolean = false, workflowPosition: Option[WorkflowPosition] = None): FreshOrStarted =
     FreshOrStarted(Some(Kill(immediately = immediately, workflowPosition = workflowPosition)))

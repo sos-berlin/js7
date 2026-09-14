@@ -68,6 +68,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           UTF_8,
           scriptInjectionAllowed = true,
           errorLineLengthMax = 1024,
+          waitForStdouterrAfterSigkill = 500.ms,
           worryAboutStdoutAfterTermination = 100.ms,
           globalIOX, blockingJobEC = blockingJobEC,
           null/*unused*/.asInstanceOf[AlarmClock],
