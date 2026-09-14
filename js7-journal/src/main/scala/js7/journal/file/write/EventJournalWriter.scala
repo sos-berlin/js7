@@ -11,8 +11,8 @@ import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.file.FileJournalMXBean
+import js7.journal.file.JournalFiles.extensions.file
 import js7.journal.file.write.EventJournalWriter.*
-import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.watch.JournalingObserver
 import scala.concurrent.duration.FiniteDuration
 

@@ -32,8 +32,8 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.file.FileJournal.*
 import js7.journal.file.FileJournalMXBean.Bean
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.file.{Committer, Snapshotter}
-import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.recover.Recovered
 import js7.journal.watch.{JournalEventWatch, JournalingObserver}

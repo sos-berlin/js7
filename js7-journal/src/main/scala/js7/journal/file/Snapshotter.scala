@@ -15,9 +15,9 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.file.FileJournal.*
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.file.Snapshotter.*
 import js7.journal.file.write.SnapshotJournalWriter
-import js7.journal.files.JournalFiles.extensions.*
 import scala.language.unsafeNulls
 
 transparent trait Snapshotter[S <: SnapshotableState[S]]:

@@ -55,7 +55,7 @@ import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
 import js7.journal.file.FileJournalMXBean
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
 import scala.concurrent.duration.Deadline

@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.control.NonFatal
 

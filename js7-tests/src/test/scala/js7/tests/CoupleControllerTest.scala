@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -18,11 +19,10 @@ import js7.data.problems.UnknownEventIdProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.tests.CoupleControllerTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer

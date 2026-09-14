@@ -41,7 +41,7 @@ import js7.data.node.NodeNameToPassword
 import js7.data.state.EngineStateMXBean
 import js7.data.subagent.Problems.NoDirectorProblem
 import js7.journal.EventIdGenerator
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.watch.StrictEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent

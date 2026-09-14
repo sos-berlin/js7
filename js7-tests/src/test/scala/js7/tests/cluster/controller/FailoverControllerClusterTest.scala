@@ -28,8 +28,8 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
-import js7.journal.files.JournalFiles
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.file.JournalFiles
+import js7.journal.file.JournalFiles.extensions.*
 import js7.proxy.javaapi.{JControllerApi, JProxyContext}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*

@@ -1,4 +1,4 @@
-package js7.journal.files
+package js7.journal.file
 
 import java.io.IOException
 import java.nio.file.Files.{createSymbolicLink, delete, exists}
@@ -55,7 +55,7 @@ object JournalFiles:
       autoClosing(Files.list(directory)): stream =>
         body(stream.iterator.asScala)
 
-  private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
+  private[file] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
     try
       val markerFile = deletionMarkerFile(fileBase)
       if exists(markerFile) then
@@ -66,7 +66,7 @@ object JournalFiles:
     catch case e: IOException =>
       Left(Problem.pure(e.toStringWithCauses))
 
-  private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
+  private[file] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
     val matches: String => Boolean = string =>
       JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(string).matches
     val markerFile = deletionMarkerFile(fileBase)
@@ -84,7 +84,7 @@ object JournalFiles:
     else
       delete(markerFile)
 
-  private[files] def deletionMarkerFile(fileBase: Path): Path =
+  private[file] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
 
   object extensions:

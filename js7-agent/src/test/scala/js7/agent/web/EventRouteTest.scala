@@ -21,7 +21,7 @@ import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournalEvent, JournalId}
 import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.ActorSystem
 import scala.compiletime.uninitialized

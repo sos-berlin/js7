@@ -8,7 +8,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.order.{FreshOrder, OrderId}
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.file.JournalFiles.listJournalFiles
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ControllerEnv
 
