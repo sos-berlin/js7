@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import java.nio.file.Files
 import js7.base.time.ScalaTime.*

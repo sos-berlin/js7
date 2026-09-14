@@ -1,4 +1,4 @@
-package js7.journal.write
+package js7.journal.file.write
 
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}

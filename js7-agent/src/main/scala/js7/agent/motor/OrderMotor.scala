@@ -33,7 +33,8 @@ import js7.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderForked, O
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentBundle, SubagentItem}
 import js7.data.workflow.WorkflowPathControl
-import js7.journal.{FileJournal, Persisted}
+import js7.journal.Persisted
+import js7.journal.file.FileJournal
 import js7.subagent.director.SubagentKeeper
 
 private final class OrderMotor private(

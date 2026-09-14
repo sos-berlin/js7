@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.kernel.{DeferredSink, DeferredSource}
 import cats.effect.std.Queue
@@ -28,14 +28,16 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState_, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
-import js7.journal.FileJournal.*
-import js7.journal.FileJournalMXBean.Bean
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
+import js7.journal.file.FileJournal.*
+import js7.journal.file.FileJournalMXBean.Bean
+import js7.journal.file.{Committer, Snapshotter}
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.recover.Recovered
 import js7.journal.watch.{JournalEventWatch, JournalingObserver}
+import js7.journal.{EventIdGenerator, Journal, Persist, Persisted}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.language.unsafeNulls
 import scala.util.control.NonFatal

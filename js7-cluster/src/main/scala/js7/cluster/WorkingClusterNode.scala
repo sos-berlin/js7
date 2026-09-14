@@ -24,8 +24,9 @@ import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.CommitOptions.Transaction
+import js7.journal.EventIdGenerator
+import js7.journal.file.FileJournal
 import js7.journal.recover.Recovered
-import js7.journal.{EventIdGenerator, FileJournal}
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *

@@ -40,7 +40,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
-import js7.journal.FileJournal
+import js7.journal.file.FileJournal
 import js7.journal.problems.Problems.JournalKilledProblem
 import scala.concurrent.duration.*
 import scala.util.{Failure, NotGiven, Right, Success, Try}

@@ -1,4 +1,4 @@
-package js7.journal.write
+package js7.journal.file.write
 
 import java.text.NumberFormat
 import java.util.Locale

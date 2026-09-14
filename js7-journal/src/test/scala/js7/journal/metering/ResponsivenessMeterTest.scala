@@ -18,11 +18,12 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
+import js7.journal.file.FileJournal
+import js7.journal.metering
 import js7.journal.metering.ResponsivenessEvent.InternalResponseTime
 import js7.journal.metering.ResponsivenessMeterTest.*
 import js7.journal.recover.Recovered
 import js7.journal.watch.EventWatch
-import js7.journal.{FileJournal, metering}
 
 final class ResponsivenessMeterTest extends OurAsyncTestSuite:
 

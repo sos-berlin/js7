@@ -1,4 +1,4 @@
-package js7.journal.write
+package js7.journal.file.write
 
 import cats.effect.IO
 import fs2.Stream
@@ -14,9 +14,9 @@ import js7.base.utils.ByteUnits.toMB
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
-import js7.journal.FileJournalMXBean
-import js7.journal.write.EventJournalWriter.SerializationException
-import js7.journal.write.JournalWriter.*
+import js7.journal.file.FileJournalMXBean
+import js7.journal.file.write.EventJournalWriter.SerializationException
+import js7.journal.file.write.JournalWriter.*
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 

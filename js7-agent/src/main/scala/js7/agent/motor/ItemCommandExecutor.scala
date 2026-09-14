@@ -35,7 +35,8 @@ import js7.data.node.NodeId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
-import js7.journal.{FileJournal, Persisted}
+import js7.journal.Persisted
+import js7.journal.file.FileJournal
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper

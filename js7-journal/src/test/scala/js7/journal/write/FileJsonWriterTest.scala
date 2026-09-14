@@ -5,6 +5,7 @@ import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.test.OurTestSuite
+import js7.journal.file.write.FileJsonWriter
 import org.scalatest.BeforeAndAfterAll
 
 /**

@@ -52,11 +52,12 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, Stampe
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
+import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
+import js7.journal.file.FileJournalMXBean
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
-import js7.journal.{EventIdGenerator, FileJournalMXBean}
 import scala.concurrent.duration.Deadline
 
 private final class PassiveClusterNode[S <: ClusterableState[S]] private(

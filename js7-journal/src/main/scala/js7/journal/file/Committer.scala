@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.kernel.{DeferredSink, Outcome}
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
@@ -30,13 +30,14 @@ import js7.data.cluster.ClusterState
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
-import js7.journal.Committer.*
-import js7.journal.FileJournal.*
+import js7.journal.file.Committer.*
+import js7.journal.file.FileJournal.*
+import js7.journal.file.write.EventJournalWriter
 import js7.journal.files.JournalFiles.extensions.updateSymbolicLink
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.LoggablePersist
 import js7.journal.problems.Problems.JournalKilledProblem
-import js7.journal.write.EventJournalWriter
+import js7.journal.{CommitOptions, Persisted}
 import scala.collection.IndexedSeqView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline

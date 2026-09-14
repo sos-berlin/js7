@@ -19,13 +19,14 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalHeader.readJournalHeader
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
+import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
+import js7.journal.file.FileJournal
+import js7.journal.file.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.JournalingObserver
-import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
-import js7.journal.{EventIdGenerator, FileJournal}
 
 /**
   * @author Joacim Zschimmer

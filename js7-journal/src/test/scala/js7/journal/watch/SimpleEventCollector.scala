@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
-import js7.journal.write.EventJournalWriter
+import js7.journal.file.write.EventJournalWriter
 import org.jetbrains.annotations.TestOnly
 import scala.reflect.ClassTag
 

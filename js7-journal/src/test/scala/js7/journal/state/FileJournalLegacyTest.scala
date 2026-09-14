@@ -25,13 +25,14 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer, Stamped}
+import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
+import js7.journal.file.FileJournal
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournalLegacyTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdGenerator, FileJournal}
 import org.apache.pekko.util.Timeout
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.{ExecutionContext, Future}

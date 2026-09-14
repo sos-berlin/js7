@@ -1,4 +1,4 @@
-package js7.journal.write
+package js7.journal.file.write
 
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}

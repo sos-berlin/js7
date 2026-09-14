@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.file
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
@@ -25,9 +25,9 @@ import js7.base.utils.Missing
 import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
-import js7.journal.FileJournalTest.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
+import js7.journal.file.FileJournalTest.*
 import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.test.TestEvent.{Appended, SimpleAdded}
