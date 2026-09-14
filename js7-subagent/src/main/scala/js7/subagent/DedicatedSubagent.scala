@@ -37,7 +37,8 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.{CommitOptions, MemoryJournal, Persisted}
+import js7.journal.memory.MemoryJournal
+import js7.journal.{CommitOptions, Persisted}
 import js7.launcher.StdObservers
 import js7.launcher.StdObservers.OutErrToSink
 import js7.launcher.configuration.JobLauncherConf
