@@ -1,4 +1,4 @@
-package js7.journal
+package js7.journal.actor
 
 import cats.effect.kernel.DeferredSource
 import cats.effect.unsafe.IORuntime
@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTimestampedKeyedEvent, SnapshotableState}
-import js7.journal.JournalActor.*
+import js7.journal.actor.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.file.FileJournal
 import js7.journal.recover.Recovered

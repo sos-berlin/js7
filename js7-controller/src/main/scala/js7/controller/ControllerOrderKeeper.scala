@@ -81,7 +81,8 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.{CommitOptions, JournalActor, JournalingActor, Persisted}
+import js7.journal.actor.{JournalActor, JournalingActor}
+import js7.journal.{CommitOptions, Persisted}
 import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Status, SupervisorStrategy}
 import org.apache.pekko.pattern.pipe
 import scala.collection.immutable.VectorBuilder

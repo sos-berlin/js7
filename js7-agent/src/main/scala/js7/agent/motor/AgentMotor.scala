@@ -28,7 +28,8 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{Event, EventId}
 import js7.data.subagent.SubagentId
-import js7.journal.{FileJournal, Persisted}
+import js7.journal.Persisted
+import js7.journal.file.FileJournal
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import org.apache.pekko.actor.ActorSystem
