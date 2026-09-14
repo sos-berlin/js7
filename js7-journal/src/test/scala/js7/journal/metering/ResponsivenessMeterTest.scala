@@ -17,7 +17,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.FileJournal
 import js7.journal.metering
 import js7.journal.metering.ResponsivenessEvent.InternalResponseTime

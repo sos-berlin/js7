@@ -21,7 +21,7 @@ import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.recover.JournalReader
 import js7.journal.watch.EventReader.*
 import scala.concurrent.duration.FiniteDuration

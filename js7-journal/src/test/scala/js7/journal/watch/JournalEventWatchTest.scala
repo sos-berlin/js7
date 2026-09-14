@@ -29,7 +29,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.file.write.EventJournalWriter
 import js7.journal.watch.JournalEventWatchTest.*

@@ -6,7 +6,7 @@ import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.data.node.NodeId
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration.*
 

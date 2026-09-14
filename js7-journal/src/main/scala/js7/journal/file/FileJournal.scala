@@ -29,7 +29,7 @@ import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState_, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.FileJournal.*
 import js7.journal.file.FileJournalMXBean.Bean
 import js7.journal.file.JournalFiles.extensions.*

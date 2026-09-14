@@ -17,7 +17,7 @@ import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
 import scala.annotation.unused

@@ -7,7 +7,7 @@ import java.nio.file.Path
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.JournalFiles.extensions.listJournalFiles
 import scala.util.control.NonFatal
 

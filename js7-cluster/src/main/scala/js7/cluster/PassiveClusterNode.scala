@@ -53,7 +53,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.FileJournalMXBean
 import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger

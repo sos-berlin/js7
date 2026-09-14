@@ -15,7 +15,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.FileJournalMXBean
 import js7.journal.file.JournalFiles.extensions.file
 import scala.concurrent.duration.*

@@ -19,7 +19,7 @@ import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import org.apache.pekko.util.Timeout
 import scala.jdk.CollectionConverters.*
 

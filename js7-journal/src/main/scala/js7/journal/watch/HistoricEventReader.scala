@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 
 /**
   * @author Joacim Zschimmer

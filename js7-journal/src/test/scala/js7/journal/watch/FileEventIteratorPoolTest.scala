@@ -5,7 +5,7 @@ import java.nio.file.Files
 import js7.base.io.file.FileUtils
 import js7.base.test.OurTestSuite
 import js7.data.event.{EventId, Stamped}
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import js7.journal.file.JournalFiles.extensions.*
 import js7.journal.watch.FileEventIteratorPoolTest.*
 import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}

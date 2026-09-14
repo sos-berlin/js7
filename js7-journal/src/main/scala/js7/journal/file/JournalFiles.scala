@@ -12,7 +12,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.event.EventId
-import js7.journal.data.JournalLocation
+import js7.journal.file.JournalLocation
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
