@@ -52,6 +52,15 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
         .map: value =>
           assert(value == 1)
 
+    "raceMerge" in :
+      IO(1).raceMerge(IO("två").delayBy(1.s))
+        .map: (value: Int | String) =>
+          assert(value == 1)
+      *>
+        IO(1).delayBy(1.s).raceMerge(IO("två"))
+          .map: (value: Int | String) =>
+            assert(value == "två")
+
     "onCancelLazy" - {
       "ERROR: onCancel evaluates the handler even when not canceled" in :
         var canceledEvaluated = false

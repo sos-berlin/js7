@@ -120,6 +120,11 @@ object CatsEffectExtensions:
         case Left((a, bFiber)) => resolve(a).map(a => Left(a -> bFiber))
         case Right((aFiber, b)) => resolve(b).map(b => Right(aFiber -> b))
 
+    /** Like `race(other).map(_.merge)` but returns the union type. */
+    def raceMerge[B](other: IO[B]): IO[A | B] =
+      io.race(other).map:
+        case Left(a) => a
+        case Right(b) => b
 
     def addElapsedToAtomicNanos(atomic: AtomicLong): IO[A] =
       io.timed.map: (duration, result) =>
