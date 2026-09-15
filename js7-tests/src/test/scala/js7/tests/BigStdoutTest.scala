@@ -9,7 +9,6 @@ import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
-import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.job.ShellScriptExecutable
@@ -31,7 +30,6 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    js7.order.stdout-stderr.delay = 999s # No delay should occur in this test!
     """
 
   protected val agentPaths = Seq(agentPath)
