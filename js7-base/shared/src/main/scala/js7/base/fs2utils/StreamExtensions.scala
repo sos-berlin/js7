@@ -17,8 +17,8 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
-import scala.annotation.tailrec
 import org.jetbrains.annotations.TestOnly
+import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -162,9 +162,9 @@ object StreamExtensions:
                 .filter(_.nonEmpty)
               case _ => Stream.empty
 
-    def mapAndRechunkToBytesBuffered[ByteSeq: ByteSequence](chunkSize: Int)(f: O => ByteSeq)
-    : fs2.Stream[F, fs2.Chunk[ByteSeq]] =
-      stream.mapChunkWeighted(f, chunkSize)(_.length)
+    //def mapAndRechunkToBytesBuffered[ByteSeq: ByteSequence](chunkSize: Int)(f: O => ByteSeq)
+    //: fs2.Stream[F, fs2.Chunk[ByteSeq]] =
+    //  stream.mapChunkWeighted(f, chunkSize)(_.length)
 
     /** Like `chunkN` but returns Chunks until a weighted limit is reached.
       * <p>

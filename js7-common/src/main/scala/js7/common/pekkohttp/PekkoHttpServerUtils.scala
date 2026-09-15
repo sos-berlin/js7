@@ -9,9 +9,8 @@ import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteSequence
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, chunkWeighted, mapChunkWeighted}
+import js7.base.fs2utils.StreamExtensions.{chunkLimitBytes, mapChunkWeighted}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
@@ -72,10 +71,10 @@ object PekkoHttpServerUtils:
         stream.chunkLimitBytes(chunkSize)
           .map(_.toByteString)
 
-      /** Buffered, for non-sporadic streams. */
-      def rechunkToByteStringBuffered(chunkSize: Int): fs2.Stream[IO, ByteString] =
-        stream.unchunks.chunkWeighted(chunkSize)(_.length)
-          .map(_.combineAll.toByteString)
+      ///** Buffered, for non-sporadic streams. */
+      //def rechunkToByteStringBuffered(chunkSize: Int): fs2.Stream[IO, ByteString] =
+      //  stream.unchunks.chunkWeighted(chunkSize)(_.length)
+      //    .map(_.combineAll.toByteString)
 
   end extensions
 
