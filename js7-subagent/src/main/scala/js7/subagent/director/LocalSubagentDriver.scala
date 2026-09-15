@@ -122,6 +122,7 @@ extends SubagentDriver, Service.StoppableByRequest:
                   :+ (subagentId <-: SubagentEventsObserved(lastEventId))
               .map(_.orThrow/*???*/)
               .productR:
+                // TODO releaseEvents also when stampedEvents is empty. Use last EventId before handleEvent!
                 releaseEvents(lastEventId).map(_.orThrow/*???*/)
           *>
             followUpAll
