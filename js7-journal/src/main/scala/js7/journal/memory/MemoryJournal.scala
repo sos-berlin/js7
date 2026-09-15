@@ -1,6 +1,6 @@
 package js7.journal.memory
 
-import cats.effect.std.Semaphore
+import cats.effect.std.{Mutex, Semaphore}
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
@@ -32,8 +32,9 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator,
   clock: WallClock,
-  semaphore: Semaphore[IO])
-  (implicit protected val S: JournaledState.Companion[S])
+  semaphore: Semaphore[IO],
+  persistMutex: Mutex[IO])
+  (using protected val S: JournaledState.Companion[S])
 extends
   Journal[S], Service.Trivial:
 
@@ -83,7 +84,7 @@ extends
 
   override protected def persistSingle[E <: Event](persist: Persist[S, E])
   : IO[Checked[Persisted[S, E]]] =
-    aggregateLock.lock:
+    persistMutex.lock.surround:
       IO(_aggregate).flatMap: aggregate =>
         locally:
           for
@@ -207,11 +208,12 @@ object MemoryJournal:
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
     (using JournaledState.Companion[S])
   : ResourceIO[MemoryJournal[S]] =
-    for
-      clock <- Resource.eval(environmentOr[WallClock](WallClock))
-      semaphore <- Resource.eval(Semaphore[IO](size))
-      memoryJournal <- Service.resource:
-        new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
-          clock, semaphore)
-    yield
-      memoryJournal
+    Resource.suspend:
+      for
+        clock <- environmentOr[WallClock](WallClock)
+        semaphore <- Semaphore[IO](size)
+        mutex <- Mutex[IO]
+      yield
+        Service.resource:
+          new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
+            clock, semaphore, mutex)
