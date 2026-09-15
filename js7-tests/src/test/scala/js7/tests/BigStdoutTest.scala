@@ -104,7 +104,6 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
         .as(succeed)
 
   "Speed test big stdout" in:
-    if !isIntelliJIdea then pending // FIXME OutOfMemoryError, maybe due to MemoryJournal's bad limit handling
     val megabytes = sys.props.get("test.speed").map(_.toInt).getOrElse(10)
     logger.info(s"${megabytes}MB")
     assert(megabytes >= 1)
@@ -114,7 +113,9 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
         "stdout" -> NumericConstant(megabytes * 1_000_000))))
     withItem(workflow): workflow =>
       val since = Deadline.now
-      controller.runOrder(FreshOrder(OrderId("SPEED"), workflow.path))
+      val orderId = OrderId("SPEED")
+      addOrder(orderId, workflow.path)
+      controller.awaitNextKey[OrderTerminated](orderId)
       logger.info(s"🔵🔵🔵 ${bytesPerSecondString(since.elapsed, megabytes * 1_000_000)}")
       succeed
 
