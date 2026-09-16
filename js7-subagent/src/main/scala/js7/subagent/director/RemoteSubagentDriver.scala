@@ -62,7 +62,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val resetLock = AsyncLock()
-  private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
+  private val dispatcher = SubagentCommandDispatcher(subagentId, postQueuedCommand)
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
