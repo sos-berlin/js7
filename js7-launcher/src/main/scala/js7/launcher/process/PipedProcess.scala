@@ -121,7 +121,7 @@ final class PipedProcess private(
           IO.fromOutcome(stdoutFailed)
       .logWhenItTakesLonger(StdouterrWorry):
         case (outcome, elapsed, _, sym) =>
-          stdObservers.stdouterrStopped.get.flatMap: stopped =>
+          stdObservers.stdouterrStopper.peek.flatMap: stopped =>
             val what = s"$orderId $pidString: ${stopped ?? "Ignored "}stdout or stderr"
             outcome match
               case None =>
@@ -177,8 +177,8 @@ final class PipedProcess private(
                 else s"due to maxWaitForStdouterr=${maxWaitForStdouterr.fold("")(_.pretty)}"
               logger.warn:
                 s"Ignoring stdout and stderr $cause (maybe a background child process is still running)"
-              // Set stdouterrStopped in foreground, to be sure that no OrderStdWritten event is emitted.
-              stdObservers.stdouterrStopped.set(true) *>
+              // Set stdouterrStopper in foreground, to be sure that no OrderStdWritten event is emitted.
+              stdObservers.stdouterrStopper.stop *>
                 // Cancellation may fail a child process writing to closed stdout or stderr with
                 // EPIPE "Broken pipe".
                 // Because InputStream may block (Linux), we cancel in the background.

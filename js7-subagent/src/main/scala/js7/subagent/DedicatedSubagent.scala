@@ -1,6 +1,5 @@
 package js7.subagent
 
-import cats.effect.std.AtomicCell
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.all.*
@@ -19,8 +18,8 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AtomicStopper, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.EventCalc.given
@@ -400,19 +399,18 @@ extends Service.StoppableByRequest:
     orderId: OrderId,
     outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
   : OutErrToSink =
-    (outErr: StdoutOrStderr, stdouterrStopped: AtomicCell[IO, Boolean]) =>
+    (outErr: StdoutOrStderr, stdouterrStopper: AtomicStopper) =>
       _.map: string =>
         orderId <-: OrderStdWritten(outErr)(string)
       .chunks
       .foreach: events =>
-        // Check stdouterrStopped and emit events atomically
-        stdouterrStopped.evalUpdate: stdouterrStopped =>
-          if stdouterrStopped then
+        // Check stdouterrStopper and emit events atomically
+        stdouterrStopper.resource.use: stopped =>
+          if stopped then
             IO:
               logger.debug(s"outErrToJournalSink($outErr): no more events are accepted:")
               events.asSeq.foreachWithBracket(): (event, br) =>
                 logger.debug(s"$br$event")
-              stdouterrStopped
           else
             // Emit events //
             val charCount = events.iterator.map(_.event.chunk.length).sum
@@ -422,7 +420,6 @@ extends Service.StoppableByRequest:
             .map:
               _.onProblem: problem =>
                 logger.error(s"Emission of OrderStdWritten event failed: $problem")
-            .as(stdouterrStopped)
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

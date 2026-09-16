@@ -1,7 +1,6 @@
 package js7.launcher
 
 import cats.effect.Resource.ExitCase
-import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
 import fs2.{Chunk, Pipe, Stream}
@@ -12,6 +11,7 @@ import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromStr
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.utils.AtomicStopper
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.StdObservers.*
@@ -32,7 +32,7 @@ final class StdObservers private(
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
   val maxWaitForStdouterr: Option[FiniteDuration],
-  val stdouterrStopped: AtomicCell[IO, Boolean],
+  val stdouterrStopper: AtomicStopper,
   name: String):
 
   private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
@@ -106,7 +106,7 @@ final class StdObservers private(
         fs2.text.decodeWithCharset(encoding)
 
   private def pumpToSink(outErr: StdoutOrStderr)(stream: Stream[IO, String]): IO[Unit] =
-    outErrToSink(outErr, stdouterrStopped):
+    outErrToSink(outErr, stdouterrStopper):
       stream
         .pipeIf(outErr == Stderr):
           _.through(lastLineKeeper getOrElse identity)
@@ -120,7 +120,7 @@ final class StdObservers private(
 
 object StdObservers:
 
-  type OutErrToSink = (StdoutOrStderr, AtomicCell[IO, Boolean]) => Pipe[IO, String, Nothing]
+  type OutErrToSink = (StdoutOrStderr, AtomicStopper) => Pipe[IO, String, Nothing]
 
   private val logger = Logger[this.type]
 
@@ -135,7 +135,7 @@ object StdObservers:
     name: String)
   : ResourceIO[StdObservers] =
     for
-      stdouterrStopped <- Resource.eval(AtomicCell[IO].of(false))
+      stdouterrStopper <- Resource.eval(AtomicStopper())
       stdObservers <- Resource.eval:
         for
           outChannel <- Channel.bounded[IO, String](capacity = queueSize)
@@ -146,7 +146,7 @@ object StdObservers:
             chunkSize = chunkSize, delay,
             useErrorLineLengthMax,
             maxWaitForStdouterr = maxWaitForStdouterr,
-            stdouterrStopped,
+            stdouterrStopper,
             name)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield
