@@ -89,10 +89,11 @@ final class ServiceTest extends OurAsyncTestSuite:
     val started = Deferred.unsafe[IO, Unit]
     val canceled = Atomic(false)
     class CancelableService extends Service.StoppableByCancel:
-      protected def startService = runService:
-        started.complete(()) *>
-          IO.never.onCancel(IO:
-            canceled := true)
+      protected def startService =
+        runService:
+          started.complete(()) *>
+            IO.never.onCancel(IO:
+              canceled := true)
 
     Service.resource(new CancelableService)
       .surround:

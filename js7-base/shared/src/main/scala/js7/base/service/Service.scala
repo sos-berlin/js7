@@ -47,7 +47,7 @@ trait Service:
           case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
           case Right(r) => IO.pure(r)
 
-  /** Like `runService`, and logs startService and stop at info level. */
+  /** Like `runService`, and logs start and stop at info level. */
   protected final def startServiceAndLog(logger: Logger, args: String = "")(run: IO[Unit])
   : IO[Running] =
     runService:
