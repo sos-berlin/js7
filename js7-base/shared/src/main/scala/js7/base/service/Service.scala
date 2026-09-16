@@ -20,7 +20,7 @@ trait Service:
   private[Service] val stopped = Deferred.unsafe[IO, Try[Unit]]
 
   protected def startService: IO[Running]
-  protected def stop: IO[Unit]
+  protected def stopService: IO[Unit]
 
   /** Returns an error when Service has failed. */
   final def untilServiceStopped: IO[Unit] =
@@ -133,7 +133,7 @@ object Service:
           case Resource.ExitCase.Errored(t) =>
             IO(logger.debug(s"💥 Stop $service due ${t.toStringWithCauses}"))
         .productR:
-          service.stop.logWhenItTakesLonger(s"stopping $service"))
+          service.stopService.logWhenItTakesLonger(s"stopping $service"))
 
   def restartAfterFailure[Svc <: Service: Tag](
     restartDelayConf: DelayConf = defaultRestartDelayConf,
@@ -163,7 +163,7 @@ object Service:
     protected final def startService =
       stopped.complete(Success(())).as(Running)
 
-    protected final def stop =
+    protected final def stopService =
       IO.unit
 
 

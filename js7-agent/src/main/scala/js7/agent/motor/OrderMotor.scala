@@ -82,8 +82,8 @@ extends Service.StoppableByRequest:
       .guarantee:
         jobMotorKeeper.stop
 
-  override def stop: IO[Unit] =
-    super.stop
+  def stop: IO[Unit] =
+    stopService
 
   private def recoverAgentRefAndJobs: IO[Unit] =
     journal.aggregate.flatMap: agentState =>

@@ -136,7 +136,7 @@ final class ServiceTest extends OurAsyncTestSuite:
   extends Service.StoppableByRequest:
     val running = Deferred.unsafe[IO, Unit]
 
-    override def stop = super.stop
+    def stop = super.stopService
 
     protected def startService =
       runService:

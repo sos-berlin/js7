@@ -90,11 +90,11 @@ extends Service.StoppableByRequest:
   def kill: IO[Unit] =
     logger.debugIO:
       _kill.set(true) *>
-        stop *> subagentKeeper.kill *> journal.kill
+        stopService *> subagentKeeper.kill *> journal.kill
 
   def shutdown(cmd: AgentCommand.ShutDown): IO[Unit] =
     _shutdown.set(cmd) *>
-      stop
+      stopService
 
   def executeCommand(cmd: AgentCommand): IO[Checked[AgentCommand.Response]] =
     cmd match

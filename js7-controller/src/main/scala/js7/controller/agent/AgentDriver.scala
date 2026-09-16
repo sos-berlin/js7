@@ -277,7 +277,7 @@ extends Service.StoppableByRequest:
                 // Required only for ItemDeleted, redundant for ResetAgent
                 resetAgent(Some(agentRunId)).void)
       .productR:
-        stop
+        stopService
 
   def reset(force: Boolean): IO[Checked[Unit]] =
     if force then
@@ -296,7 +296,7 @@ extends Service.StoppableByRequest:
         .flatMap(_.fold(IO.unit):
           _.resetAgentAndStop(agentRunId)) // Stops the directorDriver, too
         .productR:
-          stop
+          stopService
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
     assertThat(stampedEvents.nonEmpty)

@@ -31,7 +31,7 @@ trait StoppableByRequest:
   private val memoizedStop =
     memoize:
       IO.defer:
-        logger.traceIO(s"$toString stop"):
+        logger.traceIO(s"$toString stopService"):
           _isStopping = true
           stopRequested.complete(())
             .productR:
@@ -45,7 +45,7 @@ trait StoppableByRequest:
                   case o => IO.fromOutcome(o)
 
   /** Stop service and await termination. */
-  protected def stop: IO[Unit] =
+  protected def stopService: IO[Unit] =
     memoizedStop
 
   //protected final def initiateStop: IO[Unit] =
@@ -53,7 +53,7 @@ trait StoppableByRequest:
   //    logger.trace(s"$toString initiateStop")
   //    _isStopping = true
   //    stopRequested.complete(()) *>
-  //      stop.startAndForget
+  //      stopService.startAndForget
 
   /** When stop is being requested, cancel the body and throw. */
   protected final def cancelOnServiceStopRequest[A](body: IO[A]): IO[A] =

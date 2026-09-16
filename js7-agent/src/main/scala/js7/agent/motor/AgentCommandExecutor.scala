@@ -301,7 +301,7 @@ extends
         else
           stopAgentMotor(cmd)
       .productR:
-        stop
+        stopService
       .productR:
         shuttingDown.get.map(_ getOrElse cmd).flatMap: runningShutdown =>
           terminated.complete:

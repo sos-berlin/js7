@@ -105,7 +105,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
 
   def terminate: IO[Unit] =
     logger.traceIO:
-      stop
+      stopService
 
   def stopWorkflowJobs(workflow: Workflow) =
     // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)

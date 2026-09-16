@@ -127,7 +127,7 @@ extends Service.StoppableByRequest:
         .map(_.combineAll)
 
   def kill: IO[Unit] =
-    stop
+    stopService
 
   def shutdownLocalSubagent(signal: Option[ProcessSignal], meta: CommandMeta): IO[Unit] =
     logger.traceIO:

@@ -28,7 +28,7 @@ extends Service:
   @volatile private var stopping = false
   private val untilStopRequested = Deferred.unsafe[IO, Unit]
 
-  protected val stop =
+  protected val stopService =
     memoize:
       IO.defer:
         stopping = true

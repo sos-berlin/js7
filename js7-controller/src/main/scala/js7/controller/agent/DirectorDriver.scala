@@ -235,7 +235,7 @@ extends Service.StoppableByRequest:
         case problem @ AgentNotDedicatedProblem =>
           logger.debug(s"resetAgent: $problem")
       .flatTapT: _ =>
-        stop.map(Right(_))
+        stopService.map(Right(_))
 
   private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     logger.debugIO:

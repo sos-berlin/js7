@@ -90,7 +90,7 @@ extends Service.StoppableByRequest:
   private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
   : IO[Unit] =
     stopParams.set(StopParams(signal, dontWaitForDirector)) *>
-      stop
+      stopService
 
   private def stopMe: IO[Unit] =
     logger.debugIO:

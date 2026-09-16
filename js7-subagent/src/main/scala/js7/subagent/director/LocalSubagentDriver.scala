@@ -179,7 +179,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   def terminate: IO[Unit] =
     logger.traceIO:
-      stop
+      stopService
 
   def tryShutdownForRemoval: IO[Unit] =
     IO.raiseError:

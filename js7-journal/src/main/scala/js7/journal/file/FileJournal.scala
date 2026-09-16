@@ -163,8 +163,8 @@ extends
             .as(Left(()))
 
   // TODO Prefer proper initialization and termination order
-  override def stop: IO[Unit] =
-    super.stop
+  def stop: IO[Unit] =
+    stopService
 
   /** For testing a failover. */
   def kill: IO[Unit] =
@@ -174,7 +174,7 @@ extends
         isBeingKilled = true
         whenBeingKilled.complete(()) *>
           noMoreAcks("kill") *>
-          stop
+          stopService
 
   def deleteJournalWhenStopping: IO[Unit] =
     _deleteJournalWhenStopping.set(true)
