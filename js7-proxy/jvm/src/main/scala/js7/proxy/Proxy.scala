@@ -24,11 +24,11 @@ extends MainService, Service.StoppableByCancel:
   protected type Termination = ProgramTermination
 
   val untilTerminated: IO[ProgramTermination] =
-    untilStopped.as(ProgramTermination())
+    untilServiceStopped.as(ProgramTermination())
 
   protected def start =
     startService:
-      untilStopRequested
+      untilServiceStopRequested
 
 
 object Proxy extends ServiceApp:

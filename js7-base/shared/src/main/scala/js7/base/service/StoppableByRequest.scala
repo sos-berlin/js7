@@ -19,13 +19,13 @@ trait StoppableByRequest:
   private val stopRequested = Deferred.unsafe[IO, Unit]
   @volatile private var _isStopping = false
 
-  final def isStopping: Boolean =
+  final def isServiceStopping: Boolean =
     _isStopping
 
   private[service] def onFiberStarted(fiber: FiberIO[Unit]): IO[Unit] =
     this.fiber.complete(fiber).void
 
-  protected final def untilStopRequested: IO[Unit] =
+  protected final def untilServiceStopRequested: IO[Unit] =
     stopRequested.get
 
   private val memoizedStop =
@@ -58,7 +58,7 @@ trait StoppableByRequest:
   /** When stop is being requested, cancel the body and throw. */
   protected final def cancelOnStopRequest[A](body: IO[A]): IO[A] =
     body.raceMerge:
-      untilStopRequested *>
+      untilServiceStopRequested *>
         IO.raiseError_(new IllegalStateException(s"$toString is being stopped"))
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
@@ -68,10 +68,10 @@ trait StoppableByRequest:
     IO(checkNotStopping(context))
 
   protected final def checkNotStopping: Checked[Unit] =
-    !isStopping !! ServiceStoppedProblem(toString)
+    !isServiceStopping !! ServiceStoppedProblem(toString)
 
   protected final def checkNotStopping(context: => String): Checked[Unit] =
-    !isStopping !! ServiceStoppedProblem(toString, context)
+    !isServiceStopping !! ServiceStoppedProblem(toString, context)
 
 
 object StoppableByRequest:

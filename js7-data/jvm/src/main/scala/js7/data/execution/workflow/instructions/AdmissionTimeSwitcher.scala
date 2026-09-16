@@ -47,7 +47,7 @@ extends
     *>
       startService:
         selectTimeIntervalAgainAndAgain.background.surround:
-          untilStopRequested
+          untilServiceStopRequested
         *>
           admissionTimeSwitch.cancelDelay
 
@@ -55,7 +55,7 @@ extends
     selectTimeInterval(IO.defer(selectTimeIntervalAgainAndAgain))
 
   private def selectTimeInterval(onPermissionStartOrEnd: IO[Unit]): IO[Unit] =
-    IO(isStopping).ifFalse: // clock.sleepUntil may be not cancelable
+    IO(isServiceStopping).ifFalse: // clock.sleepUntil may be not cancelable
       admissionTimeSwitch.updateAndCheck:
         onPermissionStartOrEnd
       .flatMap: maybeTimeInterval =>

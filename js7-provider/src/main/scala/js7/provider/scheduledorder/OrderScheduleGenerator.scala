@@ -24,7 +24,7 @@ final class OrderScheduleGenerator private(addOrders: Seq[FreshOrder] => IO[Unit
   protected def start =
     startService:
       generate.background.surround:
-        untilStopRequested
+        untilServiceStopRequested
 
   def replaceGenerators(generators: Seq[ScheduledOrderGenerator]): Unit =
     scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(generators)

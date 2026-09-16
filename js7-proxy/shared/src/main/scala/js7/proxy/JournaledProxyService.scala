@@ -29,7 +29,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
 
   protected def start =
     startService:
-      untilStopRequested.race:
+      untilServiceStopRequested.race:
         supervisor.supervise:
           readAndPublishUnderlyingStream(whenStateFetched)
             .background.surround:
@@ -37,7 +37,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
                 // A started JournalProxy immediately provides `currentState: S`.
                 // Wait until initial S has been read. This may take a long time !!!
                 whenStateFetched.get *>
-                  untilStopRequested
+                  untilServiceStopRequested
       .void
 
   private def readAndPublishUnderlyingStream(whenStateFetched: Deferred[IO, Unit]): IO[Unit] =
@@ -50,7 +50,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
             S.updateStaticReference(eventAndState.state)
             onEvent(eventAndState)
           whenStateFetched.complete(()).void
-        .interruptWhen(untilStopRequested.attempt)
+        .interruptWhen(untilServiceStopRequested.attempt)
         .through:
           topic.publish
         .compile.drain

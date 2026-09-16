@@ -208,7 +208,7 @@ extends Service.StoppableByRequest:
     startService:
       startNewClusterWatch
         .*>(startAndForgetDirectorDriver)
-        .*>(untilStopRequested)
+        .*>(untilServiceStopRequested)
         .guarantee:
           state.releaseEventsCancelable.traverse(_.cancel).void
         .guarantee(directorDriverAllocated.releaseFinally)
@@ -226,14 +226,14 @@ extends Service.StoppableByRequest:
           .flatMap: ok =>
             IO.whenA(ok)(IO
               .race(
-                untilStopRequested,
+                untilServiceStopRequested,
                 IO.sleep(conf.commandBatchDelay)/*TODO Set timer only for the first send*/)
               .flatMap:
                 case Left(()) => IO.unit // stop requested
                 case Right(()) => commandQueue.maybeStartSending
               .handleError(t => logger.error(
                 s"send(${queueables.map(_.toShortString)}) => ${t.toStringWithCauses}", t))
-              .raceMerge(untilStopRequested)
+              .raceMerge(untilServiceStopRequested)
               .startAndForget)
 
   def executeCommandDirectly(command: AgentCommand): IO[Checked[command.Response]] =

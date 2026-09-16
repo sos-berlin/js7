@@ -33,7 +33,7 @@ trait SubagentDriver:
 
   protected def isHeartbeating: Boolean
 
-  protected def isStopping: Boolean
+  protected def isServiceStopping: Boolean
 
   protected def isShuttingDown: Boolean
 
@@ -69,7 +69,7 @@ trait SubagentDriver:
     orderToDeferred.size
 
   final def isCoupled: Boolean =
-    !isStopping &&
+    !isServiceStopping &&
       !isShuttingDown &&
       isHeartbeating &&
       journal.unsafeAggregate()
@@ -119,7 +119,7 @@ trait SubagentDriver:
         val msg = s"❓Unknown Order for event: ${orderId <-: orderProcessed}"
         // Doesn't work. Anyway, we should expect that the Order has been removed due to an error,
         // which should have been handled properly ...
-        //if orderToDeferred.isStopping || orderProcessed.outcome.isProcessLostProblem then
+        //if orderToDeferred.isServiceStopping || orderProcessed.outcome.isProcessLostProblem then
         logger.debug(msg)
         //else
         //  logger.error(msg)

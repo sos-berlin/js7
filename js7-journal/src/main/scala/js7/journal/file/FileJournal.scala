@@ -98,7 +98,7 @@ extends
   eventIdGenerator.updateLastEventId(state.get.uncommitted.eventId)
 
   def isHalted: Boolean =
-    isSwitchedOver || isStopping
+    isSwitchedOver || isServiceStopping
 
   def totalRunningTime: FiniteDuration =
     totalRunningSince.elapsed
@@ -128,7 +128,7 @@ extends
       startCommitter(isStarting = true) *>
         startService:
           snapshotPeriodically.background.surround:
-            IO.race(untilStopRequested, whenCommitterTerminatedUnexpectedly)
+            IO.race(untilServiceStopRequested, whenCommitterTerminatedUnexpectedly)
               .flatMap:
                 case Left(()) => IO.unit
                 case Right(Left(t)) => IO.raiseError(t)

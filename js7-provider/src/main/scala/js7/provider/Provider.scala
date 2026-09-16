@@ -70,14 +70,14 @@ extends
   private val lastEntries = Atomic(Vector.empty[DirectoryReader.Entry])
 
   val untilTerminated: IO[ProgramTermination] =
-    untilStopped.as(ProgramTermination())
+    untilServiceStopped.as(ProgramTermination())
 
   protected def start =
     startService(run)
 
   private def run: IO[Unit] =
     if conf.testSuppressStart then
-      untilStopRequested
+      untilServiceStopRequested
     else
       stream.compile.drain
 

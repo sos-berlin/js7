@@ -43,7 +43,7 @@ extends Actor, Stash:
   def receive: Receive = receiveGet orElse:
     case Input.Store(correlId, eventCalc: EventCalc[S, Event] @unchecked, replyTo, options, since, commitLater, callersItem) =>
       val sender = this.sender()
-      if journal.isStopping then
+      if journal.isServiceStopping then
         //for o <- timestamped do logger.debug:
         //  s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
         // We ignore the event and do not notify the caller,

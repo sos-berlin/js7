@@ -97,7 +97,7 @@ extends Service.StoppableByRequest:
     .evalMap: chunk =>
       chunk.asSeq.foldMap: o =>
         startOrderProcess(o).startAndForget // TODO How to cancel this?
-    .interruptWhenF(untilStopRequested)
+    .interruptWhenF(untilServiceStopRequested)
 
   private val dequeueChunk: IO[Chunk[OrderWithTimeout]] =
     IO.defer:

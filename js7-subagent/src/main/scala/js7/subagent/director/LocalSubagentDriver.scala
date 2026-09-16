@@ -62,7 +62,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   protected def start =
     dedicate.map(_.orThrow) *>
       startService:
-        untilStopRequested
+        untilServiceStopRequested
 
   private def dedicate: IO[Checked[Unit]] =
     logger.debugIO:
@@ -127,7 +127,7 @@ extends SubagentDriver, Service.StoppableByRequest:
           *>
             followUpAll
         // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
-        .interruptWhenF(untilStopRequested)
+        .interruptWhenF(untilServiceStopRequested)
 
   /** Returns optionally the event and a follow-up io. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])

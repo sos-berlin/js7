@@ -62,7 +62,7 @@ extends
       run
 
   val untilTerminated: IO[ProgramTermination] =
-    untilStopped.as(ProgramTermination())
+    untilServiceStopped.as(ProgramTermination())
 
   private def run: IO[Unit] =
     delayConf.onErrorLoop(toString):

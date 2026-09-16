@@ -82,7 +82,7 @@ extends Service.StoppableByRequest:
   private val counters = SubagentProcessCounters()
   @volatile private var started = false // Delays SubagentDriver#startObserving
 
-  journal.untilStopped // TODO Terminate when journal dies
+  journal.untilServiceStopped // TODO Terminate when journal dies
 
   def coupleWithOrderMotor(callback: EventCallback): IO[Unit] =
     logger.debugIO:
@@ -102,7 +102,7 @@ extends Service.StoppableByRequest:
           IO.defer:
             started = true
             IO.both(
-              untilStopRequested *> stopMe,
+              untilServiceStopRequested *> stopMe,
               startObserving
             ).void
 

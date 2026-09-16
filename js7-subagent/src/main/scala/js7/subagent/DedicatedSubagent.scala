@@ -82,7 +82,7 @@ extends Service.StoppableByRequest:
 
   protected def start =
     startService:
-      untilStopRequested *>
+      untilServiceStopRequested *>
         IO.defer:
           stopMe *>
             IO(logger.info(s"$toString stopped"))
@@ -258,7 +258,7 @@ extends Service.StoppableByRequest:
     timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO.defer:
-      if isStopping then
+      if isServiceStopping then
         IO.left(SubagentIsShuttingDownProblem)
       else
         _isUsed = true

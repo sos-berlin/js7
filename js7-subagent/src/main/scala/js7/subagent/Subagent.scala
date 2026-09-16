@@ -93,7 +93,7 @@ extends MainService, Service.StoppableByRequest:
   protected def start =
     startService:
       IO.race(
-        untilStopRequested *>
+        untilServiceStopRequested *>
           shutdown(
             ShutDown(processSignal = Some(SIGKILL), dontWaitForDirector = true),
             CommandMeta.system("Subagent stop")),

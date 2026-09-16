@@ -29,7 +29,7 @@ private[provider] trait Observing:
       .iterable:
         liveStream :: exists(conf.orderGeneratorsDirectory).thenList(orderGeneratorStream)
       .parJoinUnbounded
-      .interruptWhen(untilStopRequested.attempt)
+      .interruptWhen(untilServiceStopRequested.attempt)
 
   private def liveStream: Stream[IO, Unit] =
     observeDirectory(conf.liveDirectory, initiallyUpdateControllerConfiguration(), updateControllerConfiguration())

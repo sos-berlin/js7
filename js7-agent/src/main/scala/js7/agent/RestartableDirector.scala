@@ -58,7 +58,7 @@ extends MainService, Service.StoppableByRequest:
           _currentDirector.set(null)
 
   private def onStopRequested(onStop: IO[Unit]): ResourceIO[Unit] =
-    (untilStopRequested *> onStop).background.void
+    (untilServiceStopRequested *> onStop).background.void
 
   def untilTerminated: IO[DirectorTermination] =
     _untilTerminated.get.dematerialize

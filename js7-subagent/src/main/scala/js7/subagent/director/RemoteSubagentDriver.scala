@@ -86,7 +86,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
     logger.debugIO:
       //previous.stopDispatcherAndEmitProcessLostEvents(None) *>
       IO.race(
-        untilStopRequested,
+        untilServiceStopRequested,
         initiallyCoupled.io)
       .flatMap:
         case Left(())/*stopped*/ => IO.unit
@@ -393,8 +393,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
                 *> retry(())
 
   private def cancelAndFailWhenStopping[A](io: IO[A]): IO[A] =
-    IO
-      .race(untilStopRequested, io)
+    IO.race(untilServiceStopRequested, io)
       .flatMap:
         case Left(()) =>
           logger.debug("◼️ cancelAndFailWhenStopping!")

@@ -94,12 +94,12 @@ extends Service.StoppableByRequest:
       // TODO How to cancel while still waiting for appointment?
       //  Test with PassiveLostControllerClusterTest.
       //.background.surround:
-      //  untilStopRequested
+      //  untilServiceStopRequested
       // Following lines do not cancel untilWorkingNodeStarted:
       .start
       .flatMap: fiber =>
-        IO.race(untilStopRequested, fiber.joinStd)
-      .*>(untilStopRequested)
+        IO.race(untilServiceStopRequested, fiber.joinStd)
+      .*>(untilServiceStopRequested)
       .guaranteeCaseLazy: outcome =>
         logger.debugIO("run guarantee", outcome):
           announceShutdown(ProgramTermination()/*???*/) *>

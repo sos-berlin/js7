@@ -54,7 +54,7 @@ private trait SubagentEventListener:
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit]
   protected def isCoupled: Boolean
   protected def isLocal: Boolean
-  protected def untilStopRequested: IO[Unit]
+  protected def untilServiceStopRequested: IO[Unit]
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
   private val stopObserving = memoize(SignallingRef[IO].of(false))

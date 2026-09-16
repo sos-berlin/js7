@@ -61,7 +61,7 @@ extends
       .requireElementType[Unit]
       .productR:
         startService:
-          untilStopRequested *> stopMe
+          untilServiceStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
     idToStopper.removeAll

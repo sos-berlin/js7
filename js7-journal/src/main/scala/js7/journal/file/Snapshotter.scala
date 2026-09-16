@@ -34,7 +34,7 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
       restartSnapshotTimerSignal.discrete.as(false)
         .keepAlive(conf.snapshotPeriod, IO.True)
         .filter(identity) // let through keep-alives
-        .interruptWhenF(untilStopRequested)
+        .interruptWhenF(untilServiceStopRequested)
         .evalMap: _ =>
           IO.defer:
             logger.debug:
@@ -56,12 +56,12 @@ transparent trait Snapshotter[S <: SnapshotableState[S]]:
         // otherwise no snapshot is taken, and the committer continues.
         // A SnapshotTaken event at the beginning of a journal file increments the EventId.
         IO:
-          (!isStopping || ignoreIsStopping) &&
+          (!isServiceStopping || ignoreIsStopping) &&
             state.get.committed.eventId > lastSnapshotTakenEventId
         .ifTrue:
           IO.uncancelable: _ => // Uncancelable !!!
             stopCommitter >>
-              IO.whenA(!isStopping || ignoreIsStopping):
+              IO.whenA(!isServiceStopping || ignoreIsStopping):
                 startCommitter(isStarting = false)
         .logWhenMethodTakesLonger
 

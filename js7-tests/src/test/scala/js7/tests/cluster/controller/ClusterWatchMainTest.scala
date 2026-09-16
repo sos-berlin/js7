@@ -57,7 +57,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterFor
 
           ClusterWatchMain.runAsTest(args): service =>
             IO.race(
-                service.untilStopped,
+                service.untilServiceStopped,
                 stopClusterWatch.get.to[IO])
               .as(ProgramTermination())
 

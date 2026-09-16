@@ -55,7 +55,7 @@ final class ProxyTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:
             "--data-directory=" + dir)
 
           Proxy.runAsTest(args): service =>
-            IO.race(stopProxy.get, service.untilStopped)
+            IO.race(stopProxy.get, service.untilServiceStopped)
               .as(ProgramTermination())
 
     val runAnOrder = IO:

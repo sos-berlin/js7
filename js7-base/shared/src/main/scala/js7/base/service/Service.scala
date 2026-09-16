@@ -23,21 +23,21 @@ trait Service:
   protected def stop: IO[Unit]
 
   /** Returns an error when Service has failed. */
-  final def untilStopped: IO[Unit] =
+  final def untilServiceStopped: IO[Unit] =
     IO.defer:
       if !started.get() then
         IO.raiseError:
-          Problem.pure(s"$service.untilStopped but service has not been started").throwable
+          Problem.pure(s"$service.untilServiceStopped but service has not been started").throwable
       else
         stopped.get.flatMap(_
           .fold(IO.raiseError, IO(_)))
 
   /** When this Service stopps, cancel the body and fail. */
-  final def failWhenStopped[R](body: IO[R]): IO[R] =
+  final def failWhenServiceStopped[R](body: IO[R]): IO[R] =
     body.start.flatMap: fiber =>
       IO
         .race(
-          service.untilStopped.attempt.flatMap: attempted =>
+          service.untilServiceStopped.attempt.flatMap: attempted =>
             fiber.cancel *>
               attempted.match
                 case Left(throwable) => IO.raiseError(throwable)
@@ -74,7 +74,7 @@ trait Service:
               since.elapsed.map: elapsed =>
                 val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
                 if !t.isInstanceOf[MainServiceTerminationException] then
-                  // A service should not die. The caller should watch untilStopped!
+                  // A service should not die. The caller should watch untilServiceStopped!
                   logger.error(msg, t.nullIfNoStackTrace)
               .as(Failure(t))
 
@@ -176,7 +176,7 @@ object Service:
 
     protected final def start =
       startService:
-        untilStopRequested.guarantee:
+        untilServiceStopRequested.guarantee:
           release
 
 

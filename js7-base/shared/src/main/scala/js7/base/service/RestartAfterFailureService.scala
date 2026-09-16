@@ -62,7 +62,7 @@ extends Service:
         .*>(allocated.release.when(stopping))
 
   private def runUnderlyingService(service: Svc) =
-    runDelayConf.fold(service.untilStopped): delayConf =>
+    runDelayConf.fold(service.untilServiceStopped): delayConf =>
       delayConf.runIO: delayer =>
         service.some.tailRecM: initialService =>
           val service = initialService match
@@ -70,7 +70,7 @@ extends Service:
             case None => startUnderlyingService // Following iterations
           service.flatMap: service =>
             service
-              .untilStopped
+              .untilServiceStopped
               .map(Right(_))
               .handleErrorWith: throwable =>
                 // Service has already logged the throwable

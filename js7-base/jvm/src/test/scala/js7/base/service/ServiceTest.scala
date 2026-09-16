@@ -40,7 +40,7 @@ final class ServiceTest extends OurAsyncTestSuite:
     FailingService
       .resource(onFailed = serviceFailed.complete(()).void)
       .use: service =>
-        serviceFailed.get.delayBy(delay) *> service.untilStopped
+        serviceFailed.get.delayBy(delay) *> service.untilServiceStopped
       .attempt
       .map:
         case Left(FailingService.exception) => succeed
@@ -51,7 +51,7 @@ final class ServiceTest extends OurAsyncTestSuite:
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(onFailed = serviceFailed.complete(()).void)
-      .use(_.untilStopped)
+      .use(_.untilServiceStopped)
       .attempt
       .map:
         case Left(FailingService.exception) => succeed
@@ -101,11 +101,11 @@ final class ServiceTest extends OurAsyncTestSuite:
         assert(canceled.get)
 
 
-  "failWhenStopped" - {
+  "failWhenServiceStopped" - {
     "terminating Service cancels the nested body" in repeatTest(iterations): _ =>
       MyService.resource(_ => ())
         .use: service =>
-          service.failWhenStopped:
+          service.failWhenServiceStopped:
             service.stop *> IO.never
         .attempt.map:
           case Left(exception)
@@ -116,7 +116,7 @@ final class ServiceTest extends OurAsyncTestSuite:
       val failService = Deferred.unsafe[IO, Unit]
       FailingService.resource(whenFail = failService.get)
         .use: service =>
-          service.failWhenStopped:
+          service.failWhenServiceStopped:
             failService.complete(()) *> IO.never
         .attempt.map:
           case Left(FailingService.exception) => succeed
@@ -128,7 +128,7 @@ final class ServiceTest extends OurAsyncTestSuite:
 
     Service.resource(TestService(7)).use: testService =>
       // The trivial service starts and stops in background. So it take a little time.
-      testService.untilStopped.timeout(1.s) *>
+      testService.untilServiceStopped.timeout(1.s) *>
         IO(assert(testService.i == 7))
 
 
@@ -145,7 +145,7 @@ final class ServiceTest extends OurAsyncTestSuite:
           running
             .complete(())
             .productR:
-              untilStopRequested
+              untilServiceStopRequested
             .guaranteeCase: exitCase =>
               IO:
                logger.info(s"$exitCase")
@@ -166,7 +166,7 @@ object ServiceTest:
   extends Service.StoppableByRequest:
     protected def start =
       startService:
-        IO.race(run2, untilStopRequested).void
+        IO.race(run2, untilServiceStopRequested).void
 
     private def run2 =
       whenFail *> IO.raiseError(FailingService.exception).guarantee(onFailed)

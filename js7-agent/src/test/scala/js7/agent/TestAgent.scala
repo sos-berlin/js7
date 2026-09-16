@@ -51,7 +51,7 @@ extends
 
   protected def start: IO[Service.Started] =
     startService:
-      IO.race(untilStopRequested, untilTerminated) *>
+      IO.race(untilServiceStopRequested, untilTerminated) *>
         stopThis
 
   def untilTerminated: IO[DirectorTermination] =

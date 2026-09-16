@@ -257,7 +257,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
 
     def close(): Unit = stillSwitchingOverSchedule.cancel()
 
-  journal.untilStopped.productR(IO(self ! Internal.JournalStopped)).unsafeRunAndForget()
+  journal.untilServiceStopped.productR(IO(self ! Internal.JournalStopped)).unsafeRunAndForget()
 
   override def postStop(): Unit =
     try
@@ -991,7 +991,7 @@ extends Stash, JournalingActor[ControllerState, Event]:
       .logWhenItTakesLonger("registerAgent")
       .awaitInfinite // TODO Blocking
 
-    allocated.allocatedThing.untilStopped
+    allocated.allocatedThing.untilServiceStopped
       .*>(IO:
         self ! Internal.AgentDriverStopped(agent.path))
       .unsafeRunAndForget() // TODO

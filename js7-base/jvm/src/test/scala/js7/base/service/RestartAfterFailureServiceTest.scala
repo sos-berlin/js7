@@ -53,7 +53,7 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
             .use: (service: RestartAfterFailureService[CancelableService]) =>
               // Due to automatic restart, the underlying service may change.
               service.unsafeCurrentService(): CancelableService
-              service.untilStopped
+              service.untilServiceStopped
       .map: _ =>
         assert(elapsedSeq == Seq(
           // (delayed, run duration)
@@ -109,7 +109,7 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
                   if runFails then
                     IO.raiseError(new TestException("run"))
                   else
-                    untilStopRequested >>
+                    untilServiceStopRequested >>
                       IO.raiseWhen(stopFails)(new TestException("stopped")))
               .guarantee(IO:
                 runs -= 1))

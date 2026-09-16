@@ -225,7 +225,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
       yield
         journal
     .use: journal =>
-      journal.failWhenStopped:
+      journal.failWhenServiceStopped:
         tester(journal)
 
   private def info_(line: String) =

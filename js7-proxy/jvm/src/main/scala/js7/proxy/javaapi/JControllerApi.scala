@@ -415,7 +415,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
           _ => (),
           requireFailoverConfirmation = requireFailoverConfirmation,
           config)
-        .flatTap(_.untilStopped)
+        .flatTap(_.untilServiceStopped)
         .as(Void)
 
   @Nonnull

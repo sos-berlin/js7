@@ -58,7 +58,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
       .traverse(_.resource.toAllocated.map(Some(_)))
       .flatMap(portWebServersAllocated.set)
       .*>(startService:
-        untilStopRequested
+        untilServiceStopRequested
           .guarantee(stopPortWebServers))
 
 
@@ -129,7 +129,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
             for t <- throwable.ifStackTrace do logger.debug(s"💥 ${t.toStringWithCauses}", t)
             IO
               .race(
-                untilStopRequested,
+                untilServiceStopRequested,
                 delayer.sleep(logDelay(_, bindingAndResource.toString)))
               .flatMap(_.fold(_ => IO.none/*stop requested*/, _ => retry(())))
         .map(_.map: (fileTimes, allocated) =>

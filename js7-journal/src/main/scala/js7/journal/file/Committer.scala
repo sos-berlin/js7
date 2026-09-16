@@ -110,11 +110,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     protected def start =
       startService:
         IO.uncancelable: _ =>
-          (untilStopRequested *> persistQueue.offer(None))
+          (untilServiceStopRequested *> persistQueue.offer(None))
             .background.surround:
               runCommitPipeline
             .guaranteeCase: outcome =>
-              IO.unlessA(isStopping):
+              IO.unlessA(isServiceStopping):
                 whenBeingKilled.tryGet.map(_.isDefined).flatMap: isKilling =>
                   // Warning might be duplicate with Service warnings?
                   outcome match
@@ -354,7 +354,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
 
     private def maybeDoASnasphot: IO[Unit] =
       IO.defer:
-        IO.whenA(!isStopping && isJournalFileTooBig):
+        IO.whenA(!isServiceStopping && isJournalFileTooBig):
           IO.unlessA(snapshotBecauseBig.getAndSet(true)):
             logger.debug(s"takeSnapshot because written size ${toKBGB(eventWriter.bytesWritten)
               } is above the limit ${toKBGB(conf.fileSizeLimit)}")

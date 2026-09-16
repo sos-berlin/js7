@@ -32,7 +32,7 @@ extends Service.StoppableByRequest:
 
   protected def start =
     startService:
-      untilStopRequested
+      untilServiceStopRequested
         .*>(IO:
           logger.debug(s"watchService.close() — $directory")
           watchService.close())
@@ -43,7 +43,7 @@ extends Service.StoppableByRequest:
         .evalMap(isFirst => IO
           .unlessA(isFirst)(IO.sleep(options.watchDelay)/*collect more events per context switch*/)
           .*>(poll)
-          .raceMerge(untilStopRequested.as(Nil)))
+          .raceMerge(untilServiceStopRequested.as(Nil)))
         .takeWhile(events => !events.contains(Overflow))
         .map(_.asInstanceOf[Seq[DirectoryEvent]])
 

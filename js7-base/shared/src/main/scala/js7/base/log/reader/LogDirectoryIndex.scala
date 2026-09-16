@@ -45,11 +45,11 @@ extends Service.StoppableByRequest:
   protected def start =
     startService:
       deleteTmpFiles(directory, logFilePrefixes) *>
-        untilStopRequested.guarantee:
+        untilServiceStopRequested.guarantee:
           release
 
   private def release =
-    // When `watching` has not been called yet, it will be called now while isStopping = true,
+    // When `watching` has not been called yet, it will be called now while isServiceStopping = true,
     // and return an empty Map.
     lazyPrefixAndLevelToIndex.flatMap:
       _.release /*stop watching*/
@@ -70,7 +70,7 @@ extends Service.StoppableByRequest:
   /** Run a LogIndex for each LogLevel. */
   private def watching: ResourceIO[Map[(String, LogLevel), Allocated[IO, LogIndex]]] =
     Resource.defer:
-      if isStopping then
+      if isServiceStopping then
         Resource.pure(Map.empty)
       else
         logger.traceResource:

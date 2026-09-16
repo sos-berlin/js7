@@ -111,7 +111,7 @@ extends MainService, Service.StoppableByRequest:
                       isTerminating := true
                       whenTerminated.complete(termination).void
       .background.surround:
-        untilStopRequested *> shutdownDueToStop
+        untilServiceStopRequested *> shutdownDueToStop
       .onError: t =>
         agentCommandExecutorDeferred.complete:
           Left(DirectorTerminatedProblem(DirectorTermination()))

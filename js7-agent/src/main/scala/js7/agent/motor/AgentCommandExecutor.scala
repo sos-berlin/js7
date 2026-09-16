@@ -65,7 +65,7 @@ extends
         startAgentMotor(agentState.agentPath, agentState.controllerId).map(_.orThrow)
     *>
       startService:
-        untilStopRequested *>
+        untilServiceStopRequested *>
           stopAgentMotor()
 
   def untilTerminated: IO[DirectorTermination] =
@@ -212,7 +212,7 @@ extends
           startAgentMotor(agentPath, controllerId)
             .rightAs(agentRunId -> persisted.aggregate.eventId)
             .flatTapT: _ =>
-              IO.whenA(isStopping): // Shutdown while being dedicated?
+              IO.whenA(isServiceStopping): // Shutdown while being dedicated?
                 stopAgentMotor()
               .map(Right(_))
 

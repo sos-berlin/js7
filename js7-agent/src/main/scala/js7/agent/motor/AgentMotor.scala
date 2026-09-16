@@ -67,7 +67,7 @@ extends Service.StoppableByRequest:
         startService:
           IO.defer:
             logger.info(s"$agentPath is ready\n" + "─" * 80)
-            untilStopRequested *> stopMe
+            untilServiceStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =
     _kill.get.ifFalse:

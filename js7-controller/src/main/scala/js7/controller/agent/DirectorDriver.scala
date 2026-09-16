@@ -60,16 +60,16 @@ extends Service.StoppableByRequest:
   private val logger = Logger.withPrefix[this.type](s"$agentPath #$index ${client.baseUri}")
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
-  private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
+  private val onFetchedEventsLock = AsyncLock() // Fence for super.isServiceStopping
 
   logger.trace(s"initialEventId=$initialEventId")
 
   protected def start =
     startService:
-      (untilStopRequested *> eventFetcher.stopStreaming)
+      (untilServiceStopRequested *> eventFetcher.stopStreaming)
         .background.surround:
           continuallyFetchEvents *>
-            IO(assertThat(isStopping)) *>
+            IO(assertThat(isServiceStopping)) *>
             //? May block switch-over when JournalActor does not respond to Events (due to
             // switch-over).
             //? onFetchedEventsLock.lock(IO.unit) *>
@@ -145,8 +145,8 @@ extends Service.StoppableByRequest:
             dontLog = true)
           .map(_.map(_
             .recoverWith(PekkoHttpClient.warnIdleTimeout)
-            .interruptWhenF(untilStopRequested)))
-          .race(untilStopRequested)
+            .interruptWhenF(untilServiceStopRequested)))
+          .race(untilServiceStopRequested)
           .flatMap:
             case Left(checkedStream) => IO.pure(checkedStream)
             case Right(()) => IO.right(Stream.empty)
@@ -168,7 +168,7 @@ extends Service.StoppableByRequest:
         onDecoupled_
           .as(Completed)
 
-    protected def stopRequested = directorDriver.isStopping
+    protected def stopRequested = directorDriver.isServiceStopping
 
   private def continuallyFetchEvents: IO[Unit] =
    logger.traceIO:
@@ -178,10 +178,10 @@ extends Service.StoppableByRequest:
         eventFetcher.decouple
           .*>(eventFetcher
             .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
-            .raceMerge(untilStopRequested))
+            .raceMerge(untilServiceStopRequested))
           .void
           .handleError(t => logger.error(t.toStringWithCauses, t))
-          .*>(IO.defer(IO.unlessA(isStopping):
+          .*>(IO.defer(IO.unlessA(isServiceStopping):
             again(())))
       .guarantee:
         untilFetchingStopped.complete(()).void
@@ -196,7 +196,7 @@ extends Service.StoppableByRequest:
               stream.chunks
             else
               stream.groupWithin(chunkSize = conf.eventBufferSize, delay)
-          .interruptWhenF(untilStopRequested)
+          .interruptWhenF(untilServiceStopRequested)
           .evalMapChunk: chunk =>
             // When the other cluster node may have failed-over,
             // wait until we know that it hasn't (or this node is aborted).
@@ -211,9 +211,9 @@ extends Service.StoppableByRequest:
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
     onFetchedEventsLock.lock(logger.traceIO(IO.defer:
       assertThat(stampedEvents.nonEmpty)
-      if isStopping then
+      if isServiceStopping then
         IO(logger.debug:
-          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping")
+          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isServiceStopping")
       else
         IO.uncancelable: _ =>
           // Update of adoptedEventId and adoptEvents must run atomically
@@ -259,7 +259,7 @@ extends Service.StoppableByRequest:
   : IO[Checked[command.Response]] =
     IO
       .race(
-        untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
+        untilServiceStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
         client.commandExecute(command)
           // We don't allow cancellation because we cannot know whether
           // the command has or will be executed.

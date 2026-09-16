@@ -42,7 +42,7 @@ extends Service.StoppableByRequest:
   : IO[Unit] =
     DirectoryStateJvm.readDirectory(directory, files).flatMap: directoryState =>
       DirectoryWatch.stream(directory, directoryState, settings, files)
-        .interruptWhenF(untilStopRequested)
+        .interruptWhenF(untilServiceStopRequested)
         .debounce(settings.directorySilence) // Löscht DirectoryEvents! Sie werden nicht gebraucht
         .tapEachChunk: events =>
           logger.debug:

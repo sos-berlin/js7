@@ -20,7 +20,7 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
       fs2.Stream.fixedRate[IO](conf.logEvery).evalTap: _ =>
         IO:
           logAndStartNewDiff(LogLevel.Trace)
-      .interruptWhenF(untilStopRequested)
+      .interruptWhenF(untilServiceStopRequested)
       .compile.drain
       .guarantee:
         IO(logAndStartNewDiff(LogLevel.Debug))

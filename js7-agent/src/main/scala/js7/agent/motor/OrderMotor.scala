@@ -68,7 +68,7 @@ extends Service.StoppableByRequest:
           run
 
   private def run: IO[Unit] =
-    (untilStopRequested *> orderQueue.offer(None))
+    (untilServiceStopRequested *> orderQueue.offer(None))
       .background.surround:
         pipeline.compile.drain
       .guarantee:
