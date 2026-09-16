@@ -651,13 +651,6 @@ extends Service.StoppableByRequest:
       .update(state => IO(state.removeBundle(subagentBundleId)))
       .void
 
-  def testFailover(): Unit =
-    stateVar.get.idToDriver.values
-      .collect:
-        case o: LocalSubagentDriver[?] => o
-      .foreach:
-        _.testFailover()
-
   override def toString = s"SubagentKeeper(${orderToSubagent.size} processing orders)"
 
 
@@ -751,7 +744,7 @@ object SubagentKeeper:
                   processCount(bundleId, subagentId)
 
             case _ => None
-    
+
     private def processCount(subagentId: SubagentId): Int =
       subagentToCounter.getOrElse(subagentId, 0)
 

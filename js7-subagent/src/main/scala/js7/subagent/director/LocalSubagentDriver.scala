@@ -51,7 +51,6 @@ extends SubagentDriver, Service.StoppableByRequest:
   // isDedicated when this Director gets activated after fail-over.
   private val wasRemote = subagent.isDedicated
   protected val api = new LocalSubagentApi(subagent)
-  @volatile private var _testFailover = false
 
   subagent.suppressJournalLogging(true) // Events are logged by the Director's Journal
 
@@ -187,7 +186,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    if wasRemote /*&& false ???*/ then
+    if wasRemote then
       // The Order may have not yet been started (only OrderProcessingStarted emitted)
       // idempotent operation:
       startOrderProcessing(order, timeoutAt = order.state.timeoutAt)
@@ -275,16 +274,11 @@ extends SubagentDriver, Service.StoppableByRequest:
           case _ =>
             OrderProcessed(OrderOutcome.Disrupted(problem))
 
-        locally:
-          if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed] then
-            IO(logger.warn:
-              s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed")
-          else
-            journal.persist(order.id <-: orderProcessed)
-              .orThrow
-              .productR:
-                deferred.complete(orderProcessed).void
-        .startAndForget
+        journal.persist(order.id <-: orderProcessed)
+          .orThrow
+          .productR:
+            deferred.complete(orderProcessed).void
+          .startAndForget
 
   def shutdownSubagent(cmd: SubagentCommand.ShutDown, meta: CommandMeta): IO[ProgramTermination] =
     subagent.shutdown(cmd, meta) <*
@@ -327,9 +321,6 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   private def executeCommand(cmd: SubagentCommand): IO[Checked[SubagentCommand.Response]] =
     api.executeSubagentCommand(Numbered(0, cmd))
-
-  def testFailover(): Unit =
-    _testFailover = true
 
   override def toString =
     s"LocalSubagentDriver(${subagentItem.pathRev})"
