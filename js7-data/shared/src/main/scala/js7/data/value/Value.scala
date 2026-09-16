@@ -17,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.ExprFunction
+import scala.annotation.targetName
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -258,6 +259,7 @@ object Value:
     given Conversion[BigDecimal, NumberValue] = NumberValue(_)
     given Conversion[String, StringValue] = StringValue(_)
     given Conversion[Iterable[Value], ListValue] = ListValue(_)
+    given intsToListValue: Conversion[Iterable[Int], ListValue] = ListValue(_)
 
 /** ValueType for any Value. */
 object AnyValue extends ValueType:
@@ -455,10 +457,14 @@ final case class ListValue private(elements: Vector[Value]) extends GoodValue:
 
 object ListValue extends GoodValue.Companion[ListValue], ValueType.Compound:
   val name = "List"
-  val empty: ListValue = ListValue(Vector.empty)
+  val empty: ListValue = new ListValue(Vector.empty)
 
   def apply(elements: Iterable[Value]): ListValue =
     new ListValue(elements.toVector)
+
+  @targetName("fromInts")
+  def apply(elements: Iterable[Int]): ListValue =
+    ListValue(elements.map(NumberValue(_)))
 
   @javaApi @Nonnull def of(@Nonnull values: java.util.List[Value]): ListValue =
     ListValue(values.asScala.toVector)

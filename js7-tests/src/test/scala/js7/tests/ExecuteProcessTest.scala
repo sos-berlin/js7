@@ -6,6 +6,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -13,14 +14,16 @@ import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.value.Value.convenience.given
-import js7.data.workflow.instructions.Execute
+import js7.data.value.Value.convenience.{given_Conversion_Int_NumberValue, given}
+import js7.data.value.expression.Expression.{expr, exprFun}
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, ForkList}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteProcessTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
+import scala.concurrent.duration.Deadline
 import scala.language.implicitConversions
 
 final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -87,11 +90,9 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
               |set -euo pipefail
               |( trap "" SIGTERM
               |  echo "+++ CHILD +++"
-              |  # ❓The following two lines would let the child process exit,
-              |  # possibly due to some bash or linux mechanics.
-              |  #sleep 0.1
-              |  #echo "+++ CHILD 2 +++"
-              |  sleep 1
+              |  sleep 0.2
+              |  echo "+++ CHILD 2 +++"
+              |  sleep 0.5
               |  echo "+++ CHILD FINISHED +++"
               |) &
               |sleep 0.2
@@ -117,6 +118,7 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
         OrderStdoutWritten("+++ CHILD +++\n"),
+        OrderStdoutWritten("+++ CHILD 2 +++\n"),
         OrderProcessed(OrderOutcome.Succeeded(Map("returnCode" -> 0))),
         OrderMoved(Position(1), None),
         OrderDetachable,
@@ -125,8 +127,40 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         OrderDeleted))
 
       // Be sure that no OrderStdoutWritten event is emitted after the OrderProcessed event
-      // Otherwise, the Subagent would fail here due to .orThrow
+      // Otherwise, the Subagent would crash here due to .orThrow after persist operation.
       sleepUntil(processedAt + 1.s)
+
+
+  "Multiple processes" in:
+    val n = 100
+    val childSleep = if isIntelliJIdea then 10.s else 77.s
+    withItem(
+      Workflow.of(WorkflowPath("WORKFLOW"),
+        ForkList(
+          children = expr"$$children",
+          childToId = exprFun"o => $$o",
+          childToArguments = exprFun"o => {}",
+          Workflow.of:
+            Execute(WorkflowJob(
+              agentPath,
+              ShellScriptExecutable(
+                s"""#!/usr/bin/env bash
+                  |set -euo pipefail
+                  |( #trap "" SIGTERM
+                  |  echo "+++ CHILD +++"
+                  |  sleep ${childSleep.toDecimalString}
+                  |  echo "+++ CHILD FINISHED +++"
+                  |) &
+                  |sleep 1
+                  |""".stripMargin),
+              processLimit = n,
+              maxWaitForStdouterr = Some(200.ms)))))
+    ): workflow =>
+      val t = Deadline.now
+      runOrder(FreshOrder(OrderId("FORK"), workflow.path, Map(
+        "children" -> (1 to n))))
+      assert(t.elapsed < childSleep)
+
 
   "Cancel while waiting for stdout of background child process" in:
     withItem(
