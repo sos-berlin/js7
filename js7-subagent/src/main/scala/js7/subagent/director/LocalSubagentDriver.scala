@@ -27,7 +27,7 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
-import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent, SubagentRunId}
+import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent}
 import js7.data.workflow.Workflow
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.{CommitOptions, Journal}
@@ -49,8 +49,9 @@ extends SubagentDriver, Service.StoppableByRequest:
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val whenSubagentShutdown = Deferred.unsafe[IO, Unit]
   // isDedicated when this Director gets activated after fail-over.
-  private val wasRemote = subagent.isDedicated
-  protected val api = new LocalSubagentApi(subagent)
+  private val wasRemoteAndDedicatedBeforeFailover = subagent.isDedicated
+  protected val api = LocalSubagentApi(subagent)
+  @volatile private var _testFailover = false
 
   subagent.suppressJournalLogging(true) // Events are logged by the Director's Journal
 
@@ -65,25 +66,21 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   private def dedicate: IO[Checked[Unit]] =
     logger.debugIO:
-      IO.defer:
-        if wasRemote then
-          IO.right(())
-        else
-          val agentRunId = journal.unsafeAggregate().agentRunId
-          subagent
-            .executeDedicateSubagent:
-              DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
-            .flatMapT: response =>
-              persistDedicated(response.subagentRunId)
-
-  private def persistDedicated(subagentRunId: SubagentRunId): IO[Checked[Unit]] =
-    journal.persist: state =>
-      state.idToSubagentItemState.get(subagentId)
-        .exists(_.subagentRunId.nonEmpty).thenVector:
-          subagentId <-: SubagentRestarted
-        .appended:
-          subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))
-    .rightAs(())
+      if wasRemoteAndDedicatedBeforeFailover then
+        IO.right(())
+      else
+        journal.aggregate.map(_.agentRunId).flatMap: agentRunId =>
+          subagent.executeDedicateSubagent:
+            DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
+          .flatMapT: response =>
+            import response.subagentRunId
+            journal.persist: state =>
+              state.idToSubagentItemState.get(subagentId)
+                .exists(_.subagentRunId.nonEmpty).thenVector:
+                  subagentId <-: SubagentRestarted
+                .appended:
+                  subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))
+            .rightAs(())
 
   def startObserving: IO[Unit] =
     journal.aggregate.map:
@@ -186,7 +183,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    if wasRemote then
+    if wasRemoteAndDedicatedBeforeFailover then
       // The Order may have not yet been started (only OrderProcessingStarted emitted)
       // idempotent operation:
       startOrderProcessing(order, timeoutAt = order.state.timeoutAt)

@@ -7,6 +7,7 @@ import cats.syntax.option.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
+import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.Completed
@@ -53,7 +54,6 @@ private trait SubagentEventListener:
   protected def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]]
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit]
   protected def isCoupled: Boolean
-  protected def isLocal: Boolean
   protected def untilServiceStopRequested: IO[Unit]
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
@@ -71,12 +71,12 @@ private trait SubagentEventListener:
   protected final def stopEventListener: IO[Unit] =
     lock.lock:
       logger.debugIO:
-        IO.defer(IO.whenA(isListening.getAndSet(false)):
-          stopObserving
-            .flatMap(_.set(true))
-            .*>(IO.defer:
-              observing.joinStd))
-          .logWhenMethodTakesLonger
+        IO(isListening.getAndSet(false)).ifTrue:
+          stopObserving.flatMap(_.set(true))
+            .productR:
+              IO.defer:
+                observing.joinStd
+            .logWhenMethodTakesLonger
 
   protected final def startEventListener: IO[Unit] =
     lock.lock:
@@ -91,12 +91,12 @@ private trait SubagentEventListener:
               stopObserving.flatMap:
                 _.getAndDiscreteUpdates.use: (o, stream) =>
                   observeEvents(stopRequested = o +: stream)
-            .onError(t => IO:
+            .onError: t =>
               // We have a problem
-              logger.error(s"observeEvents failed: ${t.toStringWithCauses}"))
+              IO(logger.error(s"observeEvents failed: ${t.toStringWithCauses}"))
             .start
-            .flatMap(fiber => IO:
-              observing = fiber)
+            .map: fiber =>
+              observing = fiber
 
   private def observeEvents(stopRequested: Stream[IO, Boolean]): IO[Unit] =
     logger.debugStream:
@@ -231,25 +231,6 @@ private trait SubagentEventListener:
                     onSubagentDecoupled(problem.some))
               .onFinalize:
                 onSubagentDecoupled(problem = None)) // Since v2.7
-              //.guaranteeCase(exitCase => IO.defer {
-              //  // guaranteeCase runs concurrently, maybe with onDecoupled ?
-              //  IO.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
-              //    stopObserving.flatMap(_.tryRead).map(_.isDefined)
-              //      .flatMap(stopped =>
-              //        if (stopped) {
-              //          logger.debug("stopped")
-              //          IO.unit
-              //        } else {
-              //          val problem = exitCase match {
-              //            case ExitCase.Completed =>
-              //              Problem.pure(s"$subagentId event stream has ended")
-              //            case _ =>
-              //              Problem.pure(s"$subagentId event stream: $exitCase")
-              //          }
-              //          logger.warn(problem.toString)
-              //          onSubagentDecoupled(Some(problem))
-              //        }))
-              //}))
             .map(Right(_))
 
       override protected def onCouplingFailed(api: HttpSubagentApi, problem: Problem) =
@@ -274,8 +255,6 @@ private trait SubagentEventListener:
 
       protected def stopRequested = false
 
-  protected def isShuttingDown: Boolean // Since v2.7
-
   private def onHeartbeatStarted: IO[Unit] =
     IO.defer:
       val wasHeartbeating = _isHeartbeating.getAndSet(true)
@@ -286,11 +265,7 @@ private trait SubagentEventListener:
         journal.persist(subagentId <-: SubagentCoupled)
           .map(_.orThrow)
 
-  //private def isCouplingStateCoupled: Boolean =
-  //  journal.unsafeAggregate().idToSubagentItemState(subagentId).couplingState ==
-  //    DelegateCouplingState.Coupled
-
-  protected final def isHeartbeating = isLocal || _isHeartbeating.get()
+  protected final def isHeartbeating = _isHeartbeating.get()
 
   final def serverMeteringScope(): Option[Scope] =
     try
@@ -310,5 +285,5 @@ private trait SubagentEventListener:
       if !isListening.get() then
         IO(logger.debug(s"onSubagentDecoupled $problem"))
       else
-        IO.whenA(true || isCoupled):
+        IO.whenA(true):
           emitSubagentCouplingFailed(problem)

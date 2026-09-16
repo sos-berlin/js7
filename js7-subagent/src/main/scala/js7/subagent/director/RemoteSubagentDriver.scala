@@ -68,9 +68,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var shuttingDown = false
 
-  def isLocal: Boolean =
-    assert(!api.isLocal) // TODO Always false
-    api.isLocal
+  assert(!api.isLocal)
 
   protected def isShuttingDown = shuttingDown
 
