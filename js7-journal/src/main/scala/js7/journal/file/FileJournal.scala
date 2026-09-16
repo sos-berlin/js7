@@ -110,7 +110,7 @@ extends
   def suppressSnapshotWhenStopping(): Unit =
     _suppressSnapshotWhenStopping = true
 
-  protected def start =
+  protected def startService =
     IO.defer:
       bean.totalOperatingTimeUntilStart := lastJournalHeader.totalRunningTime
       for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")

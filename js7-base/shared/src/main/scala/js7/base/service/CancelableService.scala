@@ -5,7 +5,7 @@ import cats.effect.{IO, ResourceIO}
 final class CancelableService private(protected val run: IO[Unit])
 extends Service.StoppableByRequest:
 
-  protected def start =
+  protected def startService =
     runService(IO
       .race(untilServiceStopRequested, run) // Cancels run
       .map(_.merge))

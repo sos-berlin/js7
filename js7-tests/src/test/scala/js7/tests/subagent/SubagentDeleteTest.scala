@@ -78,7 +78,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
         eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId,
           timeout = 1.s)
 
-      // Don't allow orders to start while SubagentItem is deleted
+      // Don't allow orders to startService while SubagentItem is deleted
       eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
       intercept[TimeoutException]:

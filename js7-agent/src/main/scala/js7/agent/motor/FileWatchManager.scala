@@ -50,7 +50,7 @@ extends
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, IO[Unit]])
 
-  protected def start =
+  protected def startService =
     journal.aggregate
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_

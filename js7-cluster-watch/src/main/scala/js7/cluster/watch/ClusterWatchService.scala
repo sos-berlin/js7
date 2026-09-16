@@ -57,7 +57,7 @@ extends
 
   export clusterWatch.{manuallyConfirmNodeLoss, clusterNodeLossEventToBeConfirmed, clusterState}
 
-  protected def start =
+  protected def startService =
     startServiceAndLog(logger, nodeApis.mkString(", ")):
       run
 

@@ -26,7 +26,7 @@ extends MainService, Service.StoppableByCancel:
   val untilTerminated: IO[ProgramTermination] =
     untilServiceStopped.as(ProgramTermination())
 
-  protected def start =
+  protected def startService =
     runService:
       untilServiceStopRequested
 

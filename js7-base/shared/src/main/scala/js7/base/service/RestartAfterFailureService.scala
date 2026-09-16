@@ -35,7 +35,7 @@ extends Service:
         untilStopRequested.complete(()) *>
           currentAllocatedService.get().fold(IO.unit)(_.release)
 
-  protected def start =
+  protected def startService =
     for
       service <- startUnderlyingService
       started <- runService(runUnderlyingService(service))

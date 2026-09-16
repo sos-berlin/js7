@@ -18,7 +18,7 @@ private final class HttpsDirectoryWatch private(
   onHttpsKeyOrCertChanged: IO[Unit])
 extends Service.StoppableByRequest:
 
-  protected def start =
+  protected def startService =
     watchDirectories.start
       .flatMap: watching =>
         runService:

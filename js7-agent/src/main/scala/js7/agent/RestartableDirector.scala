@@ -32,7 +32,7 @@ extends MainService, Service.StoppableByRequest:
   private val _currentDirector = AsyncVariable[RunningAgent | Null](null)
   private val _untilTerminated = Deferred.unsafe[IO, Try[DirectorTermination]]
 
-  protected def start =
+  protected def startService =
     runService:
       loop.flatMap: termination =>
         _untilTerminated.complete(Success(termination)).void

@@ -72,7 +72,7 @@ extends
   val untilTerminated: IO[ProgramTermination] =
     untilServiceStopped.as(ProgramTermination())
 
-  protected def start =
+  protected def startService =
     runService(run)
 
   private def run: IO[Unit] =

@@ -204,7 +204,7 @@ extends Service.StoppableByRequest:
             commandQueue.handleBatchFailed(queueables, delay = true)
   end commandQueue
 
-  protected def start =
+  protected def startService =
     runService:
       startNewClusterWatch
         .*>(startAndForgetDirectorDriver)

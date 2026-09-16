@@ -40,7 +40,7 @@ extends Service.StoppableByCancel:
   def onMetered(callback: MeterCallback): IO[Unit] =
     this.callback.set(callback)
 
-  protected def start =
+  protected def startService =
     runService:
       IO.sleep(initialDelay) *>
         MBeanUtils.registerMBean[IO]("InternalResponsiveness", bean).surround:

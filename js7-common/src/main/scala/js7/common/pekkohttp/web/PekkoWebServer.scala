@@ -53,7 +53,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   private val portWebServersAllocated =
     AsyncVariable[Vector[Option[Allocated[IO, SinglePortPekkoWebServer]]]](Vector.empty)
 
-  protected def start =
+  protected def startService =
     bindingAndResources
       .traverse(_.resource.toAllocated.map(Some(_)))
       .flatMap(portWebServersAllocated.set)

@@ -97,7 +97,7 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
 
       private lazy val unique = uniqueCounter.getAndAdd(1)
 
-      protected def start =
+      protected def startService =
         IO.defer:
           if startFailsRandomly && Random.nextBoolean() then
             IO.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))

@@ -59,7 +59,7 @@ extends
   private val terminated = Deferred.unsafe[IO, DirectorTermination]
   private var _isShuttingDown = false
 
-  protected def start =
+  protected def startService =
     journal.aggregate.flatMap: agentState =>
       IO.whenA(agentState.isDedicated):
         startAgentMotor(agentState.agentPath, agentState.controllerId).map(_.orThrow)

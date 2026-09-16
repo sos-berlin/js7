@@ -82,7 +82,7 @@ extends Service.StoppableByRequest:
           logger.info(t.getMessage)
           Left(ProgramTermination.Restart)
 
-  protected def start =
+  protected def startService =
     runService(run)
 
   private def run =

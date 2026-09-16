@@ -50,7 +50,7 @@ object ServiceMainTest:
   private class TerminatingService extends MainService, StoppableByRequest:
     protected type Termination = ProgramTermination
 
-    protected def start =
+    protected def startService =
       runService:
         IO.raiseError:
           new MainServiceTerminationException:

@@ -19,7 +19,7 @@ trait Service:
   private val started = Atomic(false)
   private[Service] val stopped = Deferred.unsafe[IO, Try[Unit]]
 
-  protected def start: IO[Running]
+  protected def startService: IO[Running]
   protected def stop: IO[Unit]
 
   /** Returns an error when Service has failed. */
@@ -47,7 +47,7 @@ trait Service:
           case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
           case Right(r) => IO.pure(r)
 
-  /** Like `runService`, and logs start and stop at info level. */
+  /** Like `runService`, and logs startService and stop at info level. */
   protected final def startServiceAndLog(logger: Logger, args: String = "")(run: IO[Unit])
   : IO[Running] =
     runService:
@@ -119,8 +119,8 @@ object Service:
           if service.started.getAndSet(true) then
             IO.raiseError(IllegalStateException(s"$toString service started twice"))
           else
-            //logger.traceF(s"$service start"):
-            service.start
+            //logger.traceF(s"$service startService"):
+            service.startService
               .onError: t =>
                 IO:
                   // Maybe duplicate, but some tests don't propagate this error and silently deadlock
@@ -160,7 +160,7 @@ object Service:
     * Nothing is logged.
     */
   trait Trivial extends Service:
-    protected final def start =
+    protected final def startService =
       stopped.complete(Success(())).as(Running)
 
     protected final def stop =
@@ -174,7 +174,7 @@ object Service:
   trait TrivialReleasable extends Releasable[IO], StoppableByRequest:
     protected def release: IO[Unit]
 
-    protected final def start =
+    protected final def startService =
       runService:
         untilServiceStopRequested.guarantee:
           release

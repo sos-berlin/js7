@@ -15,7 +15,7 @@ final class CallMeterLoggingService private[CallMeterLoggingService](conf: Conf)
 
   private val lastMeasurements = mutable.Map.empty[String, Measurement]
 
-  protected def start =
+  protected def startService =
     runService:
       fs2.Stream.fixedRate[IO](conf.logEvery).evalTap: _ =>
         IO:

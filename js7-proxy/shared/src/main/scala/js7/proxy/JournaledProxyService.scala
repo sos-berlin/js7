@@ -27,7 +27,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   private val whenStateFetched = Deferred.unsafe[IO, Unit]
   @volatile private var _currentState: S | Null = null
 
-  protected def start =
+  protected def startService =
     runService:
       untilServiceStopRequested.race:
         supervisor.supervise:

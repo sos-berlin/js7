@@ -59,7 +59,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   protected def isShuttingDown = false
 
-  protected def start =
+  protected def startService =
     dedicate.map(_.orThrow) *>
       runService:
         untilServiceStopRequested

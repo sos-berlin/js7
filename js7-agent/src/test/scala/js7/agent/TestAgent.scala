@@ -49,7 +49,7 @@ extends
 
   private val ioRuntime = allocated.allocatedThing.ioRuntime
 
-  protected def start: IO[Service.Running] =
+  protected def startService: IO[Service.Running] =
     runService:
       IO.race(untilServiceStopRequested, untilTerminated) *>
         stopThis

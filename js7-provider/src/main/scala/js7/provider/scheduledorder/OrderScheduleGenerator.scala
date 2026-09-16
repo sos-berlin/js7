@@ -21,7 +21,7 @@ final class OrderScheduleGenerator private(addOrders: Seq[FreshOrder] => IO[Unit
   private val addEarlier = config.getDuration("js7.provider.add-orders-earlier").toFiniteDuration
   @volatile private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(Nil)
 
-  protected def start =
+  protected def startService =
     runService:
       generate.background.surround:
         untilServiceStopRequested

@@ -53,7 +53,7 @@ extends Service.StoppableByRequest:
   private val _shutdown = Ref.unsafe[IO, ShutDown](ShutDown())
   private val _kill = Ref.unsafe[IO, Boolean](false)
 
-  protected def start =
+  protected def startService =
     journal.aggregate.flatMap: agentState =>
       journal.persist:
         AgentReady(

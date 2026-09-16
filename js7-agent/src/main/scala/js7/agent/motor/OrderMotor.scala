@@ -59,7 +59,7 @@ extends Service.StoppableByRequest:
     val orderQueueLength = Atomic(0)
     def getOrderQueueLength = orderQueueLength.get
 
-  protected def start =
+  protected def startService =
     subagentKeeper.coupleWithOrderMotor(onSubagentEvents)
       .productR:
         recoverAgentRefAndJobs

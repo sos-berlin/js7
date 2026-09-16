@@ -65,7 +65,7 @@ extends Service.StoppableByCancel:
         logFile.filename -> instant
       .toMap
 
-  protected def start =
+  protected def startService =
     runService:
       run.guarantee:
         release

@@ -46,7 +46,7 @@ extends
   def publicKeyOrigin: String =
     "(DirectoryWatchingSignatureVerifier)"
 
-  protected def start =
+  protected def startService =
     companionToDirectory
       .toVector
       .traverse: (companion, directory) =>

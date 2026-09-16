@@ -90,7 +90,7 @@ extends MainService, Service.StoppableByRequest:
 
   val forDirector: ForDirector = toForDirector(this)
 
-  protected def start =
+  protected def startService =
     runService:
       IO.race(
         untilServiceStopRequested *>

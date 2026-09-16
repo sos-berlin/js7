@@ -39,7 +39,7 @@ extends
   def admissionSignal: Signal[IO, Option[TimeInterval]] =
     currentAdmissionTimeSignal
 
-  protected def start =
+  protected def startService =
     // First Signal will be duplicated by selectTimeInterval — TODO optimise this
     clock.nowIO.flatMap: now =>
       currentAdmissionTimeSignal.set:

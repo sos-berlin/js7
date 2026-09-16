@@ -80,7 +80,7 @@ extends Service.StoppableByRequest:
   def isShuttingDown: Boolean =
     _shuttingDown
 
-  protected def start =
+  protected def startService =
     runService:
       untilServiceStopRequested *>
         IO.defer:

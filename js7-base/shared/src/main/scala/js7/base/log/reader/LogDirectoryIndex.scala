@@ -42,7 +42,7 @@ extends Service.StoppableByRequest:
     memoize:
       watching.toAllocated
 
-  protected def start =
+  protected def startService =
     runService:
       deleteTmpFiles(directory, logFilePrefixes) *>
         untilServiceStopRequested.guarantee:

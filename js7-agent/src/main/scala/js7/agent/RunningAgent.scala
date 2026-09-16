@@ -78,7 +78,7 @@ extends MainService, Service.StoppableByRequest:
     logger.traceIOWithResult:
       whenTerminated.get
 
-  protected def start =
+  protected def startService =
     runService:
       localSubagent.untilTerminated.flatMap: termination =>
         val m = s"Subagent has terminated with $termination"

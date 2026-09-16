@@ -30,7 +30,7 @@ extends Service.StoppableByRequest:
   logger.debug(s"newWatchService $directory")
   private val watchService = directory.getFileSystem.newWatchService()
 
-  protected def start =
+  protected def startService =
     runService:
       untilServiceStopRequested
         .*>(IO:
