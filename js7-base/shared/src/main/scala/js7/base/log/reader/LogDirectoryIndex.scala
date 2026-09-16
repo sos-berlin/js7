@@ -43,7 +43,7 @@ extends Service.StoppableByRequest:
       watching.toAllocated
 
   protected def start =
-    startService:
+    runService:
       deleteTmpFiles(directory, logFilePrefixes) *>
         untilServiceStopRequested.guarantee:
           release

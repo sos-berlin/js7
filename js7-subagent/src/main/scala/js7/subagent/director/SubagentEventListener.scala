@@ -274,7 +274,6 @@ private trait SubagentEventListener:
 
       protected def stopRequested = false
 
-  protected def isStopping: Boolean // Since v2.7
   protected def isShuttingDown: Boolean // Since v2.7
 
   private def onHeartbeatStarted: IO[Unit] =

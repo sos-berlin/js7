@@ -55,7 +55,7 @@ extends Service.StoppableByRequest:
   private val queue = new JobOrderQueue
 
   def start =
-    startService:
+    runService:
       pipeline.compile.drain *>
         IO:
           val n = processCount.get

@@ -64,7 +64,7 @@ extends
       IO.whenA(agentState.isDedicated):
         startAgentMotor(agentState.agentPath, agentState.controllerId).map(_.orThrow)
     *>
-      startService:
+      runService:
         untilServiceStopRequested *>
           stopAgentMotor()
 

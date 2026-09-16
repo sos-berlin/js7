@@ -66,7 +66,7 @@ extends Service.StoppableByCancel:
       .toMap
 
   protected def start =
-    startService:
+    runService:
       run.guarantee:
         release
 

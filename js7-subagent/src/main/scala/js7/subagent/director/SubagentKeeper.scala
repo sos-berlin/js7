@@ -92,7 +92,7 @@ extends Service.StoppableByRequest:
           serviceStarted.get.logWhenItTakesLonger("SubagentKeeper serviceStarted")
 
   protected def start =
-    startService:
+    runService:
       orderMotorCoupled.get.logWhenItTakesLonger("SubagentKeeper orderMotorCoupled")
         .productR:
           start1

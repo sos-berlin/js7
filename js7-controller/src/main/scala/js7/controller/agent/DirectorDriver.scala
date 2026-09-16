@@ -65,7 +65,7 @@ extends Service.StoppableByRequest:
   logger.trace(s"initialEventId=$initialEventId")
 
   protected def start =
-    startService:
+    runService:
       (untilServiceStopRequested *> eventFetcher.stopStreaming)
         .background.surround:
           continuallyFetchEvents *>

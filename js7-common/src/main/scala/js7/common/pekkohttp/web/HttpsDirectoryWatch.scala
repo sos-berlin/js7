@@ -21,7 +21,7 @@ extends Service.StoppableByRequest:
   protected def start =
     watchDirectories.start
       .flatMap: watching =>
-        startService:
+        runService:
           watching.joinWithUnit
 
   private def watchDirectories: IO[Unit] =

@@ -10,8 +10,8 @@ trait SimpleMainService extends MainService:
 
   private val terminated = Deferred.unsafe[IO, Termination]
 
-  final def start: IO[Service.Started] =
-    startService:
+  final def start: IO[Service.Running] =
+    runService:
       run.guaranteeCase:
         case Outcome.Succeeded(o) => o.flatMap(terminated.complete).void
         case Outcome.Errored(t) => terminated.complete(ProgramTermination.Failure).void

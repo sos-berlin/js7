@@ -64,7 +64,7 @@ extends Service.StoppableByRequest:
       .productR:
         recoverAgentRefAndJobs
       .productR:
-        startService:
+        runService:
           run
 
   private def run: IO[Unit] =

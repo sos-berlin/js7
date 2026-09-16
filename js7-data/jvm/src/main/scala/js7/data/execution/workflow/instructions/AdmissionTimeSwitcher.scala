@@ -45,7 +45,7 @@ extends
       currentAdmissionTimeSignal.set:
         admissionTimeSwitch.findCurrentTimeInterval(now)
     *>
-      startService:
+      runService:
         selectTimeIntervalAgainAndAgain.background.surround:
           untilServiceStopRequested
         *>

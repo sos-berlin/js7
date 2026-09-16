@@ -51,7 +51,7 @@ object ServiceMainTest:
     protected type Termination = ProgramTermination
 
     protected def start =
-      startService:
+      runService:
         IO.raiseError:
           new MainServiceTerminationException:
             def termination = ServiceMainTest.termination

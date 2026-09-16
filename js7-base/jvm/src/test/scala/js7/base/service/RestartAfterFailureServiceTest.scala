@@ -102,7 +102,7 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
           if startFailsRandomly && Random.nextBoolean() then
             IO.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))
           else
-            startService(IO
+            runService(IO
               .defer:
                 runs += 1
                 IO.sleep(Random.nextInt(5).ms) *> (

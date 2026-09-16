@@ -56,21 +56,21 @@ trait StoppableByRequest:
   //      stop.startAndForget
 
   /** When stop is being requested, cancel the body and throw. */
-  protected final def cancelOnStopRequest[A](body: IO[A]): IO[A] =
+  protected final def cancelOnServiceStopRequest[A](body: IO[A]): IO[A] =
     body.raceMerge:
       untilServiceStopRequested *>
         IO.raiseError_(new IllegalStateException(s"$toString is being stopped"))
 
-  protected final def requireNotStopping: IO[Checked[Unit]] =
-    IO(checkNotStopping)
+  protected final def requireServiceIsNotStopping: IO[Checked[Unit]] =
+    IO(checkServiceIsNotStopping)
 
-  protected final def requireNotStopping(context: => String): IO[Checked[Unit]] =
-    IO(checkNotStopping(context))
+  protected final def requireServiceIsNotStopping(context: => String): IO[Checked[Unit]] =
+    IO(checkServiceIsNotStopping(context))
 
-  protected final def checkNotStopping: Checked[Unit] =
+  protected final def checkServiceIsNotStopping: Checked[Unit] =
     !isServiceStopping !! ServiceStoppedProblem(toString)
 
-  protected final def checkNotStopping(context: => String): Checked[Unit] =
+  protected final def checkServiceIsNotStopping(context: => String): Checked[Unit] =
     !isServiceStopping !! ServiceStoppedProblem(toString, context)
 
 

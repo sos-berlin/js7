@@ -64,7 +64,7 @@ extends Service.StoppableByRequest:
       .productR:
         orderMotor.recoverOrders(agentState)
       .productR:
-        startService:
+        runService:
           IO.defer:
             logger.info(s"$agentPath is ready\n" + "─" * 80)
             untilServiceStopRequested *> stopMe

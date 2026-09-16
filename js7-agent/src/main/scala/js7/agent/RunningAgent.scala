@@ -79,7 +79,7 @@ extends MainService, Service.StoppableByRequest:
       whenTerminated.get
 
   protected def start =
-    startService:
+    runService:
       localSubagent.untilTerminated.flatMap: termination =>
         val m = s"Subagent has terminated with $termination"
         isShuttingDown.flatMap:

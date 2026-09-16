@@ -33,7 +33,7 @@ extends MainService, Service.StoppableByRequest:
   private val _untilTerminated = Deferred.unsafe[IO, Try[DirectorTermination]]
 
   protected def start =
-    startService:
+    runService:
       loop.flatMap: termination =>
         _untilTerminated.complete(Success(termination)).void
       .tapError: t => // TODO Shouldn't MainService handle this ?

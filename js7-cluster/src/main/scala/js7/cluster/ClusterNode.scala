@@ -83,7 +83,7 @@ extends Service.StoppableByRequest:
           Left(ProgramTermination.Restart)
 
   protected def start =
-    startService(run)
+    runService(run)
 
   private def run =
     untilWorkingNodeStarted

@@ -22,7 +22,7 @@ final class OrderScheduleGenerator private(addOrders: Seq[FreshOrder] => IO[Unit
   @volatile private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(Nil)
 
   protected def start =
-    startService:
+    runService:
       generate.background.surround:
         untilServiceStopRequested
 

@@ -31,7 +31,7 @@ extends Service.StoppableByRequest:
   private val watchService = directory.getFileSystem.newWatchService()
 
   protected def start =
-    startService:
+    runService:
       untilServiceStopRequested
         .*>(IO:
           logger.debug(s"watchService.close() — $directory")
@@ -51,7 +51,7 @@ extends Service.StoppableByRequest:
     Resource.makeFull[IO, WatchKey](
       acquire = poll =>
         poll:
-          cancelOnStopRequest:
+          cancelOnServiceStopRequest:
             repeatWhileIOException(options):
               IO.blocking:
                 logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")

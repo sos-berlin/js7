@@ -108,7 +108,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     override def toString = "CommitterService"
 
     protected def start =
-      startService:
+      runService:
         IO.uncancelable: _ =>
           (untilServiceStopRequested *> persistQueue.offer(None))
             .background.surround:

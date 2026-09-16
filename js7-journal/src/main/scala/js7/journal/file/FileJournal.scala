@@ -126,7 +126,7 @@ extends
         delete(tmpFile)
 
       startCommitter(isStarting = true) *>
-        startService:
+        runService:
           snapshotPeriodically.background.surround:
             IO.race(untilServiceStopRequested, whenCommitterTerminatedUnexpectedly)
               .flatMap:
@@ -230,7 +230,7 @@ extends
             persist.widen[S, Event],
             persistMeter.startMetering(),
             whenApplied, whenPersisted)
-      IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireNotStopping).flatMap:
+      IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireServiceIsNotStopping).flatMap:
         case Left(problem) =>
           queuedPersists.foldMap:
             _.completePersistedWithProblem(problem)

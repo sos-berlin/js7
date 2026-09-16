@@ -19,7 +19,7 @@ trait Service:
   private val started = Atomic(false)
   private[Service] val stopped = Deferred.unsafe[IO, Try[Unit]]
 
-  protected def start: IO[Started]
+  protected def start: IO[Running]
   protected def stop: IO[Unit]
 
   /** Returns an error when Service has failed. */
@@ -47,10 +47,10 @@ trait Service:
           case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
           case Right(r) => IO.pure(r)
 
-  /** Like `startService`, and logs start and stop at info level. */
+  /** Like `runService`, and logs start and stop at info level. */
   protected final def startServiceAndLog(logger: Logger, args: String = "")(run: IO[Unit])
-  : IO[Started] =
-    startService:
+  : IO[Running] =
+    runService:
       logInfoStartAndStop(logger, args):
         run
 
@@ -58,12 +58,12 @@ trait Service:
     IO.defer:
       logger.info(s"$service${args.nonEmpty ?? s"($args)"} started")
       body.guaranteeCase:
-        case Outcome.Errored(_) => IO.unit // startService has logged the error
+        case Outcome.Errored(_) => IO.unit // runService has logged the error
         case Outcome.Canceled() => IO(logger.info(s"◼️ $service canceled"))
         case Outcome.Succeeded(_) => IO(logger.info(s"$service stopped"))
 
   /** Run the provided service until it terminates. */
-  protected final def startService(run: IO[Unit]): IO[Started] =
+  protected final def runService(run: IO[Unit]): IO[Running] =
     CorrelId.bindNew:
       CatsDeadline.now.flatMap: since =>
         logger.debugIO(s"$service run"):
@@ -94,7 +94,7 @@ trait Service:
       service match
         case service: js7.base.service.StoppableByRequest => service.onFiberStarted(fiber)
         case _ => IO.unit
-    .as(Started)
+    .as(Running)
 
 
 object Service:
@@ -161,7 +161,7 @@ object Service:
     */
   trait Trivial extends Service:
     protected final def start =
-      stopped.complete(Success(())).as(Started)
+      stopped.complete(Success(())).as(Running)
 
     protected final def stop =
       IO.unit
@@ -175,16 +175,15 @@ object Service:
     protected def release: IO[Unit]
 
     protected final def start =
-      startService:
+      runService:
         untilServiceStopRequested.guarantee:
           release
 
 
-  /** Marker type to ensure call of `startService`. */
-  final class Started private[Service]:
-    override def toString = "Service.Started"
-
-  private val Started: Started = new Started
+  /** Marker type to ensure call of `runService`. */
+  type Running = Running.type
+  private[Service] object Running:
+    override def toString = "Service.Running"
 
 
   type Empty = Empty.type

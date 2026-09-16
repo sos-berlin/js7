@@ -28,7 +28,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   @volatile private var _currentState: S | Null = null
 
   protected def start =
-    startService:
+    runService:
       untilServiceStopRequested.race:
         supervisor.supervise:
           readAndPublishUnderlyingStream(whenStateFetched)

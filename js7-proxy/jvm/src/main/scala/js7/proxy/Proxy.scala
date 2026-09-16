@@ -27,7 +27,7 @@ extends MainService, Service.StoppableByCancel:
     untilServiceStopped.as(ProgramTermination())
 
   protected def start =
-    startService:
+    runService:
       untilServiceStopRequested
 
 

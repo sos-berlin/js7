@@ -60,7 +60,7 @@ extends
       .map(_.orThrow)
       .requireElementType[Unit]
       .productR:
-        startService:
+        runService:
           untilServiceStopRequested *> stopMe
 
   private def stopMe: IO[Unit] =

@@ -81,7 +81,7 @@ extends Service.StoppableByRequest:
     _shuttingDown
 
   protected def start =
-    startService:
+    runService:
       untilServiceStopRequested *>
         IO.defer:
           stopMe *>

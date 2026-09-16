@@ -57,7 +57,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
     bindingAndResources
       .traverse(_.resource.toAllocated.map(Some(_)))
       .flatMap(portWebServersAllocated.set)
-      .*>(startService:
+      .*>(runService:
         untilServiceStopRequested
           .guarantee(stopPortWebServers))
 

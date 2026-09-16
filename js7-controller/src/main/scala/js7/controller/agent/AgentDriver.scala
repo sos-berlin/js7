@@ -205,7 +205,7 @@ extends Service.StoppableByRequest:
   end commandQueue
 
   protected def start =
-    startService:
+    runService:
       startNewClusterWatch
         .*>(startAndForgetDirectorDriver)
         .*>(untilServiceStopRequested)

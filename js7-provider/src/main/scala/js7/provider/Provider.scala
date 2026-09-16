@@ -73,7 +73,7 @@ extends
     untilServiceStopped.as(ProgramTermination())
 
   protected def start =
-    startService(run)
+    runService(run)
 
   private def run: IO[Unit] =
     if conf.testSuppressStart then

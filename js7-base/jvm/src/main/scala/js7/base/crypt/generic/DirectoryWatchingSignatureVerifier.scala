@@ -62,7 +62,7 @@ extends
                 companion -> toVerifier(companion, directory, directoryState)
             .toMap
 
-          startService:
+          runService:
             companionToDir.map:
               case (companion, (directory, directoryState)) =>
                 CorrelId.bindNew:

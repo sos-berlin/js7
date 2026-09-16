@@ -38,7 +38,7 @@ extends Service:
   protected def start =
     for
       service <- startUnderlyingService
-      started <- startService(runUnderlyingService(service))
+      started <- runService(runUnderlyingService(service))
     yield started
 
   private def startUnderlyingService: IO[Svc] =

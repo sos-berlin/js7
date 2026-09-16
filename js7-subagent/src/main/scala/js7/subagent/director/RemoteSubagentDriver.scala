@@ -297,13 +297,13 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    requireNotStopping.flatMapT: _ =>
+    requireServiceIsNotStopping.flatMapT: _ =>
       startOrderProcessing(order, order.state.timeoutAt)
 
   def startOrderProcessing(order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
-      requireNotStopping.flatMapT: _ =>
+      requireServiceIsNotStopping.flatMapT: _ =>
         startProcessingOrder2(order, timeoutAt)
 
   private def startProcessingOrder2(

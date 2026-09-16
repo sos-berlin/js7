@@ -6,7 +6,7 @@ final class CancelableService private(protected val run: IO[Unit])
 extends Service.StoppableByRequest:
 
   protected def start =
-    startService(IO
+    runService(IO
       .race(untilServiceStopRequested, run) // Cancels run
       .map(_.merge))
 

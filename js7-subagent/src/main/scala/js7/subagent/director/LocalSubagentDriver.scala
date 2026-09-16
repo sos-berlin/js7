@@ -61,7 +61,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   protected def start =
     dedicate.map(_.orThrow) *>
-      startService:
+      runService:
         untilServiceStopRequested
 
   private def dedicate: IO[Checked[Unit]] =
@@ -200,7 +200,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   def startOrderProcessing(order: Order[Order.Processing], timeoutAt: Option[Timestamp])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id):
-      requireNotStopping.flatMap:
+      requireServiceIsNotStopping.flatMap:
         case Left(problem) =>
           persistOrderProcessed(order.id, OrderOutcome.processLostUnchecked(problem))
 

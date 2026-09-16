@@ -89,7 +89,7 @@ final class ServiceTest extends OurAsyncTestSuite:
     val started = Deferred.unsafe[IO, Unit]
     val canceled = Atomic(false)
     class CancelableService extends Service.StoppableByCancel:
-      protected def start = startService:
+      protected def start = runService:
         started.complete(()) *>
           IO.never.onCancel(IO:
             canceled := true)
@@ -139,7 +139,7 @@ final class ServiceTest extends OurAsyncTestSuite:
     override def stop = super.stop
 
     protected def start =
-      startService:
+      runService:
         IO.defer:
           setRunning(true)
           running
@@ -165,7 +165,7 @@ object ServiceTest:
   private class FailingService(whenFail: IO[Unit], onFailed: IO[Unit])
   extends Service.StoppableByRequest:
     protected def start =
-      startService:
+      runService:
         IO.race(run2, untilServiceStopRequested).void
 
     private def run2 =
