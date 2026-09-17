@@ -32,7 +32,6 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    js7.order.stdout-stderr.delay = 999s # No delay should occur in this test!
     """
 
   protected val agentPaths = Seq(agentPath)

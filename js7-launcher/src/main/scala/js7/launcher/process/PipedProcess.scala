@@ -74,9 +74,9 @@ final class PipedProcess private(
               interruptibleVirtualThread:
                 logger.traceCallWithResult(s"waitFor $process"):
                   process.waitFor()
-      .flatTap: rc =>
-        ProcessMXBean_.running -= 1
-        IO(logger.trace(s"Process terminated with $rc after ${duration.pretty}"))
+        .flatTap: rc =>
+          ProcessMXBean_.running -= 1
+          IO(logger.trace(s"Process terminated with $rc after ${duration.pretty}"))
 
   /** A JS7 process completes when
     * - The process has terminated, and
