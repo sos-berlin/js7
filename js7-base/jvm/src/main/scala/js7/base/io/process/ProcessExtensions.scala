@@ -1,9 +1,12 @@
 package js7.base.io.process
 
 import cats.effect.IO
+import js7.base.log.Logger
 import scala.jdk.OptionConverters.*
 
 object ProcessExtensions:
+
+  private val logger = Logger[this.type]
 
   extension (process: Pid | Js7Process)
     def toPid: Pid =
@@ -24,6 +27,20 @@ object ProcessExtensions:
 
   extension (processHandle: ProcessHandle)
     def onExitIO: IO[Unit] =
-      IO.fromCompletableFuture(IO:
-          processHandle.onExit())
-        .void
+      //sleepWhileAliveTest *>
+      IO.fromCompletableFuture:
+        IO:
+          processHandle.onExit()
+            //.pipeIf(logger.isTraceEnable): future =>
+            //  future.thenApply: h =>
+            //    println("PID:${h.pid} onExit") // this is executed
+            //    logger.debug(s"PID:${h.pid} processHandle.onExit ✔ ") // NOT EXECUTED
+            //    h
+      .map: (h: ProcessHandle) =>
+        logger.trace(s"PID:${h.pid} processHandle.onExit ✔ ")
+
+    //private def sleepWhileAliveTest: IO[Unit] =
+    //  fs2.Stream.eval(IO(processHandle.isAlive))
+    //    .delayBy(10.ms)
+    //    .takeWhile(identity)
+    //    .compile.drain

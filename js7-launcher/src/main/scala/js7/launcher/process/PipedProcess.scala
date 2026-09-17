@@ -31,8 +31,9 @@ import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import js7.launcher.processkiller.SubagentProcessKiller
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
+import scala.util.chaining.scalaUtilChainingOps
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
@@ -76,7 +77,7 @@ final class PipedProcess private(
         IO:
           ProcessMXBean.running -= 1
           _processTerminated = true
-          logger.trace(s"Process $pid terminated with $rc after ${duration.pretty}")
+          logger.trace(s"Process terminated with $rc after ${duration.pretty}")
 
   /** A JS7 process completes when
     * - The process has terminated, and
@@ -103,7 +104,7 @@ final class PipedProcess private(
             processFiber.joinStd
 
           case Right((stdouterrFiber, returnCode)) =>
-            // Process terminated, wait for stdout and stderr
+            logger.debug(s"Process terminated with $returnCode, waiting for stdout or stderr")
             waitForStdouterr(stdouterrFiber, returnCode).as(returnCode)
         .guarantee:
           process.release
@@ -122,7 +123,7 @@ final class PipedProcess private(
       .logWhenItTakesLonger(StdouterrWorry):
         case (outcome, elapsed, _, sym) =>
           stdObservers.stdouterrStopper.peek.flatMap: stopped =>
-            val what = s"$orderId $pidString: ${stopped ?? "Ignored "}stdout or stderr"
+            val what = s"${stopped ?? "Ignored "}stdout and stderr of $orderId $pidString"
             outcome match
               case None =>
                 IO.pure(s"$sym Still waiting for $what for ${elapsed.pretty}")
@@ -149,34 +150,32 @@ final class PipedProcess private(
 
   private def waitForStdouterr(stdouterrFiber: FiberIO[Unit], returnCode: ReturnCode): IO[Unit] =
     killSignal.get.map(_.contains(SIGKILL)).flatMap: wasSigkilled =>
-      logger.debug(s"Process terminated with $returnCode, waiting for stdout or stderr")
-      IO: /*delayed*/
-        logger.info(s"Process terminated with $returnCode, waiting${
-          if wasSigkilled then s" ${conf.waitForStdouterrAfterSigkill.pretty} after SIGKILL"
-          else maxWaitForStdouterr.fold("")(o => s" due to maxWaitForStdouterr=${o.pretty}")
-        } for stdout or stderr")
+      IO: // delayed!
+        logger.info(s"Process terminated with $returnCode, waiting for stdout and stderr${
+          maxWaitForStdouterr.fold(""): o =>
+            s" for maxWaitForStdouterr=${o.pretty}"}")
       .delayBy(conf.worryAboutStdoutAfterTermination)
       .background.surround:
-        stdouterrFiber.joinWithUnit
-          .as(true)
-          .timeoutTo(
+        stdouterrFiber.joinWithUnit.as("")
+          .pipe:
             if wasSigkilled then
-              conf.waitForStdouterrAfterSigkill
+              _.timeoutTo(
+                conf.waitForStdouterrAfterSigkill,
+                IO(s" ${conf.waitForStdouterrAfterSigkill.pretty} after SIGKILL"))
             else
-              maxWaitForStdouterr getOrElse Duration.Inf,
-            IO.pure(false))
+              maxWaitForStdouterr.fold_(identity, maxWaitForStdouterr =>
+                _.timeoutTo(
+                  maxWaitForStdouterr,
+                  IO(s" because maxWaitForStdouterr=${maxWaitForStdouterr.pretty} has elapsed")))
           .raceMerge:
-            // Abort after fresh kill signal
             killSignal.getAndDiscreteUpdates.use:
-              _._2.take(1).compile.drain.as(false)
+              _._2.unNone.take(1).compile.drain.map: _ =>
+                " due to fresh kill signal"
           .flatMap:
-            case true => IO.unit
-            case false =>
-              val cause =
-                if wasSigkilled then "after SIGKILL"
-                else s"due to maxWaitForStdouterr=${maxWaitForStdouterr.fold("")(_.pretty)}"
-              logger.warn:
-                s"Ignoring stdout and stderr $cause (maybe a background child process is still running)"
+            case "" => IO.unit // stdouterrFiber terminated due to stdout and stderr EOF
+            case stopReason => // Waiting cancelled
+              logger.warn(s"Ignoring stdout and stderr${
+                stopReason} (maybe a background child process is still running)")
               // Set stdouterrStopper in foreground, to be sure that no OrderStdWritten event is emitted.
               stdObservers.stdouterrStopper.stop(s"$label stopped$stopReason") *>
                 // Cancellation may fail a child process writing to closed stdout or stderr with

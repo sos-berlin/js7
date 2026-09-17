@@ -93,16 +93,14 @@ final class StdObservers private(
             .logWhenItTakesLonger:
               s"$label $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
             .startAndForget *>
-            IO.whenA(false): // Better, we don't close the file
-              IO.blocking:
-                logger.traceCall(s"$label $outErr $exitCase in.close!"):
-                  // Close may hang after sigkill ?
-                  in.close()
-              .logWhenItTakesLonger(s"$label $outErr.close() after cancellation")
+            IO.blocking:
+              logger.traceCall(s"$label $exitCase: closing $outErr after cancellation"):
+                // Close may hang after sigkill ?
+                in.close()
+            .logWhenItTakesLonger(s"$label $outErr.close() after cancellation")
         case exitCase =>
           IO.blocking:
-            var neededToExecuteTheFollowingTwoLines = 1 // FIXME what is this?
-            logger.traceCall(s"$label $outErr $exitCase in.close"):
+            logger.traceCall(s"$label $exitCase: closing $outErr"):
               in.close()
           .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
       .through:

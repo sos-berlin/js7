@@ -8,25 +8,37 @@ import java.nio.channels.Channels.newChannel
 import java.nio.channels.ReadableByteChannel
 import js7.base.fs2utils.Fs2ChunkByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 
 object ReaderStreams:
 
+  private val logger = Logger[this.type]
   private val DefaultBufferSize = 8192
 
   /** Returns a Chunk[Byte] immediately after each read operation. */
-  def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
+  def inputStreamToByteStream(
+    in: InputStream,
+    bufferSize: Int = DefaultBufferSize,
+    label: String = "")
   : Stream[IO, Byte] =
-    channelToByteStream(newChannel(in), bufferSize)
+    channelToByteStream(newChannel(in), bufferSize, label)
 
-  def channelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
+  def channelToByteStream(
+    channel: ReadableByteChannel,
+    bufferSize: Int = DefaultBufferSize,
+    label: String = "")
   : Stream[IO, Byte] =
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
       Stream.repeatEval:
         interruptibleVirtualThread:
           buffer.clear()
-          channel.read(buffer)
+          try channel.read(buffer)
+          catch case e: Exception =>
+            // Maybe ClosedByInterruptException
+            logger.debug(s"💥 ${if label.isEmpty then "" else s"$label "}channel.read: $e")
+            throw e
         .map:
           case -1 =>
             null
