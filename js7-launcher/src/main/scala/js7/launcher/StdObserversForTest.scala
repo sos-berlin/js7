@@ -18,18 +18,18 @@ object StdObserversForTest:
       delay: FiniteDuration = 100.ms,
       useErrorLineLengthMax: Option[Int] = None,
       maxWaitForStdouterr: Option[FiniteDuration] = None,
-      name: String)
+      label: String)
     : ResourceIO[TestSink] =
       for
         out <- Resource.eval(Deferred[IO, String])
         err <- Resource.eval(Deferred[IO, String])
         outErrToSink: OutErrToSink =
-          case (Stdout, _) => _.foldMonoid.evalMap(out.complete).drain
-          case (Stderr, _) => _.foldMonoid.evalMap(err.complete).drain
+          case (Stdout, _) => _.foldMonoid.evalMap(out.complete).compile.drain
+          case (Stderr, _) => _.foldMonoid.evalMap(err.complete).compile.drain
         stdObservers <- resource(outErrToSink, charBufferSize, chunkSize, delay,
           maxWaitForStdouterr = maxWaitForStdouterr,
           useErrorLineLengthMax = useErrorLineLengthMax,
-          name = name)
+          label = label)
       yield
         TestSink(
           stdObservers,

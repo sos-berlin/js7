@@ -14,7 +14,7 @@ final class StdObserversTest extends OurAsyncTestSuite:
 
   private def runExample(keepLastErrLine: Boolean, expectErrLine: Option[String]) =
     StdObservers
-      .testSink(useErrorLineLengthMax = keepLastErrLine ?  1024, name = "StdObserversTest")
+      .testSink(useErrorLineLengthMax = keepLastErrLine ?  1024, label = "StdObserversTest")
       .use: testSink =>
         for
           _ <- testSink.stdObservers.err.write("LAST\n")

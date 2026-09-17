@@ -113,7 +113,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
     executable: Path)
   : ResourceIO[(PipedProcess, StdObserversForTest.TestSink)] =
     StdObservers
-      .testSink(name = "PipedProcessTest")
+      .testSink(label = "PipedProcessTest")
       .evalMap: testSink =>
         for
           checkedProcess <- PipedProcess.start(

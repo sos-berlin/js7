@@ -3,12 +3,14 @@ package js7.tests
 import cats.effect.IO
 import fs2.Stream
 import js7.base.configutils.Configs.*
+import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.job.ShellScriptExecutable
@@ -30,6 +32,7 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.order.stdout-stderr.delay = 999s # No delay should occur in this test!
     """
 
   protected val agentPaths = Seq(agentPath)
@@ -109,13 +112,14 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
     val workflow = Workflow(WorkflowPath("BIG-STDOUT"), Seq:
       TestJob.execute(agentPath, arguments = Map(
         "stdout" -> NumericConstant(megabytes * 1_000_000))))
-    withItem(workflow): workflow =>
-      val since = Deadline.now
-      val orderId = OrderId("SPEED")
-      addOrder(orderId, workflow.path)
-      controller.awaitNextKey[OrderTerminated](orderId)
-      logger.info(s"🔵🔵🔵 ${bytesPerSecondString(since.elapsed, megabytes * 1_000_000)}")
-      succeed
+      withItem(workflow): workflow =>
+        (1 to (if isIntelliJIdea then 5 else 1)).foldMap: _ =>
+          val since = Deadline.now
+          val orderId = OrderId("SPEED")
+          addOrder(orderId, workflow.path)
+          controller.awaitNextKey[OrderTerminated](orderId)
+          logger.info(bold(bytesPerSecondString(since.elapsed, megabytes * 1_000_000)))
+          succeed
 
 
 object BigStdoutTest:

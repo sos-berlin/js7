@@ -18,7 +18,7 @@ import js7.data.cluster.ClusterState
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.log.JournalLogger
 import js7.journal.watch.RealEventWatch
-import js7.journal.{EventIdGenerator, Journal, Persist, Persisted}
+import js7.journal.{EventIdGenerator, Journal, Persist, Persisted, StreamableJournal}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 
@@ -34,7 +34,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   persistMutex: Mutex[IO])
   (using protected val S: JournaledState.Companion[S])
 extends
-  Journal[S], Service.Trivial:
+  Journal[S], StreamableJournal[S](size), Service.Trivial:
 
   val journalId: JournalId = JournalId.random()
 

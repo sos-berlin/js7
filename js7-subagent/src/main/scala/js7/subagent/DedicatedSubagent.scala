@@ -1,6 +1,5 @@
 package js7.subagent
 
-import cats.effect.std.AtomicCell
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.all.*
@@ -19,12 +18,11 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.Delayer
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AtomicStopper, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.EventCalc.given
-import js7.data.event.{Event, EventCalc, EventId}
+import js7.data.event.{Event, EventId, MaybeTimestampedKeyedEvent}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -368,7 +366,7 @@ extends Service.StoppableByRequest:
         queueSize = outerrQueueSize,
         useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
         maxWaitForStdouterr = maxWaitForStdouterr,
-        name = s"${order.id} ${order.workflowPosition}")
+        label = s"${order.id}")
     yield
       stdObservers
 
@@ -402,29 +400,16 @@ extends Service.StoppableByRequest:
     orderId: OrderId,
     outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
   : OutErrToSink =
-    (outErr: StdoutOrStderr, stdouterrStopped: AtomicCell[IO, Boolean]) =>
-      _.map: string =>
-        orderId <-: OrderStdWritten(outErr)(string)
-      .chunks
-      .foreach: events =>
-        // Check stdouterrStopped and emit events atomically
-        stdouterrStopped.evalUpdate: stdouterrStopped =>
-          if stdouterrStopped then
-            IO:
-              logger.debug(s"outErrToJournalSink($outErr): no more events are accepted:")
-              events.asSeq.foreachWithBracket(): (event, br) =>
-                logger.debug(s"$br$event")
-              stdouterrStopped
-          else
-            // Emit events //
-            val charCount = events.iterator.map(_.event.chunk.length).sum
-            outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-              persistedQueue.persisting:
-                journal.persist(stdoutCommitDelayOptions)(events.asSeq)
-            .map:
-              _.onProblem: problem =>
-                logger.error(s"Emission of OrderStdWritten event failed: $problem")
-            .as(stdouterrStopped)
+    (outErr: StdoutOrStderr, stdouterrStopper: AtomicStopper) =>
+      stream =>
+        val eventStream = stream.map(string => orderId <-: OrderStdWritten(outErr)(string))
+        journal.persistStream(eventStream, stdouterrStopper): (events, persistChunk) =>
+          outErrStatistics(outErr).count(n = events.size, charCount = countChars(events)):
+            persistedQueue.persisting:
+              persistChunk
+
+  private def countChars(events: Seq[MaybeTimestampedKeyedEvent[OrderStdWritten]]): Int =
+    events.iterator.map(_.keyedEvent.event.chunk.length).sum
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

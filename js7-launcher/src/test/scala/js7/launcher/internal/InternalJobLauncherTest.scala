@@ -48,7 +48,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
       null/*unused*/.asInstanceOf[AlarmClock])
 
     StdObservers
-      .testSink(name = "InternalJobLauncherTest")
+      .testSink(label = "InternalJobLauncherTest")
       .use: testSink =>
         val orderId = OrderId("TEST")
         val jobKey = JobKey.Named(

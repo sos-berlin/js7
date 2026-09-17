@@ -1,17 +1,17 @@
 package js7.launcher
 
-import cats.effect.Resource.ExitCase
-import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
-import fs2.{Chunk, Pipe, Stream}
+import fs2.{Chunk, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget, startAndLogError}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndLogError}
 import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromString}
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.utils.AtomicStopper
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.StdObservers.*
@@ -32,8 +32,8 @@ final class StdObservers private(
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
   val maxWaitForStdouterr: Option[FiniteDuration],
-  val stdouterrStopped: AtomicCell[IO, Boolean],
-  name: String):
+  val stdouterrStopper: AtomicStopper,
+  label: String):
 
   private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
 
@@ -81,33 +81,18 @@ final class StdObservers private(
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
   : Stream[IO, String] =
     // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
-    inputStreamToByteStream(in, bufferSize = byteBufferSize/*TODO used for bytes*/)
-      .onFinalizeCase:
-        case exitCase @ ExitCase.Canceled =>
-          // FIXME When cancelling the stream, io.blocking happens to block itself.
-          //  It does not execute its body and instead waits forever. Why?
-          //  PipedProcess inhibits cancellation and instead waits (forever) for
-          //  stream termination.
-          IO.blocking(())
-            .logWhenItTakesLonger:
-              s"### $name $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
-            .startAndForget *>
-              IO.whenA(false): // Better, we don't close the file
-                IO.blocking:
-                  logger.trace(s"### $name $outErr $exitCase in.close!")
-                  // Close may hang after sigkill ?
-                  in.close()
-                .logWhenItTakesLonger(s"$name $outErr.close() after cancellation")
-        case _ =>
-          IO.blocking:
+    inputStreamToByteStream(in, bufferSize = byteBufferSize, label = s"$label $outErr")
+      .onFinalizeCase: exitCase =>
+        IO.blocking:
+          logger.traceCall(s"$label pumping $exitCase: closing $outErr"):
             in.close()
-          .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
+        .logWhenItTakesLonger(s"$label closing $outErr")
       .unchunks
       .through:
         fs2.text.decodeWithCharset(encoding)
 
   private def pumpToSink(outErr: StdoutOrStderr)(stream: Stream[IO, String]): IO[Unit] =
-    outErrToSink(outErr, stdouterrStopped):
+    outErrToSink(outErr, stdouterrStopper):
       stream
         .pipeIf(outErr == Stderr):
           _.through(lastLineKeeper getOrElse identity)
@@ -116,12 +101,11 @@ final class StdObservers private(
         // TODO Don't cut through surrogates: 🌈
         .chunkWithin(chunkSize, delay)
         .map(_.convertToString)
-    .compile.drain
 
 
 object StdObservers:
 
-  type OutErrToSink = (StdoutOrStderr, AtomicCell[IO, Boolean]) => Pipe[IO, String, Nothing]
+  type OutErrToSink = (StdoutOrStderr, AtomicStopper) => Stream[IO, String] => IO[Unit]
 
   private val logger = Logger[this.type]
 
@@ -133,10 +117,10 @@ object StdObservers:
     queueSize: Int = 0,
     maxWaitForStdouterr: Option[FiniteDuration],
     useErrorLineLengthMax: Option[Int] = None,
-    name: String)
+    label: String)
   : ResourceIO[StdObservers] =
     for
-      stdouterrStopped <- Resource.eval(AtomicCell[IO].of(false))
+      stdouterrStopper <- Resource.eval(AtomicStopper(label = s"$label stdout/stderr"))
       stdObservers <- Resource.eval:
         for
           outChannel <- Channel.bounded[IO, String](capacity = queueSize)
@@ -147,8 +131,8 @@ object StdObservers:
             chunkSize = chunkSize, delay,
             useErrorLineLengthMax,
             maxWaitForStdouterr = maxWaitForStdouterr,
-            stdouterrStopped,
-            name)
+            stdouterrStopper,
+            label)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield
       stdObservers

@@ -293,10 +293,10 @@ object EventCalc:
 
   inline given [
     S <: EventDrivenState_[S, E], E <: Event
-  ] => Conversion[KeyedEvent[E], EventCalc[S, E]] =
+  ] => Conversion[MaybeTimestampedKeyedEvent[E], EventCalc[S, E]] =
     EventCalc.pure
 
   inline given [
     S <: EventDrivenState_[S, E], E <: Event
-  ] => Conversion[IterableOnce[KeyedEvent[E]], EventCalc[S, E]] =
+  ] => Conversion[IterableOnce[MaybeTimestampedKeyedEvent[E]], EventCalc[S, E]] =
     EventCalc.pure

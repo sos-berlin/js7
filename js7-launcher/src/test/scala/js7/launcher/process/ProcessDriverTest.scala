@@ -93,7 +93,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         Seq.fill(n)(()).traverse: _ =>
           locally:
             for
-              testSink <- StdObservers.testSink(charBufferSize = 7, name = "ProcessDriverTest")
+              testSink <- StdObservers.testSink(charBufferSize = 7, label = "ProcessDriverTest")
               processDriver = new ProcessDriver(order.id, conf, jobLauncherConf)
               assertion <- Resource.eval:
                 for
