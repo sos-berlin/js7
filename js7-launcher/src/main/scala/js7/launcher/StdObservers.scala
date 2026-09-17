@@ -1,12 +1,11 @@
 package js7.launcher
 
-import cats.effect.Resource.ExitCase
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
 import fs2.{Chunk, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget, startAndLogError}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndLogError}
 import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromString}
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
@@ -83,26 +82,11 @@ final class StdObservers private(
   : Stream[IO, String] =
     // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
     inputStreamToByteStream(in, bufferSize = byteBufferSize, label = s"$label $outErr")
-      .onFinalizeCase:
-        case exitCase @ ExitCase.Canceled =>
-          // FIXME When cancelling the stream, io.blocking happens to block itself.
-          //  It does not execute its body and instead waits forever. Why?
-          //  PipedProcess inhibits cancellation and instead waits (forever) for
-          //  stream termination.
-          IO.blocking(())
-            .logWhenItTakesLonger:
-              s"$label $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
-            .startAndForget *>
-            IO.blocking:
-              logger.traceCall(s"$label $exitCase: closing $outErr after cancellation"):
-                // Close may hang after sigkill ?
-                in.close()
-            .logWhenItTakesLonger(s"$label $outErr.close() after cancellation")
-        case exitCase =>
-          IO.blocking:
-            logger.traceCall(s"$label $exitCase: closing $outErr"):
-              in.close()
-          .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
+      .onFinalizeCase: exitCase =>
+        IO.blocking:
+          logger.traceCall(s"$label pumping $exitCase: closing $outErr"):
+            in.close()
+        .logWhenItTakesLonger(s"$label closing $outErr")
       .through:
         fs2.text.decodeWithCharset(encoding)
 
