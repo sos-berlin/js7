@@ -405,13 +405,13 @@ extends Service.StoppableByRequest:
       .chunks
       .foreach: events =>
         // Check stdouterrStopper and emit events atomically
-        stdouterrStopper.resource.use: stopped =>
-          if stopped then
+        stdouterrStopper.resource.use:
+          case Some(stopReason) =>
             IO:
-              logger.debug(s"outErrToJournalSink($outErr): no more events are accepted:")
-              events.asSeq.foreachWithBracket(): (event, br) =>
-                logger.debug(s"$br$event")
-          else
+              logger.debug(s"outErrToJournalSink(${
+                outErr}): no more stdout and stderr output is accepted due to ${
+                stopReason}")
+          case None =>
             // Emit events //
             val charCount = events.iterator.map(_.event.chunk.length).sum
             outErrStatistics(outErr).count(n = events.size, charCount = charCount):

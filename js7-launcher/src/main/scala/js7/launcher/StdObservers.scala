@@ -137,7 +137,7 @@ object StdObservers:
     label: String)
   : ResourceIO[StdObservers] =
     for
-      stdouterrStopper <- Resource.eval(AtomicStopper())
+      stdouterrStopper <- Resource.eval(AtomicStopper(label = s"$label stdout/stderr"))
       stdObservers <- Resource.eval:
         for
           outChannel <- Channel.bounded[IO, String](capacity = queueSize)

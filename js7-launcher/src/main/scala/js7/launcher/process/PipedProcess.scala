@@ -178,7 +178,7 @@ final class PipedProcess private(
               logger.warn:
                 s"Ignoring stdout and stderr $cause (maybe a background child process is still running)"
               // Set stdouterrStopper in foreground, to be sure that no OrderStdWritten event is emitted.
-              stdObservers.stdouterrStopper.stop *>
+              stdObservers.stdouterrStopper.stop(s"$label stopped$stopReason") *>
                 // Cancellation may fail a child process writing to closed stdout or stderr with
                 // EPIPE "Broken pipe".
                 // Because InputStream may block (Linux), we cancel in the background.

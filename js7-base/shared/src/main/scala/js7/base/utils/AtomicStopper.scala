@@ -1,29 +1,42 @@
 package js7.base.utils
 
-import cats.effect.std.{AtomicCell, Mutex}
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.std.Mutex
+import cats.effect.{IO, Ref, Resource, ResourceIO}
+import cats.syntax.option.*
 
-final class AtomicStopper private(cell: AtomicCell[IO, Boolean], mutex: Mutex[IO]):
+final class AtomicStopper private(
+  ref: Ref[IO, Option[String]],
+  mutex: Mutex[IO],
+  label: String):
 
-  def stop: IO[Unit] =
+  /** Atomically mark as stopped.
+    */
+  def stop(reason: String): IO[Unit] =
     mutex.lock.surround:
-      cell.set(true)
+      ref.set(Some(reason))
 
   def peek: IO[Boolean] =
-    cell.get
+    ref.get.map(_.isDefined)
 
-  val resource: ResourceIO[Boolean] =
+  /** The Resource provides a Some(reason: String) iff stopped.
+    *
+    * The AtomicStopper cannot be stopped while the resource is in use.
+    */
+  val resource: ResourceIO[Option[String]] =
     for
       _ <- mutex.lock
-      stopped <- Resource.eval(cell.get)
+      stopReason <- Resource.eval(ref.get)
     yield
-      stopped
+      stopReason
+
+  override def toString = s"AtomicStopper($label)"
 
 
 object AtomicStopper:
-  def apply(): IO[AtomicStopper] =
+
+  def apply(label: String = ""): IO[AtomicStopper] =
     for
-      cell <- AtomicCell[IO].of(false)
+      cell <- Ref[IO].of(none[String])
       mutex <- Mutex[IO]
     yield
-      new AtomicStopper(cell, mutex)
+      new AtomicStopper(cell, mutex, label)
