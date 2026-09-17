@@ -22,8 +22,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AtomicStopper, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.EventCalc.given
-import js7.data.event.{Event, EventCalc, EventId}
+import js7.data.event.{Event, EventId, MaybeTimestampedKeyedEvent}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -400,27 +399,15 @@ extends Service.StoppableByRequest:
     outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
   : OutErrToSink =
     (outErr: StdoutOrStderr, stdouterrStopper: AtomicStopper) =>
-      _.map: string =>
-        orderId <-: OrderStdWritten(outErr)(string)
-      .chunks
-      .foreach: events =>
-        // Check stdouterrStopper and emit events atomically
-        stdouterrStopper.resource.use:
-          case Some(stopReason) =>
-            IO:
-              logger.debug(s"outErrToJournalSink(${
-                outErr}): no more stdout and stderr output is accepted due to ${
-                stopReason}")
-          case None =>
-            // Emit events //
-            val charCount = events.iterator.map(_.event.chunk.length).sum
-            outErrStatistics(outErr).count(n = events.size, charCount = charCount):
-              persistedQueue.persisting:
-                journal.persist(stdoutCommitDelayOptions)(events.asSeq)
-            .map:
-              _.onProblem: problem =>
-                logger.error(s"Emission of OrderStdWritten event failed: $problem")
-      .compile.drain
+      stream =>
+        val eventStream = stream.map(string => orderId <-: OrderStdWritten(outErr)(string))
+        journal.persistStream(eventStream, stdouterrStopper): (events, persistChunk) =>
+          outErrStatistics(outErr).count(n = events.size, charCount = countChars(events)):
+            persistedQueue.persisting:
+              persistChunk
+
+  private def countChars(events: Seq[MaybeTimestampedKeyedEvent[OrderStdWritten]]): Int =
+    events.iterator.map(_.keyedEvent.event.chunk.length).sum
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
