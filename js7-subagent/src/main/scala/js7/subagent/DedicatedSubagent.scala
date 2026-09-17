@@ -365,7 +365,7 @@ extends Service.StoppableByRequest:
         queueSize = outerrQueueSize,
         useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
         maxWaitForStdouterr = maxWaitForStdouterr,
-        name = s"${order.id} ${order.workflowPosition}")
+        label = s"${order.id}")
     yield
       stdObservers
 
@@ -420,6 +420,7 @@ extends Service.StoppableByRequest:
             .map:
               _.onProblem: problem =>
                 logger.error(s"Emission of OrderStdWritten event failed: $problem")
+      .compile.drain
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

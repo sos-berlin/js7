@@ -3,7 +3,7 @@ package js7.launcher
 import cats.effect.Resource.ExitCase
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
-import fs2.{Chunk, Pipe, Stream}
+import fs2.{Chunk, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget, startAndLogError}
@@ -11,6 +11,7 @@ import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromStr
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.utils.AtomicStopper
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -33,7 +34,7 @@ final class StdObservers private(
   useErrorLineLengthMax: Option[Int],
   val maxWaitForStdouterr: Option[FiniteDuration],
   val stdouterrStopper: AtomicStopper,
-  name: String):
+  label: String):
 
   private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
 
@@ -81,7 +82,7 @@ final class StdObservers private(
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
   : Stream[IO, String] =
     // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
-    inputStreamToByteStream(in, bufferSize = byteBufferSize/*TODO used for bytes*/)
+    inputStreamToByteStream(in, bufferSize = byteBufferSize, label = s"$label $outErr")
       .onFinalizeCase:
         case exitCase @ ExitCase.Canceled =>
           // FIXME When cancelling the stream, io.blocking happens to block itself.
@@ -90,17 +91,19 @@ final class StdObservers private(
           //  stream termination.
           IO.blocking(())
             .logWhenItTakesLonger:
-              s"### $name $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
+              s"$label $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
             .startAndForget *>
-              IO.whenA(false): // Better, we don't close the file
-                IO.blocking:
-                  logger.trace(s"### $name $outErr $exitCase in.close!")
+            IO.whenA(false): // Better, we don't close the file
+              IO.blocking:
+                logger.traceCall(s"$label $outErr $exitCase in.close!"):
                   // Close may hang after sigkill ?
                   in.close()
-                .logWhenItTakesLonger(s"$name $outErr.close() after cancellation")
-        case _ =>
+              .logWhenItTakesLonger(s"$label $outErr.close() after cancellation")
+        case exitCase =>
           IO.blocking:
-            in.close()
+            var neededToExecuteTheFollowingTwoLines = 1 // FIXME what is this?
+            logger.traceCall(s"$label $outErr $exitCase in.close"):
+              in.close()
           .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
       .through:
         fs2.text.decodeWithCharset(encoding)
@@ -115,12 +118,11 @@ final class StdObservers private(
         // TODO Don't cut through surrogates: 🌈
         .chunkWithin(chunkSize, delay)
         .map(_.convertToString)
-    .compile.drain
 
 
 object StdObservers:
 
-  type OutErrToSink = (StdoutOrStderr, AtomicStopper) => Pipe[IO, String, Nothing]
+  type OutErrToSink = (StdoutOrStderr, AtomicStopper) => Stream[IO, String] => IO[Unit]
 
   private val logger = Logger[this.type]
 
@@ -132,7 +134,7 @@ object StdObservers:
     queueSize: Int = 0,
     maxWaitForStdouterr: Option[FiniteDuration],
     useErrorLineLengthMax: Option[Int] = None,
-    name: String)
+    label: String)
   : ResourceIO[StdObservers] =
     for
       stdouterrStopper <- Resource.eval(AtomicStopper())
@@ -147,7 +149,7 @@ object StdObservers:
             useErrorLineLengthMax,
             maxWaitForStdouterr = maxWaitForStdouterr,
             stdouterrStopper,
-            name)
+            label)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield
       stdObservers

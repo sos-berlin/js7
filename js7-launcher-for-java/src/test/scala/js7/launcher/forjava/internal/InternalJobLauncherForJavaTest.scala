@@ -127,7 +127,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
     val jobKey = launcher.jobConf.jobKey
 
     (for
-      testSink <- StdObservers.testSink(4096, name = "InternalJobLauncherForJavaTest")
+      testSink <- StdObservers.testSink(4096, label = "InternalJobLauncherForJavaTest")
       dir <- temporaryDirectoryResource[IO]("InternalJobLauncherForJavaTest-")
       fileValueScope <- Resource
         .fromAutoCloseable(IO(new FileValueState(dir)))
