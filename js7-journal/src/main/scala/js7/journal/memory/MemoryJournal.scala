@@ -151,7 +151,10 @@ extends
       else if eventWatchStopped then
         Some(Iterator.empty)
       else
-        Some(q.events.drop(index + found.toInt).iterator)
+        Some:
+          q.events.drop(index + found.toInt)
+            .toList // release memory as iterator advances
+            .iterator
 
   def suppressLogging(suppress: Boolean): Unit =
     journalLogger.suppress(suppress)
