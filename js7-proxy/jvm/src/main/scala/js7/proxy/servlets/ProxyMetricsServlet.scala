@@ -68,7 +68,7 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
               doGet2(request, response, metricsForServlet.metrics(deep = deep))
                 .handleErrorWith:
                   case t: (IOException | RuntimeException) => IO.raiseError(t)
-                  case t: Exception => IO.raiseError(new ServletException(t.toString, t))
+                  case t: Exception => IO.raiseError(ServletException(t.toString, t))
                   case t => IO.raiseError(t)
                 .awaitInfinite
     .run()
@@ -102,7 +102,7 @@ final class ProxyMetricsServlet(toMetricsForServlet: () => Option[MetricsForServ
       val out = response.getOutputStream
       out.write(message.getBytes(UTF_8))
       if !message.endsWith("\n") then
-        out.write("\n".getBytes(UTF_8))
+        out.write('\n')
 
 
 object ProxyMetricsServlet:

@@ -33,10 +33,10 @@ final class ProxyMetricsServletTest extends OurAsyncTestSuite, ControllerAgentFo
   "test" in:
     val port = findFreeTcpPort()
     val controllerApiRegister =
-      new ControllerApiRegister(Some(GroupAndProxyId.of("PROXY", "proxy")))(using ioRuntime) // normally provided by JProxyContext
+      ControllerApiRegister(Some(GroupAndProxyId.of("PROXY", "proxy")))(using ioRuntime) // normally provided by JProxyContext
     JettyWebServer.resource(
       "127.0.0.1", port, Seq(
-        "/metrics" -> new ProxyMetricsServlet(() => Some(controllerApiRegister)))
+        "/metrics" -> ProxyMetricsServlet(() => Some(controllerApiRegister)))
     ).surround:
       OurHttpClient.resource.use: client =>
         val request = HttpRequest.newBuilder
