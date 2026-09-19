@@ -1,6 +1,7 @@
 package js7.cluster.watch
 
 import cats.effect.IO
+import cats.syntax.foldable.*
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.SyncDeadline
 import js7.base.catsutils.SyncDeadline.Now
@@ -142,7 +143,7 @@ extends ClusterWatchStateMixin:
         logger.debug(s"_state = $stateString")
         onClusterStateChanged(request.clusterState)
 
-      maybeManualConfirmer.foldMap: _ =>
+      maybeManualConfirmer.foldMapM: _ =>
         onNodeLossEventConfirmRequired(None)
       .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
 
@@ -191,7 +192,7 @@ extends ClusterWatchStateMixin:
         if changed then
           onClusterStateChanged(request.clusterState)
 
-        maybeManualConfirmer.foldMap: _ =>
+        maybeManualConfirmer.foldMapM: _ =>
           onNodeLossEventConfirmRequired(None)
         .as(Right(Confirmed(maybeManualConfirmer)))
 

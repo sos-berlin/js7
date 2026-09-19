@@ -1,6 +1,7 @@
 package js7.controller.client.main
 
 import cats.effect.{ExitCode, IO}
+import cats.syntax.foldable.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.SessionToken
@@ -9,7 +10,6 @@ import js7.base.configutils.Configs.parseConfigIfExists
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
@@ -36,7 +36,7 @@ object ControllerClientMain extends SimpleServiceProgram[ControllerClientMain.Co
           textApi.checkIsResponding.map: is =>
             if is then ExitCode.Success else ExitCode.Error
         else
-          operations.foldMap:
+          operations.foldMapM:
             case StringCommand(command) => textApi.executeCommand(command)
             case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
             case Get(uri) => textApi.getApi(uri)

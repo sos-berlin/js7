@@ -4,6 +4,7 @@ import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import com.typesafe.config.Config
 import izumi.reflect.Tag
@@ -232,7 +233,7 @@ extends Service.TrivialReleasable:
     /** Cancel the timeout fiber, too. */
     def delete(token: SessionToken, reason: String): IO[State] =
       tokenToSession.get(token).fold(IO.pure(this)): session =>
-        session.timeoutFiber.foldMap(_.cancel).as:
+        session.timeoutFiber.foldMapM(_.cancel).as:
           deleteOnly(token, reason)
 
     def deleteOnly(token: SessionToken, reason: String): State =

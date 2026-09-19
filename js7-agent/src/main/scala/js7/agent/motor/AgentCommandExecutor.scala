@@ -2,6 +2,7 @@ package js7.agent.motor
 
 import cats.effect.std.AtomicCell
 import cats.effect.{Deferred, IO, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.option.none
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -274,7 +275,7 @@ extends
               .as(Right(Accepted))
 
           case Some(runningShutdown) =>
-            cmd.processSignal.foldMap:
+            cmd.processSignal.foldMapM:
               forDirector.subagent.killAllProcesses
             .productR:
               // Update parameters used for ProgramTermination

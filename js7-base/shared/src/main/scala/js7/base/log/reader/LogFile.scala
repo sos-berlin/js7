@@ -2,6 +2,7 @@ package js7.base.log.reader
 
 import cats.effect.std.AtomicCell
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.option.none
 import fs2.{Chunk, Stream}
 import java.io.{EOFException, FileInputStream, FileNotFoundException}
@@ -56,7 +57,7 @@ private final class LogFile private(
 
   def releaseIndex(deleteTmpFile: Boolean): IO[Unit] =
     deferredIndexCell.getAndSet(None).flatMap:
-      _.foldMap: deferredIndexAlloc =>
+      _.foldMapM: deferredIndexAlloc =>
         logger.traceIO("releaseIndex", deferredIndexAlloc.allocatedThing.file.getFileName):
           val deferredIndex = deferredIndexAlloc.allocatedThing
           deferredIndex.fileSize.foreach: o =>

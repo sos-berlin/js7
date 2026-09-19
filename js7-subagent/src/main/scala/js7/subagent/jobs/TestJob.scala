@@ -30,7 +30,8 @@ final class TestJob extends InternalJob:
       arg.map:
         case Left(string) => step.write(outerr, string).void
         case Right(n) =>
-          (1 to n / charBlockSize).foldMap: _ =>
+          // TODO foldMap allocates long FlatMap chain?
+          (1 to n / charBlockSize).foldMapMI: _ =>
             step.write(outerr, charBlock).void
           .productR:
             step.write(outerr, charBlock.take(n % charBlockSize)).void

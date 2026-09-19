@@ -3,6 +3,7 @@ package js7.cluster
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Outcome, Ref, Resource, ResourceIO, SyncIO}
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import izumi.reflect.Tag
 import java.nio.file.Path
@@ -163,7 +164,7 @@ extends Service.StoppableByRequest:
 
   private def startWorkingNode(recovered: Recovered[S]): IO[WorkingClusterNode[S]] =
     logger.traceIO:
-      passiveOrWorkingNode.get.flatMap(_.left.toOption).foldMap(_.release.to[IO]) *>
+      passiveOrWorkingNode.get.flatMap(_.left.toOption).foldMapM(_.release.to[IO]) *>
         WorkingClusterNode.resource(recovered, common, clusterConf, eventIdGenerator)
           .toAllocated.flatTap: allocated =>
             IO:

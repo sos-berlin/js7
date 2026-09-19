@@ -209,11 +209,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
             logCommittedAndDoStatistics(writtenView, eventCount, lastWritten.aggregate)
             eventWriter.onCommitted(lastWritten.positionAndEventId, n = eventCount)
       .evalTap: chunk =>
-        chunk.foldMap: written =>
+        chunk.foldMapM: written =>
           written.completePersistOperation
       .evalTap: chunk =>
         // flushed.stampedKeyedEvents have been dropped when commitOptions.commitLater
-        chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).foldMap: stamped =>
+        chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents)).foldMapM: stamped =>
           possiblySwitchAck(stamped)
       .evalTap: chunk =>
         IO.whenA(shouldReleaseObsoleteEvents(chunk)):

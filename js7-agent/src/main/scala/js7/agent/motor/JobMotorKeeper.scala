@@ -2,6 +2,7 @@ package js7.agent.motor
 
 import cats.effect.std.Dispatcher
 import cats.effect.{FiberIO, IO, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import java.time.ZoneId
@@ -54,14 +55,15 @@ private final class JobMotorKeeper(
   def startJobMotors(workflow: Workflow): IO[Unit] =
     IO.defer:
       val zoneId = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
-      workflow.keyToJob.filter(_._2.agentPath == agentPath).foldMap: (jobKey, workflowJob) =>
-        JobMotor
-          .service(jobKey, workflowJob, getAgentState, orderMotor, subagentKeeper, zoneId,
-            findTimeIntervalLimit = agentConf.findTimeIntervalLimit)
-          .toAllocated
-          .flatMap: allocated =>
-            jobToMotor.insert(jobKey, allocated)
-              .map(_.orThrow)
+      workflow.keyToJob.iterator.filter(_._2.agentPath == agentPath)
+        .foldMapMI: (jobKey, workflowJob) =>
+          JobMotor
+            .service(jobKey, workflowJob, getAgentState, orderMotor, subagentKeeper, zoneId,
+              findTimeIntervalLimit = agentConf.findTimeIntervalLimit)
+            .toAllocated
+            .flatMap: allocated =>
+              jobToMotor.insert(jobKey, allocated)
+                .map(_.orThrow)
 
   def stopJobMotors(workflowId: WorkflowId): IO[Unit] =
     jobToMotor.removeConditional: (jobKey, _) =>
@@ -92,7 +94,7 @@ private final class JobMotorKeeper(
         .map(_ -> order)
     .toVector
     .groupMap(_._1)(_._2)
-    .foldMap: (jobKey, orders) =>
+    .foldMapMI: (jobKey, orders) =>
       keyToJobMotor(jobKey).enqueue(orders)
 
   def onOrderDetached(orderId: OrderId, originalAgentState: AgentState): IO[Unit] =
@@ -100,7 +102,7 @@ private final class JobMotorKeeper(
       .flatMap(_.ifState[IsFreshOrReady])
       .flatMap: order =>
         orderToJobMotor(order, originalAgentState)
-      .foldMap:
+      .foldMapM:
         _.remove(orderId).void
 
   def triggerAllJobs(reason: => Any): IO[Unit] =
@@ -108,7 +110,7 @@ private final class JobMotorKeeper(
     logger.traceIO("triggerAllJobs", reason_):
       // TODO Respect Order's priority
       jobMotors.flatMap:
-        _.foldMap:
+        _.foldMapMI:
           _.trigger(reason_)
 
   private def jobMotors: IO[View[JobMotor]] =
@@ -123,13 +125,13 @@ private final class JobMotorKeeper(
         agentState.maybeJobKey(order.workflowPosition)
           .map(_ -> order.id)
       .groupMap(_._1)(_._2)
-      .foldMap: (jobKey, orders) =>
-        jobToMotor.get(jobKey).map(_.allocatedThing).foldMap: jobMotor =>
+      .foldMapMI: (jobKey, orders) =>
+        jobToMotor.get(jobKey).map(_.allocatedThing).foldMapM: jobMotor =>
           jobMotor.onOrdersProcessed(orders)
 
   def maybeKillMarkedOrder(orderId: OrderId): IO[Unit] =
     withCurrentOrder(orderId): order =>
-      order.ifState[Processing].foldMap: order =>
+      order.ifState[Processing].foldMapM: order =>
         order.mark match
           case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
             maybeKillOrder(order, kill)
@@ -140,7 +142,7 @@ private final class JobMotorKeeper(
           case _ => IO.unit
 
   def maybeKillOrder(order: Order[Order.State], kill: CancellationMode.Kill): IO[Unit] =
-    order.ifState[Processing].foldMap: order =>
+    order.ifState[Processing].foldMapM: order =>
       IO.whenA(kill.workflowPosition.forall(_ == order.workflowPosition)):
         // RemoteSubagentDriver.killProcess kills asynchronously and does not block.
         // This operation must not block, otherwise the whole OrderMotor pipeline would block !!!
@@ -171,7 +173,7 @@ private final class JobMotorKeeper(
 
   private def withCurrentOrder[A](orderId: OrderId)(body: Order[Order.State] => IO[Unit]): IO[Unit] =
     getAgentState.flatMap: agentState =>
-      agentState.idToOrder.get(orderId).foldMap:
+      agentState.idToOrder.get(orderId).foldMapM:
         body
 
   def registerMBeans: ResourceIO[Unit] =

@@ -130,7 +130,7 @@ private trait SubagentEventListener:
                 // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
                 // OPTIMISE: ReleaseEvents only after OrderProcessed,
                 //  or (asynchronously) after a number of events
-                lastEventId.foldMap: eventId =>
+                lastEventId.foldMapM: eventId =>
                   enqueueReleaseEventsCommand(eventId)
               .productR:
                 followUps.combineAll)

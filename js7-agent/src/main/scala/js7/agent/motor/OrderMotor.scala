@@ -3,6 +3,7 @@ package js7.agent.motor
 import cats.effect.kernel.Resource
 import cats.effect.std.{Dispatcher, Queue}
 import cats.effect.{IO, Ref, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import js7.agent.command.AgentCommandToEventCalc
@@ -77,7 +78,7 @@ extends Service.StoppableByRequest:
           if n > 0 then logger.debug(s"❗️processCount=$n when stopping")
       .guarantee:
         orderToEntry.removeAll.flatMap:
-          _.values.foldMap:
+          _.values.foldMapMI:
             _.cancelSchedule
       .guarantee:
         jobMotorKeeper.stop
@@ -87,10 +88,10 @@ extends Service.StoppableByRequest:
 
   private def recoverAgentRefAndJobs: IO[Unit] =
     journal.aggregate.flatMap: agentState =>
-      agentState.keyToItem(AgentRef).get(agentPath).foldMap: agentRef =>
+      agentState.keyToItem(AgentRef).get(agentPath).foldMapM: agentRef =>
         proceedWithItem(agentRef).map(_.orThrow)
       .productR:
-        agentState.idToWorkflow.values.foldMap:
+        agentState.idToWorkflow.values.foldMapMI:
           jobMotorKeeper.startJobMotors
 
   /** Run this after AgentReady event. */
@@ -109,7 +110,7 @@ extends Service.StoppableByRequest:
   : IO[Unit] =
     logger.debugIO:
       jobMotorKeeper.recoverProcessingOrders(orders, agentState).flatMap: checkedFibers =>
-        checkedFibers.foldMap: (orderId, checkedFiber) =>
+        checkedFibers.foldMapM: (orderId, checkedFiber) =>
           checkedFiber.traverse: fiber =>
             fiber.joinStd.flatMap: (_: OrderProcessed) =>
               enqueue(orderId)
@@ -190,7 +191,7 @@ extends Service.StoppableByRequest:
     val processedOrderIds = processedBuilder.result()
     val startedOrderIds = startedBuilder.result().filterNot(processedOrderIds.toSet)
 
-    startedOrderIds.foldMap(jobMotorKeeper.maybeKillMarkedOrder) *>
+    startedOrderIds.foldMapM(jobMotorKeeper.maybeKillMarkedOrder) *>
       jobMotorKeeper.onOrdersProcessed(processedOrderIds) *>
       enqueue(processedOrderIds)
 
@@ -264,11 +265,11 @@ extends Service.StoppableByRequest:
       onPersistedEnqueue(persisted)
 
   private def onPersistedHandleOrders(persisted: Persisted[AgentState, Event]): IO[Unit] =
-    persisted.keyedEvents.foldMap:
+    persisted.keyedEvents.foldMapMI:
       case KeyedEvent(orderId: OrderId, event) =>
         event match
           case OrderKillingMarked(Some(kill)) =>
-            persisted.aggregate.idToOrder.get(orderId).foldMap: order =>
+            persisted.aggregate.idToOrder.get(orderId).foldMapM: order =>
               jobMotorKeeper.maybeKillOrder(order, kill)
 
           case OrderDetachable | OrderDetached =>

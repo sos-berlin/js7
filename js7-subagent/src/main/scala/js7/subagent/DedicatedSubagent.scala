@@ -111,7 +111,7 @@ extends Service.StoppableByRequest:
   private def stopAllOrders(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
     logWhileStopping:
       orderIdToJobDriver.stop.both:
-        signal.foldMap:
+        signal.foldMapM:
           killAndStopAllJobs
       .productR:
         orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
@@ -209,7 +209,7 @@ extends Service.StoppableByRequest:
         val since = Deadline.now
         val oToP = orderToProcessing.unsafeToMap.toVector
         val sym = BlockingSymbol()
-        List(0.s/*debug*/, 1.s/*info*/).foldMap: delay =>
+        List(0.s/*debug*/, 1.s/*info*/).foldMapM: delay =>
           // Wait a second before logging at info level
           IO:
             sym.escalate()

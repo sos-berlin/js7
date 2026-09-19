@@ -272,7 +272,7 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
                 subagentDiedEvent.map(subagentId <-: _)
         .map(_.orThrow)
         .flatMap: persisted =>
-          persisted.keyedEvents.foldMap:
+          persisted.keyedEvents.foldMapMI:
             case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
               oToD(orderId).complete(orderProcessed).void
             case _ => IO.unit

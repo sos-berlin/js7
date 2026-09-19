@@ -2,6 +2,7 @@ package js7.base.log.reader
 
 import cats.effect.std.Supervisor
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import fs2.concurrent.SignallingRef
@@ -80,7 +81,7 @@ extends Service.StoppableByCancel:
             IO.defer:
               var logLine = event.toString
               val replaced = instantToLogFile.put(logFile.fileInstant, logFile)
-              Option(replaced).foldMap: replacedLogFile =>
+              Option(replaced).foldMapM: replacedLogFile =>
                 //?IO.whenA(replacedLogFile.filename != logFile.filename):
                   logLine += s", replace ${replacedLogFile.filename}"
                   fileToInstant.remove(replacedLogFile.filename)
@@ -93,9 +94,9 @@ extends Service.StoppableByCancel:
         case event @ LogFileDeleted(filename) =>
           IO.uncancelable: _ =>
             var logLine = event.toString
-            fileToInstant.remove(filename).foldMap: instant =>
+            fileToInstant.remove(filename).foldMapM: instant =>
               IO.whenA(Option(instantToLogFile.get(instant)).exists(_.filename == filename)):
-                Option(instantToLogFile.remove(instant)).foldMap: logFile =>
+                Option(instantToLogFile.remove(instant)).foldMapM: logFile =>
                   logLine += s", remove $logFile"
                   logFile.releaseIndex
             .map: _ =>

@@ -14,7 +14,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.foldMapMI
 import js7.base.utils.Tests.isIntelliJIdea
 
 final class ByteChunksLineSplitterTest extends OurAsyncTestSuite:
@@ -128,7 +128,7 @@ final class ByteChunksLineSplitterTest extends OurAsyncTestSuite:
           .compile.toVector
           .await(99.s)
 
-        (1 to 10).foldMap: _ =>
+        (1 to 10).foldMapMI: _ =>
           Stream.fromBlockingIterator[IO](testChunks.iterator, chunkSize = 1)
             .through:
               byteChunksToLines(breakLinesLongerThan = Some(BreakLinesLongerThan))

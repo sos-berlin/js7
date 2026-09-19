@@ -2,6 +2,7 @@ package js7.subagent.job
 
 import cats.effect
 import cats.effect.{Deferred, IO}
+import cats.syntax.foldable.*
 import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -66,10 +67,10 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
                     throwable.nullIfNoStackTrace)
 
   def killAllDueToShutdown(signal: ProcessSignal): IO[Unit] =
-    orderToAlloc.toMap.map(_.values.map(_.allocatedThing)).flatMap: drivers =>
+    orderToAlloc.toMap.map(_.values.iterator.map(_.allocatedThing)).flatMap: drivers =>
       if drivers.nonEmpty then
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
-      drivers.foldMap: driver =>
+      drivers.foldMapMI: driver =>
         driver.kill(signal, Some(ProcessKilledDueToSubagentShutdownProblem(_)))
           .handleError: t =>
             logger.error(s"$driver kill: ${t.toStringWithCauses}", t)
@@ -95,7 +96,7 @@ private[subagent] final class JobDriver private(params: JobDriver.Params):
               removeOrderEntry(order.id)
 
   private def removeOrderEntry(orderId: OrderId): IO[Unit] =
-    orderToAlloc.remove(orderId).flatMap(_.foldMap(_.release)) *>
+    orderToAlloc.remove(orderId).flatMap(_.foldMapM(_.release)) *>
       IO(orderToAlloc.isEmpty).ifTrue:
         lastProcessTerminated.fold(IO.unit):
           _.complete(()).void

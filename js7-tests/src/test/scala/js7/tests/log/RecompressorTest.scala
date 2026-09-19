@@ -27,7 +27,7 @@ final class RecompressorTest extends OurAsyncTestSuite:
 
   "Recompressor" in:
     val recompressors = Recompressor.knownRecompressors :+ new Lz4Recompressor
-    recompressors.foldMap: recompressor =>
+    recompressors.foldMapM: recompressor =>
       testRecompressor(recompressor)
 
   private def testRecompressor(recompressor: Recompressor): IO[Assertion] =
@@ -50,7 +50,7 @@ final class RecompressorTest extends OurAsyncTestSuite:
               val in = recompressor.decompressingInputStream(recompressedIn)
               assert(Chunk.array(in.readAllBytes()) == lines.combineAll)
           .productR:
-            posAndLines.reverse.foldMap: (opaquePos, line) =>
+            posAndLines.reverse.foldMapM: (opaquePos, line) =>
               Resource.fromAutoCloseable(IO(FileInputStream(file.toFile))).use: recompressedIn =>
                 IO:
                   val in = recompressor.decompressingInputStream(recompressedIn)

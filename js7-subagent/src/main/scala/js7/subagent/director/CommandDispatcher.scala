@@ -2,6 +2,7 @@ package js7.subagent.director
 
 import cats.effect.kernel.Deferred
 import cats.effect.{FiberIO, IO}
+import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.CatsExtensions.tryIt
@@ -57,7 +58,7 @@ private trait CommandDispatcher:
         logger.traceIO:
           queue.stop.flatMap: numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
-            numberedExecutes.foldMap: numberedExecute =>
+            numberedExecutes.foldMapM: numberedExecute =>
               commandToResponse.lift(numberedExecute.value.command) match
                 case None =>
                   IO(logger.debug(s"⚠️  stopWithResponse $numberedExecute => discarded"))

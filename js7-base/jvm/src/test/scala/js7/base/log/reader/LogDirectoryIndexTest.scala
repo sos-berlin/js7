@@ -444,7 +444,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
       val lineCount = logFileSize / lineLength
       temporaryDirectoryResource[IO]("LogDirectoryIndexTest-").use: dir =>
         val fileCount = 5
-        (1 to fileCount).foldMap: i =>
+        (1 to fileCount).foldMapMI: i =>
           val date = s"2026-05-1$i"
           val gzFile = dir / s"TEST-$date-1.log.gz"
           LogFileIndexTest.writeFile(
@@ -455,7 +455,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
             given Config = Js7Config.defaultConfig
             LogDirectoryIndex.resource(dir, logFilePrefixes = Set("TEST")).use: logDirectoryIndex =>
               logDirectoryIndex.logIndex(logFilePrefix = "TEST", Info).flatMap: logIndex =>
-                (1 to 10).foldMap: _ =>
+                (1 to 10).foldMapMI: _ =>
                   IO.defer:
                     val t = Deadline.now
                     logIndex.byteLineStream(

@@ -21,7 +21,7 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.foldMapMI
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.controller.client.PekkoHttpControllerApi
@@ -196,7 +196,7 @@ object JournaledProxyTest:
     def toOrderProcess(step: Step): OrderProcess =
       OrderProcess:
         val line = ("+" * (stdoutEventSize - 1) + "\n") * 100
-        (1 to 10_000).foldMap: _ =>
+        (1 to 10_000).foldMapMI: _ =>
           step.writeOut(line).void
         .as(OrderOutcome.succeeded)
 

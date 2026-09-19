@@ -3,6 +3,7 @@ package js7.subagent
 import cats.effect.std.{AtomicCell, Supervisor}
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
@@ -118,7 +119,7 @@ extends MainService, Service.StoppableByRequest:
                   IO:
                     logger.info(s"❗ $cmd • $meta")
                   .productR:
-                    dedicatedAllocated.toOption.foldMap: allocated =>
+                    dedicatedAllocated.toOption.foldMapM: allocated =>
                       allocated.allocatedThing
                         .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
                         .guarantee(allocated.release)
@@ -130,7 +131,7 @@ extends MainService, Service.StoppableByRequest:
                     whenTerminated.complete(termination).as(termination)
 
             case Some(_) =>
-              cmd.processSignal.foldMap:
+              cmd.processSignal.foldMapM:
                 killAllProcesses
               .productR:
                 // Update parameters used for ProgramTermination
@@ -202,7 +203,7 @@ extends MainService, Service.StoppableByRequest:
       .flatMapT(_.startOrderProcess(order, executeDefaultArguments, timeoutAt))
 
   def killAllProcesses(signal: ProcessSignal): IO[Unit] =
-    dedicatedAllocated.toOption.foldMap:
+    dedicatedAllocated.toOption.foldMapM:
       _.allocatedThing.killAllProcesses(signal)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Checked[Unit]] =

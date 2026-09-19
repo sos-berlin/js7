@@ -4,7 +4,7 @@ import cats.effect.IO
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.foldMapMI
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.ExecutionContext
 
@@ -57,7 +57,7 @@ final class ResourceGuardTest extends OurAsyncTestSuite:
 
     val minimum = 100_000
     val n = sys.runtime.availableProcessors
-    (1 to n).foldMap(_ => loopUntilReleased).both:
+    (1 to n).foldMapMI(_ => loopUntilReleased).both:
       IO.blocking:
         awaitAndAssert(notReleased.get() >= minimum)
         g.releaseAfterUse()

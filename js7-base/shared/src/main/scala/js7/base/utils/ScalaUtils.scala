@@ -1,7 +1,10 @@
 package js7.base.utils
 
+import cats.instances.either.*
+import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.functor.*
+import cats.syntax.monoid.*
 import cats.syntax.option.*
 import cats.{Foldable, Functor, Monad, Monoid, Semigroup}
 import izumi.reflect.Tag
@@ -396,7 +399,7 @@ object ScalaUtils:
       //def foldMap[B: Monoid as B](f: A => B): B =
       //  //iterable.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
       //  iterable match
-      //    case seq: Seq[A] => Foldable[Seq].foldMap(seq)(f)
+      //    case seq: Seq[A] => Foldable[Seq].foldMapM(seq)(f)
       //    case _ => B.combineAll(iterable.map(f))
 
       /** Like mkString but limits the number of shown elements.
@@ -459,6 +462,10 @@ object ScalaUtils:
                 case Empty => throw new NoSuchElementException
                 case a: A @unchecked => a
 
+    //extension [F[x] <: IndexedSeq[x], A](indexedSeq: F[A])
+    //  def foldMapM[B: Monoid as B](f: A => F[B]): F[B] =
+    //    Foldable[Seq].foldMap(indexedSeq)(f)
+
     extension [A](iterableOnce: IterableOnce[A])
       /** Convert to Seq[A].
        * <p>The original toSeq method is deprecated..
@@ -484,14 +491,36 @@ object ScalaUtils:
               o.toArray(using o.elemTag.asInstanceOf[ClassTag[A]])
           case _ => Vector.from(iterableOnce)
 
-      def foldMap[B: Monoid as B](f: A => B): B =
+      /** Variant of `foldMap` for IterableOnce.
+        *
+        * Prefer `foldMapMI` when possible, to reduce memory usage!
+        */
+      def foldMapI[B: Monoid as B](f: A => B): B =
         iterableOnce match
           case seq: Seq[A @unchecked] => Foldable[Seq].foldMap(seq)(f)
           case iterable: Iterable[A @unchecked] => B.combineAll(iterable.map(f))
           case _ => iterableOnce.iterator.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
-        //iterableOnce match
-        //  case iterable: Iterable[A] => B.combineAll(iterable.map(f))
-        //  case _ => B.combineAll(iterableOnce.iterator.map(f))
+        //case _ => B.combineAll(iterableOnce.iterator.map(f))
+
+      /** Memory-efficient variant of `foldMapM` for IterableOnce.
+        *
+        * Does not shortcut Left in F[Either]. */
+      def foldMapMI[F[_]: Monad as F, B: Monoid as B](f: A => F[B]): F[B] =
+        val it = iterableOnce.iterator
+        if it.isEmpty then
+          F.pure(B.empty)
+        else
+          val first = f(it.next())
+          if !it.hasNext then
+            first
+          else
+            first.flatMap: acc =>
+              acc.tailRecM: acc =>
+                if it.hasNext then
+                  f(it.next()).map: b =>
+                    Left(acc |+| b)
+                else
+                  F.pure(Right(acc))
 
       def repeatLast: LazyList[A] =
         iterableOnce match

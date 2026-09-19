@@ -23,7 +23,7 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
 
   "streamGrowingLogFile" in :
     temporaryFileResource[IO]("LogFileReaderTest").use: file =>
-      (1 to 2).foldMap: i =>
+      (1 to 2).foldMapMI: i =>
         IO.defer:
           logger.debug(s"——— $i " * 10)
           deleteIfExists(file)
@@ -31,7 +31,7 @@ final class LogFileReaderTest extends OurAsyncTestSuite:
           Queue.unbounded[IO, ByteArray].flatMap: queue =>
             def writeAndRead(key: String): IO[Assertion] =
               IO.sleep(100.ms) *>
-                (1 to 20).foldMap: j =>
+                (1 to 20).foldMapMI: j =>
                   IO.defer:
                     val more = ByteArray:
                       key + " " +

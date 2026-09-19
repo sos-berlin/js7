@@ -241,13 +241,13 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       assert(non.merge(2.some)(_ + _) == 2.some)   // Cats .map2 would return None
       assert(1.some.merge(2.some)(_ + _) == 3.some)      // Like Cats .map2
 
-    "foldMap" in:
-      assert("A".some.foldMap(_ + "*") == "A*")
-      assert(none[String].foldMap(_ + "*") == "")
+    "foldMapI" in:
+      assert("A".some.foldMapI(_ + "*") == "A*")
+      assert(none[String].foldMapI(_ + "*") == "")
 
       assert(Monoid[Int].empty == 0)
-      assert(1.some.foldMap(_ + 3) == 4)
-      assert(none[Int].foldMap(_ + 3) == 0)
+      assert(1.some.foldMapI(_ + 3) == 4)
+      assert(none[Int].foldMapI(_ + 3) == 0)
   }
 
   "Throwable" - {
@@ -464,25 +464,25 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
   }
 
   "IterableOnce" - {
-    "foldMap" - {
+    "foldMapI" - {
       "Standard types" in:
-        assert(Iterator.empty[Int].foldMap(_.toString) == "")
-        assert(Vector.empty[Int].foldMap(_.toString) == "")
-        assert(List.empty[Int].foldMap(_.toString) == "")
+        assert(Iterator.empty[Int].foldMapI(_.toString) == "")
+        assert(Vector.empty[Int].foldMapI(_.toString) == "")
+        assert(List.empty[Int].foldMapI(_.toString) == "")
 
-        assert(Iterator(1, 2, 3).foldMap(_.toString) == "123")
-        assert(Vector(1, 2, 3).foldMap(_.toString) == "123")
-        assert(List(1, 2, 3).foldMap(_.toString) == "123")
+        assert(Iterator(1, 2, 3).foldMapI(_.toString) == "123")
+        assert(Vector(1, 2, 3).foldMapI(_.toString) == "123")
+        assert(List(1, 2, 3).foldMapI(_.toString) == "123")
 
-        assert(List(1, 2, 3).foldMap(_ => ()) == ())
+        assert(List(1, 2, 3).foldMapI(_ => ()) == ())
 
-        assert(("A".some: IterableOnce[String]).foldMap(_ + "*") == "A*")
-        assert((None: IterableOnce[String]).foldMap(_ + "*") == "")
-        assert(none[String].foldMap(_ + "*") == "")
+        assert(("A".some: IterableOnce[String]).foldMapI(_ + "*") == "A*")
+        assert((None: IterableOnce[String]).foldMapI(_ + "*") == "")
+        assert(none[String].foldMapI(_ + "*") == "")
 
       "IO" in:
         val touched = mutable.Buffer.empty[Int]
-        Iterator(1, 2, 3).foldMap: i =>
+        Iterator(1, 2, 3).foldMapI: i =>
           IO:
             touched += i
             ()
@@ -491,20 +491,69 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
 
       "IO[Checked[...]] does't fail fast" in:
         val touched = mutable.Buffer.empty[Int]
-        Iterator(1, 2, 3).foldMap: i =>
+        Iterator(1, 2, 3).foldMapI: i =>
           IO:
             touched += i
             (i == 1) !! Problem("Must be one")
         .map: result =>
-          // TODO foldMap should fail fast (or maybe foldMapFailFast)
+          // TODO foldMapI should fail fast (or maybe foldMapXFailFast)
           //assert(result == Left(Problem("Must be one")) && touched == List(1, 2))
           assert(result == Left(Problem("Must be one")) && touched == List(1, 2, 3))
 
       "IO[Checked[...]] only Right" in:
-        Iterator(1, 2, 3).foldMap: i =>
+        Iterator(1, 2, 3).foldMapI: i =>
           IO.pure(Checked.unit)
         .map: result =>
           assert(result == Right(()))
+    }
+
+    "foldMapMI" - {
+      "IO" in:
+        val touched = mutable.Buffer.empty[Int]
+        Iterator(1, 2, 3).foldMapMI: i =>
+          IO:
+            touched += i
+            ()
+        .map: result =>
+          assert(result == () && touched == List(1, 2, 3))
+
+      "IO[Checked[...]] doesn't fail fast" in:
+        val touched = mutable.Buffer.empty[Int]
+        Iterator(1, 2, 3).foldMapMI: i =>
+          IO:
+            touched += i
+            (i == 1) !! Problem("Must be one")
+        .map: result =>
+          // TODO foldMapMI should fail fast (or maybe foldMapMXFailFast)
+          //assert(result == Left(Problem("Must be one")) && touched == List(1, 2))
+          assert(result == Left(Problem("Must be one")) && touched == List(1, 2, 3))
+
+      "IO[Checked[...]] only Right" in:
+        Iterator(1, 2, 3).foldMapMI: i =>
+          IO.pure(Checked.unit)
+        .map: result =>
+          assert(result == Right(()))
+
+      "foldMapMI doesn't allocate long FlatMap chain" in:
+        if !isIntelliJIdea then pending
+        val n = sys.runtime.maxMemory() / 4 // Start with low memory, for example -Xmx100m !!!
+        val expected = -(n * (n + 1) / 2)
+        assert((1L to n).iterator.map(i => -i).sum == expected)
+
+        (1L to n).iterator.foldMapMI(i => IO(-i)).map: result =>
+          assert(result == expected)
+        .pipeIf(false):
+          _.productR:
+            // foldMapI (instead of foldMapMI) should fail with OutOfMemoryError
+            (1L to n).iterator.foldMapI(i => IO(-i)).map: result =>
+              assert(result == expected)
+
+       "Two billion elements" in:
+         // Faster with -Xmx100m or more
+         if !isIntelliJIdea then pending // Because it takes too long
+         val n: Long = Int.MaxValue
+         val result = (1L to n).foldMapMI(i => Option(-i))
+         assert(result == Some(-(n * (n + 1) / 2)))
     }
 
     "repeatLast" in:

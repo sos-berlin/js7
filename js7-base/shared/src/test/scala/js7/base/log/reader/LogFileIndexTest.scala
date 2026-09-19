@@ -30,7 +30,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
-import js7.base.utils.ScalaUtils.syntax.foldMap
+import js7.base.utils.ScalaUtils.syntax.foldMapMI
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertion
@@ -201,7 +201,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           val lineCount = logFileSize / lineLength
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount, extra = extra) *>
-              (1 to 20).foldMap: _ =>
+              (1 to 20).foldMapMI: _ =>
                 IO.defer:
                   System.gc()
                   val usedMemory = sys.runtime.totalMemory - sys.runtime.freeMemory
@@ -238,7 +238,7 @@ final class LogFileIndexTest extends OurAsyncTestSuite:
           temporaryFileResource[IO]("LogFileIndexTest-", ".tmp").use: file =>
             writeFile(file, lineLength = lineLength, lineCount = lineCount) *>
               LogFileIndex.fromFile(file).flatMap: logFileIndex =>
-                (1 to 20).foldMap: _ =>
+                (1 to 20).foldMapMI: _ =>
                   IO.defer:
                     val t = Deadline.now
                     logFileIndex

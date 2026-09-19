@@ -419,7 +419,7 @@ extends Service.StoppableByRequest:
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     // TODO Race condition?
     IO.defer:
-      orderToWaitForSubagent.get(orderId).foldMap:
+      orderToWaitForSubagent.get(orderId).foldMapM:
         _.complete(()).void
     .productR:
       IO.defer:
@@ -470,7 +470,7 @@ extends Service.StoppableByRequest:
   def removeSubagent(subagentId: SubagentId): IO[Unit] =
     logger.debugIO("removeSubagent", subagentId):
       stateVar.value.flatMap:
-        _.idToDriver.get(subagentId).foldMap: subagentDriver =>
+        _.idToDriver.get(subagentId).foldMapM: subagentDriver =>
           subagentDriver.tryShutdownForRemoval // may take a short time
             .productR:
               stateVar.updateDirect: state =>
@@ -507,12 +507,12 @@ extends Service.StoppableByRequest:
 
   private def startObserving: IO[Unit] =
     stateVar.value.flatMap:
-      _.subagentToEntry.values.map(_.driver).foldMap:
+      _.subagentToEntry.values.iterator.map(_.driver).foldMapMI:
         _.startObserving
 
   private def recoverSubagentBundles(subagentBundles: Seq[SubagentBundle]): IO[Checked[Unit]] =
     logger.debugIO:
-      subagentBundles.foldMap(addOrReplaceSubagentBundle)
+      subagentBundles.foldMapM(addOrReplaceSubagentBundle)
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): IO[Checked[Unit]] =

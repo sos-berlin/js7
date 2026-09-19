@@ -2,6 +2,7 @@ package js7.agent.motor
 
 import cats.effect.IO
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import js7.agent.configuration.AgentConfiguration
@@ -178,7 +179,7 @@ private final class ItemCommandExecutor(
 
       case WorkflowId.as(workflowId) =>
         persistItemDetachedIfExists.ifPersisted: persisted =>
-          persisted.originalAggregate.idToWorkflow.get(workflowId).foldMap: workflow =>
+          persisted.originalAggregate.idToWorkflow.get(workflowId).foldMapM: workflow =>
             subagentKeeper.stopWorkflowJobs(workflow)
               .handleError: t =>
                 logger.error(s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t)
@@ -270,7 +271,7 @@ private final class ItemCommandExecutor(
       onItemEventPersisted(persisted)
 
   private def onItemEventPersisted(persisted: Persisted[AgentState, Event]): IO[Checked[Unit]] =
-    persisted.keyedEvents.foldMap:
+    persisted.keyedEvents.foldMapMI:
       case KeyedEvent(NoKey, ItemDetached(WorkflowId.as(workflowId), _)) =>
         orderMotor.jobMotorKeeper.stopJobMotors(workflowId)
           .map(Right(_))

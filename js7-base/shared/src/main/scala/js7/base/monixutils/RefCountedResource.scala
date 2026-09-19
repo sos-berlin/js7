@@ -1,9 +1,9 @@
 package js7.base.monixutils
 
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.foldable.*
 import izumi.reflect.Tag
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax.foldMap
 
 final class RefCountedResource[A: Tag] private(
   base: ResourceIO[A],
@@ -58,7 +58,7 @@ final class RefCountedResource[A: Tag] private(
   def release(using src: sourcecode.Enclosing): IO[Unit] =
     lock.lock(src.value + "->release"):
       IO.defer:
-        maybeCached.foldMap: cached =>
+        maybeCached.foldMapM: cached =>
           maybeCached = None
           cached.release
 

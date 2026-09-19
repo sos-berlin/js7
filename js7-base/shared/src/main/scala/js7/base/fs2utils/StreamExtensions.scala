@@ -36,6 +36,13 @@ object StreamExtensions:
     def :+[B](b: B): Chunk[A | B] =
       chunk ++ Chunk.singleton(b)
 
+    /** Like `asSeq`, but returns `Seq[A]`.
+      *
+      * Useful for typeclasses that are implemented for `Seq` but not for `IndexedSeq`.
+      */
+    inline def asSeqType: Seq[A] =
+      chunk.asSeq
+
     def grouped(size: Int): Iterator[Chunk[A]] =
       if size <= 0 then
         throw new IllegalArgumentException(s"Chunk.grouped size must be positive: $size")

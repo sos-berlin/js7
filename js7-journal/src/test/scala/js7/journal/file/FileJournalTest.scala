@@ -22,7 +22,6 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, WallClock}
 import js7.base.utils.Missing
-import js7.base.utils.ScalaUtils.syntax.foldMap
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.configuration.JournalConf
@@ -174,7 +173,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
           succeed
 
     run(10_000) *>
-      sys.props.get("test.speed").map(_.toInt).foldMap: n =>
+      sys.props.get("test.speed").map(_.toInt).foldMapM: n =>
         run(n)
 
   "Massive parallel" - {

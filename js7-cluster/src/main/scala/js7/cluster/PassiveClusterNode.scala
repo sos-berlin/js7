@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Sync}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import fs2.Stream
 import io.circe.Json
@@ -55,9 +56,8 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
-import js7.journal.file.JournalLocation
-import js7.journal.file.FileJournalMXBean
 import js7.journal.file.JournalFiles.extensions.*
+import js7.journal.file.{FileJournalMXBean, JournalLocation}
 import js7.journal.log.JournalLogger
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
 import scala.concurrent.duration.Deadline
@@ -167,7 +167,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
 
             // Delete obsolete journal files left by last run
             IO.whenA(journalConf.deleteObsoleteFiles):
-              recovered.recoveredJournalFile.foldMap: f =>
+              recovered.recoveredJournalFile.foldMapM: f =>
                 val eventId = f.fileEventId/*release files before the recovered file*/
                 eventWatch.releaseEvents:
                   recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds)
@@ -550,7 +550,7 @@ private final class PassiveClusterNode[S <: ClusterableState[S]] private(
               IO.whenA(isSnapshotTaken):
                 IO.defer:
                   _currentState = IO(recoverer.result())
-                  maybeTmpFile.foldMap: tmpFile =>
+                  maybeTmpFile.foldMapM: tmpFile =>
                     val journalId = recoverer.fileJournalHeader.map(_.journalId) getOrElse
                       sys.error(s"Missing JournalHeader in replicated journal file '$file'")
                     for o <- continuation.maybeJournalId if o != journalId do

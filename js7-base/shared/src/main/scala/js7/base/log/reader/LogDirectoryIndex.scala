@@ -144,7 +144,7 @@ extends Service.StoppableByRequest:
               (prefix, logLevel) -> channel
         .sequence.map(_.toMap))(
       release =
-        _.values.foldMap: channel =>
+        _.values.foldMapMI: channel =>
           channel.close.void)
 
   override def toString = "LogDirectoryIndex"

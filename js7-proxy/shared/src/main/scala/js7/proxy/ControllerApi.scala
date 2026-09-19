@@ -240,7 +240,7 @@ extends ControllerApiWithHttp:
           ClusterWatchService
             .service(clusterWatchId, apisResource, config,
               onNodeLossEventConfirmRequired =
-                _.foldMap: problem =>
+                _.foldMapM: problem =>
                   IO(onNodeLossEventConfirmRequired(problem)),
               requireFailoverConfirmation = requireFailoverConfirmation)
             .toAllocated

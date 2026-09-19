@@ -112,7 +112,7 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
       TestJob.execute(agentPath, arguments = Map(
         "stdout" -> NumericConstant(megabytes * 1_000_000))))
       withItem(workflow): workflow =>
-        (1 to (if isIntelliJIdea then 5 else 1)).foldMap: _ =>
+        (1 to (if isIntelliJIdea then 5 else 1)).foldMapI: _ =>
           val since = Deadline.now
           val orderId = OrderId("SPEED")
           addOrder(orderId, workflow.path)

@@ -95,7 +95,7 @@ extends Service.StoppableByRequest:
           s"""🪱 pipeline: No Order is processable despite signal "${signalReason()}""""
         chunk
     .evalMap: chunk =>
-      chunk.asSeq.foldMap: o =>
+      chunk.asSeq.foldMapMI: o =>
         startOrderProcess(o).startAndForget // TODO How to cancel this?
     .interruptWhenF(untilServiceStopRequested)
 
@@ -136,7 +136,7 @@ extends Service.StoppableByRequest:
       admissionSignal.get.map(_.filter(_.contains(now)))
 
   private def startOrderProcess(orderWithTimeout: OrderWithTimeout): IO[Unit] =
-    import orderWithTimeout.{timeoutAt, order}
+    import orderWithTimeout.{order, timeoutAt}
     // SubagentKeeper ignores the Order when it has been concurrently changed
     subagentKeeper.processOrder(order, timeoutAt)
       .catchIntoChecked
@@ -196,7 +196,7 @@ extends Service.StoppableByRequest:
 
 
   def onOrdersProcessed(orderIds: Iterable[OrderId]): IO[Unit] =
-    orderIds.foldMap: orderId =>
+    orderIds.foldMapMI: orderId =>
       remove(orderId, unnecessary = "🪱 ") /*Remove a maybe duplicate inserted order???*/
         *> decrementProcessCount(orderId, "OrderProcessed")
 

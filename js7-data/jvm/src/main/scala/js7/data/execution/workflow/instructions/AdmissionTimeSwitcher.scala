@@ -3,14 +3,13 @@ package js7.data.execution.workflow.instructions
 import cats.effect.kernel.Resource
 import cats.effect.std.Dispatcher
 import cats.effect.{IO, ResourceIO}
+import cats.syntax.foldable.*
 import fs2.concurrent.{Signal, SignallingRef}
 import java.time.ZoneId
 import js7.base.catsutils.CatsExtensions.*
 import js7.base.log.Logger
 import js7.base.service.Service
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.execution.workflow.instructions.AdmissionTimeSwitch
 import js7.data.execution.workflow.instructions.AdmissionTimeSwitcher.*
 import js7.data.job.JobKey
 import scala.concurrent.duration.FiniteDuration
@@ -61,7 +60,7 @@ extends
       .flatMap: maybeTimeInterval =>
         logger.trace(s"selectTimeInterval $jobKey ${maybeTimeInterval getOrElse "None"}")
         currentAdmissionTimeSignal.set(maybeTimeInterval) *>
-          maybeTimeInterval.foldMap: timeInterval =>
+          maybeTimeInterval.foldMapM: timeInterval =>
             clock.sleepUntil(timeInterval.end) *>
               onPermissionStartOrEnd
 

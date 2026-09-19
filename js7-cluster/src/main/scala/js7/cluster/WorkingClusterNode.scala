@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.foldable.*
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
@@ -71,11 +72,11 @@ final class WorkingClusterNode[S <: ClusterableState[S]: ClusterableState.Compan
 
   def afterAggregateInitialisation: IO[Checked[Unit]] =
     automaticallyAppointConfiguredBackupNode.flatMapT: _ =>
-      _activeClusterNode.toOption.foldMap:
+      _activeClusterNode.toOption.foldMapM:
         _.emitClusterActiveNodeRestarted
 
   private def automaticallyAppointConfiguredBackupNode: IO[Checked[Unit]] =
-    clusterConf.maybeClusterSetting.foldMap: setting =>
+    clusterConf.maybeClusterSetting.foldMapM: setting =>
       journal.clusterState.flatMap:
         case _: ClusterState.HasNodes => IO.right(Completed)
         case ClusterState.Empty =>

@@ -99,9 +99,9 @@ extends SubagentDriver, Service.StoppableByRequest:
         .groupWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
         .evalMap: chunk =>
           val stampedEvents = chunk.toVector.flatMap(_._1)
-          val followUpAll = chunk.foldMap(_._2)
+          val followUpAll = chunk.foldMapM(_._2)
           IO.whenA(stampedEvents.nonEmpty):
-            stampedEvents.foldMap: stamped =>
+            stampedEvents.foldMapM: stamped =>
               stamped.value match
                 case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown |
                                                  SubagentItemStateEvent.SubagentShutdownV7) =>
@@ -170,7 +170,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   def stopWorkflowJobs(workflow: Workflow) =
     IO.defer:
-      subagent.checkedDedicatedSubagent.toOption.foldMap:
+      subagent.checkedDedicatedSubagent.toOption.foldMapM:
         _.stopWorkflowJobs(workflow)
 
   def terminate: IO[Unit] =

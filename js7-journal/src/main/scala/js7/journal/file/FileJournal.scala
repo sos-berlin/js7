@@ -32,11 +32,10 @@ import js7.base.utils.Tests.isTest
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, EventDrivenState_, EventId, JournalHeader, JournalId, JournalState, SnapshotableState}
 import js7.journal.configuration.JournalConf
-import js7.journal.file.JournalLocation
 import js7.journal.file.FileJournal.*
 import js7.journal.file.FileJournalMXBean.Bean
 import js7.journal.file.JournalFiles.extensions.*
-import js7.journal.file.{Committer, Snapshotter}
+import js7.journal.file.{Committer, JournalLocation, Snapshotter}
 import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.recover.Recovered
 import js7.journal.watch.{JournalEventWatch, JournalingObserver}
@@ -157,7 +156,7 @@ extends
           case None => IO.right(())
           case Some(None) => IO.left(())
           case Some(Some(queuedEntries)) =>
-            queuedEntries.foldMap: queuedEntry =>
+            queuedEntries.foldMapM: queuedEntry =>
               queuedEntry.whenApplied.complete(problem) *>
                 queuedEntry.whenPersisted.complete(problem).void
             .as(Left(()))
@@ -232,7 +231,7 @@ extends
             whenApplied, whenPersisted)
       IO(!isBeingKilled !! JournalKilledProblem).flatMapT(_ => requireServiceIsNotStopping).flatMap:
         case Left(problem) =>
-          queuedPersists.foldMap:
+          queuedPersists.foldMapM:
             _.completePersistedWithProblem(problem)
         case Right(()) =>
           IO.whenA(queuedPersists.nonEmpty):
