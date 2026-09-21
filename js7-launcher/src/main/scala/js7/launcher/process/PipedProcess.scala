@@ -7,7 +7,6 @@ import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, joinStd, raceBoth, raceMerge, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.io.process.ProcessExtensions.onExitIO
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
 import js7.base.io.process.StartRobustly.startRobustly
@@ -16,7 +15,6 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
@@ -65,18 +63,13 @@ final class PipedProcess private(
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
-      process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
-        IO.defer:
-          process.returnCode.map(IO.pure)
-            .getOrElse:
-              interruptibleVirtualThread:
-                logger.traceCallWithResult(s"waitFor $process"):
-                  process.waitFor()
-        .flatTap: rc =>
-          IO:
-            ProcessMXBean.running -= 1
-            _processTerminated = true
-            logger.trace(s"Process terminated with $rc after ${duration.pretty}")
+      // Don't use ProcessHandle#onExit, because it seems to block sometimes while 
+      // waiting for stdout/stderr data.
+      process.ourOnExit.flatTap: rc =>
+        IO:
+          ProcessMXBean.running -= 1
+          _processTerminated = true
+          logger.trace(s"Process terminated with $rc after ${duration.pretty}")
 
   /** A JS7 process completes when
     * - The process has terminated, and
