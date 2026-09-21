@@ -92,6 +92,13 @@ object IOExecutor:
 
   object env:
     /** Like IO blocking, but executes in a virtual thread. */
+    def virtualThread[A](interruptible: Boolean)(body: => A): IO[A] =
+      if interruptible then
+        interruptibleVirtualThread(body)
+      else
+        virtualThread(body)
+
+    /** Like IO blocking, but executes in a virtual thread. */
     def virtualThread[A](body: => A): IO[A] =
       if VirtualThreads.isEnabled then
         environment[IOExecutor].flatMap: iox =>
