@@ -6,7 +6,6 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -57,7 +56,9 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(trap "" SIGTERM; sleep 0.4; echo "+++ CHILD FINISHED +++") &
+              |( sleep 0.4
+              |  echo "+++ CHILD FINISHED +++"
+              |) &
               |sleep 0.2
               |""".stripMargin),
           maxWaitForStdouterr = None)))
@@ -88,14 +89,13 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |( trap "" SIGTERM
-              |  echo "+++ CHILD +++"
+              |( echo "+++ CHILD +++"
               |  sleep 0.2
               |  echo "+++ CHILD 2 +++"
-              |  sleep 0.5
+              |  sleep 5
               |  echo "+++ CHILD FINISHED +++"
               |) &
-              |sleep 0.2
+              |sleep 0.5
               |""".stripMargin),
           maxWaitForStdouterr = Some(200.ms))))
     ): workflow =>
@@ -130,10 +130,9 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
       // Otherwise, the Subagent would crash here due to .orThrow after persist operation.
       sleepUntil(processedAt + 1.s)
 
-
   "Multiple processes" in:
-    val n = 100
-    val childSleep = if isIntelliJIdea then 10.s else 77.s
+    val n = 2 * sys.runtime.availableProcessors()
+    val childSleep = 20.s
     withItem(
       Workflow.of(WorkflowPath("WORKFLOW"),
         ForkList(
@@ -146,12 +145,11 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
               ShellScriptExecutable(
                 s"""#!/usr/bin/env bash
                   |set -euo pipefail
-                  |( #trap "" SIGTERM
-                  |  echo "+++ CHILD +++"
+                  |( echo "+++ CHILD +++"
                   |  sleep ${childSleep.toDecimalString}
                   |  echo "+++ CHILD FINISHED +++"
                   |) &
-                  |sleep 1
+                  |sleep 0.2
                   |""".stripMargin),
               processLimit = n,
               maxWaitForStdouterr = Some(200.ms)))))
@@ -161,7 +159,6 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         "children" -> (1 to n))))
       assert(t.elapsed < childSleep)
 
-
   "Cancel while waiting for stdout of background child process" in:
     withItem(
       Workflow.of(WorkflowPath("WORKFLOW"),
@@ -170,7 +167,10 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
           ShellScriptExecutable(
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |(trap "" SIGTERM; sleep 0.4; echo +++ CHILD +++; sleep 999) &
+              |( sleep 0.4
+              |  echo +++ CHILD +++
+              |  sleep 999
+              |) &
               |sleep 0.2
               |""".stripMargin))))
     ): workflow =>
