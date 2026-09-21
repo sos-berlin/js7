@@ -21,7 +21,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Worry.AfterTenSecondsWorryDurations
 import js7.base.utils.{Allocated, Atomic, Worry}
 import js7.data.job.{CommandLine, JobKey}
 import js7.data.order.OrderId
@@ -31,7 +30,7 @@ import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import js7.launcher.processkiller.SubagentProcessKiller
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -82,9 +81,9 @@ final class PipedProcess private(
   /** A JS7 process completes when
     * - The process has terminated, and
     * - Reading stdout and stderr has terminated, which means:
-    *   - stdout and stderr has been read until EOF, or
-    *   - the process has been SIGKILLed and StdouterrAbandonAfter has elapsed, or
-    *   - the process has not been SIGKILLed and maxWaitForStdouterr has elapsed.
+    *     - stdout and stderr has been read until EOF, or
+    *     - the process has been SIGKILLed and StdouterrAbandonAfter has elapsed, or
+    *     - the process has not been SIGKILLed and maxWaitForStdouterr has elapsed.
     *
     * If reading of stdout/stderr is terminated before reaching EOF, then this may happen:
     * - Reading stdout/stderr may block in InputStream.
@@ -92,6 +91,8 @@ final class PipedProcess private(
     * - And Fiber#cancel blocks, too.
     * - We must continue the reading stdout/stderr background.
     * - The reading background stdouterrFiber must not emit an OrderStdWritten event.
+    * - The background fiber terminates with the next stdout/stderr message.
+    * - Then stdout/stderr closes, probably leading to an EPIPE "Broken child" error in the process.
     */
   val waitForEndOfProcessAndStdouterr: IO[ReturnCode] =
     memoize:
@@ -104,8 +105,10 @@ final class PipedProcess private(
             processFiber.joinStd
 
           case Right((stdouterrFiber, returnCode)) =>
-            logger.debug(s"Process terminated with $returnCode, waiting for stdout or stderr")
-            waitForStdouterr(stdouterrFiber, returnCode).as(returnCode)
+            //logger.debug(s"Process terminated with $returnCode after ${
+            //  duration.pretty}, waiting for stdout or stderr")
+            logUntilStdouterrCompleted(stdouterrFiber).startAndForget *>
+              waitForStdouterr(stdouterrFiber, returnCode).as(returnCode)
         .guarantee:
           process.release
 
@@ -120,6 +123,9 @@ final class PipedProcess private(
         case (stdoutFailed, stderrOutcome) =>
           if !stderrOutcome.isSuccess then logger.error(s"While reading stderr: $stderrOutcome")
           IO.fromOutcome(stdoutFailed)
+
+  private def logUntilStdouterrCompleted(outerrFiber: FiberIO[Unit]) =
+    outerrFiber.joinWithUnit // unti<l stdout/stderr have really ended
       .logWhenItTakesLonger(StdouterrWorry):
         case (outcome, elapsed, _, sym) =>
           stdObservers.stdouterrStopper.peek.flatMap: stopped =>
@@ -136,6 +142,8 @@ final class PipedProcess private(
               case Some(Outcome.Errored(t)) =>
                 IO.pure:
                   s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
+      .handleError: t =>
+        logger.debug(s"$label: 💥 logUntilStdouterrCompleted: ${t.toStringWithCauses}", t)
 
   private def pumpOutErrToSink(outErr: StdoutOrStderr, in: InputStream): IO[Unit] =
     stdObservers
@@ -148,6 +156,9 @@ final class PipedProcess private(
                 s"While killing the process, $outErr became unreadable: ${t.toStringWithCauses}"
             case t => logger.warn(s"$outErr: ${t.toStringWithCauses}")
 
+  /** Wait for stdout/stderr, but possibly time-limited.
+    *
+    * Wait no longer than waitForStdouterrAfterSigkill or maxWaitForStdouterr. */
   private def waitForStdouterr(stdouterrFiber: FiberIO[Unit], returnCode: ReturnCode): IO[Unit] =
     killSignal.get.map(_.contains(SIGKILL)).flatMap: wasSigkilled =>
       IO: // delayed!
@@ -169,8 +180,7 @@ final class PipedProcess private(
                   IO(s" because maxWaitForStdouterr=${maxWaitForStdouterr.pretty} has elapsed")))
           .raceMerge:
             killSignal.getAndDiscreteUpdates.use:
-              _._2.unNone.take(1).compile.drain.map: _ =>
-                " due to fresh kill signal"
+              _._2.unNone.take(1).compile.drain.as(" due to fresh cancellation")
           .flatMap:
             case "" => IO.unit // stdouterrFiber terminated due to stdout and stderr EOF
             case stopReason => // Waiting cancelled
@@ -210,7 +220,9 @@ object PipedProcess:
   /** Grace period between SIGKILL and (second) destroyForcibly. */
   private val KillStdouterrDelay = 500.ms
   private val StdouterrWorry = Worry(
-    List(1.s, 3.s, 6.s) ::: AfterTenSecondsWorryDurations,
+    Iterator(1.s, 3.s, 6.s) ++:
+      Iterator.fill(((1.minute - 10.s) / 10.s).toInt)(10.s) ++:
+      (60.s :: Nil),
     infoLevel = 0.s, orangeLevel = 3.s)
 
   private val pumpFiberCount = Atomic(0)

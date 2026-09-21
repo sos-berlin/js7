@@ -80,11 +80,10 @@ final class StdObservers private(
 
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
   : Stream[IO, String] =
-    // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
     inputStreamToByteStream(in, bufferSize = byteBufferSize, label = s"$label $outErr")
       .onFinalizeCase: exitCase =>
         IO.blocking:
-          logger.traceCall(s"$label pumping $exitCase: closing $outErr"):
+          logger.traceCall(s"### $label pumping $exitCase: closing $outErr"):
             in.close()
         .logWhenItTakesLonger(s"$label closing $outErr")
       .through:

@@ -2,6 +2,7 @@ package js7.base.io.process
 
 import cats.effect.IO
 import java.io.{InputStream, OutputStream}
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 
 trait Js7Process:
@@ -29,3 +30,6 @@ trait Js7Process:
   def maybeHandle: Option[ProcessHandle]
 
   def release: IO[Unit]
+
+  override def toString: String =
+    s"PID$pid${!isAlive ?? "†"}"

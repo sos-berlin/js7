@@ -195,7 +195,8 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
         if force then
           IO:
             val ok = processHandle.destroyForcibly()
-            if !ok then logger.debug(s"⚠️ destroyForcibly ${Pid(processHandle.pid)} returned false")
+            if !ok then
+              logger.debug(s"⚠️ destroyForcibly ${Pid(processHandle.pid)} was not successful")
             //avoidZombie(processHandle)
         else
           IO(processHandle.destroy())

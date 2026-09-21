@@ -127,7 +127,9 @@ extends Js7Process:
   lazy val maybeHandle =
     ProcessHandle.of(pid.number).toScala
 
-  override def toString = s"WindowsProcess($pid${returnCodeOnce.isDefined ?? "†"})"
+  override def toString =
+    // "†" suffix may not be up-to-date
+    s"WindowsProcess(PID:$pid${returnCodeOnce.isDefined ?? "†"})"
 
 
 private[launcher] object WindowsProcess:
