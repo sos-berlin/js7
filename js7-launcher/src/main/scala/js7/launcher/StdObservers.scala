@@ -10,7 +10,6 @@ import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromStr
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.utils.AtomicStopper
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -80,12 +79,10 @@ final class StdObservers private(
 
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
   : Stream[IO, String] =
-    // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
     inputStreamToByteStream(in, bufferSize = byteBufferSize, label = s"$label $outErr")
       .onFinalizeCase: exitCase =>
         IO.blocking:
-          logger.traceCall(s"$label pumping $exitCase: closing $outErr"):
-            in.close()
+          in.close()
         .logWhenItTakesLonger(s"$label closing $outErr")
       .unchunks
       .through:

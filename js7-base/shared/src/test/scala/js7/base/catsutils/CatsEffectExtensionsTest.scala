@@ -6,13 +6,16 @@ import cats.effect.testkit.TestControl
 import cats.effect.{Deferred, FiberIO, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsEffectExtensionsTest.*
 import js7.base.catsutils.CatsEffectUtils.FiberCanceledException
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import scala.collection.mutable
+import scala.concurrent.duration.Deadline
 
 final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
 
@@ -40,6 +43,66 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
             IO.unit
           .map: _ =>
             assert(outcomes.toString == "ArrayBuffer(Succeeded(IO(7)))")
+    }
+
+    "handleCancel" - {
+      "success" in:
+        IO.blocking:
+          sleep(10.ms)
+          "SUCCESS"
+        .handleCancel:
+          IO.unit
+        .map: result =>
+          assert(result == "SUCCESS")
+
+      "failure" in:
+        val t = Exception()
+        IO.blocking:
+          sleep(10.ms)
+          throw t
+        .handleCancel:
+          IO.unit
+        .attempt.map: attempted =>
+          assert(attempted == Left(t))
+
+      "cancel with success ignored" in:
+        testCancel: result =>
+          result
+
+      "cancel with failure ignored" in:
+        testCancel: _ =>
+          throw Exception()
+          "FAILURE IGNORED"
+
+      def testCancel(resultBody: String => String) =
+        IO.defer:
+          @volatile var canceled = false
+          @volatile var succeeded = false
+          IO.blocking:
+            val until = Deadline.now + 3.s
+            while !canceled && until.hasTimeLeft() do sleep(10.ms)
+            succeeded = !canceled
+            val result =
+              if canceled then
+                "RESULT IGNORED"
+              else
+                logger.error("NOT CANCELED")
+                "NOT CANCELED"
+            resultBody(result)
+          .handleCancel:
+            IO:
+              logger.info("handleCancel")
+              canceled = true
+          .start
+          .andWait(20.ms)
+          .flatTap: fiber =>
+            assert(!canceled)
+            logger.info(s"cancel")
+            fiber.cancel
+          .flatMap:
+            _.joinWith(IO("CANCELED"))
+          .map: result =>
+            assert(result == "CANCELED" && !succeeded)
     }
 
     "raceBoth" in:
@@ -241,3 +304,7 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
       yield
         assert(canceled.get && releaseExitCase.get == None)
   }
+
+
+object CatsEffectExtensionsTest:
+  private val logger = Logger[this.type]

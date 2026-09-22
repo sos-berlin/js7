@@ -4,7 +4,7 @@ import cats.effect.IO
 import js7.base.catsutils.CatsExtensions.traverseCombine
 import js7.base.catsutils.{Environment, FiberVar}
 import js7.base.eventbus.EventPublisher
-import js7.base.io.process.ProcessExtensions.{isAlive, maybeProcessHandle, onExitIO, toPid}
+import js7.base.io.process.ProcessExtensions.{isAlive, maybeProcessHandle, toPid, unsafeOnExitIO}
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid}
 import js7.base.log.Logger
@@ -72,7 +72,8 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
             fs2.Stream.iterable(handlesWithOwner)
               .covary[IO]
               .parEvalMapUnorderedUnbounded: (h, owner) =>
-                h.onExitIO.as(h -> owner)
+                // unsafeOnExitIO should be safe because we don't read stdout/stderr of the process
+                h.unsafeOnExitIO.as(h -> owner)
               .evalTap((h, owner) => IO:
                 val pid = Pid(h.pid)
                 if pid == owner then
@@ -195,7 +196,8 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
         if force then
           IO:
             val ok = processHandle.destroyForcibly()
-            if !ok then logger.debug(s"⚠️ destroyForcibly ${Pid(processHandle.pid)} returned false")
+            if !ok then
+              logger.debug(s"⚠️ destroyForcibly ${Pid(processHandle.pid)} was not successful")
             //avoidZombie(processHandle)
         else
           IO(processHandle.destroy())
@@ -205,7 +207,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   //  val pid = Pid(processHandle.pid)
   //  val timeout = 3.s // ???
   //  logger.traceIO(s"avoidZombie $pid"):
-  //    processHandle.onExitIO
+  //    processHandle.unsafeOnExitIO
   //  //.logWhenItTakesLonger(s"termination of SIGKILLed $pid")
   //  .timeoutTo(timeout, IO:
   //    logger.warn(s"$pid has not terminated despite SIGKILL ${timeout.pretty} ago"))

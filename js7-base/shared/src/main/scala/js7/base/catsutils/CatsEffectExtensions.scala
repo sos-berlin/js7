@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
+import cats.effect.{Clock, Deferred, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor}
@@ -45,6 +45,47 @@ object CatsEffectExtensions:
     // inline for proper processing of Enclosing
     inline def adHocInfo(inline msg: String): IO[A] =
       io.flatTap(_ => IO(logger.info(msg)))
+
+    /** Replace the standard cancellation handler with caller's cancel handle. */
+    def handleCancel(cancel: IO[Unit]): IO[A] =
+      IO.defer:
+        var canceled = false
+        val joiningFiber = Deferred.unsafe[IO, FiberIO[Unit]]
+        IO.async[A]: callback =>
+          io.start.flatMap: fiber =>
+            fiber.join.flatMap:
+              // When canceled, the outcome may be ignored. Then IO.canceled is returned (see below)
+              case Outcome.Succeeded(a) =>
+                a.map(a => callback(Right(a)))
+              case Outcome.Errored(t) =>
+                callback(Left(t))
+                IO.unit
+              case Outcome.Canceled() => // not expected
+                callback(Left(new FiberCanceledException))
+                IO.unit
+            .start
+            .flatMap(joiningFiber.complete)
+            .void
+          .as:
+            // Execute `cancel` when the fiber is canceled
+            Some:
+              IO.defer:
+                canceled = true // Also when cancel operation fails
+                cancel.guaranteeCase:
+                  case Outcome.Succeeded(_) => IO.unit
+                  case Outcome.Errored(t) =>
+                    IO(logger.debug(s"💥 cancel failed with ${t.toStringWithCauses}", t))
+                  case Outcome.Canceled() =>
+                    IO(logger.debug(s"💥 cancel operation itself was canceled"))
+        .flatTap: _ =>
+          joiningFiber.get
+        .attempt
+        .flatMap: attempted =>
+          if canceled then
+            IO.canceled.as(attempted/*relevant only when in uncancelable block*/)
+          else
+            IO.pure(attempted)
+        .rethrow
 
     /** Converts a failed IO into a `Checked[A]`. */
     def catchAsChecked: IO[Checked[A]] =

@@ -332,6 +332,10 @@ transparent trait AdHocLogger:
   : Stream[F, A] =
     logger.traceStream[F, A](withLoc(function), args)(stream)
 
+  @TestOnly
+  def logCall[A](level: LogLevel, msg: String)(body: => A)(using src: sourcecode.Name): A =
+    logger.logCall(level, withLoc(msg))(body)
+
   private val nameRegex = """#.*$""".r  //"""#\$.*$""".r
 
   private def logger(using enc: sourcecode.Enclosing): ScalaLogger =
