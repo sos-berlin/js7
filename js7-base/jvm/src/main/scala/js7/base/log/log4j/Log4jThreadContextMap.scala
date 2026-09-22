@@ -67,11 +67,11 @@ object Log4jThreadContextMap:
   private val isDebug = sys.props.asSwitch("log4j2.debug")
 
   private[log] val keyToValue = new ConcurrentHashMap[String, String | Lazy[String]]:
-    put("js7.version", BuildInfo.longVersion)
-    put("js7.longVersion", BuildInfo.longVersion)
-    put("js7.prettyVersion", BuildInfo.prettyVersion)
-    put("js7.system", Lazy.fast(StartUp.startUpLine))
-    //put(CorrelIdKey, "❓init❓") // Placeholder in SortedArrayStringMap for fast override
+    this.put("js7.version", BuildInfo.longVersion)
+    this.put("js7.longVersion", BuildInfo.longVersion)
+    this.put("js7.prettyVersion", BuildInfo.prettyVersion)
+    this.put("js7.system", Lazy.fast(StartUp.startUpLine))
+    //this.put(CorrelIdKey, "❓init❓") // Placeholder in SortedArrayStringMap for fast override
 
   private var keyToValueVersion = 0
   private var _stringMap: SortedArrayStringMap = null.asInstanceOf[SortedArrayStringMap]
@@ -89,7 +89,7 @@ object Log4jThreadContextMap:
     System.setProperty("log4j2.threadContextMap", myClassName)
     debug(s"log4j2.threadContextMap=$myClassName")
 
-  private[log] def set(key: String, value: String): Unit =
+  private[log] def put(key: String, value: String): Unit =
     keyToValue.put(key, value)
     keyToValueVersion += 1
 

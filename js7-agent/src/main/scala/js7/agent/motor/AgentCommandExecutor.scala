@@ -209,7 +209,7 @@ extends
       .flatMapT: persisted =>
         IO.defer:
           logger.info(s"Dedicating $agentPath to '$controllerId'")
-          Log4j.set("js7.serverId", agentPath.toString)
+          Log4j.putGlobal("js7.serverId", agentPath.toString)
           startAgentMotor(agentPath, controllerId)
             .rightAs(agentRunId -> persisted.aggregate.eventId)
             .flatTapT: _ =>

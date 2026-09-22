@@ -171,7 +171,7 @@ extends MainService, Service.StoppableByRequest:
                 IO.right(())
         .flatMapT: _ =>
           IO:
-            Log4j.set("js7.serverId", cmd.subagentId.toString)
+            Log4j.putGlobal("js7.serverId", cmd.subagentId.toString)
             logger.info:
               s"Subagent dedicated as ${cmd.subagentId} to ${cmd.agentPath}, is ready"
             Right:

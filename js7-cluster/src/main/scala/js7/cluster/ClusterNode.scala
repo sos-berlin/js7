@@ -284,7 +284,7 @@ object ClusterNode:
   : ResourceIO[ClusterNode[S]] =
     for
       _ <- Resource.eval(IO:
-        Log4j.set("js7.clusterNodeId", clusterConf.ownId.string))
+        Log4j.putGlobal("js7.clusterNodeId", clusterConf.ownId.string))
       clusterNode <- StateRecoverer
         .resource[S](journalLocation, clusterConf.config)
         .both(pekkoResource/*start in parallel*/)

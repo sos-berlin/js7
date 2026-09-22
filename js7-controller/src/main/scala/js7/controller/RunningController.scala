@@ -207,7 +207,7 @@ object RunningController:
   : ResourceIO[RunningController] =
     logger.traceResource:
       Resource.defer:
-        Log4j.set("js7.serverId", conf.controllerId.toString)
+        Log4j.putGlobal("js7.serverId", conf.controllerId.toString)
 
         given Scheduler = ioRuntime.scheduler
         val alarmClock: AlarmClock =

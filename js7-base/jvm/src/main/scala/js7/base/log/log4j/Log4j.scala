@@ -58,6 +58,6 @@ object Log4j:
       for shutdown <- shutdownMethod do
         shutdown.invoke(null, false, false)
 
-  /** Set variable accessible in the log4j2 configuration via %X{key}. */
-  def set(key: String, value: String) =
-    Log4jThreadContextMap.set(key, value)
+  /** Set a key-value pair accessible in the log4j2 configuration via %X{key}. */
+  def putGlobal(key: String, value: String) =
+    Log4jThreadContextMap.put(key, value)
