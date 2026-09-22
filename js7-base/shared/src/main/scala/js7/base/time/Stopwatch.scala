@@ -162,13 +162,13 @@ object Stopwatch:
       if n == 0 then
         s"0$gapOps"
       else
-        s"$n$gapOps, $perSecondString/s"
+        s"⏱️  $n$gapOps, $perSecondString/s"
 
     def toPerSecondsString: String =
       if n == 0 then
         s"0$gapOps"
       else
-        s"$perSecondString$gapOps/s"
+        s"⏱️  $perSecondString$gapOps/s"
 
 
   object Result:
