@@ -6,7 +6,6 @@ import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Log4jTest.*
-import js7.base.log.log4j.Log4jThreadContextMap
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
@@ -17,20 +16,11 @@ import scala.concurrent.duration.Deadline.now
 
 /* To speed-test Log4jThreadContextMap, insert %X{js7.prettyVersion} into log4j2.xml patternLayout !!!
 
-2024-10-07 MacBook Pro M1 log output, with %X{js7.prettyVersion}:
-  0.75s/1000000 lines (⌀0.75µs), ~1337127 lines/s
-  0.75s/318 MB, ~425 MB/s
-  2.3s/6000000 lines (⌀0.38µs), ~2623487 lines/s
-  2.3s/1908 MB, ~834 MB/s
-  0 CorrelIds generated, 0× string, 0× bindCorrelId, 0× CorrelId.current
-  1 (0%) Log4jStringMap, 0× forEach, 0× getCopy, 0× get, 0× put (suppressed)
-
-  2026-07-13 MacBook Pro M4 log output, with %X{js7.prettyVersion}, fifth iteration, log4j 2.26.1
+2026-09-22 MacBook Pro M4 log output, with %X{js7.prettyVersion}, best of five iterations, log4j 2.26.1
   — Times varies, could be half —
-  0.22s/million lines (⌀0.22µs), ~4'587'043 lines/s
-  0.22s/318 MB, ~1459 MB/s
+  0.21s/million lines (⌀0.21µs), ~4'662'571 lines/s
+  0.21s/0.3 GB, ~1.5 GB/s
   0 CorrelIds generated, 0× string, 0× bindCorrelId, 0× CorrelId.current
-  5000027×getReadOnlyContextData
 */
 final class Log4jTest extends OurTestSuite:
 
@@ -44,8 +34,8 @@ final class Log4jTest extends OurTestSuite:
       (1 to 5).foreach: i =>
         doTestSpeed(1000, 1000, s"$i:")
         sleep(500.ms)
-      logger.info(CorrelId.statistics)
-      logger.info(Log4jThreadContextMap.statistics)
+      //logger.info(CorrelId.statistics)
+      //logger.info(Log4jThreadContextMap.statistics)
 
   private def doTestSpeed(n: Int, m: Int, label: String): Unit =
     val started = now
