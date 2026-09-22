@@ -46,7 +46,7 @@ trait Js7Process:
   def release: IO[Unit]
 
   override def toString: String =
-    s"PID$pid${!isAlive ?? "†"}"
+    s"$pid${!isAlive ?? "†"}"
 
 
 object Js7Process:

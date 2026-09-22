@@ -63,7 +63,7 @@ final class PipedProcess private(
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
-      // Don't use ProcessHandle#onExit, because it seems to block sometimes while 
+      // Don't use ProcessHandle#onExit, because it seems to block sometimes while
       // waiting for stdout/stderr data.
       process.ourOnExit.flatTap: rc =>
         IO:
@@ -129,7 +129,7 @@ final class PipedProcess private(
               case Some(Outcome.Succeeded(_) | Outcome.Canceled()) =>
                 IO.pure:
                   if stopped then
-                    s"🟣 $what finally closed after ${elapsed.pretty}"
+                    s"🔵 $what finally closed after ${elapsed.pretty}"
                   else
                     s"$sym $what finally ended after ${elapsed.pretty}"
               case Some(Outcome.Errored(t)) =>
@@ -177,7 +177,7 @@ final class PipedProcess private(
           .flatMap:
             case "" => IO.unit // stdouterrFiber terminated due to stdout and stderr EOF
             case stopReason => // Waiting cancelled
-              logger.warn(s"Ignoring stdout and stderr${
+              logger.info(s"Ignoring stdout and stderr${
                 stopReason} (maybe a background child process is still running)")
               // Set stdouterrStopper in foreground, to be sure that no OrderStdWritten event is emitted.
               stdObservers.stdouterrStopper.stop(s"$label stopped$stopReason") *>

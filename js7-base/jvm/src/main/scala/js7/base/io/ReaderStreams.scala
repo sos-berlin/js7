@@ -9,9 +9,7 @@ import java.nio.channels.{AsynchronousCloseException, ReadableByteChannel}
 import js7.base.catsutils.CatsEffectExtensions.handleCancel
 import js7.base.fs2utils.Fs2ChunkByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
-import js7.base.log.Logger.syntax.*
-import js7.base.log.{LogLevel, Logger}
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor.env.virtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -38,21 +36,19 @@ object ReaderStreams:
     Stream.suspend:
       val buffer = ByteBuffer.allocate(bufferSize)
       @volatile var reading, canceled = false
-      val testLevel = if isWindows then LogLevel.Trace else LogLevel.None // FIXME TEST
       Stream.repeatEval:
         virtualThread:
           buffer.clear()
-          logger.logCall(testLevel, s"### $label: read"):
-            reading = true
-            try channel.read(buffer)
-            catch
-              case _: AsynchronousCloseException if canceled =>
-                0 // Ignored because IO.canceled will be returned
-              case e: Exception =>
-                logger.debug(s"💥 ${if label.isEmpty then "" else s"$label "}channel.read${
-                  canceled ?? " (canceled)"}: $e")
-                throw e
-            finally reading = false
+          reading = true
+          try channel.read(buffer)
+          catch
+            case _: AsynchronousCloseException if canceled =>
+              0 // Ignored because IO.canceled will be returned
+            case e: Exception =>
+              logger.debug(s"💥 ${if label.isEmpty then "" else s"$label "}channel.read${
+                canceled ?? " (canceled)"}: $e")
+              throw e
+          finally reading = false
         .handleCancel:
           // Don't interrupt a Windows ReadFile, because interrupt may block.
           // Then Fiber#cancel blocks, too. Instead, we channel.close (Windows CloseFile).
