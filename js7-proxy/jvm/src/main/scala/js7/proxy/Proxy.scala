@@ -69,13 +69,14 @@ object Proxy extends ServiceApp:
           config = conf.config)
       _ <- EngineStateMXBean.register
       controllerProxy <- controllerApi.controllerProxy()
+      metricsStream = controllerApiRegister.metrics(deep = true)
       _ <-
         ProxyWebServer.service(
-          controllerApiRegister.metrics(deep = true),
+          metricsStream,
           sessionRegister, conf,
           groupAndServerId = conf.groupAndProxyId.map(_.toGroupAndServerId))
       _ <- LogDirectoryMXBean.register[IO](conf.logDirectory)
-      service <- Service(Proxy(controllerProxy, controllerApiRegister.metrics(deep = true)/*test only*/))
+      service <- Service(Proxy(controllerProxy, metricsStream/*test only*/))
     yield
       controllerApi.allowEngineMetrics(true)
       service

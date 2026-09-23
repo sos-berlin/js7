@@ -69,4 +69,4 @@ extends WebLogDirectives, ApiRoute, DirectorMetricsRoute, ClusterNodeRouteBindin
     DirectorRoutes(
       pathSegments("api"):
         apiRoute,
-      Some(directorMetricsRoute))
+      Some(metricsRoute))

@@ -95,8 +95,8 @@ object MetricsProvider:
 
   private def toAttributeString(groupAndServerId: (Js7ServerGroupId, Js7ServerId)): String =
     val (groupId, js7ServerId) = groupAndServerId
-    s"js7ServerId=\"${toPrometheusString(js7ServerId.toString
-      )}\",js7ServerGroupId=\"${toPrometheusString(groupId.toString)}\""
+    s"js7ServerId=\"${toPrometheusString(js7ServerId.toString)
+      }\",js7ServerGroupId=\"${toPrometheusString(groupId.toString)}\""
 
   private def insertAttributes(toMetrics: () => ByteString, attributes: String)
   : fs2.Stream[IO, ByteString] =

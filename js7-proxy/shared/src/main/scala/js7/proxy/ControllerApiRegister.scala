@@ -24,11 +24,11 @@ extends MetricsForServlet:
   private val localMetrics: fs2.Stream[IO, ByteString] =
     groupAndProxyId match
       case None =>
-        fs2.Stream.emits(Seq(ByteString("# ERROR No GroupAndProxyId\n")))
+        fs2.Stream.emits(Seq(ByteString("# ERROR Server has (still) no GroupAndProxyId\n")))
 
       case Some(groupAndProxyId) =>
-        toMetricsStream()(
-          groupAndProxyId.groupId -> groupAndProxyId.proxyId.toJs7ServerId)
+        toMetricsStream():
+          groupAndProxyId.groupId -> groupAndProxyId.proxyId.toJs7ServerId
 
   def add(controllerApi: ControllerApi): Unit =
     logger.debug(s"Add $controllerApi ")

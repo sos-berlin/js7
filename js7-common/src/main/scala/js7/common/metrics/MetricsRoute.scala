@@ -50,9 +50,9 @@ trait MetricsRoute extends RouteProvider:
     * @see https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
     * @see https://prometheus.io/docs/practices/naming/
     */
-  protected final lazy val metricsRoute: Route =
-    wrapMetricsRoute:
-      onlyThisServerMetricsRoute
+  protected /*overridable*/ lazy val metricsRoute: Route =
+    wrapMetricsRoute: contentType =>
+      onlyThisServerMetricsRoute(contentType)
 
   protected final def wrapMetricsRoute(route: ContentType => Route): Route =
     authorized(ReadMetricsPermission):

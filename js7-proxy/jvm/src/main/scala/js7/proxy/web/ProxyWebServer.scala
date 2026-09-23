@@ -50,6 +50,6 @@ object ProxyWebServer:
     def webServerRoute: Route =
       mainRoute:
         pathPrefix(Segment):
-          case "metrics" => proxyMetricsRoute
+          case "metrics" => metricsRoute
           //case "log" => logRoute
           case _ => reject

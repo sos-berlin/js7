@@ -19,8 +19,7 @@ import js7.data.node.{Js7ServerId, NodeNameToPassword}
 import js7.data.subagent.SubagentItem
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentType
-import org.apache.pekko.http.scaladsl.server.Directives.parameter
-import org.apache.pekko.http.scaladsl.server.{Directives, Route}
+import org.apache.pekko.http.scaladsl.server.Route
 
 trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute:
 
@@ -35,23 +34,7 @@ trait ControllerMetricsRoute extends ControllerRouteProvider, RemoteMetricsRoute
     val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
     _ => result
 
-  /** /metrics web service according to Prometheus.
-    * <p>
-    * Prometheus expects a web service path "/metrics".
-    *
-    * @see https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-    * @see https://prometheus.io/docs/practices/naming/
-    */
-  protected final lazy val controllerMetricsRoute: Route =
-    wrapMetricsRoute: contentType =>
-      import Directives.*
-      parameter("deep" ? false):
-        case false =>
-          onlyThisServerMetricsRoute(contentType)
-        case true =>
-          deepMetricsRoute(contentType)
-
-  private def deepMetricsRoute(contentType: ContentType): Route =
+  protected final def deepMetricsRoute(contentType: ContentType): Route =
     ioRoute:
       controllerState.map:
         case Left(problem) =>

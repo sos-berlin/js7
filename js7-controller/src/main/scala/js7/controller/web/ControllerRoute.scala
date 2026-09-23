@@ -88,7 +88,7 @@ extends
     mainRoute:
       pathPrefix(Segment):
         case "controller" => controllerRoute
-        case "metrics" => controllerMetricsRoute
+        case "metrics" => metricsRoute
         case "grafana" =>
           (path("dashboard") & get):
             // A service for the developer

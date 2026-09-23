@@ -18,7 +18,7 @@ import js7.data.agent.AgentRefState
 import js7.data.subagent.SubagentItem
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentType
-import org.apache.pekko.http.scaladsl.server.{Directives, Route}
+import org.apache.pekko.http.scaladsl.server.Route
 
 trait DirectorMetricsRoute extends AgentRouteProvider, RemoteMetricsRoute:
 
@@ -29,16 +29,7 @@ trait DirectorMetricsRoute extends AgentRouteProvider, RemoteMetricsRoute:
   private given IORuntime = ioRuntime
   private given ActorSystem = actorSystem
 
-  protected final lazy val directorMetricsRoute: Route =
-    wrapMetricsRoute: contentType =>
-      import Directives.*
-      parameter("deep" ? false):
-        case false =>
-          onlyThisServerMetricsRoute(contentType)
-        case true =>
-          deepMetricsRoute(contentType)
-
-  private def deepMetricsRoute(contentType: ContentType): Route =
+  protected final def deepMetricsRoute(contentType: ContentType): Route =
     ioRoute:
       agentState.flatMap: checkedAgentState =>
         completeMetricFetchers(
