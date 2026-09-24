@@ -39,9 +39,15 @@ object Log4j:
   private def useAsyncLogger(): Unit =
     sys.props("log4j2.contextSelector") =
       classOf[org.apache.logging.log4j.core.async.AsyncLoggerContextSelector].getName
-    // Use less CPU when idling than default "Timeout":
-    sys.props("log4j2.asyncLoggerWaitStrategy") = "Block"
-    // Because AsyncLoggerContextSelector flushes:
+
+    if !sys.props.contains("log4j2.asyncLoggerWaitStrategy")
+      && !sys.env.contains("LOG4J_ASYNC_LOGGER_WAIT_STRATEGY")
+    then
+      // When idling, "Block" uses less CPU than default "Timeout"
+      // https://logging.apache.org/log4j/2.x/manual/async.html#log4j2.asyncLoggerWaitStrategy
+      sys.props("log4j2.asyncLoggerWaitStrategy") = "Block"
+
+    // Because AsyncLoggerContextSelector already flushes:
     sys.props("js7.log4j.immediateFlush") = "false"
 
   def initialize(name: String): Unit =
