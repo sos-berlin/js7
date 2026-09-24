@@ -30,6 +30,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.{nowarn, switch, tailrec}
 import scala.collection.{MapView, mutable}
 import scala.reflect.ClassTag
@@ -128,7 +129,8 @@ extends
           (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
             isState[Sleeping] || isState[WaitingForAdmission])
             && isDetachedOrAttached,
-          withPosition(to).copy(
+          copy(
+            workflowPosition = toWorkflowPosition(to),
             isResumed = false,
             state = if isState[Fresh] then state else Ready()))
 
@@ -231,11 +233,10 @@ extends
       case TagOrderRetrying =>
         val OrderRetrying(maybeDelayUntil, movedTo) = event.asInstanceOf[OrderRetrying]
         check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
-          maybeDelayUntil
-            .fold[Order[State]](this/*Ready*/)(o => copy(
+          maybeDelayUntil.fold(this/*Ready*/): o =>
+            copy(
+              workflowPosition = movedTo.fold(workflowPosition)(toWorkflowPosition),
               state = DelayingRetry(o)))
-            .pipeMaybe(movedTo):
-              _.withPosition(_))
 
       case TagOrderAwoke =>
         check(
@@ -467,10 +468,11 @@ extends
             (asSucceeded && !lastOutcome.isSucceeded) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
           check(isResumableNow,
-            withPosition:
-              maybePosition getOrElse position.pipeIf(!restartKilledJob && asSucceeded && isKilled):
-                _.increment
-            .copy(
+            copy(
+              workflowPosition = toWorkflowPosition:
+                maybePosition.getOrElse:
+                  position.pipeIf(!restartKilledJob && asSucceeded && isKilled):
+                    _.increment,
               isSuspended = false,
               isResumed = true,
               mark = None,
@@ -494,16 +496,17 @@ extends
       case TagOrderLocksAcquired =>
         // LockState handles this event, too
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),
-          withPosition(position / BranchId.Lock % 0)
-            .copy(
-              state = Ready()))
+          copy(
+            workflowPosition = toWorkflowPosition:
+              position / BranchId.Lock % 0,
+            state = Ready()))
 
       case TagOrderLocksReleased =>
         // LockState handles this event, too
         if isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/ then
-          position
-            .checkedParent
-            .map(pos => withPosition(pos.increment))
+          position.checkedParent.map: pos =>
+            copy(
+              workflowPosition = toWorkflowPosition(pos.increment))
         else
           inapplicable
 
@@ -541,16 +544,17 @@ extends
 
       case TagOrderNoticesConsumptionStarted =>
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
-          withPosition(position / BranchId.ConsumeNotices % 0)
-            .copy(
-              state = Ready()))
+          copy(
+            workflowPosition = toWorkflowPosition:
+              position / BranchId.ConsumeNotices % 0,
+            state = Ready()))
 
       case TagOrderNoticesConsumed =>
         check(isDetached,
           position.checkedParent.map: parentPos =>
-            withPosition(parentPos.increment)
-              .copy(
-                state = Ready())
+            copy(
+              workflowPosition = toWorkflowPosition(parentPos.increment),
+              state = Ready())
         ).flatten
 
       case TagOrderStickySubagentEntered =>
@@ -560,9 +564,9 @@ extends
           && isDetachedOrAttached
           && !isSuspendedOrStopped
           && !stickySubagents.exists(_.agentPath == agentPath),
-          withPosition(position / BranchId.StickySubagent % 0)
-            .copy(
-              stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
+          copy(
+            workflowPosition = toWorkflowPosition(position / BranchId.StickySubagent % 0),
+            stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
 
       case TagOrderStickySubagentLeaved =>
         if isDetachedOrAttached && stickySubagents.nonEmpty then
@@ -571,9 +575,9 @@ extends
             inapplicable
           else
             Right:
-              withPosition(branchPath.dropLastBranchId.increment)
-                .copy(
-                  stickySubagents = stickySubagents.tail)
+              copy(
+                workflowPosition = toWorkflowPosition(branchPath.dropLastBranchId.increment),
+                stickySubagents = stickySubagents.tail)
         else
           inapplicable
 
@@ -609,9 +613,9 @@ extends
               cycleState.copy(
                 next = cycleState.next + maybeSkipped.getOrElse(ZeroDuration)))
             check(isDetachedOrAttached & !isSuspendedOrStopped,
-              withPosition(position / branchId % 0)
-                .copy(
-                  state = Ready()))
+              copy(
+                workflowPosition = toWorkflowPosition(position / branchId % 0),
+                state = Ready()))
 
           case _ => inapplicable
 
@@ -620,9 +624,9 @@ extends
         position.parent
           .toChecked(inapplicableProblem)
           .map: cyclePosition =>
-            withPosition(cyclePosition)
-              .copy(
-                state = BetweenCycles(cycleState))
+            copy(
+              workflowPosition = toWorkflowPosition(cyclePosition),
+              state = BetweenCycles(cycleState))
 
       case TagOrderSleeping =>
         val OrderSleeping(until, cause) = event.asInstanceOf[OrderSleeping]
@@ -712,8 +716,13 @@ extends
         case _: Broken => true
         case _ => false
 
-  def withPosition(to: Position): Order[S] = copy(
-    workflowPosition = workflowPosition.copy(position = to))
+  @TestOnly
+  def withPosition(to: Position): Order[S] =
+    copy(
+      workflowPosition = toWorkflowPosition(to))
+
+  private inline def toWorkflowPosition(to: Position): WorkflowPosition =
+    workflowPosition.copy(position = to)
 
   /** Whether WorkflowPathControl skip is applicable. */
   def isSkippable(now: Timestamp): Boolean =
