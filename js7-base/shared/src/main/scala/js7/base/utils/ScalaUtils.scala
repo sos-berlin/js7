@@ -1349,7 +1349,7 @@ object ScalaUtils:
     else 4
 
   def functionCallToString(name: String, args: Any*): String =
-    val sb = new StringBuilder
+    val sb = new StringBuilder(32)
     sb.append(name)
     parameterListToString(sb, args*)
     sb.toString

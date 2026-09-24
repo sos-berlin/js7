@@ -119,7 +119,7 @@ extends
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)
     def inapplicable = Left(inapplicableProblem)
 
-    def check[A](okay: => Boolean, updated: A) =
+    def check[A](okay: => Boolean)(updated: A) =
       if okay then Right(updated) else inapplicable
 
     (event.tag: @switch) match
@@ -128,11 +128,16 @@ extends
         check(
           (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] ||
             isState[Sleeping] || isState[WaitingForAdmission])
-            && isDetachedOrAttached,
+            && isDetachedOrAttached
+        ):
           copy(
             workflowPosition = toWorkflowPosition(to),
             isResumed = false,
-            state = if isState[Fresh] then state else Ready()))
+            state =
+              if isState[IsFreshOrReady] then
+                state
+              else
+                Ready())
 
       case TagOrderOutcomeAdded =>
         val OrderOutcomeAdded(outcome) = event.asInstanceOf[OrderOutcomeAdded]
@@ -143,7 +148,8 @@ extends
         val OrderProcessingStarted(subagentId, subagentBundleId, stick, timeoutAt) =
           event.asInstanceOf[OrderProcessingStarted]
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
-          && (!stick || stickySubagents.nonEmpty),
+          && (!stick || stickySubagents.nonEmpty)
+        ):
           copy(
             state = Processing(subagentId, subagentBundleId, timeoutAt),
             stickySubagents =
@@ -151,30 +157,30 @@ extends
                 stickySubagents.head.copy(stuckSubagentId = subagentId) :: stickySubagents.tail
               else
                 stickySubagents,
-            mark = cleanMark))
+            mark = cleanMark)
 
       case TagOrderProcessed =>
         val OrderProcessed(outcome_) = event.asInstanceOf[OrderProcessed]
-        check(isState[Processing] && !isSuspendedOrStopped && isAttached,
+        check(isState[Processing] && !isSuspendedOrStopped && isAttached):
           copy(
             state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_))
 
       case TagOrderAdded | TagOrderAttachedToAgent =>
         Left(Problem:
           "OrderAdded and OrderAttachedToAgent events are not handled by the Order itself")
 
       case TagOrderStarted =>
-        check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
-          copy(state = Ready()))
+        check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached):
+          copy(state = Ready())
 
       case TagOrderProcessingKilled =>
-        check(isState[Processed] && !isSuspendedOrStopped && isAttached,
-          copy(state = ProcessingKilled))
+        check(isState[Processed] && !isSuspendedOrStopped && isAttached):
+          copy(state = ProcessingKilled)
 
       case TagOrderFailed =>
         val OrderFailed(movedTo, outcome_) = event.asInstanceOf[OrderFailed]
-        check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached,
+        check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached):
           copy(
             state = if isState[Fresh] then FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -182,13 +188,11 @@ extends
               case Some(_: OrderMark.Suspending) => None
               case o => o,
             historicOutcomes = outcome_.fold(historicOutcomes): outcome =>
-              historicOutcomes :+ HistoricOutcome(position, outcome)))
+              historicOutcomes :+ HistoricOutcome(position, outcome))
 
       case TagOrderFailedInFork =>
         val OrderFailedInFork(movedTo, outcome) = event.asInstanceOf[OrderFailedInFork]
-        check(parent.nonEmpty
-          && isFailable
-          && !isState[Fresh],
+        check(parent.nonEmpty && isFailable && !isState[Fresh]):
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -200,108 +204,110 @@ extends
             // },
             isResumed = false,
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
-              historicOutcomes :+ HistoricOutcome(position, outcome)))
+              historicOutcomes :+ HistoricOutcome(position, outcome))
 
       case TagOrderCatched =>
         val OrderCatched(movedTo, outcome) = event.asInstanceOf[OrderCatched]
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
-          isDetachedOrAttached,
+          isDetachedOrAttached
+        ):
           copy(
             state = Ready(),
             workflowPosition = workflowPosition.copy(position = movedTo),
             isResumed = false,
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
-              historicOutcomes :+ HistoricOutcome(position, outcome)))
+              historicOutcomes :+ HistoricOutcome(position, outcome))
 
       case TagOrderCaught =>
         val OrderCaught(movedTo, outcome) = event.asInstanceOf[OrderCaught]
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
-          isDetachedOrAttached,
-          locally:
-            var h = outcome.fold(historicOutcomes): outcome =>
-              historicOutcomes :+ HistoricOutcome(position, outcome)
-            if !h.lastOption.exists(_.outcome.isSucceeded) then
-              h :+= HistoricOutcome(movedTo, OrderOutcome.Caught)
-            copy(
-              state = Ready(),
-              workflowPosition = workflowPosition.copy(position = movedTo),
-              isResumed = false,
-              historicOutcomes = h))
+          isDetachedOrAttached
+        ):
+          var h = outcome.fold(historicOutcomes): outcome =>
+            historicOutcomes :+ HistoricOutcome(position, outcome)
+          if !h.lastOption.exists(_.outcome.isSucceeded) then
+            h :+= HistoricOutcome(movedTo, OrderOutcome.Caught)
+          copy(
+            state = Ready(),
+            workflowPosition = workflowPosition.copy(position = movedTo),
+            isResumed = false,
+            historicOutcomes = h)
 
       case TagOrderRetrying =>
         val OrderRetrying(maybeDelayUntil, movedTo) = event.asInstanceOf[OrderRetrying]
-        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
+        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached):
           maybeDelayUntil.fold(this/*Ready*/): o =>
             copy(
               workflowPosition = movedTo.fold(workflowPosition)(toWorkflowPosition),
-              state = DelayingRetry(o)))
+              state = DelayingRetry(o))
 
       case TagOrderAwoke =>
         check(
           (isState[Sleeping] || isState[DelayingRetry] || isState[DelayedAfterError])
             && !isSuspendedOrStopped
-            && isDetachedOrAttached,
-          copy(state = Ready()))
+            && isDetachedOrAttached
+        ):
+          copy(state = Ready())
 
       case TagOrderForked =>
         val OrderForked(children) = event.asInstanceOf[OrderForked]
-        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
+        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached):
           copy(
             state = Forked(children),
-            mark = cleanMark))
+            mark = cleanMark)
 
       case TagOrderJoined =>
         val OrderJoined(outcome) = event.asInstanceOf[OrderJoined]
-        check(isState[Forked] && !isSuspendedOrStopped && isDetached,
+        check(isState[Forked] && !isSuspendedOrStopped && isDetached)(
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case TagOrderFinished =>
         val OrderFinished(maybeOutcome) = event.asInstanceOf[OrderFinished]
-        check(isState[Ready] && isDetached && !isSuspendedOrStopped,
+        check(isState[Ready] && isDetached && !isSuspendedOrStopped):
           copy(
             state = Finished,
             historicOutcomes = maybeOutcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome),
             mark = None,
-            isResumed = false))
+            isResumed = false)
 
       case TagOrderDeletionMarked =>
-        check(parent.isEmpty,
-          copy(deleteWhenTerminated = true))
+        check(parent.isEmpty):
+          copy(deleteWhenTerminated = true)
 
       case TagOrderExternalVanished =>
-        check(parent.isEmpty,
+        check(parent.isEmpty):
           copy(
             externalOrder = externalOrder.map(_.copy(
-              vanished = true))))
+              vanished = true)))
 
       case TagOrderDeleted =>
-        check(isState[IsTerminated] && isDetached && parent.isEmpty,
-          copy(state = Deleted))
+        check(isState[IsTerminated] && isDetached && parent.isEmpty):
+          copy(state = Deleted)
 
       case TagOrderBroken =>
         val OrderBroken(maybeProblem) = event.asInstanceOf[OrderBroken]
-        check(!isState[IsTerminated],
+        check(!isState[IsTerminated]):
           copy(
             state = Broken(maybeProblem),
             historicOutcomes = maybeProblem.fold(historicOutcomes): problem =>
-              historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem))))
+              historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem)))
 
       case TagOrderAttachable =>
         val OrderAttachable(agentPath) = event.asInstanceOf[OrderAttachable]
-        check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
-          copy(attachedState = Some(Attaching(agentPath))))
+        check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached):
+          copy(attachedState = Some(Attaching(agentPath)))
 
       case TagOrderAttached =>
         val OrderAttached(agentPath) = event.asInstanceOf[OrderAttached]
         attachedState match
           case Some(Attaching(`agentPath`)) =>
-            check(isState[IsFreshOrReady] || isState[Forked],
-              copy(attachedState = Some(Attached(agentPath))))
+            check(isState[IsFreshOrReady] || isState[Forked]):
+              copy(attachedState = Some(Attached(agentPath)))
           case _ =>
             inapplicable
 
@@ -313,13 +319,13 @@ extends
             inapplicable
 
       case TagOrderDetached =>
-        check(!isDetached && state.isDetachable,
-          copy(attachedState = None))
+        check(!isDetached && state.isDetachable):
+          copy(attachedState = None)
 
       case TagOrderCancellationMarked =>
         val OrderCancellationMarked(mode) = event.asInstanceOf[OrderCancellationMarked]
-        check(isMarkable,
-          copy(mark = Some(OrderMark.Cancelling(mode))))
+        check(isMarkable):
+          copy(mark = Some(OrderMark.Cancelling(mode)))
 
       case TagOrderCancellationMarkedOnAgent =>
         Right(this)
@@ -327,37 +333,47 @@ extends
       case TagOrderStateReset =>
         // Event precedes OrderCancelled in the same transaction,
         // maybe before some block-leaving events which rely on state == Ready.
-        check(state.isInstanceOf[IsResettable],
+        check(state.isInstanceOf[IsResettable]):
           copy(
             state = Ready(),
-            mark = None))
+            mark = None)
 
       case TagOrderCancelled =>
-        check(isCancelable && isDetached,
+        check(isCancelable && isDetached):
           copy(
             state = Cancelled,
             isSuspended = false,
-            mark = None))
+            mark = None)
 
       case TagOrderSuspensionMarked =>
         val OrderSuspensionMarked(mode) = event.asInstanceOf[OrderSuspensionMarked]
-        check(isMarkable,
-          copy(mark = Some(OrderMark.Suspending(mode))))
+        check(isMarkable):
+          copy(mark = Some(OrderMark.Suspending(mode)))
 
       case TagOrderSuspensionMarkedOnAgent =>
         Right(this)
 
       case TagOrderSuspended =>
-        check(isSuspendibleNow && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
+        check(isSuspendibleNow
+          && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/)
+        ):
           copy(
             isSuspended = true,
             mark = None,
-            state = if isSuspendingWithKill && isState[ProcessingKilled] then Ready() else state))
+            state =
+              if isSuspendingWithKill && isState[ProcessingKilled] then
+                Ready()
+              else
+                state)
 
       case TagOrderStopped =>
-        check(isFailable && isDetached,
+        check(isFailable && isDetached):
           copy(
-            state = if isState[Fresh] then StoppedWhileFresh else Stopped))
+            state =
+              if isState[Fresh] then
+                StoppedWhileFresh
+              else
+                Stopped)
 
       case TagOrderGoMarked =>
         val OrderGoMarked(position) = event.asInstanceOf[OrderGoMarked]
@@ -467,7 +483,7 @@ extends
           val maybeSucceeded =
             (asSucceeded && !lastOutcome.isSucceeded) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
-          check(isResumableNow,
+          check(isResumableNow):
             copy(
               workflowPosition = toWorkflowPosition:
                 maybePosition.getOrElse:
@@ -477,13 +493,14 @@ extends
               isResumed = true,
               mark = None,
               state =
-                if /*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh] then // ???
+                state match
+                  case _: (/*FailedWhileFresh |*/ StoppedWhileFresh) => // ???
                     Fresh()
-                else if isState[Failed] || isState[Stopped] || isState[Broken] then
+                  case _: (Failed | Stopped | Broken) =>
                     Ready()
-                else
-                  state,
-              historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
+                  case _ =>
+                    state,
+              historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded)
 
       case TagOrderPriorityChanged =>
         val OrderPriorityChanged(priority) = event.asInstanceOf[OrderPriorityChanged]
@@ -495,11 +512,11 @@ extends
 
       case TagOrderLocksAcquired =>
         // LockState handles this event, too
-        check(isDetached && (isState[Ready] || isState[WaitingForLock]),
+        check(isDetached && (isState[Ready] || isState[WaitingForLock])):
           copy(
             workflowPosition = toWorkflowPosition:
               position / BranchId.Lock % 0,
-            state = Ready()))
+            state = Ready())
 
       case TagOrderLocksReleased =>
         // LockState handles this event, too
@@ -511,51 +528,51 @@ extends
           inapplicable
 
       case TagOrderLocksQueued =>
-        check(isDetached && isState[Ready],
+        check(isDetached && isState[Ready]):
           copy(
-            state = WaitingForLock))
+            state = WaitingForLock)
 
       case TagOrderNoticeAnnounced =>
-        check(isDetached && isState[Fresh],
-          this)
+        check(isDetached && isState[Fresh]):
+          this
 
       case TagOrderNoticePostedV2_3 =>
-        check(isDetached && isState[Ready] && !isSuspendedOrStopped,
-          this)
+        check(isDetached && isState[Ready] && !isSuspendedOrStopped):
+          this
 
       case TagOrderNoticePosted =>
-        check(isDetached && isState[Ready] && !isSuspendedOrStopped,
-          this)
+        check(isDetached && isState[Ready] && !isSuspendedOrStopped):
+          this
 
       case TagOrderNoticeExpected =>
         // ControllerStateRecoverer converts this State to OrderNoticesExpected
-        throw new NotImplementedError("Order.OrderNoticeExpected")
+        throw NotImplementedError("Order.OrderNoticeExpected")
 
       case TagOrderNoticesExpected =>
         val OrderNoticesExpected(noticeIds) = event.asInstanceOf[OrderNoticesExpected]
-        check(isDetached && isState[Ready] && !isSuspendedOrStopped,
+        check(isDetached && isState[Ready] && !isSuspendedOrStopped):
           copy(
-            state = ExpectingNotices(noticeIds)))
+            state = ExpectingNotices(noticeIds))
 
       case TagOrderNoticesRead =>
-        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
+        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped):
           copy(
-            state = Ready()))
+            state = Ready())
 
       case TagOrderNoticesConsumptionStarted =>
-        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
+        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped):
           copy(
             workflowPosition = toWorkflowPosition:
               position / BranchId.ConsumeNotices % 0,
-            state = Ready()))
+            state = Ready())
 
       case TagOrderNoticesConsumed =>
-        check(isDetached,
+        check(isDetached):
           position.checkedParent.map: parentPos =>
             copy(
               workflowPosition = toWorkflowPosition(parentPos.increment),
               state = Ready())
-        ).flatten
+        .flatten
 
       case TagOrderStickySubagentEntered =>
         val OrderStickySubagentEntered(agentPath, subagentBundleId) =
@@ -563,10 +580,11 @@ extends
         check(isState[IsFreshOrReady]
           && isDetachedOrAttached
           && !isSuspendedOrStopped
-          && !stickySubagents.exists(_.agentPath == agentPath),
+          && !stickySubagents.exists(_.agentPath == agentPath)
+        ):
           copy(
             workflowPosition = toWorkflowPosition(position / BranchId.StickySubagent % 0),
-            stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
+            stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents)
 
       case TagOrderStickySubagentLeaved =>
         if isDetachedOrAttached && stickySubagents.nonEmpty then
@@ -583,27 +601,28 @@ extends
 
       case TagOrderPrompted =>
         val OrderPrompted(question) = event.asInstanceOf[OrderPrompted]
-        check(isDetached && isState[Ready],
-          copy(state = Prompting(question)))
+        check(isDetached && isState[Ready]):
+          copy(state = Prompting(question))
 
       case TagOrderPromptAnswered =>
-        check(isDetached && isState[Prompting],
+        check(isDetached && isState[Prompting]):
           copy(
-            state = Ready()))
+            state = Ready())
             //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case TagOrderOrderAdded =>
         // See also ControllerState, ControllerStateRecoverer
-        check(isDetached && isState[Ready],
-          this)
+        check(isDetached && isState[Ready]):
+          this
 
       case TagOrderCyclingPrepared =>
         val OrderCyclingPrepared(cycleState) = event.asInstanceOf[OrderCyclingPrepared]
         check(isDetachedOrAttached
           & (isState[Ready] || isState[BetweenCycles])
-          & !isSuspendedOrStopped,
+          & !isSuspendedOrStopped
+        ):
           copy(
-            state = BetweenCycles(Some(cycleState))))
+            state = BetweenCycles(Some(cycleState)))
 
       case TagOrderCycleStarted =>
         val OrderCycleStarted(maybeSkipped) = event.asInstanceOf[OrderCycleStarted]
@@ -612,10 +631,10 @@ extends
             val branchId = BranchId.cycle(
               cycleState.copy(
                 next = cycleState.next + maybeSkipped.getOrElse(ZeroDuration)))
-            check(isDetachedOrAttached & !isSuspendedOrStopped,
+            check(isDetachedOrAttached & !isSuspendedOrStopped):
               copy(
                 workflowPosition = toWorkflowPosition(position / branchId % 0),
-                state = Ready()))
+                state = Ready())
 
           case _ => inapplicable
 
@@ -632,7 +651,7 @@ extends
         val OrderSleeping(until, cause) = event.asInstanceOf[OrderSleeping]
         check(
           (isState[Ready] || cause == OrderSleeping.Cause.Throttle && isState[Sleeping])
-            && isDetachedOrAttached,
+            && isDetachedOrAttached)(
           copy(
             state = Sleeping(until, cause)))
 
@@ -666,14 +685,14 @@ extends
 
       case TagOrderSaid =>
         val OrderSaid(value) = event.asInstanceOf[OrderSaid]
-        check(isState[IsFreshOrReady] && isDetachedOrAttached,
-          this)
+        check(isState[IsFreshOrReady] && isDetachedOrAttached):
+          this
 
       case TagOrderWaitingForAdmission =>
         val OrderWaitingForAdmission(until) = event.asInstanceOf[OrderWaitingForAdmission]
-        check((isState[Ready] || isState[WaitingForAdmission]) && isDetachedOrAttached,
+        check((isState[Ready] || isState[WaitingForAdmission]) && isDetachedOrAttached):
           copy(
-            state = WaitingForAdmission(until)))
+            state = WaitingForAdmission(until))
 
       case _ => inapplicable
   end applyEvent
@@ -787,7 +806,9 @@ extends
     checkedState[A].orThrow
 
   def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
-    Checked.fromOption(ifState[A], Problem(s"'$id' is expected to be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
+    Checked.fromOption(ifState[A],
+      Problem(s"'$id' is expected to be in state ${
+        implicitClass[A].simpleScalaName}, but is in state $state"))
 
   def ifProcessing(subagentId: SubagentId): Option[Order[Processing]] =
     ifState[Order.Processing].filter(_.state.subagentId.contains(subagentId))
@@ -1269,11 +1290,14 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
         Left(GoOrderInapplicableProblem(order.id))
 
   object Fresh:
-    private val fresh = new Fresh()
+    private val Default = new Fresh()
     private val freshIgnoreAdmissionTime = Fresh(ignoreAdmissionTime = true)
 
-    def apply(ignoreAdmissionTime: Boolean = false): Fresh =
-      if ignoreAdmissionTime then freshIgnoreAdmissionTime else fresh
+    inline def apply(): Fresh =
+      Default
+
+    def apply(ignoreAdmissionTime: Boolean): Fresh =
+      if ignoreAdmissionTime then freshIgnoreAdmissionTime else Default
 
     given Encoder.AsObject[Fresh] =
       case Fresh(false) =>
@@ -1289,11 +1313,14 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     override def toString = if ignoreAdmissionTime then "Ready(ignoreAdmissionTime)" else "Ready"
 
   object Ready:
-    private val ready = new Ready()
+    private val Default = new Ready()
     private val readyIgnoreAdmissionTime = Ready(ignoreAdmissionTime = true)
 
-    def apply(ignoreAdmissionTime: Boolean = false): Ready =
-      if ignoreAdmissionTime then readyIgnoreAdmissionTime else ready
+    inline def apply(): Ready =
+      Default
+
+    def apply(ignoreAdmissionTime: Boolean): Ready =
+      if ignoreAdmissionTime then readyIgnoreAdmissionTime else Default
 
     given Encoder.AsObject[Ready] =
       case Ready(false) =>
@@ -1335,13 +1362,15 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   extends IsStarted/*!!!*/, IsDetachable, IsTransferable
 
   object Broken:
+    private val Default = new Broken(None)
+
+    inline def apply(): Broken =
+      Default
+
     // COMPATIBLE with v2.4
     @deprecated("outcome is deprecated", "v2.5")
     def apply(problem: Problem): Broken =
       Broken(Some(problem))
-
-    def apply(): Broken =
-      Broken(None)
 
 
   final case class Processing(
