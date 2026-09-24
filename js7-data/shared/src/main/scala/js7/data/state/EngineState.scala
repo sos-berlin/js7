@@ -283,8 +283,6 @@ trait EngineState extends EventDrivenState[Event], SignedItemContainer, EngineSt
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This]
 
-  protected def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This]
-
   protected final def findInstructionInCallStack[I <: Instruction : ClassTag](
     workflowPosition: WorkflowPosition)
   : Checked[I] =
@@ -372,7 +370,7 @@ trait EngineState_[T <: EngineState_[T]] extends EngineState, EventDrivenState_[
       case _ =>
         applyOrderCoreEvent(orderId, event.asInstanceOf[OrderCoreEvent])
 
-  protected final def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This] =
+  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[This] =
     for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)

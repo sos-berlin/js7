@@ -111,6 +111,7 @@ abstract class RecouplingStreamReader[
             case Some(api) => onDecoupled *> api.tryLogout
           })
 
+  // TODO Not used
   final def invalidateCoupledApi: IO[Completed] =
     coupledApiVar.invalidate
 
