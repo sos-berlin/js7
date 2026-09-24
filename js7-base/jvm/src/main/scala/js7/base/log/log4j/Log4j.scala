@@ -11,6 +11,10 @@ import scala.util.{Failure, Success, Try}
   */
 object Log4j:
 
+  /** 32768 should reduce memory usage with 40MB or 50MB.
+    *
+    * Default is 256 * 1024. */
+  private val asyncLoggerRingBufferSize: Int = 32768
   private val isShutdown = Atomic(false)
   private val ifNotInitialized = new Once
   private var earlyInitialized = false
@@ -39,6 +43,12 @@ object Log4j:
   private def useAsyncLogger(): Unit =
     sys.props("log4j2.contextSelector") =
       classOf[org.apache.logging.log4j.core.async.AsyncLoggerContextSelector].getName
+
+    if !sys.props.contains("log4j2.asyncLoggerRingBufferSize")
+      && !sys.env.contains("LOG4J_ASYNC_LOGGER_RING_BUFFER_SIZE")
+    then
+      // https://logging.apache.org/log4j/2.x/manual/async.html#log4j2.asyncLoggerRingBufferSize
+      sys.props("log4j2.asyncLoggerRingBufferSize") = asyncLoggerRingBufferSize.toString
 
     if !sys.props.contains("log4j2.asyncLoggerWaitStrategy")
       && !sys.env.contains("LOG4J_ASYNC_LOGGER_WAIT_STRATEGY")
