@@ -254,7 +254,6 @@ extends Service.StoppableByCancel:
             case Some(logFileIndex) if conf.recompressor.isFast =>
               logFileIndex.wholeFile(forReader)
             case _ =>
-              // TODO Handle incomplete gzip file because it is still being written?
               logFile.toGzipDecompressingStream(forReader.byteChunkSize)
       else if forReader.growing then
         LogFileReader.streamGrowingLogFile(

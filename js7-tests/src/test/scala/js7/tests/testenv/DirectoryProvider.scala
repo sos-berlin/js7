@@ -144,7 +144,7 @@ extends HasCloser:
       .foreach: agentPath =>
         controllerEnv.writeAgentAuthentication(
           agentPath,
-          SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in DirectorEnv*/)
+          SecretString(s"$agentPath-PASSWORD")/*TODO Duplicate in DirectorEnv*/)
 
   val itemSigner = ControllerState.toItemSigner(signer)
 

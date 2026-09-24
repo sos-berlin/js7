@@ -254,7 +254,6 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
           IO:
             assert(eatenEvents == events.flatten.toSet)
             logger.info(bold(itemsPerSecondString(duration, n, "events")))
-            //FIXME Semaphore: assert(journal.semaphoreCount.await(99.s) == 0)
             succeed
 
   private def journal(size: Int = Int.MaxValue): ResourceIO[MemoryJournal[TestState]] =

@@ -549,7 +549,7 @@ object ClusterNode:
   end resource
 
 
-  // TODO Provisional fix because it's not easy to restart the recovery
+  // Because it's not easy to restart the recovery, we restart the whole Engine Server (JVM).
   // ServiceMain catches this exception by its `MainServiceTerminationException` trait !!!
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation"),
