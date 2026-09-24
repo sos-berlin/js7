@@ -34,8 +34,8 @@ private final class LogIndexBuilder private(
   : IO[(Seq[LogFile], fs2.Pipe[IO, DirectoryEvent, LogFileEvent])] =
     for
       // TODO Prefer Channel over Queue?
-      queue <- Queue.unsafeUnbounded[IO, LogFile]
-      (logFiles, delayedLogFiles) <- toLogDelayedFiles(initialFiles, queue.offer)
+      queue <- Queue.unbounded[IO, LogFile]
+      (logFiles, delayedLogFiles) <- toLogDelayedFiles(initialFiles, onCompleted = queue.offer)
       filenameToDelayedLogFile <- AtomicCell[IO].of:
         delayedLogFiles.toKeyedMap(_.filename)
     yield
