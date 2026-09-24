@@ -348,11 +348,9 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     parseJson(byteSeq).flatMap(_.checkedAs[B])
 
   def parseJson(byteSeq: ByteSeq): Checked[Json] =
-    parseJsonByteArray(unsafeArray(byteSeq)).toChecked
-    // TODO Better performance with ByteBuffer instead of copying to an Array?
-    //unsafeWrappedArray(byteSeq) match
-    //  case None => parseJsonByteBuffer(toByteBuffer(byteSeq)).toChecked
-    //  case Some(array) => parseJsonByteArray(array).toChecked
+    unsafeWrappedArray(byteSeq) match
+      case None => parseJsonByteBuffer(toByteBuffer(byteSeq)).toChecked
+      case Some(array) => parseJsonByteArray(array).toChecked
 
 
 object ByteSequence:

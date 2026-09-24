@@ -2,6 +2,7 @@ package js7.common.pekkoutils
 
 import cats.Eq
 import io.circe.Json
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
@@ -87,6 +88,9 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
 
   //def copyToArray(byteString: ByteString, array: Array[Byte], start: Int, length: Int) =
   //  byteString.copyToArray(array, start, length)
+
+  override def toByteBuffer(byteString: ByteString): ByteBuffer =
+    byteString.asByteBuffer
 
   override def parseJson(byteString: ByteString): Checked[Json] =
     byteString.decodeString(UTF_8).parseJson
