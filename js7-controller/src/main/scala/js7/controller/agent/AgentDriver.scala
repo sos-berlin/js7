@@ -544,7 +544,7 @@ private[controller] object AgentDriver:
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
     extends Queueable:
-      override lazy val hashCode: Int = order.id.hashCode
+      override def hashCode: Int = order.id.hashCode
 
       def orderId: OrderId = order.id
 

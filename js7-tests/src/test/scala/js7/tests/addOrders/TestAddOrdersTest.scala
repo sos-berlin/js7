@@ -41,10 +41,11 @@ final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
       "--count=" + orderCount,
       "--user=TestAddOrders:TEST-PASSWORD"))
 
-    val statistics = TestAddOrders.run(settings, logToStdout = testSpeed.isDefined)
-      .awaitInfinite.orThrow
-    controller.eventWatch.await[OrderDeleted](_.key.string.startsWith("TestAddOrders-"))
-    for line <- statistics.logLines do info(line)
+    (1 to (if testSpeed.isDefined then 2 else 1)).foreach: _ =>
+      val statistics = TestAddOrders.run(settings, logToStdout = testSpeed.isDefined)
+        .awaitInfinite.orThrow
+      controller.eventWatch.await[OrderDeleted](_.key.string.startsWith("TestAddOrders-"))
+      for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
     Log4jThreadContextMap.logStatistics()
 

@@ -11,6 +11,7 @@ import js7.data.event.EventCalc.given
 import js7.data.event.{Event, JournaledState, MaybeTimestampedKeyedEvent, TimeCtx}
 import js7.journal.StreamableJournal.*
 import js7.journal.{CommitOptions, Journal, Persisted}
+import scala.util.control.NoStackTrace
 
 trait StreamableJournal[S <: JournaledState[S]](chunkSize: Int):
   this: Journal[S] =>
@@ -30,7 +31,6 @@ trait StreamableJournal[S <: JournaledState[S]](chunkSize: Int):
     (surround: (Seq[MaybeTimestampedKeyedEvent[E]], IO[Checked[Persisted[S, E]]]) =>
       IO[Checked[Persisted[S, E]]])
   : fs2.Pipe[IO, MaybeTimestampedKeyedEvent[E], Checked[Persisted[S, E]]] =
-    val stoppedException = PersistStoppedException()
     _.chunkLimit(chunkSize).evalMap: chunk =>
       stopper.resource.use:
         case Some(stopReason) =>
@@ -51,5 +51,5 @@ object StreamableJournal:
     commitLater = true,
     /*delay = subagentConf.stdoutCommitDelay*/)
 
-  private final class PersistStoppedException extends RuntimeException:
+  private final class PersistStoppedException extends RuntimeException, NoStackTrace:
     override def toString = "PersistStoppedException"

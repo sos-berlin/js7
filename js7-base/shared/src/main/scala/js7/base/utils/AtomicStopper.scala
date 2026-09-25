@@ -23,11 +23,8 @@ final class AtomicStopper private(
     * The AtomicStopper cannot be stopped while the resource is in use.
     */
   val resource: ResourceIO[Option[String]] =
-    for
-      _ <- mutex.lock
-      stopReason <- Resource.eval(ref.get)
-    yield
-      stopReason
+    mutex.lock.evalMap: _ =>
+      ref.get
 
   override def toString = s"AtomicStopper($label)"
 
