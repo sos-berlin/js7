@@ -165,7 +165,7 @@ object BuildInfos
     val commitHash: String)
   extends Info with Branch {
     val longVersion =
-      s"$version${committedAt.fold("")(o => "+" + toSemverDate(o))}"
+      s"$version+${committedAt.fold(commitHash.take(7))(toSemverDate)}"
 
     val buildId: String =
       longVersion
@@ -174,7 +174,7 @@ object BuildInfos
   /** Uncommitted contains build time dependent values. Not for release versions. */
   final class Uncommitted(val version: String, val branch: String, val commitHash: String)
   extends Info with Branch {
-    /** "2.0.0+UNCOMMITTED.20210127.120000" */
+    /** "2.0.0+UNCOMMITTED.20210127.1200" */
     val longVersion: String =
       version + "+" + toSemverDate(now) + ".UNCOMMITTED"
 
