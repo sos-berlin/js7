@@ -7,7 +7,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -128,37 +128,38 @@ abstract class RecouplingStreamReader[
 
     def streamAgainAndAgain(after: I): Stream[IO, V] =
       logger.traceStream:
-        var lastIndex = after
-        after
-          .tailRecM: after =>
-            if eof(after) || isStopped then
-              Stream.emit(Right(Stream.empty))
-            else
-              Right:
-                Stream.eval:
-                  streamOnceAfter(after)
-                .flatMap: (i, stream) =>
+        loop(after)
+
+    private def loop(after: I): Stream[IO, V] =
+      Stream.suspend:
+        if eof(after) || isStopped then
+          Stream.empty
+        else
+          var lastIndex = after
+          Stream.eval:
+            streamOnceAfter(after)
+          .flatMap: (i, stream) =>
+            lastIndex = i
+            stream
+              .map: v =>
+                for i <- toIndex(v) do
                   lastIndex = i
-                  stream
-                    .map: v =>
-                      for i <- toIndex(v) do
-                        lastIndex = i
-                      v
-                    .handleErrorWith:
-                      case t: ProblemException if isSevereProblem(t.problem) =>
-                        Stream.raiseError[IO](t)
-                      case t =>
-                        Stream
-                          .eval:
-                            onCouplingFailed(api, Problem.fromThrowable(t))
-                          .flatMap:
-                            case false => Stream.raiseError[IO](t)
-                            case true => Stream.empty
-              +:
-                Stream.eval:
-                  pauseBeforeNextTry(conf.delay) *>
-                    IO.defer(IO.left(lastIndex))
-          .flatten
+                v
+              .handleErrorWith:
+                case t: ProblemException if isSevereProblem(t.problem) =>
+                  Stream.raiseError[IO](t)
+                case t =>
+                  Stream
+                    .eval:
+                      onCouplingFailed(api, Problem.fromThrowable(t))
+                    .flatMap:
+                      case false => Stream.raiseError[IO](t)
+                      case true => Stream.empty
+          .append:
+            Stream.exec:
+              pauseBeforeNextTry(conf.delay)
+          .append:
+            loop(lastIndex) // By-name, evaluated after lastIndex has been updated
 
     private def streamOnceAfter(after: I): IO[(I, Stream[IO, V])] =
       tryEndlesslyToGetStream(after) <*
