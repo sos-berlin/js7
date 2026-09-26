@@ -7,7 +7,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.tryIt
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -101,15 +101,14 @@ abstract class RecouplingStreamReader[
       stopped.complete(()).void
 
   final def decouple: IO[Completed] =
-    coupledApiVar.isTerminated.flatMap(
+    coupledApiVar.isTerminated.flatMap:
       if _ then
         IO.completed
       else
         coupledApiVar.tryTake
-          .flatMap {
+          .flatMap:
             case None => IO.completed
             case Some(api) => onDecoupled *> api.tryLogout
-          })
 
   // TODO Not used
   final def invalidateCoupledApi: IO[Completed] =
@@ -129,74 +128,63 @@ abstract class RecouplingStreamReader[
 
     def streamAgainAndAgain(after: I): Stream[IO, V] =
       logger.traceStream:
-        var lastIndex = after
-        after
-          .tailRecM: after =>
-            if eof(after) || isStopped then
-              Stream.emit(Right(Stream.empty))
-            else
-              Right:
-                Stream.eval:
-                  streamOnceAfter(after)
-                .flatMap: (i, stream) =>
+        loop(after)
+
+    private def loop(after: I): Stream[IO, V] =
+      Stream.suspend:
+        if eof(after) || isStopped then
+          Stream.empty
+        else
+          var lastIndex = after
+          Stream.eval:
+            tryEndlesslyToGetStream(after)
+          .flatMap: (i, stream) =>
+            lastIndex = i
+            stream
+              .map: v =>
+                for i <- toIndex(v) do
                   lastIndex = i
-                  stream
-                    .map: v =>
-                      for i <- toIndex(v) do
-                        lastIndex = i
-                      v
-                    .handleErrorWith:
-                      case t: ProblemException if isSevereProblem(t.problem) =>
-                        Stream.raiseError[IO](t)
-                      case t =>
-                        Stream
-                          .eval:
-                            onCouplingFailed(api, Problem.fromThrowable(t))
-                          .flatMap:
-                            case false => Stream.raiseError[IO](t)
-                            case true => Stream.empty
-              +:
-                Stream.eval:
-                  pauseBeforeNextTry(conf.delay) *>
-                    IO.defer(IO.left(lastIndex))
-          .flatten
+                v
+              .handleErrorWith:
+                case t: ProblemException if isSevereProblem(t.problem) =>
+                  Stream.raiseError[IO](t)
+                case t =>
+                  Stream.exec:
+                    onFailure(Problem.fromThrowable(t), decouple = true)
+          .append:
+            Stream.exec:
+              pauseBeforeNextTry(conf.delay)
+          .append: // By-name, evaluated after lastIndex has been updated
+            loop(lastIndex)
 
-    private def streamOnceAfter(after: I): IO[(I, Stream[IO, V])] =
-      tryEndlesslyToGetStream(after) <*
-        IO:
-          logger.log(sym.relievedLogLevel, s"${sym.relievedLogLevel} Streaming $api ...")
-          sym.clear()
-
-    /** Retries until web request returns an Stream. */
+    /** Retries until coupled and the web request returns a Stream. */
     private def tryEndlesslyToGetStream(after: I): IO[(I, Stream[IO, V])] =
       logger.traceIO:
         ().tailRecM: _ =>
           if isStopped then
             IO.right(after -> Stream.empty)
-            //IO.right(Stream.raiseError[IO](
-            //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
           else
-            coupleIfNeeded(after = after)
+            coupleIfNeeded(after)
               .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
-                getStreamX(after = after)
+                getStreamX(after)
                   .tryIt.map(Checked.flattenTryChecked)
-                  .flatMap:
-                    case Left(problem) =>
-                      if isStopped then
-                        logger.debug(s"While isStopped: $problem")
-                        IO.left(())  // Exit tailRecM in next iteration
-                      else if isSevereProblem(problem) then
-                        IO.raiseError(problem.throwable)
-                      else
-                        onCouplingFailed(api, problem).flatMap: continue =>
-                          decouple *>
-                            (if continue then
-                              pauseBeforeRecoupling.as(Left(()))
-                            else
-                              IO.raiseError(problem.throwable))
+              .flatMap:
+                case Left(problem) =>
+                  if isStopped then
+                    IO:
+                      logger.debug(s"While isStopped: $problem")
+                      Left(()) // Exit tailRecM in next iteration
+                  else if isSevereProblem(problem) then
+                    IO.raiseError(problem.throwable)
+                  else
+                    onFailure(problem, decouple = true) *>
+                      pauseBeforeRecoupling.as(Left(()))
 
-                    case Right(stream) =>
-                      IO.right(after -> stream)
+                case Right(stream) =>
+                  IO:
+                    logger.log(sym.relievedLogLevel, s"${sym.relievedLogLevel} Streaming $api ...")
+                    sym.clear()
+                    Right(after -> stream)
 
     private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
       logger.traceIO("getStreamX", s"after=$after"):
@@ -210,46 +198,51 @@ abstract class RecouplingStreamReader[
         case None => tryEndlesslyToCouple(after)
 
     private def tryEndlesslyToCouple(after: I): IO[I] =
-      logger.debugIO(().tailRecM(_ => IO.defer(
-        if isStopped then
-          IO.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
-            with NoStackTrace)
-        else
-          ( for
-              otherCoupledClient <- coupledApiVar.tryRead
-              _ <- otherCoupledClient.fold(IO.unit): _ =>
-                IO.raiseError(new IllegalStateException("Coupling while already coupled"))
-              _ <- IO { recouplingPause.onCouple() }
-              _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
-              updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
-            yield updatedIndex
-          ) .catchIntoChecked
-            .flatMap {
-              case Left(problem) =>
-                if isStopped then
-                  IO.left(())
-                else
-                  // Fail in next iteration
-                  for
-                    // ??? pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
-                    continue <- onCouplingFailed(api, problem)
-                    either <-
-                      if continue then
-                        pauseBeforeRecoupling.map(_ => Left(()))
-                      else
-                        IO.raiseError(problem.throwable)
-                  yield either
-
-              case Right(updatedIndex) =>
+      logger.debugIO:
+        ().tailRecM: _ =>
+          IO.defer:
+            if isStopped then
+              IO.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
+                with NoStackTrace)
+            else
+              locally:
                 for
-                  _ <- coupledApiVar.put(api)
-                  _ <- IO { recouplingPause.onCouplingSucceeded() }
-                  _ <- onCoupled(api, after)
-                yield Right(updatedIndex)
-            })))
+                  otherCoupledClient <- coupledApiVar.tryRead
+                  _ <- otherCoupledClient.fold(IO.unit): _ =>
+                    IO.raiseError(new IllegalStateException("Coupling while already coupled"))
+                  _ <- IO(recouplingPause.onCouple())
+                  _ <- api.login(onlyIfNotLoggedIn = true) //.timeout(idleTimeout)
+                  updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
+                yield updatedIndex
+              .catchIntoChecked
+              .flatMap:
+                case Left(problem) =>
+                  if isStopped then
+                    IO.left(())
+                  else
+                    // ??? pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
+                    onFailure(problem, decouple = false) *>
+                      pauseBeforeRecoupling.as(Left(()))
+
+                case Right(updatedIndex) =>
+                  for
+                    _ <- coupledApiVar.put(api)
+                    _ <- IO(recouplingPause.onCouplingSucceeded())
+                    _ <- onCoupled(api, after)
+                  yield
+                    Right(updatedIndex)
+
+    /** Calls onCouplingFailed, then `andThen`.
+      * Fails with problem.throwable if onCouplingFailed returns false,
+      * otherwise the caller may retry. */
+    private def onFailure(problem: Problem, decouple: Boolean): IO[Unit] =
+      onCouplingFailed(api, problem).flatMap: continue =>
+        IO.whenA(decouple)(RecouplingStreamReader.this.decouple.void) *>
+          IO.raiseUnless(continue)(problem.throwable)
 
   private val pauseBeforeRecoupling =
-    IO.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
+    IO.defer:
+      pauseBeforeNextTry(recouplingPause.nextPause())
 
 
 object RecouplingStreamReader:
