@@ -17,7 +17,6 @@ object Log4j:
   private val asyncLoggerRingBufferSize: Int = 32768
   private val isShutdown = Atomic(false)
   private val ifNotInitialized = new Once
-  private var earlyInitialized = false
 
   // Do not touch the logger before initialize has been called !!!
   private lazy val logger = Logger[this.type]
@@ -33,12 +32,11 @@ object Log4j:
   private def isInitialized: Boolean =
     ifNotInitialized.isInitialized
 
-  def earlyInitializeForProduction(): Unit =
-    useAsyncLogger()
-    if isInitialized && !earlyInitialized then
-      logger.error("earlyInitializeForProduction but Log4j has already been initialized",
-        new Exception)
-    earlyInitialized = true
+  private[log] def initialize(name: String): Unit =
+    ifNotInitialized:
+      useAsyncLogger()
+      Log4jThreadContextMap.initialize(name)
+      for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
   private def useAsyncLogger(): Unit =
     sys.props("log4j2.contextSelector") =
@@ -59,11 +57,6 @@ object Log4j:
 
     // Because AsyncLoggerContextSelector already flushes:
     sys.props("js7.log4j.immediateFlush") = "false"
-
-  def initialize(name: String): Unit =
-    ifNotInitialized:
-      Log4jThreadContextMap.initialize(name)
-      for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &lt;configuration shutdownHook="disable">.

@@ -4,7 +4,6 @@ import cats.effect.IOApp
 import cats.effect.unsafe.IORuntime
 import js7.base.BuildInfo
 import js7.base.log.Logger
-import js7.base.log.log4j.Log4j
 import js7.base.system.startup.StartUp
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.{isStrict, isTest}
@@ -26,7 +25,6 @@ trait OurApp extends IOApp:
   private def initialize(): Unit =
     StartUp.initializeMain()
     StartUp.printlnWithClock(s"JS7 $productName ${BuildInfo.prettyVersion}")
-    Log4j.earlyInitializeForProduction()
     Logger.initialize(productName)
     if !isTest && !sys.props.contains("cats.effect.tracing.mode") then
       sys.props.put("cats.effect.tracing.mode", "none")
