@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.std.Mutex
-import cats.effect.{IO, Ref, Resource, ResourceIO}
+import cats.effect.{IO, Ref, ResourceIO}
 import cats.syntax.option.*
 
 final class AtomicStopper private(
