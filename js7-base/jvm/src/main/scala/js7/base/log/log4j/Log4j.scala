@@ -34,7 +34,10 @@ object Log4j:
 
   private[log] def initialize(name: String): Unit =
     ifNotInitialized:
-      useAsyncLogger()
+      if sys.runtime.availableProcessors > 1 then
+        // Fast AsyncLogger requires Heap for the RingBuffer and a little more CPU time
+        useAsyncLogger()
+      end if  
       Log4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
