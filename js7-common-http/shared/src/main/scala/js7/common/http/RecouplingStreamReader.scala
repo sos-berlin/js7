@@ -136,7 +136,7 @@ abstract class RecouplingStreamReader[
         else
           var lastIndex = after
           Stream.eval:
-            streamOnceAfter(after)
+            tryEndlesslyToGetStream(after)
           .flatMap: (i, stream) =>
             lastIndex = i
             stream
@@ -156,24 +156,16 @@ abstract class RecouplingStreamReader[
           .append: // By-name, evaluated after lastIndex has been updated
             loop(lastIndex)
 
-    private def streamOnceAfter(after: I): IO[(I, Stream[IO, V])] =
-      tryEndlesslyToGetStream(after) <*
-        IO:
-          logger.log(sym.relievedLogLevel, s"${sym.relievedLogLevel} Streaming $api ...")
-          sym.clear()
-
-    /** Retries until web request returns an Stream. */
+    /** Retries until coupled and the web request returns a Stream. */
     private def tryEndlesslyToGetStream(after: I): IO[(I, Stream[IO, V])] =
       logger.traceIO:
         ().tailRecM: _ =>
           if isStopped then
             IO.right(after -> Stream.empty)
-            //IO.right(Stream.raiseError[IO](
-            //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
           else
-            coupleIfNeeded(after = after)
+            coupleIfNeeded(after)
               .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
-                getStreamX(after = after)
+                getStreamX(after)
                   .tryIt.map(Checked.flattenTryChecked)
               .flatMap:
                 case Left(problem) =>
@@ -231,13 +223,13 @@ abstract class RecouplingStreamReader[
                     onFailure(problem, decouple = false) *>
                       pauseBeforeRecoupling.as(Left(()))
 
-              case Right(updatedIndex) =>
-                for
-                  _ <- coupledApiVar.put(api)
-                  _ <- IO { recouplingPause.onCouplingSucceeded() }
-                  _ <- onCoupled(api, after)
-                yield Right(updatedIndex)
-            })))
+                case Right(updatedIndex) =>
+                  for
+                    _ <- coupledApiVar.put(api)
+                    _ <- IO(recouplingPause.onCouplingSucceeded())
+                    _ <- onCoupled(api, after)
+                  yield
+                    Right(updatedIndex)
 
     /** Calls onCouplingFailed, then `andThen`.
       * Fails with problem.throwable if onCouplingFailed returns false,
