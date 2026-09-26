@@ -149,7 +149,7 @@ abstract class RecouplingStreamReader[
                   Stream.raiseError[IO](t)
                 case t =>
                   Stream.exec:
-                    onFailure(Problem.fromThrowable(t), decouple = false)
+                    onFailure(Problem.fromThrowable(t), decouple = true)
           .append:
             Stream.exec:
               pauseBeforeNextTry(conf.delay)
