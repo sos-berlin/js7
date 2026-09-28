@@ -15,7 +15,7 @@ mkdir -p -m 700 volumes/prometheus/config/private
 mkdir -p -m 700 volumes/prometheus/{etc,data}
 mkdir -p -m 700 volumes/grafana
 
-cp -Rrnv build/volumes/* volumes || true
+cp -Rnv build/volumes/* volumes || true
 ( umask go-rwx
   cp -rnv volumes/controller/config/private/* volumes/backup-controller/config/private || true
 )
@@ -39,6 +39,7 @@ done
 build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
 
+[ -d metrics ] || mkdir metrics
 ln -snf ../build/metrics/docker-compose.yaml metrics/
 # Docker expects volumes in same directory as docker-compose.yaml
 mkdir -p metrics/volumes

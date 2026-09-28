@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+js7Home="$(cd "${0%/*}/../js7-controller/.." && pwd)"
+
+# Because we do not do a clean rebuild, target may contain .tgz files of a different version
+rm -f "$js7Home"/target/js7-install-*.tgz
+rm -f "$js7Home"/target/js7-docker-*.tgz
+
+"$js7Home"/build-with-docker/run sbt pack
+"$js7Home/bin/start-docker-example"

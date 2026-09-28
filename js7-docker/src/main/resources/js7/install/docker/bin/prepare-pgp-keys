@@ -42,8 +42,10 @@ else
       Expire-Date: 0
       Passphrase: $passphrase
 END
-    gpg --homedir "$homedir" --batch --export-secret-keys --armor --output="$privateKeyFile"
-    gpg --homedir "$homedir" --export --armor --output="$controllerPublicKeyFile"
+    # "--batch --pinentry-mode loopback" is required for --passphrase
+    gpg --homedir "$homedir" --export-secret-keys --batch --pinentry-mode loopback --passphrase "$passphrase" --armor --output="$privateKeyFile"
+    # "--batch --pinentry-mode loopback" is required for --passphrase
+    gpg --homedir "$homedir" --export --batch --pinentry-mode loopback --passphrase "$passphrase" --armor --output="$controllerPublicKeyFile"
   fi
 fi
 
