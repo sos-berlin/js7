@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Ref, ResourceIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.Js7Version
@@ -57,7 +57,9 @@ private final class RemoteSubagentDriver[S <: SubagentDirectorState[S]] private(
   controllerId: ControllerId,
   protected val conf: RemoteSubagentDriver.Conf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
-extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
+extends
+  Service.TrivialReleasable, SubagentDriver:
+
   protected type State = S
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
@@ -67,10 +69,10 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var shuttingDown = false
+  private val _releaseEventListener = Ref.unsafe[IO, IO[Unit]](IO.unit)
+  private var _eventListener: SubagentEventListener = null.asInstanceOf
 
   assert(!api.isLocal)
-
-  protected def isShuttingDown = shuttingDown
 
   protected def release =
     IO.both(dispatcher.shutdown, stopEventListener)
@@ -79,6 +81,22 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
 
   def startObserving =
     startEventListener
+
+  private def startEventListener: IO[Unit] =
+    Service:
+      SubagentEventListener(
+        subagentId, conf, recouplingStreamReaderConf, api, journal, enqueueReleaseEventsCommand,
+        onOrderProcessed, onSubagentDied, dedicateOrCouple, emitSubagentCouplingFailed,
+        () => isCoupled, untilServiceStopRequested)
+    .allocated.flatMap: (eventListener, releaseEventListener) =>
+      _eventListener = eventListener
+      _releaseEventListener.set(releaseEventListener)
+
+  private def stopEventListener: IO[Unit] =
+    IO.defer:
+      _releaseEventListener.getAndSet(IO.unit).flatten.guarantee:
+        IO:
+          _eventListener = null.asInstanceOf
 
   def startMovedSubagent(previous: RemoteSubagentDriver[S]): IO[Unit] =
     logger.debugIO:
@@ -348,17 +366,6 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
           .productR:
             deferred.complete(orderProcessed).void
 
-  //private def killAll(signal: ProcessSignal): IO[Unit] =
-  //  IO.defer {
-  //    val cmds = orderToDeferred.unsafeToMap.keys.map(KillProcess(_, signal))
-  //    dispatcher
-  //      .executeCommands(cmds)
-  //      .map(cmds.zip(_).map {
-  //        case (cmd, Left(problem)) => logger.error(s"$cmd => $problem")
-  //        case _ =>
-  //      })
-  //  }
-
   /** Doesn't block the caller, runs in background. */
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     // The caller must not be blocked, otherwise the whole OrderMotor pipeline blocks !!!
@@ -569,6 +576,16 @@ extends SubagentDriver, Service.TrivialReleasable, SubagentEventListener:
       case _ =>
         IO.right(Nil)
 
+  protected def isHeartbeating: Boolean =
+    Option(_eventListener).fold(false)(_.isHeartbeating)
+
+  protected def isShuttingDown =
+    shuttingDown
+
+  def serverMeteringScope() =
+    Option(_eventListener).flatMap:
+      _.serverMeteringScope()
+
   private def currentSubagentItemState: IO[Checked[SubagentItemState]] =
     journal.aggregate.map(_.idToSubagentItemState.checked(subagentId))
 
@@ -599,6 +616,7 @@ object RemoteSubagentDriver:
     .orLeft:
       Problem.pure(s"Subagent version $subagentVersion is not supported")
 
+
   final case class Conf(
     eventBufferDelay: FiniteDuration,
     eventBufferSize: Int,
@@ -606,6 +624,7 @@ object RemoteSubagentDriver:
     heartbeatTiming: HeartbeatTiming,
     subagentResetTimeout: FiniteDuration,
     config: Config)
+
   object Conf:
     def fromConfig(config: Config, commitDelay: FiniteDuration) =
       new Conf(
@@ -619,7 +638,3 @@ object RemoteSubagentDriver:
           heartbeatTimeout = config.finiteDuration("js7.subagent-driver.heartbeat-timeout").orThrow),
         subagentResetTimeout = config.finiteDuration("js7.subagent-driver.reset-timeout").orThrow,
         config)
-
-  //final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
-  //  def arguments = Map("subagentId" -> subagentId.string)
-  //}

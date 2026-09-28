@@ -1,26 +1,22 @@
 package js7.subagent.director
 
-import cats.effect.{FiberIO, IO}
+import cats.effect.IO
 import cats.syntax.applicativeError.*
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import fs2.Stream
-import fs2.concurrent.SignallingRef
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
-import js7.base.catsutils.CatsExtensions.ifTrue
-import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.pureFiberIO
-import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, logWhenMethodTakesLonger}
+import js7.base.utils.Atomic
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.data.event.KeyedEvent.NoKey
@@ -39,80 +35,47 @@ import scala.concurrent.duration.Deadline
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
 
-private trait SubagentEventListener:
-
-  protected def subagentId: SubagentId
-  protected def conf: RemoteSubagentDriver.Conf
-  protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
-  protected def api: HttpSubagentApi
-  protected def journal: Journal[? <: SubagentDirectorState[?]]
-  protected def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit]
-  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
-  : IO[Option[IO[Unit]]]
-  protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
-  : IO[Unit]
-  protected def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]]
-  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit]
-  protected def isCoupled: Boolean
-  protected def untilServiceStopRequested: IO[Unit]
+private final class SubagentEventListener(
+  subagentId: SubagentId,
+  conf: RemoteSubagentDriver.Conf,
+  recouplingStreamReaderConf: RecouplingStreamReaderConf,
+  api: HttpSubagentApi,
+  journal: Journal[? <: SubagentDirectorState[?]],
+  enqueueReleaseEventsCommand: EventId => IO[Unit],
+  onOrderProcessed: (OrderId, OrderProcessed) => IO[Option[IO[Unit]]],
+  onSubagentDied: (ProcessLostProblem, SubagentDied) => IO[Unit],
+  dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]],
+  emitSubagentCouplingFailed: Option[Problem] => IO[Unit],
+  isCoupled: () => Boolean,
+  untilServiceStopRequested: IO[Unit])
+extends
+  Service.StoppableByCancel:
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
-  private val stopObserving = memoize(SignallingRef[IO].of(false))
-  @volatile private var observing: FiberIO[Unit] = pureFiberIO(())
   private val _isHeartbeating = Atomic(false)
-  private val isListening = Atomic(false)
-  private val lock = AsyncLock()
 
   private var _lastServerMeteringEvent = ServerMeteringEvent(None, 0, 0, 0)
   private var _lastServerMeteringEventSince = Deadline.now - 24.h
 
-  protected final val coupled = Switch(false)
+  private final val coupled = Switch(false)
 
-  protected final def stopEventListener: IO[Unit] =
-    lock.lock:
-      logger.debugIO:
-        IO(isListening.getAndSet(false)).ifTrue:
-          stopObserving.flatMap(_.set(true))
-            .productR:
-              IO.defer:
-                observing.joinStd
-            .logWhenMethodTakesLonger
+  protected def startService =
+    runService:
+      observeEvents
 
-  protected final def startEventListener: IO[Unit] =
-    lock.lock:
-      IO.defer:
-        if isListening.getAndSet(true) then
-          val msg = "Duplicate startEventListener"
-          logger.error(msg)
-          IO.raiseError(new RuntimeException(s"$toString: $msg"))
-        else
-          stopObserving.flatMap(_.set(false))
-            .productR:
-              stopObserving.flatMap:
-                _.getAndDiscreteUpdates.use: (o, stream) =>
-                  observeEvents(stopRequested = o +: stream)
-            .onError: t =>
-              // We have a problem
-              IO(logger.error(s"observeEvents failed: ${t.toStringWithCauses}"))
-            .start
-            .map: fiber =>
-              observing = fiber
-
-  private def observeEvents(stopRequested: Stream[IO, Boolean]): IO[Unit] =
-    logger.debugStream:
-      Stream.suspend:
-        val recouplingStreamReader = newEventListener()
-        val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-        val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
-        recouplingStreamReader.stream(api, after = after)
-          .interruptWhen(stopRequested)
-          .pipe: stream =>
-            if !bufferDelay.isPositive then
-              stream.chunks
-            else
-              stream.groupWithin(conf.eventBufferSize, bufferDelay)
-          .evalTap(_
-            .traverse(handleEvent)
+  private def observeEvents: IO[Unit] =
+    Stream.suspend:
+      val recouplingStreamReader = newStreamReader()
+      val bufferDelay = conf.eventBufferDelay max conf.commitDelay
+      val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
+      recouplingStreamReader.stream(api, after = after)
+        .pipe: stream =>
+          if !bufferDelay.isPositive then
+            stream.chunks
+          else
+            stream.groupWithin(conf.eventBufferSize, bufferDelay)
+        .evalTap:
+          _.traverse(handleEvent)
             .flatMap: updatedStampedChunk0 =>
               val (updatedStampedMaybes, followUps) = updatedStampedChunk0.toVector.unzip
               val updatedStampedSeq = updatedStampedMaybes.flatten
@@ -133,10 +96,10 @@ private trait SubagentEventListener:
                 lastEventId.foldMapM: eventId =>
                   enqueueReleaseEventsCommand(eventId)
               .productR:
-                followUps.combineAll)
-          .onFinalize:
-            recouplingStreamReader.terminateAndLogout
-              .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
+                followUps.combineAll
+        .onFinalize:
+          recouplingStreamReader.terminateAndLogout
+            .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
     .compile.drain
 
   /** Returns optionally the event and a follow-up task. */
@@ -188,7 +151,7 @@ private trait SubagentEventListener:
         logger.error(s"Unexpected event: $keyedEvent")
         IO.pure(None -> IO.unit)
 
-  private def newEventListener() =
+  private def newStreamReader() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](
       toIndex = stamped => !stamped.value.event.isInstanceOf[NonPersistentEvent] ? stamped.eventId,
       recouplingStreamReaderConf):
@@ -234,19 +197,18 @@ private trait SubagentEventListener:
             .map(Right(_))
 
       override protected def onCouplingFailed(api: HttpSubagentApi, problem: Problem) =
-        stopObserving.flatMap(_.get)
-          .flatMap: stopped =>
-            if stopped then
-              IO.pure(false)
-            else
-              onSubagentDecoupled(Some(problem)) *>
-                IO:
-                  if lastProblem contains problem then
-                    logger.debug(s"⚠️  Coupling failed again: $problem")
-                  else
-                    lastProblem = Some(problem)
-                    logger.warn(s"Coupling failed: $problem")
-                  true
+        IO.defer:
+          if isServiceStopping then
+            IO.pure(false)
+          else
+            onSubagentDecoupled(Some(problem)) *>
+              IO:
+                if lastProblem contains problem then
+                  logger.debug(s"⚠️  Coupling failed again: $problem")
+                else
+                  lastProblem = Some(problem)
+                  logger.warn(s"Coupling failed: $problem")
+                true
 
       override protected val onDecoupled =
         logger.traceIO:
@@ -259,19 +221,18 @@ private trait SubagentEventListener:
     IO.defer:
       val wasHeartbeating = _isHeartbeating.getAndSet(true)
       if !wasHeartbeating then logger.trace("_isHeartbeating := true")
-      IO.whenA(!wasHeartbeating && isCoupled):
+      IO.whenA(!wasHeartbeating && isCoupled()):
         // Different to AgentDriver,
         // for Subagents, the Coupling state is tied to the continuous flow of events.
         journal.persist(subagentId <-: SubagentCoupled)
           .map(_.orThrow)
 
-  protected final def isHeartbeating = _isHeartbeating.get()
+  def isHeartbeating = _isHeartbeating.get()
 
-  final def serverMeteringScope(): Option[Scope] =
+  def serverMeteringScope(): Option[Scope] =
     try
       val latest = _lastServerMeteringEventSince + conf.heartbeatTiming.heartbeatValidDuration
-      !latest.hasElapsed thenSome:
-        _lastServerMeteringEvent.toScope
+      !latest.hasElapsed ? _lastServerMeteringEvent.toScope
     catch case NonFatal(t) =>
       logger.error(s"serverMeteringScope => ${t.toStringWithCauses}")
       None
@@ -282,8 +243,9 @@ private trait SubagentEventListener:
       // We don't bother a coupling problem when we no longer listen.
       // And don't emit an event when shutting down (then we don't listen), because
       // the journal may already be unusable.
-      if !isListening.get() then
+      if isServiceStopping then
         IO(logger.debug(s"onSubagentDecoupled $problem"))
       else
-        IO.whenA(true):
-          emitSubagentCouplingFailed(problem)
+        emitSubagentCouplingFailed(problem)
+
+  override def toString = s"SubagentEventListener($subagentId)"
