@@ -16,15 +16,21 @@ else
   extras=""
 fi
 
-# Let Docker not accumulate old images:
-docker rmi js7-builder >/dev/null 2>&1 || true
+# Rebuild with fresh Linux only once per calendar day or when Dockerfile has changed
+#
+# In case jq is not available, or any other error,
+# "-bash: jq: command not found" is shown and the image will be built
+dockerDate="$(docker inspect js7-builder | jq -r '.[0].Identity.Build[0].CreatedAt' | sed s/null/0/ || echo 0)"
+if expr "'$dockerDate'" '<' "'$(/bin/date -Ins -r build-with-docker/Dockerfile)'" >/dev/null \
+|| expr "'$dockerDate'" '<' "'$(/bin/date -Ins -r "$0")'" >/dev/null \
+|| expr "'$(echo "$dockerDate" | cut -c 1-10)'" '<' "'$(/bin/date -Idate)'" >/dev/null
+then
+  echo "🔹 Rebuild js7-builder Docker image"
+  # Don't let Docker accumulate old images:
+  docker rmi js7-builder >/dev/null 2>&1 || true
 
-( cd build-with-docker
-  $docker build \
-    --tag=js7-builder \
-    --network=host \
-    .
-)
+  $docker build --tag=js7-builder --network=host build-with-docker
+fi
 
 $docker run \
   $extras \
