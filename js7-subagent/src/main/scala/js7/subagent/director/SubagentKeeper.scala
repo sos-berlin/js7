@@ -561,9 +561,9 @@ extends Service.StoppableByRequest:
                             .map(_ -> Some(Some(existingAllocated) -> allocatedDriver.allocatedThing))
                   // Continue after locking updateCheckedWithResult )
                   .flatMapT: (state, result) =>
-                    IO(state
-                      .setDisabled(subagentItem.id, subagentItem.disabled)
-                      .map(_ -> result))
+                    IO:
+                      state.setDisabled(subagentItem.id, subagentItem.disabled)
+                        .map(_ -> result)
         .flatMapT:
           case Some((Some(Allocated(
               oldDriver: RemoteSubagentDriver[S @unchecked], releaseOld)),

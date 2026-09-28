@@ -25,7 +25,6 @@ final class SubagentTest extends OurTestSuite, SubagentTester:
   override protected val primarySubagentsDisabled = true
 
   "Local Subagent couplingState is Coupled" in:
-    val localSubagentId = SubagentId("AGENT-0")
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     awaitAndAssert(
       controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled)
@@ -110,6 +109,8 @@ final class SubagentTest extends OurTestSuite, SubagentTester:
 
 
 object SubagentTest:
+  private val localSubagentId = SubagentId("AGENT-0")
+
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
