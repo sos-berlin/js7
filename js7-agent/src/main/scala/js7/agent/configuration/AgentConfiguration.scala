@@ -70,7 +70,7 @@ extends CommonConfiguration:
       journalConf,
       httpsConfig,
       RecouplingStreamReaderConfs.fromConfig(config).orThrow,
-      RemoteSubagentDriver.Conf.fromConfig(config, commitDelay = journalConf.delay),
+      RemoteSubagentDriver.Conf.fromConfig(subagentConf, commitDelay = journalConf.delay),
       subagentConf)
 
   // Suppresses Config (which may contain secrets)

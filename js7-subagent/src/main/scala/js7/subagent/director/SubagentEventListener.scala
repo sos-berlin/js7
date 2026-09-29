@@ -58,7 +58,7 @@ extends
 
   private val eventHandler =
     SubagentEventHandler(
-      subagentId, journal, eventDelay = conf.eventBufferDelay max conf.commitDelay,
+      subagentId, journal, eventDelay = conf.subagentConf.eventBufferDelay max conf.commitDelay,
       onOrderProcessed, enqueueReleaseEventsCommand
     ):
       case Stamped(_, _, KeyedEvent(NoKey, e: ServerMeteringEvent)) =>
@@ -85,7 +85,7 @@ extends
       val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
       recouplingStreamReader.stream(api, after = after)
         .through:
-          eventHandler.pipe(conf.eventBufferSize)
+          eventHandler.pipe(conf.subagentConf.eventBufferSize)
         .onFinalize:
           recouplingStreamReader.terminateAndLogout
             .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")

@@ -39,6 +39,7 @@ import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, 
 import js7.data.workflow.Workflow
 import js7.journal.Journal
 import js7.journal.problems.Problems.JournalKilledProblem
+import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -614,18 +615,17 @@ object RemoteSubagentDriver:
 
 
   final case class Conf(
-    eventBufferDelay: FiniteDuration,
-    eventBufferSize: Int,
     commitDelay: FiniteDuration,
     heartbeatTiming: HeartbeatTiming,
     subagentResetTimeout: FiniteDuration,
-    config: Config)
+    subagentConf: SubagentConf):
+
+    export subagentConf.config
 
   object Conf:
-    def fromConfig(config: Config, commitDelay: FiniteDuration) =
+    def fromConfig(subagentConf: SubagentConf, commitDelay: FiniteDuration) =
+      import subagentConf.config
       new Conf(
-        eventBufferDelay = config.finiteDuration("js7.subagent-driver.event-buffer-delay").orThrow,
-        eventBufferSize = config.getInt("js7.subagent-driver.event-buffer-size"),
         commitDelay = commitDelay,
         HeartbeatTiming(
           heartbeat =
@@ -633,4 +633,4 @@ object RemoteSubagentDriver:
               .min(config.finiteDuration("js7.web.client.keep-alive").orThrow),
           heartbeatTimeout = config.finiteDuration("js7.subagent-driver.heartbeat-timeout").orThrow),
         subagentResetTimeout = config.finiteDuration("js7.subagent-driver.reset-timeout").orThrow,
-        config)
+        subagentConf)
