@@ -2,7 +2,7 @@ package js7.journal
 
 import js7.base.time.{SystemWallClock, Timestamp, WallClock}
 import js7.base.utils.Atomic
-import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeMillisSinceEpoch}
+import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeEpochMilli}
 import js7.data.event.{Event, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped}
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
@@ -40,7 +40,7 @@ extends AbstractIterator[EventId]:
     stampWith(
       event.keyedEvent,
       next(),
-      event.maybeMillisSinceEpoch orElse defaultTimestampMilli())
+      event.maybeEpochMilli orElse defaultTimestampMilli())
 
   def stamp[E <: Event](keyedEvent: KeyedEvent[E]): Stamped[KeyedEvent[E]] =
     stampWith(keyedEvent, next(), None)

@@ -26,7 +26,7 @@ final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Ke
     key -> event
 
   inline def ^(millisSinceEpoch: Long): TimestampedKeyedEvent[E] =
-    TimestampedKeyedEvent(this, millisSinceEpoch = millisSinceEpoch)
+    TimestampedKeyedEvent(this, epochMilli = millisSinceEpoch)
 
   override def toString = s"$keyPrefix$event"
 

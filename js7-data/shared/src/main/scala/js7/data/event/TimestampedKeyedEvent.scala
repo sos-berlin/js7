@@ -4,10 +4,10 @@ import js7.base.time.Timestamp
 
 final case class TimestampedKeyedEvent[+E <: Event](
   keyedEvent: KeyedEvent[E],
-  millisSinceEpoch: Long):
+  epochMilli: Long):
 
   def timestamp: Timestamp =
-    Timestamp.ofEpochMilli(millisSinceEpoch)
+    Timestamp.ofEpochMilli(epochMilli)
 
   def toShortString = s"${keyedEvent.toShortString} @ $timestamp"
 
@@ -18,10 +18,10 @@ object TimestampedKeyedEvent:
 
   extension [E <: Event](maybe: MaybeTimestampedKeyedEvent[E])
 
-    def maybeMillisSinceEpoch: Option[Long] =
+    def maybeEpochMilli: Option[Long] =
       maybe match
         case _: KeyedEvent[E] => None
-        case o: TimestampedKeyedEvent[E] => Some(o.millisSinceEpoch)
+        case o: TimestampedKeyedEvent[E] => Some(o.epochMilli)
 
     def keyedEvent: KeyedEvent[E] =
       maybe match
