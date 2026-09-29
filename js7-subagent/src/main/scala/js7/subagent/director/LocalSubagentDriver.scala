@@ -26,10 +26,9 @@ import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent}
 import js7.data.workflow.Workflow
-import js7.journal.problems.Problems.JournalKilledProblem
 import js7.journal.{CommitOptions, Journal}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.priority.ServerMeteringLiveScope
@@ -55,7 +54,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   subagent.suppressJournalLogging(true) // Events are logged by the Director's Journal
 
-  protected def isHeartbeating = true
+  protected def isHeartbeating = true                 
 
   protected def isShuttingDown = false
 
@@ -173,10 +172,6 @@ extends SubagentDriver, Service.StoppableByRequest:
       subagent.checkedDedicatedSubagent.toOption.foldMapM:
         _.stopWorkflowJobs(workflow)
 
-  def terminate: IO[Unit] =
-    logger.traceIO:
-      stopService
-
   def tryShutdownForRemoval: IO[Unit] =
     IO.raiseError:
       new RuntimeException("tryShutdownForRemoval: The local Subagent cannot be shut down")
@@ -291,27 +286,7 @@ extends SubagentDriver, Service.StoppableByRequest:
       .handleProblem: problem =>
         logger.error(s"killProcess $orderId => $problem")
 
-  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
-    logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
-      // TODO Suppress duplicate errors
-      journal.persist(_
-        .idToSubagentItemState.checked(subagentId)
-        .map: subagentItemState =>
-          val problem = maybeProblem
-            .orElse(subagentItemState.problem)
-            .getOrElse(Problem.pure("decoupled"))
-          (!subagentItemState.problem.contains(problem)).thenList:
-            subagentId <-: SubagentCouplingFailed(problem))
-      .recoverFromProblem:
-        case JournalKilledProblem =>
-          logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
-      .map(_.orThrow)
-      .void
-      .onError: t =>
-        // Error isn't logged until stopEventListener is called
-        IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
-
-  protected def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
+  private def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
     executeCommand:
       SubagentCommand.ReleaseEvents(eventId)
     .rightAs(())

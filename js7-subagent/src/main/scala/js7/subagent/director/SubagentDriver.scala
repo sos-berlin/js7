@@ -5,8 +5,10 @@ import cats.syntax.all.*
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
+import js7.base.service.Service
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -23,6 +25,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.journal.Journal
 
 trait SubagentDriver:
+  this: Service =>
 
   protected type State <: SubagentDirectorState[State]
   private type S = State
@@ -54,7 +57,9 @@ trait SubagentDriver:
 
   def stopWorkflowJobs(workflow: Workflow): IO[Unit]
 
-  def terminate: IO[Unit]
+  def terminate: IO[Unit] =
+    logger.traceIO:
+      stopService
 
   protected def api: SubagentApi
 

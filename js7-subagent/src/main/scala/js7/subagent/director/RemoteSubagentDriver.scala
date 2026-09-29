@@ -119,10 +119,6 @@ extends
           //  previous.stopDispatcherAndEmitProcessLostEvents(None)
           //.*>(IO.unit/*dispatcher.start(subagentRunId)*/)
 
-  def terminate: IO[Unit] =
-    logger.traceIO:
-      stopService
-
   def stopWorkflowJobs(workflow: Workflow) =
     // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
     IO.unit
@@ -183,7 +179,7 @@ extends
         .handleError: t =>  // Ignore when Subagent is unreachable
           logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}")
 
-  protected def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]] =
+  private def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]] =
     logger.debugIO:
       currentSubagentItemState
         .flatMapT: subagentItemState =>
@@ -259,7 +255,7 @@ extends
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
   /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
-  protected def onSubagentDied(processLostProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
+  private def onSubagentDied(processLostProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
   : IO[Unit] =
     IO.defer:
       stopDispatcherAndEmitProcessLostEvents(processLostProblem, Some(subagentDiedEvent))
@@ -407,7 +403,7 @@ extends
         case Right(a) =>
           IO.pure(a)
 
-  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
+  private def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
     logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
       journal.persist:
@@ -416,8 +412,8 @@ extends
             val problem = maybeProblem
               .orElse(subagentItemState.problem)
               .getOrElse(Problem.pure("decoupled"))
-            (!subagentItemState.problem.contains(problem))
-              .thenList(subagentId <-: SubagentCouplingFailed(problem))
+            (!subagentItemState.problem.contains(problem)).thenList:
+              subagentId <-: SubagentCouplingFailed(problem)
       .recoverFromProblem:
         case JournalKilledProblem =>
           logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
@@ -427,7 +423,7 @@ extends
         // Error isn't logged until stopEventListener has been called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
-  protected def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit] =
+  private def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit] =
     dispatcher.enqueueCommand:
       SubagentCommand.ReleaseEvents(eventId)
     .void
