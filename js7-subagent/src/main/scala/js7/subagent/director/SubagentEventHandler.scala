@@ -7,7 +7,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped, TsKeyedEvent}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentEventsObserved
@@ -19,7 +19,8 @@ import scala.util.chaining.scalaUtilChainingOps
 
 /** Handles the events of a local or remote Subagent and persists them in the Director's Journal.
   *
-  * @param specialEvent handles Subagent-specific events, before the common handling.
+  * @param handleSpecialEvent handles local or remote Subagent-specific events,
+  *                           before the common handling.
   */
 private final class SubagentEventHandler(
   subagentId: SubagentId,
@@ -45,10 +46,11 @@ private final class SubagentEventHandler(
           val (updatedStampedMaybes, followUps) = handledChunk.toVector.unzip
           val updatedStampedSeq = updatedStampedMaybes.flatten
           updatedStampedSeq.lastOption.map(_.eventId).foldMapM: lastEventId =>
-            // TODO Save Stamped timestamp
             journal.persistKeyedEvents(commitOptions):
-              updatedStampedSeq.view.map(_.value) :+
-                (subagentId <-: SubagentEventsObserved(lastEventId))
+              updatedStampedSeq.view.map: stamped =>
+                TsKeyedEvent(stamped.value, epochMilli = stamped.timestamp.toEpochMilli)
+              .appended:
+                subagentId <-: SubagentEventsObserved(lastEventId)
             .map(_.orThrow /*???*/)
             .productR:
               // • After an OrderProcessed event, a ReleaseEvents command must be sent,
@@ -63,18 +65,16 @@ private final class SubagentEventHandler(
 
   /** Returns optionally the event and a follow-up IO. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
-    handleSpecialEvent.applyOrElse(stamped, commonEvent)
+    handleSpecialEvent.applyOrElse(stamped, handleCommonEvent)
 
-  private def commonEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
+  private def handleCommonEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
     stamped.value match
       case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         event match
           case _: OrderStdWritten =>
-            // TODO Save Timestamp
             IO.pure(Some(stamped) -> IO.unit)
 
           case orderProcessed: OrderProcessed =>
-            // TODO Save Timestamp
             onOrderProcessed(orderId, orderProcessed).map:
               case None => None -> IO.unit  // OrderProcessed already handled
               case Some(followUp) =>

@@ -85,15 +85,15 @@ extends SubagentDriver, Service.StoppableByRequest:
       _.idToSubagentItemState(subagentId).eventId
     .flatMap: eventId =>
       releaseEvents(eventId) *>
-        observeAfter(eventId).completedL
+        observeEvents(eventId).completedL
           .startAndForget
 
-  private def observeAfter(eventId: EventId): fs2.Stream[IO, Unit] =
-    logger.debugStream("observeAfter", eventId):
+  private def observeEvents(eventId: EventId): fs2.Stream[IO, Unit] =
+    logger.debugStream("observeEvents", eventId):
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         .through:
-          eventHandler.pipe(bufferSize = 1000/*!!!*/)
+          eventHandler.pipe(bufferSize = subagentConf.eventBufferSize)
         // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
         .interruptWhenF(untilServiceStopRequested)
 
