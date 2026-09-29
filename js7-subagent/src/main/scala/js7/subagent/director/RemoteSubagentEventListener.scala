@@ -30,9 +30,8 @@ import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
 import js7.journal.Journal
 import scala.concurrent.duration.Deadline
-import scala.util.control.NonFatal
 
-private final class SubagentEventListener(
+private final class RemoteSubagentEventListener(
   subagentId: SubagentId,
   conf: RemoteSubagentDriver.Conf,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
@@ -48,7 +47,7 @@ private final class SubagentEventListener(
 extends
   Service.StoppableByCancel:
 
-  private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
+  private val logger = Logger.withPrefix[RemoteSubagentEventListener](subagentId.toString)
   private val _isHeartbeating = Atomic(false)
 
   private var _lastServerMeteringEvent = ServerMeteringEvent(None, 0, 0, 0)
@@ -170,12 +169,8 @@ extends
   def isHeartbeating = _isHeartbeating.get()
 
   def serverMeteringScope(): Option[Scope] =
-    try
-      val latest = _lastServerMeteringEventSince + conf.heartbeatTiming.heartbeatValidDuration
-      !latest.hasElapsed ? _lastServerMeteringEvent.toScope
-    catch case NonFatal(t) =>
-      logger.error(s"serverMeteringScope => ${t.toStringWithCauses}")
-      None
+    val latest = _lastServerMeteringEventSince + conf.heartbeatTiming.heartbeatValidDuration
+    !latest.hasElapsed ? _lastServerMeteringEvent.toScope
 
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
     IO.defer:
@@ -188,4 +183,4 @@ extends
       else
         emitSubagentCouplingFailed(problem)
 
-  override def toString = s"SubagentEventListener($subagentId)"
+  override def toString = s"RemoteSubagentEventListener($subagentId)"

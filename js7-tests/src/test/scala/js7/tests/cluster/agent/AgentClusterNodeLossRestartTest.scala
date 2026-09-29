@@ -129,7 +129,7 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
         awaitAndAssert(controller.controllerState().keyTo(AgentRefState)(agentPath)
           .nodeToLossNotConfirmedProblem.isEmpty)
 
-        // FIXME Delay, otherwise SubagentEventListener.observeEvents may not be stoppable
+        // FIXME Delay, otherwise RemoteSubagentEventListener.observeEvents may not be stoppable
         sleep(1.s)
         (primaryDirector.terminate() *> backupDirector.terminate())
           .await(99.s)

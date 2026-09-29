@@ -65,18 +65,18 @@ extends
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val resetLock = AsyncLock()
-  private val dispatcher = SubagentCommandDispatcher(subagentId, postQueuedCommand)
-  private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
+  private val cmdDispatcher = SubagentCommandDispatcher(subagentId, postQueuedCommand)
   private val initiallyCoupled = SetOnce[SubagentRunId]
+  private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var shuttingDown = false
   private val _releaseEventListener = Ref.unsafe[IO, IO[Unit]](IO.unit)
-  private var _eventListener: SubagentEventListener = null.asInstanceOf
+  private var _eventListener: RemoteSubagentEventListener = null.asInstanceOf
 
   assert(!api.isLocal)
 
   protected def release =
-    IO.both(dispatcher.shutdown, stopEventListener)
+    IO.both(cmdDispatcher.shutdown, stopEventListener)
       .*>(api.tryLogout.void)
       .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
 
@@ -85,7 +85,7 @@ extends
 
   private def startEventListener: IO[Unit] =
     Service:
-      SubagentEventListener(
+      RemoteSubagentEventListener(
         subagentId, conf, recouplingStreamReaderConf, api, journal, enqueueReleaseEventsCommand,
         onOrderProcessed, onSubagentDied, dedicateOrCouple, emitSubagentCouplingFailed,
         () => isCoupled, untilServiceStopRequested)
@@ -115,10 +115,10 @@ extends
           // Does not work, so we kill all processes. TODO Do we kill them?
           //if (previous.lastSubagentRunId contains subagentRunId)
           //  // Same SubagentRunId continues. So we transfer the command queue.
-          //  dispatcher.enqueueExecutes(previous.dispatcher)
+          //  cmdDispatcher.enqueueExecutes(previous.cmdDispatcher)
           //else
           //  previous.stopDispatcherAndEmitProcessLostEvents(None)
-          //.*>(IO.unit/*dispatcher.start(subagentRunId)*/)
+          //.*>(IO.unit/*cmdDispatcher.start(subagentRunId)*/)
 
   def stopWorkflowJobs(workflow: Workflow) =
     // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
@@ -153,13 +153,13 @@ extends
       .productR:
         tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true)
       .productR:
-        dispatcher.stopWithResponse:
+        cmdDispatcher.stopWithResponse:
           case cmd: ReleaseEvents =>
             logger.info(s"$cmd ignored because Subagent is being removed should no longer run")
             Right(SubagentCommand.Accepted)
 
   //def suspend: IO[Unit] =
-  //  dispatcher.suspend *> stopEventListener
+  //  cmdDispatcher.suspend *> stopEventListener
 
   private def tryShutdownSubagent(
     processSignal: Option[ProcessSignal],
@@ -250,7 +250,7 @@ extends
           IO.defer:
             shuttingDown = false
             initiallyCoupled.trySet(subagentRunId)
-            dispatcher.start(subagentRunId) // Dispatcher may have been stopped after SubagentReset
+            cmdDispatcher.start(subagentRunId) // Dispatcher may have been stopped after SubagentReset
         .map((_, eventId) => Right(eventId))
 
   // May run concurrently with onStartOrderProcessFailed !!!
@@ -273,7 +273,7 @@ extends
       orderToDeferred.removeAll.flatMap: oToD =>
         val orderIds = oToD.keys
         IO.whenA(subagentDiedEvent.isDefined):
-          dispatcher.stopAndFailCommands
+          cmdDispatcher.stopAndFailCommands
         .productR:
           attachedItemKeys.update(_ => IO.pure(Map.empty))
         .productR:
@@ -328,7 +328,7 @@ extends
       .flatMapT: deferred =>
         orderToExecuteDefaultArguments(order)
           .flatMapT: defaultArguments =>
-            dispatcher.executeCommand:
+            cmdDispatcher.executeCommand:
               StartOrderProcess(order, defaultArguments, timeoutAt)
           .catchIntoChecked
           .recoverFromProblemWith: problem =>
@@ -371,7 +371,7 @@ extends
     // Despite killProcess is executed in background, the KillProcess command precedes any other
     // command arriving later.
     // This way, we are sure to kill only the current process (not any process started in future).
-    dispatcher.enqueueCommand(KillProcess(orderId, signal))
+    cmdDispatcher.enqueueCommand(KillProcess(orderId, signal))
       .flatMap: response =>
         response.map:
           // TODO Stop postQueuedCommand loop for this OrderId
@@ -425,12 +425,12 @@ extends
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
   private def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit] =
-    dispatcher.enqueueCommand:
+    cmdDispatcher.enqueueCommand:
       SubagentCommand.ReleaseEvents(eventId)
     .void
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
-    dispatcher
+    cmdDispatcher
       .enqueueCommand(cmd)
       .map(_
         .map(_.orThrow/*???*/)
@@ -445,7 +445,7 @@ extends
     processingAllowed: Switch.ReadOnly)
   : IO[Checked[Unit]] =
     IO.defer:
-      //val heartbeatTimeoutElapsed = scheduler.now + SubagentEventListener.heartbeatTiming.longHeartbeatTimeout
+      //val heartbeatTimeoutElapsed = scheduler.now + RemoteSubagentEventListener.heartbeatTiming.longHeartbeatTimeout
       val retryAfterError = new RetryAfterError(processingAllowed.whenOff)
       val command = numberedCommand.value
       lazy val commandString = numberedCommand.copy(value = command.toShortString).toString
@@ -490,8 +490,8 @@ extends
                       IO.right(())
 
                     case Some(deferred) =>
-                      // The SubagentEventListener should do the same for all lost processes
-                      // at once, but just in case the SubagentEventListener does run, we emit
+                      // The RemoteSubagentEventListener should do the same for all lost processes
+                      // at once, but just in case the RemoteSubagentEventListener does run, we emit
                       // an OrderProcess event here.
                       val orderProcessed =
                         OrderProcessed.processLostUnchecked(SubagentNotDedicatedProblem)
@@ -623,7 +623,7 @@ object RemoteSubagentDriver:
     export subagentConf.config
 
   object Conf:
-    def fromConfig(subagentConf: SubagentConf, commitDelay: FiniteDuration) =
+    def fromConfig(subagentConf: SubagentConf, commitDelay: FiniteDuration): Conf =
       import subagentConf.config
       new Conf(
         commitDelay = commitDelay,

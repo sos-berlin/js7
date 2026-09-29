@@ -7,7 +7,6 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
@@ -58,44 +57,44 @@ extends SubagentDriver, Service.StoppableByRequest:
   protected def isShuttingDown = false
 
   protected def startService =
-    dedicate.map(_.orThrow) *>
+    IO.unlessA(wasRemoteAndDedicatedBeforeFailover):
+      dedicate.map(_.orThrow)
+    *>
       runService:
         untilServiceStopRequested
 
   private def dedicate: IO[Checked[Unit]] =
     logger.debugIO:
-      if wasRemoteAndDedicatedBeforeFailover then
-        IO.right(())
-      else
-        journal.aggregate.map(_.agentRunId).flatMap: agentRunId =>
-          subagent.executeDedicateSubagent:
-            DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
-          .flatMapT: response =>
-            import response.subagentRunId
-            journal.persist: state =>
-              state.idToSubagentItemState.get(subagentId)
-                .exists(_.subagentRunId.nonEmpty).thenVector:
-                  subagentId <-: SubagentRestarted
-                .appended:
-                  subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))
-            .rightAs(())
+      journal.aggregate.map(_.agentRunId).flatMap: agentRunId =>
+        subagent.executeDedicateSubagent:
+          DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
+        .flatMapT: response =>
+          import response.subagentRunId
+          journal.persist: state =>
+            state.idToSubagentItemState.get(subagentId)
+              .exists(_.subagentRunId.nonEmpty).thenVector:
+                subagentId <-: SubagentRestarted
+              .appended:
+                subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))
+          .rightAs(())
 
   def startObserving: IO[Unit] =
     journal.aggregate.map:
       _.idToSubagentItemState(subagentId).eventId
     .flatMap: eventId =>
       releaseEvents(eventId) *>
-        observeEvents(eventId).completedL
+        observeEvents(eventId)
           .startAndForget
 
-  private def observeEvents(eventId: EventId): fs2.Stream[IO, Unit] =
+  private def observeEvents(eventId: EventId): IO[Unit] =
     logger.debugStream("observeEvents", eventId):
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         .through:
           eventHandler.pipe(bufferSize = subagentConf.eventBufferSize)
-        // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
+        // TODO Don't cancel ongoing operations above, which may not be ready for cancellation!
         .interruptWhenF(untilServiceStopRequested)
+    .compile.drain
 
   private val eventHandler =
     SubagentEventHandler(
