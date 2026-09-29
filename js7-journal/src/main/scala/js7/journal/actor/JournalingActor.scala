@@ -18,7 +18,7 @@ import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.pekkoutils.ReceiveLoggingActor
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventId, JournaledState, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventId, JournaledState, KeyedEvent, MaybeTsKeyedEvent, Stamped}
 import js7.journal.actor.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.{CommitOptions, Persisted}
@@ -76,13 +76,13 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       self ! PersistAcceptEarly(eventCalc.widen, options, promise)
 
   protected final def persist[EE <: E, A](
-    keyedEvent: MaybeTimestampedKeyedEvent[EE])(
+    keyedEvent: MaybeTsKeyedEvent[EE])(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
     persistKeyedEvent(keyedEvent)(callback)
 
   protected final def persistKeyedEvent[EE <: E, A](
-    keyedEvent: MaybeTimestampedKeyedEvent[EE],
+    keyedEvent: MaybeTsKeyedEvent[EE],
     async: Boolean = false)(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =

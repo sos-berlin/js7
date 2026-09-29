@@ -2,8 +2,8 @@ package js7.journal
 
 import js7.base.time.{SystemWallClock, Timestamp, WallClock}
 import js7.base.utils.Atomic
-import js7.data.event.TimestampedKeyedEvent.{keyedEvent, maybeEpochMilli}
-import js7.data.event.{Event, EventId, KeyedEvent, MaybeTimestampedKeyedEvent, Stamped}
+import js7.data.event.TsKeyedEvent.{keyedEvent, maybeEpochMilli}
+import js7.data.event.{Event, EventId, KeyedEvent, MaybeTsKeyedEvent, Stamped}
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 
@@ -36,7 +36,7 @@ extends AbstractIterator[EventId]:
     else
       next()
 
-  def stamp[E <: Event](event: MaybeTimestampedKeyedEvent[E]): Stamped[KeyedEvent[E]] =
+  def stamp[E <: Event](event: MaybeTsKeyedEvent[E]): Stamped[KeyedEvent[E]] =
     stampWith(
       event.keyedEvent,
       next(),

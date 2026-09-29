@@ -2,7 +2,8 @@ package js7.data.event
 
 import js7.base.time.Timestamp
 
-final case class TimestampedKeyedEvent[+E <: Event](
+/** Timestamped KeyedEvent. */
+final case class TsKeyedEvent[+E <: Event](
   keyedEvent: KeyedEvent[E],
   epochMilli: Long):
 
@@ -14,31 +15,33 @@ final case class TimestampedKeyedEvent[+E <: Event](
   override def toString = s"${keyedEvent.toShortString} @ $timestamp"
 
 
-object TimestampedKeyedEvent:
+object TsKeyedEvent:
 
-  extension [E <: Event](maybe: MaybeTimestampedKeyedEvent[E])
+  extension [E <: Event](maybe: MaybeTsKeyedEvent[E])
 
     def maybeEpochMilli: Option[Long] =
       maybe match
         case _: KeyedEvent[E] => None
-        case o: TimestampedKeyedEvent[E] => Some(o.epochMilli)
+        case o: TsKeyedEvent[E] => Some(o.epochMilli)
 
     def keyedEvent: KeyedEvent[E] =
       maybe match
         case o: KeyedEvent[E] => o
-        case o: TimestampedKeyedEvent[E] => o.keyedEvent
+        case o: TsKeyedEvent[E] => o.keyedEvent
 
     def toShortString: String =
       maybe match
         case o: KeyedEvent[E] => o.toShortString
-        case o: TimestampedKeyedEvent[E] => o.toShortString
+        case o: TsKeyedEvent[E] => o.toShortString
 
 
-type MaybeTimestampedKeyedEvent[+E <: Event] = TimestampedKeyedEvent[E] | KeyedEvent[E]
+/** Maybe timestamped KeyedEvent. */
+type MaybeTsKeyedEvent[+E <: Event] = TsKeyedEvent[E] | KeyedEvent[E]
 
-object MaybeTimestampedKeyedEvent:
+/** Maybe timestamped KeyedEvent. */
+object MaybeTsKeyedEvent:
   def apply[E <: Event](keyedEvent: KeyedEvent[E], maybeMillisSinceEpoch: Option[Long])
-  : MaybeTimestampedKeyedEvent[E] =
+  : MaybeTsKeyedEvent[E] =
     maybeMillisSinceEpoch match
       case None => keyedEvent
-      case Some(o) => TimestampedKeyedEvent(keyedEvent, o)
+      case Some(o) => TsKeyedEvent(keyedEvent, o)

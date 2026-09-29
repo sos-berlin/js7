@@ -21,7 +21,7 @@ import scala.reflect.ClassTag
   */
 final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] private(
   private val originalAggregate_ : S,
-  timestampedKeyedEvents: Vector[MaybeTimestampedKeyedEvent[E]],
+  timestampedKeyedEvents: Vector[MaybeTsKeyedEvent[E]],
   aggregate: S,
   context: Ctx):
 
@@ -37,25 +37,25 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
   inline def eventCount: Int =
     timestampedKeyedEvents.size
 
-  inline def apply[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1])
+  inline def apply[E1 <: E](keyedEvent: MaybeTsKeyedEvent[E1])
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvent)
 
   @targetName("applyKeyedEventsVarargs")
-  inline def apply[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*)
+  inline def apply[E1 <: E](keyedEvents: MaybeTsKeyedEvent[E1]*)
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
-  inline def apply[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
+  inline def apply[E1 <: E](keyedEvents: IterableOnce[MaybeTsKeyedEvent[E1]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
   @targetName("apply_Checked_Single")
-  inline def apply(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  inline def apply(keyedEvent: Checked[MaybeTsKeyedEvent[E]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addChecked(keyedEvent)
 
-  inline def apply(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
+  inline def apply(keyedEvents: Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     add(keyedEvents)
 
@@ -77,25 +77,25 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
   inline def apply(other: EventCollCtx[S, E, Any]): Checked[EventCollCtx[S, E, Ctx]] =
     add(other)
 
-  inline def add[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1])
+  inline def add[E1 <: E](keyedEvent: MaybeTsKeyedEvent[E1])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvent(keyedEvent)
 
   @targetName("add_KeyedEvents_varargs")
-  inline def add[E1 <: E](keyedEvents: MaybeTimestampedKeyedEvent[E1]*)
+  inline def add[E1 <: E](keyedEvents: MaybeTsKeyedEvent[E1]*)
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents(keyedEvents)
 
-  inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]])
+  inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTsKeyedEvent[E1]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addEvents(keyedEvents)
 
   @targetName("add_Checked_Single")
-  inline def add(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  inline def add(keyedEvent: Checked[MaybeTsKeyedEvent[E]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addChecked(keyedEvent)
 
-  inline def add(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
+  inline def add(keyedEvents: Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addChecked(keyedEvents)
 
@@ -121,7 +121,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
   : Checked[EventCollCtx[S, E, Ctx]] =
     eventCalc.fold(nix)(addEventCalc)
 
-  def addEvent[E1 <: E](keyedEvent: MaybeTimestampedKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
+  def addEvent[E1 <: E](keyedEvent: MaybeTsKeyedEvent[E1]): Checked[EventCollCtx[S, E, Ctx]] =
     val keyedEvents = keyedEvent :: Nil
     logProblem(keyedEvents):
       logEvents(keyedEvents)
@@ -129,11 +129,11 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
         append(keyedEvents, updated)
 
   @targetName("addChecked_single")
-  def addChecked(keyedEvent: Checked[MaybeTimestampedKeyedEvent[E]])
+  def addChecked(keyedEvent: Checked[MaybeTsKeyedEvent[E]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     addChecked(keyedEvent.map(_ :: Nil))
 
-  def addChecked(keyedEvents: Checked[IterableOnce[MaybeTimestampedKeyedEvent[E]]])
+  def addChecked(keyedEvents: Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     keyedEvents.flatMap(addEvents)
 
@@ -160,7 +160,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
       events.view.map: event =>
         KeyedEvent.any(NoKey, event).asInstanceOf[KeyedEvent[E]]
 
-  def addEvents(keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  def addEvents(keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   : Checked[EventCollCtx[S, E, Ctx]] =
     val eventSeq = keyedEvents.toEagerSeq
     logProblem(eventSeq):
@@ -221,14 +221,14 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
         case Right(o) => coll = o
     Right(coll)
 
-  //private def updateX(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]], body: => Checked[S])
+  //private def updateX(keyedEvents: Seq[MaybeTsKeyedEvent[E]], body: => Checked[S])
   //: Checked[EventCollCtx[S, E, Ctx]] =
   //  logProblem(keyedEvents):
   //    body.map: updated =>
   //      append(keyedEvents, updated)
 
   private def append(
-    keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]],
+    keyedEvents: Seq[MaybeTsKeyedEvent[E]],
     updatedAggregate: S)
   : EventCollCtx[S, E, Ctx] =
     if keyedEvents.isEmpty then
@@ -239,7 +239,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
         timestampedKeyedEvents = timestampedKeyedEvents ++ keyedEvents,
         aggregate = updatedAggregate)
 
-  private def logProblem[A](keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]])(body: => Checked[A])
+  private def logProblem[A](keyedEvents: Seq[MaybeTsKeyedEvent[E]])(body: => Checked[A])
   : Checked[A] =
     body match
       case Left(problem) =>
@@ -252,10 +252,10 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
       case _ =>
     body
 
-  private inline def logEvents(inline keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]]): Unit =
+  private inline def logEvents(inline keyedEvents: Seq[MaybeTsKeyedEvent[E]]): Unit =
     if false && isIntelliJIdea then
       logEvents2(keyedEvents)
-    def logEvents2(keyedEvents: Seq[MaybeTimestampedKeyedEvent[E]]) =
+    def logEvents2(keyedEvents: Seq[MaybeTsKeyedEvent[E]]) =
       keyedEvents.foreachWithBracket()((ke, br) => logger.trace(s"🔸$br$ke".trim))
 
   private def logAddCollDifference(other: EventCollCtx[S, E, Any], problem: Problem): Unit =

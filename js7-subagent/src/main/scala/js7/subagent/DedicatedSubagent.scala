@@ -22,7 +22,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AtomicStopper, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.{Event, EventId, MaybeTimestampedKeyedEvent}
+import js7.data.event.{Event, EventId, MaybeTsKeyedEvent}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -408,7 +408,7 @@ extends Service.StoppableByRequest:
             persistedQueue.persisting:
               persistChunk
 
-  private def countChars(events: Seq[MaybeTimestampedKeyedEvent[OrderStdWritten]]): Int =
+  private def countChars(events: Seq[MaybeTsKeyedEvent[OrderStdWritten]]): Int =
     events.iterator.map(_.keyedEvent.event.chunk.length).sum
 
   // Create the JobDriver if needed

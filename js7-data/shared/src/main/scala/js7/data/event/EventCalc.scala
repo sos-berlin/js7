@@ -102,17 +102,17 @@ object EventCalcCtx:
     EventCalcCtx(_ => Left(problem))
 
   inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvent: MaybeTimestampedKeyedEvent[E])
+    keyedEvent: MaybeTsKeyedEvent[E])
   : EventCalcCtx[S, E, Ctx] =
     pureEvent(keyedEvent)
 
   inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline keyedEvents: MaybeTimestampedKeyedEvent[E]*)
+    inline keyedEvents: MaybeTsKeyedEvent[E]*)
   : EventCalcCtx[S, E, Ctx] =
     pureEvents(keyedEvents)
 
   inline def pure[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+    inline keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     pureEvents(keyedEvents)
 
@@ -122,43 +122,43 @@ object EventCalcCtx:
     EventCalcCtx(_.add(eagerlyComputedKeyedEvents))
 
   def pureEvent[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvent: MaybeTimestampedKeyedEvent[E])
+    keyedEvent: MaybeTsKeyedEvent[E])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx(_.addEvent(keyedEvent))
 
   private def pureEvents[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+    keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     val eagerlyComputedKeyedEvents = keyedEvents.toEagerSeq
     EventCalcCtx(_.addEvents(eagerlyComputedKeyedEvents))
 
   def single[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toKeyedEvent: S => KeyedEvent[E])
+    toKeyedEvent: S => MaybeTsKeyedEvent[E])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx: coll =>
       coll.addEvent:
         toKeyedEvent(coll.aggregate)
 
   inline def maybe[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline toKeyedEvents: S => Option[MaybeTimestampedKeyedEvent[E]])
+    inline toKeyedEvents: S => Option[MaybeTsKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     multiple(toKeyedEvents)
 
   def checked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toCheckedKeyedEvents: S => Checked[IterableOnce[KeyedEvent[E]]])
+    toCheckedKeyedEvents: S => Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx: coll =>
       coll.addChecked:
         toCheckedKeyedEvents(coll.aggregate)
 
   def addChecked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    keyedEvents: Checked[IterableOnce[KeyedEvent[E]]])
+    keyedEvents: Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : EventCalcCtx[S, E, Ctx] =
     val eagerlyComputedKeyedEvents = keyedEvents.map(_.toEagerSeq)
     EventCalcCtx(_.addChecked(eagerlyComputedKeyedEvents))
 
   def multiple[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    toKeyedEvents: S => IterableOnce[MaybeTimestampedKeyedEvent[E]])
+    toKeyedEvents: S => IterableOnce[MaybeTsKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx: coll =>
       coll.addEvents:
@@ -235,17 +235,17 @@ object EventCalc:
   //  EventCalcCtx.problem(problem)
   //
   //inline def pure[S <: EventDrivenState_[S, E], E <: Event](
-  //  keyedEvent: MaybeTimestampedKeyedEvent[E])
+  //  keyedEvent: MaybeTsKeyedEvent[E])
   //: EventCalc[S, E] =
   //  EventCalcCtx.pure(keyedEvent)
   //
   //inline def pure[S <: EventDrivenState_[S, E], E <: Event](
-  //  inline keyedEvents: MaybeTimestampedKeyedEvent[E]*)
+  //  inline keyedEvents: MaybeTsKeyedEvent[E]*)
   //: EventCalc[S, E] =
   //  EventCalcCtx.pure(keyedEvents)
   //
   //inline def pure[S <: EventDrivenState_[S, E], E <: Event](
-  //  inline keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  //  inline keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   //: EventCalc[S, E] =
   //  EventCalcCtx.pure(keyedEvents)
   //
@@ -255,34 +255,34 @@ object EventCalc:
   //  EventCalcCtx.pureNoKey(events)
   //
   //inline def pureEvent[S <: EventDrivenState_[S, E], E <: Event](
-  //  inline keyedEvent: MaybeTimestampedKeyedEvent[E])
+  //  inline keyedEvent: MaybeTsKeyedEvent[E])
   //: EventCalc[S, E] =
   //  EventCalcCtx.pureEvent(keyedEvent)
   //</editor-fold>
 
   inline def single[S <: EventDrivenState_[S, E], E <: Event](
-    inline toKeyedEvent: S => KeyedEvent[E])
+    inline toKeyedEvent: S => MaybeTsKeyedEvent[E])
   : EventCalc[S, E] =
     EventCalcCtx.single(toKeyedEvent)
 
   inline def maybe[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline toKeyedEvents: S => Option[MaybeTimestampedKeyedEvent[E]])
+    inline toKeyedEvents: S => Option[MaybeTsKeyedEvent[E]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx.maybe(toKeyedEvents)
 
   inline def checked[S <: EventDrivenState_[S, E], E <: Event](
     inline toCheckedKeyedEvents:
-      S => Checked[IterableOnce[KeyedEvent[E]]])
+      S => Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : EventCalc[S, E] =
     EventCalcCtx.checked(toCheckedKeyedEvents)
 
   inline def addChecked[S <: EventDrivenState_[S, E], E <: Event, Ctx](
-    inline keyedEvents: Checked[IterableOnce[KeyedEvent[E]]])
+    inline keyedEvents: Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : EventCalcCtx[S, E, Ctx] =
     EventCalcCtx.addChecked(keyedEvents)
 
   inline def multiple[S <: EventDrivenState_[S, E], E <: Event](
-    inline toKeyedEvents: S => IterableOnce[MaybeTimestampedKeyedEvent[E]])
+    inline toKeyedEvents: S => IterableOnce[MaybeTsKeyedEvent[E]])
   : EventCalc[S, E] =
     EventCalcCtx.multiple(toKeyedEvents)
 
@@ -293,10 +293,10 @@ object EventCalc:
 
   inline given [
     S <: EventDrivenState_[S, E], E <: Event
-  ] => Conversion[MaybeTimestampedKeyedEvent[E], EventCalc[S, E]] =
+  ] => Conversion[MaybeTsKeyedEvent[E], EventCalc[S, E]] =
     EventCalc.pure
 
   inline given [
     S <: EventDrivenState_[S, E], E <: Event
-  ] => Conversion[IterableOnce[MaybeTimestampedKeyedEvent[E]], EventCalc[S, E]] =
+  ] => Conversion[IterableOnce[MaybeTsKeyedEvent[E]], EventCalc[S, E]] =
     EventCalc.pure

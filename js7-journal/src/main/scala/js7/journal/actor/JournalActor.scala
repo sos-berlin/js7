@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
-import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTimestampedKeyedEvent, SnapshotableState}
+import js7.data.event.{AnyKeyedEvent, Event, EventCalc, EventDrivenState_, MaybeTsKeyedEvent, SnapshotableState}
 import js7.journal.actor.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.file.FileJournal
@@ -163,8 +163,8 @@ object JournalActor:
     def keyedEvent: AnyKeyedEvent
     def timestampMillis: Option[Long]
 
-    def toMaybeTimestamped: MaybeTimestampedKeyedEvent[Event] =
-      MaybeTimestampedKeyedEvent(keyedEvent, timestampMillis)
+    def toMaybeTimestamped: MaybeTsKeyedEvent[Event] =
+      MaybeTsKeyedEvent(keyedEvent, timestampMillis)
 
   sealed trait Output
   object Output:

@@ -4,7 +4,7 @@ import cats.effect.IO
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, NoKeyEvent, Stamped}
+import js7.data.event.{Event, EventCalc, JournalId, JournaledState, KeyedEvent, MaybeTsKeyedEvent, NoKeyEvent, Stamped}
 import js7.journal.CommitOptions.Transaction
 import js7.journal.watch.EventWatch
 import scala.Conversion.into
@@ -36,11 +36,11 @@ trait Journal[S <: JournaledState[S]] extends Service:
     persists.traverse: persist =>
       persistSingle(persist)
 
-  final def persist[E <: Event](keyedEvent: KeyedEvent[E]): IO[Checked[Persisted[S, E]]] =
+  final def persist[E <: Event](keyedEvent: MaybeTsKeyedEvent[E]): IO[Checked[Persisted[S, E]]] =
     persist[E]():
       EventCalc.pure(keyedEvent)
 
-  final def persist[E <: Event](keyedEvents: IterableOnce[KeyedEvent[E]])
+  final def persist[E <: Event](keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   : IO[Checked[Persisted[S, E]]] =
     persist[E]():
       EventCalc.pure(keyedEvents)
@@ -60,13 +60,13 @@ trait Journal[S <: JournaledState[S]] extends Service:
         .map(NoKey <-: _)
 
   @targetName("persist_one")
-  final def persist[E <: Event](aggregateToEvent: S => KeyedEvent[E])
+  final def persist[E <: Event](aggregateToEvent: S => MaybeTsKeyedEvent[E])
   : IO[Checked[Persisted[S, E]]] =
     persist: aggregate =>
       aggregateToEvent(aggregate) :: Nil
 
   @targetName("persist_right")
-  final def persist[E <: Event](aggregateToEvents: S => IterableOnce[KeyedEvent[E]])
+  final def persist[E <: Event](aggregateToEvents: S => IterableOnce[MaybeTsKeyedEvent[E]])
   : IO[Checked[Persisted[S, E]]] =
     persist: aggregate =>
       Right(aggregateToEvents(aggregate))
@@ -78,7 +78,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
       aggregateToEvents(aggregate).map: events =>
         Vector.from(events).map(NoKey <-: _)
 
-  final def persist[E <: Event](aggregateToEvents: S => Checked[IterableOnce[KeyedEvent[E]]])
+  final def persist[E <: Event](aggregateToEvents: S => Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : IO[Checked[Persisted[S, E]]] =
     persistChecked()(aggregateToEvents)
 
@@ -93,7 +93,7 @@ trait Journal[S <: JournaledState[S]] extends Service:
   inline final def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     persistSingle(persist)
 
-  final def persistOne[E <: Event](keyedEvent: KeyedEvent[E])
+  final def persistOne[E <: Event](keyedEvent: MaybeTsKeyedEvent[E])
     : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persist[E]():
       EventCalc.pure(keyedEvent)
@@ -102,18 +102,18 @@ trait Journal[S <: JournaledState[S]] extends Service:
 
   final def persistKeyedEvents[E <: Event](
     options: CommitOptions = CommitOptions.default)
-    (keyedEvents: IterableOnce[KeyedEvent[E]])
+    (keyedEvents: IterableOnce[MaybeTsKeyedEvent[E]])
   : IO[Checked[Persisted[S, E]]] =
     persist(options):
       EventCalc.pure(keyedEvents)
 
-  final def persistTransaction[E <: Event](aggregateToEvents: S => Checked[IterableOnce[KeyedEvent[E]]])
+  final def persistTransaction[E <: Event](aggregateToEvents: S => Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : IO[Checked[Persisted[S, E]]] =
     persistChecked[E](Transaction)(aggregateToEvents)
 
   private final def persistChecked[E <: Event](
     options: CommitOptions = CommitOptions.default)
-    (aggregateToEvents: S => Checked[IterableOnce[KeyedEvent[E]]])
+    (aggregateToEvents: S => Checked[IterableOnce[MaybeTsKeyedEvent[E]]])
   : IO[Checked[Persisted[S, E]]] =
     persist[E](options):
       EventCalc.checked: controllerState =>

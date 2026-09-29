@@ -8,7 +8,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AtomicStopper
 import js7.data.event.EventCalc.given
-import js7.data.event.{Event, JournaledState, MaybeTimestampedKeyedEvent, TimeCtx}
+import js7.data.event.{Event, JournaledState, MaybeTsKeyedEvent, TimeCtx}
 import js7.journal.StreamableJournal.*
 import js7.journal.{CommitOptions, Journal, Persisted}
 import scala.util.control.NoStackTrace
@@ -17,9 +17,9 @@ trait StreamableJournal[S <: JournaledState[S]](chunkSize: Int):
   this: Journal[S] =>
 
   def persistStream[E <: Event : Tag](
-    stream: fs2.Stream[IO, MaybeTimestampedKeyedEvent[E]],
+    stream: fs2.Stream[IO, MaybeTsKeyedEvent[E]],
     stopper: AtomicStopper)
-    (surround: (Seq[MaybeTimestampedKeyedEvent[E]], IO[Checked[Persisted[S, E]]]) =>
+    (surround: (Seq[MaybeTsKeyedEvent[E]], IO[Checked[Persisted[S, E]]]) =>
       IO[Checked[Persisted[S, E]]])
   : IO[Unit] =
     stream.through:
@@ -28,9 +28,9 @@ trait StreamableJournal[S <: JournaledState[S]](chunkSize: Int):
     .compile.drain
 
   def persistPipe[E <: Event : Tag](stopper: AtomicStopper)
-    (surround: (Seq[MaybeTimestampedKeyedEvent[E]], IO[Checked[Persisted[S, E]]]) =>
+    (surround: (Seq[MaybeTsKeyedEvent[E]], IO[Checked[Persisted[S, E]]]) =>
       IO[Checked[Persisted[S, E]]])
-  : fs2.Pipe[IO, MaybeTimestampedKeyedEvent[E], Checked[Persisted[S, E]]] =
+  : fs2.Pipe[IO, MaybeTsKeyedEvent[E], Checked[Persisted[S, E]]] =
     _.chunkLimit(chunkSize).evalMap: chunk =>
       stopper.resource.use:
         case Some(stopReason) =>
