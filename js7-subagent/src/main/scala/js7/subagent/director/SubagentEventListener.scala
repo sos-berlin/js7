@@ -28,7 +28,6 @@ import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
-import js7.journal.CommitOptions.Transaction
 import js7.journal.Journal
 import scala.concurrent.duration.Deadline
 import scala.util.control.NonFatal
@@ -59,7 +58,8 @@ extends
 
   private val eventHandler =
     SubagentEventHandler(
-      subagentId, journal, Transaction, onOrderProcessed, enqueueReleaseEventsCommand
+      subagentId, journal, eventDelay = conf.eventBufferDelay max conf.commitDelay,
+      onOrderProcessed, enqueueReleaseEventsCommand
     ):
       case Stamped(_, _, KeyedEvent(NoKey, e: ServerMeteringEvent)) =>
         IO:
@@ -81,17 +81,17 @@ extends
 
   private def observeEvents: IO[Unit] =
     Stream.suspend:
-      val recouplingStreamReader = newStreamReader()
+      val recouplingStreamReader = newRecouplingStreamReader()
       val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
       recouplingStreamReader.stream(api, after = after)
         .through:
-          eventHandler.pipe(conf.eventBufferSize, conf.eventBufferDelay max conf.commitDelay)
+          eventHandler.pipe(conf.eventBufferSize)
         .onFinalize:
           recouplingStreamReader.terminateAndLogout
             .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
     .compile.drain
 
-  private def newStreamReader() =
+  private def newRecouplingStreamReader() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](
       toIndex = stamped => !stamped.value.event.isInstanceOf[NonPersistentEvent] ? stamped.eventId,
       recouplingStreamReaderConf):

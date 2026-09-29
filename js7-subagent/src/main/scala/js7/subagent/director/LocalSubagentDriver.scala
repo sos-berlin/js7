@@ -28,7 +28,7 @@ import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent}
 import js7.data.workflow.Workflow
-import js7.journal.{CommitOptions, Journal}
+import js7.journal.Journal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.priority.ServerMeteringLiveScope
 import js7.subagent.{LocalSubagentApi, Subagent}
@@ -84,7 +84,7 @@ extends SubagentDriver, Service.StoppableByRequest:
     journal.aggregate.map:
       _.idToSubagentItemState(subagentId).eventId
     .flatMap: eventId =>
-      releaseEvents(eventId).orThrow *>
+      releaseEvents(eventId) *>
         observeAfter(eventId).completedL
           .startAndForget
 
@@ -93,17 +93,17 @@ extends SubagentDriver, Service.StoppableByRequest:
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         .through:
-          eventHandler.pipe(bufferSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
+          eventHandler.pipe(bufferSize = 1000/*!!!*/)
         // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
         .interruptWhenF(untilServiceStopRequested)
 
   private val eventHandler =
     SubagentEventHandler(
       subagentId, journal,
-      CommitOptions(transaction = true, alreadyDelayed = subagentConf.eventBufferDelay),
+      eventDelay = subagentConf.eventBufferDelay,
       onOrderProcessed,
       // TODO releaseEvents also when no event is persisted. Use last EventId before handleEvent!
-      releaseEvents(_).map(_.orThrow/*???*/)
+      releaseEvents
     ):
       case stamped @ Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
         whenSubagentShutdown.complete(()).as:
@@ -232,10 +232,11 @@ extends SubagentDriver, Service.StoppableByRequest:
       .handleProblem: problem =>
         logger.error(s"killProcess $orderId => $problem")
 
-  private def releaseEvents(eventId: EventId): IO[Checked[Unit]] =
+  private def releaseEvents(eventId: EventId): IO[Unit] =
     executeCommand:
       SubagentCommand.ReleaseEvents(eventId)
     .rightAs(())
+    .orThrow
 
   private def executeCommand(cmd: SubagentCommand): IO[Checked[SubagentCommand.Response]] =
     api.executeSubagentCommand(Numbered(0, cmd))

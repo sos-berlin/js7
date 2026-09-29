@@ -24,20 +24,21 @@ import scala.util.chaining.scalaUtilChainingOps
 private final class SubagentEventHandler(
   subagentId: SubagentId,
   journal: Journal[? <: SubagentDirectorState[?]],
-  commitOptions: CommitOptions,
+  eventDelay: FiniteDuration,
   onOrderProcessed: (OrderId, OrderProcessed) => IO[Option[IO[Unit]]],
   releaseEvents: EventId => IO[Unit])
-  (specialEvent: PartialFunction[Stamped[AnyKeyedEvent], IO[Handled]]):
+  (handleSpecialEvent: PartialFunction[Stamped[AnyKeyedEvent], IO[Handled]]):
 
   private val logger = Logger.withPrefix[SubagentEventHandler](subagentId.toString)
+  private val commitOptions = CommitOptions(transaction = true, delay = eventDelay)
 
   /** Handles, persists and releases the events in chunks, then runs the follow-ups. */
-  def pipe(bufferSize: Int, bufferDelay: FiniteDuration): Pipe[IO, Stamped[AnyKeyedEvent], Unit] =
+  def pipe(bufferSize: Int): Pipe[IO, Stamped[AnyKeyedEvent], Unit] =
     _.pipe: stream =>
-      if !bufferDelay.isPositive then
+      if !eventDelay.isPositive then
         stream.chunks
       else
-        stream.groupWithin(bufferSize, bufferDelay)
+        stream.groupWithin(bufferSize, eventDelay)
     .evalMap:
       _.traverse(handleEvent)
         .flatMap: handledChunk =>
@@ -62,7 +63,7 @@ private final class SubagentEventHandler(
 
   /** Returns optionally the event and a follow-up IO. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
-    specialEvent.applyOrElse(stamped, commonEvent)
+    handleSpecialEvent.applyOrElse(stamped, commonEvent)
 
   private def commonEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
     stamped.value match
