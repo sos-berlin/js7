@@ -406,6 +406,17 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
           .takeWhileNotNull
           .toList
       assert(list == List(1, 2, 3))
+
+    "endWhen" in:
+      TestControl.executeEmbed:
+        Stream.range(1, 1000)
+          .covary[IO]
+          .evalTap: _ =>
+            IO.sleep(10.ms)
+          .endWhen:
+            IO.sleep(35.ms)
+          .compile.toVector.map: result =>
+            assert(result == List(1, 2, 3))
   }
 
   "Chunk" - {

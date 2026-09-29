@@ -18,7 +18,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import org.jetbrains.annotations.TestOnly
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -454,6 +454,62 @@ object StreamExtensions:
 
             onComplete(startedAt.elapsed, count, exitCase)
 
+    /** Terminates this stream when `completed` completes.
+      *
+      * Unlike [[interruptWhenF]], `endWhen` not interrupt.
+      */
+    def endWhen(completed: F[Unit])(using Concurrent[F]): Stream[F, O] =
+      endWhen(completed.as(true))
+
+    /** Terminates this stream when `completed` completes with true.
+      *
+      * Unlike [[interruptWhenF]], `endWhen` not interrupt.
+      */
+    @targetName("endWhenTrue")
+    def endWhen(completed: F[Boolean])(using Concurrent[F]): Stream[F, O] =
+      endWhen(Stream.eval(completed))
+
+    /** Terminates this stream when the `endWhenTrue` emits true.
+      *
+      * Unlike [[Stream#interruptWhen]], `endWhen` not interrupt.
+      */
+    def endWhen(endWhenTrue: Stream[F, Boolean])(using Concurrent[F]): Stream[F, O] =
+      stream.chunks
+        .endWhenChunk(endWhenTrue)
+        .unchunks
+
+
+  extension[F[_], O](stream: Stream[F, Chunk[O]])
+    /** Terminates this stream when `completed` completes.
+      *
+      * Unlike [[interruptWhenF]], `endWhen` not interrupt.
+      */
+    def endWhenChunk(completed: F[Unit])(using Concurrent[F]): Stream[F, Chunk[O]] =
+      stream.endWhenChunk(completed.as(true))
+
+    /** Terminates this stream when `completed` completes with true.
+      *
+      * Unlike [[interruptWhenF]], `endWhenChunk` not interrupt.
+      */
+    @targetName("endWhenTrueChunk")
+    def endWhenChunk(completed: F[Boolean])(using Concurrent[F]): Stream[F, Chunk[O]] =
+      stream.endWhenChunk(Stream.eval(completed))
+
+    /** Terminates this stream when the `endWhenChunkTrue` emits true.
+      *
+      * Unlike [[Stream#interruptWhen]], `endWhenChunk` not interrupt.
+      */
+    def endWhenChunk(endWhenTrue: Stream[F, Boolean])(using Concurrent[F]): Stream[F, Chunk[O]] =
+      Stream.suspend:
+        // mergeHaltL delivers complete chunks of either side. As a marker,
+        // We insert a fabricated FabricatedMarkerChunk to signal the end.
+        // FS2 doesn't look into this fabricated chunk (otherwise, reimplement with a FS2 chunk!).
+        val end = new FabricatedMarkerChunk
+        stream.mergeHaltL:
+          endWhenTrue.prefetch.exists(identity).as(end)
+        .takeWhile(_ ne end)
+        .asInstanceOf[Stream[F, Chunk[O]]]
+
 
   extension [F[_], O](stream: Stream[F, O | Null])
     def collectNonNull: Stream[F, O] =
@@ -561,3 +617,16 @@ object StreamExtensions:
       Stream.iterable(iterable)
 
   private def simpleCount[A](a: A) = 1L
+
+  private final class FabricatedMarkerChunk extends Chunk[Nothing]:
+    def apply(i: Int): Nothing =
+      throw NotImplementedError("FabricatedMarkerChunk")
+
+    def copyToArray[O2](xs: Array[O2], start: Int): Unit =
+      throw NotImplementedError("FabricatedMarkerChunk")
+
+    def size: Int =
+      throw NotImplementedError("FabricatedMarkerChunk")
+
+    protected def splitAtChunk_(n: Int): (fs2.Chunk[Nothing], fs2.Chunk[Nothing]) =
+      throw NotImplementedError("FabricatedMarkerChunk")
