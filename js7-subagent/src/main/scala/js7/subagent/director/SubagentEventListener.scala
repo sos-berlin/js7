@@ -2,7 +2,6 @@ package js7.subagent.director
 
 import cats.effect.IO
 import cats.syntax.applicativeError.*
-import cats.syntax.foldable.*
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.left
@@ -21,18 +20,17 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, NonPersistentEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
-import js7.data.order.{OrderEvent, OrderId}
+import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.OrderId
 import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
-import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentItemStateEvent, SubagentRunId}
+import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
 import js7.journal.CommitOptions.Transaction
 import js7.journal.Journal
 import scala.concurrent.duration.Deadline
-import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
 
 private final class SubagentEventListener(
@@ -59,83 +57,17 @@ extends
 
   private final val coupled = Switch(false)
 
-  protected def startService =
-    runService:
-      observeEvents
-
-  private def observeEvents: IO[Unit] =
-    Stream.suspend:
-      val recouplingStreamReader = newStreamReader()
-      val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-      val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
-      recouplingStreamReader.stream(api, after = after)
-        .pipe: stream =>
-          if !bufferDelay.isPositive then
-            stream.chunks
-          else
-            stream.groupWithin(conf.eventBufferSize, bufferDelay)
-        .evalTap:
-          _.traverse(handleEvent)
-            .flatMap: updatedStampedChunk0 =>
-              val (updatedStampedMaybes, followUps) = updatedStampedChunk0.toVector.unzip
-              val updatedStampedSeq = updatedStampedMaybes.flatten
-              val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
-              // TODO Save Stamped timestamp
-              journal.persistKeyedEvents(Transaction):
-                updatedStampedSeq.view.map(_.value) ++
-                  lastEventId.map:
-                    subagentId <-: SubagentEventsObserved(_)
-              .map(_.orThrow /*???*/)
-              .productR:
-                // • After an OrderProcessed event, a ReleaseEvents command must be sent,
-                //   to terminate StartOrderProcess command idempotency detection and
-                //   to allow a new StartOrderProcess command for a next process.
-                // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
-                // OPTIMISE: ReleaseEvents only after OrderProcessed,
-                //  or (asynchronously) after a number of events
-                lastEventId.foldMapM: eventId =>
-                  enqueueReleaseEventsCommand(eventId)
-              .productR:
-                followUps.combineAll
-        .onFinalize:
-          recouplingStreamReader.terminateAndLogout
-            .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
-    .compile.drain
-
-  /** Returns optionally the event and a follow-up task. */
-  private def handleEvent(stamped: Stamped[AnyKeyedEvent])
-  : IO[(Option[Stamped[AnyKeyedEvent]], IO[Unit])] =
-    stamped.value match
-      case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        event match
-          case _: OrderStdWritten =>
-            // TODO Save Timestamp
-            IO.pure(Some(stamped) -> IO.unit)
-
-          case orderProcessed: OrderProcessed =>
-            // TODO Save Timestamp
-            onOrderProcessed(orderId, orderProcessed).map:
-              case None => None -> IO.unit  // OrderProcessed already handled
-              case Some(followUp) =>
-                // The followUp IO notifies OrderActor about OrderProcessed by calling `onEvents`
-                Some(stamped) -> followUp
-
-          case _ =>
-            logger.error(s"Unexpected event: $keyedEvent")
-            IO.pure(None -> IO.unit)
-
-      case KeyedEvent(NoKey, e: ServerMeteringEvent) =>
+  private val eventHandler =
+    SubagentEventHandler(
+      subagentId, journal, Transaction, onOrderProcessed, enqueueReleaseEventsCommand
+    ):
+      case Stamped(_, _, KeyedEvent(NoKey, e: ServerMeteringEvent)) =>
         IO:
           _lastServerMeteringEvent = e
           _lastServerMeteringEventSince = Deadline.now
           None -> IO.unit
 
-      case KeyedEvent(NoKey, SubagentEvent.SubagentShutdownStarted) =>
-        IO.pure:
-          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdownStarted))
-            -> IO.unit
-
-      case KeyedEvent(NoKey, SubagentEvent.SubagentShutdown) =>
+      case Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
         // TODO Aufträge im Zustand Processing abbrechen.
         // Das sind Aufträge, für die ein OrderProcessingStarted ausgegeben wurde, die aber noch
         // nicht zum Subagenten geschickt worden sind, sodass der die nicht mit Disrupted
@@ -143,13 +75,21 @@ extends
         // onSubagentDied? OrderProcessed wie oben behandeln als käme es vom Subagenten.
         IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
-      case KeyedEvent(NoKey, event: SubagentEvent.SubagentItemAttached) =>
-        logger.debug(event.toShortString)
-        IO.pure(None -> IO.unit)
+  protected def startService =
+    runService:
+      observeEvents
 
-      case keyedEvent =>
-        logger.error(s"Unexpected event: $keyedEvent")
-        IO.pure(None -> IO.unit)
+  private def observeEvents: IO[Unit] =
+    Stream.suspend:
+      val recouplingStreamReader = newStreamReader()
+      val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
+      recouplingStreamReader.stream(api, after = after)
+        .through:
+          eventHandler.pipe(conf.eventBufferSize, conf.eventBufferDelay max conf.commitDelay)
+        .onFinalize:
+          recouplingStreamReader.terminateAndLogout
+            .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
+    .compile.drain
 
   private def newStreamReader() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](

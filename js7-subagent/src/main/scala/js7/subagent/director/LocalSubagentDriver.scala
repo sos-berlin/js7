@@ -19,14 +19,13 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
-import js7.data.event.EventCalc.given
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
-import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentItemStateEvent}
 import js7.data.workflow.Workflow
 import js7.journal.{CommitOptions, Journal}
@@ -54,7 +53,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   subagent.suppressJournalLogging(true) // Events are logged by the Director's Journal
 
-  protected def isHeartbeating = true                 
+  protected def isHeartbeating = true
 
   protected def isShuttingDown = false
 
@@ -89,80 +88,27 @@ extends SubagentDriver, Service.StoppableByRequest:
         observeAfter(eventId).completedL
           .startAndForget
 
-  // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): fs2.Stream[IO, Unit] =
     logger.debugStream("observeAfter", eventId):
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
-        .evalMap(handleEvent)
-        .groupWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
-        .evalMap: chunk =>
-          val stampedEvents = chunk.toVector.flatMap(_._1)
-          val followUpAll = chunk.foldMapM(_._2)
-          IO.whenA(stampedEvents.nonEmpty):
-            stampedEvents.foldMapM: stamped =>
-              stamped.value match
-                case KeyedEvent(subagentItem.id, SubagentItemStateEvent.SubagentShutdown |
-                                                 SubagentItemStateEvent.SubagentShutdownV7) =>
-                  whenSubagentShutdown.complete(()).void
-                case _ => IO.unit
-            .flatMap: _ =>
-              val lastEventId = stampedEvents.last.eventId
-              // TODO Save Stamped timestamp
-              val options = CommitOptions(
-                transaction = true,
-                alreadyDelayed = subagentConf.eventBufferDelay)
-              journal.persist(options):
-                stampedEvents.map(_.value)
-                  :+ (subagentId <-: SubagentEventsObserved(lastEventId))
-              .map(_.orThrow/*???*/)
-              .productR:
-                // TODO releaseEvents also when stampedEvents is empty. Use last EventId before handleEvent!
-                releaseEvents(lastEventId).map(_.orThrow/*???*/)
-          *>
-            followUpAll
+        .through:
+          eventHandler.pipe(bufferSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
         // FIXME Don't cancel ongoing operations above, which may not be ready for cancellation!
         .interruptWhenF(untilServiceStopRequested)
 
-  /** Returns optionally the event and a follow-up io. */
-  private def handleEvent(stamped: Stamped[AnyKeyedEvent])
-  : IO[(Option[Stamped[AnyKeyedEvent]], IO[Unit])] =
-    stamped.value match
-      case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        event match
-          case _: OrderStdWritten =>
-            // TODO Save Timestamp
-            IO.pure(Some(stamped) -> IO.unit)
-
-          case orderProcessed: OrderProcessed =>
-            // TODO Save Timestamp
-            onOrderProcessed(orderId, orderProcessed).map:
-              case None => None -> IO.unit // OrderProcessed already handled
-              case Some(followUp) =>
-                // The followUp IO notifies OrderActor about OrderProcessed by calling `onEvents`
-                Some(stamped) -> followUp
-
-          case _ =>
-            logger.error(s"Unexpected event: $keyedEvent")
-            IO.pure(None -> IO.unit)
-
-      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdownStarted) =>
-        IO.pure:
-          Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdownStarted))
-            -> IO.unit
-
-      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-        IO.pure:
+  private val eventHandler =
+    SubagentEventHandler(
+      subagentId, journal,
+      CommitOptions(transaction = true, alreadyDelayed = subagentConf.eventBufferDelay),
+      onOrderProcessed,
+      // TODO releaseEvents also when no event is persisted. Use last EventId before handleEvent!
+      releaseEvents(_).map(_.orThrow/*???*/)
+    ):
+      case stamped @ Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
+        whenSubagentShutdown.complete(()).as:
           Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdown))
             -> IO.unit
-
-      case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
-        logger.debug(event.toShortString)
-        IO.pure(None -> IO.unit)
-
-      case keyedEvent =>
-        logger.error(s"Unexpected event: $keyedEvent")
-        IO.pure(None -> IO.unit)
 
   def serverMeteringScope(): Option[ServerMeteringLiveScope.type] =
     Some(ServerMeteringLiveScope)
