@@ -92,7 +92,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         .through:
           eventHandler.pipe(bufferSize = subagentConf.eventBufferSize)
-        // TODO Don't cancel ongoing operations above, which may not be ready for cancellation!
+        // TODO? Don't cancel ongoing operations above, which may not be ready for cancellation
         .interruptWhenF(untilServiceStopRequested)
     .compile.drain
 
@@ -101,7 +101,6 @@ extends SubagentDriver, Service.StoppableByRequest:
       subagentId, journal,
       eventDelay = subagentConf.eventBufferDelay,
       onOrderProcessed,
-      // TODO releaseEvents also when no event is persisted. Use last EventId before handleEvent!
       releaseEvents
     ):
       case stamped @ Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>

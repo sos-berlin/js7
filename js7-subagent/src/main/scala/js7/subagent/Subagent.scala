@@ -290,7 +290,7 @@ object Subagent:
         journal <- MemoryJournal.service(
           SubagentState.empty,
           size = config.getInt("js7.journal.memory.event-count"),
-          waitingFor = "JS7 Agent Director",
+          waitingFor = "Agent Director taking over events,",
           infoLogEvents = JournalConf.infoLogEvents(config))
         shuttingDownAtomic <- AtomicCell[IO].of(none[ShutDown]).toResource
         supervisor <- Supervisor[IO]

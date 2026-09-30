@@ -220,8 +220,7 @@ trait GenericEventRoute extends RouteProvider:
           var event = ServerMeteringEvent.fromCurrentMxBean()
           for w <- maybeTestWiring do
             event = event.copy(testMeteringValue = w.testMeteringValue)
-          // EventId.Missing, because ServerMeteringEvent is a NonPersistentEvent
-          Stamped(EventId.Missing, Timestamp.now, KeyedEvent(event))
+          Stamped.missingEventId(Timestamp.now, KeyedEvent(event))
 
     private def eventDirective(defaultAfter: EventId)
     : Directive1[EventRequest[Event]] =

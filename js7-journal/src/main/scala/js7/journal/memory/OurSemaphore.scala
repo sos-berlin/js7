@@ -19,7 +19,7 @@ private final class OurSemaphore private(size: Int, status: AtomicCell[IO, Statu
           updatedStatus = status.enqueue(Waiting(n, deferred))
         yield
           updatedStatus -> deferred.get
-    .flatten // wait outside of evalModify
+    .flatten // Run fiber-blocking deferred.get here, outside of evalModify
 
   def releaseN(n: Int): IO[Unit] =
     status.evalUpdate: origStatus =>

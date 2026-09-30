@@ -33,6 +33,10 @@ object Stamped:
   def apply[A](eventId: EventId, timestamp: Timestamp, value: A): Stamped[A] =
     new Stamped(eventId, timestamp.toEpochMilli, value)
 
+  def missingEventId[E <: NonPersistentEvent](timestamp: Timestamp, keyedEvent: KeyedEvent[E])
+  : Stamped[KeyedEvent[E]] =
+    Stamped(EventId.Missing, timestamp, keyedEvent)
+
   def checkOrdering[A](lastEventId: EventId, stampedSeq: IterableOnce[Stamped[A]])
   : Checked[Unit] =
     var checked = Checked.unit
