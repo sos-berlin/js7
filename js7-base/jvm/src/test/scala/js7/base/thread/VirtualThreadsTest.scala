@@ -108,7 +108,7 @@ final class VirtualThreadsTest extends OurTestSuite:
           throw new TimeoutException(s"Not all virtual threads started within $timeout")
         assert(count.get == n)
         logger.info:
-          s"✔️  All $n virtual threads are running · " + itemsPerSecondString(t.elapsed, n)
+          s"✔︎  All $n virtual threads are running · " + itemsPerSecondString(t.elapsed, n)
 
         whenAllStarted()
 

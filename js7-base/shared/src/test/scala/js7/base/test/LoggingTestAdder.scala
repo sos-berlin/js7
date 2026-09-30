@@ -64,7 +64,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
       s"$succeededCount tests succeeded$resetColor" +
       (if failedCount == 0 then "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
-      (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
+      (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎︎$resetColor " else " · ") +
       since.elapsed.pretty)
     logger.info(s"$magenta┗${"╼" * barLength}$bold ↙ $longSuiteName$resetColor\n")
 

@@ -573,7 +573,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       Persisted(originalAggregate, stampedKeyedEvents, aggregate)
 
     //def traceLog(): Unit =
-    //  val prefix = if this.isInstanceOf[Written] then "✔" else "+"
+    //  val prefix = if this.isInstanceOf[Written] then "✔︎" else "+"
     //  stampedKeyedEvents.foreachWithBracket(
     //    if commitOptions.transaction then Round else Square
     //  ): (o, br) =>

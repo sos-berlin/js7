@@ -82,11 +82,11 @@ import scala.util.{Success, Try}
  * <br><code>|-->  </code> last chunk of request stream or
  * <br><code>|-->  </code> non-chunked request
  * <p>Response
- * <br><code>&lt;--&lt;✔</code> HTTP header of chunked response, ok
+ * <br><code>&lt;--&lt;✔︎</code> HTTP header of chunked response, ok
  * <br><code>&lt;-&lt;-  </code> chunk of response stream
  * <br><code>&lt;--| </code> last chunk of response stream
  * <br><code>&lt;~~ 💥</code> error while receiving chunks
- * <br><code>&lt;--|✔</code> non-chunked response, ok
+ * <br><code>&lt;--|✔︎</code> non-chunked response, ok
  * <p>Cancellation
  * <br><code>🗑 &nbsp; ↘</code> start of response cancellation
  * <br><code>🗑 &nbsp; ↙</code> end of response cancellation
@@ -494,7 +494,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[HttpResponse] =
     if request.headers.contains(StreamingJsonHeader) then
       untilResponded.map: response =>
-        logResponse(response, responseLogPrefix, " ✔")
+        logResponse(response, responseLogPrefix, " ✔︎")
         response
     else
       var waitingLogged = false
@@ -505,7 +505,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           logger.debug:
             s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
         .flatTap(response => IO:
-          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔"))
+          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔︎"))
 
   private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit =
     val sym =

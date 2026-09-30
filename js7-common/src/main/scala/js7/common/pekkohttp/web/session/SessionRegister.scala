@@ -126,7 +126,7 @@ extends Service.TrivialReleasable:
               clientVersion.fold("")(v =>
                 " (" + v + (
                   if v == Js7Version then
-                    " ✔)"
+                    " ✔︎)"
                   else
                     s" ⚠️ version differs from this server's version $Js7Version!)")) +
               (isEternalSession ?? " (eternal)"))
