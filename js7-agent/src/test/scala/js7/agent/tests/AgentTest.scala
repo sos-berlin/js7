@@ -47,11 +47,13 @@ final class AgentTest extends OurTestSuite, AgentTester:
     agent.terminate().await(99.s)
 
   "Job working directory" - {
-    for ((testName, toWorkingDirectory) <-
-           Array[(String, Path => Path)](
-             ("default", _ => WorkingDirectory),
-             ("not default", _ / "working")))
-      testName in :
+    for
+      (testName, toWorkingDirectory) <-
+        Array[(String, Path => Path)](
+          ("default", _ => WorkingDirectory),
+          ("not default", _ / "working"))
+    do
+      testName in:
         provideAgentDirectory { directory =>
           createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
