@@ -91,9 +91,13 @@ extends Service.StoppableByRequest:
   private def release: IO[Unit] =
     IO.defer:
       _shuttingDown = true
-      journal.persist:
-        SubagentShutdownStarted
-      .ignoreProblem(Warn)
+      stopParams.get.flatMap: stopParams =>
+        IO.whenA(stopParams.dontWaitForDirector):
+          journal.suppressStoring
+      .productR:
+        journal.persist:
+          SubagentShutdownStarted
+        .ignoreProblem(Warn)
       .productR:
         stopParams.get.flatMap: stopArgs =>
           stopAllOrders(stopArgs.signal, stopArgs.dontWaitForDirector)

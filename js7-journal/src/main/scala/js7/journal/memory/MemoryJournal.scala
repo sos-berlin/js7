@@ -3,7 +3,8 @@ package js7.journal.memory
 import cats.effect.std.{AtomicCell, Mutex}
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
+import fs2.concurrent.SignallingRef
+import js7.base.catsutils.CatsEffectExtensions.{left, raceMerge, right}
 import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
@@ -36,6 +37,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   semaphore: OurSemaphore,
   queueMutex: Mutex[IO],
   persistMutex: Mutex[IO],
+  suppressStoringSignal: SignallingRef[IO, Boolean],
   onPersisted: AtomicCell[IO, Set[OnPersisted[S]]])
   (using protected val S: JournaledState.Companion[S])
 extends
@@ -104,8 +106,20 @@ extends
               .background.surround:
                 semaphore.acquireN(n, poll)
               .logWhenItTakesLonger(waitingFor)
-              .productR:
-                enqueue(stampedEvents, updatedAggr)
+              .as(true)
+              .raceMerge:
+                suppressStoringSignal.discrete.exists(identity).compile.drain.map: _ =>
+                  logger.debug:
+                    s"🪱 Not storing ${stampedEvents.length} events due to 'suppressStoring':"
+                  stampedEvents.foreachWithBracket(): (stamped, br) =>
+                    logger.debug:
+                      s"🪱 Suppressed: $br${
+                        stamped.value.toString.truncateWithEllipsis(300, firstLineOnly = true)}"
+                  false
+              .flatMap: acquired =>
+                // acquired is false when suppressStoring is set, in which case we don't enqueue
+                IO.whenA(acquired):
+                  enqueue(stampedEvents, updatedAggr)
               .productR:
                 persisted.ifNonEmpty:
                   onPersisted.get.flatMap:
@@ -130,7 +144,6 @@ extends
           queue.events.size} events, size=$size")
         logEvents("queue:  ", queue.events.map(_.value))
         logEvents("persist:", stampedEvents.map(_.value))
-
 
   private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S)
   : IO[Unit] =
@@ -193,6 +206,14 @@ extends
             .toList // release memory as iterator advances
             .iterator
 
+  /** MemoryJournal pretends to persist, but it doesn't fill the queue.
+    *
+    * Call this when the Directory doesn't fetch and release the the events.
+    * Then, `persist` no more enqueues events but pretends to work as normal. */
+  def suppressStoring: IO[Unit] =
+    IO(logger.debug("suppressStoring❗️")) *>
+      suppressStoringSignal.set(true)
+
   def suppressLogging(suppress: Boolean): Unit =
     journalLogger.suppress(suppress)
 
@@ -242,8 +263,10 @@ object MemoryJournal:
         semaphore <- OurSemaphore(size)
         queueMutex <- Mutex[IO]
         persistMutex <- Mutex[IO]
+        suppressStoringSignal <- SignallingRef[IO, Boolean](false)
         onPersisted <- AtomicCell[IO].of(Set.empty[OnPersisted[S]])
       yield
         Service.resource:
           new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
-            clock, semaphore, queueMutex, persistMutex, onPersisted)
+            clock, semaphore, queueMutex, persistMutex, suppressStoringSignal,
+            onPersisted)
