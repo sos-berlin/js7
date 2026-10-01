@@ -17,6 +17,9 @@ final case class TsKeyedEvent[+E <: Event](
 
 object TsKeyedEvent:
 
+  def fromStamped[E <: Event](stamped: Stamped[KeyedEvent[E]]): TsKeyedEvent[E] =
+    TsKeyedEvent(stamped.value, stamped.timestampMillis)
+
   extension [E <: Event](maybe: MaybeTsKeyedEvent[E])
 
     def maybeEpochMilli: Option[Long] =

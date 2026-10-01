@@ -1,40 +1,45 @@
 package js7.journal.memory
 
-import cats.effect.std.Mutex
+import cats.effect.std.{AtomicCell, Mutex}
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
+import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.catsutils.Environment.environmentOr
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.system.startup.StartUp
+import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterState
-import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped, TimeCtx}
 import js7.journal.log.JournalLogger
+import js7.journal.memory.MemoryJournal.*
 import js7.journal.watch.RealEventWatch
 import js7.journal.{EventIdGenerator, Journal, Persist, Persisted, StreamableJournal}
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 final class MemoryJournal[S <: JournaledState[S]] private(
   initial: S,
-  val size: Int,
+  size: Int,
   waitingFor: String,
   infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator,
   clock: WallClock,
   semaphore: OurSemaphore,
   queueMutex: Mutex[IO],
-  persistMutex: Mutex[IO])
+  persistMutex: Mutex[IO],
+  onPersisted: AtomicCell[IO, Set[OnPersisted[S]]])
   (using protected val S: JournaledState.Companion[S])
 extends
-  Journal[S], StreamableJournal[S](size), Service.Trivial:
+  Journal[S], StreamableJournal[S](chunkSize = size), Service.Trivial:
 
   val journalId: JournalId = JournalId.random()
 
@@ -81,36 +86,68 @@ extends
 
   override protected def persistSingle[E <: Event](persist: Persist[S, E])
   : IO[Checked[Persisted[S, E]]] =
+    // TODO? Use the FileJournal's streaming queuing algorithm for bigger chunks and less
+    //  EventWatch signals
     persistMutex.lock.surround:
       IO(_aggregate).flatMap: aggregate =>
         locally:
           for
             coll <- persist.eventCalc.calculate(aggregate, TimeCtx(clock.now(), StartUp.elapsed))
-            updated <- aggregate.applyKeyedEvents(coll.keyedEvents)
             stampedEvents = coll.timestampedKeyedEvents.map(eventIdGenerator.stamp)
+            updatedAggr <- aggregate.applyKeyedEvents(coll.keyedEvents)
+            persisted = Persisted(aggregate, stampedEvents, updatedAggr)
           yield
-            semaphore.acquireN(stampedEvents.length)
+            IO.uncancelable: poll =>
+              val n = stampedEvents.length
+              poll:
+                logEventsAfter(10.s, stampedEvents) // For diagnosis
+              .background.surround:
+                semaphore.acquireN(n, poll)
               .logWhenItTakesLonger(waitingFor)
-              .*>(
-                enqueue(stampedEvents, updated))
-              .as(Persisted(aggregate, stampedEvents, updated))
+              .productR:
+                enqueue(stampedEvents, updatedAggr)
+              .productR:
+                persisted.ifNonEmpty:
+                  onPersisted.get.flatMap:
+                    _.toSeq.foldMapMI: onPersisted =>
+                      poll:
+                        onPersisted(persisted)
+            .as(persisted)
         .sequence
 
-  private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S): IO[Unit] =
+  private def logEventsAfter(
+    duration: FiniteDuration,
+    stampedEvents: Seq[Stamped[AnyKeyedEvent]])
+  : IO[Unit] =
+    IO(logger.isTraceEnabled).ifTrue:
+      def logEvents(label: String, events: Seq[Any]) =
+        events.foreachWithBracket(): (s, br) =>
+          logger.trace:
+            s"🐌 $label $br${s.toString.truncateWithEllipsis(300, firstLineOnly = true)}"
+      IO.sleep(duration).map: _ =>
+        // Despite logWhenItTakesLonger below, we log the events for better diagnose
+        logger.trace(s"🐌 Hanging in semaphore.acquireN(${stampedEvents.length}), queue=${
+          queue.events.size} events, size=$size")
+        logEvents("queue:  ", queue.events.map(_.value))
+        logEvents("persist:", stampedEvents.map(_.value))
+
+
+  private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S)
+  : IO[Unit] =
     IO.whenA(stampedEvents.nonEmpty):
-      val since = Deadline.now
-      queueMutex.lock.surround:
-        IO:
-          var q = queue
-          val eventId = stampedEvents.last.eventId
-          q = q.copy(
-            events = q.events ++ stampedEvents,
-            lastEventId = eventId)
-          _aggregate = aggregate.withEventId(eventId)
-          log(_eventCount + 1, stampedEvents, since)
-          _eventCount += stampedEvents.length
-          eventWatch.onEventsCommitted(eventId)
-          queue = q
+      IO(Deadline.now).flatMap: since =>
+        queueMutex.lock.surround:
+          IO:
+            var q = queue
+            val eventId = stampedEvents.last.eventId
+            q = q.copy(
+              events = q.events ++ stampedEvents,
+              lastEventId = eventId)
+            _aggregate = aggregate.withEventId(eventId)
+            log(_eventCount + 1, stampedEvents, since)
+            _eventCount += stampedEvents.length
+            eventWatch.onEventsCommitted(eventId)
+            queue = q
 
   private def log(
     eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]], since: Deadline)
@@ -167,6 +204,14 @@ extends
   @TestOnly
   private[journal] def queueLength = queue.events.size
 
+  /** Immediately after persisting, atomically call the `callback` if Persisted is not empty. */
+  def registerOnPersistedCallback(callback: OnPersisted[S]): ResourceIO[Unit] =
+    Resource.make(
+      acquire = onPersisted.update: set =>
+        if set.contains(callback) then throw IllegalArgumentException:
+          s"registerOnPersistedCallback: Duplicate callback: $callback"
+        set + callback)(
+      release = _ => onPersisted.update(_ - callback))
 
   private sealed case class EventQueue(
     tornEventId: EventId,
@@ -178,6 +223,8 @@ extends
 
 
 object MemoryJournal:
+
+  type OnPersisted[S <: JournaledState[S]] = Persisted[S, Event] => IO[Unit]
 
   private val logger = Logger[this.type]
 
@@ -195,7 +242,8 @@ object MemoryJournal:
         semaphore <- OurSemaphore(size)
         queueMutex <- Mutex[IO]
         persistMutex <- Mutex[IO]
+        onPersisted <- AtomicCell[IO].of(Set.empty[OnPersisted[S]])
       yield
         Service.resource:
           new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
-            clock, semaphore, queueMutex, persistMutex)
+            clock, semaphore, queueMutex, persistMutex, onPersisted)

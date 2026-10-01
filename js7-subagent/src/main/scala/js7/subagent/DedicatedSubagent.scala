@@ -11,7 +11,7 @@ import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.LogLevel.Warn
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixutils.{AsyncMap, SimpleLock}
+import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
@@ -22,7 +22,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AtomicStopper, Delayer}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.{Event, EventId, MaybeTsKeyedEvent}
+import js7.data.event.{Event, EventId, KeyedEvent, MaybeTsKeyedEvent, Stamped}
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, OrderOutcome}
@@ -48,7 +48,7 @@ import js7.subagent.job.JobDriver
 import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
-final class DedicatedSubagent private(
+private final class DedicatedSubagent private(
   val subagentId: SubagentId,
   val subagentRunId: SubagentRunId,
   val commandExecutor: SubagentCommandExecutor,
@@ -78,35 +78,30 @@ extends Service.StoppableByRequest:
   def isShuttingDown: Boolean =
     _shuttingDown
 
-  protected def startService =
-    runService:
-      untilServiceStopRequested *>
-        IO.defer:
-          stopMe *>
-            IO(logger.info(s"$toString stopped"))
-
-  private[subagent] def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
+  def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
   : IO[Unit] =
     stopParams.set(StopParams(signal, dontWaitForDirector)) *>
       stopService
 
-  private def stopMe: IO[Unit] =
-    logger.debugIO:
-      IO.defer:
-        _shuttingDown = true
-        persistedQueue.persisting:
-          journal.persist:
-            SubagentShutdownStarted
-        .ignoreProblem(Warn)
-        .productR:
-          stopParams.get.flatMap: stopArgs =>
-            stopAllOrders(stopArgs.signal, stopArgs.dontWaitForDirector)
-        .productR:
-          persistedQueue.persisting:
-            journal.persist:
-              SubagentShutdown
-          .map(_.orThrow)
-        .void
+  protected def startService =
+    runService:
+      untilServiceStopRequested.guarantee:
+        release
+
+  private def release: IO[Unit] =
+    IO.defer:
+      _shuttingDown = true
+      journal.persist:
+        SubagentShutdownStarted
+      .ignoreProblem(Warn)
+      .productR:
+        stopParams.get.flatMap: stopArgs =>
+          stopAllOrders(stopArgs.signal, stopArgs.dontWaitForDirector)
+      .productR:
+        journal.persist:
+          SubagentShutdown
+        .map(_.orThrow)
+      .void
 
   private def stopAllOrders(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
     logWhileStopping:
@@ -176,7 +171,7 @@ extends Service.StoppableByRequest:
   //        .as(Left(AgentDirectorIsStartingProblem))
   //  }
 
-  private[subagent] def executeCoupleDirector(cmd: CoupleDirector): IO[Checked[Unit]] =
+  def executeCoupleDirector(cmd: CoupleDirector): IO[Checked[Unit]] =
     IO:
       for
         _ <- checkSubagentId(cmd.subagentId)
@@ -193,7 +188,7 @@ extends Service.StoppableByRequest:
     (requestedSubagentId == subagentId) !!
       SubagentIdMismatchProblem(requestedSubagentId, subagentId)
 
-  private[subagent] def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
+  def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
     if requestedSubagentRunId != subagentRunId then
       val problem = SubagentRunIdMismatchProblem(subagentId)
       logger.warn:
@@ -309,14 +304,8 @@ extends Service.StoppableByRequest:
             logger.debug(s"⚠️ $orderProcessed suppressed because journal is halted")
             IO.pure(orderProcessed)
           else
-            // Lock this section to execute persistedQueue.enqueue in proper ascending order
-            // TODO Allow concurrent persisting of multiple OrderProcessed
-            persistedQueue.lock:
-              journal.persistOne(order.id <-: orderProcessed)
-                .map(_.orThrow._1)
-                .flatMap: stamped =>
-                  persistedQueue.enqueueProcessedOrderId(stamped.eventId, order.id)
-                    .as(stamped.value.event)
+            journal.persistOne(order.id <-: orderProcessed)
+              .map(_.orThrow._1.value.event)
         .start)
 
   private def startOrderProcess3(
@@ -385,7 +374,7 @@ extends Service.StoppableByRequest:
           orderToProcessing.remove(orderId).flatMapSome: processing =>
             processing.acknowledged.complete(()).as(orderId)
         .map: detachedOrderIds_ =>
-          val detachedOrderIds = detachedOrderIds_.flatten: Seq[OrderId]
+          val detachedOrderIds: Seq[OrderId] = detachedOrderIds_.flatten
           if detachedOrderIds.isEmpty then
             () //logger.trace(s"🪱 detachProcessedOrders($eventId): no Order detached")
           else
@@ -405,8 +394,7 @@ extends Service.StoppableByRequest:
         val eventStream = stream.map(string => orderId <-: OrderStdWritten(outErr)(string))
         journal.persistStream(eventStream, stdouterrStopper): (events, persistChunk) =>
           outErrStatistics(outErr).count(n = events.size, charCount = countChars(events)):
-            persistedQueue.persisting:
-              persistChunk
+            persistChunk
 
   private def countChars(events: Seq[MaybeTsKeyedEvent[OrderStdWritten]]): Int =
     events.iterator.map(_.keyedEvent.event.chunk.length).sum
@@ -451,7 +439,7 @@ extends Service.StoppableByRequest:
     s"DedicatedSubagent($longName)"
 
 
-object DedicatedSubagent:
+private object DedicatedSubagent:
   private val logger = Logger[this.type]
   private val ShutdownOrderAckWorryDurations = List(0.s/*debug*/, 1.s/*info*/, 3.s, 6.s, 10.s)
 
@@ -472,14 +460,14 @@ object DedicatedSubagent:
         _ <- OutErrStatistics.registerMXBean
         fileValueState <- Resource.fromAutoCloseable(IO:
           FileValueState(subagentConf.valueDirectory))
+        eventIdSignal <- Resource.eval:
+          SignallingRef[IO].of(journal.eventWatch.lastAddedEventId)
+        persistedQueue = PersistedQueue(eventIdSignal)
+        _ <- journal.registerOnPersistedCallback(persistedQueue.onPersisted)
         service <- Service.resource:
-          for
-            eventIdSignal <- SignallingRef[IO].of(EventId.BeforeFirst)
-            persistedQueue = PersistedQueue(eventIdSignal)
-          yield
-            DedicatedSubagent(
-              subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-              jobLauncherConf, subagentConf, persistedQueue, fileValueState)
+          DedicatedSubagent(
+            subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
+            jobLauncherConf, subagentConf, persistedQueue, fileValueState)
       yield
         service
 
@@ -494,34 +482,19 @@ object DedicatedSubagent:
   /** Links `OrderProcessed` events with its `EventId` such that `ReleaseEvents` can
     * release `Order`, too. */
   private final class PersistedQueue(eventIdSignal: SignallingRef[IO, EventId]):
-    private val persistLock = SimpleLock[IO]
     private val queue = mutable.Queue.empty[(eventId: EventId, processedOrderId: OrderId)]
 
-    def persisting[E <: Event](persist: IO[Checked[Persisted[SubagentState, E]]])
-    : IO[Checked[Persisted[SubagentState, E]]] =
-      lock:
-        persist.ifPersisted: persisted =>
-          enqueue(persisted.stampedKeyedEvents.last.eventId)
-
-    private[DedicatedSubagent] def lock[A](io: IO[A]): IO[A] =
-      persistLock.surround(io)
-
-    private[DedicatedSubagent] def enqueueProcessedOrderId(
-      eventId: EventId, processedOrderId: OrderId)
+    private[DedicatedSubagent] def onPersisted(persisted: Persisted[SubagentState, Event])
     : IO[Unit] =
       IO:
-        val pair = (eventId, processedOrderId)
-        queue.synchronized:
-          queue.enqueue(pair)
+        val seq = persisted.stampedKeyedEvents.collect:
+          case Stamped(eventId, _, KeyedEvent(orderId: OrderId, event: OrderProcessed)) =>
+            eventId -> orderId
+        if seq.nonEmpty then
+          queue.synchronized:
+            queue.enqueueAll(seq)
       *>
-        // Because persist has notified the Director's event reader,
-        // a fast Director may do a ReleaseEvents command,
-        // before we have enqueued the OrderProcessed EventId.
-        // eventIdSignal synchronizes this.
-        enqueue(eventId)
-
-    private[DedicatedSubagent] def enqueue(eventId: EventId): IO[Unit] =
-      eventIdSignal.set(eventId)
+        eventIdSignal.set(persisted.stampedKeyedEvents.last.eventId)
 
     /** Wait until `eventId` has been persisted.
       * @return OrderIds for enqueued EventIds of OrderProcessed event.
@@ -534,7 +507,8 @@ object DedicatedSubagent:
     def takeOrderIdsUntil(eventId: EventId): IO[Vector[OrderId]] =
       IO:
         queue.synchronized:
-          queue.dequeueWhile(_.eventId <= eventId).view.map(_.processedOrderId).toVector
+          queue.dequeueWhile(_.eventId <= eventId).toVector
+        .map(_.processedOrderId)
 
 
   private final case class StopParams(

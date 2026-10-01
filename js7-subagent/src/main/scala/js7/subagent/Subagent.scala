@@ -12,7 +12,6 @@ import java.time.ZoneId
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.bean.MBeanUtils.registerStaticMBean
-import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.Environment.{TaggedResource, environment}
 import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.config.Js7Conf
@@ -27,6 +26,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.log4j.Log4j
 import js7.base.log.reader.{LogDirectoryIndex, LogDirectoryMXBean}
+import js7.base.monixutils.SimpleLock
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -86,6 +86,7 @@ extends MainService, Service.StoppableByRequest:
     SubagentCommandExecutor(this, signatureVerifier, supervisor)
   private val dedicatedAllocated =
     SetOnce[Allocated[IO, DedicatedSubagent]](SubagentNotDedicatedProblem)
+  private val dedicateLock = SimpleLock[IO]()
 
   private val whenTerminated = Deferred.unsafe[IO, ProgramTermination]
 
@@ -151,31 +152,23 @@ extends MainService, Service.StoppableByRequest:
     commandExecutor.executeCommand(Numbered(0, cmd), meta)
 
   def executeDedicateSubagent(cmd: DedicateSubagent): IO[Checked[DedicateSubagent.Response]] =
-    DedicatedSubagent
-      .service(cmd.subagentId, subagentRunId, commandExecutor, journal,
-        cmd.agentPath, cmd.agentRunId, cmd.controllerId, jobLauncherConf, conf)
-      .toAllocated
-      .flatMap: allocatedDedicatedSubagent =>
-        IO:
-          dedicatedAllocated.trySet(allocatedDedicatedSubagent)
-        .flatMap: isFirst =>
-          if isFirst then
-            IO.right(())
-          else
-            handleDuplicateDedication(cmd, dedicatedAllocated.orThrow.allocatedThing) match
-              case Left(problem) =>
-                IO.defer:
-                  logger.warn(s"$cmd => $problem")
-                  allocatedDedicatedSubagent.release.as(Left(problem))
-              case Right(()) =>
-                IO.right(())
-        .flatMapT: _ =>
+    dedicateLock.surround:
+      dedicatedAllocated.toOption match
+        case Some(Allocated(existing, _)) =>
           IO:
-            Log4j.putGlobal("js7.serverId", cmd.subagentId.toString)
-            logger.info:
-              s"Subagent dedicated as ${cmd.subagentId} to ${cmd.agentPath}, is ready"
-            Right:
-              DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Js7Version)
+            handleDuplicateDedication(cmd, existing).onProblem: problem =>
+              logger.warn(s"$cmd => $problem")
+        case None =>
+          DedicatedSubagent
+            .service(cmd.subagentId, subagentRunId, commandExecutor, journal,
+              cmd.agentPath, cmd.agentRunId, cmd.controllerId, jobLauncherConf, conf)
+            .toAllocated.map: allocated =>
+              dedicatedAllocated := allocated
+              Log4j.putGlobal("js7.serverId", cmd.subagentId.toString)
+              logger.info(s"Subagent dedicated as ${cmd.subagentId} to ${cmd.agentPath}, is ready")
+          .as(Checked.unit)
+    .rightAs:
+      DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Js7Version)
 
   /** Maybe the duplicate command is idempotent? */
   private def handleDuplicateDedication(cmd: DedicateSubagent, existing: DedicatedSubagent)

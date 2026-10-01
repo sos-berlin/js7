@@ -2,9 +2,10 @@ package js7.subagent.director
 
 import cats.effect.IO
 import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import fs2.Pipe
+import js7.base.catsutils.CatsEffectExtensions.orThrow
 import js7.base.log.Logger
-import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped, TsKeyedEvent}
@@ -40,28 +41,28 @@ private final class SubagentEventHandler(
         stream.chunks
       else
         stream.groupWithin(bufferSize, eventDelay)
-    .evalMap:
-      _.traverse(handleEvent)
-        .flatMap: handledChunk =>
-          val (updatedStampedMaybes, followUps) = handledChunk.toVector.unzip
-          val updatedStampedSeq = updatedStampedMaybes.flatten
-          updatedStampedSeq.lastOption.map(_.eventId).foldMapM: lastEventId =>
+    .evalMap: chunk =>
+      val stampedEvents = chunk.toVector
+      val lastEventId = stampedEvents.reverseIterator.map(_.eventId).find(_ != EventId.Missing)
+      stampedEvents.traverse(handleEvent).flatMap: handledChunk =>
+        IO.defer:
+          val (updatedStampedMaybes, followUps) = handledChunk.unzip
+          lastEventId.foldMap: lastEventId =>
             journal.persistKeyedEvents(commitOptions):
-              updatedStampedSeq.view.map: stamped =>
-                TsKeyedEvent(stamped.value, epochMilli = stamped.timestamp.toEpochMilli)
-              .appended:
+              updatedStampedMaybes.flatten.map(TsKeyedEvent.fromStamped).appended:
                 subagentId <-: SubagentEventsObserved(lastEventId)
-            .map(_.orThrow /*???*/)
+            .orThrow
             .productR:
               // • After an OrderProcessed event, a ReleaseEvents command must be sent,
               //   to terminate StartOrderProcess command idempotency detection and
               //   to allow a new StartOrderProcess command for a next process.
               // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
-              // OPTIMISE: ReleaseEvents only after OrderProcessed,
-              //  or (asynchronously) after a number of events
+              //   It should be sent after SubagentEventsObserved(lastEventId).
+              // • This may be many ReleaseEvents commands.
+              //   Maybe send them asynchronously and keep only the last in a queue
               releaseEvents(lastEventId)
           .productR:
-            followUps.combineAll
+            followUps.combineAll // Run follow-ups
 
   /** Returns optionally the event and a follow-up IO. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent]): IO[Handled] =
