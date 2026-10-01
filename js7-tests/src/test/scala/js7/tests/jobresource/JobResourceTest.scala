@@ -190,7 +190,7 @@ class JobResourceTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
 
   "Accessing an missing JobResource variable" - {
-    val existingName = if isWindows then "TEMP" else if isMac then "TMPDIR" else "HOSTNAME"
+    val existingName = if isWindows then "TEMP" else if isMac then "TMPDIR" else "LANG"
     val existingValue = sys.env(existingName)
 
     "Order fails" in:
