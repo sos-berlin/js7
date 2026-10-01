@@ -91,9 +91,11 @@ extends AutoCloseable,
   private var announcedEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] =
     announceNextFileEventId.map(_ -> Promise())
 
+  @volatile private var _closedCalled = false
   @volatile private var _isActiveNode = false
 
   def close(): Unit =
+    _closedCalled = true
     fileEventIdToHistoric.values.foreach(_.close())
     maybeCurrentEventReader.foreach(_.close())
     for o <- announcedEventReaderPromise do
@@ -160,7 +162,11 @@ extends AutoCloseable,
       logger.debug(s"currentEventReader=$currentEventReader")
       for (eventId, promise) <- announcedEventReaderPromise do
         if eventId == firstEventPositionAndFileEventId.value then
-          promise.success(Some(currentEventReader))
+          if !promise.trySuccess(Some(currentEventReader)) then
+            throw IllegalStateException:
+              if _closedCalled
+              then "JournalEventWatch has been closed before start"
+              else "🔥announcedEventReaderPromise already completed??"
 
     onFileWritten(flushedLengthAndEventId.position)
     //??? onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
