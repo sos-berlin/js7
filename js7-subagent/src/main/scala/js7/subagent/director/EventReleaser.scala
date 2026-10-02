@@ -27,13 +27,14 @@ private final class EventReleaser private(
     *
     * When recoupling with the same SubagentRunId, a not yet released EventId is sent again.
     */
-  def start(subagentRunId: SubagentRunId)(releaseEvents: EventId => IO[Checked[Unit]]): IO[Unit] =
+  def start(subagentRunId: SubagentRunId)(postReleaseEvents: EventId => IO[Checked[Unit]])
+  : IO[Unit] =
     cancelFiber
       .productR:
         state.update: s =>
           if s.subagentRunId.contains(subagentRunId) then s else State(Some(subagentRunId))
       .productR:
-        run(subagentRunId, releaseEvents).start
+        run(subagentRunId, postReleaseEvents).start
       .flatMap: started =>
         fiber.set(Some(started))
 
@@ -56,7 +57,7 @@ private final class EventReleaser private(
       IO.unlessA(s0.subagentRunId.isEmpty || s0.released >= s0.requested):
         state.waitUntil(s => s.subagentRunId != s0.subagentRunId || s.released >= s0.requested)
 
-  private def run(subagentRunId: SubagentRunId, releaseEvents: EventId => IO[Checked[Unit]])
+  private def run(subagentRunId: SubagentRunId, postReleaseEvents: EventId => IO[Checked[Unit]])
   : IO[Unit] =
     state.discrete
       .takeWhile(_.subagentRunId.contains(subagentRunId))
@@ -64,9 +65,11 @@ private final class EventReleaser private(
       .map(_.requested)
       .changes // discrete skips intermediate values, so only the latest EventId is sent
       .evalMap: eventId =>
-        releaseEvents(eventId).flatMap:
+        postReleaseEvents(eventId).flatMap:
           case Left(problem) =>
-            // A later ReleaseEvents will release this EventId, too
+            // If the Subagent answers ReleaseEvents with a problem, it's logged and the next
+            // release covers that EventId. Nothing retries it if no new events arrive.
+            // A later ReleaseEvents will release this EventId, too.
             IO(logger.warn(s"ReleaseEvents($eventId) => $problem"))
           case Right(()) =>
             state.update: s =>

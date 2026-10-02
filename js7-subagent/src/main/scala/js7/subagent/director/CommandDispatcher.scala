@@ -97,7 +97,7 @@ private trait CommandDispatcher:
           .prefetch // avoids cancellation of the downstream
           .evalMap: numbered =>
             numbered.value.correlId.bind:
-              executeCommandNow(subagentRunId, numbered)
+              postCommandNow(subagentRunId, numbered)
                 .tryIt
                 .flatTap: _ =>
                   queue.release(numbered.number)
@@ -108,13 +108,13 @@ private trait CommandDispatcher:
                   numbered.value/*Execute*/.respond
           .completedL
 
-  def executeCommandDirectly(subagentRunId: SubagentRunId, cmd: Command)
+  def postCommandDirectly(subagentRunId: SubagentRunId, cmd: Command)
   : IO[Checked[Response]] =
     IO.defer:
       val execute = Execute(cmd)
-      executeCommandNow(subagentRunId, Numbered(0, execute))
+      postCommandNow(subagentRunId, Numbered(0, execute))
 
-  private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
+  private def postCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
   : IO[Checked[Response]] =
     numbered.value.correlId.bind:
       val numberedCommand = Numbered(numbered.number, numbered.value.command)

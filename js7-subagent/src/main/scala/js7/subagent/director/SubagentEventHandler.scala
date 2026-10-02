@@ -58,7 +58,7 @@ private final class SubagentEventHandler(
               //   to allow a new StartOrderProcess command for a next process.
               // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
               //   It should be sent after SubagentEventsObserved(lastEventId).
-              // • releaseEvents does not wait. It must be called before followUps, because a
+              // • postReleaseEvents does not wait. It must be called before followUps, because a
               //   followUp may start a next StartOrderProcess, which waits for the releaseInBackground.
               releaseEvents(lastEventId)
           .productR:

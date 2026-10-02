@@ -157,13 +157,7 @@ extends
       .productR:
         tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true)
       .productR:
-        cmdDispatcher.stopWithResponse:
-          case cmd: ReleaseEvents =>
-            logger.info(s"$cmd ignored because Subagent is being removed should no longer run")
-            Right(SubagentCommand.Accepted)
-
-  //def suspend: IO[Unit] =
-  //  cmdDispatcher.suspend *> stopEventListener
+        cmdDispatcher.shutdown
 
   private def tryShutdownSubagent(
     processSignal: Option[ProcessSignal],
@@ -257,7 +251,7 @@ extends
             cmdDispatcher.start(subagentRunId) // Dispatcher may have been stopped after SubagentReset
               .productR:
                 eventReleaser.start(subagentRunId): eventId =>
-                  cmdDispatcher.executeCommandDirectly(subagentRunId, ReleaseEvents(eventId))
+                  cmdDispatcher.postCommandDirectly(subagentRunId, ReleaseEvents(eventId))
         .map((_, eventId) => Right(eventId))
 
   // May run concurrently with onStartOrderProcessFailed !!!
@@ -511,6 +505,10 @@ extends
 
           case Left(problem) =>
             processingAllowed.isOff.flatMap(if _ then
+              // If postQueuedCommand gives up because the dispatcher has stopped, it returns
+              // Right(()). EventReleaser then counts that EventId as released, which only lets a
+              // waiting StartOrderProcess through early. That only happens when the Subagent dies
+              // or is reset, and then queued commands fail anyway.
               logger.debug:
                 s"⚠️  postQueuedCommand($commandString) error after stop ignored: $problem"
               IO.right(())
