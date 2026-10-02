@@ -108,6 +108,12 @@ private trait CommandDispatcher:
                   numbered.value/*Execute*/.respond
           .completedL
 
+  def executeCommandDirectly(subagentRunId: SubagentRunId, cmd: Command)
+  : IO[Checked[Response]] =
+    IO.defer:
+      val execute = Execute(cmd)
+      executeCommandNow(subagentRunId, Numbered(0, execute))
+
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
   : IO[Checked[Response]] =
     numbered.value.correlId.bind:

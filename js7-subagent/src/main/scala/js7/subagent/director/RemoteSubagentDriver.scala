@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.{Deferred, FiberIO, IO, Ref, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.Js7Version
@@ -57,7 +57,8 @@ private final class RemoteSubagentDriver[S <: SubagentDirectorState[S]] private(
   protected val journal: Journal[S],
   controllerId: ControllerId,
   protected val conf: RemoteSubagentDriver.Conf,
-  protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
+  protected val recouplingStreamReaderConf: RecouplingStreamReaderConf,
+  eventReleaser: EventReleaser)
 extends
   Service.TrivialReleasable, SubagentDriver:
 
@@ -77,6 +78,7 @@ extends
 
   protected def release =
     IO.both(cmdDispatcher.shutdown, stopEventListener)
+      .*>(eventReleaser.stop)
       .*>(api.tryLogout.void)
       .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
 
@@ -86,9 +88,9 @@ extends
   private def startEventListener: IO[Unit] =
     Service:
       RemoteSubagentEventListener(
-        subagentId, conf, recouplingStreamReaderConf, api, journal, enqueueReleaseEventsCommand,
-        onOrderProcessed, onSubagentDied, dedicateOrCouple, emitSubagentCouplingFailed,
-        () => isCoupled, untilServiceStopRequested)
+        subagentId, conf, recouplingStreamReaderConf, api, journal,
+        onOrderProcessed, eventReleaser.releaseInBackground, onSubagentDied, dedicateOrCouple,
+        emitSubagentCouplingFailed, () => isCoupled, untilServiceStopRequested)
     .allocated.flatMap: (eventListener, releaseEventListener) =>
       _eventListener = eventListener
       _releaseEventListener.set(releaseEventListener)
@@ -150,6 +152,8 @@ extends
         // Wait until no Order is being processed
         orderToDeferred.stop
         // Emit event and change state ???
+      .productR:
+        eventReleaser.stop
       .productR:
         tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true)
       .productR:
@@ -251,6 +255,9 @@ extends
             shuttingDown = false
             initiallyCoupled.trySet(subagentRunId)
             cmdDispatcher.start(subagentRunId) // Dispatcher may have been stopped after SubagentReset
+              .productR:
+                eventReleaser.start(subagentRunId): eventId =>
+                  cmdDispatcher.executeCommandDirectly(subagentRunId, ReleaseEvents(eventId))
         .map((_, eventId) => Right(eventId))
 
   // May run concurrently with onStartOrderProcessFailed !!!
@@ -273,7 +280,8 @@ extends
       orderToDeferred.removeAll.flatMap: oToD =>
         val orderIds = oToD.keys
         IO.whenA(subagentDiedEvent.isDefined):
-          cmdDispatcher.stopAndFailCommands
+          cmdDispatcher.stopAndFailCommands *>
+            eventReleaser.stop
         .productR:
           attachedItemKeys.update(_ => IO.pure(Map.empty))
         .productR:
@@ -328,8 +336,12 @@ extends
       .flatMapT: deferred =>
         orderToExecuteDefaultArguments(order)
           .flatMapT: defaultArguments =>
-            cmdDispatcher.executeCommand:
-              StartOrderProcess(order, defaultArguments, timeoutAt)
+            // The Subagent must have detached a previous Order with same OrderId (when releasing
+            // the OrderProcessed event) before it accepts a new StartOrderProcess for the same
+            // Order
+            eventReleaser.awaitReleased *>
+              cmdDispatcher.executeCommand:
+                StartOrderProcess(order, defaultArguments, timeoutAt)
           .catchIntoChecked
           .recoverFromProblemWith: problem =>
             logger.trace(s"💥 startProcessingOrder2: $problem")
@@ -423,11 +435,6 @@ extends
       .onError: t =>
         // Error isn't logged until stopEventListener has been called
         IO(logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
-
-  private def enqueueReleaseEventsCommand(eventId: EventId): IO[Unit] =
-    cmdDispatcher.enqueueCommand:
-      SubagentCommand.ReleaseEvents(eventId)
-    .void
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
     cmdDispatcher
@@ -603,9 +610,14 @@ object RemoteSubagentDriver:
     conf: RemoteSubagentDriver.Conf,
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
   : ResourceIO[RemoteSubagentDriver[S]] =
-    Service.resource:
-      new RemoteSubagentDriver(
-        subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)
+    for
+      eventReleaser <- Resource.eval(EventReleaser(subagentItem.id))
+      driver <- Service.resource:
+        new RemoteSubagentDriver(
+          subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf,
+          eventReleaser)
+    yield
+      driver
 
   private[director] def checkCompatibility(subagentVersion: Option[Version]): Checked[Unit] =
     subagentVersion.forall: v =>

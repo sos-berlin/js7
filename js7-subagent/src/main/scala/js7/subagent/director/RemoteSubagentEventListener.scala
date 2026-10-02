@@ -37,8 +37,8 @@ private final class RemoteSubagentEventListener(
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   api: HttpSubagentApi,
   journal: Journal[? <: SubagentDirectorState[?]],
-  enqueueReleaseEventsCommand: EventId => IO[Unit],
   onOrderProcessed: (OrderId, OrderProcessed) => IO[Option[IO[Unit]]],
+  releaseEvents: EventId => IO[Unit],
   onSubagentDied: (ProcessLostProblem, SubagentDied) => IO[Unit],
   dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]],
   emitSubagentCouplingFailed: Option[Problem] => IO[Unit],
@@ -58,7 +58,7 @@ extends
   private val eventHandler =
     SubagentEventHandler(
       subagentId, journal, eventDelay = conf.subagentConf.eventBufferDelay max conf.commitDelay,
-      onOrderProcessed, enqueueReleaseEventsCommand
+      onOrderProcessed, releaseEvents
     ):
       case Stamped(_, _, KeyedEvent(NoKey, e: ServerMeteringEvent)) =>
         IO:
