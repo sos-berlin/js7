@@ -68,10 +68,6 @@ object ServiceMain:
           if !suppressTerminationLogging then
             logTermination(productName, termination)
           termination.toExitCode
-      .guarantee:
-        IO:
-          if !suppressLogShutdown then
-            Logger.shutdown(suppressLogging = suppressTerminationLogging)
 
   private def logCancellationOrFailure(productName: String): ResourceIO[Unit] =
     Resource.onFinalizeCase:

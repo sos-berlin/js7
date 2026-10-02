@@ -6,6 +6,7 @@ import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.AnsiEscapeCodes.bold
 import js7.base.log.Log4jTest.*
+import js7.base.log.log4j.Log4jContextDataProvider
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
@@ -35,7 +36,7 @@ final class Log4jTest extends OurTestSuite:
         doTestSpeed(1000, 1000, s"$i:")
         sleep(500.ms)
       //logger.info(CorrelId.statistics)
-      //logger.info(Log4jThreadContextMap.statistics)
+      logger.info(Log4jContextDataProvider.statistics)
 
   private def doTestSpeed(n: Int, m: Int, label: String): Unit =
     val started = now

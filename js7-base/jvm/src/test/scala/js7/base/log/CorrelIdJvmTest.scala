@@ -8,7 +8,7 @@ import cats.syntax.traverse.*
 import java.lang.Thread.currentThread
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
-import js7.base.log.log4j.Log4jThreadContextMap
+import js7.base.log.log4j.Log4jContextDataProvider
 import js7.base.system.Java17Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -38,7 +38,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
     super.afterAll()
     //underlyingScheduler.shutdown()
     CorrelId.logStatistics()
-    Log4jThreadContextMap.logStatistics()
+    Log4jContextDataProvider.logStatistics()
 
   "Manual tests" - {
     // Look at build.log (with debug enabled and %X{js7.correlId} in the pattern)!

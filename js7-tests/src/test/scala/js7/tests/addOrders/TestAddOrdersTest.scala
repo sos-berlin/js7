@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
 import js7.base.io.yaml.YamlExtensions.yamlAs
-import js7.base.log.log4j.Log4jThreadContextMap
+import js7.base.log.log4j.Log4jContextDataProvider
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
@@ -47,7 +47,7 @@ final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
       controller.eventWatch.await[OrderDeleted](_.key.string.startsWith("TestAddOrders-"))
       for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
-    Log4jThreadContextMap.logStatistics()
+    Log4jContextDataProvider.logStatistics()
 
 
 private object TestAddOrdersTest:

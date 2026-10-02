@@ -3,6 +3,7 @@ package js7.common.system.startup
 import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{ExitCode, IO, ResourceIO}
 import js7.base.catsutils.OurApp
+import js7.base.log.Logger
 import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichJavaClass}
@@ -48,7 +49,11 @@ trait ServiceApp extends OurApp:
           svc <- program(cnf)
         yield
           svc,
-      use = use)
+      use = use
+    ).guarantee:
+      IO:
+        if !suppressLogShutdown then
+          Logger.shutdown(suppressLogging = suppressTerminationLogging)
 
   protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService](
     args: List[String],

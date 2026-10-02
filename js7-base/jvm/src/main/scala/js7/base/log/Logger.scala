@@ -10,7 +10,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Slf4jUtils.syntax.*
-import js7.base.log.log4j.{Log4j, Log4jThreadContextMap}
+import js7.base.log.log4j.{Log4j, Log4jContextDataProvider}
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}
@@ -59,7 +59,7 @@ object Logger extends AdHocLogger:
   def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
     if !fast then
       CorrelId.logStatisticsIfEnabled()
-      Log4jThreadContextMap.logStatistics()
+      Log4jContextDataProvider.logStatistics()
     if !suppressLogging then
       StartUp.logStopLine()
     Log4j.shutdown(fast = fast, suppressLogging = suppressLogging)

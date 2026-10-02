@@ -37,8 +37,8 @@ object Log4j:
       if sys.runtime.availableProcessors > 1 then
         // Fast AsyncLogger requires Heap for the RingBuffer and a little more CPU time
         useAsyncLogger()
-      end if  
-      Log4jThreadContextMap.initialize(name)
+      end if
+      Log4jContextDataProvider.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
   private def useAsyncLogger(): Unit =
@@ -72,4 +72,4 @@ object Log4j:
 
   /** Set a key-value pair accessible in the log4j2 configuration via %X{key}. */
   def putGlobal(key: String, value: String) =
-    Log4jThreadContextMap.put(key, value)
+    Log4jContextDataProvider.put(key, value)
