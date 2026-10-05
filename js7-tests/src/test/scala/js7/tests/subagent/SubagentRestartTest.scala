@@ -94,7 +94,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(
-        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        SubagentCommand.ShutDown(Some(SIGKILL), dropEventsAfter = Some(0.s)),
         CommandMeta.test
       ).await(99.s)
 
@@ -149,7 +149,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(
-        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        SubagentCommand.ShutDown(Some(SIGKILL), dropEventsAfter = Some(0.s)),
         CommandMeta.test
       ).await(99.s)
 
@@ -191,7 +191,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       // For this test, the terminating Subagent must not emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(
-        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        SubagentCommand.ShutDown(Some(SIGKILL), dropEventsAfter = Some(0.s)),
         CommandMeta.test
       ).await(99.s)
 

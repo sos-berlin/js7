@@ -3,12 +3,14 @@ package js7.data.subagent
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.functionCallToString
 import js7.base.utils.ScalaUtils.syntax.*
@@ -23,6 +25,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentState.*
 import js7.data.value.expression.Expression
+import scala.concurrent.duration.FiniteDuration
 
 sealed trait SubagentCommand extends CommonCommand:
   type Response <: SubagentCommand.Response
@@ -136,13 +139,15 @@ object SubagentCommand extends CommonCommand.Companion:
 
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
-    dontWaitForDirector: Boolean = false,
+    dropEventsAfter: Option[FiniteDuration] = None,
     restart: Boolean = false)
   extends Queueable:
     type Response = Accepted
 
     override def toString = functionCallToString("Shutdown",
-      processSignal, dontWaitForDirector ? "dontWaitForDirector", restart ? "restart")
+      processSignal,
+      dropEventsAfter.map(o => s"dropEventsAfter=${o.pretty}"),
+      restart ? "restart")
 
   object ShutDown:
     implicit val jsonCodec: Codec.AsObject[ShutDown] = deriveConfiguredCodec

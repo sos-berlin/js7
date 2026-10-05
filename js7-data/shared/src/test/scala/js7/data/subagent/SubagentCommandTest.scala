@@ -123,11 +123,11 @@ final class SubagentCommandTest extends OurTestSuite:
 
     "ShutDown" in:
       testJson[SubagentCommand](
-        ShutDown(Some(SIGTERM), dontWaitForDirector = true, restart = true),
+        ShutDown(Some(SIGTERM), dropEventsAfter = Some(3.s), restart = true),
         json"""{
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
-          "dontWaitForDirector": true,
+          "dropEventsAfter": 3,
           "restart": true
         } """)
 

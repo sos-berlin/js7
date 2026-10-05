@@ -38,6 +38,7 @@ final case class SubagentConf(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   webServerPorts: Seq[WebServerPort],
+  shutdownDropEventsAfter: FiniteDuration,
   defaultJobSigkillDelay: FiniteDuration,
   stdouterr: StdouterrConf,
   outerrByteBufferSize: Int,
@@ -211,6 +212,7 @@ object SubagentConf:
       logDirectory = logDirectory,
       jobWorkingDirectory = jobWorkingDirectory,
       webServerPorts,
+      shutdownDropEventsAfter = config.finiteDuration("js7.subagent.shutdown.drop-events-after").orThrow,
       defaultJobSigkillDelay = config.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
       outErrConf,
       outerrByteBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.byte-buffer-size")

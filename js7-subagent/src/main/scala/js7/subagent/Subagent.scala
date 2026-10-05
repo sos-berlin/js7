@@ -96,8 +96,12 @@ extends MainService, Service.StoppableByRequest:
     runService:
       IO.race(
         untilServiceStopRequested *>
+          // A local Subagent should already have been shutdown by the Director.
+          // Then the following shutdown has no effect.
           shutdown(
-            ShutDown(processSignal = Some(SIGKILL), dontWaitForDirector = true),
+            ShutDown(
+              processSignal = Some(SIGKILL),
+              dropEventsAfter = Some(conf.shutdownDropEventsAfter)),
             CommandMeta.system("Subagent stop")),
         untilTerminated)
       .void
@@ -109,27 +113,25 @@ extends MainService, Service.StoppableByRequest:
     whenTerminated.get
 
   def shutdown(cmd: ShutDown, meta: CommandMeta): IO[ProgramTermination] =
-    import cmd.{dontWaitForDirector, processSignal}
+    import cmd.{dropEventsAfter, processSignal}
     logger.debugIO:
       whenTerminated.tryGet.flatMap:
         _.map(IO.pure).getOrElse:
           shuttingDown.getAndSet(Some(cmd)).flatMap:
             case None =>
-              whenTerminated.tryGet.flatMap:
-                _.map(IO.pure).getOrElse:
-                  IO:
-                    logger.info(s"❗ $cmd • $meta")
-                  .productR:
-                    dedicatedAllocated.toOption.foldMapM: allocated =>
-                      allocated.allocatedThing
-                        .stop(processSignal, dontWaitForDirector = dontWaitForDirector)
-                        .guarantee(allocated.release)
-                  .productR:
-                    shuttingDown.get
-                  .map: maybeCurrentCmd =>
-                    ProgramTermination(restart = maybeCurrentCmd.getOrElse(cmd).restart)
-                  .flatMap: termination =>
-                    whenTerminated.complete(termination).as(termination)
+              IO:
+                logger.info(s"❗ $cmd • $meta")
+              .productR:
+                dedicatedAllocated.toOption.foldMapM: allocated =>
+                  allocated.allocatedThing
+                    .stop(processSignal, dropEventsAfter = dropEventsAfter)
+                    .guarantee(allocated.release)
+              .productR:
+                shuttingDown.get
+              .map: maybeCurrentCmd =>
+                ProgramTermination(restart = maybeCurrentCmd.getOrElse(cmd).restart)
+              .flatMap: termination =>
+                whenTerminated.complete(termination).as(termination)
 
             case Some(_) =>
               cmd.processSignal.foldMapM:

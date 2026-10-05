@@ -135,12 +135,16 @@ extends
         // OrderProcessed .processLost.
         // Unfortunately, this will inhibit SubagentShutdown event, too.
         stopEventListener
-          .*>(IO.whenA((wasHeartbeating || force) && !suppressResetShutdown)(
-            // One shot. Processes are killed only if Subagent is reachable.
-            // May delay ProcessLost and SubagentReset for connection timeout.
-            tryShutdownSubagent(processSignal = Some(SIGKILL), dontWaitForDirector = true)))
-          .*>(onSubagentDied(ProcessLostDueToResetProblem, SubagentReset))
-          .*>(IO.unlessA(dontContinue)(startEventListener)))
+          .productR:
+            IO.whenA((wasHeartbeating || force) && !suppressResetShutdown):
+              // One shot. Processes are killed only if Subagent is reachable.
+              // May delay ProcessLost and SubagentReset for connection timeout.
+              tryShutdownSubagent(processSignal = Some(SIGKILL), dropEventsAfter = Some(0.s))
+          .productR:
+            onSubagentDied(ProcessLostDueToResetProblem, SubagentReset)
+          .productR:
+            IO.unlessA(dontContinue):
+              startEventListener)
 
   private def suppressResetShutdown =
     conf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
@@ -155,27 +159,27 @@ extends
       .productR:
         eventReleaser.stop
       .productR:
-        tryShutdownSubagent(Some(SIGKILL), dontWaitForDirector = true)
+        tryShutdownSubagent(Some(SIGKILL), dropEventsAfter = Some(0.s))
       .productR:
         cmdDispatcher.shutdown
 
   private def tryShutdownSubagent(
     processSignal: Option[ProcessSignal],
-    dontWaitForDirector: Boolean)
+    dropEventsAfter: Option[FiniteDuration])
   : IO[Unit] =
     IO.defer:
       shuttingDown = true
       api
         .executeSubagentCommand(Numbered(0,
-          SubagentCommand.ShutDown(processSignal, dontWaitForDirector = dontWaitForDirector,
-            restart = true)))
-        .rightAs(())
+          SubagentCommand.ShutDown(
+            processSignal,
+            restart = true,
+            dropEventsAfter = dropEventsAfter)))
+        .orThrow.void
         .timeoutTo(conf.subagentResetTimeout, IO:
           logger.error:
-            s"$subagentId did not respond to Shutdown command for ${conf.subagentResetTimeout}"
-          Checked.unit)
-        .orThrow
-        .handleError: t =>  // Ignore when Subagent is unreachable
+            s"$subagentId did not respond to Shutdown command for ${conf.subagentResetTimeout}")
+        .handleError: t => // Ignore when Subagent is unreachable
           logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}")
 
   private def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]] =
@@ -259,8 +263,7 @@ extends
   /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
   private def onSubagentDied(processLostProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
   : IO[Unit] =
-    IO.defer:
-      stopDispatcherAndEmitProcessLostEvents(processLostProblem, Some(subagentDiedEvent))
+    stopDispatcherAndEmitProcessLostEvents(processLostProblem, Some(subagentDiedEvent))
 
   /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDiedEvent` event. */
   def stopDispatcherAndEmitProcessLostEvents(
@@ -287,7 +290,7 @@ extends
               .toVector.sortBy(_.key: OrderId) // for prettier logging
               .concat:
                 subagentDiedEvent.map(subagentId <-: _)
-        .map(_.orThrow)
+        .orThrow
         .flatMap: persisted =>
           persisted.keyedEvents.foldMapMI:
             case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
@@ -424,7 +427,7 @@ extends
       .recoverFromProblem:
         case JournalKilledProblem =>
           logger.debug("emitSubagentCouplingFailed => JournalKilledProblem")
-      .map(_.orThrow)
+      .orThrow
       .void
       .onError: t =>
         // Error isn't logged until stopEventListener has been called
@@ -434,7 +437,7 @@ extends
     cmdDispatcher
       .enqueueCommand(cmd)
       .map(_
-        .map(_.orThrow/*???*/)
+        .orThrow/*???*/
         .handleError(t =>
           logger.error(s"${cmd.toShortString} => ${t.toStringWithCauses}",
             t.nullIfNoStackTrace))

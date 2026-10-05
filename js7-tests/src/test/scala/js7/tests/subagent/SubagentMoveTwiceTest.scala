@@ -65,7 +65,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
 
       // Shutdown the original Subagent
       bareSubagent.shutdown(
-        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true),
+        SubagentCommand.ShutDown(Some(SIGKILL), dropEventsAfter = Some(0.s)),
         CommandMeta.test
       ).await(99.s)
       bareSubagentRelease.await(99.s)

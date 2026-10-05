@@ -37,7 +37,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   semaphore: OurSemaphore,
   queueMutex: Mutex[IO],
   persistMutex: Mutex[IO],
-  suppressStoringSignal: SignallingRef[IO, Boolean],
+  dropEventsSignal: SignallingRef[IO, Boolean],
   onPersisted: AtomicCell[IO, Set[OnPersisted[S]]])
   (using protected val S: JournaledState.Companion[S])
 extends
@@ -100,32 +100,33 @@ extends
             persisted = Persisted(aggregate, stampedEvents, updatedAggr)
           yield
             IO.uncancelable: poll =>
-              val n = stampedEvents.length
-              poll:
-                logEventsAfter(10.s, stampedEvents) // For diagnosis
-              .background.surround:
-                semaphore.acquireN(n, poll)
-              .logWhenItTakesLonger(waitingFor)
-              .as(true)
-              .raceMerge:
-                suppressStoringSignal.discrete.exists(identity).compile.drain.map: _ =>
-                  logger.debug:
-                    s"🪱 Not storing ${stampedEvents.length} events due to 'suppressStoring':"
-                  stampedEvents.foreachWithBracket(): (stamped, br) =>
-                    logger.debug:
-                      s"🪱 Suppressed: $br${
-                        stamped.value.toString.truncateWithEllipsis(300, firstLineOnly = true)}"
-                  false
-              .flatMap: acquired =>
-                // acquired is false when suppressStoring is set, in which case we don't enqueue
-                IO.whenA(acquired):
-                  enqueue(stampedEvents, updatedAggr)
-              .productR:
-                persisted.ifNonEmpty:
-                  onPersisted.get.flatMap:
-                    _.toSeq.foldMapMI: onPersisted =>
-                      poll:
-                        onPersisted(persisted)
+              dropEventsSignal.getAndDiscreteUpdates.use: (drop, dropSignal) =>
+                poll:
+                  logEventsAfter(10.s, stampedEvents) // For diagnosis
+                .background.surround:
+                  if drop then
+                    dropTheEvents(stampedEvents, updatedAggr).as(false)
+                  else
+                    semaphore.acquireN(stampedEvents.length, poll)
+                      .as(true)
+                .logWhenItTakesLonger(waitingFor)
+                .pipeIf(!drop):
+                  _.raceMerge:
+                    dropSignal.exists(identity).compile.drain.map: _ =>
+                      dropTheEvents(stampedEvents, updatedAggr)
+                    .as(false)
+                .flatMap: acquired =>
+                  // acquired is false if events were dropped, in which case we don't enqueue
+                  IO.whenA(acquired):
+                    enqueue(stampedEvents, updatedAggr)
+                .productR:
+                  // Despite events are dropped, continue as normal.
+                  // Because otherwise, callers could throw.
+                  IO.whenA(persisted.nonEmpty):
+                    onPersisted.get.flatMap:
+                      _.toSeq.foldMapMI: onPersisted =>
+                        poll:
+                          onPersisted(persisted)
             .as(persisted)
         .sequence
 
@@ -144,6 +145,13 @@ extends
           queue.events.size} events, size=$size")
         logEvents("queue:  ", queue.events.map(_.value))
         logEvents("persist:", stampedEvents.map(_.value))
+
+  private def dropTheEvents[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S): IO[Unit] =
+    IO:
+      //logger.debug(s"❌ Dropping ${stampedEvents.length} events due to 'dropEvents':")
+      log(_eventCount + 1, stampedEvents, since = Deadline.now, dropped = true)
+      _aggregate = aggregate.withEventId(stampedEvents.last.eventId)
+      _eventCount += stampedEvents.length
 
   private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], aggregate: S)
   : IO[Unit] =
@@ -213,10 +221,17 @@ extends
   /** MemoryJournal pretends to persist, but it doesn't fill the queue.
     *
     * Call this when the Directory doesn't fetch and release the the events.
-    * Then, `persist` no more enqueues events but pretends to work as normal. */
-  def suppressStoring: IO[Unit] =
-    IO(logger.debug("suppressStoring❗️")) *>
-      suppressStoringSignal.set(true)
+    * Then, `persistSingle` enqueues events no more, but pretends to the caller to work as normal.
+    */
+  def dropEvents: IO[Unit] =
+    IO(logger.debug("❌ dropEvents: all events will be dropped")) *>
+      dropEventsSignal.set(true)
+
+  def isDroppingEvents: IO[Boolean] =
+    dropEventsSignal.get
+
+  def whenDroppingEvents: IO[Unit] =
+    dropEventsSignal.discrete.exists(identity).compile.drain
 
   def suppressLogging(suppress: Boolean): Unit =
     journalLogger.suppress(suppress)
@@ -267,10 +282,10 @@ object MemoryJournal:
         semaphore <- OurSemaphore(size)
         queueMutex <- Mutex[IO]
         persistMutex <- Mutex[IO]
-        suppressStoringSignal <- SignallingRef[IO, Boolean](false)
+        dropEventsSignal <- SignallingRef[IO, Boolean](false)
         onPersisted <- AtomicCell[IO].of(Set.empty[OnPersisted[S]])
       yield
         Service.resource:
           new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
-            clock, semaphore, queueMutex, persistMutex, suppressStoringSignal,
+            clock, semaphore, queueMutex, persistMutex, dropEventsSignal,
             onPersisted)

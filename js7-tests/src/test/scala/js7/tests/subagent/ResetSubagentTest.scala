@@ -41,9 +41,9 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
       eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
       // For this test, the terminating Subagent must no emit any event before shutdown
-      subagent.journal.stopEventWatch()
+      subagent.journal.dropEvents.await(99.s)
       subagent.shutdown(
-        SubagentCommand.ShutDown(Some(SIGKILL), dontWaitForDirector = true, restart = true),
+        SubagentCommand.ShutDown(Some(SIGKILL), dropEventsAfter = Some(0.s), restart = true),
         CommandMeta.test
       ).await(99.s)
       assert(subagent.untilTerminated.await(99.s).restart)

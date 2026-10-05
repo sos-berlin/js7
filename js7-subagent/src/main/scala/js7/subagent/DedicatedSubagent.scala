@@ -4,8 +4,8 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO, Ref, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.concurrent.SignallingRef
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, right}
-import js7.base.catsutils.CatsExtensions.{flatMapSome, ifTrue}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, onErrorOrCancel, orThrow, raceMerge, right}
+import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.LogLevel.Warn
@@ -78,9 +78,9 @@ extends Service.StoppableByRequest:
   def isShuttingDown: Boolean =
     _shuttingDown
 
-  def stop(signal: Option[ProcessSignal], dontWaitForDirector: Boolean)
+  def stop(signal: Option[ProcessSignal], dropEventsAfter: Option[FiniteDuration])
   : IO[Unit] =
-    stopParams.set(StopParams(signal, dontWaitForDirector)) *>
+    stopParams.set(StopParams(signal, dropEventsAfter)) *>
       stopService
 
   protected def startService =
@@ -92,37 +92,34 @@ extends Service.StoppableByRequest:
     IO.defer:
       _shuttingDown = true
       stopParams.get.flatMap: stopParams =>
-        IO.whenA(stopParams.dontWaitForDirector):
-          journal.suppressStoring
-      .productR:
+        stopParams.dropEventsAfter.fold(IO.unit):
+          journal.dropEvents.delayBy
+      .background.surround:
         journal.persist:
           SubagentShutdownStarted
         .ignoreProblem(Warn)
-      .productR:
-        stopParams.get.flatMap: stopArgs =>
-          stopAllOrders(stopArgs.signal, stopArgs.dontWaitForDirector)
-      .productR:
-        journal.persist:
-          SubagentShutdown
-        .map(_.orThrow)
-      .void
+        .productR:
+          stopParams.get.flatMap:
+            stopAllOrders
+        .productR:
+          journal.persist:
+            SubagentShutdown
+          .orThrow
+        .void
 
-  private def stopAllOrders(signal: Option[ProcessSignal], dontWaitForDirector: Boolean): IO[Unit] =
+  private def stopAllOrders(stopParams: StopParams): IO[Unit] =
     logWhileStopping:
+      import stopParams.signal
       orderIdToJobDriver.stop.both:
         signal.foldMapM:
           killAndStopAllJobs
       .productR:
         orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem)
       .productR:
-        if dontWaitForDirector then IO:
-          for orderId <- orderToProcessing.unsafeToMap.keys.toVector.sorted do logger.warn:
-            s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
-        else
-          awaitOrderAcknowledgements *>
-            // Await process termination and DetachProcessedOrder commands
-            orderToProcessing.whenStopped
-              .logWhenItTakesLonger("Director-acknowledged Order processes")
+        awaitOrderAcknowledgements *>
+          // Await process termination and DetachProcessedOrder commands
+          orderToProcessing.whenStopped
+            .logWhenItTakesLonger("Director-acknowledged Order processes")
 
   private def logWhileStopping(body: IO[Unit]): IO[Unit] =
     IO.defer:
@@ -221,10 +218,19 @@ extends Service.StoppableByRequest:
             processing.acknowledged.get *>
               IO(logger.log(sym.relievedLogLevel,
                 s"Director has acknowledged processing of $orderId"))
-        .productR:
-          IO(logger.log(sym.relievedLogLevel,
-            s"🟢 Director has acknowledged processing of all orders after ${
-              since.elapsed.pretty}"))
+          .as(true)
+        .raceMerge:
+          journal.whenDroppingEvents.as(false)
+        .flatMap: allAcknowledged =>
+          if allAcknowledged then
+            IO:
+              logger.log(sym.relievedLogLevel,
+                s"🟢 Director has acknowledged processing of all orders after ${
+                  since.elapsed.pretty}")
+          else
+            orderToProcessing.removeAll.map:
+              _.keys.foreach: orderId =>
+                logger.warn(s"Director has not acknowledged processing of $orderId")
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("killAndStopAllJobs", signal):
@@ -274,11 +280,6 @@ extends Service.StoppableByRequest:
 
           case None =>
             startOrderProcess2(order, executeDefaultArguments, timeoutAt)
-              .flatTap: _ =>
-                stopParams.get.map(_.dontWaitForDirector).ifTrue:
-                  logger.warn:
-                    s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost"
-                  orderToProcessing.remove(order.id).void
               .map: fiber =>
                 Right:
                   new Processing(order, fiber)
@@ -517,4 +518,4 @@ private object DedicatedSubagent:
 
   private final case class StopParams(
     signal: Option[ProcessSignal] = Some(SIGKILL),
-    dontWaitForDirector: Boolean = false)
+    dropEventsAfter: Option[FiniteDuration] = None)

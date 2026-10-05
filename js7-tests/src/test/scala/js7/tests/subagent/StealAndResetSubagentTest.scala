@@ -11,9 +11,8 @@ import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.item.ItemOperation.DeleteSimple
-import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.subagent.Problems.{ProcessKilledDueToSubagentShutdownProblem, ProcessLostDueToShutdownProblem}
+import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted, OrderStdoutWritten}
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentReset, SubagentResetStarted}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -53,16 +52,16 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       }"""
 
     runSubagent(bareSubagentItem, config = bareSubagentConfig) { subagent =>
-      eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
+      controller.await[SubagentCoupled](_.key == bareSubagentId)
 
       // Start an Order
       locally:
         controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path)).await(99.s).orThrow
-        val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == aOrderId)
+        val processingStarted = controller.await[OrderProcessingStarted](_.key == aOrderId)
           .head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentId))
-        eventWatch.await[OrderProcessingStarted](_.key == aOrderId)
-        eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
+        controller.await[OrderProcessingStarted](_.key == aOrderId)
+        controller.await[OrderStdoutWritten](_.key == aOrderId)
         // Order waits for semaphore
 
       // THE THIEF COMES
@@ -71,41 +70,42 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
 
       // THIEF STARTS AN ORDER
       controller.api.addOrder(FreshOrder(thiefOrderId, thiefWorkflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderAttached](_.key == thiefOrderId)
+      controller.await[OrderAttached](_.key == thiefOrderId)
 
       // STEAL THE SUBAGENT
       execCmd(ResetSubagent(stolenSubagentItem.id, force = true))
-      eventWatch.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
+      controller.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
 
       // The stolen orders are canceled (and its processes have been killed)
-      val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head.value.event
-      val killed = OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))
-      assert:
-        processed == OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)) ||
-        processed == OrderProcessed(OrderOutcome.processLost(ProcessKilledDueToSubagentShutdownProblem(killed))) ||
-        processed == OrderProcessed(killed)
+      // –– Stolen Subagent long longer emits OrderProcessed due to dropEventsAfter = Some(0.s) ––
+      //val processed = controller.await[OrderProcessed](_.key == aOrderId).head.value.event
+      //val killed = OrderOutcome.killedInternal
+      //assert:
+      //  processed == OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)) ||
+      //  processed == OrderProcessed(OrderOutcome.processLost(ProcessKilledDueToSubagentShutdownProblem(killed))) ||
+      //  processed == OrderProcessed(killed)
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted
-        eventWatch.await[OrderProcessingStarted](_.key == thiefOrderId, timeout = 1.s)
+        controller.await[OrderProcessingStarted](_.key == thiefOrderId, timeout = 1.s)
 
-      eventWatch.await[SubagentReset](_.key == stolenSubagentItem.id)
+      controller.await[SubagentReset](_.key == stolenSubagentItem.id)
       subagent.untilTerminated.await(99.s)
     }
 
     // Reset and delete bareSubagentId to give the thief a change to dedicate the Subagent
     execCmd(ResetSubagent(bareSubagentId, force = true))
-    eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
+    controller.await[SubagentResetStarted](_.key == bareSubagentId)
     controller.api.updateItems(Stream(DeleteSimple(bareSubagentId))).await(99.s).orThrow
-    eventWatch.await[ItemDeleted](_.event.key == bareSubagentId)
+    controller.await[ItemDeleted](_.event.key == bareSubagentId)
 
     // START SUBAGENT AGAIN AND THIEF WILL TAKE IT OVER
-    val eventId = eventWatch.lastAddedEventId
+    val eventId = controller.lastAddedEventId
     runSubagent(stolenSubagentItem, config = bareSubagentConfig) { _ =>
       TestSemaphoreJob.continue(2)
-      //eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-      eventWatch.await[OrderProcessingStarted](_.key == thiefOrderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == thiefOrderId, after = eventId)
+      //controller.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+      controller.await[OrderProcessingStarted](_.key == thiefOrderId, after = eventId)
+      controller.await[OrderFinished](_.key == thiefOrderId, after = eventId)
     }
 
 
