@@ -19,6 +19,7 @@ services:
     command:
       - "js7-controller"
       - "--arg0=js7-controller"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=4/20"
     #networks:
@@ -49,6 +50,7 @@ services:
     command:
       - "js7-controller"
       - "--arg0=js7-backup-controller"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=4/20"
     #networks:
@@ -74,6 +76,7 @@ services:
     command:
       - "js7-subagent"
       - "--arg0=js7-subagent-1a"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=20/20"
     working_dir: /home/js7
@@ -96,6 +99,7 @@ services:
     command:
       - "js7-subagent"
       - "--arg0=js7-subagent-1b"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=4/20"
     working_dir: /home/js7
@@ -118,6 +122,7 @@ services:
     command:
       - "js7-subagent"
       - "--arg0=js7-subagent-1c"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=4/20"
     working_dir: /home/js7
@@ -131,6 +136,9 @@ services:
       - ./volumes/subagent-1c/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 15s
     restart: unless-stopped
+    depends_on:
+      - subagent-1a # if this is the active Director
+      - subagent-1b # if this is the active Director
 
   subagent-2a:
     image: js7
@@ -140,6 +148,7 @@ services:
     command:
       - "js7-subagent"
       - "--arg0=js7-subagent-2a"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=2/20"
     working_dir: /home/js7
@@ -216,6 +225,7 @@ services:
     command:
       - "js7-provider"
       - "--arg0=js7-provider"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=1"
       - "--controller-uri=https://js7-controller:4443"
@@ -237,6 +247,7 @@ services:
     command:
       - "js7-proxy"
       - "--arg0=js7-proxy"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=1"
       - "--cluster-watch-id=PROXY-A"
@@ -261,6 +272,7 @@ services:
     command:
       - "js7-proxy"
       - "--arg0=js7-proxy-b"
+      - "-J-Xms100m"
       - "-J-Xmx1g"
      #- "--processor-limit=1"
       - "--cluster-watch-id=PROXY-B"
