@@ -163,14 +163,18 @@ extends
             queue = q
 
   private def log(
-    eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]], since: Deadline)
+    eventNumber: Long,
+    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+    since: Deadline,
+    dropped: Boolean = false)
   : Unit =
     journalLogger.logCommitted(
       //CorrelId.current,
       stampedEvents,
       eventNumber = eventNumber,
       since,
-      clusterState = ClusterState.Empty.getClass.simpleScalaName)
+      clusterState = ClusterState.Empty.getClass.simpleScalaName,
+      dropped = dropped)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueMutex.lock.surround:

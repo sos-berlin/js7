@@ -34,6 +34,7 @@ private[journal] final class JournalLogger(
     eventNumber: Long,
     since: Deadline,
     clusterState: String,
+    dropped: Boolean = false,
     isTransaction: Boolean = false,
     isAcknowledged: Boolean = false)
   : Unit =
@@ -43,6 +44,7 @@ private[journal] final class JournalLogger(
           stampedSeq,
           eventNumber = eventNumber,
           since,
+          dropped = dropped,
           isTransaction = isTransaction,
           clusterState = clusterState)
         persist.isAcknowledged = isAcknowledged
@@ -101,7 +103,9 @@ private[journal] final class JournalLogger(
     import frame.*
     sb.clear()
     sb.append:
-      if isTest && stamped.value.event.isInstanceOf[EventsObservedEvent] then
+      if frame.persist.dropped then
+        '❌'
+      else if isTest && stamped.value.event.isInstanceOf[EventsObservedEvent] then
         '.'
       else
         ':'  // Allow simple filtering of log file: grep " - :" x.log
@@ -223,6 +227,7 @@ object JournalLogger:
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
     def since: Deadline
+    def dropped: Boolean
     def clusterState: String
 
     private[JournalLogger] final var persistIndex = 0
@@ -240,6 +245,7 @@ object JournalLogger:
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     val eventNumber: Long,
     val since: Deadline,
+    val dropped: Boolean,
     val isTransaction: Boolean,
     val clusterState: String)
   extends LoggablePersist:

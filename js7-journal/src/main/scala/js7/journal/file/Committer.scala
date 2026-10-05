@@ -630,6 +630,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def stampedSeq = stampedKeyedEvents
     def nonEmpty = eventCount > 0
     def clusterState: String = aggregate.clusterState.getClass.simpleScalaName
+    def dropped = false
 
   private object Written:
     def fromApplied(
