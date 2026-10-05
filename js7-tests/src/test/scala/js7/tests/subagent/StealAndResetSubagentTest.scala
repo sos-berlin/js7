@@ -26,30 +26,30 @@ import scala.concurrent.TimeoutException
 final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
 
   override protected def agentConfig = config"""
-    js7.auth.subagents.STOLEN-SUBAGENT = "THIEVE-AGENT-PASSWORD"
+    js7.auth.subagents.STOLEN-SUBAGENT = "THIEF-AGENT-PASSWORD"
     """.withFallback(super.agentConfig)
 
-  protected val agentPaths = Seq(agentPath, thieveAgentPath)
-  protected lazy val items = Seq(aWorkflow, thieveWorkflow, bareSubagentItem)
+  protected val agentPaths = Seq(agentPath, thiefAgentPath)
+  protected lazy val items = Seq(aWorkflow, thiefWorkflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
   "ResetSubagent(force) steals a dedicated alien Subagent" in:
     // Both SubagentItems denote the same Subagent (same URI)
     val stolenSubagentItem = bareSubagentItem.copy(
       id = SubagentId("STOLEN-SUBAGENT"),
-      agentPath = thieveAgentPath)
+      agentPath = thiefAgentPath)
 
     val aOrderId = OrderId("A-ORDER")
-    val thieveOrderId = OrderId("THIEVE-ORDER")
+    val thiefOrderId = OrderId("THIEF-ORDER")
 
     val bareSubagentConfig = config"""
       js7.auth.users.${toLocalSubagentId(agentPath)} {
         permissions: [ AgentDirector ]
         password: "plain:${toLocalSubagentId(agentPath)}'s PASSWORD"
       }
-      js7.auth.users.${toLocalSubagentId(thieveAgentPath)} {
+      js7.auth.users.${toLocalSubagentId(thiefAgentPath)} {
         permissions: [ AgentDirector ]
-        password: "plain:THIEVE-AGENT-PASSWORD"  # Subagent must allow to be stolen!?
+        password: "plain:THIEF-AGENT-PASSWORD"  # Subagent must allow to be stolen!?
       }"""
 
     runSubagent(bareSubagentItem, config = bareSubagentConfig) { subagent =>
@@ -65,13 +65,13 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
         eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
         // Order waits for semaphore
 
-      // THE THIEVE COMES
+      // THE THIEF COMES
       controller.api.updateItems(Stream(ItemOperation.AddOrChangeSimple(stolenSubagentItem)))
         .await(99.s).orThrow
 
-      // THIEVE STARTS AN ORDER
-      controller.api.addOrder(FreshOrder(thieveOrderId, thieveWorkflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderAttached](_.key == thieveOrderId)
+      // THIEF STARTS AN ORDER
+      controller.api.addOrder(FreshOrder(thiefOrderId, thiefWorkflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderAttached](_.key == thiefOrderId)
 
       // STEAL THE SUBAGENT
       execCmd(ResetSubagent(stolenSubagentItem.id, force = true))
@@ -79,48 +79,48 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
 
       // The stolen orders are canceled (and its processes have been killed)
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head.value.event
+      val killed = OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))
       assert:
-        val killed = OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))
         processed == OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)) ||
         processed == OrderProcessed(OrderOutcome.processLost(ProcessKilledDueToSubagentShutdownProblem(killed))) ||
         processed == OrderProcessed(killed)
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted
-        eventWatch.await[OrderProcessingStarted](_.key == thieveOrderId, timeout = 1.s)
+        eventWatch.await[OrderProcessingStarted](_.key == thiefOrderId, timeout = 1.s)
 
       eventWatch.await[SubagentReset](_.key == stolenSubagentItem.id)
       subagent.untilTerminated.await(99.s)
     }
 
-    // Reset and delete bareSubagentId to give the thieve a change to dedicate the Subagent
+    // Reset and delete bareSubagentId to give the thief a change to dedicate the Subagent
     execCmd(ResetSubagent(bareSubagentId, force = true))
     eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
     controller.api.updateItems(Stream(DeleteSimple(bareSubagentId))).await(99.s).orThrow
     eventWatch.await[ItemDeleted](_.event.key == bareSubagentId)
 
-    // START SUBAGENT AGAIN AND THIEVE WILL TAKE IT OVER
+    // START SUBAGENT AGAIN AND THIEF WILL TAKE IT OVER
     val eventId = eventWatch.lastAddedEventId
     runSubagent(stolenSubagentItem, config = bareSubagentConfig) { _ =>
       TestSemaphoreJob.continue(2)
       //eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-      eventWatch.await[OrderProcessingStarted](_.key == thieveOrderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == thieveOrderId, after = eventId)
+      eventWatch.await[OrderProcessingStarted](_.key == thiefOrderId, after = eventId)
+      eventWatch.await[OrderFinished](_.key == thiefOrderId, after = eventId)
     }
 
 
 object StealAndResetSubagentTest:
-  private val thieveAgentPath = AgentPath("THIEVE-AGENT")
+  private val thiefAgentPath = AgentPath("THIEF-AGENT")
 
   private val aWorkflow = Workflow(
     WorkflowPath("A-WORKFLOW") ~ "INITIAL",
     Seq(
       TestSemaphoreJob.execute(agentPath)))
 
-  private val thieveWorkflow = Workflow(
-    WorkflowPath("THIEVE-WORKFLOW") ~ "INITIAL",
+  private val thiefWorkflow = Workflow(
+    WorkflowPath("THIEF-WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(thieveAgentPath)))
+      TestSemaphoreJob.execute(thiefAgentPath)))
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
