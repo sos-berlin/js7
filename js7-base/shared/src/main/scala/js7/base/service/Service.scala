@@ -85,6 +85,15 @@ trait Service:
                 IO.pure(Failure(Problem.pure(s"$service canceled").throwable))
 
             case Outcome.Succeeded(_) =>
+              if this match
+                case o: js7.base.service.StoppableByRequest if o.isServiceStopping => false
+                case _ => true
+              then
+                // Service may have terminated itself due to some shutdown command.
+                // Caller should release the whole Service resource now, to release the dependent
+                // services too (as, for example, a web server).
+                // "stopped" instead of "terminated" because dependent services are still running.
+                logger.info(s"$service stopped")
               IO.pure(Success(()))
           .flatMap:
             stopped.complete
