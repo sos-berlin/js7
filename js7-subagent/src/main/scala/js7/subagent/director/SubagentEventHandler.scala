@@ -42,10 +42,11 @@ private final class SubagentEventHandler(
       else
         stream.groupWithin(bufferSize, eventDelay)
     .evalMap: chunk =>
-      val stampedEvents = chunk.toVector
-      val lastEventId = stampedEvents.reverseIterator.map(_.eventId).find(_ != EventId.Missing)
-      stampedEvents.traverse(handleEvent).flatMap: handledChunk =>
-        IO.defer:
+      IO.uncancelable: _ =>
+        // Uncancelable, because handleEvent and the returned followUps must be executed atomically
+        val stampedEvents = chunk.toVector
+        val lastEventId = stampedEvents.reverseIterator.map(_.eventId).find(_ != EventId.Missing)
+        stampedEvents.traverse(handleEvent).flatMap: handledChunk =>
           val (updatedStampedMaybes, followUps) = handledChunk.unzip
           lastEventId.foldMap: lastEventId =>
             journal.persistKeyedEvents(commitOptions):
