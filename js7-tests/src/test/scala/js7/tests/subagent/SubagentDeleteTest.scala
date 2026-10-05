@@ -42,19 +42,19 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
 
   "Delete bare Subagent" in:
     runSubagent(bareSubagentItem) { _ =>
-      val eventId = eventWatch.lastAddedEventId
+      val eventId = controller.resetLastWatchedEventId()
       controller.api
         .updateItems(Stream(DeleteSimple(bareSubagentItem.id)))
         .await(99.s)
         .orThrow
-      eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
-      eventWatch.await[ItemDeleted](_.event.key == bareSubagentItem.id, after = eventId)
+      controller.awaitNext[ItemDetachable](_.event.key == bareSubagentItem.id)
+      controller.awaitNext[ItemDeleted](_.event.key == bareSubagentItem.id)
     }
 
   "Delete Subagent while an Order is processed; Deletion does not allow more starts" in:
     val aOrderId = OrderId("REMOVE-SUBAGENT-A")
     val bOrderId = OrderId("REMOVE-SUBAGENT-B")
-    var eventId = eventWatch.lastAddedEventId
+    var detachableEventId = controller.resetLastWatchedEventId()
 
     controller.api
       .updateItems(Stream(AddOrChangeSimple(bareSubagentItem)))
@@ -62,37 +62,38 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     runSubagent(bareSubagentItem) { _ =>
       locally:
         controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
-        val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-          .head.value.event
+        val started = controller.awaitNextKey[OrderProcessingStarted](aOrderId)
+          .head.value
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
-        eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+        controller.awaitNextKey[OrderStdoutWritten](aOrderId)
         // aOrderId waits for semaphore
 
+      detachableEventId = controller.lastAddedEventId
       controller.api
         .updateItems(Stream(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
-      eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
+      detachableEventId =
+        controller.awaitNext[ItemDetachable](_.event.key == bareSubagentItem.id).head.eventId
 
       // ItemDetached is delayed until no Order is being processed
       intercept[TimeoutException]:
-        eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId,
-          timeout = 1.s)
+        controller.awaitNext[ItemDetached](_.event.key == bareSubagentItem.id, timeout = 1.s)
 
       // Don't allow orders to start while SubagentItem is deleted
-      eventId = eventWatch.lastAddedEventId
+      val eventId = controller.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
       intercept[TimeoutException]:
-        eventWatch.await[OrderProcessingStarted](_.key == bOrderId, timeout = 1.s)
+        controller.awaitKey[OrderProcessingStarted](bOrderId, timeout = 1.s)
 
       // Continue aOrderId
-      TestSemaphoreJob.continue(1)
-      eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
+      TestSemaphoreJob.continue()
+      controller.awaitNextKey[OrderProcessed](aOrderId, after = eventId)
+      controller.awaitNextKey[OrderFinished](aOrderId)
     }
 
     // Subagent is being removed
-    eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId)
-    eventWatch.await[ItemDeleted](_.event.key == bareSubagentItem.id, after = eventId)
+    controller.awaitNext[ItemDetached](_.event.key == bareSubagentItem.id, after = detachableEventId)
+    controller.awaitNext[ItemDeleted](_.event.key == bareSubagentItem.id)
 
     // START SUBAGENT AGAIN
 
@@ -102,35 +103,34 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
 
     runSubagent(bareSubagentItem) { _ =>
       // Continue bOrderId
-      TestSemaphoreJob.continue(1)
-      val started = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
-        .head.value.event
+      TestSemaphoreJob.continue()
+      val started = controller.awaitNextKey[OrderProcessingStarted](bOrderId)
+        .head.value
       assert(started == OrderProcessingStarted(bareSubagentItem.path))
 
-      eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
+      controller.awaitNextKey[OrderProcessed](bOrderId)
+      controller.awaitNextKey[OrderFinished](bOrderId)
     }
 
   "Delete Subagent and continue deletion after Director's restart" in:
     runSubagent(bareSubagentItem) { _ =>
       val orderId = OrderId("REMOVE-SUBAGENT-WHILE-RESTARTING-DIRECTOR")
-      var eventId = eventWatch.resetLastWatchedEventId()
 
       locally:
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
-        val started = eventWatch.awaitNextKey[OrderProcessingStarted](orderId).head.value
+        val started = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
-        eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+        controller.awaitNextKey[OrderStdoutWritten](orderId)
         // orderId waits for semaphore //
 
       controller.api
         .updateItems(Stream(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
-      eventWatch.awaitNext[ItemDetachable](_.event.key == bareSubagentItem.id)
+      controller.awaitNext[ItemDetachable](_.event.key == bareSubagentItem.id)
 
       // ItemDetached is delayed until no Order is being processed //
       intercept[TimeoutException]:
-        eventWatch.awaitNext[ItemDetached](_.event.key == bareSubagentItem.id, timeout = 1.s)
+        controller.awaitNext[ItemDetached](_.event.key == bareSubagentItem.id, timeout = 1.s)
 
       // Changing a Subagent is rejected while it is being deleted //
       locally:
@@ -149,25 +149,25 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
       // RESTART DIRECTOR //
       myAgent.terminate().await(99.s)
 
-      eventId = eventWatch.lastAddedEventId
+      val eventId = controller.lastAddedEventId
       myAgent = directoryProvider.startAgent(agentPath).await(99.s)
-      eventWatch.awaitNext[AgentReady](after = eventId)
+      controller.awaitNext[AgentReady](after = eventId)
 
       // Continue orderId //
-      TestSemaphoreJob.continue(1)
+      TestSemaphoreJob.continue()
       // FIXME OrderProcessed may not occur when recovering Agent stops SubagentDriver
       //  due to deletion while still recovering processing Orders.
       //  See fixme in SubagentKeeper
-      eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
-      eventWatch.awaitNextKey[OrderTerminated](orderId)
+      controller.awaitNextKey[OrderProcessed](orderId, after = eventId)
+      controller.awaitNextKey[OrderTerminated](orderId)
       assert(controllerState.idToOrder(orderId).lastOutcome ==
         OrderOutcome.Disrupted(ProcessLostDueSubagentDeletedProblem(bareSubagentId)))
       execCmd:
         DeleteOrdersWhenTerminated(orderId :: Nil)
 
       // Subagent is being removed
-      eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId)
-      eventWatch.await[ItemDeleted](_.event.key == bareSubagentItem.id, after = eventId)
+      controller.await[ItemDetached](_.event.key == bareSubagentItem.id)
+      controller.await[ItemDeleted](_.event.key == bareSubagentItem.id)
     }
 
   "The Director Subagent cannot be deleted" in:
