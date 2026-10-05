@@ -1,7 +1,6 @@
 package js7.base.scalasource
 
 import js7.base.utils.ScalaUtils.syntax.RichString
-import js7.base.utils.Tests.isIntelliJIdea
 import scala.quoted.{Expr, Quotes, quotes}
 import sourcecode.{SourceCompanion, SourceValue}
 
@@ -14,12 +13,12 @@ final class ScalaSourceLocation private(val filename: String, val line: Int)
     s"$filename:$line"
 
   override def toString =
-    if isIntelliJIdea then
+    //if isIntelliJIdea then
       // IntelliJ Idea highlights this as a clickable source code reference
       // https://stackoverflow.com/a/14913309
       s".($asString)"
-    else
-      asString
+    //else
+    //  asString
 
 
 object ScalaSourceLocation

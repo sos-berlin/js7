@@ -585,12 +585,12 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     "checked for LazyList (unknown size, maybe infinite)" in:
       val seq = LazyList(1, 2, 3)
       given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
-      if isIntelliJIdea then
+      //if isIntelliJIdea then
         assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in .(TEST.scala:999)")))
         assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in .(TEST.scala:999)")))
-      else
-        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in TEST.scala:999")))
-        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in TEST.scala:999")))
+      //else
+      //  assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in TEST.scala:999")))
+      //  assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
@@ -598,12 +598,12 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
     "checked for Vector (known size)" in:
       val seq = Vector(1, 2, 3)
       given ScalaSourceLocation = ScalaSourceLocation("TEST.scala", 999)
-      if isIntelliJIdea then
+      //if isIntelliJIdea then
         assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in .(TEST.scala:999)")))
         assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in .(TEST.scala:999)")))
-      else
-        assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in TEST.scala:999")))
-        assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in TEST.scala:999")))
+      //else
+      //  assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in TEST.scala:999")))
+      //  assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in TEST.scala:999")))
       assert(seq.checked(0) == Right(1))
       assert(seq.checked(1) == Right(2))
       assert(seq.checked(2) == Right(3))
