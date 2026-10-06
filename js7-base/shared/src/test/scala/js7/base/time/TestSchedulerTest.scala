@@ -67,3 +67,20 @@ final class TestSchedulerTest extends OurAsyncTestSuite:
     intercept[IllegalArgumentException]:
       scheduler.tick((-1).s)
     assert(scheduler.now() == start)
+
+  "sleepUntil is relative to the wall clock" in:
+    val scheduler = TestScheduler(start, ioRuntime)
+    scheduler.resetNow(start + 1.h)
+    val x = Atomic(0)
+    scheduler.sleepUntil(start + 1.h + 3.s, () => x += 1)
+    scheduler.tick(2.s)
+    assert(x.get() == 0)
+    scheduler.tick(1.s)
+    assert(x.get() == 1)
+
+  "sleepUntil runs an overdue task immediately" in:
+    val scheduler = TestScheduler(start, ioRuntime)
+    val x = Atomic(0)
+    scheduler.tick(5.s)
+    scheduler.sleepUntil(start + 3.s, () => x += 1)
+    awaitAndAssert(x.get() == 1)

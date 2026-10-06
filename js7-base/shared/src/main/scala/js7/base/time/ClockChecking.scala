@@ -81,9 +81,16 @@ private[time] trait ClockChecking extends Runnable:
                 alarms.mkString(", ")}")
               emptyRunnable
             case Success(delay) =>
-              scheduler.sleep(delay, clockChecking /*=self.run()*/)
+              sleepUntil(firstMilli, delay, clockChecking /*=self.run()*/)
 
         nextMilli = firstMilli
+
+  /** Sleep until `epochMilli`, which is `delay` from now.
+   * <p>
+   * TestAlarmClock overrides this to be atomic with respect to its `tick`. */
+  protected def sleepUntil(epochMilli: Long, delay: FiniteDuration, runnable: Runnable)
+  : Runnable =
+    scheduler.sleep(delay, runnable)
 
   private def toMs(millis: Long): Try[FiniteDuration] =
     Try((millis max 0).ms)

@@ -2,7 +2,9 @@ package js7.base.time
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import js7.base.monixlike.SyncCancelable
 import js7.base.time.ScalaTime.*
+import js7.base.utils.LabeledRunnable
 import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 import scala.util.NotGiven
@@ -73,6 +75,12 @@ object TestAlarmClock:
 
   private final class SimpleTestAlarmClock(start: Timestamp)(using IORuntime)
   extends TestAlarmClock(start), AlarmClock.Standard:
+    /** Atomic with respect to `tick`, unlike `scheduleOnce(timestamp - now())`.
+     * Otherwise, a concurrent `tick` could shift the schedule into the future. */
+    override def scheduleAt(timestamp: Timestamp, label: => String)(callback: => Unit) =
+      SyncCancelable:
+        scheduler.sleepUntil(timestamp, LabeledRunnable(label)(callback))
+
     override def productPrefix = "TestAlarmClock"
 
 
@@ -87,4 +95,9 @@ object TestAlarmClock:
     start: Timestamp,
     protected val clockCheckInterval: FiniteDuration)
     (using IORuntime)
-  extends TestAlarmClock(start), ClockChecking
+  extends TestAlarmClock(start), ClockChecking:
+    /** Atomic with respect to `tick`, unlike `sleep(delay)` with a precomputed `delay`.
+     * Otherwise, a concurrent `tick` could shift the schedule into the future. */
+    override protected def sleepUntil(epochMilli: Long, delay: FiniteDuration, runnable: Runnable)
+    : Runnable =
+      scheduler.sleepUntil(Timestamp.ofEpochMilli(epochMilli), runnable)

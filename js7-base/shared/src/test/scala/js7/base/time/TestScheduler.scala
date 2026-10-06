@@ -29,10 +29,22 @@ private final class TestScheduler(start: Timestamp, ioRuntime: IORuntime)
   logger.info(s"new ⏰ ${now()} _monotonicNanos=${_state.monotonicNanos}")
 
   def sleep(delay: FiniteDuration, runnable: Runnable): Runnable =
+    sleep2(runnable): state =>
+      state.monotonicNanos + delay.toNanos
+
+  /** Like `sleep`, but until the wall clock shows `timestamp`.
+   * <p>
+   * Unlike `sleep(timestamp - now(), ...)`, this is atomic with respect to `tick`:
+   * a concurrent `tick` cannot shift the schedule into the future. */
+  def sleepUntil(timestamp: Timestamp, runnable: Runnable): Runnable =
+    sleep2(runnable): state =>
+      (timestamp.toEpochMilli - state.wallTimeShift) * 1_000_000
+
+  private def sleep2(runnable: Runnable)(toMonotonicNanos: State => Long): Runnable =
     val id = nextId.getAndIncrement()
     val (task, runNow) =
       synchronized:
-        val task = Task(_state.monotonicNanos + delay.toNanos, id, runnable)
+        val task = Task(toMonotonicNanos(_state), id, runnable)
         // While ticking, tick runs due tasks itself
         val runNow = !ticking && task.at <= _state.monotonicNanos
         if !runNow then queue += task
