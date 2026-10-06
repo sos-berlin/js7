@@ -174,7 +174,6 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
-
   "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId
 

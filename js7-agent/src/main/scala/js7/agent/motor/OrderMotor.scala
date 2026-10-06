@@ -213,51 +213,54 @@ extends Service.StoppableByRequest:
   private def continueOrders(orderIds: Seq[OrderId]): IO[Unit] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### continueOrders $br$orderId"))
     persistNextEvents(orderIds).orThrow
-      .flatMap: persisted =>
+      .flatMap: (now, persisted) =>
         // Consider only orders which onPersisted hasn't re-enqueued into the pipeline
-        val set = persisted.keySet[OrderId]
-        val otherOrderIds = orderIds.filterNot(set)
-        scheduleDelayedOrders(otherOrderIds, persisted.aggregate)
-          .as(persisted -> otherOrderIds)
-      .flatMap: (persisted, otherOrderIds) =>
-        tryStartJobs(otherOrderIds, persisted.aggregate)
+        val isPersisted = persisted.keySet[OrderId]
+        // Decide delayedness only once, with the `now` taken before OrderEventSource.
+        // Otherwise, an Order could become non-delayed after OrderEventSource has seen it delayed
+        // and start a job, skipping OrderEventSource (for example, ignoring WorkflowPathControl
+        // skip, JS-2134).
+        val orders = orderIds.filterNot(isPersisted).flatMap(persisted.aggregate.idToOrder.get)
+        val (delayedOrders, nonDelayedOrders) = orders.partition(_.isDelayed(now))
+        scheduleDelayedOrders(delayedOrders, now) *>
+          tryStartJobs(nonDelayedOrders, persisted.aggregate)
 
-  private def persistNextEvents(orderIds: Seq[OrderId]): IO[Checked[Persisted[AgentState, Event]]] =
+  /** @return the `now` taken before OrderEventSource, which may be a little earlier than
+   *         the time OrderEventSource uses. */
+  private def persistNextEvents(orderIds: Seq[OrderId])
+  : IO[Checked[(Timestamp, Persisted[AgentState, Event])]] =
     //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### persistNextEvents $br$orderId"))
     clock.lockIO: now =>
-      // persist may be delayed a little by the journal, so `now` may be in the past.
-      // Any we call isDelayed/ifDelayed three times.
-      // But this way, we are sure to use the proper current AgentState.
-      // FIRST, persist non-delayed Orders //
+      // persist may be delayed a little by the journal, so `now` may be a little earlier than
+      // the timestamp OrderEventSource uses. So an Order delayed at `now` may be not delayed in
+      // OrderEventSource, but not vice versa. If such an Order has got no event, it is
+      // scheduled, and continued when the (already due) schedule fires.
       journal.persist:
         // TODO Try to include SubagentKeeper OrderProcessingStarted here to avoid a race!
         EventCalc[AgentState, Event]: coll =>
-          val idToOrder = coll.aggregate.idToOrder
           coll:
             OrderEventSource.nextEvents(orderIds)
-    .ifPersisted: persisted =>
-      onPersisted(persisted)
+      .map(_.map(now -> _))
+    .flatTapT: (_, persisted) =>
+      persisted.ifNonEmpty:
+        onPersisted(persisted)
 
-  private def scheduleDelayedOrders(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
-    IO.defer:
-      val now = clock.now()
-      val orderIdToDelayUntil: Seq[(OrderId, Timestamp)] =
-        orderIds.flatMap(agentState.idToOrder.get).flatMap: order =>
-          order.ifDelayed(now).map(order.id -> _)
-      fs2.Stream.iterable(orderIdToDelayUntil).zipWithBracket().evalMap:
-        case ((orderId, delayUntil), br) =>
-          orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
-            logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
-            entry.schedule(delayUntil):
-              enqueue(orderId)
-      .compile.drain
+  private def scheduleDelayedOrders(orders: Seq[Order[Order.State]], now: Timestamp): IO[Unit] =
+    val orderIdToDelayUntil: Seq[(OrderId, Timestamp)] =
+      orders.flatMap: order =>
+        order.ifDelayed(now).map(order.id -> _)
+    fs2.Stream.iterable(orderIdToDelayUntil).zipWithBracket().evalMap:
+      case ((orderId, delayUntil), br) =>
+        orderToEntry.getOrElseUpdate(orderId, IO.pure(OrderEntry(orderId))).flatMap: entry =>
+          logger.debug(s"scheduleDelayedOrders $br$delayUntil $orderId")
+          entry.schedule(delayUntil):
+            enqueue(orderId)
+    .compile.drain
 
-  private def tryStartJobs(orderIds: Seq[OrderId], agentState: AgentState): IO[Unit] =
-    clock.lockIO: now =>
-      val orders = orderIds.flatMap(agentState.idToOrder.get)
-      val nonDelayedOrders = orders.view.filterNot(_.isDelayed(now))
-      //orderIds.foreachWithBracket()((orderId, br) => Logger.trace(s"### tryStartJobs $br$orderId"))
-      jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders, agentState)
+  private def tryStartJobs(nonDelayedOrders: Seq[Order[Order.State]], agentState: AgentState)
+  : IO[Unit] =
+    //nonDelayedOrders.foreachWithBracket()((order, br) => Logger.trace(s"### tryStartJobs $br${order.id}"))
+    jobMotorKeeper.onOrdersMayBeProcessable(nonDelayedOrders.view, agentState)
 
   private def onPersisted(persisted: Persisted[AgentState, Event])
   : IO[Unit] =
