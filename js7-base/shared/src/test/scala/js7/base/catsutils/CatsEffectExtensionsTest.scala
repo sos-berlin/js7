@@ -236,7 +236,7 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
       yield
         joined match
           case Left(t: FiberCanceledException) => assert(t.toString ==
-            "js7.base.catsutils.CatsEffectUtils$FiberCanceledException: Fiber has been canceled")
+            "FiberCanceledException: Fiber has been canceled")
           case _ => fail("Unexpected result vom .joinStd")
 
     "joinMaybeCancelled" in:

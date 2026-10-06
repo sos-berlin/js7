@@ -47,4 +47,6 @@ object CatsEffectUtils:
       IO.fromFuture(IO.pure(promise.future))
 
 
-  final class FiberCanceledException extends CancellationException("Fiber has been canceled")
+  final class FiberCanceledException(message: String = "Fiber has been canceled")
+  extends CancellationException(message):
+    override def toString: String = s"FiberCanceledException: $message"

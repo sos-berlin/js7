@@ -3,6 +3,7 @@ package js7.base.service
 import cats.effect.{Deferred, ExitCode, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectUtils.FiberCanceledException
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
@@ -11,6 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, DelayConf, ProgramTermination}
+import org.jetbrains.annotations.TestOnly
 import scala.util.{Failure, Success, Try}
 
 trait Service:
@@ -32,20 +34,31 @@ trait Service:
         stopped.get.flatMap(_
           .fold(IO.raiseError, IO(_)))
 
-  /** When this Service stopps, cancel the body and fail. */
+  /** When this Service stops, cancel the body and fail. */
+  @TestOnly
   final def failWhenServiceStopped[R](body: IO[R]): IO[R] =
-    body.start.flatMap: fiber =>
-      IO
-        .race(
-          service.untilServiceStopped.attempt.flatMap: attempted =>
+    IO.uncancelable: poll =>
+      body.start.flatMap: fiber =>
+        poll:
+          // Don't cancel the body inside the race, otherwise fiber.join could win with Canceled
+          service.untilServiceStopped.attempt
+          .race:
+            fiber.join
+        .onCancel:
+          // Cancelling the race cancels only fiber.join, so cancel the body, too
+          fiber.cancel
+        .flatMap:
+          case Left(attempted) =>
             fiber.cancel *>
               attempted.match
                 case Left(throwable) => IO.raiseError(throwable)
-                case Right(()) => IO.unit,
-          fiber.joinWithNever)
-        .flatMap:
-          case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
-          case Right(r) => IO.pure(r)
+                case Right(()) =>
+                  IO.raiseError(FiberCanceledException(s"$service terminated unexpectedly"))
+          case Right(Outcome.Succeeded(r)) => r
+          case Right(Outcome.Errored(t)) => IO.raiseError(t)
+          case Right(Outcome.Canceled()) =>
+            // The body has canceled itself, so cancel the caller, too
+            poll(IO.canceled *> IO.never)
 
   /** Like `runService`, and logs start and stop at info level. */
   protected final def startServiceAndLog(logger: Logger, args: String = "")(run: IO[Unit])

@@ -110,7 +110,8 @@ final class ServiceTest extends OurAsyncTestSuite:
             service.stop *> IO.never
         .attempt.map:
           case Left(exception)
-            if exception.toStringWithCauses == "MyService terminated unexpectedly" => succeed
+            if exception.toStringWithCauses ==
+              "FiberCanceledException: MyService terminated unexpectedly" => succeed
           case x => fail(x.toString)
 
     "failing Service cancels the nested body" in repeatTest(iterations): _ =>
@@ -122,6 +123,26 @@ final class ServiceTest extends OurAsyncTestSuite:
         .attempt.map:
           case Left(FailingService.exception) => succeed
           case x => fail(x.toString)
+
+    "canceling failWhenServiceStopped cancels the nested body" in repeatTest(iterations): _ =>
+      val bodyStarted = Deferred.unsafe[IO, Unit]
+      val bodyCanceled = Deferred.unsafe[IO, Unit]
+      MyService.resource(_ => ())
+        .use: service =>
+          service.failWhenServiceStopped:
+            (bodyStarted.complete(()) *> IO.never).onCancel:
+              bodyCanceled.complete(()).void
+          .start.flatMap: fiber =>
+            bodyStarted.get *> fiber.cancel *> bodyCanceled.get.timeout(9.s)
+        .as(succeed)
+
+    "self-canceling body cancels failWhenServiceStopped" in repeatTest(iterations): _ =>
+      MyService.resource(_ => ())
+        .use: service =>
+          service.failWhenServiceStopped(IO.canceled *> IO.never[Unit])
+            .start.flatMap(_.join).timeout(9.s)
+        .map: outcome =>
+          assert(outcome.isCanceled)
   }
 
   "Service.Trivial" in:
