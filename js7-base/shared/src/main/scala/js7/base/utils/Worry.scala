@@ -7,7 +7,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isStrict
 import js7.base.utils.Worry.*
 import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordering.Implicits.infixOrderingOps
@@ -67,12 +68,19 @@ final case class Worry(
     (onDelayedOrCompleted: (Option[OutcomeIO[A]], FiniteDuration, LogLevel, String) => IO[String])
   : IO[A] =
     CatsDeadline.now.flatMap: since =>
+      var stackDumped = !isStrict
       var level: LogLevel = LogLevel.None
       io.whenItTakesLonger(myDurations): duration =>
         level = logLevel(duration) min maxLogLevel
         onDelayedOrCompleted(None, duration, level, symbol(duration))
           .flatMap: line =>
-            IO(logger.log(level, line))
+            IO:
+              logger.log(level, line)
+              logger.whenTraceEnabled: // Allows dynamic switching to trace in log4j2.xml
+                // Shorter than 99.s usually used in tests
+                if !stackDumped && duration >= 99.s - 9.s then
+                  stackDumped = true
+                  dumpStacks(line)
       .guaranteeCaseLazy: outcome =>
         IO.whenA(level != LogLevel.None):
           since.elapsed.flatMap: elapsed =>
@@ -83,6 +91,22 @@ final case class Worry(
             onDelayedOrCompleted(Some(outcome), elapsed, level, sym)
               .flatMap: line =>
                 IO(logger.log(level, line))
+
+  private def dumpStacks(line: String): Unit =
+    // Maybe a worker thread blocks. We show all thread stacks.
+    Threads.allThreadStackTraces().foreach(logger.trace)
+    //println(line)
+    //triggerCatsEffectFiberDump() // EXPERIMENTAL
+
+  //private def triggerCatsEffectFiberDump(): Unit =
+  //  if !isWindows then
+  //    try
+  //      val process = ProcessBuilder("kill", "-USR1", ProcessHandle.current.pid.toString)
+  //        .redirectInput(Redirect.PIPE)
+  //        .start()
+  //      process.getOutputStream.close()
+  //      process.waitFor()
+  //    catch case _: Exception => ()
 
 
 object Worry:
