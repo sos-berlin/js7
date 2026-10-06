@@ -34,7 +34,7 @@ import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import org.scalatest.Assertion
 import scala.collection.immutable.ArraySeq
 import scala.concurrent.blocking
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 final class FileJournalTest extends OurAsyncTestSuite:
 
@@ -123,18 +123,23 @@ final class FileJournalTest extends OurAsyncTestSuite:
             // Block the first persist operation
             EventCalc[TestState, TestEvent]: coll =>
               blocking:
-                barrier1.await()
-                barrier2.await()
-                coll.add("A" <-: Appended('+'))
+                barrier1.await(10, SECONDS)
+                barrier2.await(10, SECONDS)
+              coll.add("A" <-: Appended('+'))
           .both:
-            journal.persist("B" <-: Appended('?')).start.flatMap: fiber =>
-              barrier1.await()
+            // Wait until the first persist operation blocks the Committer.
+            IO.blocking:
+              barrier1.await(10, SECONDS)
+            .productR:
+              journal.persist("B" <-: Appended('?')).start
+            .flatMap: fiber =>
               // Cancel the second persist operation while the first one is still running
               fiber.cancel
                 .productR:
                   fiber.joinWith(IO.left(Problem("CANCELED")))
                 .productL:
-                  IO(barrier2.await())
+                  IO.blocking:
+                    barrier2.await(10, SECONDS)
           .map: pair =>
             assert(pair._1.isInstanceOf[Right[?, ?]] && pair._2 == Left(Problem("CANCELED")))
         .replicateA(1000)
@@ -227,7 +232,7 @@ final class FileJournalTest extends OurAsyncTestSuite:
       journal.failWhenServiceStopped:
         tester(journal)
 
-  private def info_(line: String) =
+  private def info_(line: String): Unit =
     logger.info(s"🟪🟪🟪 $line")
     if !isIntelliJIdea then info(line)
 
