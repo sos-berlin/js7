@@ -31,12 +31,17 @@ trait TestAlarmClock(start: Timestamp)(using ioRuntime: IORuntime) extends Alarm
   final def +=(duration: FiniteDuration): Unit =
     tick(duration)
 
-  /** Proceed the clock.
+  /** Proceed the clock to `timestamp`.
    * <p>
-   * `timestamp` must not be before `now()` (?).
+   * If `timestamp` is before `now()`, only the wall clock is reset (like `resetTo`),
+   * because the monotonic clock must not go backwards.
    */
   final def :=(timestamp: Timestamp): Unit =
-    tick1(timestamp - now())
+    val now = this.now()
+    if timestamp < now then
+      resetTo(timestamp)
+    else
+      tick1(timestamp - now)
 
   final def tick(duration: FiniteDuration = ZeroDuration): Unit =
     tick1(duration)
