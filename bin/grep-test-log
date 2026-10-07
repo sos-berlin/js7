@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Usage: grep-test-log EXTENDED-REGEX [FILE...]
+# Prints each log4j entry whose first line matches EXTENDED-REGEX as whole word(s),
+# together with its continuation lines (like stack traces).
+set -euo pipefail
+
+cd "${0%/*}"/../bin/..
+
+testName=${1:?Usage: grep-test-log EXTENDED-REGEX FILE}
+shift
+bigLogFile=${1:-logs/build.log}
+
+# Word boundaries, portable for GNU and BSD sed (no \b, \< or [[:<:]])
+regex="(^|[^[:alnum:]_])($testName)([^[:alnum:]_]|\$)"
+
+esc=$'\e'
+
+echo "logs/$testName.log"
+
+if [[ $bigLogFile == *.gz ]]; then
+  gzip -d <"$bigLogFile"
+else
+  cat "$bigLogFile"
+fi |
+# LC_ALL=C: let . match any byte, even invalid UTF-8 (from interleaved output), so s/.*// empties the line
+LC_ALL=C sed -nE "
+# The hold space is non-empty while the lines of a selected entry are printed.
+# One command per line, for BSD sed (macOS) too.
+# A log entry starts with an optional ANSI color code and a timestamp
+/^($esc\\[[0-9;]*m)?[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}/{
+  /$regex/{
+    h
+    p
+    d
+  }
+  s/.*//
+  h
+  d
+}
+x
+/^\$/{
+  x
+  d
+}
+x
+p
+" >logs/$testName.log
