@@ -61,10 +61,10 @@ extends
       onOrderProcessed, releaseEvents
     ):
       case Stamped(_, _, KeyedEvent(NoKey, e: ServerMeteringEvent)) =>
-        IO:
-          _lastServerMeteringEvent = e
-          _lastServerMeteringEventSince = Deadline.now
-          None -> IO.unit
+        IO.pure:
+          None -> IO:
+            _lastServerMeteringEvent = e
+            _lastServerMeteringEventSince = Deadline.now
 
       case Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
         // TODO Aufträge im Zustand Processing abbrechen.

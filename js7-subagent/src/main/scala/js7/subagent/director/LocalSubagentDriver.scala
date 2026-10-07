@@ -104,9 +104,9 @@ extends SubagentDriver, Service.StoppableByRequest:
       releaseEvents
     ):
       case stamped @ Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
-        whenSubagentShutdown.complete(()).as:
+        IO.pure:
           Some(stamped.copy(value = subagentId <-: SubagentItemStateEvent.SubagentShutdown))
-            -> IO.unit
+            -> whenSubagentShutdown.complete(()).void
 
   def serverMeteringScope(): Option[ServerMeteringLiveScope.type] =
     Some(ServerMeteringLiveScope)
