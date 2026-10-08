@@ -131,7 +131,9 @@ private object LoggingTestAdder:
           adder.failedCount += 1
           if isSbt then System.err.println(logLine)
           logger.error(logLine)
-          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+          logger.error(t.toStringWithCauses)
+          // Include suite name (nesting.last) for bin/grep-test-log
+          logger.error(s"${nesting.last}\n", t.nullIfNoStackTrace)
           logger.info(eager(bar + resetColor))
           clipStackTrace(t)
 
