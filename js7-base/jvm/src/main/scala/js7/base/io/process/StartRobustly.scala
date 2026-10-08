@@ -5,7 +5,7 @@ import java.io.IOException
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AsyncLock
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
@@ -14,8 +14,12 @@ import scala.concurrent.duration.FiniteDuration
 object StartRobustly:
 
   private val logger = Logger[this.type]
-  /** Linux may return a "busy" error when starting many processes at once. */
-  private val GlobalStartProcessLock = AsyncLock("Process start")
+  /** Linux may return a "busy" error when starting many processes at once.
+    *
+    * A JVM monitor, not an AsyncLock, because the callers may run in different IORuntimes
+    * (each test has its own). An AsyncLock hands over to a waiting fiber, which never runs when
+    * its IORuntime has been shut down. Then every process start of the JVM would wait forever. */
+  private val GlobalStartProcessLock = new Object
   private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms)
   assert(DefaultDurations.map(_.toMillis).sum.ms == 2.s)
 
@@ -28,19 +32,20 @@ object StartRobustly:
      */
     def startRobustly(durations: Iterable[FiniteDuration] = DefaultDurations, label: => String ="")
     : IO[Process] =
-      GlobalStartProcessLock.lock(label):
-        IO.defer:
-          val durationsIterator = durations.iterator
-          IO.blocking:
+      IO.defer:
+        val durationsIterator = durations.iterator
+        IO.blocking:
+          GlobalStartProcessLock.synchronized:
             processBuilder.start()
-          .onErrorRestartLoop(()):
-            case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
-              val prefix = label.nonEmpty ?? s"($label) "
-              logger.warn(s"${prefix}Retrying process start after error: ${e.toString}")
-              restart(()).delayBy(durationsIterator.next())
+        .onErrorRestartLoop(()):
+          case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
+            val prefix = label.nonEmpty ?? s"($label) "
+            logger.warn(s"${prefix}Retrying process-start after error: ${e.toString}")
+            restart(()).delayBy(durationsIterator.next())
 
-            case (throwable, _, _) =>
-              IO.raiseError(throwable)
+          case (throwable, _, _) =>
+            IO.raiseError(throwable)
+        .logWhenItTakesLonger("'starting an OS process'")
 
 
   private[process] object TextFileBusyIOException:

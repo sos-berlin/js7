@@ -233,20 +233,31 @@ object AsyncLock:
           stateMutex.surround:
             IO.defer:
               stateVar.get match
-                case EmptyState => IO.pure(EmptyState) // unexpected
+                case EmptyState => IO.none // unexpected
 
                 case state: NotQueueingState =>
                   IO:
                     stateVar := EmptyState
+                    None
 
                 case state: QueueingState =>
                   if state.queueLength > 1 then
                     IO:
                       stateVar := state.decrementQueue
+                      None
                   else
-                    state.loggingFiber.cancel *>
-                      IO:
-                        stateVar := state.toNotQueueingState)
+                    IO:
+                      stateVar := state.toNotQueueingState
+                      Some(state.loggingFiber)
+          .flatMap:
+            _.fold(IO.unit): loggingFiber =>
+              // Solve a problem in testing, where multiple IORuntime may be running:
+              // Cancel the fiber outside the mutex. Because when using a JVM-global AsyncLock
+              // (bad idea) and multiple IORuntimes (like in testing) then a IORuntime could die
+              // while sitting in cancel, never releasing the stateMutex.
+              // Then each test using this AsyncLock could hang forever.
+              // (Not sure if this completely solves the problem).
+              loggingFiber.cancel)
 
     override def toString = s"AsyncLock:$name"
 
