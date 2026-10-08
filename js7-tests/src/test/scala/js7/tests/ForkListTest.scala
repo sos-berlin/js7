@@ -63,7 +63,10 @@ final class ForkListTest
   protected val items = Seq(atControllerWorkflow, atAgentWorkflow, mixedAgentsWorkflow,
     errorWorkflow, failingChildOrdersWorkflow, joinFailingChildOrdersWorkflow,
     indexWorkflow, exampleWorkflow)
-  private val proxyLazy = Lazy(controller.api.controllerProxy().toAllocated.await(99.s))
+  private val proxyLazy = Lazy:
+    controller.api.controllerProxy()
+      .evalTap(_.untilCoupled) // Wait for the initial ControllerState
+      .toAllocated.await(99.s)
   private lazy val proxy = proxyLazy.value.allocatedThing
 
   override def afterAll() =
@@ -75,33 +78,35 @@ final class ForkListTest
     val orderId = OrderId("SNAPSHOT-TEST")
     val n = 3
 
-    val asserted = proxy.stream
-      .collect:
-        case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderForked)), _, state) =>
-          assert(state.idToOrder(orderId) ==
-            Order(
-              orderId,
-              workflowId /: Position(0),
-              Order.Forked(Vector(
-                Order.Forked.Child(
-                  orderId / "ELEMENT-1",
-                  Map(
-                    "element" -> StringValue("ELEMENT-1"))),
-                Order.Forked.Child(
-                  orderId / "ELEMENT-2",
-                  Map(
-                    "element" -> StringValue("ELEMENT-2"))),
-                Order.Forked.Child(
-                  orderId / "ELEMENT-3",
-                  Map(
-                    "element" -> StringValue("ELEMENT-3"))))),
-              Map("myList" -> ListValue(Seq(
-                StringValue("ELEMENT-1"),
-                StringValue("ELEMENT-2"),
-                StringValue("ELEMENT-3")))),
-              attachedState = Some(Order.Attached(agentPath)),
-              deleteWhenTerminated = true))
-      .headL
+    val asserted =
+      // Subscribe before adding the order, to not miss the OrderForked event
+      proxy.subscribe.use:
+        _.collect:
+          case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderForked)), _, state) =>
+            assert(state.idToOrder(orderId) ==
+              Order(
+                orderId,
+                workflowId /: Position(0),
+                Order.Forked(Vector(
+                  Order.Forked.Child(
+                    orderId / "ELEMENT-1",
+                    Map(
+                      "element" -> StringValue("ELEMENT-1"))),
+                  Order.Forked.Child(
+                    orderId / "ELEMENT-2",
+                    Map(
+                      "element" -> StringValue("ELEMENT-2"))),
+                  Order.Forked.Child(
+                    orderId / "ELEMENT-3",
+                    Map(
+                      "element" -> StringValue("ELEMENT-3"))))),
+                Map("myList" -> ListValue(Seq(
+                  StringValue("ELEMENT-1"),
+                  StringValue("ELEMENT-2"),
+                  StringValue("ELEMENT-3")))),
+                attachedState = Some(Order.Attached(agentPath)),
+                deleteWhenTerminated = true))
+        .headL
       .unsafeToFuture()
 
     val eventId = eventWatch.lastAddedEventId
