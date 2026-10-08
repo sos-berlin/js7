@@ -8,7 +8,7 @@ failureCount=0
 failMsg=""
 
 for i in {2..999999}; do
-  echo -e "\n\n———————————————————— $i ———————————————————$failMsg\n"
+  echo -e "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━ $i ━━━━━━━━━━━━━━━━━━━━━━━━━$failMsg\n"
   echo -n "" >logs/build.log
   time if ! bin/sbt-batch "$@" | tee logs/build.out; then :
     ts=$(date +%Y%m%d-%H%M%S)
