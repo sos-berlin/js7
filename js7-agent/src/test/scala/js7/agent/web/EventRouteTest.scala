@@ -104,7 +104,12 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
   "Recoupling fails if Agent's last events has been deleted" in:
     // Take snapshot, then delete old journal files
     snapshotEventId = eventId
-    agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
+
+    try agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
+    catch case org.apache.pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+      // May happen because the previous test aborts the stream, confusing Pekko-Http (?)
+      agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
+
     val stampedEvents = agentClient
       .agentEventStream(EventRequest.singleClass[Event](after = eventId, timeout = Some(0.s)))
       .await(99.s)
