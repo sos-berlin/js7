@@ -46,7 +46,6 @@ import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkfl
 import js7.tests.controller.proxy.history.ProxyHistoryTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
-import org.apache.pekko
 import org.apache.pekko.actor.ActorSystem
 import org.scalactic.source
 import scala.collection.mutable
@@ -97,40 +96,35 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
         while !finished && rounds <= maxRounds do
           logger.info(s"Round $rounds")
           var proxyStartedReceived = false
-          try
-            controllerApi.eventAndStateStream(new StandardEventBus, Some(lastState.eventId))
-              .takeThrough:
-                case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
-                  false
-                case _=>
-                  true
-              .take(3)  // Process two events (and initial ProxyStarted) each test round
-              .evalTap: es =>
-                IO:
-                  es.stampedEvent.value.event match
-                    case ProxyStarted =>
-                      assert(!proxyStartedReceived)
-                      proxyStartedReceived = true
-                      assert(es.state == lastState)
-                    case _ =>
-                      assert(lastState.eventId < es.stampedEvent.eventId)
-                  lastState = es.state
-                  var keyedEvent = es.stampedEvent.value
-                  for controllerReady <- ifCast[ControllerReady](keyedEvent.event) do
-                    keyedEvent = NoKey <-: controllerReady.copy(totalRunningTime = 333.s)
-                  es.stampedEvent.value match
-                    case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                      keyedEvents += orderId <-: event
-                      if orderId == TestOrder.id && event.isInstanceOf[OrderFinished] then
-                        finished = true // dangerous side-effect!
-                    case _ =>
-              .completedL
-              .await(99.s)
+          controllerApi.eventAndStateStream(new StandardEventBus, Some(lastState.eventId))
+            .takeThrough:
+              case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
+                false
+              case _=>
+                true
+            .take(3)  // Process two events (and initial ProxyStarted) each test round
+            .evalTap: es =>
+              IO:
+                es.stampedEvent.value.event match
+                  case ProxyStarted =>
+                    assert(!proxyStartedReceived)
+                    proxyStartedReceived = true
+                    assert(es.state == lastState)
+                  case _ =>
+                    assert(lastState.eventId < es.stampedEvent.eventId)
+                lastState = es.state
+                var keyedEvent = es.stampedEvent.value
+                for controllerReady <- ifCast[ControllerReady](keyedEvent.event) do
+                  keyedEvent = NoKey <-: controllerReady.copy(totalRunningTime = 333.s)
+                es.stampedEvent.value match
+                  case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+                    keyedEvents += orderId <-: event
+                    if orderId == TestOrder.id && event.isInstanceOf[OrderFinished] then
+                      finished = true // dangerous side-effect!
+                  case _ =>
+            .completedL
+            .await(99.s)
             assert(proxyStartedReceived)
-          catch case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-            // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
-            // Anyway, the caller should repeat the call.
-            logger.error(s"Ignore ${t.toString}")
           rounds += 1
         assert(rounds > 2)
 

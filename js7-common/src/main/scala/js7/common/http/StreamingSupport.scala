@@ -3,6 +3,7 @@ package js7.common.http
 import cats.effect
 import cats.effect.Resource.ExitCase
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
+import cats.implicits.catsSyntaxApplicativeError
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
 import izumi.reflect.Tag
@@ -95,3 +96,12 @@ object StreamingSupport:
         Stream.suspend:
           val publisher = source.runWith(Sink.asPublisher(fanout = false))
           publisher.toStreamBuffered[IO](bufferSize = bufferSize)
+        .recoverWith:
+          case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+            // NoMoreElementsNeeded means that the sink has stopped reading (e.g. take).
+            // This is the only Pekko-to-FS2 bridge, so we handle it here for all callers.
+            // Happens also (mostly?) on an overloaded (slow) machine or network. Not clear what
+            // that means then (maybe stream breaks only due to a stream-cancellation-delay > 100ms?).
+            // See also pekko.http.server.stream-cancellation-delay (default 100ms).
+            logger.debug(s"Ignore $t")
+            Stream.empty

@@ -170,9 +170,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, fs2.Chunk[Byte]]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
-    get_[HttpResponse](uri, accept, dontLog = dontLog)
-      .map(_
-        .entity.withoutSizeLimit.dataBytes
+    get_[HttpResponse](uri, accept, dontLog = dontLog).map:
+      _.entity.withoutSizeLimit.dataBytes
         .pipeMaybe(idleTimeout): (stream, timeout) =>
           // Because the FS2/Pekko bridge appears not to be cancelable, we use
           // Pekko's idleTimeout instead of FS2's timeoutOnPull
@@ -195,17 +194,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           chunk.flatMap:
             case HttpHeartbeatFs2Chunk => heartbeatAsChunk
             case o => fs2.Chunk.singleton(o)
-        .recoverWith:
-          ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded)
-      .recover(ignoreIdleTimeout)
-
-  private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
-    case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-      // See also pekko.http.server.stream-cancellation-delay
-      // On NoMoreElementsNeeded the Stream ends silently !!! Maybe harmless?
-      logger.warn(s"Ignore $t")
-      if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
-      Stream.empty
+        .recoverWith(ignoreIdleTimeout)
+    .recover(ignoreIdleTimeout)
 
   private def ignoreIdleTimeout: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
