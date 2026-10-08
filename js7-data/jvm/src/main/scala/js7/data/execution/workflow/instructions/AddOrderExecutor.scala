@@ -74,6 +74,9 @@ private object AddOrderExecutor extends EventInstructionExecutor_[AddOrder]:
     addOrderInstrThrottle.tryRecord(speedRecord) match
       case Left(tooFast) =>
         Left:
+          // In rare cases, coll.timestamp + tooFast.delay maybe after the advanced real (current)
+          // time. Then, OrderSleeping will not result in sleeping. This must be reproducible real
+          // function (also for testing), so we don't access the changing real time.
           // TODO Introduce OrderDelaying event with monotonic time?
           OrderSleeping(
             coll.timestamp + tooFast.delay.roundUpToNext(Timestamp.Epsilon),

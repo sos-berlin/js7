@@ -44,7 +44,9 @@ final class AddOrderInstructionThrottleTest extends OurTestSuite, ControllerAgen
     val n = 3
     for i <- 0 until n do
       val eid = controller.awaitNext[OrderSleeping]().head.eventId
-      controller.eventWatch.keyedEvents[OrderOrderAdded](after = eventId).size shouldBe limit
+      // Count only until eid, because the next throttle period may have already begun
+      controller.eventWatch.allStamped[OrderOrderAdded](after = eventId)
+        .count(_.eventId < eid) shouldBe limit
       eventId = eid
 
   "Explosing workflow" in:
