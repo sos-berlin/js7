@@ -12,7 +12,7 @@ import com.typesafe.config.ConfigUtil
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, guaranteeExceptWhenRight, joinStd, orThrow, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{bothCombined, catchIntoChecked, guaranteeExceptWhenRight, joinStd, orThrow, right, startAndForget}
 import js7.base.catsutils.CatsExtensions.flatMapSome
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
@@ -79,6 +79,7 @@ extends Service.StoppableByRequest:
   private val eventCallbackOnce = SetOnce[EventCallback]
   private val orderMotorCoupled = Deferred.unsafe[IO, Unit]
   private val serviceStarted = Deferred.unsafe[IO, Unit]
+  private val processingOrdersRecovered = Deferred.unsafe[IO, Unit]
   private val counters = SubagentProcessCounters()
   @volatile private var started = false // Delays SubagentDriver#startObserving
 
@@ -91,6 +92,13 @@ extends Service.StoppableByRequest:
         orderMotorCoupled.complete(()).void *>
           serviceStarted.get.logWhenItTakesLonger("SubagentKeeper serviceStarted")
 
+  /** Must be called after `recoverProcessingOrders`, even when there are no processing orders.
+    *
+    * Only then we start observing the Subagents' events. Otherwise, an OrderProcessed event of a
+    * recovered Order could arrive before the Order is known, and would be lost. */
+  def onProcessingOrdersRecovered: IO[Unit] =
+    processingOrdersRecovered.complete(()).void
+
   protected def startService =
     runService:
       orderMotorCoupled.get.logWhenItTakesLonger("SubagentKeeper orderMotorCoupled")
@@ -99,12 +107,16 @@ extends Service.StoppableByRequest:
         .productR:
           serviceStarted.complete(())
         .productR:
-          IO.defer:
-            started = true
-            IO.both(
-              untilServiceStopRequested *> stopMe,
-              startObserving
-            ).void
+          (untilServiceStopRequested *> stopMe).bothCombined:
+            untilServiceStopRequested.race:
+              processingOrdersRecovered.get
+                .logWhenItTakesLonger("SubagentKeeper processingOrdersRecovered")
+            .flatMap:
+              case Left(()) => IO.unit
+              case Right(()) =>
+                IO.defer:
+                  started = true
+                  startObserving
 
   private def start1 =
     journal.aggregate

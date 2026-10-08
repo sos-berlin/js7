@@ -100,8 +100,11 @@ extends Service.StoppableByRequest:
       val orders = agentState.idToOrder.values.view
       val processingOrders = orders.flatMap(_.ifState[Order.Processing]).toVector
       val otherOrderIds = orders.filterNot(_.isState[Order.Processing]).map(_.id).toVector
-      recoverProcessingOrders(processingOrders, agentState) *>
-        enqueue(otherOrderIds)
+      recoverProcessingOrders(processingOrders, agentState)
+        .guarantee:
+          subagentKeeper.onProcessingOrdersRecovered
+        .productR:
+          enqueue(otherOrderIds)
 
   /** Continue processing Orders (running at a remote Subagent). */
   private def recoverProcessingOrders(

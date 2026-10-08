@@ -1,8 +1,10 @@
 package js7.base.catsutils
 
 import cats.effect.Resource.ExitCase
+import cats.Semigroup
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Deferred, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
+import cats.syntax.semigroup.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor}
@@ -148,6 +150,10 @@ object CatsEffectExtensions:
     /** Like Cats timeoutTo, but the fallback is computed anew for each execution. */
     def timeoutDefer[A1 >: A](duration: Duration)(fallback: => IO[A1]): IO[A1] =
       io.timeoutTo(duration, IO.defer(fallback))
+
+    /** Like `both(other).map(_ combine _)`. */
+    def bothCombined(other: IO[A])(using Semigroup[A]): IO[A] =
+      io.both(other).map(_ combine _)
 
     /** Like racePair but resolves the returned OutcomeIO[x]. */
     def raceBoth[B](other: IO[B]): IO[Either[(A, FiberIO[B]), (FiberIO[A], B)]] =
