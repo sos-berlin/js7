@@ -9,7 +9,8 @@ import js7.data.order.OrderId
 import js7.data.value.NamedValues
 
 sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]:
-  val keyCompanion: OrderWatchEvent.type  = OrderWatchEvent
+  type Key = OrderWatchEvent.Key
+  def keyCompanion: OrderWatchEvent.type = OrderWatchEvent
 
   def externalOrderName: ExternalOrderName
 

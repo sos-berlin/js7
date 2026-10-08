@@ -209,8 +209,11 @@ private object FileJournalLegacyTest:
 
   sealed trait TestEvent extends Event
 
+
   sealed trait NumberEvent extends TestEvent, Event.IsKeyBase[NumberEvent]:
-    val keyCompanion: NumberEvent.type = NumberEvent
+    type Key = NumberEvent.Key
+    def keyCompanion: NumberEvent.type = NumberEvent
+
   object NumberEvent extends Event.CompanionForKey[NumberKey, NumberEvent]:
     implicit val implicitSelf: NumberEvent.type = this
     implicit val jsonCodec: TypedJsonCodec[NumberEvent] = TypedJsonCodec(
@@ -220,6 +223,7 @@ private object FileJournalLegacyTest:
       Subtype(deriveCodec[NumberSlowlyIncremented]),
       Subtype(NumberUnhandled))
 
+  
   case object NumberAdded extends NumberEvent
 
   case object NumberRemoved extends NumberEvent

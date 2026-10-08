@@ -12,8 +12,11 @@ import scala.annotation.{implicitNotFound, targetName}
   */
 trait Event:
   type KeyBase <: Event
+  type Key
 
-  val keyCompanion: Event.KeyCompanion[KeyBase]
+  // A def, not a val, to avoid a class initialization deadlock (two threads initializing the
+  // event companion object and a case object nested in it, each waiting for the other).
+  def keyCompanion: Event.KeyCompanion[KeyBase]
 
   def isSucceeded: Boolean = true
 
@@ -22,7 +25,7 @@ trait Event:
   def hasShortString = false
 
   @targetName("toKeyedEvent")
-  inline final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
+  inline final def <-:(key: Key): KeyedEvent[this.type] =
     new KeyedEvent(this)(key)
 
   /** Ignores the key's type and returns an AnyKeyedEvent. */

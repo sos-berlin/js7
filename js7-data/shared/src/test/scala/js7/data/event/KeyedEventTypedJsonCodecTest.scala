@@ -88,8 +88,11 @@ object KeyedEventTypedJsonCodecTest:
 
   case object E0 extends TestEvent, NoKeyEvent
 
+
   sealed trait StringEvent extends TestEvent, Event.IsKeyBase[StringEvent]:
-    val keyCompanion: StringEvent.type = StringEvent
+    type Key = StringEvent.Key
+    def keyCompanion: StringEvent.type = StringEvent
+
   object StringEvent extends Event.CompanionForKey[String, StringEvent]:
     override implicit def implicitSelf: StringEvent.type = this
     implicit val jsonCodec: TypedJsonCodec[StringEvent] =
@@ -97,10 +100,14 @@ object KeyedEventTypedJsonCodecTest:
         Subtype[E1],
         Subtype[E2])
 
+
   sealed trait IntEvent extends TestEvent, Event.IsKeyBase[IntEvent]:
-    override val keyCompanion: IntEvent.type = IntEvent
+    type Key = IntEvent.Key
+    override def keyCompanion: IntEvent.type = IntEvent
+
   object IntEvent extends Event.CompanionForKey[Int, IntEvent]:
     override implicit def implicitSelf: IntEvent.type = this
+
 
   final case class E1(int: Int) extends StringEvent
   object E1:

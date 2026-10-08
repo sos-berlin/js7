@@ -24,9 +24,13 @@ private[watch] object TestData:
   val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
   sealed trait TestEvent extends Event.IsKeyBase[TestEvent]:
-    val keyCompanion: TestEvent.type = TestEvent
+    type Key = TestEvent.Key
+    def keyCompanion: TestEvent.type = TestEvent
+
   object TestEvent extends Event.CompanionForKey[String, TestEvent]:
     implicit val implicitSelf: TestEvent.type = this
+
+
   case object AEvent extends TestEvent
   case object BEvent extends TestEvent
 

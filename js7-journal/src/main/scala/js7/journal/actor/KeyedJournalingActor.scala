@@ -53,7 +53,7 @@ extends JournalingActor[S, E]:
 
   private def toKeyedEvent(event: E): KeyedEvent[E] =
     if isStrict then assert(event.keyCompanion eq E)
-    key.asInstanceOf[event.keyCompanion.Key] <-: event
+    key.asInstanceOf[event.Key] <-: event
 
   protected final def persistTransactionReturnChecked[EE <: E, A](
     events: Seq[EE],
@@ -62,7 +62,7 @@ extends JournalingActor[S, E]:
   : Future[Checked[A]] =
     super.persistKeyedEventsReturnChecked(
       EventCalc.pure:
-        events.map(e => key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e),
+        events.map(e => key.asInstanceOf[e.Key] <-: e),
       CommitOptions.Transaction,
       async = async):
       persisted => callback(

@@ -8,7 +8,8 @@ import js7.data.event.Event
 import js7.data.plan.PlanEvent.*
 
 trait PlanEvent extends Event.IsKeyBase[PlanEvent]:
-  val keyCompanion: PlanEvent.type = PlanEvent
+  type Key = PlanEvent.Key
+  def keyCompanion: PlanEvent.type = PlanEvent
 
 
 object PlanEvent extends Event.CompanionForKey[PlanId, PlanEvent]:

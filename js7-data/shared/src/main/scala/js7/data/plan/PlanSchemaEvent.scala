@@ -10,7 +10,8 @@ import scala.concurrent.duration.FiniteDuration
 
 sealed trait PlanSchemaEvent extends Event.IsKeyBase[PlanSchemaEvent]:
 
-  val keyCompanion: PlanSchemaEvent.type = PlanSchemaEvent
+  type Key = PlanSchemaEvent.Key
+  def keyCompanion: PlanSchemaEvent.type = PlanSchemaEvent
 
 
 object PlanSchemaEvent extends Event.CompanionForKey[PlanSchemaId, PlanSchemaEvent]:

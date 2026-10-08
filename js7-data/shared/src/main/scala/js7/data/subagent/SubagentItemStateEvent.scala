@@ -7,7 +7,8 @@ import js7.data.event.{Event, EventId, EventsObservedEvent}
 import js7.data.platform.PlatformInfo
 
 trait SubagentItemStateEvent extends Event.IsKeyBase[SubagentItemStateEvent]:
-  val keyCompanion: SubagentItemStateEvent.type = SubagentItemStateEvent
+  type Key = SubagentItemStateEvent.Key
+  def keyCompanion: SubagentItemStateEvent.type = SubagentItemStateEvent
 
 
 object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, SubagentItemStateEvent]:

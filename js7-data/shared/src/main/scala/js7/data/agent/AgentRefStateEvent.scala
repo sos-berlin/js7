@@ -15,7 +15,8 @@ import js7.data.platform.PlatformInfo
   * @author Joacim Zschimmer
   */
 sealed trait AgentRefStateEvent extends Event.IsKeyBase[AgentRefStateEvent]:
-  val keyCompanion: AgentRefStateEvent.type = AgentRefStateEvent
+  type Key = AgentRefStateEvent.Key
+  def keyCompanion: AgentRefStateEvent.type = AgentRefStateEvent
 
 
 object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefStateEvent]:

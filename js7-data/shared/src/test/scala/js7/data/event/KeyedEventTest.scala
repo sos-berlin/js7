@@ -69,11 +69,15 @@ final class KeyedEventTest extends OurTestSuite:
     testJson(event, json)
 
 private object KeyedEventTest:
+
   sealed trait TestEvent extends Event.IsKeyBase[TestEvent]:
-    val keyCompanion: TestEvent.type = TestEvent
+    type Key = TestEvent.Key
+    def keyCompanion: TestEvent.type = TestEvent
+
   object TestEvent extends Event.CompanionForKey[Int, TestEvent]:
     implicit def implicitSelf: TestEvent.type = this
 
+  
   private case class StringEvent(string: String) extends TestEvent
 
   private case class IntEvent(int: Int) extends TestEvent

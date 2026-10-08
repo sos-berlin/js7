@@ -9,7 +9,8 @@ import js7.data.event.{Event, KeyedEvent}
 import js7.data.plan.PlanId
 
 sealed trait NoticeEvent extends Event.IsKeyBase[NoticeEvent]:
-  val keyCompanion: NoticeEvent.type = NoticeEvent
+  type Key = NoticeEvent.Key
+  def keyCompanion: NoticeEvent.type = NoticeEvent
 
 
 object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:

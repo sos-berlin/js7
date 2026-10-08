@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 /**
   * An [[Event]] enriched with a `key` designating the respective object.
   */
-final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Key):
+final class KeyedEvent[+E <: Event](val event: E)(val key: event.Key):
 
   override def hashCode: Int =
     31 * key.hashCode + event.hashCode
@@ -22,7 +22,7 @@ final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Ke
         key == o.key && event == o.event
       case _ => false
 
-  def tuple: (event.keyCompanion.Key, E) =
+  def tuple: (event.Key, E) =
     key -> event
 
   inline def ^(millisSinceEpoch: Long): TsKeyedEvent[E] =
@@ -58,7 +58,7 @@ object KeyedEvent:
     def singleton(): NoKey.type = this
 
   @deprecated
-  def apply[E <: Event](event: E)(key: event.keyCompanion.Key): KeyedEvent[E] =
+  def apply[E <: Event](event: E)(key: event.Key): KeyedEvent[E] =
     new KeyedEvent(event)(key)
 
   def apply[E <: NoKeyEvent](event: E): KeyedEvent[E] =
@@ -69,12 +69,12 @@ object KeyedEvent:
     new KeyedEvent[E](event)(NoKey)
 
   def any(key: Any, event: Event): AnyKeyedEvent =
-    new KeyedEvent[Event](event)(key.asInstanceOf[event.keyCompanion.Key])
+    new KeyedEvent[Event](event)(key.asInstanceOf[event.Key])
 
   def any(event: NoKeyEvent): AnyKeyedEvent =
     any(NoKey, event)
 
-  def unapply[E <: Event](ke: KeyedEvent[E]): (ke.event.keyCompanion.Key, E) =
+  def unapply[E <: Event](ke: KeyedEvent[E]): (ke.event.Key, E) =
     ke.key -> ke.event
 
   implicit def jsonEncoder[E <: Event : Encoder.AsObject](using E: Event.KeyCompanion[? >: E])

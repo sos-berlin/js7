@@ -44,7 +44,8 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent]:
-  val keyCompanion: OrderEvent.type = OrderEvent
+  type Key = OrderEvent.Key
+  def keyCompanion: OrderEvent.type = OrderEvent
 
   private[data] def tag: Byte
 

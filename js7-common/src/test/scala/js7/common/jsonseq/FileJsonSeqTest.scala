@@ -139,8 +139,10 @@ final class FileJsonSeqTest extends OurTestSuite:
 
 
 object FileJsonSeqTest:
+
   private trait MyEvent extends Event.IsKeyBase[MyEvent]:
-    val keyCompanion: MyEvent.type = MyEvent
+    type Key = MyEvent.Key
+    def keyCompanion: MyEvent.type = MyEvent
 
   private object MyEvent extends Event.CompanionForKey[String, MyEvent]:
     implicit val implicitSelf: MyEvent.type = this

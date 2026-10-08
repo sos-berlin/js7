@@ -464,11 +464,15 @@ private object JournalEventWatchTest:
     Stamped(220L, "B2" <-: B2) ::
     Nil
 
+  
   private sealed trait MyEvent extends Event.IsKeyBase[MyEvent]:
-    val keyCompanion: MyEvent.type = MyEvent
+    type Key = MyEvent.Key
+    def keyCompanion: MyEvent.type = MyEvent
+    
   private object MyEvent extends Event.CompanionForKey[String, MyEvent]:
     implicit val implicitSelf: MyEvent.type = this
-
+  
+  
   private trait AEvent extends MyEvent
   private case object A1 extends AEvent
   private case object A2 extends AEvent

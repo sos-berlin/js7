@@ -72,9 +72,12 @@ object RealEventWatchTest:
   private val EventsPerIteration = 3
 
   private case class TestEvent(number: Long) extends Event.IsKeyBase[TestEvent]:
-    val keyCompanion: TestEvent.type = TestEvent
+    type Key = TestEvent.Key
+    def keyCompanion: TestEvent.type = TestEvent
+
   private object TestEvent extends Event.CompanionForKey[Long, TestEvent]:
     implicit val implicitSelf: TestEvent.type = this
+
 
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 

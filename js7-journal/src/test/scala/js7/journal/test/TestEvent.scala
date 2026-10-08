@@ -8,7 +8,8 @@ import js7.data.event.Event
   * @author Joacim Zschimmer
   */
 private[journal] sealed trait TestEvent extends Event.IsKeyBase[TestEvent]:
-  val keyCompanion: TestEvent.type = TestEvent
+  type Key = TestEvent.Key
+  def keyCompanion: TestEvent.type = TestEvent
 
 private[journal] object TestEvent extends Event.CompanionForKey[String, TestEvent]:
   implicit val implicitSelf: TestEvent.type = this
