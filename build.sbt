@@ -795,7 +795,7 @@ lazy val `js7-service-lz4` = project
     `js7-base`.jvm % "test->test")
   .settings(commonSettings)
   .settings {
-    libraryDependencies +="at.yawk.lz4" % "lz4-java" % "1.11.2"
+    libraryDependencies +="at.yawk.lz4" % "lz4-java" % "1.12.0"
   }
 
 lazy val `js7-service-pgp` = project

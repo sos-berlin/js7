@@ -5,10 +5,10 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val bouncyCastleVersion = "1.85"
-  val pekkoVersion = "1.7.0"
-  val pekkoHttpVersion = "1.4.0"
-  val slf4jVersion = "2.0.19"  // See also plugins.sbt
+  val bouncyCastleVersion = "1.86"
+  val pekkoVersion = "1.7.1"
+  val pekkoHttpVersion = "1.4.1"
+  val slf4jVersion = "2.0.20"  // See also plugins.sbt
   val log4jVersion = "2.26.1"  // See also plugins.sbt
   val catsVersion = "2.13.0"
   val catsEffectVersion = "3.7.1"
@@ -16,7 +16,7 @@ object Dependencies
   val izumiReflectVersion = "3.0.10"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.1.0"
-  val circeVersion = "0.14.16"
+  val circeVersion = "0.14.17"
   val circeYamlVersion = "0.16.1"
   val circeGenericExtrasVersion = "0.14.4"
   val scalaTestVersion = "3.2.20"
@@ -82,7 +82,7 @@ object Dependencies
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
-  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.8.0"  ::
-                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.8.0" ::
-                            "io.prometheus.jmx" % "collector" % "1.6.0" :: Nil
+  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.9.0"  ::
+                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.9.0" ::
+                            "io.prometheus.jmx" % "collector" % "1.7.0" :: Nil
 }
