@@ -8,6 +8,10 @@ import js7.base.system.startup.StartUp
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.{isStrict, isTest}
 
+/** Prefer ServiceApp for a program!
+  *
+  * OurApp does not automatically shut down Logger/Log4j. ServiceApp does.
+  */
 trait OurApp extends IOApp:
 
   protected def productName: String =

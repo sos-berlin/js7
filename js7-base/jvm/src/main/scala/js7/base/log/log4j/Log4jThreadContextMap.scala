@@ -87,8 +87,10 @@ object Log4jThreadContextMap:
 
   def initialize(name: String): Unit =
     keyToValue.put("js7.serverId", name) // May be overwritten later by a more specific value
-    System.setProperty("log4j2.threadContextMap", myClassName)
-    debug(s"log4j2.threadContextMap=$myClassName")
+    if !sys.props.isDefinedAt("log4j2.threadContextMap")
+      && !sys.env.isDefinedAt("LOG4J_THREAD_CONTEXT_MAP")
+    then
+      sys.props("log4j2.threadContextMap") = myClassName
 
   private[log] def put(key: String, value: String): Unit =
     keyToValue.put(key, value)

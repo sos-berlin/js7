@@ -9,6 +9,9 @@ import scala.language.implicitConversions
 
 object BuildUtils
 {
+  // When log4j detects a Servlet somewhere in the classpath, then web-app mode is on.
+  // We don't want this, because this is not an application server.
+  sys.props("log4j2.is.webapp") = "false"
   createDirectories(Path.of("logs"))
   //Files.list(Path.of("logs")).toArray(new Array[Path](_)).foreach(Files.delete)
   deleteIfExists(Path.of("logs", "build.log"))

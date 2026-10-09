@@ -3,7 +3,7 @@
   <!-- TestResultCollector will shut down Log4j -->
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{ERROR=red bold,WARN=red,INFO=default}%n"/>
+      <patternLayout pattern="%highlight{%d{yyyy-MM-dd HH:mm:ss.SSSX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{ERROR=red bold,WARN=red,INFO=default}%n"/>
     </console>
     <!-- rollingRandomAccessFile swallows text chunks when uses with parallel test execution. -->
     <rollingFile
