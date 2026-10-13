@@ -20,7 +20,7 @@ services:
       - "js7-controller"
       - "--arg0=js7-controller"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=4/20"
     #networks:
     #  - default
@@ -51,7 +51,7 @@ services:
       - "js7-controller"
       - "--arg0=js7-backup-controller"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=4/20"
     #networks:
     #  - default
@@ -77,7 +77,7 @@ services:
       - "js7-subagent"
       - "--arg0=js7-subagent-1a"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=20/20"
     working_dir: /home/js7
     environment:
@@ -100,7 +100,7 @@ services:
       - "js7-subagent"
       - "--arg0=js7-subagent-1b"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=4/20"
     working_dir: /home/js7
     environment:
@@ -123,7 +123,7 @@ services:
       - "js7-subagent"
       - "--arg0=js7-subagent-1c"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=4/20"
     working_dir: /home/js7
     environment:
@@ -149,7 +149,7 @@ services:
       - "js7-subagent"
       - "--arg0=js7-subagent-2a"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=2/20"
     working_dir: /home/js7
     environment:
@@ -226,7 +226,7 @@ services:
       - "js7-provider"
       - "--arg0=js7-provider"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=1"
       - "--controller-uri=https://js7-controller:4443"
     working_dir: /home/js7
@@ -248,7 +248,7 @@ services:
       - "js7-proxy"
       - "--arg0=js7-proxy"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=1"
       - "--cluster-watch-id=PROXY-A"
       - "--cluster-node-uri=https://js7-controller:4443"
@@ -273,7 +273,7 @@ services:
       - "js7-proxy"
       - "--arg0=js7-proxy-b"
       - "-J-Xms100m"
-      - "-J-Xmx1g"
+      - "-J-Xmx200m"
      #- "--processor-limit=1"
       - "--cluster-watch-id=PROXY-B"
       - "--cluster-node-uri=https://js7-controller:4443"
