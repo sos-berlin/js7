@@ -11,12 +11,12 @@ import scala.util.{Failure, Success, Try}
   */
 object Log4j:
 
-  /** 32768 should reduce memory usage with 40MB or 50MB.
-    *
-    * Default is 256 * 1024. */
-  private val asyncLoggerRingBufferSize: Int = 32768
   private val isShutdown = Atomic(false)
   private val ifNotInitialized = new Once
+
+  private val RingBufferFractionOfHeap = 3 / 100.0
+  private val RingBufferMax = 4096 // Log4j's default for non-webapp, gc-free mode
+  private val RingBufferEstimatedEntrySize = 744
 
   // Do not touch the logger before initialize has been called !!!
   private lazy val logger = Logger[this.type]
@@ -32,12 +32,24 @@ object Log4j:
   private def isInitialized: Boolean =
     ifNotInitialized.isInitialized
 
+  /** Call this only when JS7 Engine is not user as a library in a surrounding application! */
   private[log] def initialize(name: String): Unit =
     ifNotInitialized:
       if sys.runtime.availableProcessors > 1 then
         // Fast AsyncLogger requires Heap for the RingBuffer and a little more CPU time
         useAsyncLogger()
       end if
+
+      // Maybe not required ...
+      //if !sys.props.contains("log4j2.isWebapp")
+      //  && !sys.env.contains("LOG4J2_IS_WEBAPP")
+      //  && !sys.props.contains("log4j2.enableThreadlocals")
+      //  && !sys.env.contains("LOG4J2_ENABLE_THREADLOCALS")
+      //then
+      //  sys.props("log4j2.isWebapp") = "false"
+      //  // Switch off gc-free mode and reduce memory usage
+      //  //sys.props("log4j2.enableThreadlocals") = "false"
+
       Log4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
@@ -49,7 +61,8 @@ object Log4j:
       && !sys.env.contains("LOG4J_ASYNC_LOGGER_RING_BUFFER_SIZE")
     then
       // https://logging.apache.org/log4j/2.x/manual/async.html#log4j2.asyncLoggerRingBufferSize
-      sys.props("log4j2.asyncLoggerRingBufferSize") = asyncLoggerRingBufferSize.toString
+      sys.props("log4j2.asyncLoggerRingBufferSize") =
+        heapSizeToRingBufferSize(sys.runtime.maxMemory()).toString
 
     if !sys.props.contains("log4j2.asyncLoggerWaitStrategy")
       && !sys.env.contains("LOG4J_ASYNC_LOGGER_WAIT_STRATEGY")
@@ -60,6 +73,18 @@ object Log4j:
 
     // Because AsyncLoggerContextSelector already flushes:
     sys.props("js7.log4j.immediateFlush") = "false"
+
+  /** Log4j's default is 256 * 1024 (but 4096 in gc-free mode).
+    *
+    * Log4j seems to use 352 to 744 bytes per LMAX RingBuffer entry
+    * (https://github.com/apache/logging-log4j2/issues/3569).
+    *
+    * So a value of 4096 should use not more than 3MB memory.
+    */
+  private[log4j] def heapSizeToRingBufferSize(maxHeap: Long) =
+    Integer.highestOneBit:
+      (maxHeap * RingBufferFractionOfHeap / RingBufferEstimatedEntrySize).toInt.max(1)
+    .min(RingBufferMax)
 
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &lt;configuration shutdownHook="disable">.

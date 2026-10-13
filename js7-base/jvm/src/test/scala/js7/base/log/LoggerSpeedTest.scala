@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.AnsiEscapeCodes.bold
-import js7.base.log.Log4jTest.*
+import js7.base.log.LoggerSpeedTest.*
 import js7.base.log.log4j.Log4jThreadContextMap
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
@@ -25,8 +25,10 @@ import scala.concurrent.duration.Deadline.now
   5000027×getReadOnlyContextData
 
   0.21s/million lines (⌀0.21µs), ~4'729'804 lines/s   <-- without %X{js7.prettyVersion} in lines
+
+  This test is fastest with asyncLoggerRingBufferSize = 1024 * 1024.
 */
-final class Log4jTest extends OurTestSuite:
+final class LoggerSpeedTest extends OurTestSuite:
 
   private val testSpeed = isIntelliJIdea
   private given IORuntime = ioRuntime
@@ -57,7 +59,7 @@ final class Log4jTest extends OurTestSuite:
     logger.info(label + " " + bold(bytesPerSecondString(elapsed, n.toLong * m * EstimatedByteCount)))
 
 
-object Log4jTest:
+object LoggerSpeedTest:
   private lazy val logger = Logger[this.type]
   private val Line = " long" * 50
   private val EstimatedByteCount =
