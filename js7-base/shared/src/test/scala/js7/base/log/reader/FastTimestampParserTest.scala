@@ -22,7 +22,7 @@ final class FastTimestampParserTest extends OurTestSuite:
 
   private def toEpochNano(string: String) =
     // Java 17 does not accept "+02" and "+0200". It must be"+02:00"
-    Instant.parse(string).toEpochNano
+    ZonedDateTime.parse(string).toInstant.toEpochNano
 
   "rawParse" in:
     val timestampParser = FastTimestampParser()
@@ -141,48 +141,35 @@ final class FastTimestampParserTest extends OurTestSuite:
         .getBytes(UTF_8))
     assert:
       FastTimestampParser().parseTimestampInLogLine(line) ==
-        ZonedDateTime.parse("2026-02-24T12:34:56.789+02").toInstant.toEpochNano
+        toEpochNano("2026-02-24T12:34:56.789+02")
 
     locally:
       val line = bold("2026-02-24T08:05:55.244Z info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          ZonedDateTime.parse("2026-02-24T08:05:55.244Z").toInstant.toEpochNano
+      assert(testParseTimestampInLogLine(line) == toEpochNano("2026-02-24T08:05:55.244Z"))
 
     locally:
       val line = bold("2026-02-24T08:05:55.244+02:00 info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+      assert(testParseTimestampInLogLine(line) == toEpochNano("2026-02-24T08:05:55.244+02"))
 
     locally:
       val line = bold("2026-02-24 08:05:55,244+0200 info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+      assert(testParseTimestampInLogLine(line) == toEpochNano("2026-02-24T08:05:55.244+02"))
 
     locally:
       val line = bold("2026-02-24 08:05:55,244+02 info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          ZonedDateTime.parse("2026-02-24T08:05:55.244+02").toInstant.toEpochNano
+      assert(testParseTimestampInLogLine(line) == toEpochNano("2026-02-24T08:05:55.244+02"))
 
     locally:
       val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          Instant.parse("2026-02-24T06:05:55.244272Z").toEpochNano
+      assert(testParseTimestampInLogLine(line) == Instant.parse("2026-02-24T06:05:55.244272Z").toEpochNano)
 
     locally:
       val line = bold("2026-02-24 08:05:55.244272+02:00 info ")
-      assert:
-        testParseTimestampInLogLine(line) ==
-          ZonedDateTime.parse("2026-02-24T08:05:55.244272+02").toInstant.toEpochNano
+      assert(testParseTimestampInLogLine(line) == toEpochNano("2026-02-24T08:05:55.244272+02"))
 
     locally:
       val line = "X2026-02-24 08:05:55.244272+02:00 info "
-      assert:
-        testParseTimestampInLogLine(line) == EpochNano.Nix
+      assert(testParseTimestampInLogLine(line) == EpochNano.Nix)
 
   "Speed" - {
     val timestamp = "2026-02-12T12:00:00.123456+02" // Typical debug log line

@@ -153,7 +153,7 @@ final class FastTimestampParser()(using zoneId: ZoneId):
     else
       // Different second or zone
       try
-        val epochNano = parseTimestampAsNanos(new String(ts, 0, length, StandardCharsets.US_ASCII))
+        val epochNano = parseTimestampAsNanos(String(ts, 0, length, StandardCharsets.US_ASCII))
 
         // Safe lastSecond
         arraycopy(ts, 0, lastSecond, 0, lastSecond.length)
@@ -180,21 +180,21 @@ object FastTimestampParser:
   assert(LongestLength == "0000-00-00T00:00:00.000000000+00:00+12:30".length)
   assert(SecondLength == "0000-00-00T00:00:00".length)
 
-  val TimestampPattern: Pattern =
+  private val TimestampPattern: Pattern =
     """[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}[.,][0-9]{1,9}(Z|[+-][0-9:]{2,5})?"""
       .r.pattern
 
-  val LogLineStartPattern: Pattern =
+  private val LogLineStartPattern: Pattern =
     val level = """(?:trace|debug|info|TRACE|DEBUG|INFO|WARN|ERROR)""".r
     s"""$HighlightRegex?($TimestampPattern) $level """.r.pattern
 
   // Faster than ISO_LOCAL_DATE_TIME
   private val dateTimeFormatter: DateTimeFormatter =
-    new DateTimeFormatterBuilder()
+    DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
       .appendFraction(NANO_OF_SECOND, 0, 9, true)
-      .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HHMM", "Z").toFormatter)
-      .appendOptional(new DateTimeFormatterBuilder().appendOffset("+HH:mm", "Z").toFormatter)
+      .appendOptional(DateTimeFormatterBuilder().appendOffset("+HHMM", "Z").toFormatter)
+      .appendOptional(DateTimeFormatterBuilder().appendOffset("+HH:mm", "Z").toFormatter)
       .toFormatter
 
   private[reader] def matchTimestamp[ByteSeq: ByteSequence](line: ByteSeq): ByteSeq | Null =
