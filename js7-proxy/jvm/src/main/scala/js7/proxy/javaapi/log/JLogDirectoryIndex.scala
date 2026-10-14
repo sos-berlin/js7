@@ -1,13 +1,12 @@
 package js7.proxy.javaapi.log
 
 import cats.effect.unsafe.IORuntime
-import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.ZoneId
 import java.util.Set as JSet
 import java.util.concurrent.CompletableFuture
 import js7.base.log.LogLevel
-import js7.base.log.reader.LogDirectoryIndex
+import js7.base.log.reader.{LogDirectoryIndex, LogIndexConf}
 import js7.proxy.javaapi.{JProxyContext, JResource}
 import scala.jdk.CollectionConverters.*
 
@@ -40,7 +39,7 @@ object JLogDirectoryIndex:
     JResource:
       locally:
         for
-          given Config = ctx.config
+          given LogIndexConf = ctx.logIndexConf
           result <- LogDirectoryIndex.resource(directory, logFilePrefixes.asScala.toSet)
         yield result
       .map:

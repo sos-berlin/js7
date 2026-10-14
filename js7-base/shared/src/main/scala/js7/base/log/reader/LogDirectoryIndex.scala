@@ -153,13 +153,15 @@ extends Service.StoppableByRequest:
 object LogDirectoryIndex:
   private val logger = Logger[this.type]
 
+  /** Use this when the single logFilePrefix is defined in config. */
   def resource(directory: Path)(using zoneId: ZoneId, config: Config)
   : ResourceIO[LogDirectoryIndex] =
+    given LogIndexConf = LogIndexConf.fromConfig(config).orThrow
     resource(directory, Set(config.getString("js7.log.prefix")))
 
-  def resource(directory: Path, logFilePrefixes: Set[String])(using zoneId: ZoneId, config: Config)
+  def resource(directory: Path, logFilePrefixes: Set[String])
+    (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogDirectoryIndex] =
-    given LogIndexConf = LogIndexConf.fromConfig(config).orThrow
     for
       _ <- registerStaticMBean[LogDirectoryIndexMXBean]("LogDirectoryIndex", LogIndex.Bean)
       service <-

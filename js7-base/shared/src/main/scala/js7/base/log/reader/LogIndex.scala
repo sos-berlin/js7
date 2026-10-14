@@ -32,7 +32,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.math.Ordered.orderingToOrdered
 
-/** Provides continuous streams of log lines from a stream of log files.
+/** Provides continuous streams of log lines from a log spreaded over multiple files.
   *
   * LogIndex handles growing log files and compressed (archived) log files.
   * A LogIndex spans several LogFileIndex, one for each file.
@@ -289,7 +289,8 @@ extends Service.StoppableByCancel:
 object LogIndex:
   private val logger = Logger[LogIndex]
 
-  /** LogIndex, for initial files and a Stream of DirectoryEvent. */
+  /** LogIndex for a single log spreaded over multiple files,
+    * with initial files and a Stream of DirectoryEvents. */
   private[reader] def directory(
     directory: Path,
     files: Seq[Path],

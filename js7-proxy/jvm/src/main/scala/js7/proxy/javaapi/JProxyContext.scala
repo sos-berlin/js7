@@ -17,7 +17,8 @@ import js7.base.config.Js7Conf
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.reader.LogDirectoryMXBean
+import js7.base.log.reader.{LogDirectoryMXBean, LogIndexConf}
+import js7.base.problem.Checked.Ops
 import js7.base.system.startup.StartUp
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
@@ -56,6 +57,7 @@ extends AutoCloseable:
   private var releaseOuter: IO[Unit] = IO.unit
   private var releaseIORuntime: SyncIO[Unit] = SyncIO.unit
   private val releaseLogDirectoryMBean = Atomic(SyncIO.unit)
+  lazy val logIndexConf: LogIndexConf = LogIndexConf.fromConfig(config).orThrow
 
   private def setReleaser(release: IO[Unit], releaseIORuntime: SyncIO[Unit]): Unit =
     this.releaseOuter = release
