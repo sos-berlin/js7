@@ -18,6 +18,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
 import js7.base.utils.CatsUtils.syntax.*
+import js7.base.utils.JavaUtils.{-->, Void}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId, NoticeKey}
@@ -30,7 +31,6 @@ import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
-import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
 import js7.data_for_java.order.{JFreshOrder, JHistoryOperation}

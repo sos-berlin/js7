@@ -2,7 +2,7 @@ package js7.data_for_java.vavr
 
 import io.vavr.collection.List as VList
 import io.vavr.control.Either as VEither
-import js7.data_for_java.common.JavaUtils.Void
+import js7.base.utils.JavaUtils.Void
 import scala.jdk.CollectionConverters.*
 
 object VavrConverters:

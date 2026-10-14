@@ -2,22 +2,16 @@ package js7.data_for_java.common
 
 import cats.instances.vector.*
 import cats.syntax.traverse.*
-import java.util.Objects.requireNonNull
 import java.util.Optional
 import js7.base.problem.{Checked, Problem}
 import js7.data.value.{BooleanValue, FunctionValue, ListValue, MissingValue, NamedValues, NumberValue, ObjectValue, StringValue, Value}
 import scala.jdk.CollectionConverters.*
-import scala.quoted.{Expr, Quotes, Type}
 
-object JavaUtils:
-
-  /** Java Function&lt;A, B>. */
-  type -->[A, B] = java.util.function.Function[A, B]
-
-  val Void: Void = null.asInstanceOf[Void]
+object JavaValues:
 
   // TEST IS MISSING
-  private def javaToNamedValues(javaMap: java.util.Map[String, java.lang.Object]): Checked[NamedValues] =
+  private def javaToNamedValues(javaMap: java.util.Map[String, java.lang.Object])
+  : Checked[NamedValues] =
     javaMap.asScala
       .view
       .map { case (k, v) => javaToValue(v).map(k -> _) }
@@ -53,19 +47,3 @@ object JavaUtils:
       case MissingValue => Optional.empty
       case _: ObjectValue | _: FunctionValue => throw new NotImplementedError
 
-  /** 🔥 Seems not to work properly. */
-  @throws[ClassCastException]
-  @throws[NullPointerException]
-  inline def assertTypeForJava[A](inline a: A): Unit =
-    ${ JavaUtilMacros.assertTypeForJava[A]('a) }
-
-
-private object JavaUtilMacros:
-
-  def assertTypeForJava[A: Type](a: Expr[A])(using Quotes): Expr[Unit] =
-    '{
-      val x = $a
-      if !x.isInstanceOf[A] then
-        requireNonNull(x) // In JavaUtilTest, this throws a proper ClassCastException
-        throw new ClassCastException // But in JLogFileTest this throws
-    }

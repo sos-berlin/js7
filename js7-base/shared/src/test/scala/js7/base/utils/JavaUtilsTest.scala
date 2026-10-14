@@ -1,7 +1,7 @@
-package js7.data_for_java.common
+package js7.base.utils
 
 import js7.base.test.OurTestSuite
-import js7.data_for_java.common.JavaUtils.assertTypeForJava
+import js7.base.utils.JavaUtils.assertTypeForJava
 
 final class JavaUtilsTest extends OurTestSuite:
 

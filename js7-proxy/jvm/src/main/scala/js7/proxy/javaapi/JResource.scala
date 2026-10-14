@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.data_for_java.common.JavaUtils.-->
+import js7.base.utils.JavaUtils.-->
 import js7.proxy.javaapi.JResource.*
 import reactor.core.publisher.{Flux, Mono}
 

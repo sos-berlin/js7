@@ -24,13 +24,13 @@ import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.:=
 import js7.base.utils.CatsUtils.*
+import js7.base.utils.JavaUtils.{-->, Void}
 import js7.base.utils.Tests.isTest
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.system.startup.MainSupportService
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
-import js7.data_for_java.common.JavaUtils.{-->, Void}
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.data.GroupAndProxyId
 import js7.proxy.javaapi.JProxyContext.*

@@ -6,7 +6,7 @@ import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull
 import js7.base.io.process.{Stderr, Stdout}
 import js7.base.problem.Problem
-import js7.data_for_java.common.JavaUtils.Void
+import js7.base.utils.JavaUtils.Void
 import js7.launcher.StdWriter
 import js7.launcher.forjava.internal.JInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
