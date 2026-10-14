@@ -6,8 +6,11 @@ import js7.base.catsutils.CatsEffectExtensions.run
 import js7.base.io.file.FileDeleter
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.LogLevel
+import js7.base.utils.JavaUtils.-->
+import scala.jdk.FunctionConverters.*
 import scala.util.Try
 import scala.util.matching.Regex
+import scala.util.matching.Regex.quote
 
 private object LogUtils:
 
@@ -15,8 +18,8 @@ private object LogUtils:
   private[reader] val TmpSuffix = "-indexed.tmp"
   private[reader] val LogGzTmpSuffix = ".log.gz" + TmpSuffix
 
-  private val NameRegex =
-    s"^([^-.]+)(-error|-debug)?(?:\\.log|(?:-.+)?\\.log\\.gz)(?:${Regex.quote(TmpSuffix)})?$$".r
+  private val NameRegex = Regex:
+    """([^-.]+)(-error|-debug)?(?:\.log|(?:-[0-9-]+)?\.log\.gz)(?:""" + quote(TmpSuffix) + ")?"
 
   def deleteTmpFiles(directory: Path, logFilePrefixes: Set[String]): IO[Unit] =
     IO.blocking:
@@ -31,6 +34,9 @@ private object LogUtils:
 
   private[reader] def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
+
+  def isOurLogFilenameJava(isValidPrefix: String --> Boolean, file: Path): Boolean =
+    isOurLogFilename(isValidPrefix.asScala, file)
 
   private[reader] def isOurLogFilename(isValidPrefix: String => Boolean, file: Path): Boolean =
     fileToPrefixAndLogLevel(file) match
