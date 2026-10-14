@@ -5,9 +5,15 @@ import cats.syntax.functor.*
 import fs2.Stream
 
 /** A bracket spanning multiple lines. */
-final case class MultipleLinesBracket(first: Char, middle: Char, last: Char, single: Char = ' ')
+final case class MultipleLinesBracket(
+  first: String,
+  middle: String,
+  last: String,
+  single: String = SingleDefault)
 
 object MultipleLinesBracket:
+
+  private val SingleDefault = ""
 
   /** Round bracket: ⎛.
     *
@@ -41,7 +47,7 @@ object MultipleLinesBracket:
   val Default: MultipleLinesBracket = SmallSquare
 
   def apply(chars: String): MultipleLinesBracket =
-    def f(i: Int) = if chars.length > i then chars(i) else ' '
+    def f(i: Int) = if chars.length > i then chars(i).toString else SingleDefault
     MultipleLinesBracket(f(0), f(1), f(2), f(3))
 
   def normalize(brackets: MultipleLinesBracket | String): MultipleLinesBracket =
@@ -63,10 +69,10 @@ object MultipleLinesBracket:
     // Keep chunks small because a single element may be big
     .chunkLimit(1).unchunks
     .zipWithBracket(brackets).flatMap: (o, br) =>
-      Stream(" ", br.toString, o.toString, "\n")
+      Stream(" ", br, o.toString, "\n")
 
   extension[F[_], O](stream: Stream[F, O])
-    def zipWithBracket(bracket: MultipleLinesBracket | String = Default): Stream[F, (O, Char)] =
+    def zipWithBracket(bracket: MultipleLinesBracket | String = Default): Stream[F, (O, String)] =
       val br = MultipleLinesBracket.normalize(bracket)
       stream.through:
         _.zipWithPreviousAndNext.map:
@@ -76,7 +82,7 @@ object MultipleLinesBracket:
           case (None, o, None) => o -> br.single
 
     def evalTapWithBracket(bracket: MultipleLinesBracket | String = Default)
-      (body: (O, Char) => F[Unit])
+      (body: (O, String) => F[Unit])
       (using Functor[F])
     : Stream[F, O] =
       zipWithBracket(bracket).evalMap: (o, br) =>
@@ -84,7 +90,7 @@ object MultipleLinesBracket:
 
   extension[O](stream: Stream[fs2.Pure, O])
     def unsafeTapWithBracket(bracket: MultipleLinesBracket | String = Default)
-      (body: (O, Char) => Unit)
+      (body: (O, String) => Unit)
     : Stream[fs2.Pure, O] =
       stream.zipWithBracket(bracket).map: (o, br) =>
         body(o, br)

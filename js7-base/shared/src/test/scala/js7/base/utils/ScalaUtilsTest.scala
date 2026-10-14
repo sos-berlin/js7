@@ -637,7 +637,7 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
 
       "One element" in:
         assert(testWith(1) == Seq(
-          " ·1"))
+          "·1"))
 
       "Two elements" in:
         assert(testWith(2) == Seq(

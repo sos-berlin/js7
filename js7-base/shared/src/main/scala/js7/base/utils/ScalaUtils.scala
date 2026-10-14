@@ -546,7 +546,7 @@ object ScalaUtils:
 
       /** Usable for logging a chunk of lines with a long bracket. */
       def foreachWithBracket(bracket: MultipleLinesBracket = MultipleLinesBracket.Square)
-        (body: (A, Char) => Unit)
+        (body: (value: A, bracket: String) => Unit)
       : Unit =
         val iterator = iterableOnce.iterator
         if iterator.hasNext then

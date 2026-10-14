@@ -17,7 +17,7 @@ trait BasicState:
     toStringStream.through(fs2.text.lines)
       .zipWithBracket(Square)
       .map: (line, br) =>
-        br +: line
+        br ++ line
 
   def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit(toString)
