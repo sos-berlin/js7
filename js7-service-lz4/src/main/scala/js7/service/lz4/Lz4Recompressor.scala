@@ -43,11 +43,13 @@ extends
 
 
 private object Lz4Recompressor:
+
+  private val logger = Logger[this.type]
+
+  logger.info("Using LZ4 compression")
+
   // Don't use FastestLz4 in tests
   private val FastestLz4 = Lz4Recompressor(
     () => LZ4Factory.fastestInstance.fastCompressor(),
     () => LZ4Factory.fastestInstance.fastDecompressor(),
     "lz4/native")
-  private val logger = Logger[this.type]
-
-  logger.info("Using LZ4 compression")

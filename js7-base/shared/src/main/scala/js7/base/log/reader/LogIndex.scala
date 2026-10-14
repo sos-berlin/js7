@@ -280,7 +280,7 @@ extends Service.StoppableByCancel:
     logFile.toDeferredIndex(pollGrowing = watchGrowth ? conf.pollGrowing)
 
   def files: Seq[Path] =
-    instantToLogFile.values.asScala.toVector.map(_.originalFile)
+    instantToLogFile.values.asScala.toVector.sortBy(_.fileInstant).map(_.originalFile)
 
   override def toString =
     s"LogIndex($label, ${instantToLogFile.size} files)"
@@ -299,7 +299,7 @@ object LogIndex:
     label: String)
     (using zoneId: ZoneId, conf: LogIndexConf)
   : ResourceIO[LogIndex] =
-    logger.debugResource("LogIndex", s"$directory $label"):
+    logger.traceResource(s"LogIndex $directory $label"):
       given Recompressor = conf.recompressor
       for
         (logFiles, pipe) <- LogIndexBuilder.toLogFileEvents(directory, files)
@@ -309,7 +309,7 @@ object LogIndex:
           label = label,
           watchGrowth = watchGrowth)
       yield
-        logger.whenTraceEnabled:
+        logger.whenDebugEnabled:
           logFiles.sorted.map(_.toStringWithSize).foreachWithBracket(): (line, br) =>
             logger.debug(s"$br$line")
         logFileIndex
@@ -324,7 +324,7 @@ object LogIndex:
           LogFile.read(file).orThrow
         .compile.toVector.map: logFiles =>
           logFiles.view.map(_.toStringWithSize).foreachWithBracket(): (line,br) =>
-            logger.trace(s"$br$line")
+            logger.debug(s"$br$line")
           logFiles
       logIndex <- resource(logFiles, Stream.empty, watchGrowth = watchGrowth, label = label)
     yield

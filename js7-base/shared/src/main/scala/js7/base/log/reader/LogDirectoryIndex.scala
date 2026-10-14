@@ -73,7 +73,7 @@ extends Service.StoppableByRequest:
       if isServiceStopping then
         Resource.pure(Map.empty)
       else
-        logger.traceResource:
+        logger.debugResource(s"watching $directory, {${logFilePrefixes.mkString(" ")}}"):
           for
             prefixAndLevelToFilesAndChannel <- watchDirectoryAndDispatchEvents
             levelToIndex <-
@@ -91,7 +91,7 @@ extends Service.StoppableByRequest:
                         initialFiles,
                         channel.stream.unchunks,
                         watchGrowth = true,
-                        label = s"$logFilePrefix/$logLevel"
+                        label = s"$logFilePrefix($logLevel)"
                       ).toAllocated.map: allocated =>
                         (logFilePrefix, logLevel) -> allocated
                   .map(_.toMap))(
@@ -99,6 +99,18 @@ extends Service.StoppableByRequest:
                   _.values.toSeq.parTraverseVoid:
                     _.release /*LogIndex*/)
           yield
+            //logger.whenDebugEnabled:
+            //  logger.debug(s"watching $directory${
+            //      levelToIndex.nonEmpty ?? s" with ${levelToIndex.size} initial files:"
+            //    }")
+            //  levelToIndex.groupMap(_._1._1):
+            //    case ((_, logLevel), Allocated(logIndex, _)) => logLevel -> logIndex
+            //  .foreachWithBracket():
+            //    case ((prefix, seq), br1) =>
+            //      seq.toVector.sortBy(_._1).foreachWithBracket():
+            //        case ((logLevel, logIndex), br2) =>
+            //          logIndex.files.foreachWithBracket(): (file, br3) =>
+            //            logger.debug(s"$br1$br2$br3${file.getFileName}")
             levelToIndex
 
   /** Return for each LogLevel the initial files and a Channel of DirectoryEvents. */
@@ -147,7 +159,7 @@ extends Service.StoppableByRequest:
         _.values.foldMapMI: channel =>
           channel.close.void)
 
-  override def toString = "LogDirectoryIndex"
+  override def toString = s"LogDirectoryIndex($directory, ${logFilePrefixes.mkString(" ")})"
 
 
 object LogDirectoryIndex:

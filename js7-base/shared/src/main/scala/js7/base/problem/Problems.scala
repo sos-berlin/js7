@@ -57,7 +57,7 @@ object Problems:
     def arguments = Map2(
       "file", file.getFileName.toString,
       "reason", reason)
-  
+
   object IncompleteLogFileProblem:
      val FileNotFound = "FileNotFound"
 

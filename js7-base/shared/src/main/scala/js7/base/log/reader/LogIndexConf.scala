@@ -62,6 +62,12 @@ object LogIndexConf:
   private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
   private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
 
+  val default: LogIndexConf =
+    LogIndexConf.fromConfig(Js7Config.defaultConfig).orThrow
+
+  lazy val forTest: LogIndexConf =
+    default
+
   def fromConfig(config: Config): Checked[LogIndexConf] =
     for
       concurrency <- catchNonFatal(config.getInt("js7.log.index.read-timestamp-concurrency"))
@@ -101,9 +107,3 @@ object LogIndexConf:
         checkLogFileChangePeriod,
         skipBackwardsMinSize, skipBackwardsMaxSize,
         directoryWatchSettings)
-
-  val default: LogIndexConf =
-    LogIndexConf.fromConfig(Js7Config.defaultConfig).orThrow
-
-  lazy val forTest: LogIndexConf =
-    default

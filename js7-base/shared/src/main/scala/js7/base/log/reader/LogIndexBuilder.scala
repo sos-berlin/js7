@@ -49,7 +49,8 @@ private final class LogIndexBuilder private(
       .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
         LogFile.read(file).flatMap:
           case Left(problem) =>
-            logger.debug(s"💥 Delaying ${file.getFileName} due to: $problem")
+            val m = (!problem.isInstanceOf[IncompleteLogFileProblem]) ?? "💥 "
+            logger.debug(s"${m}Delaying ${file.getFileName} due to: $problem")
             val a = DelayedLogFile(file)
             // Read the timestamp of the first line of the log file in the background.
             a.start(onCompleted).as(Right(a))
@@ -155,34 +156,34 @@ private final class LogIndexBuilder private(
       onFailed: Throwable => IO[Unit] = _ => IO.unit,
       awaitLastAddedGzFile: Boolean = false)
     : IO[Unit] =
-      logger.trace(s"DelayedLogFile($filename).start")
       val gzip = isGzipped(file)
       // Read log file's timestamp in background
       supervisor.supervise:
-        IO.whenA(awaitLastAddedGzFile && !gzip):
-          CatsDeadline.now.flatMap: now =>
-            gzLogFileReady.waitUntil(_ >= now).timeoutTo(conf.logFileWaitsForPrevious, IO.unit)
-          *>
-            IO.sleep(conf.fileAddedDelay) // Delay shortly to allow log4j to write first log line
-        .productR:
-          IO.defer:
-            val t = Deadline.now
-            // Don't wait endlessly for .log.gz files to be finished (just in case)
-            toLogFileUntilFinished(file, finite = gzip).flatMap:
-              case None =>
-                val d = t.elapsed.pretty
-                logger.error(s"$filename contains no log timestamp, giving up after $d")
-                onFailed(new TimeoutException(s"LogFile $filename read timed out after $d"))
-              case Some(logFile) =>
-                completed.complete(()).flatMap:
-                  IO.whenA(_): // not cancelled
-                    IO.whenA(gzip):
-                      CatsDeadline.now.flatMap:
-                        gzLogFileReady.set
-                    *> onCompleted(logFile)
-            .handleErrorWith: t =>
-              logger.error(s"$filename: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              onFailed(t)
+        logger.traceIO(s"DelayedLogFile($filename)"):
+          IO.whenA(awaitLastAddedGzFile && !gzip):
+            CatsDeadline.now.flatMap: now =>
+              gzLogFileReady.waitUntil(_ >= now).timeoutTo(conf.logFileWaitsForPrevious, IO.unit)
+            *>
+              IO.sleep(conf.fileAddedDelay) // Delay shortly to allow log4j to write first log line
+          .productR:
+            IO.defer:
+              val t = Deadline.now
+              // Don't wait endlessly for .log.gz files to be finished (just in case)
+              toLogFileUntilFinished(file, finite = gzip).flatMap:
+                case None =>
+                  val d = t.elapsed.pretty
+                  logger.error(s"$filename contains no log timestamp, giving up after $d")
+                  onFailed(new TimeoutException(s"LogFile $filename read timed out after $d"))
+                case Some(logFile) =>
+                  completed.complete(()).flatMap:
+                    IO.whenA(_): // not cancelled
+                      IO.whenA(gzip):
+                        CatsDeadline.now.flatMap:
+                          gzLogFileReady.set
+                      *> onCompleted(logFile)
+              .handleErrorWith: t =>
+                logger.error(s"$filename: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                onFailed(t)
       .flatMap:
         fiberVar.set
 

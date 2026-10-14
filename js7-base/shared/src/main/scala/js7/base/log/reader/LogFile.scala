@@ -190,7 +190,7 @@ private object LogFile:
       chunk.indexOf('\n') match
         case -1 => Left(IncompleteLogFileProblem(file, "Incomplete header line"))
         case firstLineEnd =>
-          val logLine =
+          val firstLogLine =
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
               chunk.drop(firstLineEnd + 1)
             else
@@ -198,9 +198,9 @@ private object LogFile:
               chunk.take(firstLineEnd)
           // Timestamp of first log line after the header line
           FastTimestampParser()
-            .parseTimestampInLogLine(logLine)
+            .parseTimestampInLogLine(firstLogLine)
             .toOption.toRight:
-              InvalidTimestampInLogFileProblem(file, logLine.utf8StringTruncateAt(30))
+              InvalidTimestampInLogFileProblem(file, firstLogLine.utf8StringTruncateAt(80))
             .map(_.toInstant)
     .handleError: t =>
       val msg = s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}"
