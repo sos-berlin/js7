@@ -8,6 +8,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.SyncDeadline
 import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.log.AnsiEscapeCodes.{magenta, resetColor}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
@@ -23,7 +24,7 @@ import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.{AckFromActiveClusterNodeProblem, OldEventIdProblem}
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.*
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.watch.RealEventWatch.*
 import org.jetbrains.annotations.TestOnly
@@ -321,10 +322,11 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean)
     (using loc: ScalaSourceLocation)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
-    lazy val label = s"awaitAsync[${
+    lazy val label0 = s"awaitAsync[${
       eventRequest.eventClasses.view.map(_.shortClassName).toVector.sorted.mkString(" | ")
-      }] in $loc"
-    logger.debugIO(label):
+      }]"
+    lazy val label = s"$label0 in $loc"
+    logger.debugIO(s"$magenta$label0$resetColor in $loc"):
       import eventRequest.{after, timeout}
       when[E](eventRequest, predicate).map:
         case EventSeq.NonEmpty(events) =>
