@@ -7,10 +7,23 @@ time bin/sbt-batch -Dsbt.log.noformat=false "$@"
 failureCount=0
 failMsg=""
 
+# Prefixes each line of stdin with $1 (escape sequences allowed)
+prefixLines() {
+  local prefix line
+  prefix=$(printf '%b' "$1")
+  while IFS= read -r line || [[ -n $line ]]; do
+    printf '\e[0;37m%s │\e[0m %s\n' "$prefix" "$line"
+  done
+}
+
 for i in {2..999999}; do
   echo -e "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━ $i ━━━━━━━━━━━━━━━━━━━━━━━━━$failMsg\n"
   echo -n "" >logs/build.log
-  time if ! bin/sbt-batch "$@" | tee logs/build.out; then :
+  prefix="#$i"
+  if [ $failureCount -gt 0 ]; then
+    prefix="$prefix \e[1;31m$failureCount❗️ \e[0m"
+  fi
+  if ! time bin/sbt-batch "$@" 2>&1 | tee logs/build.out | prefixLines "$prefix"; then :
     ts=$(date +%Y%m%d-%H%M%S)
     gzip <logs/build.out >"logs/build-$ts-$i.out.gz"
     gzip <logs/build.log >"logs/build-$ts-$i.log.gz"

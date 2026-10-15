@@ -16,7 +16,6 @@ object BuildCPU {
 
   lazy val testParallelization: Int =
     cpu match {
-      case "Apple M1 Max" => 16
-      case _ => sys.runtime.availableProcessors / 2
+      case _ => sys.runtime.availableProcessors
     }
 }
