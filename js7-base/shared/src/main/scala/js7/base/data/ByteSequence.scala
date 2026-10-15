@@ -281,8 +281,18 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   private def asciiCharSequence_(byteSeq: ByteSeq, begin: Int, end: Int): CharSequence =
     ByteSeqAsciiCharSequence(byteSeq, begin, end)
 
-  def utf8StringTruncateAt(byteSeq: ByteSeq, truncateAt: Int): String =  // TODO Truncate big byte sequence before decoding
-    utf8String(byteSeq).truncateWithEllipsis(truncateAt)
+  /** Defaults like in truncateWithEllipsis. */
+  def utf8StringTruncateAt(
+    byteSeq: ByteSeq,
+    truncateAt: Int,
+    showLength: Boolean = false,
+    firstLineOnly: Boolean = false,
+    quote: Boolean = false)
+  : String =
+    // TODO Truncate big byte sequence before decoding
+    utf8String(byteSeq)
+      .truncateWithEllipsis(
+        truncateAt, showLength = showLength, firstLineOnly = firstLineOnly, quote = quote)
 
   //def tryUtf8String(byteSeq: ByteSeq): Option[String] =
   //  try Some(UTF_8.newDecoder().decode(ByteBuffer.wrap(barr)))
@@ -462,8 +472,14 @@ object ByteSequence:
     def utf8String: String =
       typeClassInstance.utf8String(self)
 
-    def utf8StringTruncateAt(truncateAt: Int): String =
-      typeClassInstance.utf8StringTruncateAt(self, truncateAt)
+    def utf8StringTruncateAt(
+      truncateAt: Int,
+      showLength: Boolean = false,
+      firstLineOnly: Boolean = false,
+      quote: Boolean = false)
+    : String =
+      typeClassInstance.utf8StringTruncateAt(
+        self, truncateAt, showLength = showLength, firstLineOnly = firstLineOnly, quote = quote)
 
     def asciiCharSequence: CharSequence =
       typeClassInstance.asciiCharSequence(self)
