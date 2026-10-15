@@ -71,6 +71,8 @@ extends
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var shuttingDown = false
+  /** Dedicated or coupled, maybe still without heartbeat. */
+  @volatile private var isDedicatedOrCoupled = false
   private val _releaseEventListener = Ref.unsafe[IO, IO[Unit]](IO.unit)
   private var _eventListener: RemoteSubagentEventListener = null.asInstanceOf
 
@@ -130,13 +132,17 @@ extends
     logger.debugIO:
       resetLock.lock(IO.defer:
         val wasHeartbeating = isHeartbeating
+        // A just coupled Subagent may not yet be heartbeating.
+        // Without Shutdown, it would remain dedicated to the old AgentRunId.
+        val wasDedicatedOrCoupled = isDedicatedOrCoupled
+        isDedicatedOrCoupled = false
         // Stop listening events before we mark order processes as lost.
         // Eventual event from Subagent must not interfere without
         // OrderProcessed .processLost.
         // Unfortunately, this will inhibit SubagentShutdown event, too.
         stopEventListener
           .productR:
-            IO.whenA((wasHeartbeating || force) && !suppressResetShutdown):
+            IO.whenA((wasHeartbeating || wasDedicatedOrCoupled || force) && !suppressResetShutdown):
               // One shot. Processes are killed only if Subagent is reachable.
               // May delay ProcessLost and SubagentReset for connection timeout.
               tryShutdownSubagent(processSignal = Some(SIGKILL), dropEventsAfter = Some(0.s))
@@ -187,6 +193,9 @@ extends
       currentSubagentItemState
         .flatMapT: subagentItemState =>
           dedicateOrCouple2(subagentItemState)
+        .flatTap: checked =>
+          IO:
+            if checked.isRight then isDedicatedOrCoupled = true
 
   private def dedicateOrCouple2(subagentItemState: SubagentItemState)
   : IO[Checked[(SubagentRunId, EventId)]] =
