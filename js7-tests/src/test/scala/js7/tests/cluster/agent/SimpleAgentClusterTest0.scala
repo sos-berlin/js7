@@ -33,9 +33,17 @@ import js7.tests.testenv.DirectorEnv
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import scala.util.control.NonFatal
 
-abstract sealed class SimpleAgentClusterTest0 extends ControllerClusterTester:
+/** @param semaphoreJob Each subclass has its own, because tests run in parallel. */
+abstract sealed class SimpleAgentClusterTest0(semaphoreJob: SemaphoreJob.Companion[? <: SemaphoreJob])
+extends ControllerClusterTester:
 
   protected override val agentPaths = Nil
+
+  private val workflow = Workflow(
+    WorkflowPath("MY-WORKFLOW"),
+    Seq(semaphoreJob.execute(
+      AgentPath("AGENT"),
+      subagentBundleId = Some(StringConstant(subagentBundle.id.string)))))
 
   private lazy val subagentItems = Seq(
     SubagentItem(SubagentId("SUBAGENT-0"), agentPath, findFreeLocalUri()),
@@ -121,7 +129,7 @@ abstract sealed class SimpleAgentClusterTest0 extends ControllerClusterTester:
               val eventId = primaryController.eventWatch
                 .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
                 .head.eventId
-              ASemaphoreJob.continue()
+              semaphoreJob.continue()
 
               val secondProcessingStarted = primaryController.eventWatch
                 .await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
@@ -133,7 +141,7 @@ abstract sealed class SimpleAgentClusterTest0 extends ControllerClusterTester:
 
               primaryController.eventWatch.await[OrderFinished](_.key == failOverOrderId)
 
-              ASemaphoreJob.continue()
+              semaphoreJob.continue()
               val bOrderId = OrderId("🔸")
               primaryController.runOrder(FreshOrder(bOrderId, workflow.path))
               assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
@@ -164,23 +172,20 @@ object SimpleAgentClusterTest0:
       subagentIds(1) -> NumericConstant(1))
   )
 
-  private val workflow = Workflow(
-    WorkflowPath("MY-WORKFLOW"),
-    Seq(ASemaphoreJob.execute(
-      AgentPath("AGENT"),
-      subagentBundleId = Some(StringConstant(subagentBundle.id.string)))))
-
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
 
+  final class BSemaphoreJob extends SemaphoreJob(BSemaphoreJob)
+  object BSemaphoreJob extends SemaphoreJob.Companion[BSemaphoreJob]
 
-final class SimpleAgentClusterTest extends SimpleAgentClusterTest0:
+
+final class SimpleAgentClusterTest extends SimpleAgentClusterTest0(ASemaphoreJob):
 
   "Cluster replicates journal files properly" in:
     runMyTest(requireFailoverConfirmation = false)
 
 
-final class ExternallyConfirmingFailoverAgentClusterTest extends SimpleAgentClusterTest0:
+final class ExternallyConfirmingFailoverAgentClusterTest extends SimpleAgentClusterTest0(BSemaphoreJob):
 
   "Cluster replicates journal files properly" in:
     runMyTest(requireFailoverConfirmation = true)
