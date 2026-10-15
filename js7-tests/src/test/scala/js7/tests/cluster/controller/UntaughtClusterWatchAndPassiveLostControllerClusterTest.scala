@@ -47,79 +47,84 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
       var backupController = backup.newController()
+      try
+        val clusterCoupledConfirmed = primaryController.testEventBus
+          .whenPFFuture[ClusterWatchCounterpart.TestConfirmed, Unit]:
+            _.request match
+              case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterCoupled, _, _) =>
 
-      val clusterCoupledConfirmed = primaryController.testEventBus
-        .whenPFFuture[ClusterWatchCounterpart.TestConfirmed, Unit]:
-          _.request match
-            case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterCoupled, _, _) =>
+        withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
+          primaryController.await[ClusterCoupled]()
+          awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
+          clusterCoupledConfirmed.await(99.s)
 
-      withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
-        primaryController.await[ClusterCoupled]()
-        awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
-        clusterCoupledConfirmed.await(99.s)
+        logger.info("💥 Break connection between cluster nodes 💥")
+        sys.props(testAckLossPropertyKey) = "true"
+        sys.props(testHeartbeatLossPropertyKey) = "true"
+        sys.props(testSimulateInhibitActivationPropertyKey) = "true"
 
-      logger.info("💥 Break connection between cluster nodes 💥")
-      sys.props(testAckLossPropertyKey) = "true"
-      sys.props(testHeartbeatLossPropertyKey) = "true"
-      sys.props(testSimulateInhibitActivationPropertyKey) = "true"
-
-      primaryController.testEventBus
-        .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
-          _.request match
-            case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
-        .await(99.s)
-
-      if stopBackup then
-        logger.info("💥 Stop Backup Controller 💥")
-        backupController.terminate(dontNotifyActiveNode = true).await(99.s)
-
-      withClusterWatchService(restartedClusterWatchId): (clusterWatchService, eventBus) =>
-        // ClusterWatch is untaught
-        val clusterPassiveLost = eventBus
-          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
-            case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
+        primaryController.testEventBus
+          .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
+            _.request match
+              case ClusterWatchAskNodeLoss(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
           .await(99.s)
-        assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
-        assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
 
         if stopBackup then
-          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
-        else
-          val clusterFailedOver = eventBus
-            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
-              case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
+          logger.info("💥 Stop Backup Controller 💥")
+          backupController.terminate(dontNotifyActiveNode = true).await(99.s)
+
+        withClusterWatchService(restartedClusterWatchId): (clusterWatchService, eventBus) =>
+          // ClusterWatch is untaught
+          val clusterPassiveLost = eventBus
+            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
+              case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
             .await(99.s)
-          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
+          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
+          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
 
-        assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
+          if stopBackup then
+            assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
+          else
+            val clusterFailedOver = eventBus
+              .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
+                case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
+              .await(99.s)
+            assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
 
-        val eventId = primaryController.lastAddedEventId
-        clusterWatchService.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER")).await(99.s).orThrow
-        assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
-        assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
+          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
-        val ClusterPassiveLost(`backupId`) = primaryController.await[ClusterPassiveLost]()
-          .head.value.event: @unchecked
+          val eventId = primaryController.lastAddedEventId
+          clusterWatchService.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER")).await(99.s).orThrow
+          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
+          assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
-        assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
-          .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(primaryId, "PassiveLost(Node:Primary is active)")))
+          val ClusterPassiveLost(`backupId`) = primaryController.await[ClusterPassiveLost]()
+            .head.value.event: @unchecked
 
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, Confirmer("CONFIRMER"))
-          .await(99.s)
-          == Left(ClusterNodeIsNotLostProblem(backupId, "PassiveLost(Node:Primary is active)")))
+          // The ClusterState may already have changed from PassiveLost to PreparedToBeCoupled,
+          // because the backup node (if not stopped) tries to recouple immediately.
+          for nodeId <- Seq(primaryId, backupId) do
+            clusterWatchService.manuallyConfirmNodeLoss(nodeId, Confirmer("CONFIRMER"))
+              .await(99.s)
+              .match
+                case Left(ClusterNodeIsNotLostProblem(`nodeId`, _)) =>
+                case o => fail(s"Unexpected result of manuallyConfirmNodeLoss($nodeId): $o")
 
-        sys.props(testAckLossPropertyKey) = "false"
-        sys.props(testHeartbeatLossPropertyKey) = "false"
-        sys.props(testSimulateInhibitActivationPropertyKey) = "false"
-        if stopBackup then
-          logger.info("Start Backup Controller")
-          backupController = backup.newController()
+          sys.props(testAckLossPropertyKey) = "false"
+          sys.props(testHeartbeatLossPropertyKey) = "false"
+          sys.props(testSimulateInhibitActivationPropertyKey) = "false"
+          if stopBackup then
+            logger.info("Start Backup Controller")
+            backupController = backup.newController()
 
-        primaryController.await[ClusterCoupled](after = eventId)
+          primaryController.await[ClusterCoupled](after = eventId)
 
-        primaryController.terminate().await(99.s)
-        backupController.terminate(dontNotifyActiveNode = true).await(99.s)
+          primaryController.terminate().await(99.s)
+          backupController.terminate(dontNotifyActiveNode = true).await(99.s)
+      finally
+        // Clean up even if the test failed, for the following tests
+        primaryController.stop.await(99.s)
+        backupController.stop.await(99.s)
     }
 
 
