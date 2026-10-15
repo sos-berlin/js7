@@ -25,6 +25,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
           primaryController.eventWatch.await[ClusterWatchRegistered]()
+          backupController.eventWatch.await[ClusterCoupled]()
 
           primaryController
             .api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
