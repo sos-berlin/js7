@@ -20,6 +20,7 @@ import js7.base.metering.CallMeter
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.scalasource.ScalaSourceLocation
+import js7.base.system.Java17Polyfill.indexOf
 import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.Nulls.nullToNone
@@ -1113,11 +1114,9 @@ object ScalaUtils:
 
       def firstLineLengthN(until: Int): Int =
         val n = until min underlying.length
-        var i = 0
-        while i < n do
-          if underlying.charAt(i) == '\n' then return i + 1
-          i += 1
-        n
+        underlying.indexOf('\n', 0, n) match
+          case -1 => n
+          case i => i + 1 // including \n
 
     extension (problemOrNull: Problem | Null)
       def toChecked: Checked[Unit] =
