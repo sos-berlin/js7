@@ -27,9 +27,10 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
       val preparation = Preparation()
       import preparation.{acquired, released}
       val flux = preparation.stream
-        .evalTap(i => IO:
-          assert(acquired.get == 1 && released.get == 0)
-          logger.info(s"--> $i"))
+        .evalTap: i =>
+          IO:
+            assert(acquired.get == 1 && released.get == 0)
+            logger.info(s"--> $i")
         .asFluxSingleElements
       assert(acquired.get == 0 && released.get == 0)
 
@@ -56,9 +57,9 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
         .flatMap(_ +: Stream.never[IO])
         .asFluxSingleElements
 
+      assert(acquired.get == 0 && released.get == 0 && last.get == 0)
       val disposable = flux.subscribe()
-      sleep(100.ms)
-      assert(acquired.get == 1 && released.get == 0 && last.get == 1)
+      awaitAndAssert(acquired.get == 1 && released.get == 0 && last.get == 1)
       disposable.dispose()
       // dispose() cancels in background. So we wait for the outcome:
       awaitAndAssert(acquired.get == 1 && released.get == 1 && last.get == 1)
