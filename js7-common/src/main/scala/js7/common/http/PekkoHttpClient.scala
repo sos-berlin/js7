@@ -382,6 +382,16 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         withCheckedAgentUri(request): request =>
           sessionTokenIO.flatMap: sessionToken =>
             sendReceive2(request, logData, dontLog, sessionToken)
+              .recoverWith:
+                case pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded
+                  if request.method == GET =>
+                  // Pekko's connection pool may fail a new request with the cancellation of a
+                  // previous response stream (like after Stream#take) to the same host.
+                  // The request has not got a response, and a GET may be repeated.
+                  IO(logger.debug:
+                    s"Repeating ${request.method.value} ${request.uri} after NoMoreElementsNeeded")
+                  .productR:
+                    sendReceive2(request, logData, dontLog, sessionToken)
 
   private def sendReceive2(
     request: HttpRequest, logData: => Option[String] = None, dontLog: Boolean,
