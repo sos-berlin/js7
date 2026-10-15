@@ -40,7 +40,12 @@ final class ClusterWatchCounterpart private(
   timing: ClusterTiming,
   shuttingDown: DeferredSource[IO, Unit],
   testEventBus: EventPublisher[Any])
-extends Service.Trivial:
+extends
+  Service.StoppableByRequest:
+
+  protected def startService =
+    runService:
+      untilServiceStopRequested
 
   import clusterConf.ownId
 
@@ -169,10 +174,13 @@ extends Service.Trivial:
           testEventBus.publish(TestWaitingForConfirmation(request)))
         .*>(requested.untilConfirmed
           .timeoutTo(timing.clusterWatchReactionTimeout, IO.left(MyRequestTimeoutProblem)))
+        .race(untilServiceStopRequested)
+        .map(_.left.getOrElse(Left(ClusterModuleShuttingDownProblem)))
         .recoverFromProblemAndRetry(()):
           case (MyRequestTimeoutProblem, _, retry) =>
             shuttingDown.tryGet.flatMap:
               case Some(()) => IO.left(ClusterModuleShuttingDownProblem)
+              case None if isServiceStopping => IO.left(ClusterModuleShuttingDownProblem)
               case None =>
                 SyncDeadline.usingNow:
                   if hasConfirmedSomething.get then
