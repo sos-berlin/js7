@@ -73,6 +73,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
     controller.awaitNextKey[SubagentShutdownStarted](subagentId)
     val orderProcessed = controller.awaitNextKey[OrderProcessed](simpleOrderId)
     assert(orderProcessed.map(_.value) == Vector(OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL))))
+    // May wait forever when Agent terminates before Controller as received the events !!! 
     controller.awaitNextKey[SubagentShutdown](subagentId)
     controller.awaitNextKey[AgentShutDown](agentPath)
 

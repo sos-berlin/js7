@@ -322,7 +322,7 @@ final class SuspendResumeOrdersTest
 
         execCmd:
           ResumeOrders(Set(orderId))
-        eventWatch.awaitNext[OrderCycleFinished](_.key == orderId)
+        eventWatch.awaitNext[OrderCycleFinished](_.key == orderId) // Will fail around midnight !!!
 
         execCmd:
           GoOrder(orderId, controllerState.idToOrder(orderId).position)
