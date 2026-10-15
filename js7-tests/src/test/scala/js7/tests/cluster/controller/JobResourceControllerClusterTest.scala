@@ -1,11 +1,13 @@
 package js7.tests.cluster.controller
 
+import fs2.Stream
 import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.controller.ControllerEvent.ControllerReady
+import js7.data.event.EventId
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -14,10 +16,10 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.JobResourceControllerClusterTest.*
 import js7.tests.jobs.EmptyJob
-import fs2.Stream
-import js7.data.event.EventId
 
 final class JobResourceControllerClusterTest extends ControllerClusterTester:
+
+  override protected def removeObsoleteJournalFiles = false
 
   "Cluster handles JobResources properly" in:
     withControllerAndBackupWithoutAgents(): (primary, backup, _) =>
