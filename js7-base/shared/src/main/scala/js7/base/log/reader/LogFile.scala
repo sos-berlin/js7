@@ -31,6 +31,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.annotation.tailrec
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.Try
 
@@ -192,11 +193,13 @@ private object LogFile:
         case firstLineEnd =>
           val firstLogLine =
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
-              chunk.drop(firstLineEnd + 1)
+              // Special case for testing: Several header lines may follow, when several processes
+              // or ClassLoaders (like sbt subprojects) write to the same (appended) log file.
+              dropHeaderLines(chunk.drop(firstLineEnd + 1))
             else
               logger.debug(s"No header line in ${file.getFileName}")
               chunk.take(firstLineEnd)
-          // Timestamp of first log line after the header line
+          // Timestamp of first log line after the header lines
           FastTimestampParser()
             .parseTimestampInLogLine(firstLogLine)
             .toOption.toRight:
@@ -213,6 +216,16 @@ private object LogFile:
           if t.getStackTrace != null then
             logger.debug(msg, t)
           Left(Problem.fromThrowable(t))
+
+  @tailrec
+  private def dropHeaderLines(chunk: ByteArray)(using LogIndexConf): ByteArray =
+    chunk.indexOf('\n') match
+      case -1 => chunk
+      case lineEnd =>
+        if isHeaderLine(chunk.slice(0, lineEnd + 1)) then
+          dropHeaderLines(chunk.drop(lineEnd + 1))
+        else
+          chunk
 
   private[reader] def isHeaderLine[ByteSeq: ByteSequence](line: ByteSeq)(using conf: LogIndexConf)
   : Boolean =

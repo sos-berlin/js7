@@ -133,6 +133,19 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           logFile <- LogFile.read(file).orThrow
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
+
+    "Several header lines (like sbt's build.log)" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+03 Begin JS7 ...
+            |2026-06-25T00:00:00,222+03 Begin JS7 ...
+            |2026-06-25T00:00:00,333+03 Begin JS7 ...
+            |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...
+            |""".stripMargin
+        for
+          logFile <- LogFile.read(file).orThrow
+        yield
+          assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
   }
 
   "A continuous stream of log lines in all files" in:
