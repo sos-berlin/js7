@@ -109,19 +109,39 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
           checked <- LogFile.read(file)
         yield
           assert(checked ==
-            Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? ...")))
+            Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,111+?? Begin JS7 ...⏎")))
 
     "Invalid timestamp in first log line" in:
       temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        // Timestamp in header line must match regular expression.
+        // Timestamp in first log line must be valid (but is not).
         file :=
-          """2026-06-25T00:00:00,111+03 Begin JS7 ...
-            |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...
+          """2026-06-25T00:00:00,111+99 Begin JS7 ...
+            |2026-06-25T00:00:00,999+99 info  js7.test.Test - ...
             |""".stripMargin
         for
           checked <- LogFile.read(file)
         yield
           assert(checked ==
-            Left(InvalidTimestampInLogFileProblem(file, "2026-06-25T00:00:00,999+?? ...")))
+            Left(InvalidTimestampInLogFileProblem(
+              file,
+              "2026-06-25T00:00:00,999+99 info  js7.test.Test - ...⏎")))
+
+    "Invalid timestamp, but still incomplete line" in:
+      temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
+        file :=
+          """2026-06-25T00:00:00,111+03 Begin JS7 ...
+            |2026-06-25T00:00:00,999+?? info  js7.test.Test - ...""".stripMargin
+        for
+          checked <- LogFile.read(file)
+        yield
+          assert(checked ==
+            Left(IncompleteLogFileProblem(
+              file,
+              InvalidTimestampInLogFileProblem(
+                file,
+                "2026-06-25T00:00:00,999+?? info  js7.test.Test - ..."
+              ).toString)))
 
     "Proper log file" in:
       temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
@@ -134,7 +154,7 @@ final class LogDirectoryIndexTest extends OurAsyncTestSuite:
         yield
           assert(logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
 
-    "Several header lines (like sbt's build.log)" in:
+    "Several header lines (like sometimes in sbt's build.log)" in:
       temporaryFileResource[IO]("LogDirectoryIndexTest-", ".log").use: file =>
         file :=
           """2026-06-25T00:00:00,111+03 Begin JS7 ...

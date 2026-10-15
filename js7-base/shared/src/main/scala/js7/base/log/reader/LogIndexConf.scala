@@ -62,7 +62,7 @@ object LogIndexConf:
   private val longestTimestamp = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS+12:34:56"
   private[reader] val UniqueHeaderSize = longestTimestamp.length + 1
 
-  val default: LogIndexConf =
+  lazy val default: LogIndexConf =
     LogIndexConf.fromConfig(Js7Config.defaultConfig).orThrow
 
   lazy val forTest: LogIndexConf =

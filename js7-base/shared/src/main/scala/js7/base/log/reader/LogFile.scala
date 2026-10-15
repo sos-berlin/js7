@@ -161,9 +161,12 @@ private final class LogFile private(
 
 private object LogFile:
   private val logger = Logger[LogFile]
-  /** First chunk of log file must include the timestamp of the second line
-    * (the line after the header) */
-  private val HeaderChunkSize = 1024
+  /** First chunk of log file must include the timestamp of the first log line
+    * (the first log line after the optional header).
+    *
+    * If the chunk contains the first log line completely including \n, and the timestamp is not
+    * readable, then the reason cannot be a still incompletely written log file. */
+  private val HeaderChunkSize = 4096
   given Ordering[LogFile] = Ordering.by(_.fileInstant)
 
   /** Extract the timestamp of the first line of a log file and return a [[LogFile]].
@@ -193,17 +196,24 @@ private object LogFile:
         case firstLineEnd =>
           val firstLogLine =
             if isHeaderLine(chunk.slice(0, firstLineEnd + 1)) then
-              // Special case for testing: Several header lines may follow, when several processes
+              // Special case for testing: Several header lines may follow when several processes
               // or ClassLoaders (like sbt subprojects) write to the same (appended) log file.
               dropHeaderLines(chunk.drop(firstLineEnd + 1))
             else
-              logger.debug(s"No header line in ${file.getFileName}")
-              chunk.take(firstLineEnd)
+              logger.trace(s"No header line in ${file.getFileName}")
+              chunk.take(firstLineEnd + 1)
           // Timestamp of first log line after the header lines
           FastTimestampParser()
             .parseTimestampInLogLine(firstLogLine)
             .toOption.toRight:
-              InvalidTimestampInLogFileProblem(file, firstLogLine.utf8StringTruncateAt(80))
+              val p = InvalidTimestampInLogFileProblem(
+                file,
+                firstLogLine.utf8StringTruncateAt(80, firstLineOnly = true))
+              if !firstLogLine.contains('\n'.toByte) then
+                // Maybe due to still incomplete log line. Just in case, it is not expected.
+                IncompleteLogFileProblem(file, p.toString)
+              else
+                p
             .map(_.toInstant)
     .handleError: t =>
       val msg = s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}"

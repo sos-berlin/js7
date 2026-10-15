@@ -35,6 +35,7 @@ private object LogUtils:
   private[reader] def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
+  // For external Java callers
   def isOurLogFilenameJava(isValidPrefix: String --> Boolean, file: Path): Boolean =
     isOurLogFilename(isValidPrefix.asScala, file)
 

@@ -79,13 +79,13 @@ object JLocalLogIndex:
     files: java.lang.Iterable[Path],
     zoneId: ZoneId,
     label: String,
-    ctx: JProxyContext)
+    context: JProxyContext)
   : JResource[JLocalLogIndex] =
-    import ctx.ioRuntime
+    import context.ioRuntime
     given ZoneId = zoneId
     JResource:
       for
-        given LogIndexConf = LogIndexConf.fromConfig(ctx.config).orThrow
+        given LogIndexConf = context.logIndexConf
         logIndex <- LogIndex.files(files.asScala, label = label)
       yield
         JLocalLogIndex(logIndex)

@@ -6,16 +6,16 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import java.nio.file.Path
 import java.time.ZoneId
-import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.catsutils.{CatsDeadline, FiberVar}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.DirectoryEvent
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.log.reader.LogIndex.isGzipped
 import js7.base.log.reader.LogIndexBuilder.*
-import js7.base.problem.Problems.IncompleteLogFileProblem
+import js7.base.log.{LogLevel, Logger}
+import js7.base.problem.Problem
+import js7.base.problem.Problems.{IncompleteLogFileProblem, InvalidTimestampInLogFileProblem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.Delayer
@@ -48,14 +48,19 @@ private final class LogIndexBuilder private(
     Stream.iterable(files)
       .parEvalMapUnordered(sys.runtime.availableProcessors): file =>
         LogFile.read(file).flatMap:
-          case Left(problem) =>
-            val m = (!problem.isInstanceOf[IncompleteLogFileProblem]) ?? "💥 "
-            logger.debug(s"${m}Delaying ${file.getFileName} due to: $problem")
+          case Left(problem: IncompleteLogFileProblem) =>
+            logger.debug(s"Delaying ${file.getFileName} due to: $problem")
             val a = DelayedLogFile(file)
             // Read the timestamp of the first line of the log file in the background.
-            a.start(onCompleted).as(Right(a))
+            a.start(onCompleted).as(Some(Right(a)))
+
+          case Left(problem) =>
+            logger.error(s"${file.getFileName} is not readable or not a valid log file: $problem")
+            IO.none
+
           case Right(logFile) =>
-            IO.left(logFile)
+            IO.some(Left(logFile))
+      .unNone
       .compile.toVector
       .map(_.partitionMap(identity))
 
@@ -127,6 +132,7 @@ private final class LogIndexBuilder private(
     logger.debugIOWithResult("toLogFileUntilFinished", file.getFileName):
       IO.defer:
         val t = Deadline.now
+        var lastProblem = Problem.pure("No problem")
         Delayer.stream[IO](conf.logFileTimestampTries, finite = finite)
           .evalMap: _ =>
             logFileTimestampSempahore.permit.surround:
@@ -135,8 +141,14 @@ private final class LogIndexBuilder private(
             case Left(problem @ IncompleteLogFileProblem(_, IncompleteLogFileProblem.FileNotFound)) =>
               logger.trace(s"toLogFileUntilFinished ⟲ $file after ${t.elapsed.pretty}: $problem")
               Stream.empty
+            case Left(problem: InvalidTimestampInLogFileProblem) =>
+              // The first log line is complete (see LogFile.read), so retrying won't help.
+              Stream.raiseError[IO](problem.throwable)
             case Left(problem) =>
-              logger.debug(s"toLogFileUntilFinished ⟲ $file after ${t.elapsed.pretty}: $problem")
+              logger.log(
+                if problem == lastProblem then LogLevel.Trace else LogLevel.Debug,
+                s"toLogFileUntilFinished ⟲ $file after ${t.elapsed.pretty}: $problem")
+              lastProblem = problem
               Stream.empty
             case Right(logFile) =>
               //logger.trace(s"${logFile.toStringWithSize}")
