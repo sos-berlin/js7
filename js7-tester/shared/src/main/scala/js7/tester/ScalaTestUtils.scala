@@ -27,7 +27,11 @@ object ScalaTestUtils extends org.scalatest.Assertions:
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion =
     val until = now + timeLimit
-    while now < until && !condition do
+    // Evaluate the condition only once per step
+    var fulfilled = condition
+    while !fulfilled && now < until do
       blocking:
         Thread.sleep(step.toMillis)
-    assert(condition)
+      fulfilled = condition
+    // Evaluate again only to get a good failure message
+    if fulfilled then succeed else assert(condition)
