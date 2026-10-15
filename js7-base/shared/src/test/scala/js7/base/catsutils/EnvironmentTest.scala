@@ -15,6 +15,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 
+// Due to an issue with many fibers in cats-effect 3.7.1, this test could block IORuntime !!!
+//
+// https://github.com/typelevel/cats-effect/issues/4674
+// https://github.com/typelevel/cats-effect/discussions/3873
+
 final class EnvironmentTest extends OurAsyncTestSuite:
 
   private var closedCounter = 0

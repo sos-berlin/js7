@@ -7,11 +7,12 @@ import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichThrowable}
+import js7.base.utils.Threads
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalactic.source.Position
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.{Assertion, PendingStatement, Tag}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, TimeoutException}
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -54,7 +55,16 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
       suppressCorrelId = suppressTestCorrelId)
 
   private def run(name: String)(io: IO[Assertion]): Assertion =
-    io.unsafeRunSync()
+    testTimeout match
+      case timeout: FiniteDuration =>
+        // The test's timeoutTo is an IO timer, which does not fire when the IORuntime has stopped
+        // working (see cats-effect issue #4674). unsafeRunTimed waits in this thread instead.
+        io.unsafeRunTimed(timeout + 30.s).getOrElse:
+          val msg = s"$suiteName · $name: 🔥 IORuntime does not respond (not even its timers)"
+          logger.error(s"$msg\n${Threads.allThreadStackTraces().mkString("\n")}")
+          throw new TimeoutException(msg)
+      case _ =>
+        io.unsafeRunSync()
     // It is always asynchronous due to timeout and logWhenItTakesLonger:
     //io.syncStep(Int.MaxValue)
     //  .unsafeRunSync() match
