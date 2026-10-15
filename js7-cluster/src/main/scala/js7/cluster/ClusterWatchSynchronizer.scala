@@ -38,6 +38,7 @@ private final class ClusterWatchSynchronizer(
   private val suspendNestingLock = AsyncLock()
   private val registerClusterWatchId = SetOnce[RegisterClusterWatchId]
   private val heartbeat = Atomic(none[Heartbeat])
+  private var _isStopping = false
 
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
   def start(currentClusterState: IO[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
@@ -80,7 +81,9 @@ private final class ClusterWatchSynchronizer(
           Completed)
 
   def stop: IO[Unit] =
-    stopHeartbeating
+    IO.defer:
+      _isStopping = true
+      stopHeartbeating
 
   def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes,
     clusterWatchIdChangeAllowed: Boolean = false,
@@ -143,7 +146,8 @@ private final class ClusterWatchSynchronizer(
               case clusterState: HasNodes
                 if clusterState.activeId == ownId
                 && ioResult != Left(ClusterPassiveLostWhileFailedOverTestingProblem)
-                && ioResult != Left(ClusterModuleShuttingDownProblem) =>
+                && ioResult != Left(ClusterModuleShuttingDownProblem)
+                && !_isStopping =>
                 continueHeartbeating(
                   clusterState,
                   registerClusterWatchId.orThrow,
