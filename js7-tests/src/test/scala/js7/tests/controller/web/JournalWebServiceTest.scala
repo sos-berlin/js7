@@ -22,13 +22,14 @@ import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
+import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentReady}
 import js7.data.controller.ControllerCommand
 import js7.data.event.JournalEvent
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -122,8 +123,8 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     assert(observedLengths.dropRight(1).last.stripSuffix("\n").toLong == Files.size(controller0File))
 
   "Timeout" in:
-    var eventId = controller.eventWatch.await[AgentDedicated](timeout = 9.s).last.eventId
-    eventId = controller.eventWatch.await[AgentEventsObserved](timeout = 9.s, after = eventId).last.eventId
+    val eventId = controller.eventWatch.await[AgentDedicated](timeout = 9.s).last.eventId.max:
+      controller.eventWatch.await[SubagentDedicated](timeout = 9.s).last.eventId
     val lines = httpClient.getJsonAsRawLines(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
       .await(99.s)
       .map(_.utf8String)
