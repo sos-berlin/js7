@@ -24,5 +24,6 @@ final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTes
       // Primary must have terminate itself because it gets AckFromActiveClusterNodeProblem
       // (when not isTest, primary should halt)
       primaryController.terminated.await(99.s)
+      primaryController.stop.await(99.s)
       backupController.stop.await(99.s)
     }

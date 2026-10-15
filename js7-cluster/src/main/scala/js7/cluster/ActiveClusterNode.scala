@@ -477,30 +477,31 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
         case o =>
           IO.pure(o)
-      .tryIt.flatTap(tried => IO { tried match
-        case Success(Right(())) => ()
+      .tryIt.flatTap:
+        case Success(Right(())) => IO.unit
 
-        case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
+        case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) => IO:
           logger.warn("❗ Continue as single active cluster node, without passive node")
 
-        case Success(Left(problem @ ClusterModuleShuttingDownProblem)) =>
+        case Success(Left(problem @ ClusterModuleShuttingDownProblem)) => IO:
           logger.debug(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
 
-        case Success(Left(problem)) =>
+        case Success(Left(problem)) => IO:
           logger.error(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
 
         case Failure(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
           if isTest then
-            throw new RuntimeException(s"🟥 Halt suppressed for testing: ${t.problem}")
-          else
+            // Like a halt: no final snapshot, no waiting for acks from the now active other node
+            journal.kill *>
+              IO.raiseError(RuntimeException(s"🟥 Halt suppressed for testing: ${t.problem}"))
+          else IO:
             Halt.haltJava("🟥 HALT because another cluster node has become active",
               restart = true)
 
-        case Failure(t) =>
+        case Failure(t) => IO:
           logger.error(
             s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}",
             t)
-      })
       .untry
       .guarantee(IO:
         logger.debug("isFetchingAcks := false")
