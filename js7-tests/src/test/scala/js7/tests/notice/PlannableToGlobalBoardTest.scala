@@ -8,13 +8,14 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TestAlarmClock
 import js7.base.time.TimestampForTests.ts
 import js7.controller.RunningController
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.NoticeEvent.{NoticeMoved, NoticePosted}
 import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand.{CancelOrders, ChangePlannableToGlobalBoard, PostNotice}
 import js7.data.event.Event
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.ItemRevision
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
@@ -22,6 +23,7 @@ import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderStarted, OrderStateReset, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
+import js7.data.subagent.SubagentItemStateEvent
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.ExpressionParser.expr
@@ -133,8 +135,15 @@ final class PlannableToGlobalBoardTest
         PostNotice(boardPath \ "2025-01-21NOTICE")
       eventWatch.awaitNextKey[OrderFinished](consumingOrderId)
 
+      // Ignore events of the asynchronous start of Agent and Subagent,
+      // which may be emitted after the test has started (under load)
       val events = eventWatch.keyedEvents(after = startEventId)
-      assert(events.dropWhile(ke => !ke.event.isInstanceOf[OrderAdded]) == Seq(
+        .dropWhile(ke => !ke.event.isInstanceOf[OrderAdded])
+        .filterNot: keyedEvent =>
+          keyedEvent.event match
+            case _: AgentRefStateEvent | _: SubagentItemStateEvent | _: ItemAttached => true
+            case _ => false
+      assert(events == Seq(
         postingOrderId <-: OrderAdded(postingWorkflow.id, planId = planId, deleteWhenTerminated = true),
         postingOrderId <-: OrderNoticeAnnounced(planId / boardPath / "ALPHA"),
         postingOrderId <-: OrderStarted,
