@@ -4,6 +4,8 @@ import cats.effect.std.{AtomicCell, Mutex}
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import fs2.concurrent.SignallingRef
+import java.lang.System.currentTimeMillis
+import js7.base.bean.MBeanUtils.registerMBean
 import js7.base.catsutils.CatsEffectExtensions.{left, raceMerge, right}
 import js7.base.catsutils.CatsExtensions.ifTrue
 import js7.base.catsutils.Environment.environmentOr
@@ -38,7 +40,8 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   queueMutex: Mutex[IO],
   persistMutex: Mutex[IO],
   dropEventsSignal: SignallingRef[IO, Boolean],
-  onPersisted: AtomicCell[IO, Set[OnPersisted[S]]])
+  onPersisted: AtomicCell[IO, Set[OnPersisted[S]]],
+  bean: MemoryJournalMXBean.Bean)
   (using protected val S: JournaledState.Companion[S])
 extends
   Journal[S], StreamableJournal[S](chunkSize = size), Service.Trivial:
@@ -169,6 +172,7 @@ extends
             _eventCount += stampedEvents.length
             eventWatch.onEventsCommitted(eventId)
             queue = q
+            bean.getEventQueueLength = q.events.length
 
   private def log(
     eventNumber: Long,
@@ -199,6 +203,9 @@ extends
             queue = q.copy(
               tornEventId = untilEventId,
               events = q.events.drop(n))
+            bean.getEventQueueLength = q.events.length
+            bean.getReleaseDuration =
+              (currentTimeMillis() - EventId.toEpochMilli(untilEventId)) / 1000.0
             semaphore.releaseN(n)
               .as(Checked.unit)
 
@@ -285,7 +292,12 @@ object MemoryJournal:
         dropEventsSignal <- SignallingRef[IO, Boolean](false)
         onPersisted <- AtomicCell[IO].of(Set.empty[OnPersisted[S]])
       yield
-        Service.resource:
-          new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
-            clock, semaphore, queueMutex, persistMutex, dropEventsSignal,
-            onPersisted)
+        for
+          bean <- registerMBean("MemoryJournal"):
+            IO(MemoryJournalMXBean.Bean(size))
+          service <- Service.resource:
+            new MemoryJournal(initial, size, waitingFor, infoLogEvents, eventIdGenerator,
+              clock, semaphore, queueMutex, persistMutex, dropEventsSignal,
+              onPersisted, bean)
+        yield
+          service
