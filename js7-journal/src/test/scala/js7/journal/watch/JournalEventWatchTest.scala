@@ -29,8 +29,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
-import js7.journal.file.JournalLocation
 import js7.journal.file.JournalFiles.extensions.*
+import js7.journal.file.JournalLocation
 import js7.journal.file.write.EventJournalWriter
 import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
@@ -464,15 +464,15 @@ private object JournalEventWatchTest:
     Stamped(220L, "B2" <-: B2) ::
     Nil
 
-  
+
   private sealed trait MyEvent extends Event.IsKeyBase[MyEvent]:
     type Key = MyEvent.Key
     def keyCompanion: MyEvent.type = MyEvent
-    
+
   private object MyEvent extends Event.CompanionForKey[String, MyEvent]:
     implicit val implicitSelf: MyEvent.type = this
-  
-  
+
+
   private trait AEvent extends MyEvent
   private case object A1 extends AEvent
   private case object A2 extends AEvent
