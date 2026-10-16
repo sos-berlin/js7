@@ -200,21 +200,19 @@ private object LogFile:
               // or ClassLoaders (like sbt subprojects) write to the same (appended) log file.
               dropHeaderLines(chunk.drop(firstLineEnd + 1))
             else
-              logger.trace(s"No header line in ${file.getFileName}")
+              logger.trace(s"${file.getFileName} does not have a header line")
               chunk.take(firstLineEnd + 1)
           // Timestamp of first log line after the header lines
-          FastTimestampParser()
-            .parseTimestampInLogLine(firstLogLine)
-            .toOption.toRight:
-              val p = InvalidTimestampInLogFileProblem(
-                file,
-                firstLogLine.utf8StringTruncateAt(80, firstLineOnly = true))
-              if !firstLogLine.contains('\n'.toByte) then
-                // Maybe due to still incomplete log line. Just in case, it is not expected.
-                IncompleteLogFileProblem(file, p.toString)
-              else
-                p
-            .map(_.toInstant)
+          FastTimestampParser().parseTimestampInLogLine(firstLogLine).toOption.toRight:
+            val p = InvalidTimestampInLogFileProblem(
+              file,
+              firstLogLine.utf8StringTruncateAt(80, firstLineOnly = true))
+            if !firstLogLine.contains('\n'.toByte) then
+              // Maybe due to still incomplete log line. Just in case, it is not expected.
+              IncompleteLogFileProblem(file, p.toString)
+            else
+              p
+          .map(_.toInstant)
     .handleError: t =>
       val msg = s"❓readLogFileInstant ${file.getFileName}: ${t.toStringWithCauses}"
       t match

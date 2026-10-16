@@ -1,109 +1,31 @@
 package js7.base.log.reader
 
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.IO
+import cats.effect.std.Queue
+import cats.syntax.parallel.*
 import fs2.Stream
 import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{Instant, ZoneId}
 import java.util.zip.GZIPOutputStream
 import js7.base.config.Js7Config
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.reader.LogIndexBuilder.LogFileAdded
-import js7.base.problem.ProblemException
+import js7.base.io.file.watch.DirectoryEvent
+import js7.base.io.file.watch.DirectoryEvent.FileAdded
+import js7.base.log.reader.LogIndexBuilder.LogFilePending
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.concurrent.TimeoutException
+import scala.util.Using
 
 final class LogIndexBuilderTest extends OurAsyncTestSuite:
 
   private given zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
+  private given LogIndexConf = LogIndexConf.forTest
 
-  "DelayedLogFile" - {
-    given LogIndexConf =
-      LogIndexConf.fromConfig:
-        config"""
-          js7.log.index.read-timestamp-tries  = [10ms, 30ms, 60ms, 100ms]
-        """.withFallback(Js7Config.defaultConfig)
-      .orThrow
-
-    ".log-file is slowly written" in:
-      temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
-        val file = dir / "test.log"
-        IO:
-          file :=
-            """2026-06-25T00:00:00,111+03 Begin JS7 ...
-              |2026-06-25T00:00:00,999+03 info  js7.journal.Journal - ...\n"""
-            .stripMargin
-        .delayBy(100.ms).background.surround:
-          LogIndexBuilder.forTest(dir).use: logIndexBuilder =>
-            val deferred = Deferred.unsafe[IO, LogFile | Throwable]
-            logIndexBuilder.DelayedLogFile(file)
-              .start(
-                onCompleted = deferred.complete(_).void,
-                onFailed = deferred.complete(_).void)
-              .productR:
-                deferred.get.map:
-                  case logFile: LogFile =>
-                    assert(logFile.originalFile == file
-                      && logFile.fileInstant == Instant.parse("2026-06-25T00:00:00.999+03:00"))
-                  case t: Throwable => throw t
-
-    "First log line in .log.gz file is not written in time" in:
-      temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
-        val file = dir / "test-2026-06-25-1.log.gz"
-        Resource.fromAutoCloseable:
-          IO(GZIPOutputStream(FileOutputStream(file.toFile)))
-        .use_
-        .productR:
-          LogIndexBuilder.forTest(dir).use: logIndexBuilder =>
-            val deferred = Deferred.unsafe[IO, LogFile | Throwable]
-            logIndexBuilder.DelayedLogFile(file)
-              .start(
-                onCompleted = deferred.complete(_).void,
-                onFailed = deferred.complete(_).void)
-              .productR:
-                deferred.get.map:
-                  case t: TimeoutException => succeed
-                  case t: Throwable => throw t
-                  case _: LogFile => fail("Unexpected LogFile")
-
-    "Invalid timestamp in a complete first log line fails fast (is not retried)" in:
-      // Tries are long: A retry would not complete within the timeout of this test.
-      given LogIndexConf =
-        LogIndexConf.fromConfig:
-          config"""
-            js7.log.index.read-timestamp-tries  = [5s, 5s]
-          """.withFallback(Js7Config.defaultConfig)
-        .orThrow
-      temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
-        val file = dir / "test.log"
-        file :=
-          """2026-06-25T00:00:00,111+03 Begin JS7 ...
-            |2026-06-25T00:00:00,999+99 info  js7.test.Test - ...
-            |""".stripMargin
-        LogIndexBuilder.forTest(dir).use: logIndexBuilder =>
-          val deferred = Deferred.unsafe[IO, LogFile | Throwable]
-          logIndexBuilder.DelayedLogFile(file)
-            .start(
-              onCompleted = deferred.complete(_).void,
-              onFailed = deferred.complete(_).void)
-            .productR:
-              deferred.get.timeout(2.s).map:
-                case _: ProblemException => succeed
-                case o => fail(s"Unexpected: $o")
-  }
-
-  "toLogFileEvents" - {
-    given LogIndexConf =
-      LogIndexConf.fromConfig:
-        config"""
-          js7.log.index.read-timestamp-tries  = [10ms, 30ms, 60ms, 100ms]
-        """.withFallback(Js7Config.defaultConfig)
-      .orThrow
-
+  "toLogFilesAndEvents" - {
     "File with invalid timestamp is dropped, valid file is kept" in:
       temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
         val valid = dir / "test-2026-06-25-1.log"
@@ -117,34 +39,95 @@ final class LogIndexBuilderTest extends OurAsyncTestSuite:
           """2026-06-25T00:00:00,111+03 Begin JS7 ...
             |2026-06-25T00:00:00,999+99 info  js7.test.Test - ...
             |""".stripMargin
-        LogIndexBuilder.toLogFileEvents(dir, Seq(valid, invalid)).use: (logFiles, _) =>
-          IO:
-            assert(logFiles.map(_.originalFile) == Seq(valid))
+        LogIndexBuilder.toLogFilesAndEvents(dir, Seq(valid, invalid)).map: (logFiles, pending, _) =>
+          assert(logFiles.map(_.originalFile) == Seq(valid) && pending.isEmpty)
 
-    "File with invalid timestamp is not delayed, no LogFileAdded follows" in:
-      temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
-        val invalid = dir / "test-2026-06-25-1.log"
-        invalid :=
-          """2026-06-25T00:00:00,111+03 Begin JS7 ...
-            |2026-06-25T00:00:00,999+99 info  js7.test.Test - ...
-            |""".stripMargin
-        LogIndexBuilder.toLogFileEvents(dir, Seq(invalid)).use: (logFiles, pipe) =>
-          pipe(Stream.never[IO]).take(1).compile.toList
-            .timeoutTo(500.ms, IO.pure(Nil)) // Longer than the sum of the tries
-            .map: events =>
-              assert(logFiles.isEmpty && events.isEmpty)
-
-    "File with incomplete first log line is delayed, not dropped" in:
+    "File with incomplete first log line is pending, not dropped" in:
       temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
         val incomplete = dir / "test-2026-06-25-1.log"
         // No \n after the first log line: log4j may still be writing it
         incomplete :=
           """2026-06-25T00:00:00,111+03 Begin JS7 ...
             |2026-06-25T00:00:00,99""".stripMargin
-        LogIndexBuilder.toLogFileEvents(dir, Seq(incomplete)).use: (logFiles, pipe) =>
-          IO(incomplete.append("9+03 info  js7.test.Test - ...\n"))
-            .delayBy(50.ms).background.surround:
-              pipe(Stream.never[IO]).take(1).compile.toList.timeout(5.s).map: events =>
-                assert(logFiles.isEmpty &&
-                  events.collect { case LogFileAdded(o) => o.originalFile } == List(incomplete))
+        LogIndexBuilder.toLogFilesAndEvents(dir, Seq(incomplete)).map: (logFiles, pending, _) =>
+          assert(logFiles.isEmpty && pending == Seq(incomplete))
+
+    "FileAdded is converted to LogFilePending without reading the file" in:
+      temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
+        val file = dir / "test.log" // Does not exist
+        LogIndexBuilder.toLogFilesAndEvents(dir, Nil).flatMap: (_, _, pipe) =>
+          pipe(Stream.emit(FileAdded(file.getFileName))).compile.toList.map: events =>
+            assert(events == List(LogFilePending(file)))
   }
+
+  "LogIndex reads the timestamp of a pending file when it is accessed" in:
+    temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
+      val file = dir / "test.log"
+      file :=
+        """2026-06-25T00:00:00,111+03 Begin JS7 ...
+          |2026-06-25T00:00:00,99""".stripMargin
+      LogIndex.directory(dir, Seq(file), Stream.never[IO], watchGrowth = false, label = "TEST")
+        .use: logIndex =>
+          val instant = Instant.parse("2026-06-25T00:00:00.999+03:00")
+          for
+            // Still incomplete, the file stays pending
+            key0 <- logIndex.instantToLogLineKey(instant, LogSelection())
+            _ <- IO:
+              file.append("9+03 info  js7.test.Test - ...\n")
+            // Now the first log line is complete. No polling has happened, the access reads it.
+            lines <- logIndex.keyedByteLogLineStream(instant, LogSelection()).compile.toList
+          yield
+            assert(key0 == None
+              && lines.nonEmpty
+              && lines.forall(_.logLineKey.fileInstant == instant)
+              && logIndex.files == Seq(file))
+
+  "Growing readers waiting for the next file get it when its first log line is completed" in:
+    given LogIndexConf =
+      LogIndexConf.fromConfig:
+        config"""
+          js7.log.index.read-timestamp-tries  = [10ms, 30ms, 60ms, 100ms]
+        """.withFallback(Js7Config.defaultConfig)
+      .orThrow
+
+    temporaryDirectoryResource[IO]("LogIndexBuilderTest-").use: dir =>
+      val a = dir / "test-2026-06-25-1.log.gz"
+      val b = dir / "test-2026-06-25-2.log"
+      Using.resource(GZIPOutputStream(FileOutputStream(a.toFile))): out =>
+        out.write:
+          """2026-06-25T00:00:00,111+03 Begin JS7 ...
+            |2026-06-25T00:00:00,999+03 info  js7.test.Test - A
+            |""".stripMargin.getBytes(UTF_8)
+      // Incomplete first log line, the file is not yet readable
+      b :=
+        """2026-06-25T01:00:00,111+03 Begin JS7 ...
+          |2026-06-25T01:00:00,99""".stripMargin
+      Queue.unbounded[IO, Option[DirectoryEvent]].flatMap: queue =>
+        LogIndex.directory(dir, Seq(a), Stream.fromQueueNoneTerminated(queue),
+          watchGrowth = true, label = "TEST"
+        ).use: logIndex =>
+          val follower =
+            logIndex
+              .stringLineStream(
+                Instant.parse("2026-06-24T00:00:00Z"),
+                LogSelection(growing = true))
+              .take(4) // 2 lines from a, 2 lines from b
+              .compile.toList
+              .timeout(10.s)
+          // Two readers share one poller
+          (follower, follower).parTupled.background.use: readers =>
+            for
+              // The readers have consumed a and now wait for the next file
+              _ <- IO.sleep(300.ms)
+              _ <- queue.offer(Some(FileAdded(b.getFileName)))
+              _ <- IO.sleep(300.ms)
+              _ <- IO(b.append("9+03 info  js7.test.Test - B\n"))
+              outcome <- readers
+              (lines1, lines2) <- outcome.embedError
+            yield
+              val expected = List(
+                "2026-06-25T00:00:00,111+03 Begin JS7 ...",
+                "2026-06-25T00:00:00,999+03 info  js7.test.Test - A",
+                "2026-06-25T01:00:00,111+03 Begin JS7 ...",
+                "2026-06-25T01:00:00,999+03 info  js7.test.Test - B")
+              assert(lines1.map(_.trim) == expected && lines2.map(_.trim) == expected)
