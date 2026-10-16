@@ -49,8 +49,11 @@ fi
 standardJavaOptions=()
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
 if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
-  standardJavaOptions+=("-XX:+UseCompactObjectHeaders")
+  # Not required, but improves performance
   standardJavaOptions+=("--add-modules" "jdk.incubator.vector")
+  if [[ "$JAVA_VERSION_MAJOR" -lt 27 ]]; then
+    standardJavaOptions+=("-XX:+UseCompactObjectHeaders")
+  fi
 fi
 standardJavaOptions+=("-XX:+UseStringDeduplication")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
