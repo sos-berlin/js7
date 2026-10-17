@@ -3,9 +3,9 @@ set -euo pipefail
 
 JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JS7_HOME
-. "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java
 declare -a standardJavaOptions
+. "$JS7_HOME/bin/internal/set-context.sh"
 
 args=()
 javaOptions=(

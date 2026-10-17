@@ -29,7 +29,7 @@ for arg in "$@"; do :
       ;;
     --dropEventsAfter=*)
       # Only Director and Subagent
-      jsonFields+=', "dropEventsAfter": "${arg#*=}"'
+      jsonFields+=', "dropEventsAfter": '"${arg#*=}"
       ;;
     -\?|-h|--help)
       usage
