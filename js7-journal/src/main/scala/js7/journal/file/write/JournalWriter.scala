@@ -7,12 +7,13 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.fs2utils.StreamExtensions.{appendOne, mapParallelBatch, prependOne}
 import js7.base.metering.CallMeter
 import js7.base.utils.ByteUnits.toMB
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader
-import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, JournalSeparators, JournaledState, KeyedEvent, Stamped}
 import js7.journal.file.FileJournalMXBean
 import js7.journal.file.write.EventJournalWriter.SerializationException
 import js7.journal.file.write.JournalWriter.*
@@ -58,9 +59,12 @@ extends AutoCloseable:
     _eventsStarted = true
 
   def writeEvent(stamped: Stamped[KeyedEvent[Event]]): IO[Unit] =
-    writeEvents(stamped :: Nil)
+    writeEvents_(stamped :: Nil, transaction = false)
 
-  protected final def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): IO[Unit] =
+  protected final def writeEvents_(
+    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+    transaction: Boolean)
+  : IO[Unit] =
     IO.defer:
       _eventCount += stampedEvents.size
       for stamped <- stampedEvents do
@@ -68,22 +72,28 @@ extends AutoCloseable:
           s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
             s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
         _lastEventId = stamped.eventId
+      val ta = transaction && stampedEvents.lengthIs > 1
       import S.keyedEventJsonCodec
       if false &&
         sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
       then
-        writeJsonInParallel(stampedEvents)
+        writeJsonInParallel(stampedEvents, ta)
       else
-        writeJsonSerially(stampedEvents)
+        writeJsonSerially(stampedEvents, ta)
 
-  private def writeJsonSerially[A: Encoder](seq: Seq[A]): IO[Unit] =
+  private def writeJsonSerially[A: Encoder](seq: Seq[A], transaction: Boolean): IO[Unit] =
     IO.blocking:
+      if transaction then jsonWriter.write(TransactionByteArray)
       for a <- seq do jsonWriter.write(serialize(a))
+      if transaction then jsonWriter.write(CommitByteArray)
 
-  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): IO[Unit] =
+  private def writeJsonInParallel[A: Encoder](seq: Seq[A], transaction: Boolean): IO[Unit] =
     Stream.iterable[IO, A](seq)
       .mapParallelBatch():
         serialize[A]
+      .pipeIf(transaction):
+        _.prependOne(TransactionByteArray)
+          .appendOne(CommitByteArray)
       .foreach: byteArray =>
         IO(jsonWriter.write(byteArray))
       .compile.drain
@@ -137,6 +147,9 @@ extends AutoCloseable:
 object JournalWriter:
   private val JsonBatchSize = 256
   private val JsonParallelizationThreshold = 3 * JsonBatchSize
+
+  private[journal] val TransactionByteArray = JournalSeparators.Transaction.asJson.toByteArray
+  private[journal] val CommitByteArray = JournalSeparators.Commit.asJson.toByteArray
 
   private val meterFlush = CallMeter("JournalWriter.flush")
   private val meterSync = CallMeter("JournalWriter.sync")

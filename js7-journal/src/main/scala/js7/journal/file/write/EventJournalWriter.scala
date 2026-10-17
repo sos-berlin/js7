@@ -1,19 +1,16 @@
 package js7.journal.file.write
 
 import cats.effect.IO
-import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils.*
+import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Missing
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import js7.journal.file.JournalLocation
-import js7.journal.file.FileJournalMXBean
 import js7.journal.file.JournalFiles.extensions.file
-import js7.journal.file.write.EventJournalWriter.*
+import js7.journal.file.{FileJournalMXBean, JournalLocation}
 import js7.journal.watch.JournalingObserver
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -61,25 +58,20 @@ extends
       flushedLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId),
       isActiveNode = true)
 
-  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false)
+  def writeEvents(
+    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+    transaction: Boolean = false)
   : IO[PositionAnd[EventId]] =
     // TODO Rollback writes in case of error (with seek?)
     IO.defer:
       if !eventsStarted then throw new IllegalStateException
-      val ta = transaction && stampedEvents.lengthIs > 1
-      IO.whenA(ta):
-        IO.blocking:
-          jsonWriter.write(TransactionByteArray)
-      .productR:
-        super.writeEvents(stampedEvents)
-      .productR:
-        IO.whenA(ta):
-          IO.blocking:
-            jsonWriter.write(CommitByteArray)
-      .productR:
-        IO:
-          statistics.countEventsToBeCommitted(stampedEvents.size)
-          fileLengthAndEventId
+      super.writeEvents_(stampedEvents, transaction = transaction).map: _ =>
+        statistics.countEventsToBeCommitted(stampedEvents.size)
+        fileLengthAndEventId
+
+  @TestOnly
+  private[journal] def testWrite(byteArray: ByteArray): Unit =
+    jsonWriter.write(byteArray)
 
   // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit =
@@ -106,9 +98,6 @@ extends
 
 
 private[journal] object EventJournalWriter:
-  private val TransactionByteArray = Transaction.asJson.toByteArray
-  private val CommitByteArray = Commit.asJson.toByteArray
-
   def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
     observer: JournalingObserver | Missing = Missing,
     bean: FileJournalMXBean.Bean = FileJournalMXBean.Bean.dummy,
