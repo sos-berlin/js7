@@ -81,7 +81,7 @@ object TestState extends
     TypedJsonCodec[Any](
       Subtype[TestAggregate])
 
-  implicit def keyedEventJsonCodec =
+  given keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
         KeyedSubtype[JournalEvent],
         KeyedSubtype[TestEvent])
