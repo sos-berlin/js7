@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 46,
+    "generation": 74,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -37,7 +37,7 @@
         "kind": "Panel",
         "spec": {
           "id": 1,
-          "title": "Heap",
+          "title": "Java heap",
           "description": "",
           "links": [],
           "data": {
@@ -63,7 +63,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "max",
@@ -89,7 +90,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "committed",
@@ -115,7 +117,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "used",
@@ -141,7 +144,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "init",
@@ -163,10 +167,57 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "oldUsed",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "java_lang_CollectionUsage_Used{type=\"MemoryPool\",js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}",
+                        "instant": false,
+                        "legendFormat": "Old used",
+                        "range": true
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "js7_Heap_UsedAfterGC{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}",
+                        "instant": false,
+                        "legendFormat": "Minimum used after GC",
+                        "range": true
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -178,7 +229,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -188,6 +239,7 @@
                 "legend": {
                   "calcs": [],
                   "displayMode": "list",
+                  "enableFacetedFilter": false,
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -306,7 +358,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "blue",
+                          "fixedColor": "super-light-blue",
                           "mode": "fixed"
                         }
                       },
@@ -346,7 +398,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "super-light-blue",
+                          "fixedColor": "orange",
                           "mode": "fixed"
                         }
                       }
@@ -400,6 +452,87 @@
                         }
                       }
                     ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "js7_Heap_UsedAfterGC"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Minimum used after GC"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.drawStyle",
+                        "value": "line"
+                      },
+                      {
+                        "id": "custom.lineInterpolation",
+                        "value": "linear"
+                      },
+                      {
+                        "id": "custom.barWidthFactor",
+                        "value": 0.6
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      },
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                            0,
+                            10
+                          ],
+                          "fill": "dot"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "__systemRef": "hideSeriesFrom",
+                    "matcher": {
+                      "id": "byNames",
+                      "options": {
+                        "mode": "exclude",
+                        "names": [
+                          "Used"
+                        ],
+                        "prefix": "All except:",
+                        "readOnly": true
+                      }
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": false,
+                          "tooltip": true,
+                          "viz": true
+                        }
+                      }
+                    ]
                   }
                 ]
               }
@@ -411,7 +544,7 @@
         "kind": "Panel",
         "spec": {
           "id": 10,
-          "title": "System processes",
+          "title": "Jobs running as a system process",
           "description": "Job processes with a PID",
           "links": [],
           "data": {
@@ -436,7 +569,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Processes",
@@ -458,7 +592,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "starts",
@@ -473,7 +608,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -617,7 +752,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "queued",
@@ -639,7 +775,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "locked",
@@ -654,7 +791,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -791,7 +928,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Maximum",
@@ -813,7 +951,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "old",
@@ -835,7 +974,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "concurrent",
@@ -856,7 +996,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "young",
@@ -878,7 +1019,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "cpu",
@@ -893,7 +1035,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -1096,7 +1238,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -1111,7 +1254,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -1217,7 +1360,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "EventCalc",
@@ -1239,7 +1383,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "jsonWrite",
@@ -1260,7 +1405,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "ack",
@@ -1275,7 +1421,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -1424,7 +1570,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "EventCalc",
@@ -1442,11 +1589,12 @@
                         "editorMode": "code",
                         "expr": "rate(js7_CallMeter_FileJournal_jsonWrite_Seconds{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}[$__rate_interval]) / \nrate(js7_CallMeter_FileJournal_jsonWrite_Total{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}[$__rate_interval])",
                         "instant": false,
-                        "legendFormat": "write as JSON",
+                        "legendFormat": "write JSON",
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "jsonWrite",
@@ -1464,11 +1612,12 @@
                         "editorMode": "code",
                         "expr": "rate((js7_CallMeter_FileJournal_ack_Seconds{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}[$__rate_interval])) / \nrate(js7_CallMeter_FileJournal_ack_Total{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}[$__rate_interval])",
                         "format": "time_series",
-                        "legendFormat": "Cluster acknowledgement",
+                        "legendFormat": "Cluster ack",
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "ack",
@@ -1490,7 +1639,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "persist",
@@ -1512,7 +1662,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "activeHeartbeatDelay",
@@ -1534,32 +1685,11 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "eventDelay",
-                    "hidden": false
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "",
-                        "instant": false,
-                        "legendFormat": "__auto",
-                        "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1"
-                      }
-                    },
-                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -1571,7 +1701,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -1581,6 +1711,7 @@
                 "legend": {
                   "calcs": [],
                   "displayMode": "list",
+                  "enableFacetedFilter": false,
                   "placement": "bottom",
                   "showLegend": true
                 },
@@ -1741,14 +1872,35 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Active's heartbeat delay"
+                      "scope": "series",
+                      "options": "js7_MemoryJournal_ReleaseDuration"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "dark-orange",
+                          "fixedColor": "text",
                           "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byValue",
+                      "options": {
+                        "op": "gte",
+                        "reducer": "allIsNull",
+                        "value": 0
+                      }
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": true,
+                          "viz": true
                         }
                       }
                     ]
@@ -1786,7 +1938,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -1809,7 +1962,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -1831,7 +1985,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "orderQueueLength",
@@ -1853,7 +2008,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "D",
@@ -1868,7 +2024,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -2035,7 +2191,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -2050,7 +2207,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -2176,7 +2333,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -2191,7 +2349,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -2312,7 +2470,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "persistRunning",
@@ -2327,7 +2486,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -2440,7 +2599,7 @@
         "kind": "Panel",
         "spec": {
           "id": 21,
-          "title": "Threads",
+          "title": "Java threads",
           "description": "",
           "links": [],
           "data": {
@@ -2461,7 +2620,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "threadCount",
@@ -2483,7 +2643,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "mountedVirtualThreadCount",
@@ -2505,7 +2666,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "queuedVirtualThreadCount",
@@ -2527,7 +2689,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "virtualPoolSize",
@@ -2549,7 +2712,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "FileSystemWatchThreads",
@@ -2571,7 +2735,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "G1GCThreads",
@@ -2593,7 +2758,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "CommonPoolThreads",
@@ -2615,7 +2781,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OtherThreads",
@@ -2637,7 +2804,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "CatsEffectComputeThreads",
@@ -2659,7 +2827,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "jetty",
@@ -2682,7 +2851,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Pekko",
@@ -2704,7 +2874,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "CatsEffectBlockingThreads",
@@ -2726,7 +2897,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "ProcessReaperThreads",
@@ -2741,7 +2913,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -3160,7 +3332,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -3175,7 +3348,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -3328,7 +3501,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "orderCount",
@@ -3351,7 +3525,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "failedOrderCount",
@@ -3374,7 +3549,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "processCount",
@@ -3397,7 +3573,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "threads",
@@ -3420,7 +3597,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Processes",
@@ -3443,7 +3621,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "heapCommitted",
@@ -3466,7 +3645,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Up",
@@ -3490,7 +3670,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "clusterState",
@@ -3513,7 +3694,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "clusterStateFiller",
@@ -3536,7 +3718,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "JVMRunningSeconds",
@@ -3559,7 +3742,8 @@
                         "range": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OperatingSeconds",
@@ -3574,7 +3758,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -3765,7 +3949,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "D",
@@ -3787,7 +3972,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -3809,7 +3995,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -3830,7 +4017,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -3845,7 +4033,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4043,7 +4231,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -4064,7 +4253,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -4079,7 +4269,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4245,7 +4435,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -4266,7 +4457,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -4286,7 +4478,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -4301,7 +4494,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4438,7 +4631,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -4460,7 +4654,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -4482,7 +4677,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -4497,7 +4693,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4650,7 +4846,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "Logins",
@@ -4671,7 +4868,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -4686,7 +4884,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4841,7 +5039,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -4863,7 +5062,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -4884,7 +5084,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -4899,7 +5100,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -4995,7 +5196,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-red",
+                          "fixedColor": "light-orange",
                           "mode": "fixed"
                         }
                       }
@@ -5010,7 +5211,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "red",
                           "mode": "fixed"
                         }
                       }
@@ -5048,7 +5249,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "os",
@@ -5074,7 +5276,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "process-load",
@@ -5096,7 +5299,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -5118,7 +5322,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -5140,7 +5345,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "process",
@@ -5155,7 +5361,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -5292,7 +5498,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -5307,7 +5514,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -5425,7 +5632,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "D",
@@ -5447,7 +5655,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -5469,7 +5678,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -5490,7 +5700,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -5505,7 +5716,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -5702,7 +5913,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "miniHistory",
@@ -5717,7 +5929,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -5835,7 +6047,7 @@
                         "editorMode": "code",
                         "expr": "js7_MemoryJournal_ReleaseDuration{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}",
                         "instant": false,
-                        "legendFormat": "MemoryJournal release",
+                        "legendFormat": "Release delay",
                         "range": true
                       },
                       "labels": {
@@ -5858,7 +6070,7 @@
                         "editorMode": "code",
                         "expr": "js7_MemoryJournal_EventQueueLength{js7ServerGroupId=\"$js7ServerGroupId\", js7ServerId=\"$js7ServerId\"}",
                         "instant": false,
-                        "legendFormat": "MemoryJournal queue",
+                        "legendFormat": "Queued events",
                         "range": true
                       },
                       "labels": {
@@ -6037,6 +6249,21 @@
                         }
                       }
                     ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Queued events"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
                   }
                 ]
               }
@@ -6048,7 +6275,7 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "Disk usage",
+          "title": "Disk space",
           "description": "",
           "links": [],
           "data": {
@@ -6070,7 +6297,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "D",
@@ -6092,7 +6320,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "C",
@@ -6114,7 +6343,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
@@ -6139,7 +6369,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -6154,7 +6385,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -6323,7 +6554,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "eventsx",
@@ -6348,7 +6580,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "commits",
@@ -6373,7 +6606,8 @@
                         "useBackend": false
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "flush",
@@ -6395,7 +6629,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -6410,7 +6645,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -6560,7 +6795,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -6575,7 +6811,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -6684,7 +6920,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderStdWritten",
@@ -6706,7 +6943,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderProcessingStarted",
@@ -6728,7 +6966,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderProcessed",
@@ -6749,7 +6988,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderStarted",
@@ -6771,7 +7011,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderAdded",
@@ -6793,7 +7034,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderFailed",
@@ -6815,7 +7057,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderFinished",
@@ -6837,7 +7080,8 @@
                         "range": true
                       },
                       "labels": {
-                        "grafana.app/export-label": "prometheus-1"
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "OrderCancelled",
@@ -6852,7 +7096,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.0.1+security-01",
+            "version": "13.2.3",
             "spec": {
               "options": {
                 "annotations": {
@@ -7025,370 +7269,357 @@
       }
     },
     "layout": {
-      "kind": "GridLayout",
+      "kind": "RowsLayout",
       "spec": {
-        "items": [
+        "rows": [
           {
-            "kind": "GridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "x": 0,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-23"
+              "title": "JS7 Engine",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 200,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-23"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-22"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-32"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-17"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-18"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-14"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-28"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-12"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
           {
-            "kind": "GridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "x": 12,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-3"
+              "title": "JS7 journal",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 200,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-15"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-16"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-20"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-8"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-33"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
           {
-            "kind": "GridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "x": 0,
-              "y": 6,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-22"
+              "title": "Java heap",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 200,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-13"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-30"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-29"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
           {
-            "kind": "GridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "x": 12,
-              "y": 6,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-27"
+              "title": "Java and system",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 200,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-27"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-21"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
           {
-            "kind": "GridLayoutItem",
+            "kind": "RowsLayoutRow",
             "spec": {
-              "x": 0,
-              "y": 12,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-2"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 12,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-1"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 18,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-32"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 18,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-13"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 24,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-9"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 24,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-29"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 30,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-6"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 30,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-30"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 36,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-15"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 36,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-21"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 42,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-16"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 42,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-10"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 48,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-20"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 48,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-14"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 54,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-8"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 54,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-18"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 60,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-4"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 60,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-17"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 66,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-12"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 66,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-24"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 0,
-              "y": 72,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-28"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 72,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-31"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 78,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-26"
-              }
-            }
-          },
-          {
-            "kind": "GridLayoutItem",
-            "spec": {
-              "x": 12,
-              "y": 84,
-              "width": 12,
-              "height": 6,
-              "element": {
-                "kind": "ElementReference",
-                "name": "panel-25"
+              "title": "Network",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 2,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "custom",
+                  "rowHeight": 200,
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-24"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-26"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-31"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-25"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           }
@@ -7444,7 +7675,8 @@
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "labels": {
-              "grafana.app/export-label": "prometheus-1"
+              "grafana.app/export-label": "prometheus-1",
+              "grafana.app/export-datasource-name": "prometheus"
             }
           },
           "regex": "",
