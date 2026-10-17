@@ -4,7 +4,7 @@ import cats.effect.ResourceIO
 import cats.syntax.applicative.*
 import com.typesafe.config.Config
 import js7.base.bean.MBeanUtils.registerStaticMBean
-import js7.base.metering.{CallMeterLoggingService, ResponsivenessMeter}
+import js7.base.metering.{CallMeterLoggingService, HeapMBean, ResponsivenessMeter}
 import js7.base.service.Service
 import js7.base.system.ThreadsMXBean
 import js7.base.utils.AsyncLock
@@ -22,5 +22,6 @@ object MainSupportService:
       _ <- registerStaticMBean("AsyncLock", AsyncLock.Bean)
       _ <- registerStaticMBean("HttpMXBean", HttpMXBean.Bean)
       _ <- registerStaticMBean("Sessions", SessionRegister.Bean)
+      _ <- HeapMBean.register
     yield
       Service.Empty

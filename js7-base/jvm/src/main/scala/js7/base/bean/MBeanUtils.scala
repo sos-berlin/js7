@@ -15,16 +15,17 @@ object MBeanUtils:
   private val logger = Logger[this.type]
   private val beanServer = ManagementFactory.getPlatformMBeanServer
 
-  /** Bean is considered static and will not be deregistered under testing.
-    * <p>This is to allow concurrently running tests. */
+  /** The bean is considered static and will not be deregistered under testing.
+    *
+    * This is to allow concurrently running tests. */
   def registerStaticMBean[B](typ: String, bean: B)(using NotGiven[B <:< IO[?]]): ResourceIO[B] =
     registerMBean_[IO, B](toMBeanName(typ), isStatic = true)(IO.pure(bean))
 
-  def registerMBean[F[_]: Sync as F]: RegisterMBean[F] =
-    new RegisterMBean[F]
+  def registerMBean[F[_]: Sync as F]: RegisterMBeanApply[F] =
+    new RegisterMBeanApply[F]
 
-  final class RegisterMBean[F[_]: Sync as F]:
-    def apply[B](typ: String, newBean: => B)
+  final class RegisterMBeanApply[F[_]: Sync as F] private[MBeanUtils] extends AnyVal:
+    inline def apply[B](typ: String, newBean: => B)
       (using NotGiven[B <:< IO[?]], NotGiven[B <:< SyncIO[?]])
     : Resource[F, B] =
       registerMBean[F, B](typ)(F.delay(newBean))
