@@ -8,8 +8,9 @@ import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
+import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -17,6 +18,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalHeader.readJournalHeader
+import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import js7.journal.EventIdGenerator
@@ -58,147 +60,235 @@ final class JournalReaderTest extends OurAsyncTestSuite:
     finally
       super.afterAll()
 
-  "Journal file without snapshots or events" in:
-    journalResource.use_.await(99.s)
-    val file = currentFile
-    val journalId = readJournalHeader(file).journalId
-    autoClosing(JournalReader(journalLocation.S, file, journalId)): journalReader =>
-      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
-      assert(journalReader.readEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
-      assert(journalReader.eventId == 1000000)
-      assert(journalReader.totalEventCount == 1)
+  for bufferSize <- Array(0, 1, Int.MaxValue) do s"bufferSize=$bufferSize" - {
+    "Journal file without snapshots or events" in:
+      journalResource.use_.await(99.s)
+      val file = currentFile
+      val journalId = readJournalHeader(file).journalId
+      autoClosing(JournalReader(journalLocation.S, file, journalId, bufferSize)): journalReader =>
+        assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
+        assert(journalReader.readEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
+        assert(journalReader.eventId == 1000000)
+        assert(journalReader.totalEventCount == 1)
 
-  "Journal file with snapshot section only" in:
-    val file = currentFile
-    delete(file)  // File of last test
-    autoClosing(
-      SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)
-    ): writer =>
-      writer.writeHeader(JournalHeader.forTest(stateName, journalId))
-      writer.beginSnapshotSection()
-      writer.endSnapshotSection()
-      writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
-
-    autoClosing(
-      JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
-    ): journalReader =>
-      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
-      assert(journalReader.readEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
-      assert(journalReader.eventId == 1000)
-      assert(journalReader.totalEventCount == 1)
-
-  "Journal file with open event section" in:
-    val file = currentFile
-    delete(file)  // File of last test
-    autoClosing(
-      SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)
-    ): writer =>
-      writer.writeHeader(JournalHeader.forTest(stateName, journalId))
-      writer.beginSnapshotSection()
-      writer.endSnapshotSection()
-      writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
-
-    autoClosing(
-      EventJournalWriter(journalLocation,
-        fileEventId = EventId.BeforeFirst, after = EventId.BeforeFirst, journalId,
-        observer = JournalingObserver.Dummy(journalLocation), simulateSync = None)
-    ): writer =>
-      writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil).await(99.s)
-      //Without: writer.endEventSection(sync = false)
-
-    autoClosing(
-      JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
-    ): journalReader =>
-      assert(journalReader.fileEventId == 0)
-      assert(journalReader.eventId == EventId.BeforeFirst)
-      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
-      assert(journalReader.readEvents().toList == Stamped(1000L, NoKey <-: SnapshotTaken) :: Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
-      assert(journalReader.eventId == 1001)
-      assert(journalReader.totalEventCount == 2)
-
-  "Journal file with snapshot and events" in:
-    journalResource.use: journal =>
-      journal.persist("A" <-: TestEvent.SimpleAdded("(A)")) *>
-      journal.persist("B" <-: TestEvent.SimpleAdded("(B)"))
-    .await(99.s)
-    autoClosing(
-      JournalReader(journalLocation.S, currentFile, readJournalHeader(currentFile).journalId)
-    ): journalReader =>
-      assert(journalReader.readSnapshot.compile.to(Set).await(99.s) == Set(
-        journalReader.journalHeader,
-        TestAggregate("A","(A)"),
-        TestAggregate("B","(B)")))
-      assert(journalReader.readEvents().toList == List(
-        Stamped(1000003L, NoKey <-: SnapshotTaken)))
-      assert(journalReader.eventId == 1000003)
-      assert(journalReader.totalEventCount == 6)
-
-  "Transactions" - {
-    val first = Stamped(1000L, "A" <-: TestEvent.Removed)
-    val ta = Stamped(1001L, "KEY" <-: TestEvent.Appended('a')) ::
-             Stamped(1002L, "KEY" <-: TestEvent.Appended('b')) ::
-             Stamped(1003L, "KEY" <-: TestEvent.Appended('c')) :: Nil
-    val last = Stamped(1004L, "Z" <-: TestEvent.Removed)
-
-    "Committed transaction" in:
-      val file = journalLocation.file(0L)
-      delete(file)  // File of last test
-      autoClosing(
-        EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
-          observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
-      ): writer =>
-        writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
-        writer.beginEventSection(sync = false)
-        writer.writeEvents(first :: Nil).await(99.s)
-        writer.writeEvents(ta, transaction = true).await(99.s)
-        writer.writeEvents(last :: Nil).await(99.s)
-        writer.endEventSection(sync = false)
-
-      autoClosing(
-        JournalReader(journalLocation.S, file, journalId)
-      ): journalReader =>
-        assert(journalReader.readEvents().toList == first :: ta ::: last :: Nil)
-        assert(journalReader.eventId == 1004)
-        assert(journalReader.totalEventCount == 5)
-
-      autoClosing(JournalReader(journalLocation.S, file, journalId)): journalReader =>
-        assert(journalReader.nextEvent() == Some(first))
-        assert(journalReader.eventId == 1000)
-        assert(journalReader.nextEvent() == Some(ta(0)))
-        assert(journalReader.eventId == 1001)
-        assert(journalReader.nextEvent() == Some(ta(1)))
-        assert(journalReader.eventId == 1002)
-        assert(journalReader.nextEvent() == Some(ta(2)))
-        assert(journalReader.eventId == 1003)
-        assert(journalReader.nextEvent() == Some(last))
-        assert(journalReader.eventId == 1004)
-        assert(journalReader.nextEvent() == None)
-        assert(journalReader.eventId == 1004)
-        assert(journalReader.totalEventCount == 5)
-
-    "Uncommitted transaction" in:
+    "Journal file with snapshot section only" in:
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(FileJsonWriter(file)): writer =>
-        def write[A](a: A)(using encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
-        def writeEvent(stamped: Stamped[KeyedEvent[TestEvent]]) = write(stamped)
-
-        write(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst).asJson)
-        write(JournalSeparators.EventHeader)
-        writeEvent(first)
-        write(JournalSeparators.Transaction)
-        writeEvent(ta(0))
-        writeEvent(ta(1))
-        writeEvent(ta(2))
+      autoClosing(
+        SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)
+      ): writer =>
+        writer.writeHeader(JournalHeader.forTest(stateName, journalId))
+        writer.beginSnapshotSection()
+        writer.endSnapshotSection()
+        writer.beginEventSection(sync = false)
+        writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
 
       autoClosing(
-        JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
+        JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId, bufferSize)
       ): journalReader =>
-        assert(journalReader.readEvents().toList == first :: Nil)  // Uncommitted transaction is not read
+        assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
+        assert(journalReader.readEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
         assert(journalReader.eventId == 1000)
         assert(journalReader.totalEventCount == 1)
+
+    "Journal file with open event section" in:
+      val file = currentFile
+      delete(file)  // File of last test
+      autoClosing(
+        SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)
+      ): writer =>
+        writer.writeHeader(JournalHeader.forTest(stateName, journalId))
+        writer.beginSnapshotSection()
+        writer.endSnapshotSection()
+        writer.beginEventSection(sync = false)
+        writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
+
+      autoClosing(
+        EventJournalWriter(journalLocation,
+          fileEventId = EventId.BeforeFirst, after = EventId.BeforeFirst, journalId,
+          observer = JournalingObserver.Dummy(journalLocation), simulateSync = None)
+      ): writer =>
+        writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil).await(99.s)
+        //Without: writer.endEventSection(sync = false)
+
+      autoClosing(
+        JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId, bufferSize)
+      ): journalReader =>
+        assert(journalReader.fileEventId == 0)
+        assert(journalReader.eventId == EventId.BeforeFirst)
+        assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
+        assert(journalReader.readEvents().toList == Stamped(1000L, NoKey <-: SnapshotTaken) :: Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
+        assert(journalReader.eventId == 1001)
+        assert(journalReader.totalEventCount == 2)
+
+    "Journal file with snapshot and events" in:
+      journalResource.use: journal =>
+        journal.persist("A" <-: TestEvent.SimpleAdded("(A)")) *>
+        journal.persist("B" <-: TestEvent.SimpleAdded("(B)"))
+      .await(99.s)
+      autoClosing(
+        JournalReader(journalLocation.S, currentFile, readJournalHeader(currentFile).journalId, bufferSize)
+      ): journalReader =>
+        assert(journalReader.readSnapshot.compile.to(Set).await(99.s) == Set(
+          journalReader.journalHeader,
+          TestAggregate("A","(A)"),
+          TestAggregate("B","(B)")))
+        assert(journalReader.readEvents().toList == List(
+          Stamped(1000003L, NoKey <-: SnapshotTaken)))
+        assert(journalReader.eventId == 1000003)
+        assert(journalReader.totalEventCount == 6)
+
+    "Transactions" - {
+      val first = Stamped(1000L, "A" <-: TestEvent.Removed)
+      val ta = Stamped(1001L, "KEY" <-: TestEvent.Appended('a')) ::
+               Stamped(1002L, "KEY" <-: TestEvent.Appended('b')) ::
+               Stamped(1003L, "KEY" <-: TestEvent.Appended('c')) :: Nil
+      val last = Stamped(1004L, "Z" <-: TestEvent.Removed)
+
+      "Committed empty transaction (should not occur)" in:
+        val file = journalLocation.file(0L)
+        delete(file)  // File of last test
+        autoClosing(
+          EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
+            observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
+        ): writer =>
+          writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
+          writer.beginEventSection(sync = false)
+          writer.writeEvent(first).await(99.s)
+          writer.writeEvents(Nil, transaction = true).await(99.s)
+          writer.writeEvent(last).await(99.s)
+          writer.endEventSection(sync = false)
+
+        autoClosing(
+          JournalReader(journalLocation.S, file, journalId, bufferSize)
+        ): journalReader =>
+          assert(journalReader.readEvents().toList == first :: last :: Nil)
+          assert(journalReader.eventId == 1004)
+          assert(journalReader.totalEventCount == 2)
+
+      "Corrupt event" in:
+        val file = journalLocation.file(0L)
+        delete(file)  // File of last test
+        autoClosing(
+          EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
+            observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
+        ): writer =>
+          writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
+          writer.beginEventSection(sync = false)
+          writer.writeEvent(first).await(99.s)
+          writer.testWrite(Transaction.asJson.toByteArray)
+          writer.writeEvents(ta).await(99.s)
+          writer.testWrite(ByteArray("{\"UNKNOWN\": 1}"))
+          writer.testWrite(Commit.asJson.toByteArray)
+          writer.writeEvent(last).await(99.s)
+          writer.endEventSection(sync = false)
+
+        autoClosing(
+          JournalReader(journalLocation.S, file, journalId, bufferSize)
+        ): journalReader =>
+          val iterator = journalReader.readEvents()
+          iterator.next()
+          // Despite the first three events of transaction (the `ta` list) are deserializable,
+          // the whole transaction is not, resulting in a failure when reading the
+          // first event of the transaction.
+          val e = intercept[RuntimeException]:
+            iterator.next()
+          assert(e.toString.contains("JSON DecodingFailure at .eventId"))
+
+      "seek" in:
+        val file = journalLocation.file(0L)
+        delete(file)  // File of last test
+        autoClosing(
+          EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
+            observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
+        ): writer =>
+          writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
+          writer.beginEventSection(sync = false)
+          writer.writeEvent(first).await(99.s)
+          writer.writeEvents(ta, transaction = true).await(99.s)
+          writer.writeEvent(last).await(99.s)
+          writer.endEventSection(sync = false)
+
+        autoClosing(JournalReader(journalLocation.S, file, journalId, bufferSize)): journalReader =>
+          val iterator = journalReader.readEvents()
+          assert(iterator.next() == first)
+          val positions = ta.map: stamped =>
+            assert(iterator.next() == stamped)
+            val posAndId = journalReader.positionAndEventId
+            assert(posAndId.value == stamped.eventId)
+            posAndId
+          assert(iterator.next() == last)
+
+          for i <- ta.indices do
+            journalReader.seekEvent(positions(i))
+            // A new iterator, because an iterator stays at its end after hasNext returned false
+            val iterator = journalReader.readEvents()
+            assert(iterator.toList == ta.drop(i + 1) :+ last)
+
+        succeed
+
+      "Committed transaction" in:
+        val file = journalLocation.file(0L)
+        delete(file)  // File of last test
+        autoClosing(
+          EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
+            observer = JournalingObserver.Dummy(journalLocation), simulateSync = None, append = false)
+        ): writer =>
+          writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
+          writer.beginEventSection(sync = false)
+          writer.writeEvent(first).await(99.s)
+          writer.writeEvents(ta, transaction = true).await(99.s)
+          writer.writeEvent(last).await(99.s)
+          writer.endEventSection(sync = false)
+
+        autoClosing(
+          JournalReader(journalLocation.S, file, journalId, bufferSize)
+        ): journalReader =>
+          assert(journalReader.readEvents().toList == first :: ta ::: last :: Nil)
+          assert(journalReader.eventId == 1004)
+          assert(journalReader.totalEventCount == 5)
+
+        autoClosing(JournalReader(journalLocation.S, file, journalId, bufferSize)): journalReader =>
+          assert(journalReader.nextEvent() == Some(first))
+          assert(journalReader.eventId == 1000)
+          assert(journalReader.nextEvent() == Some(ta(0)))
+          assert(journalReader.eventId == 1001)
+          assert(journalReader.nextEvent() == Some(ta(1)))
+          assert(journalReader.eventId == 1002)
+          assert(journalReader.nextEvent() == Some(ta(2)))
+          assert(journalReader.eventId == 1003)
+          assert(journalReader.nextEvent() == Some(last))
+          assert(journalReader.eventId == 1004)
+          assert(journalReader.nextEvent() == None)
+          assert(journalReader.eventId == 1004)
+          assert(journalReader.totalEventCount == 5)
+
+      "Uncommitted transaction" in:
+        val file = currentFile
+        delete(file)  // File of last test
+        autoClosing(FileJsonWriter(file)): writer =>
+          def write[A](a: A)(using encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
+          def writeEvent(stamped: Stamped[KeyedEvent[TestEvent]]) = write(stamped)
+
+          write(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst).asJson)
+          write(JournalSeparators.EventHeader)
+          writeEvent(first)
+          write(JournalSeparators.Transaction)
+          writeEvent(ta(0))
+          writeEvent(ta(1))
+          writeEvent(ta(2))
+
+        autoClosing(
+          JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId, bufferSize)
+        ): journalReader =>
+          assert(journalReader.readEvents().toList == first :: Nil)  // Uncommitted transaction is not read
+          assert(journalReader.eventId == 1000)
+          assert(journalReader.totalEventCount == 1)
+
+      "Clean-up" in:
+        deleteDirectoryContentRecursively(directory)
+        succeed
+    }
   }
 
   private def currentFile = journalLocation.currentFile.orThrow
