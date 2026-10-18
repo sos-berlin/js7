@@ -7,13 +7,14 @@ import js7.base.BuildInfo
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.base.system.SystemInformations.totalPhysicalMemory
-import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Once
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
@@ -36,21 +37,42 @@ object StartUp:
   def logJavaSettings(): Unit =
     // Do not initialize logging framework to early
     val logger = Logger[this.type]
+    logger.whenDebugEnabled:
+      logClasspathOnce: // Log only once (for tests running controller and agents in same JVM)
+        logger.whenTraceEnabled:
+          logger.debug("TRACE level logging is enabled")
+        logCommandLine(logger)
+        val paths = sys.props("java.class.path").nn.split(File.pathSeparator).filter(_.nonEmpty)
+        logger.debug(s"Classpath contains ${paths.length} entries:")
+        for o <- paths do
+          logger.debug(s"Classpath $o")
 
-    logger.whenTraceEnabled:
-      logger.debug("TRACE level logging is enabled")
+        if CorrelId.isEnabled then
+          // Check isEnabled after some debug line has been logged,
+          // because CorrelIds may be enabled automatically on the first use by Log4j.
+          CorrelId("CorrelId").bind:
+            logger.debug("Correlation IDs are enabled")
 
-    logClasspathOnce: // Log only once (for tests running controller and agents in same JVM)
-      val paths = sys.props("java.class.path").nn.split(File.pathSeparator).filter(_.nonEmpty)
-      logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
-      for o <- paths do
-        logger.debug(Logger.Java, s"Classpath $o")
-
-    if CorrelId.isEnabled then
-      // Check isEnabled after some debug line has been logged,
-      // because CorrelIds may be enabled automatically on the first use by Log4j.
-      CorrelId("CorrelId").bind:
-        logger.debug("Correlation IDs are enabled")
+  private def logCommandLine(logger: Logger): Unit =
+    val info = ProcessHandle.current.info
+    if info.command.isPresent && info.arguments.isPresent then
+      // Linux and macOS
+      logger.debug("Command line:")
+      (info.command.get +: info.arguments.get).foreachWithBracket(): (arg: String, br) =>
+        logger.debug(s"$br$arg")
+    else
+      // Windows
+      // Limits of getInputArguments()
+      // • It returns only the JVM arguments. It leaves out the main class or -jar file and the
+      //   application arguments.
+      // • It does not include options from JAVA_TOOL_OPTIONS, or does so inconsistently. The JVM
+      //   prints "Picked up JAVA_TOOL_OPTIONS" to stderr instead.
+      // • It does not expand @argfiles (a java @file argument) or JDK_JAVA_OPTIONS.
+      // • It does not include the options that the java launcher itself consumes.
+      logger.debug("Some Java options:") // Maybe incomplete
+      ManagementFactory.getRuntimeMXBean.getInputArguments.asScala
+        .foreachWithBracket(): (arg, br) =>
+          logger.debug(s"$br$arg")
 
   def logStartUpLine(name: String): Unit =
     // Should be the very first log line after program start

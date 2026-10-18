@@ -76,7 +76,6 @@ object Logger extends AdHocLogger:
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")
   val Actor: Marker = MarkerFactory.getMarker("Actor")
-  val Java: Marker = MarkerFactory.getMarker("Java")
   //val Repo: Marker = MarkerFactory.getMarker("Repo")
   val SignatureVerified: Marker = MarkerFactory.getMarker("SignatureVerified")
 
