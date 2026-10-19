@@ -586,22 +586,21 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
     heartbeat: FiniteDuration,
     returnHeartbeatAs: Option[EventId] = None)
   : Stream[IO, EventId] =
-    RecouplingStreamReader
-      .stream[EventId, EventId, ClusterNodeApi](
-        toIndex = Some(_),
-        api,
-        clusterConf.recouplingStreamReader,
-        after = -1L/*unused, web service returns always the newest EventIds*/,
-        getStream = (_: EventId) =>
-          HttpClient.liftProblem:
-            api.eventIdStream(
-                heartbeat = Some(heartbeat),
-                returnHeartbeatAs = returnHeartbeatAs,
-                dontLog = true)
-              .map(_.evalMapChunk:
-                case Left(problem) => IO.raiseError(problem.throwable)
-                case Right(eventId) => IO.pure(eventId)),
-        stopRequested = () => stopRequested)
+    RecouplingStreamReader.stream[EventId, EventId, ClusterNodeApi](
+      toIndex = Some(_),
+      api,
+      clusterConf.recouplingStreamReader,
+      after = -1L /*unused, web service returns always the newest EventIds*/ ,
+      getStream = (_: EventId) =>
+        HttpClient.liftProblem:
+          api.eventIdStream(
+              heartbeat = Some(heartbeat),
+              returnHeartbeatAs = returnHeartbeatAs,
+              dontLog = true)
+            .map(_.evalMapChunk:
+              case Left(problem) => IO.raiseError(problem.throwable)
+              case Right(eventId) => IO.pure(eventId)),
+      stopRequested = () => stopRequested)
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): IO[Checked[Unit]] =
     common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
@@ -619,33 +618,32 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : IO[Checked[Unit]] =
-    journal.clusterState
-      .flatMap: clusterState =>
-        IO(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
-          .flatMapT:
-            if _ then // Shortcut
-              IO.right(Nil -> clusterState)
-            else
-              journal.persistTransaction: aggregate =>
-                isClusterWatchRegistered(aggregate.clusterState, confirmation.clusterWatchId)
-                  .map(!_ thenList NoKey <-: ClusterWatchRegistered(confirmation.clusterWatchId))
-              .map(_.map: persisted =>
-                persisted.stampedKeyedEvents -> persisted.aggregate.clusterState)
-      .flatTapT: _ =>
-        common.clusterWatchCounterpart.onClusterWatchRegistered(confirmation.clusterWatchId)
+    journal.clusterState.flatMap: clusterState =>
+      IO(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
+        .flatMapT:
+          if _ then // Shortcut
+            IO.right(Nil -> clusterState)
+          else
+            journal.persistTransaction: aggregate =>
+              isClusterWatchRegistered(aggregate.clusterState, confirmation.clusterWatchId)
+                .map(!_ thenList NoKey <-: ClusterWatchRegistered(confirmation.clusterWatchId))
+            .map(_.map: persisted =>
+              persisted.stampedKeyedEvents -> persisted.aggregate.clusterState)
+    .flatTapT: _ =>
+      common.clusterWatchCounterpart.onClusterWatchRegistered(confirmation.clusterWatchId)
         .as(Checked.unit)
-      .flatMapT: (stampedEvents, clusterState) =>
-        val events = stampedEvents.map(_.value.event)
-        (events, clusterState) match
-          case (Seq(event), clusterState: HasNodes) =>
-            clusterWatchSynchronizer
-              .applyEvent(
-                event, clusterState,
-                clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered])
-              .rightAs(())
+    .flatMapT: (stampedEvents, clusterState) =>
+      val events = stampedEvents.map(_.value.event)
+      (events, clusterState) match
+        case (Seq(event), clusterState: HasNodes) =>
+          clusterWatchSynchronizer
+            .applyEvent(
+              event, clusterState,
+              clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered])
+            .rightAs(())
 
-          case (Seq(), _) => IO.right(())
-          case o => throw new MatchError(o)
+        case (Seq(), _) => IO.right(())
+        case o => throw new MatchError(o)
 
   // Returns Right(true) iff clusterState settings contains clusterWatchId
   private def isClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
@@ -683,42 +681,41 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             Right:
               (extraEvent.toList ++ maybeEvent).map(NoKey <-: _)
       .flatMapT: persisted =>
-        IO
-          .defer:
-            assertThat(!clusterWatchSynchronizer.isHeartbeating)
-            persisted.aggregate.clusterState match
-              case Empty | _: NodesAppointed => IO.unit
-              case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
-          .flatMap: _ =>
-            val clusterStampedEvents = persisted.stampedKeyedEvents.collect:
-              case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
-                o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
-            val events = clusterStampedEvents.map(_.value.event)
-            (events, persisted.aggregate.clusterState) match
-              case (Seq(event), clusterState: HasNodes) =>
-                clusterWatchSynchronizer
-                  .applyEvent(
-                    event, clusterState,
-                    clusterWatchIdChangeAllowed = true/*
+        IO.defer:
+          assertThat(!clusterWatchSynchronizer.isHeartbeating)
+          persisted.aggregate.clusterState match
+            case Empty | _: NodesAppointed => IO.unit
+            case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
+        .flatMap: _ =>
+          val clusterStampedEvents = persisted.stampedKeyedEvents.collect:
+            case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
+              o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
+          val events = clusterStampedEvents.map(_.value.event)
+          (events, persisted.aggregate.clusterState) match
+            case (Seq(event), clusterState: HasNodes) =>
+              clusterWatchSynchronizer
+                .applyEvent(
+                  event, clusterState,
+                  clusterWatchIdChangeAllowed = true /*
                       events == Seq(ClusterCouplingPrepared(ownId) ||
-                      events == Seq(ClusterPassiveLost(clusterState.passiveId))*/,
-                    forceWhenUntaught = forceClusterWatchWhenUntaught)
-                  .flatMapT:
-                    case Some(confirmation)
-                      // After SwitchOver this ClusterNode is no longer active
-                      if clusterState.isNonEmptyActive(ownId) =>
-                      // JS-2092 We depend on the ClusterWatch,
-                      // that it confirms the event only if it is taught about the ClusterState.
-                      // Then, a ClusterWatch change is allowed.
-                      registerClusterWatchId(confirmation, alreadyLocked = true)
-                    case _ => IO.right(())
-                  .rightAs(clusterStampedEvents -> clusterState)
+                      events == Seq(ClusterPassiveLost(clusterState.passiveId))*/ ,
+                  forceWhenUntaught = forceClusterWatchWhenUntaught)
+                .flatMapT:
+                  case Some(confirmation)
+                    // After SwitchOver this ClusterNode is no longer active
+                    if clusterState.isNonEmptyActive(ownId) =>
+                    // JS-2092 We depend on the ClusterWatch,
+                    // that it confirms the event only if it is taught about the ClusterState.
+                    // Then, a ClusterWatch change is allowed.
+                    registerClusterWatchId(confirmation, alreadyLocked = true)
+                  case _ => IO.right(())
+                .rightAs(clusterStampedEvents -> clusterState)
 
-              case (Seq(), clusterState) =>
-                IO.right(clusterStampedEvents -> clusterState)
+            case (Seq(), clusterState) =>
+              IO.right(clusterStampedEvents -> clusterState)
 
-              case _ =>
-                IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
+            case _ =>
+              IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
 
   private def suspendHeartbeat[A](forEvent: Boolean = false)(io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
