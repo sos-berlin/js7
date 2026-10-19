@@ -344,8 +344,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           case _ =>
             Right(None)
         .recoverFromProblem:
-          case problem @ (ClusterModuleShuttingDownProblem | JournalKilledProblem) =>
-            logger.debug(s"⚠️  shutDownThisNode: $problem")
+          case problem @ JournalKilledProblem =>
+            logger.info:
+              s"⚠️  ClusterActiveNodeShutDown event has not been persisted: $problem"
+          case problem @ ClusterModuleShuttingDownProblem =>
+            // This comes after 3s (heartbeat) waiting for the ClusterWatch which
+            // may have been shutdown, too.
+            logger.info:
+              s"⚠️  ClusterActiveNodeShutDown event has not been acknowledged by the ClusterWatch: $problem"
         .as(Right(Completed))
 
   private def proceed(state: ClusterState): IO[Completed] =
