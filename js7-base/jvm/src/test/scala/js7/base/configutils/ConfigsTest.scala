@@ -72,8 +72,9 @@ final class ConfigsTest extends OurTestSuite:
       hidden := "SECRET-KEY = SECRET-VALUE"
       val config = parseConfigIfExists(dir / "test.conf", secret = false)
         .withFallback(parseConfigIfExists(dir / "hidden.conf", secret = true))
-      assert(renderValue("KEY", config.getValue("KEY")) == s"""KEY="VALUE" ($file: 1)""")
-      assert(renderValue("SECRET-KEY", config.getValue("SECRET-KEY")) == "SECRET-KEY=(secret)")
+      val sb = new StringBuilder
+      assert(renderValue(sb, "KEY", config.getValue("KEY")) == s"""KEY="VALUE" ($file: 1)""")
+      assert(renderValue(sb, "SECRET-KEY", config.getValue("SECRET-KEY")) == "SECRET-KEY=(secret)")
     }
 
   "config string interpolator" - {

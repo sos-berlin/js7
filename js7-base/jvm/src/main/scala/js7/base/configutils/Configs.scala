@@ -3,12 +3,8 @@ package js7.base.configutils
 import cats.Monoid
 import cats.data.NonEmptyList
 import com.typesafe.config.ConfigRenderOptions.concise
-import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigParseOptions, ConfigValue}
+import com.typesafe.config.*
 import io.circe.Json
-import java.io.File
-import java.nio.file.Files.exists
-import java.nio.file.Path
-import java.time.Duration
 import js7.base.circeutils.AnyJsonCodecs
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
@@ -21,6 +17,11 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators.interpolate
+
+import java.io.File
+import java.nio.file.Files.exists
+import java.nio.file.Path
+import java.time.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
@@ -62,15 +63,17 @@ object Configs:
     ConfigFactory.parseResourcesAnySyntax(resource.path, options)
 
   def logConfig(config: Config): Unit =
-    for entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey) do
-      def line = renderValue(entry.getKey, entry.getValue)
-      if isInternal(entry.getValue) then
-        logger.trace(line)
-      else
-        logger.debug(line)
+    logger.whenDebugEnabled:
+      val sb = new StringBuilder(128)
+      config.entrySet.asScala.view.toVector.sortBy(_.getKey).foreachWithBracket(): (entry, br) =>
+        def line = renderValue(sb, entry.getKey, entry.getValue)
+        if isInternal(entry.getValue) then
+          logger.trace(s"$br$line (default)")
+        else
+          logger.debug(s"$br$line")
 
-  private[configutils] def renderValue(key: String, value: ConfigValue): String =
-    val sb = new StringBuilder(128)
+  def renderValue(sb: StringBuilder, key: String, value: ConfigValue): String =
+    sb.clear()
     sb ++= key
     sb += '='
     val secret = isSecret(value)
@@ -85,6 +88,13 @@ object Configs:
       sb += ')'
     sb.toString
 
+      config.entrySet.asScala.view.toVector.sortBy(_.getKey).foreachWithBracket(): (entry, br) =>
+        def line = renderValue(entry.getKey, entry.getValue)
+        if isInternal(entry.getValue) then
+          logger.trace(s"$br$line (internal)")
+        else
+          logger.debug(s"$br$line")
+
   private val descriptionRegEx = ": [0-9]+(-[0-9]+)?".r
 
   private def isInternal(value: ConfigValue) =
@@ -93,7 +103,9 @@ object Configs:
   private def isSecret(value: ConfigValue) =
     value.origin.description.startsWith(SecretOriginDescription)
 
-  implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]:
+  implicit final class ConvertibleConfig(private val underlying: Config)
+    extends ConvertiblePartialFunction[String, String]:
+
     def apply(path: String): String =
       underlying.getString(path)
 
