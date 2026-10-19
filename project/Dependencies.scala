@@ -82,7 +82,7 @@ object Dependencies
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
-  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.9.0"  ::
-                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.9.0" ::
+  val prometheus          = "io.prometheus" % "prometheus-metrics-model" % "1.10.0"  ::
+                            "io.prometheus" % "prometheus-metrics-exposition-textformats" % "1.10.0" ::
                             "io.prometheus.jmx" % "collector" % "1.7.0" :: Nil
 }
