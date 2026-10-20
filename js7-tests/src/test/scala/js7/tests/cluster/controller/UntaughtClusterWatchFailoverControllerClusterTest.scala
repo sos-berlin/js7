@@ -6,6 +6,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
@@ -77,15 +78,15 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
             .await(99.s)
             == Left(ClusterNodeIsNotLostProblem(backupId, "untaught")))
 
-          // primaryId is lost. Wait until passive node has detected it.
-          awaitAndAssert(
-            clusterWatchService
+          // primaryId is lost. Wait until passive node has detected it, then confirm (only once,
+          // because a successful confirmation lets the backup fail over, after which a
+          // repeated confirmation would be rejected).
+          awaitAndAssert:
+            val confirmed = clusterWatchService
               .manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
               .await(99.s)
-              != Left(ClusterNodeIsNotLostProblem(primaryId, "untaught")))
-          clusterWatchService
-            .manuallyConfirmNodeLoss(primaryId, Confirmer("CONFIRMER"))
-            .await(99.s).orThrow
+            confirmed != Left(ClusterNodeIsNotLostProblem(primaryId, "untaught")) &&
+              confirmed.rightAs(true).orThrow
 
           val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
             backupController.eventWatch.await[ClusterFailedOver]().head
