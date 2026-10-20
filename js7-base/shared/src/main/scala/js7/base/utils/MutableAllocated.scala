@@ -47,16 +47,9 @@ final class MutableAllocated[A](logMinor: Boolean = false)
       if released.isDefined then
         IO.raiseError(new AcquisitionCanceledException)
       else
-        io.start.flatMap: fiber =>
-          whenReleaseFinally.get
-            .guarantee:
-              fiber.cancel
-            .start.flatMap: cancelFiber =>
-              fiber
-                .joinWith:
-                  IO.raiseError_(new AcquisitionCanceledException)
-                .guarantee:
-                  cancelFiber.cancel
+        whenReleaseFinally.get.race(io).flatMap:
+          case Left(()) => IO.raiseError_(new AcquisitionCanceledException)
+          case Right(a) => IO.pure(a)
 
   def release: IO[Unit] =
     logger.traceIO(s"$toString release"):
