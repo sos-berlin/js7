@@ -297,6 +297,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
           .await(99.s).orThrow
         val event = controller.awaitNextKey[OrderProcessingStarted](orderId).head.value
         assert(event == OrderProcessingStarted(Some(subagentId), timeoutAt = None))
+        // The process must be running before we kill it. Otherwise, the kill is ignored
+        // ("killProcess => no JobDriver for Order").
+        controller.awaitNextKey[OrderStdoutWritten](orderId)
         execCmd:
           CancelOrders(orderId :: Nil, CancellationMode.kill())
         controller.awaitNextKey[OrderTerminated](orderId)
@@ -328,6 +331,9 @@ final class JobAdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTe
         assert(event == OrderProcessingStarted(Some(subagentId),
           // TODO TimeInterval ends last day of summertime. THIS IS NOT EXPECTED.
           timeoutAt = Some(ts"2025-10-26T21:00:00Z")))
+        // The process must be running before we kill it. Otherwise, the kill is ignored
+        // ("killProcess => no JobDriver for Order").
+        controller.awaitNextKey[OrderStdoutWritten](orderId)
         execCmd:
           CancelOrders(orderId :: Nil, CancellationMode.kill())
         controller.awaitNextKey[OrderTerminated](orderId)
