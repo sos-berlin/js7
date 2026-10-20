@@ -5,6 +5,10 @@ import cats.data.NonEmptyList
 import com.typesafe.config.ConfigRenderOptions.concise
 import com.typesafe.config.*
 import io.circe.Json
+import java.io.File
+import java.nio.file.Files.exists
+import java.nio.file.Path
+import java.time.Duration
 import js7.base.circeutils.AnyJsonCodecs
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
@@ -17,11 +21,6 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators.interpolate
-
-import java.io.File
-import java.nio.file.Files.exists
-import java.nio.file.Path
-import java.time.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
@@ -88,13 +87,6 @@ object Configs:
       sb += ')'
     sb.toString
 
-      config.entrySet.asScala.view.toVector.sortBy(_.getKey).foreachWithBracket(): (entry, br) =>
-        def line = renderValue(entry.getKey, entry.getValue)
-        if isInternal(entry.getValue) then
-          logger.trace(s"$br$line (internal)")
-        else
-          logger.debug(s"$br$line")
-
   private val descriptionRegEx = ": [0-9]+(-[0-9]+)?".r
 
   private def isInternal(value: ConfigValue) =
@@ -104,7 +96,7 @@ object Configs:
     value.origin.description.startsWith(SecretOriginDescription)
 
   implicit final class ConvertibleConfig(private val underlying: Config)
-    extends ConvertiblePartialFunction[String, String]:
+  extends ConvertiblePartialFunction[String, String]:
 
     def apply(path: String): String =
       underlying.getString(path)
@@ -173,12 +165,15 @@ object Configs:
       else
         Right(bigInteger.intValue)
 
-  implicit val configMonoid: Monoid[Config] =
-    new Monoid[Config]:
-      val empty = ConfigFactory.empty
 
-      def combine(a: Config, b: Config) =
+  given configMonoid: Monoid[Config] =
+    new Monoid[Config]:
+      val empty: Config =
+        ConfigFactory.empty
+
+      def combine(a: Config, b: Config): Config =
         b.withFallback(a)
+
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal:
     def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config =
@@ -192,6 +187,7 @@ object Configs:
 
     def configString(args: Any*): String =
       interpolate(sc, args, toHoconString)
+
 
   private def toHoconString(value: Any): String =
     value match

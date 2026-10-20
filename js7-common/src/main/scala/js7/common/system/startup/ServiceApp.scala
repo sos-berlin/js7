@@ -45,7 +45,7 @@ trait ServiceApp extends OurApp:
         suppressLogShutdown = suppressLogShutdown)(
       toServiceResource = cnf =>
         for
-          _ <- MainSupportService.service(cnf.config, useOwnResponsivenessMeter = true)
+          _ <- ServiceAppSupport.resource(cnf.config, useOwnResponsivenessMeter = true)
           svc <- program(cnf)
         yield
           svc,

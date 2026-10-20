@@ -5,7 +5,7 @@ import cats.syntax.semigroup.*
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import java.nio.file.Path
 import java.util.Properties
-import js7.base.configutils.Configs.*
+import js7.base.configutils.Configs.{*, given}
 import js7.base.configutils.ConfigsTest.*
 import js7.base.generic.GenericString
 import js7.base.io.file.FileUtils.syntax.*

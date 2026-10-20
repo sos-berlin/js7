@@ -28,7 +28,7 @@ import js7.base.utils.JavaUtils.{-->, Void}
 import js7.base.utils.Tests.isTest
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
-import js7.common.system.startup.MainSupportService
+import js7.common.system.startup.LibrarySupport
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.configuration.ProxyConfs
@@ -255,7 +255,7 @@ object JProxyContext:
           env = OurIORuntimeRegister.toEnvironment(ioRuntime)
           _ <- Js7Conf.registerInEnvironment[IO](env, config)
           actorSystem <- Pekkos.actorSystemResource("JS7-Proxy", config)
-          _ <- MainSupportService.service(config, useOwnResponsivenessMeter = true)
+          _ <- LibrarySupport.service(config, useOwnResponsivenessMeter = true) // FIXME
           result <- Resource.make(
             acquire = IO(new JProxyContext(groupAndProxyId, config, actorSystem)))(
             release = _.releaseMe)

@@ -9,7 +9,7 @@ import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.OurIORuntime
 import js7.base.config.Js7Config
-import js7.base.configutils.Configs.*
+import js7.base.configutils.Configs.{*, given}
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
