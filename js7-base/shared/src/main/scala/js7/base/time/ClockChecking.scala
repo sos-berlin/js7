@@ -23,9 +23,16 @@ private[time] trait ClockChecking extends Runnable:
 
   // TODO Use SortedSet like in TestScheduler. Is this code duplicate?
   private val epochMilliToAlarms = mutable.SortedMap.empty[Long, Vector[Alarm]]
+
+  // Guarded by clockChecking.synchronized. Detects recursive calls of scheduleNext.
+  private var scheduleGeneration = 0L
+
+  private val nextAlarmId = Atomic(1L)
+
   // Same as epochMilliToAlarms.headOption.fold(Long.MaxValue)(_._1).
   // Can be read unsynchronized.
   @volatile private var nextMilli = Long.MaxValue
+
   private val timer = SerialSyncCancelable()
 
   // We tick to check if clock time has been changed, as long as we have an alarm
@@ -35,6 +42,7 @@ private[time] trait ClockChecking extends Runnable:
   @volatile private var stopped = false
 
   def stop(): Unit =
+    logger.trace(s"⏰ stop $this")
     stopped = true
     stopTicking()
     ticker.cancel()
@@ -52,15 +60,19 @@ private[time] trait ClockChecking extends Runnable:
       logger.warn(s"scheduleAt($at, $label) ignored because it is out of range")
       SyncCancelable.empty
     else
-      val alarm = Alarm(milli, label, callback)
+      val alarm = Alarm(nextAlarmId.getAndIncrement(), milli, label, callback)
+      logger.trace(s"⏰ scheduleAt $alarm")
       clockChecking.synchronized:
         epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
         scheduleNext()
       SyncCancelable(alarm)
 
   private def scheduleNext(): Unit =
-    if !stopped then epochMilliToAlarms.headOption match
+    if stopped then
+      logger.trace("⏰ scheduleNext: stopped")
+    else epochMilliToAlarms.headOption match
       case None =>
+        logger.trace(s"⏰ scheduleNext: no alarm (nextMilli was ${milliToString(nextMilli)})")
         stopTicking()
         nextMilli = Long.MaxValue
 
@@ -73,17 +85,31 @@ private[time] trait ClockChecking extends Runnable:
         else
           stopTicking()
 
-        //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
-        timer :=
+        logger.trace(s"⏰ scheduleNext: sleep ${delay}ms until ${milliToString(firstMilli)
+          } for ${alarms.mkString(", ")}${
+          (epochMilliToAlarms.size > 1) ?? s" (${epochMilliToAlarms.size} alarm times)"}")
+        nextMilli = firstMilli
+        scheduleGeneration += 1
+        val generation = scheduleGeneration
+        val cancelTimer =
           toMs(delay).match
             case Failure(t) =>
               logger.error(s"scheduleNext: delay=${delay}ms is out of range for FiniteDuration: ${
                 alarms.mkString(", ")}")
               emptyRunnable
             case Success(delay) =>
+              // May synchronously call run() when the alarm is due,
+              // which calls scheduleNext() recursively and sets a newer timer
               sleepUntil(firstMilli, delay, clockChecking /*=self.run()*/)
 
-        nextMilli = firstMilli
+        if generation == scheduleGeneration then
+          timer := cancelTimer
+          logger.trace(s"⏰ scheduleNext: timer set until ${milliToString(firstMilli)}")
+        else
+          // A recursive scheduleNext() has set a newer timer. Don't replace it!
+          cancelTimer.run()
+          logger.trace(s"⏰ scheduleNext: timer until ${milliToString(firstMilli)
+            } is outdated, keeping the newer timer until ${milliToString(nextMilli)}")
 
   /** Sleep until `epochMilli`, which is `delay` from now.
    * <p>
@@ -97,26 +123,31 @@ private[time] trait ClockChecking extends Runnable:
 
   private def startTicking(tickInterval: FiniteDuration) =
     if !ticking && !stopped then
+      logger.trace(s"⏰ Start ticking every ${tickInterval.pretty}")
       ticking = true
       ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval):
+        logger.trace("⏰ Tick")
         run()
-        //logger.trace(s"Ticking ${tickInterval.ms.pretty}")
 
   private def stopTicking() =
     if ticking then
+      logger.trace("⏰ Stop ticking")
       ticking = false
       ticker := SyncCancelable.empty
-      //logger.trace(s"Ticking stopped")
 
   /** Runnable run to be used for Cats Effect's Scheduler#sleep. */
   final def run(): Unit =
+    // holdsLock=true means re-entrant call, for example by Scheduler#sleep in scheduleNext,
+    // which may synchronously run an expired timer
+    logger.trace(s"⏰ run nextMilli=${milliToString(nextMilli)} stopped=$stopped holdsLock=${
+      Thread.holdsLock(clockChecking)}")
     if !stopped then
       if nextMilli <= epochMilli() then
         var alarms = Vector.empty[Alarm]
         clockChecking.synchronized:
           while epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli() do
             alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
-        //logger.trace(s"Tick: ${alarms.size} alarms!")
+        logger.trace(s"⏰ run: ${alarms.size} alarms due")
         for a <- alarms do a.call()
 
       clockChecking.synchronized:
@@ -132,12 +163,13 @@ private[time] trait ClockChecking extends Runnable:
       ")"
 
 
-  private final class Alarm(epochMilli: Long, label: => String, callback: => Unit)
+  private final class Alarm(id: Long, epochMilli: Long, label: => String, callback: => Unit)
   extends Runnable:
     private val called = Atomic(false)
 
     def call(): Unit =
       if !called.getAndSet(true) then
+        logger.trace(s"🔔 $toString")
         try
           callback
         catch
@@ -147,22 +179,31 @@ private[time] trait ClockChecking extends Runnable:
             logger.warn(s"$toString: ${t.toStringWithCauses}")
           case NonFatal(t) =>
             logger.error(s"$toString: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      else
+        logger.trace(s"🔔 $toString: already called")
 
     def run(): Unit = cancel()
 
     def cancel(): Unit =
       clockChecking.synchronized:
-        for alarms <- epochMilliToAlarms.get(epochMilli) do
-          val remaining = alarms.filterNot(_ eq this)
-          if remaining.nonEmpty then
-            epochMilliToAlarms.update(epochMilli, remaining)
-          else
-            epochMilliToAlarms -= epochMilli
-            scheduleNext()
+        epochMilliToAlarms.get(epochMilli) match
+          case None =>
+            logger.trace(s"⏰ cancel $toString: not scheduled (called=${called.get()})")
+          case Some(alarms) =>
+            logger.trace(s"⏰ cancel $toString")
+            val remaining = alarms.filterNot(_ eq this)
+            if remaining.nonEmpty then
+              epochMilliToAlarms.update(epochMilli, remaining)
+            else
+              epochMilliToAlarms -= epochMilli
+              scheduleNext()
 
     override def toString =
-      s"Alarm(${Timestamp.ofEpochMilli(epochMilli)} $label)"
+      s"Alarm#$id(${Timestamp.ofEpochMilli(epochMilli)} $label)"
 
 
 object ClockChecking:
   private val logger = Logger[this.type]
+
+  private def milliToString(milli: Long): String =
+    if milli == Long.MaxValue then "never" else Timestamp.ofEpochMilli(milli).toString
