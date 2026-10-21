@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 74,
+    "generation": 82,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -229,7 +229,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -274,7 +274,7 @@
                     "axisCenteredZero": false,
                     "axisColorMode": "text",
                     "axisLabel": "",
-                    "axisPlacement": "left",
+                    "axisPlacement": "auto",
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
@@ -478,7 +478,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "blue",
+                          "fixedColor": "text",
                           "mode": "fixed"
                         }
                       },
@@ -517,7 +517,9 @@
                       "options": {
                         "mode": "exclude",
                         "names": [
-                          "Used"
+                          "Committed",
+                          "Used",
+                          "Minimum used after GC"
                         ],
                         "prefix": "All except:",
                         "readOnly": true
@@ -608,7 +610,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -791,7 +793,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -812,6 +814,7 @@
               },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
                   "min": 0,
                   "thresholds": {
                     "mode": "absolute",
@@ -1035,7 +1038,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -1254,7 +1257,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -1421,7 +1424,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -1701,7 +1704,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -2024,7 +2027,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -2045,6 +2048,7 @@
               },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
                   "min": 0,
                   "thresholds": {
                     "mode": "absolute",
@@ -2207,7 +2211,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -2349,7 +2353,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -2486,7 +2490,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -2913,7 +2917,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -3348,7 +3352,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -3758,7 +3762,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -3927,7 +3931,7 @@
         "kind": "Panel",
         "spec": {
           "id": 24,
-          "title": "HTTP bytes",
+          "title": "HTTP byte througput",
           "description": "Only payload (without headers)",
           "links": [],
           "data": {
@@ -4033,7 +4037,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -4269,7 +4273,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -4290,6 +4294,7 @@
               },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -4494,7 +4499,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -4693,7 +4698,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -4884,7 +4889,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -4980,6 +4985,10 @@
                       {
                         "id": "custom.axisPlacement",
                         "value": "right"
+                      },
+                      {
+                        "id": "custom.axisSoftMax",
+                        "value": 10
                       }
                     ]
                   },
@@ -5004,6 +5013,10 @@
                       {
                         "id": "custom.axisPlacement",
                         "value": "left"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 0
                       }
                     ]
                   }
@@ -5100,7 +5113,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -5213,6 +5226,30 @@
                         "value": {
                           "fixedColor": "red",
                           "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "__systemRef": "hideSeriesFrom",
+                    "matcher": {
+                      "id": "byNames",
+                      "options": {
+                        "mode": "exclude",
+                        "names": [
+                          "Young generation"
+                        ],
+                        "prefix": "All except:",
+                        "readOnly": true
+                      }
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": false,
+                          "tooltip": true,
+                          "viz": true
                         }
                       }
                     ]
@@ -5361,7 +5398,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -5514,7 +5551,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -5610,7 +5647,7 @@
         "kind": "Panel",
         "spec": {
           "id": 31,
-          "title": "HTTP chunks",
+          "title": "HTTP chunk throughput",
           "description": "Number of sent HTTP chunks and received network chunks",
           "links": [],
           "data": {
@@ -5716,7 +5753,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -5892,7 +5929,7 @@
         "kind": "Panel",
         "spec": {
           "id": 32,
-          "title": "Mini history",
+          "title": "Order mini history",
           "description": "",
           "links": [],
           "data": {
@@ -5929,7 +5966,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -5950,6 +5987,7 @@
               },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
                   "min": 0,
                   "thresholds": {
                     "mode": "absolute",
@@ -6029,7 +6067,7 @@
         "kind": "Panel",
         "spec": {
           "id": 33,
-          "title": "MemoryJournal (Subagent only)",
+          "title": "MemoryJournal (Subagent)",
           "description": "",
           "links": [],
           "data": {
@@ -6090,7 +6128,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -6385,7 +6423,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -6645,7 +6683,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -6811,7 +6849,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -7096,7 +7134,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.2.3",
+            "version": "13.2.4",
             "spec": {
               "options": {
                 "annotations": {
@@ -7416,7 +7454,7 @@
                       "spec": {
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-15"
+                          "name": "panel-20"
                         }
                       }
                     },
@@ -7434,7 +7472,7 @@
                       "spec": {
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-20"
+                          "name": "panel-15"
                         }
                       }
                     },
@@ -7551,7 +7589,7 @@
                       "spec": {
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-21"
+                          "name": "panel-4"
                         }
                       }
                     },
@@ -7560,7 +7598,7 @@
                       "spec": {
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-4"
+                          "name": "panel-21"
                         }
                       }
                     }
