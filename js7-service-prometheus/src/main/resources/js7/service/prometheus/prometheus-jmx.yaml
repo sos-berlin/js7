@@ -8,3 +8,23 @@ includeObjectNames:
   - "java.lang:type=Threading"
   - "js7:*"
   - "joc:*"
+
+excludeObjectNameAttributes:
+  # Exclude some big and non-numeric attributes to save memory and processing power
+  "java.lang:type=Runtime":
+    - InputArguments
+    - SystemProperties
+  "java.lang:type=Threading":
+    - AllThreadIds
+
+  "java.lang:type=OperatingSystem":
+    # Big allocations per attribute on Linux (per /metrics request)
+    # CpuLoad                  # Allocates 64kB on Linux
+    # FreeMemorySize           # Allocates 52kB on Linux
+    # FreeSwapSpaceSize        # Allocates 52kB on Linux, duplicate?
+    # ProcessCpuLoad           # Allocates 64kB on Linux
+    # TotalMemorySize          # Allocates 26kB on Linux
+    # TotalSwapSpaceSize       # Allocates 52kB on Linux, duplicate?
+    - SystemCpuLoad            # Allocates ~64kB on Linux, deprecated since Java 14, alias of CpuLoad
+    - FreePhysicalMemorySize   # Allocates ~52kB on Linux, deprecated since Java 14, alias of FreeMemorySize
+    - TotalPhysicalMemorySize  # Allocates ~64kB on Linux, deprecated since Java 14, alias of TotalMemorySize
