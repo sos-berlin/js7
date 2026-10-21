@@ -3,8 +3,6 @@ package js7.common.metrics
 import cats.effect.IO
 import cats.syntax.parallel.*
 import js7.base.auth.Admission
-import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.utils.Allocated
@@ -17,7 +15,7 @@ import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.metrics.MetricFetchers.*
 import js7.common.metrics.MetricsProvider.toPrometheuesErrorLines
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithIOStream
-import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.mapAndRechunkToByteStringBuffered
 import js7.data.node.Js7ServerId
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity}
@@ -76,8 +74,7 @@ final case class MetricFetchers(
     releaseUnknownHttpClients(isKnown = serverIds.toSet).productR:
       completeWithIOStream(contentType):
         MetricsProvider.mergeMetricStreams(streams.toList)
-          .map(_.toChunk).unchunks[Byte].chunkN(httpChunkSize)
-          .map(_.toByteString)
+          .mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
 
   private def releaseUnknownHttpClients(isKnown: Js7ServerId => Boolean): IO[Unit] =
     uriToHttp.toMap.map:

@@ -4,15 +4,13 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.auth.ReadMetricsPermission
-import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.common.configuration.CommonConfiguration
 import js7.common.metrics.MetricsProvider.PrometheusContentType
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
+import js7.common.pekkohttp.PekkoHttpServerUtils.extensions.mapAndRechunkToByteStringBuffered
 import js7.common.pekkohttp.web.session.RouteProvider
-import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.node.GroupAndServerId
 import org.apache.pekko.http.scaladsl.model.ContentType
 import org.apache.pekko.http.scaladsl.model.StatusCodes.TooManyRequests
@@ -77,7 +75,4 @@ trait MetricsRoute extends RouteProvider:
   protected final def onlyThisServerMetricsRoute(contentType: ContentType): Route =
     given IORuntime = ioRuntime
     completeWithStream(contentType):
-      toMetricsStream()
-        .map(_.toChunk).unchunks
-        .chunkN(httpChunkSize)
-        .map(_.toByteString)
+      toMetricsStream().mapAndRechunkToByteStringBuffered(httpChunkSize)(identity)
