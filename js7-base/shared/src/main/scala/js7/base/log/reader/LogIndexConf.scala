@@ -25,8 +25,8 @@ final case class LogIndexConf(
   logFileTimestampTries: DelayConf,
   headerLinePrefix: String,
   pollGrowing: FiniteDuration,
-  fileBufferSize: Int,
   buildBufferSize: Int,
+  fileBufferSize: Int,
   logBytesPerEntry: Int,
   noEntryWarnThreshold: Int,
   logFileIndexLineLength: Int,
@@ -40,6 +40,15 @@ final case class LogIndexConf(
 
   val headerLinePattern: Pattern =
     Pattern.compile(s"(${LogIndexConf.LogLineTimestampRegex})$headerLinePrefix")
+
+
+// TODO Add bigBuildBufferSize and bigFileBufferSize for use when reading large chunks.
+// Then we would use little memory and stay below the G1 humongous threshold when reading short
+// chunks, and speed-up when filtering or downloading very large chunks.
+// js7.log.index.file-buffer-size = 256KiB
+// js7.log.index.file-buffer-size-max = 1MiB
+// js7.log.index.build-buffer-size = 256KiB
+// js7.log.index.build-buffer-size-max = 1MiB
 
 
 object LogIndexConf:
@@ -77,8 +86,8 @@ object LogIndexConf:
       logFileTimestampTries <- DelayConf.fromConfig(config, "js7.log.index.read-timestamp-tries")
       headerLinePrefix <- catchNonFatal(config.getString("js7.log.index.header-line-prefix"))
       pollGrowing <- config.finiteDuration("js7.log.poll-growing")
-      fileBufferSize <- catchNonFatal(config.getBytes("js7.log.index.file-buffer-size").toInt)
       buildBufferSize <- catchNonFatal(config.getBytes("js7.log.index.build-buffer-size").toInt)
+      fileBufferSize <- catchNonFatal(config.getBytes("js7.log.index.file-buffer-size").toInt)
       logBytesPerEntry <- catchNonFatal(config.getBytes("js7.log.index.log-bytes-per-entry").toInt)
       noEntryWarnThreshold <- catchNonFatal(config.getBytes("js7.log.index.no-entry-warn-threshold").toInt)
       logFileIndexLineLength <-
@@ -102,7 +111,7 @@ object LogIndexConf:
         recompressor,
         fileAddedDelay, logFileWaitsForPrevious, logFileTimestampTries, headerLinePrefix,
         pollGrowing,
-        fileBufferSize, buildBufferSize, logBytesPerEntry, noEntryWarnThreshold,
+        buildBufferSize, fileBufferSize, logBytesPerEntry, noEntryWarnThreshold,
         logFileIndexLineLength,
         checkLogFileChangePeriod,
         skipBackwardsMinSize, skipBackwardsMaxSize,
