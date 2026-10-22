@@ -49,12 +49,13 @@ fi
 standardJavaOptions=()
 #standardJavaOptions+=("-Djs7.virtualThreads=on")
 if [[ "$JAVA_VERSION_MAJOR" -ge 27 ]]; then
-  # Periodic gc to release memorywhen idle
-  standardJavaOptions+=(-XX:G1PeriodicGCInterval=60000)           # GC very minute
-  standardJavaOptions+=(-XX:G1PeriodicGCSystemLoadThreshold=0.7)  # Only when CPU load <= 0.5
+  # Periodic gc to release memory when idle
+  standardJavaOptions+=(-XX:G1PeriodicGCInterval=60000)
   # Release memory to system more aggressively
+  standardJavaOptions+=(-XX:-ShrinkHeapInSteps)  # Doesn't seem to have an effect
   standardJavaOptions+=(-XX:MinHeapFreeRatio=5)
   standardJavaOptions+=(-XX:MaxHeapFreeRatio=10)
+  :
 fi
 if [[ "$JAVA_VERSION_MAJOR" -ge 25 ]]; then
   # Not required, but improves performance
