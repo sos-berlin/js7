@@ -51,7 +51,8 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
 
   "Stop reading a HTTP stream" - {
     val interruptAfter = 500.ms
-    val tooLong = 1.s
+    // Must be below the idle-timeout (2s), which cancels a quiet stream
+    val tooLong = 1500.ms
     val heartbeatChunk = fs2.Chunk.stringAsUtf8("HEARTBEAT\n")
 
     "Canceling a *quiet* stream with interruptWhen DOES NOT WORK" in:
@@ -110,8 +111,9 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
       clientResource.use: client =>
         given IO[Option[SessionToken]] = IO.none
         for
-          since <- CatsDeadline.now
           stream <- client.getJsonAsRawLines(uri)
+          // Do not count the connection setup, which may be slow when the machine is busy
+          since <- CatsDeadline.now
           deferred <- Deferred[IO, Unit]
           list <- stream
             .evalTap(o => IO(logger.info(s"<-<- $o")))
