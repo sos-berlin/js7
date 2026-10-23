@@ -110,6 +110,16 @@ extends MainService, Service.StoppableByRequest:
                     agentCommandExecutor.untilTerminated.flatTap: termination =>
                       isTerminating := true
                       whenTerminated.complete(termination).void
+        .onError: t =>
+          // This runs as a background fiber, so the error would otherwise be lost,
+          // and terminate would wait endlessly for whenTerminated.
+          IO.defer:
+            logger.error(s"Director has failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+            val termination = DirectorTermination()
+            agentCommandExecutorDeferred.complete:
+              Left(DirectorTerminatedProblem(termination))
+            *>
+              whenTerminated.complete(termination).void
       .background.surround:
         untilServiceStopRequested *> shutdownDueToStop
       .onError: t =>
