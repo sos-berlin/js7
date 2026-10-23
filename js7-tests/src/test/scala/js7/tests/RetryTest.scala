@@ -482,7 +482,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
           FailingJob.execute(agentPath)),
         Workflow.of(
           Retry()),
-        retryDelays = Some(Vector(500.ms/*time-critical !!!*/)))))
+        // Each delay is the time that the test has for its steps before the Order awakes.
+        // The second delay is waited for.
+        retryDelays = Some(Vector(3.s, 2.s, 10.s)))))
 
     withItem(workflow) { workflow =>
       val orderId = OrderId("🟩")
