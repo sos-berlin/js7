@@ -74,7 +74,11 @@ extends EventReader:
       if n == 0 then
         assertThat(_committedLength == pos && _lastEventId == eventId)
       else
-        journalIndex.addAfter(eventId = eventId, position = pos, n = n)
+        // A concurrent reader may already have added the events while building the index
+        // from the file, which has been flushed before onEventsCommitted.
+        if !journalIndex.tryAddAfter(eventId = eventId, position = pos, n = n) then
+          logger.trace:
+            s"🪱 onEventsCommitted: EventId $eventId is already in the JournalIndex"
         _committedLength = pos
         _lastEventId = eventId
 
