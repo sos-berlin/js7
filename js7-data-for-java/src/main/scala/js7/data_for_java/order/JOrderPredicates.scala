@@ -12,32 +12,34 @@ import js7.data_for_java.workflow.JWorkflowId
 
 @javaApi
 object JOrderPredicates:
-  private type Predicate = Order[Order.State] => Boolean
+  type OrderPredicate = java.util.function.Predicate[Order[Order.State]]
 
-  val any: Predicate = _ => true
+  val any: OrderPredicate =
+    _ => true
 
-  val none: Predicate = _ => false
+  val none: OrderPredicate =
+    _ => false
 
   @Nonnull
-  def by(@Nonnull workflowId: JWorkflowId): Predicate =
+  def by(@Nonnull workflowId: JWorkflowId): OrderPredicate =
     byWorkflowId(workflowId)
 
   @Nonnull
-  def by(@Nonnull workflowPath: WorkflowPath): Predicate =
+  def by(@Nonnull workflowPath: WorkflowPath): OrderPredicate =
     byWorkflowPath(workflowPath)
 
   @Nonnull
-  def byWorkflowId(@Nonnull workflowId: JWorkflowId): Predicate =
+  def byWorkflowId(@Nonnull workflowId: JWorkflowId): OrderPredicate =
     val id = workflowId.asScala
     _.workflowId == id
 
   @Nonnull
-  def byWorkflowPath(@Nonnull workflowPath: WorkflowPath): Predicate =
+  def byWorkflowPath(@Nonnull workflowPath: WorkflowPath): OrderPredicate =
     requireNonNull(workflowPath)
     _.workflowPath == workflowPath
 
   @Nonnull
-  def byOrderState(@Nonnull stateClass: Class[? <: Order.State]): Predicate =
+  def byOrderState(@Nonnull stateClass: Class[? <: Order.State]): OrderPredicate =
     requireNonNull(stateClass)
     order => stateClass.isAssignableFrom(order.state.getClass)
 
@@ -46,35 +48,35 @@ object JOrderPredicates:
     state: JControllerState,
     @Nonnull obstacleClass: Class[? <: JOrderObstacle],
     now: Instant)
-  : Predicate =
+  : OrderPredicate =
     val cls = JOrderObstacle.toScalaClass(obstacleClass)
     order => new OrderObstacleCalculator(state.asScala)
       .orderToObstacles(order.id, now.toTimestamp)
       .exists(_.exists(cls.isInstance(_)))
 
   @Nonnull
-  def markedAsDeleteWhenTerminated(@Nonnull value: Boolean): Predicate =
+  def markedAsDeleteWhenTerminated(@Nonnull value: Boolean): OrderPredicate =
     requireNonNull(value)
     _.deleteWhenTerminated == value
 
   @Nonnull
-  def byOrderIdPredicate(@Nonnull predicate: java.util.function.Predicate[OrderId]): Predicate =
+  def byOrderIdPredicate(@Nonnull predicate: java.util.function.Predicate[OrderId]): OrderPredicate =
     requireNonNull(predicate)
     order => predicate.test(order.id)
 
   @Nonnull
-  def and(@Nonnull a: Predicate, @Nonnull b: Predicate): Predicate =
+  def and(@Nonnull a: OrderPredicate, @Nonnull b: OrderPredicate): OrderPredicate =
     requireNonNull(a)
     requireNonNull(b)
-    order => a(order) && b(order)
+    order => a.test(order) && b.test(order)
 
   @Nonnull
-  def or(@Nonnull a: Predicate, @Nonnull b: Predicate): Predicate =
+  def or(@Nonnull a: OrderPredicate, @Nonnull b: OrderPredicate): OrderPredicate =
     requireNonNull(a)
     requireNonNull(b)
-    order => a(order) || b(order)
+    order => a.test(order) || b.test(order)
 
   @Nonnull
-  def not(@Nonnull predicate: Predicate): Predicate =
+  def not(@Nonnull predicate: OrderPredicate): OrderPredicate =
     requireNonNull(predicate)
-    order => !predicate(order)
+    order => !predicate.test(order)

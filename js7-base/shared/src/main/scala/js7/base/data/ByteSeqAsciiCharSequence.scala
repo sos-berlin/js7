@@ -22,7 +22,7 @@ extends CharSequenceJava17:
     end - begin
 
   override def hashCode(): Int =
-    31 * 31 * byteSeq.hashCode + 31 * begin + end // Bit byteSeq.hashCode doesn't depend on content!!!
+    31 * 31 * byteSeq.## + 31 * begin + end // Bit byteSeq.hashCode doesn't depend on content!!!
 
   override def equals(other: Any): Boolean =
     other match

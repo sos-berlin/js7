@@ -23,7 +23,7 @@ import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.headers.{Referer, `User-Agent`}
-import org.apache.pekko.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpMessage, HttpRequest, HttpResponse, StatusCode}
+import org.apache.pekko.http.scaladsl.model.{AttributeKeys, HttpEntity, HttpHeader, HttpMessage, HttpRequest, HttpResponse, RemoteAddress, StatusCode}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive0, Route}
 import scala.concurrent.duration.*
@@ -89,7 +89,7 @@ trait WebLogDirectives extends ExceptionHandling:
     if !CorrelId.isEnabled then
       route
     else
-      mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId)):
+      //mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId)):
         route
 
   private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
@@ -213,8 +213,13 @@ trait WebLogDirectives extends ExceptionHandling:
     sb.append(' ')
     sb.append(request.headers.collectFirst { case `x-js7-request-id`(id) => id } getOrElse "#")
     sb.append(' ')
-    sb.append(request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP)
-      .fold("-")(_.ip.getHostAddress))
+    //TODO Requires fixed pekko-http to be compilable by Scala 3.10:
+    //sb.append:
+    //  request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP) .fold("-")(_.ip.getHostAddress)
+    sb.append:
+      request.attributes.get(AttributeKeys.remoteAddress).collect:
+        case a: RemoteAddress => a
+      .flatMap(_.toIP).fold("-")(_.ip.getHostAddress)
     sb.append(' ')
     if streamSuffix.nonEmpty then
       sb.append(request.method.value.toLowerCase(Locale.ROOT))
@@ -235,7 +240,8 @@ trait WebLogDirectives extends ExceptionHandling:
           response.entity match  // Try to extract error message
             case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
               val string = entity.data.utf8String
-              val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if c.isControl then '·' else c)
+              val truncated = string.take(1001).dropLastWhile(_ == '\n').map:
+                c => if c.isControl then '·' else c
               appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
             case entity @ HttpEntity.Strict(`application/json`, _) =>
@@ -264,8 +270,8 @@ trait WebLogDirectives extends ExceptionHandling:
 object WebLogDirectives:
   private val webLogger = Logger("js7.web.log")
 
-  val CorrelIdAttributeKey: AttributeKey[CorrelId] =
-    AttributeKey[CorrelId]("CorrelId")
+  //val CorrelIdAttributeKey: AttributeKey[CorrelId] =
+  //  AttributeKey[CorrelId]("CorrelId")
 
   val TestConfig = config"""
     js7.web.server.log.level = debug
@@ -286,7 +292,7 @@ object WebLogDirectives:
     if !string.contains('"') then
       sb.append(string)
     else
-      string foreach:
+      string.foreach:
         case '"' => sb.append('\\').append('"')
         case ch => sb.append(ch)
     sb.append('"')

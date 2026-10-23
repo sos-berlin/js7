@@ -1,11 +1,5 @@
 package js7.data_for_java.controller;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import js7.base.web.Uri;
 import js7.data.board.BoardPath;
 import js7.data.board.NoticeKey;
@@ -26,17 +20,12 @@ import js7.data_for_java.plan.JPlan;
 import js7.data_for_java.plan.JPlanStatus;
 import js7.data_for_java.workflow.JWorkflowId;
 import js7.data_for_java.workflow.JWorkflowTester;
+import java.util.*;
+import java.util.function.Predicate;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
-import static js7.data_for_java.order.JOrderPredicates.and;
-import static js7.data_for_java.order.JOrderPredicates.by;
-import static js7.data_for_java.order.JOrderPredicates.byOrderIdPredicate;
-import static js7.data_for_java.order.JOrderPredicates.byOrderState;
-import static js7.data_for_java.order.JOrderPredicates.byWorkflowPath;
-import static js7.data_for_java.order.JOrderPredicates.markedAsDeleteWhenTerminated;
-import static js7.data_for_java.order.JOrderPredicates.not;
-import static js7.data_for_java.order.JOrderPredicates.or;
+import static js7.data_for_java.order.JOrderPredicates.*;
 import static js7.data_for_java.order.JOrderTester.aOrder;
 import static js7.data_for_java.order.JOrderTester.bOrder;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -175,7 +164,7 @@ final class JControllerStateTester
         assertThat(toPlan, equalTo(expected));
     }
 
-    private void testOrdersBy(scala.Function1<Order<Order.State>,Object> predicate, List<JOrder> expected) {
+    private void testOrdersBy(Predicate<Order<Order.State>> predicate, List<JOrder> expected) {
         List<JOrder> orderList = controllerState.ordersBy(predicate).collect(toList());
         assertThat(orderList, equalTo(expected));
     }

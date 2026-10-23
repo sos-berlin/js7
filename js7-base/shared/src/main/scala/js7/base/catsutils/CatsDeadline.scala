@@ -18,7 +18,7 @@ extends Ordered[CatsDeadline]:
       case _ => false
 
   override def hashCode: Int =
-    monotonicNanos.hashCode
+    monotonicNanos.##
 
   def monotonicNanos: Long =
     monotonic.toNanos

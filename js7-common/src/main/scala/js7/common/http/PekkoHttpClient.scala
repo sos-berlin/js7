@@ -468,7 +468,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           responseIO.map: response =>
             logStream("#", "<-<-  ", "<--|  ", "<~~ 💥", dontLog = true):
               response
-      .guaranteeCaseLazy:
+      .guaranteeCase:
         case Outcome.Canceled() => IO:
           canceled = true
           logger.debug(s"<~~ ◼️ $responseLogPrefix => canceled")

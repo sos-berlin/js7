@@ -32,7 +32,7 @@
  *    The complete installation package (only the files in lib/ are required):
  *    js7-install/target/universal/js7-install-(version).tgz
  *
- *    The JS7 Engine code only, without externals jars:
+ *    The JS7 Engine code only, without external jars:
  *    target/js7-engine-(version).jar
  *
  *    There is also a Docker example:
@@ -48,7 +48,7 @@ import scala.util.control.NonFatal
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
-ThisBuild / scalaVersion := "3.9.0"
+ThisBuild / scalaVersion := "3.10.0"
 ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT") && !isMac/*works only with clean*/
 
 val rootDirectory = Paths.get(".").toAbsolutePath
@@ -98,11 +98,11 @@ ThisBuild / javacOptions ++= Seq(
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  //"-explain",
   "-java-output-version:17",
   "-deprecation",
   "-feature",
   "-preview",  // stable but not binary compatible new features
+  "-explain",
   "-explain-cyclic",
   //"-language:noAutoTupling",
   //"-language:strictEquality",
@@ -257,7 +257,7 @@ lazy val `js7-install` = project
           def isNotJs7Subproject =
             !path.contains("com.sos-berlin.js7.engine.js7-") ||
             !path.endsWith(".jar") ||
-            // But include these into the tar file:
+            // But include these in the tar file:
             path.contains("js7-license-fake") ||
             path.contains("js7-provider") ||
             path.contains("js7-service-lz4") ||

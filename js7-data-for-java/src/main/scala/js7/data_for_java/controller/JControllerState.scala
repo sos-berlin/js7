@@ -22,10 +22,10 @@ import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
-import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem, SubagentItemState}
+import js7.data.subagent.*
 import js7.data.value.Value
+import js7.data.workflow.*
 import js7.data.workflow.WorkflowControlId.syntax.*
-import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoardItem, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
@@ -34,7 +34,7 @@ import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
-import js7.data_for_java.order.JOrderPredicates.any
+import js7.data_for_java.order.JOrderPredicates.{OrderPredicate, any}
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.plan.{JPlan, JPlanSchemaState}
@@ -43,6 +43,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
+import scala.jdk.FunctionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*
 
@@ -231,12 +232,20 @@ extends JJournaledState[JControllerState, ControllerState]:
       .mapValues(JOrder.apply)
       .asJava
 
+  //@Nonnull
+  //def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)
+  //: java.util.stream.Stream[JOrder] =
+  //  asScala.idToOrder
+  //    .valuesIterator
+  //    .filter(predicate)
+  //    .map(JOrder.apply)
+  //    .asJavaSeqStream
+
   @Nonnull
-  def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)
-  : java.util.stream.Stream[JOrder] =
+  def ordersBy(@Nonnull predicate: OrderPredicate): java.util.stream.Stream[JOrder] =
     asScala.idToOrder
       .valuesIterator
-      .filter(predicate)
+      .filter(predicate.asScala)
       .map(JOrder.apply)
       .asJavaSeqStream
 
@@ -252,10 +261,10 @@ extends JJournaledState[JControllerState, ControllerState]:
     orderStateToCount(any)
 
   @Nonnull
-  def orderStateToCount(@Nonnull predicate: Order[Order.State] => Boolean)
+  def orderStateToCount(@Nonnull predicate: OrderPredicate)
   : JMap[Class[? <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
-      .filter(predicate)
+      .filter(predicate.asScala)
       .groupBy(_.state.getClass)
       .view.mapValues(o => java.lang.Integer.valueOf(o.size))
       .toMap.asJava

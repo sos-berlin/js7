@@ -21,7 +21,7 @@ extends Ordered[SyncDeadline]:
       case _ => false
 
   override def hashCode: Int =
-    nanosSinceZero.hashCode
+    nanosSinceZero.##
 
   /** Return a deadline advanced (i.e.s, moved into the future) by the given duration. */
   def +(other: FiniteDuration): SyncDeadline =

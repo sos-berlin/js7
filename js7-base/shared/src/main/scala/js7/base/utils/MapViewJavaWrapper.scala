@@ -53,8 +53,8 @@ final class MapViewJavaWrapper[K, V](mapView: MapView[K, V]) extends ju.Abstract
               //
               // See https://github.com/scala/bug/issues/10663
               override def hashCode =
-                (if k == null then 0 else k.hashCode()) ^
-                (if v == null then 0 else v.hashCode())
+                (if k == null then 0 else k.##) ^
+                (if v == null then 0 else v.##)
 
               override def equals(other: Any) = other match
                 case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue

@@ -14,7 +14,7 @@ import scala.reflect.ClassTag
 final class KeyedEvent[+E <: Event](val event: E)(val key: event.Key):
 
   override def hashCode: Int =
-    31 * key.hashCode + event.hashCode
+    31 * key.## + event.hashCode
 
   override def equals(o: Any): Boolean =
     o match

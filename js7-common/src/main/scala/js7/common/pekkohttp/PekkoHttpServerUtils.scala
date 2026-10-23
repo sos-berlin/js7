@@ -342,15 +342,15 @@ object PekkoHttpServerUtils:
       complete(HttpEntity(contentType, source))
 
   def completeIO[A: ToResponseMarshaller](io: IO[A])(using IORuntime): Route =
-    optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
-      case None =>
-        complete:
-          io.unsafeToFuture()
-
-      case Some(correlId) =>
-        complete:
-          correlId.bindFuture:
+    //optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
+    //  case None =>
+          complete:
             io.unsafeToFuture()
+
+    //  case Some(correlId) =>
+    //    complete:
+    //      correlId.bindFuture:
+    //        io.unsafeToFuture()
 
   val extractJs7RequestId: Directive1[Long] =
     new Directive1[Long]:
