@@ -84,8 +84,12 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         CancelOrders(simpleOrderId :: Nil, CancellationMode.kill(immediately = true))
       controller.awaitNextKey[OrderTerminated](simpleOrderId)
 
-      assert(controller.keyedEvents[Event](after = addOrderEventId)
-        .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
+      val events = controller.keyedEvents[Event](after = addOrderEventId)
+        .flatMap(manipulateEvent(_, simpleOrderId))
+      // The Agent emits OrderMoved after OrderProcessed. Depending on timing, this may happen
+      // before the Agent shuts down, or after its restart. So we check it separately.
+      assert(events.count(_ == (simpleOrderId <-: OrderMoved(Position(0)))) == 1)
+      assert(events.filterNot(_ == (simpleOrderId <-: OrderMoved(Position(0)))) == Seq(
         simpleOrderId <-: OrderAdded(simpleWorkflow.id),
         simpleOrderId <-: OrderAttachable(agentPath),
         simpleOrderId <-: OrderAttached(agentPath),
@@ -96,7 +100,6 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
 
         subagentId <-: SubagentShutdownStarted,
         simpleOrderId <-: OrderProcessed(OrderOutcome.processKilledRestartable(SIGKILL)),
-        simpleOrderId <-: OrderMoved(Position(0)),
         subagentId <-: SubagentShutdown,
         agentPath <-: AgentShutDown,
 
