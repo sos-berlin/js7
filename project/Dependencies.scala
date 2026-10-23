@@ -7,7 +7,7 @@ object Dependencies
 {
   val bouncyCastleVersion = "1.86"
   val pekkoVersion = "1.7.1"
-  val pekkoHttpVersion = "1.4.1"
+  val pekkoHttpVersion = "1.4.2"
   val slf4jVersion = "2.0.20"  // See also plugins.sbt
   val log4jVersion = "2.26.1"  // See also plugins.sbt
   val catsVersion = "2.13.0"
