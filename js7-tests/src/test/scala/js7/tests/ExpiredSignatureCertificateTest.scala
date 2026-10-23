@@ -147,7 +147,8 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
 
     def addMyTests(distributeCA: Boolean) =
       "Not expired" - {
-        val now = Timestamp.now + 1.minute
+        // The certificate is valid from its creation. Be sure the clock is not before it.
+        val now = Timestamp.now + 1.h
         given WallClock = WallClock.fixed(now)
 
         def test(allowExpired: Boolean) =
@@ -166,7 +167,8 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
       }
 
       "Clock of Controller is after certificate's expiry" - {
-        val now = Timestamp.now + 1.minute
+        // The certificate is valid from its creation. Be sure the clock is not before it.
+        val now = Timestamp.now + 1.h
         given WallClock = WallClock.fixed(now)
 
         def test(allowExpired: Boolean) =
@@ -187,7 +189,8 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
       }
 
       "Clock of Director is after certificate's expiry (Order stalls)" - {
-        val now = Timestamp.now + 1.minute
+        // The certificate is valid from its creation. Be sure the clock is not before it.
+        val now = Timestamp.now + 1.h
         given WallClock = WallClock.fixed(now)
 
         "allow-expired-certificates = false" in:
@@ -209,7 +212,8 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
       }
 
       "Clock of bare Subagent is after certificate's expiry" - {
-        val now = Timestamp.now + 1.minute
+        // The certificate is valid from its creation. Be sure the clock is not before it.
+        val now = Timestamp.now + 1.h
         given WallClock = WallClock.fixed(now)
 
         def test(allowExpired: Boolean) =
