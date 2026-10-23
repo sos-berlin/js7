@@ -189,17 +189,28 @@ final class Fs2Test extends OurAsyncTestSuite:
       for
         signal <- SignallingRef[IO].of(false)
         deferred <- Deferred[IO, OutcomeIO[String]]
-        stream = Stream.unit
+        emitted <- Deferred[IO, Unit]
+        sleeping <- Deferred[IO, Unit]
+        seen <- Ref[IO].of(List.empty[Any])
+        stream = (Stream.emit(()) ++ Stream.never[IO])
           .interruptWhen(signal)
           .merge:
             // Not cancelled
             Stream.eval:
-              IO.sleep(300.ms).as("OK").guaranteeCase:
-                deferred.complete(_).void
-        fiber <- stream.compile.toList.timed.start
-        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+              sleeping.complete(()) *>
+                IO.sleep(300.ms).as("OK").guaranteeCase:
+                  deferred.complete(_).void
+          .evalMap: a =>
+            // Remember the element before the interruption may drop it
+            seen.update(_ :+ a) *>
+              IO.whenA(a == ())(emitted.complete(()).void)
+        fiber <- stream.compile.drain.timed.start
+        // Be sure, the unit has arrived downstream and the other stream has started sleeping
+        _ <- emitted.get
+        _ <- sleeping.get
         _ <- signal.set(true)
-        (duration, result) <- fiber.joinStd
+        (duration, _) <- fiber.joinStd
+        result <- seen.get
         outcome <- deferred.get
       yield
         assert(result == List((), "OK") & outcome.isSuccess & (duration >= 300.ms))
