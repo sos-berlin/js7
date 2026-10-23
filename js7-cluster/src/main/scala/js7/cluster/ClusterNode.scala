@@ -130,6 +130,11 @@ extends Service.StoppableByRequest:
         .flatMap:
           startWorkingNode
         .tryIt
+        .flatTap:
+          // Before announcing the working node, because then `currentState` can be used early
+          case Success(workingNode) =>
+            currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))
+          case _ => IO.unit
         .flatTap: triedWorkingNode =>
           workingNodeStarted.complete:
             triedWorkingNode match
@@ -139,8 +144,7 @@ extends Service.StoppableByRequest:
               case Failure(t) => Failure(t)
               case Success(o) => Success(Right(o))
         .untry
-        .flatMap: workingNode =>
-          currentStateRef.set(workingNode.journal.aggregate.map(Right(_)))
+        .void
 
   private def untilRecovered: IO[Recovered[S]] =
     logger.debugIO:
