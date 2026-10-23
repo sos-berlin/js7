@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
@@ -11,8 +11,9 @@ final class CatsEffectTest extends OurAsyncTestSuite:
     val canceled = Atomic(false)
 
     for
-      fiber <- IO.never.as(()).onCancel(IO(canceled := true)).start
-      _ <- IO.sleep(100.ms)
+      started <- Deferred[IO, Unit]
+      fiber <- (started.complete(()) *> IO.never.as(())).onCancel(IO(canceled := true)).start
+      _ <- started.get
       _ <- fiber.cancel
       _ <- fiber.joinWithUnit
     yield
@@ -35,13 +36,13 @@ final class CatsEffectTest extends OurAsyncTestSuite:
 
   "Resource.makeFull acquisition is cancelable" in:
     val canceled = Atomic(false)
-    val resource = Resource.makeFull[IO, Unit](
-      acquire = poll => poll(IO.never.onCancel(IO(canceled := true))))(
-      release = _ => IO.unit)
-
     for
+      started <- Deferred[IO, Unit]
+      resource = Resource.makeFull[IO, Unit](
+        acquire = poll => poll((started.complete(()) *> IO.never).onCancel(IO(canceled := true))))(
+        release = _ => IO.unit)
       fiber <- resource.surround(IO.unit).start
-      _ <- IO.sleep(100.ms)
+      _ <- started.get
       _ <- fiber.cancel
       _ <- fiber.joinWithUnit
     yield
