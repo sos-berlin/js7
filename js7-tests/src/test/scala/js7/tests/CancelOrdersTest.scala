@@ -515,7 +515,8 @@ final class CancelOrdersTest
             |else
             |  trap wait EXIT
             |  "$0" -child &
-            |  trap 'kill -TERM $!' SIGTERM
+            |  # Wait for the child, so its stdout is complete before this script terminates
+            |  trap 'kill -TERM $!; wait; exit 143' SIGTERM
             |  echo "READY"
             |fi
             |""".stripMargin)))))
