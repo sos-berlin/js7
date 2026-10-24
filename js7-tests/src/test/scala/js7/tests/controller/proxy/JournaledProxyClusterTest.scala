@@ -72,6 +72,8 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
 
       ControllerApi.resource(controllerApiResources).blockingUse(99.s): api =>
         api.controllerProxy().blockingUse(99.s): proxy =>
+          // The Order must not finish before the proxy is coupled, otherwise events are missed
+          proxy.untilCoupled.await(99.s)
           val whenProcessed = proxy.eventBus.when[OrderProcessed]
           val whenFinished = proxy.eventBus.when[OrderFinished]
           primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
