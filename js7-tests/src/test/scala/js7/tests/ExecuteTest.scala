@@ -613,6 +613,12 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
                   .copy(processLimit = increasedProcessLimit, itemRevision = None)))
               .await(99.s).orThrow
 
+        // Be sure that all Orders, including the extra one, wait at the semaphore.
+        // Otherwise, reset() would not release a job that has started but not yet waits.
+        retryUntil(9.s, 10.ms):
+          assert(ParallelInternalJob.semaphore.flatMap(_.count).await(9.s) <=
+            -(orderIds.size + 1).toLong)
+
         ParallelInternalJob.reset()
         for orderId <- orderIds :+ extraOrderId do
           eventWatch.await[OrderFinished](_.key == orderId, after = firstEventId)
