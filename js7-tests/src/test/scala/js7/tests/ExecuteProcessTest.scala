@@ -109,7 +109,8 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
       val startedAt = stamped.find(_.value.event.isInstanceOf[OrderProcessingStarted]).get.timestamp
       val processedAt = stamped.find(_.value.event.isInstanceOf[OrderProcessed]).get.timestamp
       val duration = processedAt - startedAt
-      assert(duration >= 200.ms && duration <= 1.s)
+      // The background child needs 5s, we must not wait for it
+      assert(duration >= 200.ms && duration <= 3.s)
 
       // May fail when child process starts too late due to heavy load
       assert(stamped.map(_.value.event) == Seq(
