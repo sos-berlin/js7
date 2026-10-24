@@ -29,7 +29,9 @@ final class NoticeEndOfLifeTest
 
   protected val agentPaths = Seq(agentPath)
 
-  private val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = Some(500.ms)) // TODO Time critical test
+  // The lifetime must be long enough, even when the machine is busy.
+  // The tests that wait for the end of life, sleep a bit longer than the lifetime.
+  private val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = Some(lifetime))
   private val postWorkflow = Workflow(WorkflowPath("POST-WORKFLOW"), Vector(
     PostNotices(Seq(board.path))))
   private val consumeWorkflow = Workflow(WorkflowPath("CONSUME-WORKFLOW"), Vector(
@@ -55,7 +57,7 @@ final class NoticeEndOfLifeTest
       val postEvents = controller.runOrder(FreshOrder(postOrderId, postWorkflow.path))
       assert(postEvents.last.value.isInstanceOf[OrderFinished])
 
-      sleep(600.ms)
+      sleep(lifetime + 100.ms)
       val consumeOrderId = OrderId("#2023-06-23#🔶")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
@@ -74,7 +76,7 @@ final class NoticeEndOfLifeTest
     "After endOfLife, the Notice vanishes" in:
       execCmd:
         ControllerCommand.PostNotice(PlanId.Global / board.path / NoticeKey("2023-06-24"))
-      sleep(600.ms)
+      sleep(lifetime + 100.ms)
       val consumeOrderId = OrderId("#2023-06-24#🔕")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
@@ -96,4 +98,5 @@ final class NoticeEndOfLifeTest
 
 object NoticeEndOfLifeTest:
 
+  private val lifetime = 1.s
   private val agentPath = AgentPath("AGENT")
