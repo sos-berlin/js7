@@ -54,19 +54,20 @@ final class ExecuteProcessTest extends OurTestSuite, ControllerAgentForScalaTest
         Execute(WorkflowJob(
           agentPath,
           ShellScriptExecutable(
+            // The Java Process drains and closes stdout when the process has terminated.
+            // The reader must be waiting in read() before. Under load, this may take a while.
             """#!/usr/bin/env bash
               |set -euo pipefail
-              |( sleep 0.4
+              |( sleep 1.2
               |  echo "+++ CHILD FINISHED +++"
               |) &
-              |sleep 0.2
+              |sleep 1
               |""".stripMargin),
           maxWaitForStdouterr = None)))
     ): workflow =>
       val orderId = OrderId("ORDER-WAIT")
       runOrder(FreshOrder(orderId, workflow.path))
       val events = controller.eventsByKey[OrderEvent](orderId)
-      // May fail when child process starts too late due to heavy load
       assert(events == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderAttachable(agentPath),
