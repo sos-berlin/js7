@@ -4,7 +4,6 @@ import cats.effect.kernel.Resource
 import cats.effect.std.{Dispatcher, Queue}
 import cats.effect.{IO, Ref, ResourceIO}
 import cats.syntax.foldable.*
-import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import js7.agent.command.AgentCommandToEventCalc
 import js7.agent.configuration.AgentConfiguration
@@ -130,7 +129,7 @@ extends Service.StoppableByRequest:
         combineWithFollowingEvents:
           agentCommandToEventCalc.commandToEventCalc(cmd)
     .flatMap: (seq: Seq[Checked[Persisted[AgentState, Event]]]) =>
-      seq.parTraverse: checked =>
+      seq.traverse: checked =>
         checked.traverse: persisted =>
           persisted.ifNonEmpty:
             onPersisted(persisted)
