@@ -99,26 +99,23 @@ extends
   : IO[Checked[AgentCommand.Response]] =
     // Execute one command after the other, use one commit
     fs2.Stream.iterable(wrappedCommands)
-      .map: wrapped =>
-        wrapped.value match
-          case cmd: AgentCommand.IsOrderCommand => true -> wrapped
-          case _ => false -> wrapped
-      .groupAdjacentBy(_._1)
-      .evalMap:
-        case (true, chunk) =>
+      .groupAdjacentBy: wrapped =>
+        wrapped.value.isSubtypeOf[AgentCommand.IsOrderCommand]
+      .evalMap: (isOrderCommand, commands) =>
+        if isOrderCommand then
           // Execute multiple IsOrderCommand in one Journal transaction
+          val orderCommands =
+            commands.asInstanceOf[fs2.Chunk[CorrelIdWrapped[AgentCommand.IsOrderCommand]]]
           checkedAgentMotor.flatMap:
             case Left(problem) =>
-              chunk.traverse(_ => IO.left(problem))
+              IO.pure(commands.map(_ => Left(problem)))
             case Right(agentMotor) =>
               agentMotor.executeOrderCommands:
-                chunk.map:
-                  _._2.value/*omit CorrelId!*/.asInstanceOf[AgentCommand.IsOrderCommand]
-                .asSeq
+                orderCommands.map(_.value/*omit CorrelId!*/).asSeq
               .map:
                 fs2.Chunk.from
-        case (false, chunk) =>
-          chunk.map(_._2).traverse:
+        else
+          commands.traverse:
             case CorrelIdWrapped(subcorrelId, cmd) =>
               subcorrelId.orNew.bind:
                 executeCommand(cmd, meta, batchId orElse Some(run.correlId))
