@@ -114,11 +114,6 @@ object ScalaUtils:
           case either => F.pure(either)
 
 
-      // TODO A better name ?
-      /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
-      def flatMapRight[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
-        flatMapT(f)
-
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatTapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R]] =
         F.flatMap(underlying):
