@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.{FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import fs2.concurrent.SignallingRef
@@ -121,19 +122,19 @@ final class PipedProcess private(
   private def logUntilStdouterrCompleted(outerrFiber: FiberIO[Unit]) =
     outerrFiber.joinWithUnit // until stdout/stderr have really ended
       .logWhenItTakesLonger(StdouterrWorry):
-        case (outcome, elapsed, _, sym) =>
+        case (exitCase, elapsed, _, sym) =>
           stdObservers.stdouterrStopper.peek.flatMap: stopped =>
             val what = s"${stopped ?? "Ignored "}stdout and stderr of $orderId $pidString"
-            outcome match
+            exitCase match
               case None =>
                 IO.pure(s"$sym Still waiting for $what for ${elapsed.pretty}")
-              case Some(Outcome.Succeeded(_) | Outcome.Canceled()) =>
+              case Some(ExitCase.Succeeded | ExitCase.Canceled) =>
                 IO.pure:
                   if stopped then
                     s"🔵 $what finally closed after ${elapsed.pretty}"
                   else
                     s"$sym $what finally ended after ${elapsed.pretty}"
-              case Some(Outcome.Errored(t)) =>
+              case Some(ExitCase.Errored(t)) =>
                 IO.pure:
                   s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
       .handleError: t =>

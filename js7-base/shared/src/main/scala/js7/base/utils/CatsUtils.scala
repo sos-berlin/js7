@@ -1,15 +1,14 @@
 package js7.base.utils
 
 import cats.data.{NonEmptyList, NonEmptySeq, NonEmptyVector, Validated}
-import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
+import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.{Applicative, FlatMap, Show, Traverse}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
+import js7.base.catsutils.UnsafeMemoizable
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -84,61 +83,52 @@ object CatsUtils:
           IO(logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
       def logWhenMethodTakesLonger(using sourcecode.Enclosing): IO[A] =
-        Worry.Default.logWhenMethodTakesLonger:
+        Worry.Default.logWhenMethodTakesLonger.surround:
           underlying
 
       def logWhenItTakesLonger(using sourcecode.Enclosing): IO[A] =
-        Worry.Default.logWhenItTakesLonger:
+        Worry.Default.logWhenItTakesLonger.surround:
           underlying
 
-      def logWhenItTakesLonger(what: => String, worry: Worry = Worry.Default): IO[A] =
-        worry.logWhenItTakesLonger(what):
+      def logWhenItTakesLonger(what: => String): IO[A] =
+        logWhenItTakesLonger(what, Worry.Default)
+
+      def logWhenItTakesLonger(what: => String, worry: Worry): IO[A] =
+        worry.logWhenItTakesLonger(what).surround:
           underlying
 
       def logWhenItTakesLonger(worry: Worry)(
-        onDelayedOrCompleted: (Option[OutcomeIO[A]], FiniteDuration, LogLevel, String) => IO[String])
+        onDelayedOrCompleted:
+          (Option[Resource.ExitCase], FiniteDuration, LogLevel, String) => IO[String])
       : IO[A] =
-        worry.logWhenItTakesLonger_(underlying):
-          onDelayedOrCompleted
-
-      /** When `this` takes longer than `duration` then call `thenDo` once. */
-      @deprecated("Use whenItTakesLongerThan", "v2.7")
-      def whenItTakesLonger(duration: FiniteDuration)(thenDo: IO[Unit]): IO[A] =
-        whenItTakesLongerThan(duration)(thenDo)
+        worry.logWhenItTakesLonger(onDelayedOrCompleted).surround(underlying)
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLongerThan(duration: FiniteDuration)(thenDo: IO[Unit]): IO[A] =
         if duration.isZeroOrBelow then
           underlying
         else
-          whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)
+          (IO.sleep(duration) *> thenDo).background.surround:
+            underlying
 
       /** As long as `this` has not completed, call `thenDo` after each of `durations` .
        *
        * @param durations if empty then `thenDo` will not be called.
-       *                  The last entry is repeated until `this` completes.
-       *                  A zero or negative duration terminates calling of `thenDo`.
+       *                  The last entry is repeated until `this` completes,
+       *                  except a zero duration.
+       *                  A zero duration calls `thenDo` immediately.
+       *                  A negative duration terminates calling of `thenDo`.
        * @param thenDo    A function which gets the elapsed time since start as argument. */
-      def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = Worry.Default.durations)
+      def whenItTakesLonger(durations: IterableOnce[FiniteDuration])
         (thenDo: FiniteDuration => IO[Unit])
       : IO[A] =
-        val durationIterator = durations.iterator
-        if durationIterator.isEmpty then
-          underlying
-        else
-          CatsDeadline.now.flatMap: since =>
-            ZeroDuration
-              .tailRecM: lastDuration =>
-                val d = durationIterator.nextOption() getOrElse lastDuration
-                if !d.isNegative then
-                  IO.sleep(d)
-                    .*>(since.elapsed)
-                    .flatMap(thenDo)
-                    .as(Left(d))
-                else
-                  IO.right(())
-              .background.surround:
-                underlying
+        Worry.whenItTakesLonger(durations)(thenDo).surround(underlying)
+
+      /** @param thenDo A function which gets the elapsed time since start as argument each
+        *               time a Worry duration has elapsed. */
+      def whenItTakesLonger(worry: Worry = Worry.Default)(thenDo: FiniteDuration => IO[Unit])
+      : IO[A] =
+        worry.whenItTakesLonger(thenDo).surround(underlying)
 
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
