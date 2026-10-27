@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "8f6669ed-797e-4b35-a849-282d3901ed8d",
-    "generation": 83,
+    "generation": 96,
     "creationTimestamp": "2026-04-19T13:12:24Z",
     "labels": {},
     "annotations": {}
@@ -1220,8 +1220,8 @@
         "kind": "Panel",
         "spec": {
           "id": 14,
-          "title": "Process stdout and stderr, 1000 characters/s",
-          "description": "Unicode characters above U+FFFF counts twice",
+          "title": "Job stdout and stderr, 1000 characters/s",
+          "description": "Unicode characters above U+FFFF count twice",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2175,7 +2175,7 @@
         "spec": {
           "id": 18,
           "title": "JobMotors Order queuing time",
-          "description": "Average time of Orders queuing in a JobMotor's queue",
+          "description": "Average time of Orders queuing for Job execution",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2511,6 +2511,7 @@
               },
               "fieldConfig": {
                 "defaults": {
+                  "decimals": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -5229,30 +5230,6 @@
                         }
                       }
                     ]
-                  },
-                  {
-                    "__systemRef": "hideSeriesFrom",
-                    "matcher": {
-                      "id": "byNames",
-                      "options": {
-                        "mode": "exclude",
-                        "names": [
-                          "Young generation"
-                        ],
-                        "prefix": "All except:",
-                        "readOnly": true
-                      }
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.hideFrom",
-                        "value": {
-                          "legend": false,
-                          "tooltip": true,
-                          "viz": true
-                        }
-                      }
-                    ]
                   }
                 ]
               }
@@ -6067,7 +6044,7 @@
         "kind": "Panel",
         "spec": {
           "id": 33,
-          "title": "MemoryJournal (Subagent)",
+          "title": "MemoryJournal (Subagent only)",
           "description": "",
           "links": [],
           "data": {
@@ -7365,6 +7342,21 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-9"
+                        },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingTimeRangeSize",
+                                "spec": {
+                                  "value": "0s"
+                                }
+                              }
+                            ]
+                          }
                         }
                       }
                     },
@@ -7688,7 +7680,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "JS7 JobSchedulers",
+    "title": "JS7 JobScheduler",
     "variables": [
       {
         "kind": "QueryVariable",
