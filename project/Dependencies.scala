@@ -29,8 +29,8 @@ object Dependencies
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"
-  val reactorVersion = "3.8.7"
-  val vavrVersion = "1.0.1"
+  val reactorVersion = "3.8.8"
+  val vavrVersion = "1.1.0"
   val jnaVersion = "5.19.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion

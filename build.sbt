@@ -794,7 +794,7 @@ lazy val `js7-service-lz4` = project
     `js7-base`.jvm % "test->test")
   .settings(commonSettings)
   .settings {
-    libraryDependencies +="at.yawk.lz4" % "lz4-java" % "1.12.0"
+    libraryDependencies +="at.yawk.lz4" % "lz4-java" % "1.12.1"
   }
 
 lazy val `js7-service-pgp` = project
@@ -846,7 +846,7 @@ lazy val `js7-tests` = project
     description := "JS7 Tests")
   .settings {
     import Dependencies.*
-    val jettyVersion  = "12.1.13"
+    val jettyVersion  = "12.1.14"
     libraryDependencies ++=
       pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
