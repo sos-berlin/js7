@@ -19,7 +19,7 @@ import js7.common.http.HttpMXBean
 import js7.common.http.PekkoHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
 import js7.common.pekkohttp.WebLogDirectives.*
 import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
-import js7.common.pekkoutils.PekkoForExplicitNulls.header3
+import js7.common.pekkoutils.PekkoForExplicitNulls.headerExplicitNulls
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.headers.{Referer, `User-Agent`}
@@ -189,7 +189,7 @@ trait WebLogDirectives extends ExceptionHandling:
     val sb = new StringBuilder(256)
 
     def appendHeader[A <: HttpHeader: ClassTag](): Unit =
-      request.header3[A] match
+      request.headerExplicitNulls[A] match
         case None => sb.append(" -")
         case Some(h) => appendQuotedString(sb, h.value)
 

@@ -11,13 +11,14 @@ object PekkoForExplicitNulls:
   extension (self: HttpMessage)
     // Copy from private Pekko's HttpHeader.fastFind, ©️Lightbend Inc., adapted to -Yexplicit-nulls
     /**  Pekko's HttpHeader#header[T] adapted to Scala 3.5 Yexplicit-nulls. */
-    def header3[T <: jm.HttpHeader : ClassTag]: Option[T] =
+    def headerExplicitNulls[T <: jm.HttpHeader : ClassTag]: Option[T] =
       import self.{entity, headers}
       val clazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
       fastFind[T](clazz, headers) match
         case Some(h) => Some(h)
         case _ if clazz == classOf[`Content-Type`] =>
-          Some(`Content-Type`(entity.contentType)).asInstanceOf[Option[T]]
+          // Not `Content-Type`(...), whose apply is private[http] in Pekko's Scala 3 build
+          Some(jm.headers.ContentType.create(entity.contentType)).asInstanceOf[Option[T]]
         case _ => None
 
   // Copy from private Pekko's HttpHeader.fastFind, ©️Lightbend Inc., adapted to -Yexplicit-nulls

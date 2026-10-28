@@ -35,10 +35,10 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.javadsl.model.headers.ContentType as ContentTypeHeader
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
-import org.apache.pekko.http.scaladsl.model.headers.`Content-Type`
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpResponse}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.util.ByteString
@@ -228,7 +228,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       val e = new HttpException(
         POST,
         Uri("/URI"),
-        HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
+        HttpResponse(BadRequest, ContentTypeHeader.create(`text/plain(UTF-8)`) :: Nil),
         "{}")
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
       assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(Problem(e.getMessage)))

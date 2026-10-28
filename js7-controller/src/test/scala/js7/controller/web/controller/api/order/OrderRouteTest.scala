@@ -13,7 +13,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.common.http.PekkoHttpUtils.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
-import js7.common.pekkoutils.PekkoForExplicitNulls.header3
+import js7.common.pekkoutils.PekkoForExplicitNulls.headerExplicitNulls
 import js7.controller.web.controller.api.order.OrderRouteTest.*
 import js7.core.command.CommandMeta
 import js7.core.web.test.RouteTester
@@ -62,14 +62,14 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
       scheduledFor = Some(Timestamp.parse("2017-03-07T12:00:00Z")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Created)  // New order
-      assert(response.header3[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B7"))
+      assert(response.headerExplicitNulls[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B7"))
       assert(responseAs[Json] == Json.obj())
 
   "POST duplicate order" in:
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW"))
     Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Conflict)  // Duplicate order
-      assert(response.header3[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
+      assert(response.headerExplicitNulls[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
       assert(responseAs[Json] == Problem("Order:DUPLICATE has already been added")
         .asJson(using Problem.typedJsonEncoder))
 
@@ -79,7 +79,7 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
       jsonMarshaller
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == OK)
-      assert(response.header3[Location].isEmpty)
+      assert(response.headerExplicitNulls[Location].isEmpty)
       assert(responseAs[ControllerCommand.Response] == AddOrders.Response(1234L))
 
 

@@ -1,5 +1,4 @@
 import sbt.*
-import sbt.CrossVersion.for3Use2_13
 import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
@@ -58,16 +57,16 @@ object Dependencies
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.9"
 
-  val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
-  val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
-  val pekkoSlf4j          = "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion cross for3Use2_13
+  val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion
+  val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion
+  val pekkoSlf4j          = "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion
   val pekkoHttp           = List(
-    "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion cross for3Use2_13,
+    "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion,
     pekkoStream,
     pekkoActor/*force version*/)
   val pekkoHttpTestkit    = List(
-    "org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpVersion cross for3Use2_13,
-    "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion/*force version*/ cross for3Use2_13)
+    "org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpVersion,
+    "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion/*force version*/)
 
   val circe               = "io.circe" %% "circe-core" % circeVersion ::
                             "io.circe" %% "circe-parser" % circeVersion ::
