@@ -1,7 +1,9 @@
 package js7.base.catsutils
 
+import cats.Monoid
 import cats.effect.{IO, Outcome, Sync}
 import cats.syntax.flatMap.*
+import cats.syntax.monoid.*
 import scala.concurrent.{CancellationException, Promise}
 
 object CatsEffectUtils:
@@ -15,25 +17,6 @@ object CatsEffectUtils:
       F.whenA(condition):
         body
 
-  def unlessDeferred[F[_]](condition: => Boolean)(body: => F[Unit])(using F: Sync[F]): F[Unit] =
-    unlessDeferred(F.delay(condition)):
-      body
-
-  def unlessDeferred[F[_]](condition: F[Boolean])(body: => F[Unit])(using F: Sync[F]): F[Unit] =
-    condition.flatMap: condition =>
-      F.unlessA(condition):
-        body
-
-  //def whenDeferred(condition: => Boolean)(body: => F[A])(using F: Sync[F], A: Monoid[A]): F[A] =
-  //  F.defer:
-  //    if condition then
-  //      body
-  //    else
-  //      F.pure(A.empty)
-  //
-  //def unlessDeferred(condition: => Boolean)(body: => F[A])(using F: Sync[F], A: Monoid[A]): F[A] =
-  //  whenDeferred(!condition)(body)
-
   def outcomeToEither[F[_], A](outcome: Outcome[F, Throwable, A]): Either[Throwable, F[A]] =
     outcome match
       case Outcome.Succeeded(a) => Right(a)
@@ -46,6 +29,24 @@ object CatsEffectUtils:
       body(promise)
       IO.fromFuture(IO.pure(promise.future))
 
+
+  given UnitIOMonoid: Monoid[IO[Unit]] =
+    new Monoid[IO[Unit]]:
+      val empty: IO[Unit] = IO.unit
+
+      def combine(a: IO[Unit], b: IO[Unit]): IO[Unit] =
+        a *> b
+
+  given ioMonoid[A: Monoid as A]: Monoid[IO[A]] =
+    new Monoid[IO[A]]:
+      val empty: IO[A] = IO.pure(A.empty)
+
+      def combine(a: IO[A], b: IO[A]): IO[A] =
+        for
+          a <- a
+          b <- b
+        yield
+          a |+| b
 
   final class FiberCanceledException(message: String = "Fiber has been canceled")
   extends CancellationException(message):
