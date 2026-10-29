@@ -154,13 +154,14 @@ final class Fs2Test extends OurAsyncTestSuite:
       for
         signal <- SignallingRef[IO].of(false)
         deferred <- Deferred[IO, OutcomeIO[Unit]]
+        started <- Deferred[IO, Unit]
         stream = Stream.unit
           .evalMap: _ =>
             // Cancelled due to interruptWhen
-            IO.sleep(3.s).guaranteeCase(deferred.complete(_).void)
+            (started.complete(()) *> IO.sleep(3.s)).guaranteeCase(deferred.complete(_).void)
           .interruptWhen(signal)
         fiber <- stream.compile.toList.timed.start
-        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- started.get // Be sure, the stream has started sleeping
         _ <- signal.set(true)
         (duration, result) <- fiber.joinStd
         outcome <- deferred.get
@@ -171,14 +172,15 @@ final class Fs2Test extends OurAsyncTestSuite:
       for
         signal <- SignallingRef[IO].of(false)
         deferred <- Deferred[IO, OutcomeIO[Unit]]
+        started <- Deferred[IO, Unit]
         stream = Stream.unit
           .interruptWhen(signal)
           .evalMap: _ =>
             // Cancelled due to interruptWhen
-            IO.sleep(3.s).guaranteeCase:
+            (started.complete(()) *> IO.sleep(3.s)).guaranteeCase:
               deferred.complete(_).void
         fiber <- stream.compile.toList.timed.start
-        _ <- IO.sleep(100.ms) // Be sure, the stream has started sleeping
+        _ <- started.get // Be sure, the stream has started sleeping
         _ <- signal.set(true)
         (duration, result) <- fiber.joinStd
         outcome <- deferred.get
