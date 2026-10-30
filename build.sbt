@@ -102,7 +102,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-preview",  // stable but not binary compatible new features
-  "-explain",
   "-explain-cyclic",
   //"-language:noAutoTupling",
   //"-language:strictEquality",
