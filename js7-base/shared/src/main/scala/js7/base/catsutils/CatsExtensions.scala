@@ -25,8 +25,8 @@ object CatsExtensions:
       underlying.parTraverse(f).map(_.combineAll)
 
     /** Like attempt, but returns a Try. */
-    def tryIt(using ApplicativeError[F, Throwable]): F[Try[A]] =
-      underlying.attempt.map(_.toTry)
+    def tryIt(using F: ApplicativeError[F, Throwable]): F[Try[A]] =
+      underlying.map(Success(_)).handleError(Failure(_))
 
     /** Like rethrow, but from a Try. */
     def untry[A1](using F: MonadError[F, Throwable], ev: A =:= Try[A1]): F[A1] =
