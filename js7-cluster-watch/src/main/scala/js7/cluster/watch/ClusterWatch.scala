@@ -121,7 +121,10 @@ extends ClusterWatchStateMixin:
       setState(state.restoreNormal)
       Checked.unit
     else if !request.isSubtypeOf[ClusterWatchCommitNodeLoss] then
-      setState(state.restoreNormal)
+      // A request from the other node (for example, asking for ClusterFailedOver) does not
+      // invalidate the asking node's pending node loss, which it is about to commit.
+      if request.from == state.request.from then
+        setState(state.restoreNormal)
       Left(ClusterWatchNotAskingProblem)
     else
       Checked.unit
