@@ -133,13 +133,16 @@ extends Service.StoppableByCancel:
                   s"${file.getFileName} is not readable or not a valid log file: $problem")
 
             case Right(logFile) =>
-              removePending(file.filename).flatMap: wasPending =>
-                // Not pending anymore if the file has been deleted in the meantime
-                IO.whenA(wasPending):
-                  addLogFile(logFile) *>
-                    // The LogFileDeleted event may have been handled between removePending and
-                    // addLogFile, in which case it did not find the file to remove.
-                    removeLogFileIfDeleted(logFile)
+              // Uncancelable, because removePending changes pendingCount, which makes pollPending's
+              // switchMap cancel us. Then the file would be neither pending nor added.
+              IO.uncancelable: _ =>
+                removePending(file.filename).flatMap: wasPending =>
+                  // Not pending anymore if the file has been deleted in the meantime
+                  IO.whenA(wasPending):
+                    addLogFile(logFile) *>
+                      // The LogFileDeleted event may have been handled between removePending and
+                      // addLogFile, in which case it did not find the file to remove.
+                      removeLogFileIfDeleted(logFile)
         .compile.drain
 
   private def removeLogFileIfDeleted(logFile: LogFile): IO[Unit] =
