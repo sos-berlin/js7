@@ -23,7 +23,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{AsyncLock, Atomic, CatsUtils, SetOnce}
+import js7.base.utils.{AsyncLock, Atomic, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActivationConsentChecker.Consent
 import js7.cluster.ActiveClusterNode.*
@@ -42,8 +42,9 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.file.FileJournal
 import js7.journal.problems.Problems.JournalKilledProblem
+import org.apache.pekko.stream.StreamTcpException
 import scala.concurrent.duration.*
-import scala.util.{Failure, NotGiven, Right, Success, Try}
+import scala.util.{NotGiven, Right, Success, Try}
 
 /** Active Cluster node active which is part of a cluster (ClusterState != Empty). */
 final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
@@ -480,35 +481,45 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
                 case _ =>
                   IO.pure(Left(missingHeartbeatProblem))
-
         case o =>
           IO.pure(o)
-      .tryIt.flatTap:
-        case Success(Right(())) => IO.unit
+      .attempt.flatMap:
+        case Right(o @ Right(())) =>
+          IO.pure(o)
 
-        case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) => IO:
+        case Right(o @ Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
+          IO.pure(o)
 
-        case Success(Left(problem @ ClusterModuleShuttingDownProblem)) => IO:
+        case Right(o @ Left(problem @ ClusterModuleShuttingDownProblem)) =>
           logger.debug(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
+          IO.pure(o)
 
-        case Success(Left(problem)) => IO:
+        case Right(o @ Left(problem)) =>
           logger.error(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
+          IO.pure(o)
 
-        case Failure(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
+        case Left(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
           if isTest then
             // Like a halt: no final snapshot, no waiting for acks from the now active other node
             journal.kill *>
-              IO.raiseError(RuntimeException(s"🟥 Halt suppressed for testing: ${t.problem}"))
-          else IO:
+              IO.raiseError(RuntimeException(s"🟥 Halt is suppressed for testing: ${t.problem}"))
+          else
             Halt.haltJava("🟥 HALT because another cluster node has become active",
               restart = true)
 
-        case Failure(t) => IO:
+        case Left(t: StreamTcpException) =>
+          // The passive node may have closed the connection (shut down or lost).
+          // We restart fetching, and detect a missing heartbeat if it is really lost.
+          logger.warn:
+            s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}"
+          IO.right(())
+
+        case Left(t) =>
           logger.error(
             s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}",
             t)
-      .untry
+          IO.right(())
       .guarantee(IO:
         logger.debug("isFetchingAcks := false")
         isFetchingAcks := false)
