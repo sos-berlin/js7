@@ -348,7 +348,7 @@ extends
             // The Subagent must have detached a previous Order with same OrderId (when releasing
             // the OrderProcessed event) before it accepts a new StartOrderProcess for the same
             // Order
-            eventReleaser.awaitReleased *>
+            eventReleaser.awaitReleased(order.id) *>
               cmdDispatcher.executeCommand:
                 StartOrderProcess(order, defaultArguments, timeoutAt)
           .catchIntoChecked
@@ -624,7 +624,7 @@ object RemoteSubagentDriver:
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
   : ResourceIO[RemoteSubagentDriver[S]] =
     for
-      eventReleaser <- Resource.eval(EventReleaser(subagentItem.id))
+      eventReleaser <- Resource.eval(EventReleaser(subagentItem.id, conf.releaseEventsDelay))
       driver <- Service.resource:
         new RemoteSubagentDriver(
           subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf,
@@ -643,6 +643,7 @@ object RemoteSubagentDriver:
     commitDelay: FiniteDuration,
     heartbeatTiming: HeartbeatTiming,
     subagentResetTimeout: FiniteDuration,
+    releaseEventsDelay: FiniteDuration,
     subagentConf: SubagentConf):
 
     export subagentConf.config
@@ -658,4 +659,6 @@ object RemoteSubagentDriver:
               .min(config.finiteDuration("js7.web.client.keep-alive").orThrow),
           heartbeatTimeout = config.finiteDuration("js7.subagent-driver.heartbeat-timeout").orThrow),
         subagentResetTimeout = config.finiteDuration("js7.subagent-driver.reset-timeout").orThrow,
+        releaseEventsDelay =
+          config.finiteDuration("js7.subagent-driver.release-events-delay").orThrow,
         subagentConf)

@@ -101,7 +101,10 @@ extends SubagentDriver, Service.StoppableByRequest:
       subagentId, journal,
       eventDelay = subagentConf.eventBufferDelay,
       onOrderProcessed,
-      releaseEvents
+      // We have no handling for orderId. Each call is a ReleaseEvents command, and releasing an
+      // older EventId after a newer one fails with UnknownEventId. The call without OrderId
+      // releases the last EventId of the chunk, which covers all Orders.
+      releaseEvents = (stampedKeyedEvents, lastEventId) => releaseEvents(lastEventId)
     ):
       case stamped @ Stamped(_, _, KeyedEvent(NoKey, SubagentEvent.SubagentShutdown)) =>
         IO.pure:

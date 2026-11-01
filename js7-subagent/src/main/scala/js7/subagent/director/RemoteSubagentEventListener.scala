@@ -38,7 +38,7 @@ private final class RemoteSubagentEventListener(
   api: HttpSubagentApi,
   journal: Journal[? <: SubagentDirectorState[?]],
   onOrderProcessed: (OrderId, OrderProcessed) => IO[Option[IO[Unit]]],
-  releaseEvents: EventId => IO[Unit],
+  releaseEvents: (Vector[Stamped[AnyKeyedEvent]], EventId) => IO[Unit],
   onSubagentDied: (ProcessLostProblem, SubagentDied) => IO[Unit],
   dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]],
   emitSubagentCouplingFailed: Option[Problem] => IO[Unit],

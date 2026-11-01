@@ -20,6 +20,7 @@ import scala.util.chaining.scalaUtilChainingOps
 
 /** Handles the events of a local or remote Subagent and persists them in the Director's Journal.
   *
+  * @param releaseEvents releases an EventId (without OrderId), or the last EventId of an Order
   * @param handleSpecialEvent handles local or remote Subagent-specific events,
   *                           before the common handling.
   */
@@ -28,7 +29,7 @@ private final class SubagentEventHandler(
   journal: Journal[? <: SubagentDirectorState[?]],
   eventDelay: FiniteDuration,
   onOrderProcessed: (OrderId, OrderProcessed) => IO[Option[IO[Unit]]],
-  releaseEvents: EventId => IO[Unit])
+  releaseEvents: (Vector[Stamped[AnyKeyedEvent]], EventId) => IO[Unit])
   (handleSpecialEvent: PartialFunction[Stamped[AnyKeyedEvent], IO[Handled]]):
 
   private val logger = Logger.withPrefix[SubagentEventHandler](subagentId.toString)
@@ -59,9 +60,7 @@ private final class SubagentEventHandler(
               //   to allow a new StartOrderProcess command for a next process.
               // • ReleaseEvents should also be sent to avoid Subagent's MemoryJournal overflow.
               //   It should be sent after SubagentEventsObserved(lastEventId).
-              // • postReleaseEvents does not wait. It must be called before followUps, because a
-              //   followUp may start a next StartOrderProcess, which waits for the releaseInBackground.
-              releaseEvents(lastEventId)
+              releaseEvents(stampedEvents, lastEventId) // release in background
           .productR:
             followUps.combineAll // Run follow-ups
 
