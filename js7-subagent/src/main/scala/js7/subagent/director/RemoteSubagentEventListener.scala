@@ -123,8 +123,9 @@ extends
               serverMetering = conf.heartbeatTiming.heartbeat.some,
               idleTimeout = idleTimeout)
             .map(_
-              .evalTap: _ =>
-                onHeartbeatStarted
+              .chunks.evalTap: _ =>
+                onHeartbeatStarted // Per chunk, not per element
+              .unchunks
               .recoverWith:
                 case _: PekkoHttpClient.IdleTimeoutException =>
                   Stream.exec(IO.defer:
