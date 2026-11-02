@@ -32,4 +32,15 @@ final class CatsTest extends OurTestSuite:
       // foldMap is for an Applicative
       assert(mixed.foldMapA(toInt) == Left(s"Not a number: x"))
       assert(numbers.foldMapA(toInt) == Right(6))
+
+    "foldMapA and foldMapM fail-fast" in:
+      def f(i: Int) = i match
+        case 0 => Right(0)
+        case 1 => Left("FAILED")
+        case _ => throw IllegalStateException("UNEXPECTED")
+      val big = LazyList.from(0)
+      intercept[IllegalStateException]:
+        big.foldMap(f)
+      assert(big.foldMapA(f) == Left("FAILED"))
+      assert(big.foldMapM(f) == Left("FAILED"))
   }
