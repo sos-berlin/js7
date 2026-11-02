@@ -4,7 +4,6 @@ import cats.instances.either.*
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.functor.*
-import cats.syntax.monoid.*
 import cats.syntax.option.*
 import cats.{Foldable, Functor, Monad, Monoid, Semigroup}
 import izumi.reflect.Tag
@@ -505,20 +504,17 @@ object ScalaUtils:
         * Does not shortcut Left in F[Either]. */
       def foldMapMI[F[_]: Monad as F, B: Monoid as B](f: A => F[B]): F[B] =
         val it = iterableOnce.iterator
+        val empty = F.pure(B.empty)
         if it.isEmpty then
-          F.pure(B.empty)
+          empty
         else
-          val first = f(it.next())
-          if !it.hasNext then
-            first
-          else
-            first.flatMap: acc =>
-              acc.tailRecM: acc =>
-                if it.hasNext then
-                  f(it.next()).map: b =>
-                    Left(acc |+| b)
-                else
-                  F.pure(Right(acc))
+          empty.flatMap: acc =>
+            acc.tailRecM: acc =>
+              if it.hasNext then
+                f(it.next()).map: b =>
+                  Left(B.combine(acc, b))
+              else
+                F.pure(Right(acc))
 
       def repeatLast: LazyList[A] =
         iterableOnce match
