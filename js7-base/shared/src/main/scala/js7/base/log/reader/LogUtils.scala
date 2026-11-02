@@ -12,14 +12,18 @@ import scala.util.Try
 import scala.util.matching.Regex
 import scala.util.matching.Regex.quote
 
-private object LogUtils:
+object LogUtils:
 
-  val LogLevels = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
-  private[reader] val TmpSuffix = "-indexed.tmp"
-  private[reader] val LogGzTmpSuffix = ".log.gz" + TmpSuffix
+  val LogLevels: Set[LogLevel] = Set(LogLevel.Error, LogLevel.Info, LogLevel.Debug)
+  val TmpSuffix: String = "-indexed.tmp"
+  val LogGzTmpSuffix: String = ".log.gz" + TmpSuffix
 
-  private val NameRegex = Regex:
-    """([^-.]+)(-error|-debug)?(?:\.log|(?:-[0-9-]+)?\.log\.gz)(?:""" + quote(TmpSuffix) + ")?"
+
+  val NameRegex: Regex =
+    // A prefix word, but not "debug" or "error", which denote the log level
+    val Word = "(?!(?i:debug|error)(?![0-9A-Za-z]))[0-9A-Za-z]+".r
+    s"($Word(?:-$Word)*?)(?:-(debug|error))?(?:\\.log|-\\d{4}-\\d{2}-\\d{2}(?:-\\d+)?\\.log\\.gz)(?:${
+      quote(TmpSuffix)})?".r
 
   def deleteTmpFiles(directory: Path, logFilePrefixes: Set[String]): IO[Unit] =
     IO.blocking:
@@ -32,14 +36,14 @@ private object LogUtils:
             .compile.toVector
             .run()
 
-  private[reader] def isOurTmpFile(file: Path): Boolean =
+  def isOurTmpFile(file: Path): Boolean =
     file.toString.endsWith(LogGzTmpSuffix)
 
   // For external Java callers
   def isOurLogFilenameJava(isValidPrefix: String --> Boolean, file: Path): Boolean =
     isOurLogFilename(isValidPrefix.asScala, file)
 
-  private[reader] def isOurLogFilename(isValidPrefix: String => Boolean, file: Path): Boolean =
+  def isOurLogFilename(isValidPrefix: String => Boolean, file: Path): Boolean =
     fileToPrefixAndLogLevel(file) match
       case Some((prefix, _)) => isValidPrefix(prefix)
       case _ => false
@@ -50,5 +54,5 @@ private object LogUtils:
         logLevel match
           case null => Some(prefix -> LogLevel.Info)
           case logLevel: String =>
-            Try(LogLevel(logLevel.substring(1).capitalize)).toOption.map(prefix -> _)
+            Try(LogLevel(logLevel.capitalize)).toOption.map(prefix -> _)
       case _ => None
