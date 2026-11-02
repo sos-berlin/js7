@@ -166,16 +166,16 @@ extends SubagentDriver, Service.StoppableByRequest:
         .map(Right(_))
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
-    signableItemsForOrderProcessing(order.workflowPosition)
-      // TODO Do not attach already attached Items
-      //.map(_.map(_.filterNot(signed =>
-      //  alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
-      .flatMapT:
-        _.traverse: signedItem =>
+    signableItemsForOrderProcessing(order.workflowPosition).flatMapT: signedItems =>
+      // An already attached Item needs no AttachSignedItem command
+      subagent.journal.aggregate.flatMap: subagentState =>
+        signedItems.filterNot: signed =>
+          subagentState.keyToItem.get(signed.value.key).exists: attached =>
+            (attached eq signed.value) || attached == signed.value
+        .foldMapM: signedItem =>
           executeCommand:
             AttachSignedItem(signedItem)
-        .map:
-          _.map(_.rightAs(())).combineAll
+          .rightAs(())
 
   private def startProcessingOrder2(
     order: Order[Order.Processing], timeoutAt: Option[Timestamp])
