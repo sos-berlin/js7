@@ -503,7 +503,9 @@ object ScalaUtils:
           case _ => iterableOnce.iterator.foldLeft(B.empty)((b, a) => B.combine(b, f(a)))
         //case _ => B.combineAll(iterableOnce.iterator.map(f))
 
-      /** Memory-efficient variant of `foldMapM` for IterableOnce.
+      /** Variant of `foldMapM` for IterableOnce.
+        *
+        * Memory-efficient variant of `foldMapI` for IterableOnce.
         *
         * Does not shortcut Left in F[Either]. */
       def foldMapMI[F[_]: Monad as F, B: Monoid as B](f: A => F[B]): F[B] =
