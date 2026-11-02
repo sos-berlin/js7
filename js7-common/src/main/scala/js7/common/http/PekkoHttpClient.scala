@@ -133,14 +133,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     dontLog: Boolean = false)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
-    val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
     getJsonAsRawLines(uri, returnHeartbeatAs, idleTimeout = idleTimeout, dontLog = dontLog).map:
-      _.mapChunks: chunk =>
-        chunk.flatMap:
-          case HttpHeartbeatFs2Chunk => heartbeatAsChunk
-          case o => fs2.Chunk.singleton(o)
-      .mapParallelBatch(prefetch = myPrefetch):
+      _.mapParallelBatch(prefetch = myPrefetch):
         _.parseJsonAs[A].orThrow
 
   final def getJsonAsRawLines(
