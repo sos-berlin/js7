@@ -241,7 +241,8 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
 
   private def logProblem[A](keyedEvents: Seq[MaybeTsKeyedEvent[E]])(body: => Checked[A])
   : Checked[A] =
-    body match
+    val result = body
+    result match
       case Left(problem) =>
         keyedEvents.foreachWithBracket(): (e, br) =>
           logger.debug(s"❓ $br${e.keyedEvent}")
@@ -250,7 +251,7 @@ final case class EventCollCtx[S <: EventDrivenState_[S, E], E <: Event, +Ctx] pr
           new Exception(problem.toString))
         () // line for breakpoint
       case _ =>
-    body
+    result
 
   private inline def logEvents(inline keyedEvents: Seq[MaybeTsKeyedEvent[E]]): Unit =
     if false && isIntelliJIdea then
