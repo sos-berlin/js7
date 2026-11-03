@@ -1203,14 +1203,15 @@ extends
 
   private def addOrUpdateOrder_(s: ControllerState, order: Order[Order.State])
   : Checked[ControllerState] =
-    if s.idToOrder contains order.id then
-      Right(s.copy(
-        idToOrder = s.idToOrder.updated(order.id, order)))
-    else
+    val idToOrder = s.idToOrder.updated(order.id, order)
+    if idToOrder.size > s.idToOrder.size then
       s.ow.onOrderAdded(order).map: s =>
         s.copy(
-          idToOrder = s.idToOrder.updated(order.id, order),
+          idToOrder = idToOrder,
           workflowToOrders = s.workflowToOrders.addOrder(order))
+    else
+      Right(s.copy(
+        idToOrder = idToOrder))
 
   private def removeOrders_(s: ControllerState, orderIds: Seq[OrderId]): Checked[ControllerState] =
     if orderIds.isEmpty then
@@ -1218,16 +1219,13 @@ extends
     else
       val removedOrders = orderIds.flatMap(s.idToOrder.get)
       orderIds.foldEithers(s): (s, orderId) =>
-        s.idToOrder.get(orderId).fold(Checked(s)): order =>
-          order.externalOrder.fold(Checked(s)): ext =>
+        s.idToOrder.get(orderId).fold(Right(s)): order =>
+          order.externalOrder.fold(Right(s)): ext =>
             s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
           .map: s =>
             s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
-      .map: s =>
-        s.copy(idToOrder = s.idToOrder -- orderIds)
       .flatMap: s =>
-        PlanSchemaState
-          .removeOrderIds(removedOrders, s.keyTo(PlanSchemaState).checked)
+        PlanSchemaState.removeOrderIds(removedOrders, s.keyTo(PlanSchemaState).checked)
           .map: updatedPlanSchemaStates =>
             s.copy(
               idToOrder = s.idToOrder -- orderIds,
