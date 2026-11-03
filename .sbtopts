@@ -1,9 +1,7 @@
 -Dlog4j2.configurationFile=project/log4j2.xml
--Dcats.effect.stackTracingMode=none
+-Dcats.effect.tracing.mode=none
 -J-enableassertions
 -J-Xmx3G
--J-XX:MaxMetaspaceSize=1500M
--J-XX:ReservedCodeCacheSize=400m
 -J-XX:+UseG1GC
 -J-XX:+UseStringDeduplication
 -J-XX:+HeapDumpOnOutOfMemoryError
