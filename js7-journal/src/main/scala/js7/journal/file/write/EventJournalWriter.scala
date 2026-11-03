@@ -63,11 +63,17 @@ extends
     transaction: Boolean = false)
   : IO[PositionAnd[EventId]] =
     // TODO Rollback writes in case of error (with seek?)
-    IO.defer:
-      if !eventsStarted then throw new IllegalStateException
-      super.writeEvents_(stampedEvents, transaction = transaction).map: _ =>
-        statistics.countEventsToBeCommitted(stampedEvents.size)
-        fileLengthAndEventId
+    IO.blocking:
+      writeEventsSync(stampedEvents, transaction)
+
+  def writeEventsSync(
+    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+    transaction: Boolean = false)
+  : PositionAnd[EventId] =
+    if !eventsStarted then throw new IllegalStateException
+    super.writeEventsSync_(stampedEvents, transaction = transaction)
+    statistics.countEventsToBeCommitted(stampedEvents.size)
+    fileLengthAndEventId
 
   @TestOnly
   private[journal] def testWrite(byteArray: ByteArray): Unit =

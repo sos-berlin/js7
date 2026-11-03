@@ -184,18 +184,20 @@ transparent trait Committer[S <: SnapshotableState[S]]:
       .unchunks
       .conflateChunks(Int.MaxValue) // Process upstream concurrently //
       // Await passive cluster node acknowledgement //
+      // Per Chunk, not per Written, to avoid an fs2 step for each Written
+      .evalTap:
+        _.traverse_ : written =>
+          val clusterState = written.aggregate.clusterState
+          IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
+            // Do not switch requireClusterAck on, because
+            // TODO ClusterResetStarted doesn't leave the Coupled state
+            noMoreAcks(clusterState.getClass.getSimpleName)
+          .productR:
+            waitForAck(
+              eventId = written.eventId, lastStamped = written.lastStamped, n = written.eventCount)
+          .map: isAck =>
+            written.isAcknowledged = isAck
       .unchunks
-      .evalTap: written =>
-        val clusterState = written.aggregate.clusterState
-        IO.unlessA(clusterState.isInstanceOf[ClusterState.Coupled]):
-          // Do not switch requireClusterAck on, because
-          // TODO ClusterResetStarted doesn't leave the Coupled state
-          noMoreAcks(clusterState.getClass.getSimpleName)
-        .productR:
-          waitForAck(
-            eventId = written.eventId, lastStamped = written.lastStamped, n = written.eventCount)
-        .map: isAck =>
-          written.isAcknowledged = isAck
       .conflateChunks(Int.MaxValue) // Process upstream concurrently //
       // Completion: Logging, statistics, update EventWatch //
       .evalTap: chunk =>
@@ -267,7 +269,7 @@ transparent trait Committer[S <: SnapshotableState[S]]:
                 case Some(_: ClusterPassiveLost) =>
                   processingPassiveLost += 1
                   // onPassiveLost should already have switched off acks
-                  noMoreAcks("ClusterPassiveLost")
+                  noMoreAcks("ClusterPassiveLost event")
                 case _ => IO.unit
               .productR:
                 applied.completeApplied
@@ -289,18 +291,19 @@ transparent trait Committer[S <: SnapshotableState[S]]:
           coll.originalAggregate, stamped, aggregate, eventNumber = state.totalEventCount + 1)
 
     private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Written]] =
-      // TODO JSON-parallelize all chunks! But keep memory usage low.
-      chunk.traverse: applied =>
-        import applied.{commitOptions, stampedKeyedEvents}
+      IO.blocking:
         meterJsonWrite:
-          eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
-        .map: positionAndEventId =>
-          Written.fromApplied(applied, positionAndEventId)
-      .flatTap: chunk =>
-        IO.blocking:
+          val written =
+            chunk.map: applied =>
+              import applied.{commitOptions, stampedKeyedEvents}
+              val posAndEventId = eventWriter.writeEventsSync(
+                stampedKeyedEvents,
+                transaction = commitOptions.transaction)
+              Written.fromApplied(applied, posAndEventId)
           eventWriter.flush(sync = conf.syncOnCommit)
           bean.fileSize = eventWriter.fileLength
-          JournalLogger.markChunkForLogging(chunk)
+          JournalLogger.markChunkForLogging(written)
+          written
 
     private def logCommittedAndDoStatistics(
       writtenView: IndexedSeqView[Written], eventCount: Int, aggregate: S)

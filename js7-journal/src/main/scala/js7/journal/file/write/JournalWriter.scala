@@ -1,16 +1,12 @@
 package js7.journal.file.write
 
-import cats.effect.IO
-import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
-import js7.base.fs2utils.StreamExtensions.{appendOne, mapParallelBatch, prependOne}
 import js7.base.metering.CallMeter
 import js7.base.utils.ByteUnits.toMB
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournalSeparators, JournaledState, KeyedEvent, Stamped}
@@ -58,45 +54,54 @@ extends AutoCloseable:
     flush(sync = sync)
     _eventsStarted = true
 
-  def writeEvent(stamped: Stamped[KeyedEvent[Event]]): IO[Unit] =
-    writeEvents_(stamped :: Nil, transaction = false)
+  def writeEventSync(stamped: Stamped[KeyedEvent[Event]]): Unit =
+    writeEventsSync_(stamped :: Nil, transaction = false)
 
-  protected final def writeEvents_(
+  /** Synchronous variant of `writeEvents_`, to be called in a blocking section.
+    * Allows the caller to write many chunks with a single `IO.blocking`. */
+  protected final def writeEventsSync_(
     stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
     transaction: Boolean)
-  : IO[Unit] =
-    IO.defer:
-      _eventCount += stampedEvents.size
-      for stamped <- stampedEvents do
-        if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
-          s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
-            s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
-        _lastEventId = stamped.eventId
-      val ta = transaction && stampedEvents.lengthIs > 1
-      import S.keyedEventJsonCodec
-      if false &&
-        sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
-      then
-        writeJsonInParallel(stampedEvents, ta)
-      else
-        writeJsonSerially(stampedEvents, ta)
+  : Unit =
+    _eventCount += stampedEvents.size
 
-  private def writeJsonSerially[A: Encoder](seq: Seq[A], transaction: Boolean): IO[Unit] =
-    IO.blocking:
-      if transaction then jsonWriter.write(TransactionByteArray)
-      for a <- seq do jsonWriter.write(serialize(a))
-      if transaction then jsonWriter.write(CommitByteArray)
+    for stamped <- stampedEvents do
+      if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
+        s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
+          s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
+      _lastEventId = stamped.eventId
 
-  private def writeJsonInParallel[A: Encoder](seq: Seq[A], transaction: Boolean): IO[Unit] =
-    Stream.iterable[IO, A](seq)
-      .mapParallelBatch():
-        serialize[A]
-      .pipeIf(transaction):
-        _.prependOne(TransactionByteArray)
-          .appendOne(CommitByteArray)
-      .foreach: byteArray =>
-        IO(jsonWriter.write(byteArray))
-      .compile.drain
+    import S.keyedEventJsonCodec
+    val ta = transaction && stampedEvents.lengthIs > 1
+    writeJsonSerially_(stampedEvents, ta)
+
+  private def countEvents(
+    stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+    transaction: Boolean)
+  : Boolean =
+    _eventCount += stampedEvents.size
+    for stamped <- stampedEvents do
+      if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
+        s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
+          s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
+      _lastEventId = stamped.eventId
+    transaction && stampedEvents.lengthIs > 1
+
+  private def writeJsonSerially_[A: Encoder](seq: Seq[A], transaction: Boolean): Unit =
+    if transaction then jsonWriter.write(TransactionByteArray)
+    for a <- seq do jsonWriter.write(serialize(a))
+    if transaction then jsonWriter.write(CommitByteArray)
+
+  //private def writeJsonInParallel[A: Encoder](seq: Seq[A], transaction: Boolean): IO[Unit] =
+  //  Stream.iterable[IO, A](seq)
+  //    .mapParallelBatch():
+  //      serialize[A]
+  //    .pipeIf(transaction):
+  //      _.prependOne(TransactionByteArray)
+  //        .appendOne(CommitByteArray)
+  //    .foreach: byteArray =>
+  //      IO(jsonWriter.write(byteArray))
+  //    .compile.drain
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try a.asJson.toByteArray

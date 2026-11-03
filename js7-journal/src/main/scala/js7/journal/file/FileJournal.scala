@@ -182,10 +182,13 @@ extends
     noMoreAcks("prepareForStopOfClusterNodeStop")
 
   protected def noMoreAcks(reason: String): IO[Unit] =
-    requireClusterAck.getAndUpdate(_ => false).map: wasAck =>
-      IO:
-        if wasAck then
-          logger.info(s"Cluster passive node acknowledgements are no longer awaited due to $reason")
+    // Cheap read first, because this is called for every persisted chunk
+    requireClusterAck.get.flatMap: requireAck =>
+      IO.whenA(requireAck):
+        requireClusterAck.getAndSet(false).map: wasAck =>
+          if wasAck then
+            logger.debug:
+              s"Cluster passive node acknowledgements are no longer awaited due to $reason"
 
   protected def persistSingle[E <: Event](persist: Persist[S, E])
   : IO[Checked[Persisted[S, E]]] =

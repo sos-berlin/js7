@@ -81,7 +81,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         writer.beginSnapshotSection()
         writer.endSnapshotSection()
         writer.beginEventSection(sync = false)
-        writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
+        writer.writeEventSync(Stamped(1000L, NoKey <-: SnapshotTaken))
 
       autoClosing(
         JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId, bufferSize)
@@ -101,7 +101,7 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         writer.beginSnapshotSection()
         writer.endSnapshotSection()
         writer.beginEventSection(sync = false)
-        writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken)).await(99.s)
+        writer.writeEventSync(Stamped(1000L, NoKey <-: SnapshotTaken))
 
       autoClosing(
         EventJournalWriter(journalLocation,
@@ -154,9 +154,9 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         ): writer =>
           writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
           writer.beginEventSection(sync = false)
-          writer.writeEvent(first).await(99.s)
+          writer.writeEventSync(first)
           writer.writeEvents(Nil, transaction = true).await(99.s)
-          writer.writeEvent(last).await(99.s)
+          writer.writeEventSync(last)
           writer.endEventSection(sync = false)
 
         autoClosing(
@@ -175,12 +175,12 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         ): writer =>
           writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
           writer.beginEventSection(sync = false)
-          writer.writeEvent(first).await(99.s)
+          writer.writeEventSync(first)
           writer.testWrite(Transaction.asJson.toByteArray)
           writer.writeEvents(ta).await(99.s)
           writer.testWrite(ByteArray("{\"UNKNOWN\": 1}"))
           writer.testWrite(Commit.asJson.toByteArray)
-          writer.writeEvent(last).await(99.s)
+          writer.writeEventSync(last)
           writer.endEventSection(sync = false)
 
         autoClosing(
@@ -204,9 +204,9 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         ): writer =>
           writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
           writer.beginEventSection(sync = false)
-          writer.writeEvent(first).await(99.s)
+          writer.writeEventSync(first)
           writer.writeEvents(ta, transaction = true).await(99.s)
-          writer.writeEvent(last).await(99.s)
+          writer.writeEventSync(last)
           writer.endEventSection(sync = false)
 
         autoClosing(JournalReader(journalLocation.S, file, journalId, bufferSize)): journalReader =>
@@ -236,9 +236,9 @@ final class JournalReaderTest extends OurAsyncTestSuite:
         ): writer =>
           writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
           writer.beginEventSection(sync = false)
-          writer.writeEvent(first).await(99.s)
+          writer.writeEventSync(first)
           writer.writeEvents(ta, transaction = true).await(99.s)
-          writer.writeEvent(last).await(99.s)
+          writer.writeEventSync(last)
           writer.endEventSection(sync = false)
 
         autoClosing(

@@ -1,14 +1,11 @@
 package js7.journal.watch
 
-import cats.effect.unsafe.IORuntime
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.{Decoder, Encoder}
 import java.nio.file.Files.createTempDirectory
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.thread.CatsBlocking.syntax.await
-import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.file.JournalLocation
@@ -19,7 +16,6 @@ import scala.reflect.ClassTag
 final class SimpleEventCollector(
   eventTypedJsonCodec: KeyedEventTypedJsonCodec[Event],
   config: Config = ConfigFactory.empty)
-(implicit protected val ioRuntime: IORuntime)
 extends AutoCloseable:
 
   private val directory = createTempDirectory("SimpleEventCollector-")
@@ -48,16 +44,18 @@ extends AutoCloseable:
     deleteDirectoryRecursively(directory)
 
   @TestOnly
-  def addStamped(stamped: Stamped[AnyKeyedEvent])(using IORuntime): Unit =
-    eventWriter.writeEvent(stamped).await(99.s)
+  def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit =
+    eventWriter.writeEventSync(stamped)
     eventWriter.flush(sync = false)
     eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
 
 
 object SimpleEventCollector:
+
   @TestOnly
-  def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])(config: Config = ConfigFactory.empty)
-  (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E], ioRuntime: IORuntime)
+  def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])
+    (config: Config = ConfigFactory.empty)
+    (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E])
   : SimpleEventCollector =
     val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](KeyedSubtype[E])
     new SimpleEventCollector(keyedEventTypedJsonCodec, config)

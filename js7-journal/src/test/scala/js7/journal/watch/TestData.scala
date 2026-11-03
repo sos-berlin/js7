@@ -46,7 +46,7 @@ private[watch] object TestData:
       KeyedSubtype.singleton(using TestEvent)(BEvent))
 
   def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any])
-    (using IORuntime): Path =
+    : Path =
     autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)): writer =>
       writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
@@ -54,7 +54,7 @@ private[watch] object TestData:
         writer.writeSnapshot(ByteArray(journalLocation.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(after + 1, NoKey <-: SnapshotTaken)).await(99.s)
+      writer.writeEventSync(Stamped(after + 1, NoKey <-: SnapshotTaken))
       writer.file
 
   def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
