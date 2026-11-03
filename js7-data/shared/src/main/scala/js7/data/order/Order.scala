@@ -119,7 +119,7 @@ extends
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)
     def inapplicable = Left(inapplicableProblem)
 
-    def check[A](okay: => Boolean)(updated: A) =
+    def check[A](okay: Boolean)(updated: => A) =
       if okay then Right(updated) else inapplicable
 
     (event.tag: @switch) match
