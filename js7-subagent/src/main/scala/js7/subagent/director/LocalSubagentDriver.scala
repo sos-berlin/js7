@@ -91,7 +91,7 @@ extends SubagentDriver, Service.StoppableByRequest:
       subagent.journal.eventWatch
         .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
         .through:
-          eventHandler.pipe(bufferSize = subagentConf.eventBufferSize)
+          eventHandler.pipe(bufferSize = None)
         // TODO? Don't cancel ongoing operations above, which may not be ready for cancellation
         .interruptWhenF(untilServiceStopRequested)
     .compile.drain

@@ -36,12 +36,16 @@ private final class SubagentEventHandler(
   private val commitOptions = CommitOptions(transaction = true, delay = eventDelay)
 
   /** Handles, persists and releases the events in chunks, then runs the follow-ups. */
-  def pipe(bufferSize: Int): Pipe[IO, Stamped[AnyKeyedEvent], Unit] =
+  def pipe(bufferSize: Option[Int]): Pipe[IO, Stamped[AnyKeyedEvent], Unit] =
     _.pipe: stream =>
-      if !eventDelay.isPositive then
-        stream.chunks
-      else
-        stream.groupWithin(bufferSize, eventDelay)
+      bufferSize match
+        case None => // LocalSubagentDriver
+          stream.conflateChunks(Int.MaxValue)
+        case Some(bufferSize) => // RemoteSubagentDriver
+          if !eventDelay.isPositive then
+            stream.chunkLimit(bufferSize)
+          else
+            stream.groupWithin(bufferSize, eventDelay)
     .evalMap: chunk =>
       IO.uncancelable: _ =>
         // Uncancelable, because handleEvent and the returned followUps must be executed atomically

@@ -84,7 +84,7 @@ extends
       val after = journal.unsafeAggregate().idToSubagentItemState(subagentId).eventId
       recouplingStreamReader.stream(api, after = after)
         .through:
-          eventHandler.pipe(conf.subagentConf.eventBufferSize)
+          eventHandler.pipe(Some(conf.subagentConf.eventBufferSize))
         .onFinalize:
           recouplingStreamReader.terminateAndLogout
             .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
