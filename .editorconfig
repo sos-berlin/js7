@@ -15,7 +15,20 @@ indent_size = 2
 
 [*.scala]
 max_line_length = 100
+ij_any_align_multiline_parameters = false
+ij_continuation_indent_size = 2
 
 [*.{java,less}]
 indent_size = 4
 max_line_length = 100
+
+[{*.scala,*.java}]
+# Sort imports alphabetically
+ij_scala_import_layout = *
+
+ij_scala_class_count_to_use_import_on_demand = 100
+
+# Sort imports alphabetically
+ij_scala_import_layout = *
+
+ij_scala_class_count_to_use_import_on_demand = 100
