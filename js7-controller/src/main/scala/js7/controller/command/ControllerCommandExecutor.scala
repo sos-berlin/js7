@@ -30,26 +30,24 @@ extends IControllerCommandExecutor:
   : IO[Checked[command.Response]] =
     IO.defer:
       val correlId = CorrelId.current
-      val run = register.add(command, meta, correlId, batchId)
-      logCommand(run)
-      executeCommand2(command, meta, correlId, batchId)
-        .map: checkedResponse =>
-          if run.batchInternalId.isEmpty then
-            checkedResponse match
-              //case Right(ControllerCommand.Response.Accepted) =>
-              case Right(_) =>
-                logger.debug(s"↙ ${run.idString} ${
-                  ControllerCommand.jsonCodec.classToName(run.command.getClass)
-                } (${run.runningSince.elapsed.pretty}): $checkedResponse")
-              case Left(problem) =>
-          for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
-          checkedResponse.map(_.asInstanceOf[command.Response])
-        .guaranteeCase:
-          case Outcome.Errored(t) if run.batchInternalId.isEmpty =>
-            IO(logger.warn(s"$run failed: ${t.toStringWithCauses}"))
-          case _ => IO.unit
-        .guarantee:
-          IO(register.remove(run.correlId))
+      register.resource(command, meta, correlId, batchId).use: run =>
+        logCommand(run)
+        executeCommand2(command, meta, correlId, batchId)
+          .map: checkedResponse =>
+            if run.batchInternalId.isEmpty then
+              checkedResponse match
+                //case Right(ControllerCommand.Response.Accepted) =>
+                case Right(_) =>
+                  logger.debug(s"↙ ${run.idString} ${
+                    ControllerCommand.jsonCodec.classToName(run.command.getClass)
+                  } (${run.runningSince.elapsed.pretty}): $checkedResponse")
+                case Left(problem) =>
+            for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
+            checkedResponse.map(_.asInstanceOf[command.Response])
+          .guaranteeCase:
+            case Outcome.Errored(t) if run.batchInternalId.isEmpty =>
+              IO(logger.warn(s"$run failed: ${t.toStringWithCauses}"))
+            case _ => IO.unit
 
   private def executeCommand2(
     command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
