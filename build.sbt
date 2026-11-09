@@ -49,7 +49,13 @@ import scala.util.control.NonFatal
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 ThisBuild / scalaVersion := "3.10.0"
-ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT") && !isMac/*works only with clean*/
+// Pipelining speeds up clean builds only. With incremental compilation, the early jar
+// (target/scala-*/early/early.jar) contains only the recompiled .tasty files,
+// and dependent modules may fail to compile ("Cannot resolve reference to type ...").
+// So we enable pipelining only in some clean-* build commands (see below).
+ThisBuild / usePipelining := false
+val enablePipelining = """set ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT")"""
+val disablePipelining = "set ThisBuild / usePipelining := false"
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val js7Target = {
@@ -65,26 +71,26 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 val isForDevelopment                 = sys.props contains "dev"
 
 addCommandAlias("clean-all"      , "js7-tester/clean; clean")
-//addCommandAlias("clean-all"      , "; js7JS/clean; js7-tester/clean; clean")
-addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
-addCommandAlias("clean-build"    , "; clean-all; build")
-addCommandAlias("clean-build-only", "; clean-all; build-only")
-addCommandAlias("clean-pack"     , "; clean-all; compile-only; pack")
+//addCommandAlias("clean-all"      , "js7JS/clean; js7-tester/clean; clean")
+addCommandAlias("clean-publish"  , "clean-all; $enablePipelining; build; $disablePipelining; publish-all")
+addCommandAlias("clean-build"    , s"clean-all; $enablePipelining; build; $disablePipelining")
+addCommandAlias("clean-build-only", s"clean-all; $enablePipelining; build-only; $disablePipelining")
+addCommandAlias("clean-pack"     , s"clean-all; $enablePipelining; compile-only; $disablePipelining; pack")
 addCommandAlias("build"          ,
   if (testParallelization > 1)
-    "; test-all; pack"
+    "test-all; pack"
   else
-    "; compile-all; test-all; pack")
-addCommandAlias("build-only"     , "; compile-only; pack")
-addCommandAlias("compile-all"    , "; Test/compile")
-addCommandAlias("compile-only"   , "; compile")
+    "compile-all; test-all; pack")
+addCommandAlias("build-only"     , "compile-only; pack")
+addCommandAlias("compile-all"    , "Test/compile")
+addCommandAlias("compile-only"   , "compile")
 addCommandAlias("test-all"       , "test")
 addCommandAlias("pack"           , "Universal/packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
-addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
+addCommandAlias("publish-install", "install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControllerAgent --agents=2 --nodes-per-agent=3 --tasks=3 --job-duration=1.5s --period=10.s")
-addCommandAlias("quickPublishLocal", "; compile; publishLocal")
-//addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
+addCommandAlias("quickPublishLocal", "compile; publishLocal")
+//addCommandAlias("quickPublishLocal", "compile; publishLocal; project js7JS; compile; publishLocal")
 
 sourcesInBase := false
 
