@@ -86,6 +86,10 @@ extends Service.StoppableByRequest:
   private val directorDriverAllocated = MutableAllocated[DirectorDriver]
   private var clusterState: Option[HasNodes] = None
   private val startDirectorDriverFiber = AsyncVariable(pureFiberIO[Unit](()))
+  /** The Director URIs used by the last started DirectorDriver. */
+  @volatile private var directorDriverUris: Option[Nel[Uri]] = None
+  /** The Director URIs and requireFailoverConfirmation used by the last started ClusterWatch. */
+  @volatile private var clusterWatchSettings: Option[(Nel[Uri], Boolean)] = None
 
   private object state:
     val lock = AsyncLock()
@@ -185,15 +189,19 @@ extends Service.StoppableByRequest:
 
     protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
       onBatchFailed(queueables, problem) *>
-        IO.whenA(!problem.isInstanceOf[DirectorDriverStoppedProblem] && !isTerminating)(
-          startAndForgetDirectorDriver)
+        IO.whenA(
+          !problem.isInstanceOf[DirectorDriverStoppedProblem]
+            && problem != DirectorDriverNotAllocatedProblem // DirectorDriver is being (re)started
+            && !isTerminating
+        ):
+          startAndForgetDirectorDriver
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): IO[Unit] =
       IO.defer:
         val msg = s"Command batch ${
           queueables.view.map(_.getClass.simpleScalaName).mkStringLimited(3)} failed: $problem"
         problem match
-          case DecoupledProblem =>
+          case DecoupledProblem | DirectorDriverNotAllocatedProblem =>
             logger.debug(msg)
             commandQueue.handleBatchFailed(queueables, delay = false)
           case RecouplingStreamReader.TerminatedProblem =>
@@ -240,12 +248,18 @@ extends Service.StoppableByRequest:
     logger.traceIO:
       IO.defer:
         val expectedSessionNumber = sessionNumber.get()
-        directorDriverAllocated.checked.flatMapT(directorDriver =>
-          // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
-          if sessionNumber.get() != expectedSessionNumber then
-            IO.left(DecoupledProblem)
-          else
-            directorDriver.executeCommand(command, mustBeCoupled = true))
+        directorDriverAllocated.get.flatMap:
+          case None =>
+            // DirectorDriver is being (re)started.
+            // The CommandQueue should have been decoupled, but we may have raced with it.
+            IO.left(DirectorDriverNotAllocatedProblem)
+          case Some(directorDriver) =>
+            // Fail on recoupling,
+            // later read restarted Agent's attached OrderIds before issuing again AttachOrder
+            if sessionNumber.get() != expectedSessionNumber then
+              IO.left(DecoupledProblem)
+            else
+              directorDriver.executeCommand(command, mustBeCoupled = true)
 
   def changeAgentRef(agentRef: AgentRef): IO[Unit] =
     logger.traceIO("changeAgentRef", agentRef):
@@ -253,9 +267,14 @@ extends Service.StoppableByRequest:
         state.directors = agentRef.directors
       }) *>
         // TODO Handle Cluster node URI change or forbid this
-        // TODO Restart DirectorDriver only if one of the URIs has changed
-        startNewClusterWatch *>
-        startAndForgetDirectorDriver
+        directorUris.flatMap: uris =>
+          val clusterWatchSettingsChanged =
+            !clusterWatchSettings.contains(uris -> agentRef.requireFailoverConfirmation)
+          val urisChanged = !directorDriverUris.contains(uris)
+          IO.whenA(clusterWatchSettingsChanged):
+            startNewClusterWatch
+          .*>(IO.whenA(urisChanged):
+            startAndForgetDirectorDriver)
 
   def resetAgentAndStop: IO[Unit] =
     terminate_(reset = true)
@@ -400,14 +419,36 @@ extends Service.StoppableByRequest:
     startDirectorDriverFiber
       .update: fiber =>
         fiber.cancel *>
-          startNewDirectorDriver
-            .handleError:
-              case t: directorDriverAllocated.AcquisitionCanceledException =>
-                logger.debug(s"${src.value} startDirectorDriver => ${t.toStringWithCauses}")
-              case t =>
-                logger.error(s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t)
-            .start
+          startNewDirectorDriverRetrying.start
       .void
+
+  /** Retries after an error, because the CommandQueue is decoupled while
+    * no DirectorDriver is allocated and would not trigger a restart. */
+  private def startNewDirectorDriverRetrying(using src: sourcecode.Enclosing): IO[Unit] =
+    // lastError: to log a repeated error only once with stack trace
+    def loop(lastError: Option[String]): IO[Unit] =
+      startNewDirectorDriver
+        .flatMap: _ =>
+          IO.whenA(lastError.isDefined):
+            IO(logger.info(s"${src.value} startDirectorDriver succeeded after error"))
+        .handleErrorWith:
+          case t: directorDriverAllocated.AcquisitionCanceledException =>
+            IO(logger.debug(s"${src.value} startDirectorDriver => ${t.toStringWithCauses}"))
+          case t =>
+            IO.defer:
+              val error = t.toStringWithCauses
+              val msg = s"${src.value} startDirectorDriver => $error"
+              if lastError.contains(error) then
+                logger.debug(s"💥 $msg")
+              else
+                logger.error(msg, t)
+              IO.unlessA(isTerminating):
+                IO.sleep(conf.commandErrorDelay) *>
+                  IO.unlessA(isTerminating):
+                    loop(Some(error))
+
+    loop(lastError = None)
+      .raceMerge(untilServiceStopRequested)
 
   private def startNewDirectorDriver: IO[Unit] =
     logger.debugIO:
@@ -416,7 +457,10 @@ extends Service.StoppableByRequest:
   private def directorDriverResource: ResourceIO[DirectorDriver] =
     logger.traceResource:
       for
-        client <- activeClientResource
+        uris <- Resource.eval(directorUris)
+        _ <- Resource.eval(IO:
+          directorDriverUris = Some(uris))
+        client <- activeClientResource(uris)
         afterEventId <- Resource.eval(agentRefState.map(_.eventId))
         directorDriver <- DirectorDriver.service(
           agentDriver, agentPath, afterEventId,
@@ -424,6 +468,9 @@ extends Service.StoppableByRequest:
           dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
           onEventsFetched,
           journal, conf)
+        // Released first: stop the CommandQueue from sending while there is no DirectorDriver.
+        // The new DirectorDriver's onCoupled lets the CommandQueue continue.
+        _ <- Resource.onFinalize(onDecoupled)
       yield
         directorDriver
 
@@ -431,7 +478,10 @@ extends Service.StoppableByRequest:
     for
       requireFailoverConfirmation <- Resource.eval:
         journal.aggregate.map(_.keyToItem(AgentRef)(agentPath).requireFailoverConfirmation)
-      clients <- clientsResource
+      uris <- Resource.eval(directorUris)
+      _ <- Resource.eval(IO:
+        clusterWatchSettings = Some(uris -> requireFailoverConfirmation))
+      clients <- clientsResource(uris)
       clusterWatchService <- ClusterWatchService.service(
         clusterWatchId,
         Resource.eval(IO.pure(clients)),
@@ -470,21 +520,21 @@ extends Service.StoppableByRequest:
     .handleProblem: problem =>
       logger.error(s"onNodeLossEventConfirmRequired: $problem")
 
-  private def activeClientResource: ResourceIO[AgentClient] =
+  private def activeClientResource(uris: Nel[Uri]): ResourceIO[AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi(
-      clientsResource,
+      clientsResource(uris),
       conf.recouplingStreamReader.delayConf,
       onCouplingError = onCouplingFailed(_).void,
       clusterName = agentPath.toString)
 
-  private def clientsResource: ResourceIO[Nel[AgentClient]] =
-    Resource.eval:
-      journal.aggregate.map:
-        _.agentToDirectorUris(agentPath)
-          .orThrow /*AgentRef and SubagentItems must exist !!!*/
-    .flatMap:
-      _.traverse:
-        clientResource
+  private def directorUris: IO[Nel[Uri]] =
+    journal.aggregate.map:
+      _.agentToDirectorUris(agentPath)
+        .orThrow /*AgentRef and SubagentItems must exist !!!*/
+
+  private def clientsResource(uris: Nel[Uri]): ResourceIO[Nel[AgentClient]] =
+    uris.traverse:
+      clientResource
 
   private def clientResource(uri: Uri): ResourceIO[AgentClient] =
     val agentUserAndPassword = controllerConfiguration.config
@@ -559,4 +609,7 @@ private[controller] object AgentDriver:
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
 
+
   private[agent] val DecoupledProblem = Problem.pure("Agent is not coupled")
+  private[agent] val DirectorDriverNotAllocatedProblem =
+    Problem.pure("DirectorDriver is being started")
