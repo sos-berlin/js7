@@ -7,7 +7,6 @@ import cats.instances.list.*
 import cats.instances.option.*
 import cats.syntax.option.*
 import java.util.concurrent.atomic.AtomicBoolean
-import js7.base.exceptions.StandardPublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
@@ -255,22 +254,21 @@ final class ScalaUtilsTest extends OurAsyncTestSuite:
       new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"
 
     "toStringWithCauses" in:
-      assert(new Exception("TEST").toStringWithCauses == "TEST")
+      assert(new Exception("TEST").toStringWithCauses == "Exception: TEST")
       assert(new Exception("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
-        "TEST, caused by: IllegalStateException: STATE")
+        "Exception: TEST, caused by: IllegalStateException: STATE")
 
       val e = new Exception("TEST")
       e.addSuppressed(new IllegalStateException("SUPPRESSED 1", new Exception("CAUSE", new Exception("NESTED CAUSE"))))
       e.addSuppressed(new IllegalStateException("SUPPRESSED 2"))
       assert(e.toStringWithCauses ==
-        "TEST " +
-          "[suppressed: IllegalStateException: SUPPRESSED 1, caused by: CAUSE, caused by: NESTED CAUSE] " +
+        "Exception: TEST " +
+          "[suppressed: IllegalStateException: SUPPRESSED 1, caused by: Exception: CAUSE, caused by: Exception: NESTED CAUSE] " +
           "[suppressed: IllegalStateException: SUPPRESSED 2]")
 
     "toSimplifiedString" in:
-      assert(new RuntimeException("ERROR").toSimplifiedString == "ERROR")
+      assert(new RuntimeException("ERROR").toSimplifiedString == "RuntimeException: ERROR")
       assert(new IllegalArgumentException("ERROR").toSimplifiedString == "ERROR")
-      assert(new StandardPublicException("ERROR").toSimplifiedString == "ERROR")
       assert(new IllegalStateException("ERROR").toSimplifiedString == "IllegalStateException: ERROR")
 
     "nullIfNoStackTrace" in:

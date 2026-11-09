@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import java.util.{Formatter, Locale}
-import js7.base.exceptions.PublicException
 import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -293,7 +292,6 @@ object ScalaUtils:
                 throwable.getClass == classOf[IllegalArgumentException] ||
                 throwable.getClass == classOf[RuntimeException] ||
                 throwable.getClass == classOf[Exception] ||
-                throwable.isInstanceOf[PublicException] ||
                 throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
                 throwable.getClass.getName == "java.util.concurrent.CompletionException")
             then
