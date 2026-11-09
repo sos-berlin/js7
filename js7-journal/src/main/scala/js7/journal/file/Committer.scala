@@ -253,10 +253,11 @@ transparent trait Committer[S <: SnapshotableState[S]]:
               (applied.completeApplied *> applied.completePersistOperation)
                 .as(Chunk.empty)
             else if _isSwitchedOver then
-              val eventName = applied.stampedKeyedEvents.head.value.event.getClass.shortClassName
-              queuedPersist.completePersistedWithProblem:
-                ClusterNodeHasBeenSwitchedOverProblem(eventName)
-              .as(Chunk.empty)
+              val problem = ClusterNodeHasBeenSwitchedOverProblem(
+                event = applied.stampedKeyedEvents.head.value.event.getClass.shortClassName)
+              logger.warn(problem.toString)
+              applied.logInfo("🚫 ")
+              queuedPersist.completePersistedWithProblem(problem).as(Chunk.empty)
             else if isBeingKilled then
               queuedPersist.completePersistedWithProblem(JournalKilledProblem)
                 .as(Chunk.empty)
@@ -600,6 +601,10 @@ transparent trait Committer[S <: SnapshotableState[S]]:
     def completeApplied: IO[Unit] =
       whenApplied.complete(Right(persisted))
         .void
+
+    def logInfo(prefix: String = "") =
+      stampedKeyedEvents.foreachWithBracket(): (o, br) =>
+        logger.info(s"$prefix$br$o")
 
   private object Applied:
     def fromQueueEntry(queuedPersist: QueuedPersist[S],
