@@ -86,11 +86,11 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
   "Corrupt data" - {
     "Missing separators" in:
       assert(expectException("{}{}\n").toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
+        "RuntimeException: JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
 
     "Invalid JSON" in:
       assert(expectException("{\n").toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: exhausted input")
+        "RuntimeException: JSON sequence is corrupt at line 1: exhausted input")
   }
 
   "Reading closed" in:

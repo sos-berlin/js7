@@ -58,7 +58,7 @@ final class BlockingInternalJobTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(OrderOutcome.Failed(Some("TEST-EXCEPTION"))),
+        OrderProcessed(OrderOutcome.Failed(Some("RuntimeException: TEST-EXCEPTION"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))

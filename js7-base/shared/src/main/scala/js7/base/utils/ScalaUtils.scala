@@ -265,39 +265,37 @@ object ScalaUtils:
         result
 
       def toSimplifiedString: String =
-        lazy val msg = throwable.getMessage
-        throwable.match
-          case _: java.lang.IllegalStateException
-               | _: java.lang.NumberFormatException
-               | _: java.lang.IndexOutOfBoundsException
-               | _: java.lang.StringIndexOutOfBoundsException
-               | _: java.lang.ArrayIndexOutOfBoundsException =>
+        locally:
+          lazy val msg = throwable.getMessage
+          val cls = throwable.getClass
+          if cls == classOf[java.lang.Exception]
+            || cls == classOf[java.lang.RuntimeException]
+            || cls == classOf[java.lang.IllegalStateException]
+            || cls == classOf[java.lang.NumberFormatException]
+            || cls == classOf[java.lang.IndexOutOfBoundsException]
+            || cls == classOf[java.lang.StringIndexOutOfBoundsException]
+            || cls == classOf[java.lang.ArrayIndexOutOfBoundsException]
+          then
             throwable.toString.stripPrefix("java.lang.")
-
-          case _: java.util.NoSuchElementException =>
+          else if cls == classOf[java.util.NoSuchElementException] then
             throwable.toString.stripPrefix("java.util.")
-
-          case _: ArithmeticException if msg != null =>
+          else if cls == classOf[ArithmeticException] && msg != null then
             s"ArithmeticException: $msg"
-
-          case _: java.util.concurrent.TimeoutException =>
+          else if cls == classOf[java.util.concurrent.TimeoutException] then
             throwable.toString.stripPrefix("java.util.concurrent.")
-
-          case _: java.nio.file.NoSuchFileException =>
+          else if cls == classOf[java.nio.file.NoSuchFileException] then
             throwable.toString.stripPrefix("java.nio.file.")
-
-          case _ =>
-            if msg != null && msg != "" && (
-              throwable.isInstanceOf[ProblemException] ||
-                throwable.getClass == classOf[IllegalArgumentException] ||
-                throwable.getClass == classOf[RuntimeException] ||
-                throwable.getClass == classOf[Exception] ||
-                throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
-                throwable.getClass.getName == "java.util.concurrent.CompletionException")
-            then
-              msg
-            else
-              throwable.toString
+          else if msg != null && msg != "" && (
+            throwable.isInstanceOf[ProblemException] ||
+              cls == classOf[IllegalArgumentException] ||
+              cls == classOf[RuntimeException] ||
+              cls == classOf[Exception] ||
+              cls.getName == "scala.scalajs.js.JavaScriptException" ||
+              cls.getName == "java.util.concurrent.CompletionException")
+          then
+            msg
+          else
+            throwable.toString
         .trim
 
       def stackTraceAsString: String =

@@ -57,13 +57,13 @@ final class CheckedTest extends OurAsyncTestSuite:
   "flattenTryChecked" in:
     assert(Checked.flattenTryChecked(Success(Right(1))) == Right(1))
     assert(Checked.flattenTryChecked(Success(Left(Problem("PROBLEM")))) == Left(Problem("PROBLEM")))
-    val throwable = new RuntimeException("EXCEPTION")
-    assert(Checked.flattenTryChecked(Failure(throwable)) == Left(Problem("EXCEPTION")))
+    val throwable = RuntimeException("EXCEPTION")
+    assert(Checked.flattenTryChecked(Failure(throwable)) == Left(Problem("RuntimeException: EXCEPTION")))
 
   "fromTry" in:
     assert(Checked.fromTry(Success(1)) == Right(1))
-    val throwable = new RuntimeException("EXCEPTION")
-    assert(Checked.fromTry(Failure(throwable)) == Left(Problem("EXCEPTION")))
+    val throwable = Exception("EXCEPTION")
+    assert(Checked.fromTry(Failure(throwable)) == Left(Problem("Exception: EXCEPTION")))
 
   "check" in:
     assert(Checked.check(false, 7, Problem("PROBLEM")) == Left(Problem("PROBLEM")))

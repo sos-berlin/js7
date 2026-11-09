@@ -68,14 +68,14 @@ final class ProblemTest extends OurTestSuite:
   "fromLazyThrowable" in:
     val throwable = new RuntimeException("MESSAGE")
     val problem = Problem.fromLazyThrowable(throwable)
-    assert(problem.toString == "MESSAGE")
+    assert(problem.toString == "RuntimeException: MESSAGE")
     assert(problem.throwableOption contains throwable)
     assert(problem.throwable eq throwable)
 
-    assert(problem.withKey("KEY").toString == "Problem with 'KEY': MESSAGE")
-    assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY': MESSAGE")
+    assert(problem.withKey("KEY").toString == "Problem with 'KEY': RuntimeException: MESSAGE")
+    assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY': RuntimeException: MESSAGE")
 
-    assert(Problem.fromLazyThrowable(new RuntimeException).toString == "java.lang.RuntimeException")
+    assert(Problem.fromLazyThrowable(new RuntimeException).toString == "RuntimeException")
 
   "cause" in:
     val cause = Problem("B")
@@ -96,12 +96,12 @@ final class ProblemTest extends OurTestSuite:
     assert((Problem("A: ") |+| Problem("B")) == Problem("A: B"))
     assert((Problem("A -") |+| Problem("B")) == Problem("A - B"))
     assert((Problem("A - ") |+| Problem("B")) == Problem("A - B"))
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A;\nB")
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A;\nB")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A;\nB")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A;\nB")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A;\nB")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A;\nB")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A;\nRuntimeException: B")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A;\nRuntimeException: B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "RuntimeException: A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "RuntimeException: A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "RuntimeException: A;\nRuntimeException: B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "RuntimeException: A;\nRuntimeException: B")
 
     assert(catch_(Problem("A") |+| Problem("B")) == "A;\nB")
 
@@ -134,14 +134,18 @@ final class ProblemTest extends OurTestSuite:
 
   "Combined is flat" in:
     Problem("A") |+| Problem("B") |+| Problem("C") match
-      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case Problem.Combined(problems) =>
+        assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ => fail()
-    val multiProblem: Problem = Problem.Combined(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
+    val multiProblem: Problem =
+      Problem.Combined(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
     multiProblem |+| Problem("C") match
-      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case Problem.Combined(problems) =>
+        assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ => fail()
     Problem("X") |+| multiProblem match
-      case Problem.Combined(problems) => assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
+      case Problem.Combined(problems) =>
+        assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
       case _ => fail()
 
   "Combined combines all optional stacktraces" in:
@@ -152,7 +156,8 @@ final class ProblemTest extends OurTestSuite:
     val c = Problem("C-PROBLEM")
     val d = Problem.fromThrowable(Try(throwD()).failed.get: Throwable)
     val combinedThrowable = (a |+| b |+| c |+| d).throwable
-    assert(combinedThrowable.toString == "ProblemException: A-PROBLEM;\nB-EXCEPTION;\nC-PROBLEM;\nD-EXCEPTION")
+    assert(combinedThrowable.toString ==
+      "ProblemException: A-PROBLEM;\nRuntimeException: B-EXCEPTION;\nC-PROBLEM;\nRuntimeException: D-EXCEPTION")
     assert(combinedThrowable.getStackTrace.exists(_.getMethodName.contains("throwB")))
     assert(combinedThrowable.getStackTrace.exists(_.getMethodName.contains("throwD")))
 
@@ -181,8 +186,10 @@ final class ProblemTest extends OurTestSuite:
     assert(throwable.toString == "ProblemException: PREFIX: PROBLEM")
 
   "Problem.fromThrowable" in:
-    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
-    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).withPrefix("PREFIX:").toString == "PREFIX: EXCEPTION")
+    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).toString
+      == "RuntimeException: EXCEPTION")
+    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).withPrefix("PREFIX:").toString
+      == "PREFIX: RuntimeException: EXCEPTION")
 
   "equals" in:
     assert(TestCodeProblem(Map.empty) == TestCodeProblem(Map.empty))

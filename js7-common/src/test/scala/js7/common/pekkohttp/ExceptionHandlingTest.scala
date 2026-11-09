@@ -35,7 +35,7 @@ extends OurTestSuite, ScalatestRouteTest, ExceptionHandling:
       } ~>
         check:
           assert(status == InternalServerError)
-          assert(entityAs[Problem] == Problem("MESSAGE"))
+          assert(entityAs[Problem] == Problem("RuntimeException: MESSAGE"))
 
   "Any exception" in:
     post("/") ~>
@@ -55,7 +55,7 @@ extends OurTestSuite, ScalatestRouteTest, ExceptionHandling:
       } ~>
         check:
           assert(status == InternalServerError)
-          assert(entityAs[Problem] == Problem("java.lang.RuntimeException"))
+          assert(entityAs[Problem] == Problem("RuntimeException"))
 
   "HttpStatusCodeException" in:
     post("/") ~>
