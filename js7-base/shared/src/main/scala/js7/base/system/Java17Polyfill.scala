@@ -10,17 +10,16 @@ object Java17Polyfill:
   private val String_indexOf = getMethod(javaVersion = 21):
     classOf[String].getMethod("indexOf", classOf[Int], classOf[Int], classOf[Int])
 
+  private val CharSequence_getChars = getMethod(javaVersion = 25):
+    classOf[CharSequence].getMethod("getChars",
+      classOf[Int], classOf[Int], classOf[Array[Char]], classOf[Int])
+
   /** Required when IDE compiles with JDK >17, but code must still be compilable with JDK 17
    * and imports should be kept. */
   def java17Polyfill(): Unit = {}
 
-  // Java 26 seems slower than our implementation TODO Check again!
-  //private val String_getChars = getMethod(javaVersion = 25):
-  //  classOf[CharSequence].getMethod("getChars",
-  //    classOf[Int], classOf[Int], classOf[Array[Char]], classOf[Int])
-
   extension (string: String)
-    /** Since Java 21. */
+    /** Like the Java 21 implementation. */
     def indexOf(char: Int, beginIndex: Int, endIndex: Int): Int =
       if String_indexOf != null then
         wrapInvoke(String_indexOf.invoke(string, char, beginIndex, endIndex).asInstanceOf[Int])
@@ -36,32 +35,32 @@ object Java17Polyfill:
         -1
 
   extension (charSequence: CharSequence)
-    /** Since Java 25. */
+    /** Like the Java 25 implementation. */
     def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int): Unit =
-      //String_getChars match
-      //  case null =>
-      charSequence match
-        case o: CharSequenceJava17 =>
-          o.getChars(srcBegin, srcEnd, dst, dstBegin)
+      if CharSequence_getChars != null then
+        wrapInvoke(CharSequence_getChars.invoke(charSequence, srcBegin, srcEnd, dst, dstBegin))
+      else
+        charSequence match
+          case o: CharSequenceJava17 =>
+            o.getChars(srcBegin, srcEnd, dst, dstBegin)
 
-        case string: String =>
-          string.getChars(srcBegin, srcEnd, dst, dstBegin)
+          case string: String =>
+            string.getChars(srcBegin, srcEnd, dst, dstBegin)
 
-        case _ =>
-          Objects.checkFromToIndex(srcBegin, srcEnd, charSequence.length)
-          Objects.checkIndex(dstBegin, dst.length - (srcEnd - srcBegin) + 1)
-          var i = srcBegin
-          val off = dstBegin - srcBegin
-          while i < srcEnd do
-            dst(off + i) = charSequence.charAt(i)
-            i += 1
-      //  case m: Method =>
-      //    wrapInvoke(m.invoke(charSequence, srcBegin, srcEnd, dst, dstBegin))
+          case _ =>
+            // The loop seems to be faster than the Java 26 implementation
+            Objects.checkFromToIndex(srcBegin, srcEnd, charSequence.length)
+            Objects.checkIndex(dstBegin, dst.length - (srcEnd - srcBegin) + 1)
+            var i = srcBegin
+            val off = dstBegin - srcBegin
+            while i < srcEnd do
+              dst(off + i) = charSequence.charAt(i)
+              i += 1
 
 
   extension (thread: Thread)
     /** Since Java 19. */
-    def threadId =
+    def threadId: Long =
       thread.getId: @nowarn("msg=deprecated")
 
 

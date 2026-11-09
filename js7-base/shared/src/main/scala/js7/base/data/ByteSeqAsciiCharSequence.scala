@@ -48,7 +48,7 @@ extends CharSequenceJava17:
       checkFromToIndex(begin, end, length)
       ByteSeqAsciiCharSequence(byteSeq, this.begin + begin, this.begin + end)
 
-  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int) =
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int): Unit =
     checkFromToIndex(srcBegin, srcEnd, length)
     checkIndex(dstBegin, dst.length - (srcEnd - srcBegin) + 1)
     var s = begin + srcBegin
