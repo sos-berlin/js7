@@ -207,8 +207,8 @@ final class ExpiredSignatureCertificateTest extends OurTestSuite:
           val checked = runMyTest(
             distributeCA = distributeCA,
             controllerTS = now, directorTS = now + 2.days, bareSubagentTS = now, days = 1,
-            timeout = if isTestParallel then 5.s else 2.s,
             allowExpired = true)
+          assert(checked.isRight)
       }
 
       "Clock of bare Subagent is after certificate's expiry" - {
