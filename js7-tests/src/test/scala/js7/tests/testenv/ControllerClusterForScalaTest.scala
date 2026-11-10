@@ -182,6 +182,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
           config"""
             js7.journal.cluster.node.is-backup = yes
             js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
             js7.journal.cluster.consent-timeout = ${clusterTiming.consentTimeout}
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
