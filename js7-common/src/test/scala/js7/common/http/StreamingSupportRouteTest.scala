@@ -55,13 +55,9 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
     val tooLong = 1500.ms
     val heartbeatChunk = fs2.Chunk.stringAsUtf8("HEARTBEAT\n")
 
-    "Canceling a *quiet* stream with interruptWhen DOES NOT WORK" in:
-      testStream().attempt.map:
-        case Left(_: TimeoutException) =>
-          info("As expected, a quiet Pekko HTTP stream is not cancelable with interruptWhen")
-          succeed
-        case Left(t) => throw t
-        case Right(_) => fail("TEST UNEXPECTEDLY SUCCEEDED 🎉")
+    "Canceling a *quiet* stream with interruptWhen" in:
+      // Works since asFs2Stream uses fs2.interop.flow (cancelable while awaiting an element)
+      testStream()
 
     "Canceling a *heartbeating* stream with interruptWhen" in:
       testStream(heartbeating = true)

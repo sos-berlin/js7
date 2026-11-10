@@ -57,12 +57,6 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
           assert(list == List(1, 2, 3) && last == 3)
 
     "FS2's timeoutOnPull with Future.never" in:
-      pending // The test never ends.
-      // TODO How to cancel a Pekko stream sticking in a source? Somehow with KillSwitch ...
-      // cancel funktioniert, wenn eine Nachricht kommt (deshalb die Herzschläge überall)
-      // Wenn keine Nachricht kommt (wegen Störung oder weniger Herzschläge genügen würden),
-      // dann hängt cancel.
-      // KillSwitch funktioniert, aber wie verbindet man das mit cancel?
       actorSystemResource("StreamingSupportTest").use: actorSystem =>
         given ActorSystem = actorSystem
         Source.future[String]:
@@ -74,6 +68,21 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
         .map: list =>
           assert(list == List("TIMEOUT"))
 
+    "Cancel while a prefetching consumer awaits the next element" in:
+      // Like PekkoHttpClient#getDecodedLinesStream (mapParallelBatch) followed by headL,
+      // while the server does not send a further element.
+      actorSystemResource("StreamingSupportTest").use: actorSystem =>
+        given ActorSystem = actorSystem
+        (Source.single(1) ++ Source.never[Int])
+          .asFs2Stream()
+          .prefetchN(1)
+          .evalTap(_ => IO.sleep(100.ms)) // Let prefetchN await the next element
+          .head
+          .compile
+          .toList
+          .timeout(10.s)
+          .map: list =>
+            assert(list == List(1))
   }
 
   "Cancel a Pekko stream with KillSwitch" - {

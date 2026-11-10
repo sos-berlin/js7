@@ -441,9 +441,6 @@ object DirectoryProvider:
   // TODO Maybe change js7.conf?
   private val TestConfig = config"""
     # Accelerate tests
-    # Very short keep-alive (heartbeat), because a connection close is only detected when
-    # a message (keep-alive) arrives
-    js7.web.client.keep-alive = 100ms
     js7.web.server.delay-shutdown = 0s
     js7.web.server.shutdown-delay = 100ms
     js7.web.server.shutdown-timeout = 100ms

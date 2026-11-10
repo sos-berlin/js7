@@ -5,7 +5,7 @@ import cats.effect.Resource.ExitCase
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.implicits.catsSyntaxApplicativeError
 import fs2.Stream
-import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
+import fs2.interop.reactivestreams.StreamOps
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.log.Logger
@@ -17,7 +17,7 @@ import js7.common.pekkohttp.ExceptionHandling.webLogger
 import org.apache.pekko
 import org.apache.pekko.NotUsed
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.{Sink, Source}
+import org.apache.pekko.stream.scaladsl.{JavaFlowSupport, Source}
 
 /**
   * @author Joacim Zschimmer
@@ -94,8 +94,13 @@ object StreamingSupport:
     def asFs2Stream(bufferSize: Int = 1)(using Tag[Out], Materializer): Stream[IO, Out] =
       logger.traceStream:
         Stream.suspend:
-          val publisher = source.runWith(Sink.asPublisher(fanout = false))
-          publisher.toStreamBuffered[IO](bufferSize = bufferSize)
+          // Use fs2.interop.flow, not fs2.interop.reactivestreams, because the latter's
+          // StreamSubscriber waits uncancelably (F.async_) for the next element.
+          // When a concurrent consumer (like mapParallelBatch) has prefetched and the stream
+          // is canceled (for example, due to headL), the cancellation would hang until the
+          // server sends the next element or the connection times out.
+          val publisher = source.runWith(JavaFlowSupport.Sink.asPublisher(fanout = false))
+          fs2.interop.flow.fromPublisher[IO](publisher, chunkSize = bufferSize)
         .recoverWith:
           case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
             // NoMoreElementsNeeded means that the sink has stopped reading (e.g. take).
