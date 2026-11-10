@@ -203,7 +203,7 @@ trait GenericEventRoute extends RouteProvider:
         eventWatch.stream(request, predicate)
           .pipeMaybe(serverMetering): (stream, serverMetering) =>
             stream.mergeHaltL:
-              priorityDataStream(every = serverMetering)
+              meteringEventDataStream(every = serverMetering)
           .handleErrorWith: t =>
             logger.warn(t.toStringWithCauses)
             if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
@@ -211,12 +211,15 @@ trait GenericEventRoute extends RouteProvider:
             // so we simply end the tail
             Stream.empty
 
-    private def priorityDataStream(every: FiniteDuration)
+    /** Periodically insert ServerMeteringEvent. */
+    private def meteringEventDataStream(every: FiniteDuration)
     : Stream[IO, Stamped[KeyedEvent[ServerMeteringEvent]]] =
       Stream.eval:
         Environment.maybe[TestWiring]
       .flatMap: maybeTestWiring =>
-        Stream.fixedDelay[IO](every).map: _ =>
+        // Emit the first ServerMeteringEvent immediately, so the client (Subagent Director)
+        // detects the running stream (SubagentCoupled) without waiting a full period.
+        (Stream.unit ++ Stream.fixedDelay[IO](every)).map: _ =>
           var event = ServerMeteringEvent.fromCurrentMxBean()
           for w <- maybeTestWiring do
             event = event.copy(testMeteringValue = w.testMeteringValue)
