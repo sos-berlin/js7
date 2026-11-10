@@ -53,7 +53,7 @@ final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
           NodeId("Primary"), isBackup = false, None,
           RecouplingStreamReaderConf(
             timeout = Some(6500.ms), // Between 3s and 10s
-            keepAlive = 1.s,
+            keepAlive = 30.s,
             delay = 1.s,
             DelayConf(1.s, 3.s, 6.s, 10.s)),
           ClusterTiming(3.s, 10.s, 6.s),

@@ -29,7 +29,7 @@ final class ClusterConfTest extends OurTestSuite:
         js7.journal.cluster.retry-delays = [ 1s ]
         js7.journal.cluster.suppress-failover = false
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.keep-alive = 1s
+        js7.web.client.keep-alive = 30s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
@@ -42,7 +42,7 @@ final class ClusterConfTest extends OurTestSuite:
           None,
           RecouplingStreamReaderConf(
             timeout = Some(6500.ms),  // Between 3s and 10s
-            keepAlive = 1.s,
+            keepAlive = 30.s,
             delay = 1.s,
             DelayConf(5.s)),
           ClusterTiming(3.s, 10.s, 6.s),
@@ -65,7 +65,7 @@ final class ClusterConfTest extends OurTestSuite:
         js7.journal.cluster.retry-delays = [ 1s ]
         js7.journal.cluster.suppress-failover = true
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.keep-alive = 1s
+        js7.web.client.keep-alive = 30s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
@@ -84,7 +84,7 @@ final class ClusterConfTest extends OurTestSuite:
             clusterWatchId = None)),
           RecouplingStreamReaderConf(
             timeout = Some(6500.ms),  // Between 3s and 10s
-            keepAlive = 1.s,
+            keepAlive = 30.s,
             delay = 1.s,
             DelayConf(5.s)),
           ClusterTiming(3.s, 10.s, 6.s),
