@@ -111,7 +111,8 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         // OrderProcessed must be followed by OrderMoved
         controller.awaitNextKey[OrderMoved](aOrderId)
       locally:
-        sleep(4.s)
+        // Wait until B is writing stdout, so B is about to wait for the semaphore
+        controller.awaitKey[OrderStdoutWritten](bOrderId, after = eventId)
         TestSemaphoreJob.continue(2)
         controller.awaitNextKey[OrderProcessingStarted](aOrderId)
         for orderId <- View(aOrderId, bOrderId) do
@@ -166,7 +167,8 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         // OrderProcessed must be followed by OrderMoved
         controller.awaitNextKey[OrderMoved](aOrderId)
       locally:
-        sleep(4.s)
+        // Wait until B is writing stdout, so B is about to wait for the semaphore
+        controller.awaitKey[OrderStdoutWritten](bOrderId, after = eventId)
         TestSemaphoreJob.continue(2)
         controller.awaitNextKey[OrderProcessingStarted](aOrderId)
         for orderId <- View(aOrderId, bOrderId) do
